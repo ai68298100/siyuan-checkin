@@ -1601,6 +1601,78 @@
     white-space: pre-wrap;
 }
 
+.lc-checkin__insight-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 4px 0 18px;
+
+    div {
+        display: flex;
+        min-height: 68px;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        background: var(--b3-theme-surface);
+    }
+
+    strong {
+        color: var(--lc-checkin-accent);
+        font-size: 19px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    span {
+        margin-top: 3px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+    }
+}
+
+.lc-checkin__insight-section {
+    margin-top: 16px;
+
+    h2 {
+        margin: 0 0 8px;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+        font-weight: 600;
+    }
+}
+
+.lc-checkin__insight-grid {
+    display: grid;
+    grid-template-columns: repeat(14, minmax(0, 1fr));
+    gap: 4px;
+
+    span {
+        aspect-ratio: 1;
+        min-width: 0;
+        border-radius: 3px;
+        background: var(--b3-theme-surface-lighter);
+    }
+
+    .is-complete { background: #55a875; }
+    .is-partial { background: #e3ad54; }
+    .is-missed { background: color-mix(in srgb, var(--lc-checkin-accent) 52%, var(--b3-theme-surface-lighter)); }
+    .is-pending { outline: 1px solid var(--lc-checkin-accent); outline-offset: -1px; }
+    .is-off, .is-unavailable { opacity: .45; }
+}
+
+.lc-checkin__insight-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 32px;
+    border-bottom: 1px solid var(--b3-border-color);
+    color: var(--b3-theme-on-surface-light);
+    font-size: 11px;
+
+    strong { color: var(--b3-theme-on-background); font-weight: 550; }
+}
+
 @media (max-width: 380px) {
     .lc-checkin {
         padding-right: 12px;
@@ -1657,6 +1729,10 @@
             grid-column: auto;
         }
     }
+
+    .lc-checkin__insight-stats { gap: 5px; }
+    .lc-checkin__insight-stats div { min-height: 58px; }
+    .lc-checkin__insight-stats strong { font-size: 16px; }
 }
 
 @media (hover: none), (pointer: coarse) {
