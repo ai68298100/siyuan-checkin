@@ -236,6 +236,30 @@ const forwardNormalized = model.normalizeStore({
 });
 assert.deepEqual(reverseNormalized, forwardNormalized);
 
+const groupedSourceItems = [
+    {...item, id: "group-low", group: "学习", priority: "low", sortOrder: 2},
+    {...item, id: "group-high", group: "学习", priority: 3, sortOrder: 1},
+    {...item, id: "ungrouped", category: "", priority: "normal", order: "9"},
+];
+const groupedStore = model.normalizeStore({version: 2, items: groupedSourceItems, events: [], eventTombstones: []});
+const groupedById = new Map(groupedStore.items.map((candidate) => [candidate.id, candidate]));
+assert.equal(groupedById.get("group-low").group, "学习");
+assert.equal(groupedById.get("group-low").priority, "low");
+assert.equal(groupedById.get("group-high").priority, "high");
+assert.equal(groupedById.get("ungrouped").priority, "medium");
+assert.equal(groupedById.get("ungrouped").sortOrder, 9);
+assert.deepEqual(model.sortCheckinItems(groupedStore.items, "priority").map((candidate) => candidate.id), ["group-high", "ungrouped", "group-low"]);
+assert.deepEqual(model.sortCheckinItems(groupedStore.items, "manual").map((candidate) => candidate.id), ["group-high", "group-low", "ungrouped"]);
+assert.deepEqual([...model.groupCheckinItems(groupedStore.items).keys()], ["", "学习"]);
+assert.equal(model.normalizeCheckinGroup("  长期阅读  "), "长期阅读");
+assert.equal(model.normalizeCheckinSortOrder("12.7"), 13);
+assert.equal(model.normalizeCheckinPriority("urgent"), "high");
+const completedGroupedStore = {
+    ...groupedStore,
+    events: [{...event, itemId: "group-high", id: "group-high-event"}],
+};
+assert.deepEqual(model.sortCheckinItemsForDate(completedGroupedStore, groupedStore.items, localDay, "priority").map((candidate) => candidate.id), ["ungrouped", "group-low", "group-high"]);
+
 const json = JSON.parse(exporter.serializeJson(store));
 assert.equal(json.events[0].value, 25);
 const csv = exporter.serializeCsv(store);

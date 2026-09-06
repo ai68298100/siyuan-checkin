@@ -1,5 +1,9 @@
 export type CheckinKind = "binary" | "count" | "duration" | "quantity" | "custom";
 
+export type CheckinPriority = "low" | "medium" | "high";
+
+export type CheckinItemSortMode = "manual" | "group" | "priority" | "createdAt" | "updatedAt" | "name";
+
 export type ScheduleType = "daily" | "weekly" | "workdays" | "custom";
 
 export interface CheckinSchedule {
@@ -34,6 +38,12 @@ export interface CheckinItem {
     revisions: CheckinItemRevision[];
     archivePeriods: CheckinArchivePeriod[];
     archived?: boolean;
+    /** User-defined bucket. Empty string means the default ungrouped bucket. */
+    group?: string;
+    /** Normalized urgency used by priority sorting. */
+    priority?: CheckinPriority;
+    /** Stable manual order within a group. Lower values appear first. */
+    sortOrder?: number;
 }
 
 export interface CheckinEvent {

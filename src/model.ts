@@ -1,4 +1,4 @@
-import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinSchedule, CheckinStore} from "./types";
+import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore} from "./types";
 
 export const STORE_VERSION = 2 as const;
 
@@ -45,6 +45,85 @@ export function normalizeStore(value: unknown): CheckinStore {
         events,
         eventTombstones,
     };
+}
+
+/** Return a stable rank for display and priority sorting. */
+export function getCheckinPriorityRank(priority?: CheckinPriority): number {
+    return priority === "high" ? 3 : priority === "medium" ? 2 : 1;
+}
+
+/** Normalize legacy/string/number priority values into the persisted vocabulary. */
+export function normalizeCheckinPriority(value: unknown): CheckinPriority {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        if (value >= 2) return "high";
+        if (value >= 1) return "medium";
+        return "low";
+    }
+    if (typeof value !== "string") return "medium";
+    const normalized = value.trim().toLowerCase();
+    if (["high", "urgent", "critical", "最高", "高", "2", "3"].includes(normalized)) return "high";
+    if (["low", "minor", "最低", "低", "0"].includes(normalized)) return "low";
+    if (["medium", "normal", "default", "中", "1"].includes(normalized)) return "medium";
+    return "medium";
+}
+
+export function normalizeCheckinGroup(value: unknown): string {
+    return typeof value === "string" ? value.trim().slice(0, 32) : "";
+}
+
+export function normalizeCheckinSortOrder(value: unknown): number {
+    const candidate = Number(value);
+    return Number.isFinite(candidate)
+        ? Math.max(-1000000000, Math.min(1000000000, Math.round(candidate)))
+        : 0;
+}
+
+/** Compare normalized items using a deterministic user-facing sort mode. */
+export function compareCheckinItems(left: CheckinItem, right: CheckinItem, mode: CheckinItemSortMode = "manual"): number {
+    if (mode === "priority") {
+        const priorityComparison = getCheckinPriorityRank(right.priority || "medium") - getCheckinPriorityRank(left.priority || "medium");
+        if (priorityComparison !== 0) return priorityComparison;
+    }
+    if (mode === "group") {
+        const groupComparison = compareGroups(left.group || "", right.group || "");
+        if (groupComparison !== 0) return groupComparison;
+    } else if (mode === "createdAt") {
+        const createdComparison = compareText(left.createdAt, right.createdAt);
+        if (createdComparison !== 0) return createdComparison;
+    } else if (mode === "updatedAt") {
+        const updatedComparison = compareText(right.updatedAt, left.updatedAt);
+        if (updatedComparison !== 0) return updatedComparison;
+    } else if (mode === "name") {
+        const nameComparison = compareText(left.name, right.name);
+        if (nameComparison !== 0) return nameComparison;
+    }
+    return compareNumber(left.sortOrder || 0, right.sortOrder || 0)
+        || compareText(left.createdAt, right.createdAt)
+        || compareText(left.id, right.id);
+}
+
+export function sortCheckinItems(items: readonly CheckinItem[], mode: CheckinItemSortMode = "manual"): CheckinItem[] {
+    return [...items].sort((left, right) => compareCheckinItems(left, right, mode));
+}
+
+/** Sort active items with completed entries at the end of the current day. */
+export function sortCheckinItemsForDate(store: CheckinStore, items: readonly CheckinItem[], date = new Date(), mode: CheckinItemSortMode = "manual"): CheckinItem[] {
+    return [...items].sort((left, right) => {
+        const completionComparison = Number(isComplete(store, left, date)) - Number(isComplete(store, right, date));
+        return completionComparison || compareCheckinItems(left, right, mode);
+    });
+}
+
+/** Group items by their normalized group name while keeping each bucket sorted. */
+export function groupCheckinItems(items: readonly CheckinItem[], mode: CheckinItemSortMode = "group"): Map<string, CheckinItem[]> {
+    const groups = new Map<string, CheckinItem[]>();
+    sortCheckinItems(items, mode).forEach((item) => {
+        const group = item.group || "";
+        const bucket = groups.get(group);
+        if (bucket) bucket.push(item);
+        else groups.set(group, [item]);
+    });
+    return groups;
 }
 
 export function mergeStores(local: unknown, remote: unknown): CheckinStore {
@@ -216,6 +295,9 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
     const createdDate = isValidDateKey(value.createdDate) ? value.createdDate : dateKey(new Date(createdAt));
     const target = kind === "binary" ? 1 : Number.isFinite(targetValue) && targetValue > 0 ? targetValue : 1;
     const unit = typeof value.unit === "string" && value.unit.trim() ? value.unit.trim().slice(0, 16) : "次";
+    const group = normalizeCheckinGroup(value.group ?? value.category);
+    const sortOrder = normalizeCheckinSortOrder(value.sortOrder ?? value.order ?? value.position);
+    const priority = normalizeCheckinPriority(value.priority);
     const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
@@ -234,6 +316,9 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
         revisions: normalizeRevisions(value.revisions, fallbackRevision),
         archivePeriods,
         archived: value.archived === true,
+        group,
+        priority,
+        sortOrder,
     };
 }
 
@@ -398,7 +483,7 @@ function stableSerialize(value: unknown): string {
 }
 
 function compareItems(left: CheckinItem, right: CheckinItem): number {
-    return compareText(left.createdAt, right.createdAt) || compareText(left.id, right.id);
+    return compareCheckinItems(left, right, "manual");
 }
 
 function compareEvents(left: CheckinEvent, right: CheckinEvent): number {
@@ -410,6 +495,16 @@ function compareTombstones(left: CheckinEventTombstone, right: CheckinEventTombs
 }
 
 function compareText(left: string, right: string): number {
+    return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function compareGroups(left: string, right: string): number {
+    if (!left && right) return -1;
+    if (left && !right) return 1;
+    return compareText(left, right);
+}
+
+function compareNumber(left: number, right: number): number {
     return left < right ? -1 : left > right ? 1 : 0;
 }
 
