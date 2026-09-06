@@ -16,3 +16,64 @@
 .as-of{white-space:nowrap;flex-shrink:0}.sidebar-heading,.source-picker,.metric>span,.metric p,.report-period,.section-heading>span,.section-heading>div>span{font-size:12px}.record-date,.record-body p{font-size:12px}.record-body>strong{font-size:15px}.legend>span,.bar-value,.week-bar small,.week-labels span,.source{font-size:10px}.segmented button{font-size:12px}
 @media(max-width:760px){.metric>span,.metric p{font-size:11px}.report-period,.legend>span,.week-labels span,.source{font-size:9px}.section-heading>span,.section-heading>div>span{font-size:11px}.as-of{font-size:10px;gap:3px}.range-controls{gap:8px;flex-wrap:wrap}.record-body p{font-size:12px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+
+#records > .section-heading { flex-wrap: wrap; }
+#record-count { white-space: nowrap; font-size: 11px; }
+.record-toolbar {
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) auto auto 34px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+.record-search, .record-select {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--bg);
+    color: var(--muted);
+    padding-left: 9px;
+    gap: 6px;
+}
+.record-search svg, .record-select svg { height: 15px; width: 15px; }
+.record-search input {
+    width: 100%;
+    min-width: 0;
+    height: 32px;
+    background: none;
+    border: 0;
+    color: var(--text);
+    font-size: 12px;
+}
+.record-search input::-webkit-search-cancel-button { appearance: none; }
+.record-search .tool { width: 30px; height: 32px; }
+.record-select select {
+    width: 98px;
+    min-width: 0;
+    height: 32px;
+    background: var(--bg);
+    border: 0;
+    font-size: 12px;
+    color: var(--text);
+}
+.records-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px;
+}
+.records-pagination .command { padding: 7px 10px; font-size: 12px; }
+.records-empty { flex-wrap: wrap; }
+.record-body > strong { overflow-wrap: anywhere; }
+@media (max-width: 1050px) {
+    .record-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px; }
+    .record-search { grid-column: 1 / -1; }
+    .record-select select { width: 100%; }
+}

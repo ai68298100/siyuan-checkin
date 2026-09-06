@@ -1,9 +1,10 @@
-import {createIcons, BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, Check} from "lucide";
+import {createIcons, BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet} from "lucide";
 import {buildHabitInsights} from "../../src/features/insights";
+import {selectInsightRecords, serializeInsightRecordsCsv} from "../../src/features/insight-records";
 import {normalizeStore, dateKey, getItemRevisionForDate} from "../../src/model";
 import {createExampleStore} from "./fixtures";
 
-const iconSet = {BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, Check};
+const iconSet = {BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet};
 const knownIcons = new Set(["book-open", "activity", "droplets", "notebook-pen"]);
 const today = dateKey(new Date());
 const localDate = (key) => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d, 12); };
@@ -13,7 +14,9 @@ const shortDate = (key) => key.slice(5).replace("-", "/");
 const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
 const statusLabels = {complete: "已达标", partial: "部分完成", missed: "未记录", pending: "待记录", off: "非计划日", unavailable: "未启用"};
 const sourceLabels = {manual: "手动记录", tomato: "专注记录", import: "导入记录", api: "外部记录"};
-const state = {store: normalizeStore(createExampleStore(localDate(today))), itemId: "reading", days: 84, asOf: today, selection: null, dark: false, source: "示例数据", message: ""};
+const initialRecordFilters = () => ({query: "", source: "all", order: "newest"});
+const recordPageSize = 50;
+const state = {store: normalizeStore(createExampleStore(localDate(today))), itemId: "reading", days: 84, asOf: today, selection: null, dark: false, source: "示例数据", message: "", recordFilters: initialRecordFilters(), recordLimit: recordPageSize};
 let report;
 
 function itemIcon(item) {
@@ -94,7 +97,7 @@ function renderTrend() {
     return `<div class="trend" style="--weeks:${report.weeklyTrend.length}">${report.weeklyTrend.map((week) => `<button class="week-bar ${state.selection?.type === "week" && state.selection.key === week.startDate ? "selected" : ""}" data-week="${week.startDate}" aria-label="${week.label}，${week.completionRate === null ? "无已结算计划日" : `达标率 ${number(week.completionRate)}%`}" title="${week.label} · ${week.completedDays}/${week.eligibleScheduledDays} 个已结算计划日"><span class="bar-value">${week.completionRate === null ? "--" : `${Math.round(week.completionRate)}%`}</span><span class="bar-track"><span style="height:${week.completionRate || 0}%"></span></span><small>${shortDate(week.observationStartDate)}</small></button>`).join("")}</div>`;
 }
 
-function renderRecords() {
+function getRecordView() {
     let title = "原始记录";
     let detail = "整个统计范围";
     let records = [...report.records];
@@ -111,25 +114,71 @@ function renderRecords() {
             detail = `${week.completedDays} / ${week.eligibleScheduledDays} 个已结算计划日达标`;
         }
     }
-    records.sort((left, right) => right.localDate.localeCompare(left.localDate) || right.occurredAt.localeCompare(left.occurredAt));
+    return {title, detail, total: records.length, records: selectInsightRecords(records, state.recordFilters)};
+}
+
+function recordCount(view) {
+    return view.records.length === view.total ? `${view.total} 条` : `${view.records.length} / ${view.total} 条`;
+}
+
+function renderRecords() {
+    const view = getRecordView();
     const controls = state.selection ? `<button class="tool" data-action="reset-selection" title="查看全部记录" aria-label="查看全部记录">${icon("rotate-ccw")}</button>` : "";
-    return `<div class="section-heading"><div><h2>${html(title)}</h2><span>${html(detail)}</span></div><div class="record-controls">${state.selection?.type === "day" ? `<button class="tool" data-action="previous-day" aria-label="前一天" title="前一天" ${state.selection.key === report.startDate ? "disabled" : ""}>${icon("chevron-left")}</button><button class="tool" data-action="next-day" aria-label="后一天" title="后一天" ${state.selection.key === report.endDate ? "disabled" : ""}>${icon("chevron-right")}</button>` : ""}<small>${records.length} 条</small>${controls}</div></div>
-        <div class="records-list">${records.length ? records.map((record) => `<article class="record"><div class="record-date"><strong>${shortDate(record.localDate)}</strong><small>${new Date(record.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}</small></div><div class="record-body"><strong>${number(record.value)} <small>${html(record.unit)}</small></strong>${record.note ? `<p>${html(record.note)}</p>` : ""}<span class="source">${sourceLabels[record.source] || html(record.source)}</span></div></article>`).join("") : `<div class="records-empty">${icon("calendar-days")}<span>此范围没有记录</span></div>`}</div>`;
+    return `<div class="section-heading"><div><h2>${html(view.title)}</h2><span>${html(view.detail)}</span></div><div class="record-controls">${state.selection?.type === "day" ? `<button class="tool" data-action="previous-day" aria-label="前一天" title="前一天" ${state.selection.key === report.startDate ? "disabled" : ""}>${icon("chevron-left")}</button><button class="tool" data-action="next-day" aria-label="后一天" title="后一天" ${state.selection.key === report.endDate ? "disabled" : ""}>${icon("chevron-right")}</button>` : ""}<small id="record-count" aria-live="polite">${recordCount(view)}</small>${controls}</div></div>
+        <div class="record-toolbar">
+            <label class="record-search">${icon("search")}<input id="record-query" type="search" value="${html(state.recordFilters.query)}" placeholder="搜索备注、数值、单位" aria-label="搜索记录" /><button class="tool" data-action="clear-record-query" aria-label="清空搜索" title="清空搜索" style="visibility:${state.recordFilters.query ? "visible" : "hidden"}">${icon("x")}</button></label>
+            <label class="record-select" title="记录来源">${icon("filter")}<select id="record-source" aria-label="记录来源">${Object.entries({all: "全部来源", ...sourceLabels}).map(([value, label]) => `<option value="${value}" ${state.recordFilters.source === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+            <label class="record-select" title="记录排序">${icon("arrow-down-up")}<select id="record-order" aria-label="记录排序"><option value="newest" ${state.recordFilters.order === "newest" ? "selected" : ""}>最新在前</option><option value="oldest" ${state.recordFilters.order === "oldest" ? "selected" : ""}>最早在前</option></select></label>
+            <button class="tool" data-action="export-records" aria-label="导出筛选记录 CSV" title="导出筛选记录 CSV" ${view.records.length ? "" : "disabled"}>${icon("file-spreadsheet")}</button>
+        </div><div id="record-results">${renderRecordResults(view)}</div>`;
+}
+
+function renderRecordResults(view) {
+    const visible = view.records.slice(0, state.recordLimit);
+    return `<div class="records-list">${visible.length ? visible.map((record) => `<article class="record" data-record-id="${html(record.id)}"><div class="record-date"><strong>${shortDate(record.localDate)}</strong><small>${new Date(record.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}</small></div><div class="record-body"><strong>${number(record.value)} <small>${html(record.unit)}</small></strong>${record.note ? `<p>${html(record.note)}</p>` : ""}<span class="source">${sourceLabels[record.source] || html(record.source)}</span></div></article>`).join("") : `<div class="records-empty">${icon("calendar-days")}<span>${view.total ? "没有匹配的记录" : "此范围没有记录"}</span>${state.recordFilters.query || state.recordFilters.source !== "all" ? '<button class="command" data-action="reset-record-filters">清除筛选</button>' : ""}</div>`}</div>
+        ${view.records.length > recordPageSize ? `<div class="records-pagination"><span>已显示 ${visible.length} / ${view.records.length} 条</span>${visible.length < view.records.length ? `<button class="command" data-action="more-records">${icon("chevron-down")}加载更多</button>` : ""}</div>` : ""}`;
+}
+
+function refreshRecordResults(preserveScroll = false) {
+    const view = getRecordView();
+    const scrollTop = preserveScroll ? document.querySelector(".records-list").scrollTop : 0;
+    const results = document.getElementById("record-results");
+    results.innerHTML = renderRecordResults(view);
+    document.getElementById("record-count").textContent = recordCount(view);
+    document.querySelector("[data-action='export-records']").disabled = !view.records.length;
+    document.querySelector("[data-action='clear-record-query']").style.visibility = state.recordFilters.query ? "visible" : "hidden";
+    createIcons({icons: iconSet, attrs: {"stroke-width": 1.7}});
+    bindActions(results);
+    document.querySelector(".records-list").scrollTop = scrollTop;
+}
+
+function bindActions(root = document) {
+    root.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => act(button.dataset.action)));
 }
 
 function bind() {
     document.querySelector(".brand").addEventListener("click", (event) => {event.preventDefault(); state.selection = null; render();});
-    document.querySelectorAll("[data-item]").forEach((button) => button.addEventListener("click", () => {state.itemId = button.dataset.item; state.selection = null; render();}));
-    document.querySelectorAll("[data-range]").forEach((button) => button.addEventListener("click", () => {state.days = Number(button.dataset.range); state.selection = null; render();}));
-    document.querySelectorAll("[data-date]").forEach((button) => button.addEventListener("click", () => {state.selection = {type: "day", key: button.dataset.date}; render(); document.querySelector(`[data-date='${state.selection.key}']`)?.focus({preventScroll: true});}));
-    document.querySelectorAll("[data-week]").forEach((button) => button.addEventListener("click", () => {state.selection = {type: "week", key: button.dataset.week}; render();}));
-    document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => act(button.dataset.action)));
+    document.querySelectorAll("[data-item]").forEach((button) => button.addEventListener("click", () => {state.itemId = button.dataset.item; state.selection = null; state.recordLimit = recordPageSize; render();}));
+    document.querySelectorAll("[data-range]").forEach((button) => button.addEventListener("click", () => {state.days = Number(button.dataset.range); state.selection = null; state.recordLimit = recordPageSize; render();}));
+    document.querySelectorAll("[data-date]").forEach((button) => button.addEventListener("click", () => {state.selection = {type: "day", key: button.dataset.date}; state.recordLimit = recordPageSize; render(); document.querySelector(`[data-date='${state.selection.key}']`)?.focus({preventScroll: true});}));
+    document.querySelectorAll("[data-week]").forEach((button) => button.addEventListener("click", () => {state.selection = {type: "week", key: button.dataset.week}; state.recordLimit = recordPageSize; render();}));
+    bindActions();
+    const query = document.getElementById("record-query");
+    const updateQuery = () => {state.recordFilters.query = query.value; state.recordLimit = recordPageSize; refreshRecordResults();};
+    query?.addEventListener("input", (event) => {if (!event.isComposing) updateQuery();});
+    query?.addEventListener("compositionend", updateQuery);
+    for (const field of ["source", "order"]) document.getElementById(`record-${field}`)?.addEventListener("change", (event) => {
+        state.recordFilters[field] = event.target.value;
+        state.recordLimit = recordPageSize;
+        refreshRecordResults();
+    });
     document.getElementById("file-input").addEventListener("change", importFile);
     document.getElementById("as-of")?.addEventListener("change", (event) => {
         const value = event.target.value;
         if (value && event.target.validity.valid && value <= today && value >= "1900-01-01") {
             state.asOf = value;
             state.selection = null;
+            state.recordLimit = recordPageSize;
             render();
         } else {
             event.target.value = state.asOf;
@@ -141,6 +190,8 @@ function bind() {
         state.store = event.target.value === "empty" ? normalizeStore(null) : normalizeStore(createExampleStore(localDate(today)));
         state.itemId = state.store.items[0]?.id;
         state.selection = null;
+        state.recordFilters = initialRecordFilters();
+        state.recordLimit = recordPageSize;
         state.message = "";
         render();
     });
@@ -148,21 +199,45 @@ function bind() {
 
 function act(action) {
     if (action === "import") {document.getElementById("file-input").click(); return;}
+    if (action === "more-records") {state.recordLimit += recordPageSize; refreshRecordResults(true); return;}
+    if (["clear-record-query", "reset-record-filters"].includes(action)) {
+        state.recordFilters.query = "";
+        if (action === "reset-record-filters") state.recordFilters.source = "all";
+        state.recordLimit = recordPageSize;
+        document.getElementById("record-query").value = "";
+        document.getElementById("record-source").value = state.recordFilters.source;
+        refreshRecordResults();
+        document.getElementById("record-query").focus({preventScroll: true});
+        return;
+    }
+    if (action === "export-records" && report) {
+        const records = getRecordView().records;
+        if (records.length) download(serializeInsightRecordsCsv(report.item, records), "text/csv;charset=utf-8", `checkin-records-${state.asOf}.csv`);
+        return;
+    }
     if (action === "theme") state.dark = !state.dark;
-    if (action === "reset-selection") state.selection = null;
+    if (action === "reset-selection") {state.selection = null; state.recordLimit = recordPageSize;}
     if (["previous-day", "next-day"].includes(action) && state.selection?.type === "day") {
         const date = localDate(state.selection.key);
         date.setDate(date.getDate() + (action === "previous-day" ? -1 : 1));
         const key = dateKey(date);
         if (key >= report.startDate && key <= report.endDate) state.selection.key = key;
+        state.recordLimit = recordPageSize;
     }
     if (action === "export" && report) {
-        const url = URL.createObjectURL(new Blob([JSON.stringify({format: "checkin-insights-report", version: 1, dataSource: state.source, ...report}, null, 2)], {type: "application/json;charset=utf-8"}));
-        const link = document.createElement("a"); link.href = url; link.download = `checkin-insights-${state.asOf}.json`; link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        download(JSON.stringify({format: "checkin-insights-report", version: 1, dataSource: state.source, ...report}, null, 2), "application/json;charset=utf-8", `checkin-insights-${state.asOf}.json`);
         return;
     }
     render();
+}
+
+function download(content, type, filename) {
+    const url = URL.createObjectURL(new Blob([content], {type}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function importFile(event) {
@@ -177,6 +252,8 @@ async function importFile(event) {
         state.source = file.name;
         state.itemId = normalized.items[0]?.id;
         state.selection = null;
+        state.recordFilters = initialRecordFilters();
+        state.recordLimit = recordPageSize;
         state.message = `已读取 ${normalized.items.length} 个项目、${normalized.events.length} 条有效记录（只读）`;
     } catch (error) {
         state.message = `读取失败：${error.message}`;

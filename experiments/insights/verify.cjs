@@ -21,12 +21,52 @@ fs.mkdirSync(output, {recursive: true});
         assert.equal(await page.locator(".habit").count(), 4);
         assert(await page.locator("[data-metric='current-streak']").innerText().then((value) => value.startsWith("6")));
         assert(await page.locator(".brand img").evaluate((element) => element.complete && element.naturalWidth > 0));
+        assert.equal(await page.locator(".record").count(), 50);
         await page.screenshot({path: path.join(output, "insights-desktop.png"), fullPage: true});
+
+        const initialRate = await page.locator("[data-metric='rate']").innerText();
+        await page.locator(".records-list").evaluate((element) => {element.scrollTop = 200;});
+        await page.getByRole("button", {name: "加载更多", exact: true}).click();
+        assert.equal(await page.locator(".record").count(), 100);
+        assert.equal(await page.locator(".records-list").evaluate((element) => element.scrollTop), 200);
+        const allCsvPromise = page.waitForEvent("download");
+        await page.getByRole("button", {name: "导出筛选记录 CSV", exact: true}).click();
+        const allCsv = fs.readFileSync(await (await allCsvPromise).path(), "utf8");
+        assert.equal(allCsv.charCodeAt(0), 0xFEFF);
+        assert.equal(allCsv.trim().split(/\r?\n/).length, 140, "CSV includes every matching record, including unloaded rows");
+
+        await page.locator("#record-query").fill("没有这条备注");
+        assert.equal(await page.locator(".record").count(), 0);
+        assert.equal(await page.getByRole("button", {name: "导出筛选记录 CSV", exact: true}).isDisabled(), true);
+        assert.equal(await page.locator("[data-metric='rate']").innerText(), initialRate, "record filters do not alter habit metrics");
+        await page.getByRole("button", {name: "清除筛选", exact: true}).click();
+        assert.equal(await page.locator(".record").count(), 50);
+        await page.locator("#record-source").selectOption("tomato");
+        await page.locator("#record-query").fill("笔记");
+        assert(await page.locator(".record").count() > 0);
+        assert((await page.locator(".record .source").allTextContents()).every((value) => value === "专注记录"));
+        assert((await page.locator(".record-body p").allTextContents()).every((value) => value.includes("笔记")));
+        assert.equal(await page.locator("#record-query").evaluate((element) => element === document.activeElement), true);
+        const newestId = await page.locator(".record").first().getAttribute("data-record-id");
+        await page.locator("#record-order").selectOption("oldest");
+        assert.notEqual(await page.locator(".record").first().getAttribute("data-record-id"), newestId);
+        await page.getByRole("button", {name: "清空搜索", exact: true}).click();
+        await page.locator("#record-source").selectOption("all");
+        await page.locator("#record-order").selectOption("newest");
 
         const day = await page.locator(".day.complete").first().getAttribute("data-date");
         await page.locator(`[data-date='${day}']`).click();
         assert.equal(await page.locator("#records h2").innerText(), day);
         assert.equal(await page.locator(".record").count(), 2);
+        await page.locator("#record-source").selectOption("tomato");
+        assert.equal(await page.locator(".record").count(), 1);
+        const filteredCsvPromise = page.waitForEvent("download");
+        await page.getByRole("button", {name: "导出筛选记录 CSV", exact: true}).click();
+        const filteredCsv = fs.readFileSync(await (await filteredCsvPromise).path(), "utf8");
+        assert.equal(filteredCsv.trim().split(/\r?\n/).length, 2);
+        assert(filteredCsv.includes(day) && filteredCsv.includes(",tomato,"));
+        assert(!filteredCsv.includes(",manual,"));
+        await page.locator("#record-source").selectOption("all");
         await page.getByRole("button", {name: "后一天", exact: true}).click();
         assert.notEqual(await page.locator("#records h2").innerText(), day);
         await page.getByRole("button", {name: "查看全部记录", exact: true}).click();
@@ -69,6 +109,14 @@ fs.mkdirSync(output, {recursive: true});
                 return a.right > b.left;
             });
             assert.equal(overlap, false, "header actions must not overlap branding");
+            const toolbarFits = await page.locator(".record-toolbar").evaluate((toolbar) => {
+                const parent = toolbar.getBoundingClientRect();
+                return [...toolbar.children].every((child) => {
+                    const rect = child.getBoundingClientRect();
+                    return rect.left >= parent.left - 1 && rect.right <= parent.right + 1;
+                });
+            });
+            assert(toolbarFits, "record toolbar must stay inside its available width");
         };
         await page.getByRole("button", {name: "浅色外观", exact: true}).click();
         for (const width of [390, 320]) {
@@ -76,6 +124,11 @@ fs.mkdirSync(output, {recursive: true});
             await checkBounds();
             await page.screenshot({path: path.join(output, `insights-mobile-${width}.png`), fullPage: true});
         }
+        await page.locator("#record-source").selectOption("tomato");
+        await page.locator("#record-query").fill("笔记");
+        await page.screenshot({path: path.join(output, "insights-mobile-filtered.png"), fullPage: true});
+        await page.getByRole("button", {name: "清空搜索", exact: true}).click();
+        await page.locator("#record-source").selectOption("all");
 
         const downloadPromise = page.waitForEvent("download");
         await page.getByRole("button", {name: "导出当前复盘 JSON", exact: true}).click();
@@ -127,7 +180,7 @@ fs.mkdirSync(output, {recursive: true});
         assert.match(await page.locator(".report-title p").innerText(), /2 km.*工作日/);
         assert.deepEqual(errors, []);
         assert.deepEqual(network, [], "preview must not request remote assets or upload data");
-        console.log("insights UI: 84/28/180 days, drill-down, weekly filter, archive states, theme, desktop/mobile, empty/error/import/export and offline checks passed");
+        console.log("insights UI: ranges, drill-down, record search/source/order, pagination, filtered CSV, archive states, theme, desktop/mobile, empty/error/import/export and offline checks passed");
         console.log(`Screenshots: ${output}`);
     } finally {
         await browser.close();
