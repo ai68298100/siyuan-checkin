@@ -250,6 +250,20 @@ export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinSt
     };
 }
 
+/** Replace only the user-editable note while preserving event identity and time. */
+export function updateEventNote(store: CheckinStore, eventId: string, note: string | undefined): CheckinStore {
+    const index = store.events.findIndex((event) => event.id === eventId);
+    if (index < 0) return store;
+    const events = [...store.events];
+    const current = events[index];
+    const normalized = typeof note === "string" ? note.trim().slice(0, 2000) : undefined;
+    events[index] = normalized ? {...current, note: normalized} : (() => {
+        const {note: _note, ...withoutNote} = current;
+        return withoutNote;
+    })();
+    return {...store, events};
+}
+
 export function removeEventsForDay(store: CheckinStore, itemId: string, date = new Date(), deletedAt = new Date().toISOString()): CheckinStore {
     return removeEvents(store, getEventsForDay(store, itemId, date), deletedAt);
 }

@@ -4,8 +4,10 @@ import {buildSummaryContext, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
+import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
+import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
-import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems} from "./model";
+import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
 import type {SummaryRange} from "./analytics";
@@ -593,15 +595,6 @@ export default class CheckinPlugin extends Plugin {
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
-    private renderInsights(): string {
-        const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
-        if (!item) return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
-        const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
-        const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
-        const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header><div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div><section class="lc-checkin__insight-section"><h2>近 84 天</h2><div class="lc-checkin__insight-grid">${report.days.map((day) => `<span class="is-${day.status}" title="${day.date} ${day.progress}/${day.target} ${day.unit}"></span>`).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
-    }
-
     private renderToday(): string {
         const now = currentCalendarDate();
         const activeItems = this.store.items.filter((item) => !item.archived);
@@ -775,7 +768,8 @@ export default class CheckinPlugin extends Plugin {
         const eventDetails = selectedEvents.length ? `<div class="lc-checkin__history-events">${selectedEvents.slice().sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map((event) => {
             const name = itemNames.get(event.itemId) || "已删除项目";
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
-            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span></div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
+            const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -806,8 +800,9 @@ export default class CheckinPlugin extends Plugin {
         const isBinary = revision.kind === "binary";
         const canFocus = !isBinary && Boolean(this.findFocusAdapter(item, date));
         const recordStep = getRecordStep(revision.kind, revision.unit);
+        const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
-        const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}`;
+        const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.unit || "次"}` : ""}`;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
         const unit = revision.unit || "次";
@@ -915,7 +910,7 @@ export default class CheckinPlugin extends Plugin {
                     <div class="lc-checkin__kind-help" data-kind-help>${escapeHtml(selectedKindOption.description)}</div>
                     <div class="lc-checkin__form-row" data-value-fields>
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
-                        <label class="lc-checkin__field"><span>单位</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}">${escapeHtml(unit)}</button>`).join("")}</span></label>
+                        <label class="lc-checkin__field"><span>单位</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
                     </div>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
                         <summary><span><strong>安排与分类</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
@@ -1089,6 +1084,21 @@ export default class CheckinPlugin extends Plugin {
                 try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 撤销失败，请重试"); return; }
                 this.invalidateSummary();
                 this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+                this.renderBackgroundUpdate();
+            });
+        }));
+        root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
+            const event = this.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
+            if (!event) return;
+            const note = window.prompt("记录备注（可填写思源块引用）", event.note || "");
+            if (note === null) return;
+            void this.enqueueMutation(async () => {
+                const previous = this.store;
+                const next = updateEventNote(this.store, event.id, note);
+                if (next === this.store) return;
+                this.store = next;
+                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 备注保存失败，请重试"); return; }
+                this.invalidateSummary();
                 this.renderBackgroundUpdate();
             });
         }));
@@ -1297,6 +1307,11 @@ export default class CheckinPlugin extends Plugin {
                     if (Number.isFinite(currentTarget) && previousUnit === "小时" && nextUnit === "分钟") targetInput.value = formatNumber(currentTarget * 60);
                 }
                 if (unitInput) unitInput.value = nextUnit;
+                root.querySelectorAll<HTMLButtonElement>("[data-unit]").forEach((candidate) => {
+                    const selected = candidate.dataset.unit === nextUnit;
+                    candidate.classList.toggle("is-selected", selected);
+                    candidate.setAttribute("aria-pressed", String(selected));
+                });
                 unitInput?.dispatchEvent(new Event("change", {bubbles: true}));
             }));
         };
@@ -1329,7 +1344,8 @@ export default class CheckinPlugin extends Plugin {
             }
             const unitOptions = root.querySelector<HTMLElement>("[data-unit-options]");
             if (unitOptions) {
-                unitOptions.innerHTML = kindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}">${escapeHtml(unit)}</button>`).join("");
+                const selectedUnitValue = unitInput?.value || kindOption.defaultUnit;
+                unitOptions.innerHTML = kindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnitValue === unit ? "true" : "false"}" class="${selectedUnitValue === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("");
                 bindUnitOptions();
             }
             previousKind = kind;
@@ -1909,6 +1925,18 @@ function escapeHtml(value: string): string {
             default: return character;
         }
     });
+}
+
+function renderRecordNote(note: string): string {
+    const spans = extractSiyuanBlockLinkSpans(note);
+    if (!spans.length) return escapeHtml(note);
+    let cursor = 0;
+    return spans.map((span) => {
+        const prefix = escapeHtml(note.slice(cursor, span.start));
+        const link = `<a href="${escapeHtml(span.url)}" title="打开思源块" target="_blank" rel="noreferrer">${escapeHtml(span.label)}</a>`;
+        cursor = span.end;
+        return prefix + link;
+    }).join("") + escapeHtml(note.slice(cursor));
 }
 
 function matchesSearch(value: string, query: string): boolean {

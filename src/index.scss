@@ -1295,7 +1295,8 @@
     margin-top: -2px;
 
     button {
-        padding: 2px 5px;
+        min-height: 28px;
+        padding: 4px 8px;
         border: 0;
         border-radius: 4px;
         color: var(--b3-theme-on-surface-light);
@@ -1304,6 +1305,11 @@
         cursor: pointer;
 
         &:hover {
+            color: var(--lc-checkin-accent);
+            background: var(--lc-checkin-accent-soft);
+        }
+
+        &.is-selected {
             color: var(--lc-checkin-accent);
             background: var(--lc-checkin-accent-soft);
         }
@@ -1601,6 +1607,20 @@
             color: var(--b3-theme-on-surface-light);
             font-size: 10px;
         }
+
+        .lc-checkin__history-event-note {
+            overflow: hidden;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 10px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            a {
+                color: var(--lc-checkin-accent);
+                text-decoration: none;
+            }
+        }
     }
 }
 
@@ -1854,6 +1874,25 @@
     .lc-checkin__form select {
         height: 42px;
         font-size: 14px;
+    }
+
+    .lc-checkin--editor .lc-checkin__filter-row button,
+    .lc-checkin--editor .lc-checkin__icon-tabs button,
+    .lc-checkin--editor .lc-checkin__unit-options button,
+    .lc-checkin--editor .lc-checkin__group-options button {
+        min-height: 40px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .lc-checkin--editor .lc-checkin__template {
+        min-height: 64px;
+        padding: 9px;
+    }
+
+    .lc-checkin--editor .lc-checkin__icon-option {
+        height: 42px;
+        min-height: 42px;
     }
 
     .lc-checkin__form button,
