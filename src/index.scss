@@ -1601,6 +1601,20 @@
             color: var(--b3-theme-on-surface-light);
             font-size: 10px;
         }
+
+        .lc-checkin__history-event-note {
+            overflow: hidden;
+            color: var(--b3-theme-on-surface-light);
+            font-size: 10px;
+            line-height: 1.35;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+
+            a {
+                color: var(--lc-checkin-accent);
+                text-decoration: none;
+            }
+        }
     }
 }
 
