@@ -71,6 +71,10 @@
     scrollbar-width: thin;
 }
 
+.lc-checkin__mobile-nav {
+    display: none;
+}
+
 .lc-checkin__header,
 .lc-checkin__editor-header {
     display: flex;
@@ -1125,6 +1129,72 @@
 
         .lc-checkin__field:first-child {
             grid-column: auto;
+        }
+    }
+}
+
+@media (max-width: 600px) {
+    .lc-checkin-tab-host .lc-checkin__mobile-nav {
+        display: none;
+    }
+
+    .lc-checkin:not(.lc-checkin--editor) {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    .lc-checkin__mobile-nav {
+        position: fixed;
+        z-index: 3;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 3px;
+        margin: 0;
+        padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--b3-border-color);
+        background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent);
+        backdrop-filter: blur(12px);
+
+        button {
+            display: inline-flex;
+            min-width: 0;
+            min-height: 46px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 3px 2px;
+            border: 0;
+            border-radius: 7px;
+            color: var(--b3-theme-on-surface-light);
+            background: transparent;
+            cursor: pointer;
+            touch-action: manipulation;
+
+            span {
+                font-size: 18px;
+                line-height: 1;
+            }
+
+            small {
+                overflow: hidden;
+                max-width: 100%;
+                font-size: 10px;
+                line-height: 1.2;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            &.is-selected {
+                color: var(--lc-checkin-accent);
+                background: var(--lc-checkin-accent-soft);
+            }
+
+            &:last-child {
+                color: var(--lc-checkin-accent);
+            }
         }
     }
 }

@@ -543,6 +543,7 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+        if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -550,6 +551,16 @@ export default class CheckinPlugin extends Plugin {
         } else {
             this.bindPageNavigation(root);
         }
+    }
+
+    private renderMobileNav(): string {
+        const entries = [
+            ["today", "今日", "⌂"],
+            ["history", "历史", "▦"],
+            ["summary", "总结", "◒"],
+            ["archived", "归档", "▤"],
+        ] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
     private renderToday(): string {
@@ -799,6 +810,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindToday(root: HTMLElement) {
+        this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
@@ -875,6 +887,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindPageNavigation(root: HTMLElement) {
+        this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
@@ -900,6 +913,17 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
         root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
+    }
+
+    private bindMobileNav(root: HTMLElement) {
+        root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
+            const page = button.dataset.mobileNav;
+            if (page === "today") this.showToday();
+            else if (page === "history") this.showHistory();
+            else if (page === "summary") this.showSummary();
+            else if (page === "archived") this.showArchived();
+            else if (page === "add") this.showEditor();
+        }));
     }
 
     private changeHistoryMonth(offset: number) {
