@@ -702,6 +702,18 @@
     .lc-checkin__amount {
         width: 62px;
     }
+
+    .lc-checkin__record-note {
+        min-width: 0;
+        flex: 1;
+        height: 28px;
+        padding: 3px 6px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 5px;
+        color: var(--b3-theme-on-background);
+        background: var(--b3-theme-background);
+        font-size: 11px;
+    }
 }
 
 .lc-checkin__focus-button {

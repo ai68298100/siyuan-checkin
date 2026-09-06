@@ -832,6 +832,7 @@ export default class CheckinPlugin extends Plugin {
             ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
                 <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>
                 <span>${escapeHtml(unit)}</span>
+                <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="备注（可选）" aria-label="记录备注" />
                 <button class="lc-checkin__record-button" type="button" data-action="record">记录</button>
             </div>`}
         </article>`;
@@ -1051,7 +1052,8 @@ export default class CheckinPlugin extends Plugin {
                         input?.focus();
                         return;
                     }
-                    this.enqueueMutation(() => this.recordEvent(item, amount, moment, expectedRevisionFingerprint));
+                    const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
+                    this.enqueueMutation(() => this.recordEvent(item, amount, moment, expectedRevisionFingerprint, note));
                 }
             });
         });
@@ -1608,7 +1610,7 @@ export default class CheckinPlugin extends Plugin {
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
-    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string): Promise<CheckinEvent | undefined> {
+    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string): Promise<CheckinEvent | undefined> {
         const current = this.store.items.find((candidate) => candidate.id === item.id && !candidate.archived);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
@@ -1621,7 +1623,7 @@ export default class CheckinPlugin extends Plugin {
             return undefined;
         }
         const previous = this.store;
-        const event = this.makeEvent(current, value, "manual", revision.unit, undefined, undefined, moment);
+        const event = this.makeEvent(current, value, "manual", revision.unit, note?.trim() || undefined, undefined, moment);
         const next = appendEvent(this.store, event);
         if (next === this.store) return undefined;
         this.store = next;
