@@ -1,0 +1,16 @@
+{
+  "name": "checkin-insights-preview",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "node build.cjs",
+    "test:ui": "node verify.cjs"
+  },
+  "dependencies": {"lucide": "1.8.0"},
+  "devDependencies": {
+    "webpack": "^5.101.3",
+    "esbuild-loader": "^4.4.3",
+    "playwright": "^1.51.0",
+    "typescript": "^5.5.4"
+  }
+}
