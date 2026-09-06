@@ -567,7 +567,7 @@ export default class CheckinPlugin extends Plugin {
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
-                    : this.currentPage === "insights" ? this.renderInsights() 
+                    : this.currentPage === "insights" ? this.renderInsights()
                 : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
         if (this.currentPage === "editor") {
             this.bindEditor(root);
