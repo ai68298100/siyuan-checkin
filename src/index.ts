@@ -568,7 +568,8 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "insights" ? this.renderInsights()
-                : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+                        : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+        if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -585,6 +586,11 @@ export default class CheckinPlugin extends Plugin {
         const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
         const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
         return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header><div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div><section class="lc-checkin__insight-section"><h2>近 84 天</h2><div class="lc-checkin__insight-grid">${report.days.map((day) => `<span class="is-${day.status}" title="${day.date} ${day.progress}/${day.target} ${day.unit}"></span>`).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
+    }
+
+    private renderMobileNav(): string {
+        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["archived", "归档", "▤"]] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
     private renderToday(): string {
@@ -918,6 +924,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindToday(root: HTMLElement) {
+        this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
         let searchTimer: number | undefined;
         search?.addEventListener("input", () => {
@@ -1041,6 +1048,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindPageNavigation(root: HTMLElement) {
+        this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
@@ -1066,6 +1074,17 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
         root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
+    }
+
+    private bindMobileNav(root: HTMLElement) {
+        root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
+            const page = button.dataset.mobileNav;
+            if (page === "today") this.showToday();
+            else if (page === "history") this.showHistory();
+            else if (page === "summary") this.showSummary();
+            else if (page === "archived") this.showArchived();
+            else if (page === "add") this.showEditor();
+        }));
     }
 
     private changeHistoryMonth(offset: number) {
