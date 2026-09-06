@@ -1140,6 +1140,48 @@
 
     .lc-checkin:not(.lc-checkin--editor) {
         padding-bottom: calc(72px + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    .lc-checkin__header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 5px;
+    }
+
+    .lc-checkin__small-button.lc-checkin__always-visible,
+    .lc-checkin__icon-button {
+        width: 36px;
+        height: 36px;
+    }
+
+    .lc-checkin__item-icon,
+    .lc-checkin__record-button,
+    .lc-checkin__focus-button {
+        min-height: 36px;
+    }
+
+    .lc-checkin__record-button {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .lc-checkin__amount {
+        width: 42px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .lc-checkin__form input:not([type="checkbox"]),
+    .lc-checkin__form select {
+        height: 42px;
+        font-size: 14px;
+    }
+
+    .lc-checkin__form button,
+    .lc-checkin__form input,
+    .lc-checkin__form select {
+        -webkit-tap-highlight-color: transparent;
     }
 
     .lc-checkin__mobile-nav {
