@@ -3,6 +3,7 @@ import "./index.scss";
 import {buildSummaryContext, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
+import {buildHabitInsights} from "./features/insights";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
 import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
@@ -105,7 +106,8 @@ export default class CheckinPlugin extends Plugin {
     private todayQuery = "";
     private completedCollapsed = true;
     private collapsedTodayGroups = new Set<string>();
-    private currentPage: "today" | "editor" | "history" | "summary" | "archived" = "today";
+    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" = "today";
+    private insightsItemId?: string;
     private editingId?: string;
     private editingFingerprint?: string;
     private saveQueue: Promise<void> = Promise.resolve();
@@ -486,6 +488,16 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
+    private showInsights(item?: CheckinItem) {
+        const candidate = item || this.store.items.find((entry) => !entry.archived);
+        if (!candidate) return;
+        this.currentPage = "insights";
+        this.insightsItemId = candidate.id;
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        this.render();
+    }
+
     private showArchived() {
         this.currentPage = "archived";
         this.editingId = undefined;
@@ -555,7 +567,8 @@ export default class CheckinPlugin extends Plugin {
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
-                    : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+                    : this.currentPage === "insights" ? this.renderInsights()
+                : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -563,6 +576,15 @@ export default class CheckinPlugin extends Plugin {
         } else {
             this.bindPageNavigation(root);
         }
+    }
+
+    private renderInsights(): string {
+        const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
+        if (!item) return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
+        const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
+        const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
+        const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header><div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div><section class="lc-checkin__insight-section"><h2>近 84 天</h2><div class="lc-checkin__insight-grid">${report.days.map((day) => `<span class="is-${day.status}" title="${day.date} ${day.progress}/${day.target} ${day.unit}"></span>`).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
     }
 
     private renderToday(): string {
@@ -778,6 +800,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
+                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="查看${escapeHtml(item.name)}的复盘" title="复盘">⌁</button>
                     <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="设置 ${escapeHtml(item.name)}" title="设置">⚙</button>
                 </div>
                 <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
@@ -954,6 +977,10 @@ export default class CheckinPlugin extends Plugin {
                 if (item) {
                     this.showEditor(item);
                 }
+            });
+            element.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => {
+                const item = this.store.items.find((candidate) => candidate.id === itemId);
+                if (item) this.showInsights(item);
             });
             element.querySelector<HTMLElement>("[data-action='toggle']")?.addEventListener("click", () => {
                 const moment = captureActionMoment();
