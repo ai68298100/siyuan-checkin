@@ -24,6 +24,39 @@ fs.mkdirSync(output, {recursive: true});
         assert.equal(await page.locator(".record").count(), 50);
         await page.screenshot({path: path.join(output, "insights-desktop.png"), fullPage: true});
 
+        const linkedRecord = page.locator(".record", {hasText: "阅读摘录"}).first();
+        await linkedRecord.getByRole("button", {name: "查看记录详情", exact: true}).click();
+        const detail = page.locator("[data-detail-panel]");
+        await detail.waitFor();
+        assert.match(await detail.locator(".detail-note").innerText(), /读完本章/);
+        assert.equal(await detail.locator(".block-link").count(), 2, "note and structured link list expose the same SiYuan block");
+        assert.equal(await detail.locator(".block-link").first().getAttribute("href"), "siyuan://blocks/20260906083000-abcdefg");
+        assert.equal(await detail.locator("a[href^='javascript:']").count(), 0);
+        assert.equal(await page.locator(".content").evaluate((element) => element.inert), true);
+        await page.keyboard.press("Shift+Tab");
+        assert.equal(await detail.locator("footer button").evaluate((element) => document.activeElement === element), true);
+        await page.keyboard.press("Tab");
+        assert.equal(await detail.getByRole("button", {name: "关闭详情", exact: true}).evaluate((element) => document.activeElement === element), true);
+        await detail.locator(".block-link").first().click();
+        assert.match(await detail.locator("[role='status']").innerText(), /需要在思源/);
+        await page.evaluate(() => {window.openFileByURL = (url) => {window.testOpenedBlock = url;};});
+        await detail.locator(".block-link").first().click();
+        assert.equal(await page.evaluate(() => window.testOpenedBlock), "siyuan://blocks/20260906083000-abcdefg");
+        await page.evaluate(() => {delete window.openFileByURL; delete window.testOpenedBlock;});
+        await detail.getByRole("button", {name: /复制块 ID/}).click();
+        await detail.locator("[role='status']").filter({hasText: "块 ID"}).waitFor();
+        assert.match(await detail.locator("[role='status']").innerText(), /块 ID/);
+        await page.screenshot({path: path.join(output, "insights-record-detail-desktop.png")});
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator("[data-detail-panel]").count(), 0);
+        assert.equal(await linkedRecord.locator(".record-open").evaluate((element) => document.activeElement === element), true);
+        assert.equal(await page.locator(".content").evaluate((element) => element.inert), false);
+        await page.locator(".records-list").evaluate((element) => {element.scrollTop = 200;});
+        await page.locator(".record-open").nth(5).click();
+        const detailScroll = await page.locator(".records-list").evaluate((element) => element.scrollTop);
+        await page.keyboard.press("Escape");
+        assert.equal(await page.locator(".records-list").evaluate((element) => element.scrollTop), detailScroll);
+
         const initialRate = await page.locator("[data-metric='rate']").innerText();
         await page.locator(".records-list").evaluate((element) => {element.scrollTop = 200;});
         await page.getByRole("button", {name: "加载更多", exact: true}).click();
@@ -146,7 +179,7 @@ fs.mkdirSync(output, {recursive: true});
         assert.equal(await page.locator("h1").innerText(), "还没有习惯记录");
 
         const fixture = {version: 2, items: [{id: "custom", name: "自定义<安全>长项目名称", icon: "✓", kind: "quantity", target: 0.3, unit: "公里", schedule: {type: "daily"}, createdAt: `${dateBefore}T00:00:00.000Z`, createdDate: dateBefore}], events: [
-            {id: "one", itemId: "custom", occurredAt: `${dateBefore}T01:00:00.000Z`, localDate: dateBefore, value: 0.1, unit: "公里", source: "manual", note: "<img src=x onerror=alert(1)>"},
+            {id: "one", itemId: "custom", occurredAt: `${dateBefore}T01:00:00.000Z`, localDate: dateBefore, value: 0.1, unit: "公里", source: "manual", note: `<img src=x onerror=alert(1)> [链接](siyuan://blocks/20260906083000-abcdefg)\n((20260906083000-abcdefg '重复标题'))\n[${"longlabel".repeat(30)}](siyuan://blocks/20260906083001-abcdefg)\n${"完整备注与换行\n".repeat(30)}`},
             {id: "two", itemId: "custom", occurredAt: `${dateBefore}T02:00:00.000Z`, localDate: dateBefore, value: 0.2, unit: "公里", source: "manual"},
         ], eventTombstones: []};
         const original = JSON.stringify(fixture);
@@ -156,6 +189,20 @@ fs.mkdirSync(output, {recursive: true});
         assert.equal(await page.locator(".record-body img").count(), 0);
         assert.equal(await page.locator("[data-metric='rate']").innerText(), "100%");
         assert.equal(await page.locator(".day.complete").count(), 1);
+        await page.locator(".record[data-record-id='one']").getByRole("button", {name: "查看记录详情", exact: true}).click();
+        assert.equal(await page.locator("[data-detail-panel] .block-link").count(), 5, "three inline references and two unique blocks");
+        assert.equal(await page.locator("[data-detail-panel] img").count(), 0);
+        assert.equal(await page.locator("[data-detail-panel] .detail-note .block-link").nth(1).innerText(), "重复标题");
+        assert.match(await page.locator("[data-detail-panel] .detail-note").innerText(), /完整备注与换行/);
+        assert.equal(await page.locator("[data-detail-panel]").evaluate((element) => element.scrollWidth <= element.clientWidth), true, "long note and labels fit 320px details");
+        const detailBounds = await page.locator("[data-detail-panel]").boundingBox();
+        assert(detailBounds.x >= 0 && detailBounds.y >= 0 && detailBounds.x + detailBounds.width <= 320 && detailBounds.y + detailBounds.height <= 844);
+        await page.screenshot({path: path.join(output, "insights-record-detail-mobile-320.png")});
+        await page.getByRole("button", {name: "关闭详情", exact: true}).first().click();
+        await page.locator(".record[data-record-id='two'] .record-open").click();
+        assert.match(await page.locator("[data-detail-panel] .detail-note").innerText(), /没有备注/);
+        assert.equal(await page.locator("[data-detail-panel] .detail-links").count(), 0);
+        await page.keyboard.press("Escape");
         await checkBounds();
         assert.equal(JSON.stringify(fixture), original);
         fixture.items[0].target = 0.0003;
@@ -180,7 +227,7 @@ fs.mkdirSync(output, {recursive: true});
         assert.match(await page.locator(".report-title p").innerText(), /2 km.*工作日/);
         assert.deepEqual(errors, []);
         assert.deepEqual(network, [], "preview must not request remote assets or upload data");
-        console.log("insights UI: ranges, drill-down, record search/source/order, pagination, filtered CSV, archive states, theme, desktop/mobile, empty/error/import/export and offline checks passed");
+        console.log("insights UI: ranges, drill-down, record filters/CSV, notes/block links, safe rendering, keyboard focus, scrolling, archive states, theme, desktop/mobile, import/export and offline checks passed");
         console.log(`Screenshots: ${output}`);
     } finally {
         await browser.close();

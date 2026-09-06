@@ -1,10 +1,11 @@
-import {createIcons, BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet} from "lucide";
+import {createIcons, BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet, ExternalLink, Copy} from "lucide";
 import {buildHabitInsights} from "../../src/features/insights";
 import {selectInsightRecords, serializeInsightRecordsCsv} from "../../src/features/insight-records";
+import {extractSiyuanBlockLinks, extractSiyuanBlockLinkSpans, parseSiyuanBlockUrl} from "../../src/features/record-notes";
 import {normalizeStore, dateKey, getItemRevisionForDate} from "../../src/model";
 import {createExampleStore} from "./fixtures";
 
-const iconSet = {BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet};
+const iconSet = {BookOpen, Activity, Droplets, NotebookPen, Flame, CalendarDays, ChartColumnIncreasing, ArrowDownToLine, FolderOpen, Moon, Sun, RotateCcw, ChevronLeft, ChevronRight, ChevronDown, Check, Search, X, Filter, ArrowDownUp, FileSpreadsheet, ExternalLink, Copy};
 const knownIcons = new Set(["book-open", "activity", "droplets", "notebook-pen"]);
 const today = dateKey(new Date());
 const localDate = (key) => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d, 12); };
@@ -16,8 +17,9 @@ const statusLabels = {complete: "已达标", partial: "部分完成", missed: "�
 const sourceLabels = {manual: "手动记录", tomato: "专注记录", import: "导入记录", api: "外部记录"};
 const initialRecordFilters = () => ({query: "", source: "all", order: "newest"});
 const recordPageSize = 50;
-const state = {store: normalizeStore(createExampleStore(localDate(today))), itemId: "reading", days: 84, asOf: today, selection: null, dark: false, source: "示例数据", message: "", recordFilters: initialRecordFilters(), recordLimit: recordPageSize};
+const state = {store: normalizeStore(createExampleStore(localDate(today))), itemId: "reading", days: 84, asOf: today, selection: null, detailRecordId: null, detailMessage: "", dark: false, source: "示例数据", message: "", recordFilters: initialRecordFilters(), recordLimit: recordPageSize};
 let report;
+let detailReturn;
 
 function itemIcon(item) {
     return knownIcons.has(item.icon) ? icon(item.icon) : `<span class="custom-icon">${html(item.icon || "✓")}</span>`;
@@ -48,10 +50,22 @@ function render() {
             </aside>
             <main class="content">${state.message ? `<div class="message" role="status">${html(state.message)}</div>` : ""}
                 ${report ? renderReport(selectedItem) : `<section class="empty"><span class="empty-icon">${icon("calendar-days")}</span><h1>还没有习惯记录</h1><button class="command" data-action="import">${icon("folder-open")}打开打卡数据</button></section>`}
-            </main>
+            </main>${report && state.detailRecordId ? renderRecordDetail() : ""}
         </div>`;
     createIcons({icons: iconSet, attrs: {"stroke-width": 1.7}});
     bind();
+    const panel = document.querySelector("[data-detail-panel]");
+    document.body.classList.toggle("detail-open", Boolean(panel));
+    for (const element of document.querySelectorAll(".app-header, .sidebar, .content")) element.inert = Boolean(panel);
+    if (detailReturn) {
+        document.querySelector(".records-list").scrollTop = detailReturn.listScroll;
+        window.scrollTo(0, detailReturn.pageScroll);
+        if (!panel) {
+            [...document.querySelectorAll(".record-open")].find((button) => button.dataset.recordId === detailReturn.recordId)?.focus({preventScroll: true});
+            detailReturn = null;
+        }
+    }
+    panel?.querySelector("[data-action='close-record-detail']").focus({preventScroll: true});
 }
 
 function renderReport(item) {
@@ -135,8 +149,37 @@ function renderRecords() {
 
 function renderRecordResults(view) {
     const visible = view.records.slice(0, state.recordLimit);
-    return `<div class="records-list">${visible.length ? visible.map((record) => `<article class="record" data-record-id="${html(record.id)}"><div class="record-date"><strong>${shortDate(record.localDate)}</strong><small>${new Date(record.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}</small></div><div class="record-body"><strong>${number(record.value)} <small>${html(record.unit)}</small></strong>${record.note ? `<p>${html(record.note)}</p>` : ""}<span class="source">${sourceLabels[record.source] || html(record.source)}</span></div></article>`).join("") : `<div class="records-empty">${icon("calendar-days")}<span>${view.total ? "没有匹配的记录" : "此范围没有记录"}</span>${state.recordFilters.query || state.recordFilters.source !== "all" ? '<button class="command" data-action="reset-record-filters">清除筛选</button>' : ""}</div>`}</div>
+    return `<div class="records-list">${visible.length ? visible.map((record) => `<article class="record" data-record-id="${html(record.id)}"><div class="record-date"><strong>${shortDate(record.localDate)}</strong><small>${new Date(record.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}</small></div><div class="record-body"><strong>${number(record.value)} <small>${html(record.unit)}</small></strong>${record.note ? `<p>${html(record.note)}</p>` : ""}<span class="source">${sourceLabels[record.source] || html(record.source)}</span></div><button class="tool record-open" data-action="record-detail" data-record-id="${html(record.id)}" title="查看记录详情" aria-label="查看记录详情">${icon("external-link")}</button></article>`).join("") : `<div class="records-empty">${icon("calendar-days")}<span>${view.total ? "没有匹配的记录" : "此范围没有记录"}</span>${state.recordFilters.query || state.recordFilters.source !== "all" ? '<button class="command" data-action="reset-record-filters">清除筛选</button>' : ""}</div>`}</div>
         ${view.records.length > recordPageSize ? `<div class="records-pagination"><span>已显示 ${visible.length} / ${view.records.length} 条</span>${visible.length < view.records.length ? `<button class="command" data-action="more-records">${icon("chevron-down")}加载更多</button>` : ""}</div>` : ""}`;
+}
+
+function renderNote(note) {
+    const value = String(note || "");
+    const links = extractSiyuanBlockLinkSpans(value);
+    if (!links.length) return html(value);
+    let cursor = 0;
+    return links.map((link) => {
+        const before = html(value.slice(cursor, link.start));
+        const label = html(link.label);
+        cursor = link.end;
+        return `${before}<a class="block-link" href="${html(link.url)}" data-action="open-block-link" data-href="${html(link.url)}" title="在思源中打开块 ${html(link.blockId)}"><span>${label}</span>${icon("external-link")}</a>`;
+    }).join("") + html(value.slice(cursor));
+}
+
+function renderRecordDetail() {
+    const record = report.records.find((value) => value.id === state.detailRecordId);
+    if (!record) return "";
+    const links = extractSiyuanBlockLinks(record.note || "");
+    return `<div class="detail-backdrop" data-action="close-record-detail">
+        <section class="record-detail" role="dialog" aria-modal="true" aria-labelledby="record-detail-title" data-detail-panel>
+            <header><div><span class="eyebrow">记录详情</span><h2 id="record-detail-title">${html(record.localDate)} · ${new Date(record.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"})}</h2></div><button class="tool" data-action="close-record-detail" title="关闭详情" aria-label="关闭详情">${icon("x")}</button></header>
+            ${state.detailMessage ? `<div class="message" role="status">${html(state.detailMessage)}</div>` : ""}
+            <dl><div><dt>数值</dt><dd>${number(record.value)} ${html(record.unit)}</dd></div><div><dt>来源</dt><dd>${sourceLabels[record.source] || html(record.source)}</dd></div><div><dt>记录 ID</dt><dd>${html(record.id)}</dd></div></dl>
+            <div class="detail-note"><h3>备注</h3>${record.note ? `<p>${renderNote(record.note)}</p>` : `<p class="muted">没有备注</p>`}</div>
+            ${links.length ? `<div class="detail-links"><h3>思源块链接 <small>${links.length} 个</small></h3>${links.map((link) => `<div class="detail-link-row"><a class="block-link" href="${html(link.url)}" data-action="open-block-link" data-href="${html(link.url)}" title="在思源中打开块 ${html(link.blockId)}"><span>${html(link.label)}</span>${icon("external-link")}</a><button class="tool" data-action="copy-block-id" data-block-id="${html(link.blockId)}" title="复制块 ID" aria-label="复制块 ID ${html(link.blockId)}">${icon("copy")}</button></div>`).join("")}</div>` : ""}
+            <footer><button class="command" data-action="close-record-detail">${icon("x")}关闭</button></footer>
+        </section>
+    </div>`;
 }
 
 function refreshRecordResults(preserveScroll = false) {
@@ -153,7 +196,11 @@ function refreshRecordResults(preserveScroll = false) {
 }
 
 function bindActions(root = document) {
-    root.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => act(button.dataset.action)));
+    root.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", (event) => {
+        if (button.dataset.action === "close-record-detail" && button.matches(".detail-backdrop") && event.target !== button) return;
+        if (button.dataset.action === "open-block-link") event.preventDefault();
+        act(button.dataset.action, button.dataset);
+    }));
 }
 
 function bind() {
@@ -173,6 +220,8 @@ function bind() {
         refreshRecordResults();
     });
     document.getElementById("file-input").addEventListener("change", importFile);
+    document.removeEventListener("keydown", handleDetailKeydown);
+    document.addEventListener("keydown", handleDetailKeydown);
     document.getElementById("as-of")?.addEventListener("change", (event) => {
         const value = event.target.value;
         if (value && event.target.validity.valid && value <= today && value >= "1900-01-01") {
@@ -197,9 +246,19 @@ function bind() {
     });
 }
 
-function act(action) {
+function act(action, data = {}) {
     if (action === "import") {document.getElementById("file-input").click(); return;}
     if (action === "more-records") {state.recordLimit += recordPageSize; refreshRecordResults(true); return;}
+    if (action === "record-detail") {
+        detailReturn = {recordId: data.recordId, listScroll: document.querySelector(".records-list").scrollTop, pageScroll: window.scrollY};
+        state.detailRecordId = data.recordId || null;
+        state.detailMessage = "";
+        render();
+        return;
+    }
+    if (action === "close-record-detail") {state.detailRecordId = null; render(); return;}
+    if (action === "open-block-link") {openSiYuanBlock(data.href); return;}
+    if (action === "copy-block-id") {copyBlockId(data.blockId); return;}
     if (["clear-record-query", "reset-record-filters"].includes(action)) {
         state.recordFilters.query = "";
         if (action === "reset-record-filters") state.recordFilters.source = "all";
@@ -228,6 +287,49 @@ function act(action) {
         download(JSON.stringify({format: "checkin-insights-report", version: 1, dataSource: state.source, ...report}, null, 2), "application/json;charset=utf-8", `checkin-insights-${state.asOf}.json`);
         return;
     }
+    render();
+}
+
+function handleDetailKeydown(event) {
+    if (!state.detailRecordId) return;
+    if (event.key === "Escape") {
+        event.preventDefault();
+        act("close-record-detail");
+    } else if (event.key === "Tab") {
+        const controls = [...document.querySelectorAll("[data-detail-panel] a[href], [data-detail-panel] button:not(:disabled)")];
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {event.preventDefault(); last?.focus();}
+        if (!event.shiftKey && document.activeElement === last) {event.preventDefault(); first?.focus();}
+    }
+}
+
+function openSiYuanBlock(href) {
+    if (!parseSiyuanBlockUrl(String(href || ""))) return;
+    try {
+        if (window.top && typeof window.top.openFileByURL === "function") {
+            window.top.openFileByURL(href);
+            return;
+        }
+        state.detailMessage = "此链接需要在思源笔记中打开。";
+    } catch {
+        state.detailMessage = "无法打开思源块链接。";
+    }
+    render();
+}
+
+async function copyBlockId(blockId) {
+    if (!blockId) return;
+    const recordId = state.detailRecordId;
+    let message;
+    try {
+        await navigator.clipboard.writeText(blockId);
+        message = `已复制块 ID：${blockId}`;
+    } catch {
+        message = `无法复制。块 ID：${blockId}`;
+    }
+    if (state.detailRecordId !== recordId) return;
+    state.detailMessage = message;
     render();
 }
 

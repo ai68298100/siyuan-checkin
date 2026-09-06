@@ -72,6 +72,35 @@
 .records-pagination .command { padding: 7px 10px; font-size: 12px; }
 .records-empty { flex-wrap: wrap; }
 .record-body > strong { overflow-wrap: anywhere; }
+.record-open { margin-left: 3px; align-self: center; }
+.block-link { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; gap: 4px; color: var(--green); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--green) 45%, transparent); text-underline-offset: 3px; overflow-wrap: anywhere; }
+.block-link > span { min-width: 0; }
+.block-link svg { width: 13px; height: 13px; }
+.detail-open { overflow: hidden; }
+.detail-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 24px; background: #10151280; }
+.record-detail { width: min(600px, 100%); max-height: min(720px, calc(100vh - 48px)); overflow-y: auto; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 18px 55px #00000030; padding: 24px; }
+.record-detail > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+.record-detail h2 { font-size: 20px; line-height: 1.4; margin: 3px 0 0; overflow-wrap: anywhere; }
+.record-detail h3 { font-size: 13px; margin: 0 0 9px; }
+.record-detail dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 22px; }
+.record-detail dl > div { min-width: 0; padding: 10px 12px; background: var(--surface); border-radius: 5px; }
+.record-detail dt { color: var(--muted); font-size: 10px; margin-bottom: 6px; }
+.record-detail dd { margin: 0; font-size: 12px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.detail-note, .detail-links { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 16px; }
+.detail-note p { margin: 0; font-size: 13px; line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.detail-note .muted { color: var(--muted); }
+.detail-links h3 small { color: var(--muted); font-size: 10px; font-weight: 400; margin-left: 5px; }
+.detail-link-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.detail-link-row:first-of-type { border-top: 0; }
+.detail-link-row .tool { width: 30px; height: 30px; }
+.record-detail > footer { display: flex; justify-content: flex-end; margin-top: 24px; }
+.record-detail .message { overflow-wrap: anywhere; }
+@media(max-width: 560px) {
+    .detail-backdrop { padding: 12px; place-items: end center; }
+    .record-detail { max-height: calc(100vh - 24px); padding: 18px; }
+    .record-detail dl { grid-template-columns: 1fr 1fr; }
+    .record-detail dl > div:last-child { grid-column: 1 / -1; }
+}
 @media (max-width: 1050px) {
     .record-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 34px; }
     .record-search { grid-column: 1 / -1; }

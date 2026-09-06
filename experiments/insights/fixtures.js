@@ -35,7 +35,7 @@ export function createExampleStore(asOf) {
                     id: `sample-${item.id}-${key(date)}-${occurrence}`, itemId: item.id,
                     occurredAt: moment.toISOString(), localDate: key(date), value: total / count, unit: item.unit,
                     source: item.id === "reading" && occurrence === 1 ? "tomato" : "manual",
-                    note: item.id === "reading" && occurrence === 1 ? "读完本章，整理了两条笔记。" : undefined,
+                    note: item.id === "reading" && occurrence === 1 ? "读完本章，整理了两条笔记。关联 [阅读摘录](siyuan://blocks/20260906083000-abcdefg)。" : undefined,
                 });
             }
         }
