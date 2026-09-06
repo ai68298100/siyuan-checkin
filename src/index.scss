@@ -81,12 +81,30 @@
     }
 }
 
+.lc-checkin__mobile-nav { display: none; }
+
 .lc-checkin__header,
 .lc-checkin__editor-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+}
+
+@media (max-width: 600px) {
+    .lc-checkin-tab-host .lc-checkin__mobile-nav { display: none; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+    .lc-checkin__mobile-nav {
+        position: fixed; z-index: 3; right: 0; bottom: 0; left: 0;
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px;
+        padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background);
+        button { min-width: 0; min-height: 46px; padding: 3px 2px; border: 0; border-radius: 7px; color: var(--b3-theme-on-surface-light); background: transparent; cursor: pointer; touch-action: manipulation;
+            span { font-size: 18px; line-height: 1; } small { font-size: 10px; line-height: 1.2; }
+            &.is-selected { color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+            &:last-child { color: var(--lc-checkin-accent); }
+        }
+    }
 }
 
 .lc-checkin__eyebrow {
@@ -1543,6 +1561,55 @@
     border-top: 1px solid var(--b3-border-color);
 }
 
+.lc-checkin__history-events {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.lc-checkin__history-event {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+
+    > div {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: 2px;
+
+        strong,
+        span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        strong {
+            color: var(--b3-theme-on-background);
+            font-size: 12px;
+            font-weight: 550;
+        }
+
+        span {
+            color: var(--b3-theme-on-surface-light);
+            font-size: 10px;
+        }
+    }
+}
+
+.lc-checkin__history-event-value {
+    color: var(--b3-theme-on-background);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .lc-checkin__history-empty {
     padding: 10px;
     color: var(--b3-theme-on-surface-light);
@@ -1747,6 +1814,52 @@
     .lc-checkin__more-button,
     .lc-checkin__focus-button {
         min-height: 40px;
+    }
+
+    .lc-checkin:not(.lc-checkin--editor) {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    .lc-checkin__header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 5px;
+    }
+
+    .lc-checkin__small-button.lc-checkin__always-visible,
+    .lc-checkin__icon-button {
+        width: 36px;
+        height: 36px;
+    }
+
+    .lc-checkin__item-icon,
+    .lc-checkin__record-button,
+    .lc-checkin__focus-button {
+        min-height: 36px;
+    }
+
+    .lc-checkin__record-button {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+
+    .lc-checkin__amount {
+        width: 42px;
+        height: 36px;
+        font-size: 14px;
+    }
+
+    .lc-checkin__form input:not([type="checkbox"]),
+    .lc-checkin__form select {
+        height: 42px;
+        font-size: 14px;
+    }
+
+    .lc-checkin__form button,
+    .lc-checkin__form input,
+    .lc-checkin__form select {
+        -webkit-tap-highlight-color: transparent;
     }
 
     .lc-checkin__item-icon {

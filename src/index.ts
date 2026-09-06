@@ -568,7 +568,8 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "insights" ? this.renderInsights()
-                : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+                        : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+        if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -576,6 +577,20 @@ export default class CheckinPlugin extends Plugin {
         } else {
             this.bindPageNavigation(root);
         }
+    }
+
+    private renderInsights(): string {
+        const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
+        if (!item) return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
+        const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
+        const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
+        const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header><div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div><section class="lc-checkin__insight-section"><h2>近 84 天</h2><div class="lc-checkin__insight-grid">${report.days.map((day) => `<span class="is-${day.status}" title="${day.date} ${day.progress}/${day.target} ${day.unit}"></span>`).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
+    }
+
+    private renderMobileNav(): string {
+        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["archived", "归档", "▤"]] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
     private renderInsights(): string {
@@ -756,7 +771,13 @@ export default class CheckinPlugin extends Plugin {
                 value: (current?.value || 0) + event.value,
             });
         });
-        const details = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
+        const aggregateDetails = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : "";
+        const eventDetails = selectedEvents.length ? `<div class="lc-checkin__history-events">${selectedEvents.slice().sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map((event) => {
+            const name = itemNames.get(event.itemId) || "已删除项目";
+            const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span></div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
+        }).join("")}</div>` : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
+        const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const nextDisabled = this.historyMonth >= currentMonth;
         return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">历史</h1></header><div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div><div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div><section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${selectedEvents.length} 条记录</span></div>${details}</section><div class="lc-checkin__history-actions"><button class="lc-checkin__text-button" type="button" data-action="export-json">导出 JSON</button><button class="lc-checkin__text-button" type="button" data-action="export-csv">导出 CSV</button><button class="lc-checkin__text-button" type="button" data-action="archived">已归档</button></div></div>`;
@@ -918,6 +939,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindToday(root: HTMLElement) {
+        this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
         let searchTimer: number | undefined;
         search?.addEventListener("input", () => {
@@ -1041,6 +1063,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindPageNavigation(root: HTMLElement) {
+        this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
@@ -1052,6 +1075,22 @@ export default class CheckinPlugin extends Plugin {
                 this.selectedHistoryDate = value;
                 this.render();
             }
+        }));
+        root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
+            const eventId = button.dataset.historyEventId;
+            const event = this.store.events.find((candidate) => candidate.id === eventId);
+            if (!event) return;
+            const moment = captureActionMoment();
+            void this.enqueueMutation(async () => {
+                const previous = this.store;
+                const next = removeEvents(this.store, [event], moment.occurredAt);
+                if (next === this.store) return;
+                this.store = next;
+                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 撤销失败，请重试"); return; }
+                this.invalidateSummary();
+                this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+                this.renderBackgroundUpdate();
+            });
         }));
         root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
         root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
@@ -1066,6 +1105,17 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
         root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
+    }
+
+    private bindMobileNav(root: HTMLElement) {
+        root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
+            const page = button.dataset.mobileNav;
+            if (page === "today") this.showToday();
+            else if (page === "history") this.showHistory();
+            else if (page === "summary") this.showSummary();
+            else if (page === "archived") this.showArchived();
+            else if (page === "add") this.showEditor();
+        }));
     }
 
     private changeHistoryMonth(offset: number) {
