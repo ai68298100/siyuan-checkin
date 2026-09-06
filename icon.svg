@@ -1,9 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-  <rect width="96" height="96" rx="24" fill="#e9e5de"/>
-  <path d="M26 42c0-11 9-20 20-20h10c8 0 14 6 14 14v25c0 8-6 14-14 14H40c-8 0-14-6-14-14V42Z" fill="#55514b"/>
-  <path d="M27 39c-7-3-11-9-11-16 8 0 15 4 19 11M69 39c7-3 11-9 11-16-8 0-15 4-19 11" fill="none" stroke="#55514b" stroke-linecap="round" stroke-width="7"/>
-  <circle cx="42" cy="48" r="3.5" fill="#e9e5de"/>
-  <circle cx="58" cy="48" r="3.5" fill="#e9e5de"/>
-  <path d="M40 61c5 5 11 5 16 0" fill="none" stroke="#e9e5de" stroke-linecap="round" stroke-width="4"/>
-  <path d="m61 69 5 5 10-12" fill="none" stroke="#d8583f" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title description">
+  <title id="title">Little Donkey Check-in</title>
+  <desc id="description">A donkey face with a checkmark set in a warm red square.</desc>
+
+  <rect id="brand-background" x="2" y="2" width="92" height="92" rx="22" fill="#D8583F"/>
+
+  <g id="donkey" fill="#303236">
+    <path id="left-ear" d="M42 33c-9-2-21-8-25-18-2-5 2-8 7-6 11 3 19 12 22 20Z"/>
+    <path id="right-ear" d="M54 33c9-2 21-8 25-18 2-5-2-8-7-6-11 3-19 12-22 20Z"/>
+    <path id="head" d="M48 24c12 0 21 8 22 20l1 15c1 14-9 23-23 23s-24-9-23-23l1-15c1-12 10-20 22-20Z"/>
+  </g>
+
+  <g id="inner-ears" fill="#F59B84">
+    <path d="M38 27c-5-2-11-6-14-11 6 1 11 5 15 10Z"/>
+    <path d="M58 27c5-2 11-6 14-11-6 1-11 5-15 10Z"/>
+  </g>
+
+  <g id="face" fill="#FFF8F3">
+    <circle cx="40" cy="45" r="4"/>
+    <circle cx="56" cy="45" r="4"/>
+    <rect x="29" y="55" width="38" height="22" rx="11"/>
+  </g>
+
+  <path id="checkmark" d="m38.5 65 7 6 12-12" fill="none" stroke="#D8583F" stroke-linecap="round" stroke-linejoin="round" stroke-width="5.5"/>
 </svg>
