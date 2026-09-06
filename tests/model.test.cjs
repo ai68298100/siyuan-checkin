@@ -85,6 +85,10 @@ assert.equal(normalized.items[0].target, 1);
 assert.equal(normalized.items[0].updatedAt, normalized.items[0].createdAt);
 assert.equal(normalized.items[0].revisions.length, 1);
 assert.deepEqual(normalized.items[0].archivePeriods, []);
+assert.equal(normalized.items[0].group, "");
+assert.equal(normalized.items[0].priority, "medium");
+assert.equal(normalized.items[0].sortOrder, 0);
+assert.equal(normalized.items[0].timeSlot, "any");
 assert.equal(normalized.events.length, 1);
 assert.deepEqual(normalized.eventTombstones, []);
 
@@ -254,6 +258,8 @@ assert.deepEqual([...model.groupCheckinItems(groupedStore.items).keys()], ["", "
 assert.equal(model.normalizeCheckinGroup("  长期阅读  "), "长期阅读");
 assert.equal(model.normalizeCheckinSortOrder("12.7"), 13);
 assert.equal(model.normalizeCheckinPriority("urgent"), "high");
+assert.equal(model.getCheckinPriorityRank(), 2);
+assert.equal(model.normalizeCheckinTimeSlot("晚上"), "evening");
 const completedGroupedStore = {
     ...groupedStore,
     events: [{...event, itemId: "group-high", id: "group-high-event"}],

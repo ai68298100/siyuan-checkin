@@ -54,8 +54,10 @@ module.exports = (env, argv) => {
                 {from: "README.md", to: "./dist/README.md"},
                 {from: "LICENSE", to: "./dist/LICENSE.txt"},
                 {from: pluginManifest.icon, to: `./dist/${pluginManifest.icon}`},
+                ...(pluginManifest.preview ? [{from: pluginManifest.preview, to: `./dist/${pluginManifest.preview}`}] : []),
             ] : [
                 {from: pluginManifest.icon, to: `./${pluginManifest.icon}`},
+                ...(pluginManifest.preview ? [{from: pluginManifest.preview, to: `./${pluginManifest.preview}`}] : []),
             ],
         }),
     ];

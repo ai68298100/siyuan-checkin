@@ -1,4 +1,4 @@
-import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore} from "./types";
+import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 
 export const STORE_VERSION = 2 as const;
 
@@ -49,7 +49,7 @@ export function normalizeStore(value: unknown): CheckinStore {
 
 /** Return a stable rank for display and priority sorting. */
 export function getCheckinPriorityRank(priority?: CheckinPriority): number {
-    return priority === "high" ? 3 : priority === "medium" ? 2 : 1;
+    return priority === "high" ? 3 : priority === "low" ? 1 : 2;
 }
 
 /** Normalize legacy/string/number priority values into the persisted vocabulary. */
@@ -76,6 +76,15 @@ export function normalizeCheckinSortOrder(value: unknown): number {
     return Number.isFinite(candidate)
         ? Math.max(-1000000000, Math.min(1000000000, Math.round(candidate)))
         : 0;
+}
+
+export function normalizeCheckinTimeSlot(value: unknown): CheckinTimeSlot {
+    if (typeof value !== "string") return "any";
+    const normalized = value.trim().toLowerCase();
+    if (["morning", "am", "晨间", "早晨", "上午"].includes(normalized)) return "morning";
+    if (["afternoon", "pm", "午后", "下午"].includes(normalized)) return "afternoon";
+    if (["evening", "night", "晚间", "晚上", "夜间"].includes(normalized)) return "evening";
+    return "any";
 }
 
 /** Compare normalized items using a deterministic user-facing sort mode. */
@@ -298,6 +307,7 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
     const group = normalizeCheckinGroup(value.group ?? value.category);
     const sortOrder = normalizeCheckinSortOrder(value.sortOrder ?? value.order ?? value.position);
     const priority = normalizeCheckinPriority(value.priority);
+    const timeSlot = normalizeCheckinTimeSlot(value.timeSlot ?? value.timeOfDay);
     const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
@@ -319,6 +329,7 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
         group,
         priority,
         sortOrder,
+        timeSlot,
     };
 }
 

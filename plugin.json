@@ -2,7 +2,7 @@
   "name": "siyuan-checkin",
   "author": "ai68298100",
   "url": "https://github.com/ai68298100/siyuan-checkin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "3.4.2",
   "disabledInPublish": false,
   "backends": [
@@ -27,7 +27,8 @@
     "default": "README.md",
     "zh-CN": "README.md"
   },
-  "icon": "icon.svg",
+  "icon": "icon.png",
+  "preview": "preview.png",
   "keywords": [
     "打卡",
     "习惯",

@@ -2,6 +2,8 @@ export type CheckinKind = "binary" | "count" | "duration" | "quantity" | "custom
 
 export type CheckinPriority = "low" | "medium" | "high";
 
+export type CheckinTimeSlot = "any" | "morning" | "afternoon" | "evening";
+
 export type CheckinItemSortMode = "manual" | "group" | "priority" | "createdAt" | "updatedAt" | "name";
 
 export type ScheduleType = "daily" | "weekly" | "workdays" | "custom";
@@ -44,6 +46,8 @@ export interface CheckinItem {
     priority?: CheckinPriority;
     /** Stable manual order within a group. Lower values appear first. */
     sortOrder?: number;
+    /** Optional part of day used by the time grouping view. */
+    timeSlot?: CheckinTimeSlot;
 }
 
 export interface CheckinEvent {
