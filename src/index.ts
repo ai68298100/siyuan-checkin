@@ -6,7 +6,7 @@ import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
-import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems} from "./model";
+import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
 import type {SummaryRange} from "./analytics";
@@ -768,7 +768,7 @@ export default class CheckinPlugin extends Plugin {
             const name = itemNames.get(event.itemId) || "已删除项目";
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
-            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -1082,6 +1082,21 @@ export default class CheckinPlugin extends Plugin {
                 try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 撤销失败，请重试"); return; }
                 this.invalidateSummary();
                 this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+                this.renderBackgroundUpdate();
+            });
+        }));
+        root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
+            const event = this.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
+            if (!event) return;
+            const note = window.prompt("记录备注（可填写思源块引用）", event.note || "");
+            if (note === null) return;
+            void this.enqueueMutation(async () => {
+                const previous = this.store;
+                const next = updateEventNote(this.store, event.id, note);
+                if (next === this.store) return;
+                this.store = next;
+                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 备注保存失败，请重试"); return; }
+                this.invalidateSummary();
                 this.renderBackgroundUpdate();
             });
         }));
