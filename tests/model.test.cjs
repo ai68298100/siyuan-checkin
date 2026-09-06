@@ -9,7 +9,7 @@ process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-core-"));
 
-for (const filename of ["model.ts", "analytics.ts", "export.ts"]) {
+for (const filename of ["model.ts", "analytics.ts", "export.ts", "catalog.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {
@@ -23,6 +23,7 @@ for (const filename of ["model.ts", "analytics.ts", "export.ts"]) {
 const model = require(path.join(outputRoot, "model.js"));
 const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
+const catalog = require(path.join(outputRoot, "catalog.js"));
 
 const item = {
     id: "reading",
@@ -256,15 +257,48 @@ assert.deepEqual(model.sortCheckinItems(groupedStore.items, "priority").map((can
 assert.deepEqual(model.sortCheckinItems(groupedStore.items, "manual").map((candidate) => candidate.id), ["group-high", "group-low", "ungrouped"]);
 assert.deepEqual([...model.groupCheckinItems(groupedStore.items).keys()], ["", "学习"]);
 assert.equal(model.normalizeCheckinGroup("  长期阅读  "), "长期阅读");
+assert.equal(model.normalizeCheckinGroup("  "), "");
+assert.equal(model.normalizeCheckinGroup("x".repeat(40)).length, 32);
 assert.equal(model.normalizeCheckinSortOrder("12.7"), 13);
+assert.equal(model.normalizeCheckinSortOrder("-9999999999"), -1000000000);
+assert.equal(model.normalizeCheckinSortOrder("9999999999"), 1000000000);
+assert.equal(model.normalizeCheckinSortOrder("not-a-number"), 0);
 assert.equal(model.normalizeCheckinPriority("urgent"), "high");
+assert.equal(model.normalizeCheckinPriority(3), "high");
+assert.equal(model.normalizeCheckinPriority(1), "medium");
+assert.equal(model.normalizeCheckinPriority(0), "low");
+assert.equal(model.normalizeCheckinPriority(-2), "low");
 assert.equal(model.getCheckinPriorityRank(), 2);
 assert.equal(model.normalizeCheckinTimeSlot("晚上"), "evening");
+assert.equal(model.normalizeCheckinTimeSlot("AM"), "morning");
+assert.equal(model.normalizeCheckinTimeSlot("午后"), "afternoon");
+assert.equal(model.normalizeCheckinTimeSlot("unknown"), "any");
+assert.equal(model.normalizeCheckinTimeSlot(null), "any");
 const completedGroupedStore = {
     ...groupedStore,
     events: [{...event, itemId: "group-high", id: "group-high-event"}],
 };
 assert.deepEqual(model.sortCheckinItemsForDate(completedGroupedStore, groupedStore.items, localDay, "priority").map((candidate) => candidate.id), ["ungrouped", "group-low", "group-high"]);
+
+const legacyFlexible = model.normalizeStore({
+    version: 1,
+    items: [{...item, id: "legacy-flex", category: "健康", priority: 1, order: "7", timeOfDay: "AM"}],
+    events: [],
+});
+assert.equal(legacyFlexible.items[0].group, "健康");
+assert.equal(legacyFlexible.items[0].priority, "medium");
+assert.equal(legacyFlexible.items[0].sortOrder, 7);
+assert.equal(legacyFlexible.items[0].timeSlot, "morning");
+assert.equal(legacyFlexible.items[0].revisions.length, 1);
+assert.deepEqual(legacyFlexible.items[0].archivePeriods, []);
+
+assert.equal(catalog.KIND_OPTIONS.find((option) => option.kind === "binary").units.join(","), "次");
+assert.deepEqual(catalog.KIND_OPTIONS.find((option) => option.kind === "duration").units, ["分钟", "小时"]);
+assert.ok(catalog.KIND_OPTIONS.find((option) => option.kind === "quantity").units.includes("毫升"));
+assert.ok(catalog.KIND_OPTIONS.find((option) => option.kind === "custom").units.includes("单位"));
+assert.ok(catalog.ICON_GROUPS.length >= 8);
+assert.ok(catalog.ICON_GROUPS.every((group) => group.icons.length >= 16));
+assert.ok(catalog.CHECKIN_TEMPLATES.every((template) => ["low", "medium", "high"].includes(template.priority)));
 
 const json = JSON.parse(exporter.serializeJson(store));
 assert.equal(json.events[0].value, 25);
