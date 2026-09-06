@@ -144,10 +144,11 @@ export default class CheckinPlugin extends Plugin {
 
         this.addTab({
             type: TAB_TYPE,
-            init: function (this: {element: Element}) {
+            init: function (this: {element: Element; tab: {close: () => void}}) {
                 const element = this.element as HTMLElement;
                 element.classList.add("lc-checkin-tab-host");
                 plugin.tabElement = element;
+                plugin.tabInstance = this.tab;
                 plugin.render();
             },
             update: function (this: {element: Element}) {
@@ -155,22 +156,17 @@ export default class CheckinPlugin extends Plugin {
                     plugin.render();
                 }
             },
-            destroy: function (this: {element: Element}) {
+            destroy: function (this: {element: Element; tab: {close: () => void}}) {
                 if (plugin.tabElement === this.element) {
                     plugin.tabElement = undefined;
-                    plugin.tabInstance = undefined;
+                    if (plugin.tabInstance === this.tab) {
+                        plugin.tabInstance = undefined;
+                    }
                     if (!plugin.disposed && !plugin.disposing) {
                         plugin.render();
                     }
                 }
             },
-        });
-
-        this.addTopBar({
-            id: "openCheckinTab",
-            icon: "iconLvCheckin",
-            title: "在页签打开小驴打卡",
-            callback: () => this.openTabPage(),
         });
 
         this.addCommand({
@@ -191,6 +187,12 @@ export default class CheckinPlugin extends Plugin {
     }
 
     async onLayoutReady() {
+        this.addTopBar({
+            id: "openCheckinTab",
+            icon: "iconLvCheckin",
+            title: "在页签打开小驴打卡",
+            callback: () => this.openTabPage(),
+        });
         try {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
@@ -225,6 +227,13 @@ export default class CheckinPlugin extends Plugin {
         this.disposing = true;
         this.settleReady(false);
         window.removeEventListener("focus", this.handleWindowFocus);
+        const openTabRequest = this.tabOpenPromise;
+        if (openTabRequest) {
+            await openTabRequest.catch(() => undefined);
+        }
+        this.tabInstance?.close();
+        this.tabInstance = undefined;
+        this.tabElement = undefined;
         if (this.midnightTimer !== undefined) {
             window.clearTimeout(this.midnightTimer);
             this.midnightTimer = undefined;
@@ -455,7 +464,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private openTabPage() {
-        if (this.disposed || this.disposing || this.tabOpenPromise || this.tabInstance) {
+        if (this.disposed || this.disposing || this.tabOpenPromise) {
             return;
         }
         this.currentPage = "today";
@@ -469,11 +478,12 @@ export default class CheckinPlugin extends Plugin {
                 title: "小驴打卡",
                 data: {page: "today"},
             },
-            position: "right",
-            keepCursor: true,
-            openNewTab: false,
         }).then((tab) => {
-            this.tabInstance = tab;
+            if (this.disposed || this.disposing) {
+                tab.close();
+            } else {
+                this.tabInstance = tab;
+            }
         }).catch((error) => {
             showMessage(`[小驴打卡] 打开页签失败：${String(error)}`);
         }).finally(() => {
