@@ -771,7 +771,13 @@ export default class CheckinPlugin extends Plugin {
                 value: (current?.value || 0) + event.value,
             });
         });
-        const details = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
+        const aggregateDetails = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : "";
+        const eventDetails = selectedEvents.length ? `<div class="lc-checkin__history-events">${selectedEvents.slice().sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map((event) => {
+            const name = itemNames.get(event.itemId) || "已删除项目";
+            const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span></div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
+        }).join("")}</div>` : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
+        const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const nextDisabled = this.historyMonth >= currentMonth;
         return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">历史</h1></header><div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div><div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div><section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${selectedEvents.length} 条记录</span></div>${details}</section><div class="lc-checkin__history-actions"><button class="lc-checkin__text-button" type="button" data-action="export-json">导出 JSON</button><button class="lc-checkin__text-button" type="button" data-action="export-csv">导出 CSV</button><button class="lc-checkin__text-button" type="button" data-action="archived">已归档</button></div></div>`;
@@ -1069,6 +1075,22 @@ export default class CheckinPlugin extends Plugin {
                 this.selectedHistoryDate = value;
                 this.render();
             }
+        }));
+        root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
+            const eventId = button.dataset.historyEventId;
+            const event = this.store.events.find((candidate) => candidate.id === eventId);
+            if (!event) return;
+            const moment = captureActionMoment();
+            void this.enqueueMutation(async () => {
+                const previous = this.store;
+                const next = removeEvents(this.store, [event], moment.occurredAt);
+                if (next === this.store) return;
+                this.store = next;
+                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 撤销失败，请重试"); return; }
+                this.invalidateSummary();
+                this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+                this.renderBackgroundUpdate();
+            });
         }));
         root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
         root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
