@@ -567,6 +567,7 @@ export default class CheckinPlugin extends Plugin {
 
     private renderToday(): string {
         const now = currentCalendarDate();
+        const activeItems = this.store.items.filter((item) => !item.archived);
         const scheduledItems = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, now) && isScheduledToday(item, now));
         const query = this.todayQuery.trim().toLocaleLowerCase();
         const visibleItems = query
@@ -576,14 +577,26 @@ export default class CheckinPlugin extends Plugin {
         const completedItems = sortCheckinItems(visibleItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
         const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
-        const list = !scheduledItems.length ? `
+        const list = !activeItems.length && this.store.items.length ? `
+            <div class="lc-checkin__empty">
+                <div class="lc-checkin__empty-mark">▱</div>
+                <div class="lc-checkin__empty-title">当前没有进行中的打卡项</div>
+                <div class="lc-checkin__empty-description">已归档的项目不会出现在今天。恢复一个项目，或新建一个新的打卡项。</div>
+                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">查看已归档</button><button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button></div>
+            </div>` : !activeItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">✦</div>
                 <div class="lc-checkin__empty-title">从一个小目标开始</div>
                 <div class="lc-checkin__empty-description">从常用模板中选择，或建立自己的第一个打卡项。</div>
                 <button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button>
+            </div>` : !scheduledItems.length ? `
+            <div class="lc-checkin__empty">
+                <div class="lc-checkin__empty-mark">◷</div>
+                <div class="lc-checkin__empty-title">今天没有安排</div>
+                <div class="lc-checkin__empty-description">现有项目都不在今天的计划里。可以查看历史，或添加新的打卡项。</div>
+                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="history">查看历史</button><button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button></div>
             </div>` : !visibleItems.length ? `
-            <div class="lc-checkin__search-empty">
+            <div class="lc-checkin__today-search-empty">
                 <span>⌕</span><strong>没有匹配的打卡项</strong><small>试试项目名称或分组关键词</small>
                 <button class="lc-checkin__text-button" type="button" data-action="clear-search">清除筛选</button>
             </div>` : `${pendingItems.length
@@ -618,7 +631,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__progress"><span style="width: ${scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0}%"></span></div>
             ${recentRecord}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
-                <label class="lc-checkin__search-field"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
+                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
                 <label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
@@ -902,6 +915,7 @@ export default class CheckinPlugin extends Plugin {
         }));
         root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
+        root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {

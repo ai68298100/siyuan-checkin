@@ -196,7 +196,7 @@
     }
 }
 
-.lc-checkin__search-field {
+.lc-checkin__today-search {
     display: inline-flex !important;
     align-items: center;
     gap: 5px;
@@ -238,7 +238,7 @@
     }
 }
 
-.lc-checkin__search-empty {
+.lc-checkin__today-search-empty {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -734,6 +734,13 @@
     margin-top: 6px;
     font-size: 12px;
     line-height: 1.6;
+}
+
+.lc-checkin__empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
 }
 
 .lc-checkin__text-button {
