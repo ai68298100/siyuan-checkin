@@ -83,6 +83,12 @@ interface ActionMoment {
     localDate: string;
 }
 
+interface RecentRecord {
+    eventId: string;
+    itemId: string;
+    message: string;
+}
+
 interface LockManagerLike {
     request<T>(name: string, options: {mode: "exclusive"}, callback: () => T | PromiseLike<T>): Promise<T>;
 }
@@ -96,6 +102,7 @@ export default class CheckinPlugin extends Plugin {
     private supportsCustomTab = true;
     private todayGroupMode: TodayGroupMode = "group";
     private todaySortMode: CheckinItemSortMode = "manual";
+    private todayQuery = "";
     private completedCollapsed = true;
     private collapsedTodayGroups = new Set<string>();
     private currentPage: "today" | "editor" | "history" | "summary" | "archived" = "today";
@@ -118,6 +125,8 @@ export default class CheckinPlugin extends Plugin {
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
     private midnightTimer?: number;
+    private recentRecord?: RecentRecord;
+    private recentRecordTimer?: number;
     private disposed = false;
     private disposing = false;
     private acceptingOperations = true;
@@ -251,6 +260,10 @@ export default class CheckinPlugin extends Plugin {
         this.disposing = true;
         this.settleReady(false);
         window.removeEventListener("focus", this.handleWindowFocus);
+        if (this.recentRecordTimer !== undefined) {
+            window.clearTimeout(this.recentRecordTimer);
+            this.recentRecordTimer = undefined;
+        }
         const openTabRequest = this.tabOpenPromise;
         if (openTabRequest) {
             await openTabRequest.catch(() => undefined);
@@ -554,12 +567,26 @@ export default class CheckinPlugin extends Plugin {
 
     private renderToday(): string {
         const now = currentCalendarDate();
-        const visibleItems = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, now) && isScheduledToday(item, now));
+        const scheduledItems = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, now) && isScheduledToday(item, now));
+        const query = this.todayQuery.trim().toLocaleLowerCase();
+        const visibleItems = query
+            ? scheduledItems.filter((item) => `${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query))
+            : scheduledItems;
         const pendingItems = sortCheckinItems(visibleItems.filter((item) => !isComplete(this.store, item, now)), this.todaySortMode);
         const completedItems = sortCheckinItems(visibleItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
-        const completed = completedItems.length;
+        const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
-        const list = visibleItems.length ? `${pendingItems.length
+        const list = !scheduledItems.length ? `
+            <div class="lc-checkin__empty">
+                <div class="lc-checkin__empty-mark">✦</div>
+                <div class="lc-checkin__empty-title">从一个小目标开始</div>
+                <div class="lc-checkin__empty-description">从常用模板中选择，或建立自己的第一个打卡项。</div>
+                <button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button>
+            </div>` : !visibleItems.length ? `
+            <div class="lc-checkin__search-empty">
+                <span>⌕</span><strong>没有匹配的打卡项</strong><small>试试项目名称或分组关键词</small>
+                <button class="lc-checkin__text-button" type="button" data-action="clear-search">清除筛选</button>
+            </div>` : `${pendingItems.length
             ? this.renderTodayGroups(pendingItems, now)
             : `<div class="lc-checkin__all-done"><span>✓</span><strong>今天的计划已完成</strong></div>`}
             ${completedItems.length ? `<section class="lc-checkin__completed-section">
@@ -569,13 +596,11 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__chevron">${this.completedCollapsed ? "⌄" : "⌃"}</span>
                 </button>
                 <div class="lc-checkin__group-items" ${this.completedCollapsed ? "hidden" : ""}>${completedItems.map((item) => this.renderItem(item, now)).join("")}</div>
-            </section>` : ""}` : `
-            <div class="lc-checkin__empty">
-                <div class="lc-checkin__empty-mark">✦</div>
-                <div class="lc-checkin__empty-title">从一个小目标开始</div>
-                <div class="lc-checkin__empty-description">从常用模板中选择，或建立自己的第一个打卡项。</div>
-                <button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button>
-            </div>`;
+            </section>` : ""}`;
+        const recentRecord = this.recentRecord ? `<div class="lc-checkin__recent-record" role="status" aria-live="polite">
+            <span><i>✓</i>${escapeHtml(this.recentRecord.message)}</span>
+            <button type="button" data-action="undo-record">撤销</button>
+        </div>` : "";
         return `<div class="lc-checkin">
             <header class="lc-checkin__header">
                 <div>
@@ -583,15 +608,17 @@ export default class CheckinPlugin extends Plugin {
                     <h1 class="lc-checkin__title">今天</h1>
                 </div>
                 <div class="lc-checkin__header-actions">
-                    <span class="lc-checkin__count">${completed}<span>/</span>${visibleItems.length}</span>
+                    <span class="lc-checkin__count">${completed}<span>/</span>${scheduledItems.length}</span>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
             </header>
-            <div class="lc-checkin__progress"><span style="width: ${visibleItems.length ? Math.round((completed / visibleItems.length) * 100) : 0}%"></span></div>
-            ${visibleItems.length ? `<div class="lc-checkin__organize">
+            <div class="lc-checkin__progress"><span style="width: ${scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0}%"></span></div>
+            ${recentRecord}
+            ${scheduledItems.length ? `<div class="lc-checkin__organize">
+                <label class="lc-checkin__search-field"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
                 <label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
@@ -727,8 +754,12 @@ export default class CheckinPlugin extends Plugin {
         const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}`;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
+        const unit = revision.unit || "次";
+        const icon = isBinary
+            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${escapeHtml(item.icon)}</button>`
+            : `<span class="lc-checkin__item-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`;
         return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}">
-            <button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消" : "完成"} ${escapeHtml(item.name)}">${escapeHtml(item.icon)}</button>
+            ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
@@ -740,10 +771,17 @@ export default class CheckinPlugin extends Plugin {
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
-                ${isBinary ? "" : `<input class="lc-checkin__amount" type="number" min="${inputStep}" step="${inputStep}" value="${recordStep}" aria-label="本次${escapeHtml(revision.unit || "数量")}" />`}
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="开始专注" title="开始专注">⌛</button>` : ""}
-                <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? complete ? "撤销" : "打卡" : "+ 记录"}</button>
+                ${isBinary
+                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? "取消" : "打卡"}</button>`
+                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="记录 ${formatNumber(recordStep)} ${escapeHtml(unit)}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
+                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="输入精确记录值" title="精确记录" aria-expanded="false">⋯</button>`}
             </div>
+            ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
+                <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>
+                <span>${escapeHtml(unit)}</span>
+                <button class="lc-checkin__record-button" type="button" data-action="record">记录</button>
+            </div>`}
         </article>`;
     }
 
@@ -799,6 +837,25 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindToday(root: HTMLElement) {
+        const search = root.querySelector<HTMLInputElement>("[data-today-search]");
+        let searchTimer: number | undefined;
+        search?.addEventListener("input", () => {
+            if (searchTimer !== undefined) window.clearTimeout(searchTimer);
+            const value = search.value;
+            searchTimer = window.setTimeout(() => {
+                this.todayQuery = value;
+                this.render();
+                const nextSearch = root.querySelector<HTMLInputElement>("[data-today-search]");
+                nextSearch?.focus();
+                nextSearch?.setSelectionRange(value.length, value.length);
+            }, 120);
+        });
+        root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
+            this.todayQuery = "";
+            this.render();
+            root.querySelector<HTMLInputElement>("[data-today-search]")?.focus();
+        }));
+        root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
@@ -849,6 +906,29 @@ export default class CheckinPlugin extends Plugin {
                 this.enqueueMutation(() => this.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
             });
             element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => this.startFocus(itemId));
+            element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", () => {
+                const item = this.store.items.find((candidate) => candidate.id === itemId);
+                if (!item) return;
+                const moment = captureActionMoment();
+                const date = calendarDateFromKey(moment.localDate);
+                const revision = getItemRevisionForDate(item, date);
+                const expectedRevisionFingerprint = this.revisionFingerprint(item, date);
+                this.enqueueMutation(() => this.recordEvent(item, getRecordStep(revision.kind, revision.unit), moment, expectedRevisionFingerprint));
+            });
+            element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
+                const button = event.currentTarget as HTMLElement;
+                const entry = element.querySelector<HTMLElement>("[data-exact-entry]");
+                if (!entry) return;
+                const expanded = !entry.hidden;
+                entry.hidden = expanded;
+                button.setAttribute("aria-expanded", String(!expanded));
+                if (!expanded) entry.querySelector<HTMLInputElement>("input")?.focus();
+            });
+            element.querySelector<HTMLInputElement>(".lc-checkin__amount")?.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                element.querySelector<HTMLButtonElement>("[data-action='record']")?.click();
+            });
             element.querySelector<HTMLElement>("[data-action='record']")?.addEventListener("click", () => {
                 const item = this.store.items.find((candidate) => candidate.id === itemId);
                 const input = element.querySelector<HTMLInputElement>(".lc-checkin__amount");
@@ -1277,22 +1357,22 @@ export default class CheckinPlugin extends Plugin {
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
-    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string) {
+    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string): Promise<CheckinEvent | undefined> {
         const current = this.store.items.find((candidate) => candidate.id === item.id && !candidate.archived);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
         if (!current || !revision || !isItemAvailableOnDate(current, actionDate) || revision.kind === "binary" && isComplete(this.store, current, actionDate)) {
-            return;
+            return undefined;
         }
         if (!expectedRevisionFingerprint || this.revisionFingerprint(current, actionDate) !== expectedRevisionFingerprint) {
             showMessage("[小驴打卡] 项目配置已在其他窗口更新，本次记录未执行");
             this.renderBackgroundUpdate();
-            return;
+            return undefined;
         }
         const previous = this.store;
         const event = this.makeEvent(current, value, "manual", revision.unit, undefined, undefined, moment);
         const next = appendEvent(this.store, event);
-        if (next === this.store) return;
+        if (next === this.store) return undefined;
         this.store = next;
         try {
             await this.persist();
@@ -1300,11 +1380,55 @@ export default class CheckinPlugin extends Plugin {
             this.store = previous;
             showMessage("[小驴打卡] 保存失败，请重试");
             this.renderBackgroundUpdate();
-            return;
+            return undefined;
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item: current, event});
+        this.setRecentRecord({eventId: event.id, itemId: current.id, message: `已记录 ${current.name} +${formatNumber(value)} ${revision.unit || "次"}`});
         this.renderBackgroundUpdate();
+        return {...event};
+    }
+
+    private setRecentRecord(record: RecentRecord) {
+        this.recentRecord = record;
+        if (this.recentRecordTimer !== undefined) window.clearTimeout(this.recentRecordTimer);
+        this.recentRecordTimer = window.setTimeout(() => {
+            this.recentRecord = undefined;
+            this.recentRecordTimer = undefined;
+            this.renderBackgroundUpdate();
+        }, 5000);
+    }
+
+    private async undoRecentRecord() {
+        const recent = this.recentRecord;
+        if (!recent) return;
+        this.recentRecord = undefined;
+        if (this.recentRecordTimer !== undefined) {
+            window.clearTimeout(this.recentRecordTimer);
+            this.recentRecordTimer = undefined;
+        }
+        const event = this.store.events.find((candidate) => candidate.id === recent.eventId);
+        if (!event) {
+            this.renderBackgroundUpdate();
+            return;
+        }
+        const moment = captureActionMoment();
+        await this.enqueueMutation(async () => {
+            const previous = this.store;
+            const next = removeEvents(this.store, [event], moment.occurredAt);
+            if (next === this.store) return;
+            this.store = next;
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage("[小驴打卡] 撤销失败，请重试");
+                return;
+            }
+            this.invalidateSummary();
+            this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+            this.renderBackgroundUpdate();
+        });
     }
 
     private startFocus(itemId: string): Promise<boolean> {

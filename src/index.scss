@@ -186,6 +186,130 @@
     }
 }
 
+.lc-checkin__search-field {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 5px;
+    min-width: 112px;
+    height: 25px;
+    box-sizing: border-box;
+    padding: 0 6px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 7px;
+    color: var(--b3-theme-on-surface-light);
+    background: var(--b3-theme-surface);
+
+    span {
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    input {
+        width: 76px;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        outline: 0;
+        color: var(--b3-theme-on-background);
+        background: transparent;
+        font-size: 11px;
+    }
+
+    button {
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        border: 0;
+        color: var(--b3-theme-on-surface-light);
+        background: transparent;
+        font-size: 15px;
+        line-height: 1;
+        cursor: pointer;
+    }
+}
+
+.lc-checkin__search-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    flex-direction: column;
+    color: var(--b3-theme-on-surface-light);
+    text-align: center;
+
+    span {
+        color: var(--lc-checkin-accent);
+        font-size: 27px;
+    }
+
+    strong {
+        margin-top: 9px;
+        color: var(--b3-theme-on-background);
+        font-size: 13px;
+    }
+
+    small {
+        margin-top: 5px;
+        font-size: 11px;
+    }
+}
+
+.lc-checkin__recent-record {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 34px;
+    box-sizing: border-box;
+    margin: -4px 0 10px;
+    padding: 5px 8px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 24%, transparent);
+    border-radius: 7px;
+    color: var(--b3-theme-on-background);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 11px;
+
+    span {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    i {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        color: #fff;
+        background: var(--lc-checkin-accent);
+        font-style: normal;
+        font-size: 10px;
+    }
+
+    button {
+        flex: 0 0 auto;
+        min-height: 26px;
+        padding: 2px 7px;
+        border: 0;
+        border-radius: 5px;
+        color: var(--lc-checkin-accent);
+        background: transparent;
+        font-size: 11px;
+        cursor: pointer;
+
+        &:hover {
+            background: color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent);
+        }
+    }
+}
+
 .lc-checkin__group {
     display: flex;
     flex-direction: column;
@@ -355,6 +479,10 @@
     }
 }
 
+.lc-checkin__item-icon:not(button) {
+    cursor: default;
+}
+
 .lc-checkin__item-body {
     min-width: 0;
     flex: 1;
@@ -419,6 +547,13 @@
     font-size: 15px;
 }
 
+.lc-checkin button:focus-visible,
+.lc-checkin input:focus-visible,
+.lc-checkin select:focus-visible {
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 2px;
+}
+
 .lc-checkin__item-meta {
     margin-top: 4px;
     overflow: hidden;
@@ -477,6 +612,67 @@
         border-color: var(--lc-checkin-accent);
         color: var(--lc-checkin-accent);
         background: var(--lc-checkin-accent-soft);
+    }
+}
+
+.lc-checkin__quick-button,
+.lc-checkin__more-button {
+    min-height: 32px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--lc-checkin-accent);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.lc-checkin__quick-button {
+    padding: 0 8px;
+    font-weight: 600;
+
+    span {
+        font-weight: 450;
+    }
+
+    &:hover {
+        border-color: var(--lc-checkin-accent);
+    }
+}
+
+.lc-checkin__more-button {
+    width: 30px;
+    padding: 0;
+    color: var(--b3-theme-on-surface-light);
+    background: transparent;
+    font-size: 17px;
+
+    &:hover {
+        border-color: var(--b3-border-color);
+        color: var(--lc-checkin-accent);
+    }
+}
+
+.lc-checkin__exact-entry {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    margin-top: 5px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+
+    label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    label span {
+        white-space: nowrap;
+    }
+
+    .lc-checkin__amount {
+        width: 62px;
     }
 }
 
@@ -1097,6 +1293,9 @@
     }
 
     .lc-checkin__item {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        align-items: start;
         gap: 7px;
         padding: 8px;
     }
@@ -1105,6 +1304,22 @@
         flex-basis: 32px;
         width: 32px;
         height: 32px;
+        grid-row: span 2;
+    }
+
+    .lc-checkin__item-action {
+        grid-column: 2;
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .lc-checkin__item-action .lc-checkin__quick-button {
+        flex: 1;
+    }
+
+    .lc-checkin__exact-entry {
+        grid-column: 2;
+        flex-wrap: wrap;
     }
 
     .lc-checkin__record-button {
@@ -1126,5 +1341,36 @@
         .lc-checkin__field:first-child {
             grid-column: auto;
         }
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .lc-checkin__small-button {
+        opacity: 1;
+        width: 34px;
+        height: 34px;
+    }
+
+    .lc-checkin__record-button,
+    .lc-checkin__quick-button,
+    .lc-checkin__more-button,
+    .lc-checkin__focus-button {
+        min-height: 40px;
+    }
+
+    .lc-checkin__item-icon {
+        min-width: 40px;
+        min-height: 40px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin *,
+    .lc-checkin *::before,
+    .lc-checkin *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
     }
 }
