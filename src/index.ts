@@ -5,6 +5,7 @@ import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
+import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
 import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
@@ -799,8 +800,9 @@ export default class CheckinPlugin extends Plugin {
         const isBinary = revision.kind === "binary";
         const canFocus = !isBinary && Boolean(this.findFocusAdapter(item, date));
         const recordStep = getRecordStep(revision.kind, revision.unit);
+        const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
-        const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}`;
+        const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.unit || "次"}` : ""}`;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
         const unit = revision.unit || "次";
