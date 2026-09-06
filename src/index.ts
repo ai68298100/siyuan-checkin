@@ -1,4 +1,4 @@
-import {getFrontend, openTab, Plugin, showMessage} from "siyuan";
+import {Dialog, getFrontend, openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
 import {buildSummaryContext, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
@@ -16,6 +16,7 @@ const STORAGE_NAME = "checkin-store";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
+const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const API_VERSION = 1;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
@@ -100,8 +101,11 @@ export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
+    private quickDialog?: Dialog;
+    private quickDialogElement?: HTMLElement;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
+    private isMobileFrontend = false;
     private supportsCustomTab = true;
     private todayGroupMode: TodayGroupMode = "group";
     private todaySortMode: CheckinItemSortMode = "manual";
@@ -150,7 +154,8 @@ export default class CheckinPlugin extends Plugin {
         this.acceptingOperations = true;
         this.initializationState = "loading";
         const frontend = getFrontend();
-        this.supportsCustomTab = frontend !== "mobile" && frontend !== "browser-mobile";
+        this.isMobileFrontend = frontend === "mobile" || frontend === "browser-mobile";
+        this.supportsCustomTab = !this.isMobileFrontend;
         const plugin = this;
         this.addIcons(`<symbol id="iconLvCheckin" viewBox="0 0 32 32">
             <path d="M16 2.5 19.9 6l5.2-.3.8 5.1 4.1 3.2-2.6 4.5.9 5.1-5 1.4-2.8 4.3-4.8-2.1-4.8 2.1-2.8-4.3-5-1.4.9-5.1-2.6-4.5 4.1-3.2.8-5.1L12.1 6 16 2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -208,8 +213,10 @@ export default class CheckinPlugin extends Plugin {
 
         this.addCommand({
             langKey: "openCheckin",
-            callback: () => this.showToday(),
-            globalCallback: () => this.showToday(),
+            langText: "打开小驴打卡快速窗口",
+            hotkey: QUICK_DIALOG_HOTKEY,
+            callback: () => this.toggleQuickDialog(),
+            globalCallback: () => this.toggleQuickDialog(),
         });
         if (this.supportsCustomTab) this.addCommand({
             langKey: "openCheckinTab",
@@ -224,11 +231,12 @@ export default class CheckinPlugin extends Plugin {
     }
 
     async onLayoutReady() {
-        if (this.supportsCustomTab) this.addTopBar({
-            id: "openCheckinTab",
+        this.addTopBar({
+            id: "openCheckinDialog",
             icon: "iconLvCheckin",
-            title: "在页签打开小驴打卡",
-            callback: () => this.openTabPage(),
+            position: "right",
+            title: "打开小驴打卡（Alt+Shift+C）",
+            callback: () => this.toggleQuickDialog(),
         });
         try {
             await this.withStorageLock(async () => {
@@ -268,6 +276,7 @@ export default class CheckinPlugin extends Plugin {
             window.clearTimeout(this.recentRecordTimer);
             this.recentRecordTimer = undefined;
         }
+        this.closeQuickDialog();
         const openTabRequest = this.tabOpenPromise;
         if (openTabRequest) {
             await openTabRequest.catch(() => undefined);
@@ -516,6 +525,7 @@ export default class CheckinPlugin extends Plugin {
 
     private openTabPage() {
         if (!this.supportsCustomTab || this.disposed || this.disposing || this.tabOpenPromise) {
+            if (!this.supportsCustomTab) this.openQuickDialog();
             return;
         }
         this.currentPage = "today";
@@ -536,10 +546,71 @@ export default class CheckinPlugin extends Plugin {
                 this.tabInstance = tab;
             }
         }).catch((error) => {
-            showMessage(`[小驴打卡] 打开页签失败：${String(error)}`);
+            showMessage(`[小驴打卡] 打开页签失败：${String(error)}，已改用快速窗口`);
+            this.openQuickDialog();
         }).finally(() => {
             this.tabOpenPromise = undefined;
         });
+    }
+
+    private toggleQuickDialog() {
+        if (this.quickDialog) {
+            this.closeQuickDialog();
+            return;
+        }
+        this.openQuickDialog();
+    }
+
+    private openQuickDialog() {
+        if (this.disposed || this.disposing) return;
+        if (this.quickDialog) {
+            this.currentPage = "today";
+            this.editingId = undefined;
+            this.editingFingerprint = undefined;
+            this.render();
+            return;
+        }
+
+        this.currentPage = "today";
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        let dialog: Dialog | undefined;
+        dialog = new Dialog({
+            title: "",
+            content: `<div class="lc-checkin-dialog-host" role="region" aria-label="小驴打卡快速窗口"></div>`,
+            width: this.isMobileFrontend ? "94vw" : "760px",
+            height: this.isMobileFrontend ? "88vh" : "82vh",
+            disableAnimation: this.isMobileFrontend,
+            destroyCallback: () => {
+                if (this.quickDialog !== dialog) return;
+                this.quickDialog = undefined;
+                this.quickDialogElement = undefined;
+            },
+        });
+        const root = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
+        if (!root) {
+            dialog.destroy();
+            showMessage("[小驴打卡] 快速窗口初始化失败");
+            return;
+        }
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("lc-checkin-dialog");
+        dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("lc-checkin-dialog__body");
+        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
+        const hostStyle = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
+        if (dialogBody && hostStyle) {
+            dialogBody.style.overflow = "hidden";
+            hostStyle.style.height = "100%";
+        }
+        this.quickDialog = dialog;
+        this.quickDialogElement = root;
+        this.renderInto(root);
+    }
+
+    private closeQuickDialog() {
+        const dialog = this.quickDialog;
+        this.quickDialog = undefined;
+        this.quickDialogElement = undefined;
+        dialog?.destroy();
     }
 
     private getTabId(): string {
@@ -556,7 +627,7 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.disposing) {
             return;
         }
-        const roots = [this.dockElement, this.tabElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+        const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
         roots.forEach((root) => this.renderInto(root));
     }
 
