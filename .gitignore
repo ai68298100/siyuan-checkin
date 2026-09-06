@@ -1,0 +1,7 @@
+﻿node_modules/
+dist/
+index.js
+index.css
+package.zip
+*.log
+.DS_Store

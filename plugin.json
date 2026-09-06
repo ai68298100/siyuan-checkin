@@ -1,0 +1,39 @@
+{
+  "name": "siyuan-checkin",
+  "author": "ai68298100",
+  "url": "https://github.com/ai68298100/siyuan-checkin",
+  "version": "0.1.0",
+  "minAppVersion": "3.4.2",
+  "disabledInPublish": false,
+  "backends": [
+    "all"
+  ],
+  "frontends": [
+    "desktop",
+    "browser-desktop",
+    "desktop-window",
+    "mobile",
+    "browser-mobile"
+  ],
+  "displayName": {
+    "default": "Lv Check-in",
+    "zh-CN": "小驴打卡"
+  },
+  "description": {
+    "default": "A minimal, extensible check-in plugin for SiYuan.",
+    "zh-CN": "极简、可扩展的思源打卡插件。"
+  },
+  "readme": {
+    "default": "README.md",
+    "zh-CN": "README.md"
+  },
+  "icon": "icon.svg",
+  "keywords": [
+    "打卡",
+    "习惯",
+    "目标",
+    "小驴打卡",
+    "check-in",
+    "habit"
+  ]
+}
