@@ -1,4 +1,4 @@
-import {Plugin, showMessage} from "siyuan";
+import {openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
 import {buildSummaryContext, getEventsInRange} from "./analytics";
 import {serializeCsv, serializeJson} from "./export";
@@ -11,6 +11,7 @@ import type {SummaryRange} from "./analytics";
 const STORAGE_NAME = "checkin-store";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
+const TAB_TYPE = "checkin";
 const API_VERSION = 1;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
@@ -72,6 +73,9 @@ interface LockManagerLike {
 export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private dockElement?: HTMLElement;
+    private tabElement?: HTMLElement;
+    private tabOpenPromise?: Promise<void>;
+    private tabInstance?: {close: () => void};
     private currentPage: "today" | "editor" | "history" | "summary" | "archived" = "today";
     private editingId?: string;
     private editingFingerprint?: string;
@@ -138,10 +142,47 @@ export default class CheckinPlugin extends Plugin {
             },
         });
 
+        this.addTab({
+            type: TAB_TYPE,
+            init: function (this: {element: Element}) {
+                const element = this.element as HTMLElement;
+                element.classList.add("lc-checkin-tab-host");
+                plugin.tabElement = element;
+                plugin.render();
+            },
+            update: function (this: {element: Element}) {
+                if (plugin.tabElement === this.element) {
+                    plugin.render();
+                }
+            },
+            destroy: function (this: {element: Element}) {
+                if (plugin.tabElement === this.element) {
+                    plugin.tabElement = undefined;
+                    plugin.tabInstance = undefined;
+                    if (!plugin.disposed && !plugin.disposing) {
+                        plugin.render();
+                    }
+                }
+            },
+        });
+
+        this.addTopBar({
+            id: "openCheckinTab",
+            icon: "iconLvCheckin",
+            title: "在页签打开小驴打卡",
+            callback: () => this.openTabPage(),
+        });
+
         this.addCommand({
             langKey: "openCheckin",
             callback: () => this.showToday(),
             globalCallback: () => this.showToday(),
+        });
+        this.addCommand({
+            langKey: "openCheckinTab",
+            langText: "在页签打开小驴打卡",
+            callback: () => this.openTabPage(),
+            globalCallback: () => this.openTabPage(),
         });
 
         this.api = this.createApi();
@@ -413,6 +454,33 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
+    private openTabPage() {
+        if (this.disposed || this.disposing || this.tabOpenPromise || this.tabInstance) {
+            return;
+        }
+        this.currentPage = "today";
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        this.tabOpenPromise = openTab({
+            app: this.app,
+            custom: {
+                id: `${this.name}${TAB_TYPE}`,
+                icon: "iconLvCheckin",
+                title: "小驴打卡",
+                data: {page: "today"},
+            },
+            position: "right",
+            keepCursor: true,
+            openNewTab: false,
+        }).then((tab) => {
+            this.tabInstance = tab;
+        }).catch((error) => {
+            showMessage(`[小驴打卡] 打开页签失败：${String(error)}`);
+        }).finally(() => {
+            this.tabOpenPromise = undefined;
+        });
+    }
+
     private renderBackgroundUpdate() {
         if (this.currentPage !== "editor") {
             this.render();
@@ -420,24 +488,29 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private render() {
-        if (this.disposed || this.disposing || !this.dockElement) {
+        if (this.disposed || this.disposing) {
             return;
         }
+        const roots = [this.dockElement, this.tabElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+        roots.forEach((root) => this.renderInto(root));
+    }
+
+    private renderInto(root: HTMLElement) {
         if (this.initializationState !== "ready") {
             const message = this.initializationState === "failed" ? "打卡数据读取失败" : "正在加载打卡数据…";
-            this.dockElement.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
+            root.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
             return;
         }
-        this.dockElement.innerHTML = this.currentPage === "editor" ? this.renderEditor()
+        root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
         if (this.currentPage === "editor") {
-            this.bindEditor();
+            this.bindEditor(root);
         } else if (this.currentPage === "today") {
-            this.bindToday();
+            this.bindToday(root);
         } else {
-            this.bindPageNavigation();
+            this.bindPageNavigation(root);
         }
     }
 
@@ -463,6 +536,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__count">${completed}<span>/</span>${visibleItems.length}</span>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
             </header>
@@ -590,11 +664,12 @@ export default class CheckinPlugin extends Plugin {
         </div>`;
     }
 
-    private bindToday() {
-        this.dockElement?.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
-        this.dockElement?.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => this.showEditor()));
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-item-id]").forEach((element) => {
+    private bindToday(root: HTMLElement) {
+        root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
+        root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
+        root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
+        root.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => this.showEditor()));
+        root.querySelectorAll<HTMLElement>("[data-item-id]").forEach((element) => {
             const itemId = element.dataset.itemId;
             if (!itemId) {
                 return;
@@ -640,21 +715,21 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
-    private bindPageNavigation() {
-        this.dockElement?.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
-        this.dockElement?.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
+    private bindPageNavigation(root: HTMLElement) {
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
+        root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
             this.changeHistoryMonth(Number(button.dataset.historyMonth));
         }));
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-history-date]").forEach((button) => button.addEventListener("click", () => {
+        root.querySelectorAll<HTMLElement>("[data-history-date]").forEach((button) => button.addEventListener("click", () => {
             const value = button.dataset.historyDate;
             if (value) {
                 this.selectedHistoryDate = value;
                 this.render();
             }
         }));
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
-        this.dockElement?.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
+        root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
+        root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
             const range = button.dataset.summaryRange;
             if (range === "day" || range === "week" || range === "month") {
                 this.summaryRange = range;
@@ -663,9 +738,9 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             }
         }));
-        this.dockElement?.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
-        this.dockElement?.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
-        this.dockElement?.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
+        root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
+        root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
+        root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
     }
 
     private changeHistoryMonth(offset: number) {
@@ -775,22 +850,22 @@ export default class CheckinPlugin extends Plugin {
         return getEventsInRange(this.store, range, date).map((event) => ({...event}));
     }
 
-    private bindEditor() {
-        this.dockElement?.querySelectorAll<HTMLButtonElement>("[data-icon]").forEach((button) => button.addEventListener("click", () => {
-            this.dockElement?.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
+    private bindEditor(root: HTMLElement) {
+        root.querySelectorAll<HTMLButtonElement>("[data-icon]").forEach((button) => button.addEventListener("click", () => {
+            root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
             button.classList.add("is-selected");
-            const input = this.dockElement?.querySelector<HTMLInputElement>("input[name='icon']");
+            const input = root.querySelector<HTMLInputElement>("input[name='icon']");
             if (input) {
                 input.value = button.dataset.icon || "✓";
             }
         }));
-        this.dockElement?.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
-        this.dockElement?.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => this.archiveEditingItem());
-        const kindSelect = this.dockElement?.querySelector<HTMLSelectElement>("select[name='kind']");
-        const scheduleSelect = this.dockElement?.querySelector<HTMLSelectElement>("select[name='schedule']");
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => this.archiveEditingItem());
+        const kindSelect = root.querySelector<HTMLSelectElement>("select[name='kind']");
+        const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
         const updateConditionalFields = () => {
-            const valueFields = this.dockElement?.querySelector<HTMLElement>("[data-value-fields]");
-            const weekdays = this.dockElement?.querySelector<HTMLElement>("[data-weekdays]");
+            const valueFields = root.querySelector<HTMLElement>("[data-value-fields]");
+            const weekdays = root.querySelector<HTMLElement>("[data-weekdays]");
             if (valueFields) {
                 valueFields.hidden = kindSelect?.value === "binary";
             }
@@ -801,7 +876,7 @@ export default class CheckinPlugin extends Plugin {
         kindSelect?.addEventListener("change", updateConditionalFields);
         scheduleSelect?.addEventListener("change", updateConditionalFields);
         updateConditionalFields();
-        this.dockElement?.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
+        root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
             if (form.dataset.submitting === "true") return;
