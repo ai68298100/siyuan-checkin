@@ -1591,7 +1591,7 @@ export default class CheckinPlugin extends Plugin {
         };
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
             updateConditionalFields(true);
-            ensureEditorVisible(input.closest(".lc-checkin__kind-option"));
+            ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
         }));
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
