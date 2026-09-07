@@ -13,7 +13,8 @@ assert.match(source, /if \(!this\.supportsCustomTab\) this\.openQuickDialog\(\)/
 assert.match(source, /data-action="open-tab"/);
 assert.match(source, /getCustomSummaryContext/);
 assert.match(source, /自定义总结范围无效/);
-assert.match(source, /const API_VERSION = 2/);
+assert.match(source, /const API_VERSION = 3/);
+assert.match(source, /summarizeCustom: \(range, providerId\) => summarizeWithProvider\("day", range, providerId\)/);
 assert.match(source, /customRange \? buildCustomSummaryContext/);
 assert.match(source, /getEventsInCustomRange\(this\.store, customRange\)/);
 console.log("Entry capability structure checks passed.");

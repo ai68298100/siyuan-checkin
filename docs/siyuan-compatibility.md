@@ -7,7 +7,7 @@
 
 插件只依赖思源公开插件接口：`Plugin`、`Dialog`、`addDock`、`addTab`、`addCommand`、`showMessage` 和 `getFrontend`。业务数据保存在插件自身存储中，未直接依赖思源内部 DOM 结构。插件 API 通过 `window.siyuanCheckin` 提供标准总结与自定义日期范围总结，不依赖思源内部接口。
 
-`window.siyuanCheckin.version` 当前为 2。版本 2 新增 `getCustomSummaryContext`，并允许总结适配器收到 `customRange`；调用方应先检查版本，再使用这些能力。
+`window.siyuanCheckin.version` 当前为 3。版本 2 新增 `getCustomSummaryContext`，版本 3 新增 `summarizeCustom`，并允许总结适配器收到 `customRange`；调用方应先检查版本，再使用这些能力。
 
 发布前检查：
 

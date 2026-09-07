@@ -50,7 +50,7 @@ interface CheckinEvent {
 
 ## 跨插件 API
 
-插件加载后提供 `window.siyuanCheckin`，当前 API 版本为 `1`：
+插件加载后提供 `window.siyuanCheckin`，当前 API 版本为 `3`：
 
 ```js
 const checkin = window.siyuanCheckin;
@@ -58,6 +58,7 @@ await checkin.whenReady();
 checkin.getItems();
 checkin.getEvents();
 checkin.getSummaryContext("week");
+await checkin.summarizeCustom({startDate: "2026-09-01", endDate: "2026-09-07"});
 await checkin.recordEvent({
     itemId: "item-id",
     value: 25,
@@ -75,6 +76,7 @@ await checkin.recordEvent({
 - 带有相同 `itemId`、`source` 和 `externalRef` 的外部记录会自动去重；
 - `setItemArchived(itemId, archived)`；
 - `getSummaryContext("day" | "week" | "month")`；
+- `getCustomSummaryContext({startDate, endDate})` 和 `summarizeCustom({startDate, endDate}, providerId?)`；
 - `exportJson()`、`exportCsv()`；
 - `startFocus(itemId)`、`stopFocus()` 和 `registerFocusAdapter(adapter)`；
 - `registerSummaryProvider(provider)`，总结输入同时包含过滤后的事件和聚合上下文；

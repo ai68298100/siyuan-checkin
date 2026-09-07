@@ -22,7 +22,7 @@ const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
-const API_VERSION = 2;
+const API_VERSION = 3;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 const KIND_LABELS: Record<CheckinKind, string> = {
@@ -92,6 +92,7 @@ interface CheckinApi {
     registerFocusAdapter: (adapter: FocusAdapter) => () => void;
     registerSummaryProvider: (provider: SummaryProvider) => () => void;
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
+    summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
     subscribe: (listener: (event: CheckinIntegrationEvent) => void) => () => void;
 }
 
@@ -339,6 +340,27 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private createApi(): CheckinApi {
+        const summarizeWithProvider = async (range: SummaryRange, customRange: CustomSummaryRange | undefined, providerId?: string) => {
+            if (!this.acceptingOperations || this.disposed) return undefined;
+            if (customRange) {
+                if (!isValidLocalDateInput(customRange.startDate) || !isValidLocalDateInput(customRange.endDate) || customRange.startDate > customRange.endDate) return undefined;
+            } else if (!isSummaryRange(range)) {
+                return undefined;
+            }
+            const provider = providerId ? this.summaryProviders.get(providerId) : this.summaryProviders.values().next().value;
+            if (!provider) return undefined;
+            const now = currentCalendarDate();
+            const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
+            const summaryItemIds = new Set(context.items.map((item) => item.itemId));
+            const output = await provider.summarize({
+                range,
+                ...(customRange ? {customRange} : {}),
+                items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
+                events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
+                context,
+            });
+            return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
+        };
         return {
             version: API_VERSION,
             isReady: () => this.initializationState === "ready" && this.acceptingOperations && !this.disposed,
@@ -417,23 +439,8 @@ export default class CheckinPlugin extends Plugin {
                     }
                 };
             },
-            summarize: async (range, providerId) => {
-                if (!this.acceptingOperations || this.disposed || !isSummaryRange(range)) return undefined;
-                const provider = providerId ? this.summaryProviders.get(providerId) : this.summaryProviders.values().next().value;
-                if (!provider) {
-                    return undefined;
-                }
-                const now = currentCalendarDate();
-                const context = buildSummaryContext(this.store, range, now);
-                const summaryItemIds = new Set(context.items.map((item) => item.itemId));
-                const output = await provider.summarize({
-                    range,
-                    items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
-                    events: this.getSummaryEvents(range, now),
-                    context,
-                });
-                return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
-            },
+            summarize: (range, providerId) => summarizeWithProvider(range, undefined, providerId),
+            summarizeCustom: (range, providerId) => summarizeWithProvider("day", range, providerId),
             subscribe: (listener) => {
                 if (!this.acceptingOperations || this.disposed || typeof listener !== "function") {
                     return () => undefined;
