@@ -11,4 +11,6 @@ assert.match(source, /this\.supportsCustomTab = !this\.isMobileFrontend/);
 assert.match(source, /if \(this\.supportsCustomTab\) this\.addCommand/);
 assert.match(source, /if \(!this\.supportsCustomTab\) this\.openQuickDialog\(\)/);
 assert.match(source, /data-action="open-tab"/);
+assert.match(source, /getCustomSummaryContext/);
+assert.match(source, /自定义总结范围无效/);
 console.log("Entry capability structure checks passed.");

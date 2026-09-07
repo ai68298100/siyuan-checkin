@@ -11,7 +11,7 @@ import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./int
 import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
-import type {SummaryRange} from "./analytics";
+import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
 import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
@@ -81,6 +81,7 @@ interface CheckinApi {
     getItems: () => CheckinItem[];
     getEvents: () => CheckinEvent[];
     getSummaryContext: (range: SummaryRange) => ReturnType<typeof buildSummaryContext>;
+    getCustomSummaryContext: (range: CustomSummaryRange) => ReturnType<typeof buildCustomSummaryContext>;
     getArchivedItems: () => CheckinItem[];
     setItemArchived: (itemId: string, archived: boolean) => Promise<boolean>;
     exportJson: () => string;
@@ -347,6 +348,10 @@ export default class CheckinPlugin extends Plugin {
             getSummaryContext: (range) => {
                 if (!isSummaryRange(range)) throw new TypeError("range 必须是 day、week 或 month");
                 return buildSummaryContext(this.store, range, currentCalendarDate());
+            },
+            getCustomSummaryContext: (range) => {
+                if (!range || !isValidLocalDateInput(range.startDate) || !isValidLocalDateInput(range.endDate) || range.startDate > range.endDate) throw new TypeError("自定义总结范围无效");
+                return buildCustomSummaryContext(this.store, range, currentCalendarDate());
             },
             getArchivedItems: () => this.store.items.filter((item) => item.archived).map((item) => this.cloneItem(item)),
             setItemArchived: (itemId, archived) => {

@@ -5,7 +5,7 @@
 | 3.8.3 | 目标支持 | 目标支持 | `Dialog`、`addDock`、`addTab`、快捷键、`visualViewport` |
 | 3.8.x 后续版本 | 持续验证 | 持续验证 | 发布前运行完整测试和生产构建 |
 
-插件只依赖思源公开插件接口：`Plugin`、`Dialog`、`addDock`、`addTab`、`addCommand`、`showMessage` 和 `getFrontend`。业务数据保存在插件自身存储中，未直接依赖思源内部 DOM 结构。
+插件只依赖思源公开插件接口：`Plugin`、`Dialog`、`addDock`、`addTab`、`addCommand`、`showMessage` 和 `getFrontend`。业务数据保存在插件自身存储中，未直接依赖思源内部 DOM 结构。插件 API 通过 `window.siyuanCheckin` 提供标准总结与自定义日期范围总结，不依赖思源内部接口。
 
 发布前检查：
 
