@@ -99,13 +99,20 @@ export function evaluatePeriodQuota(rule: PeriodQuotaRule, events: readonly Chec
     const endDate = rule.period === "week" ? localDateKey(addCalendarDays(dateFromKey(startDate), 6)) : localDateKey(addCalendarDays(dateFromKey(startDate), daysInMonth(dateFromKey(startDate)) - 1));
     const candidates = events
         .filter((event) => event.itemId === itemId && (!unit || event.unit === unit))
-        .map((event) => ({event, date: localDateKey(new Date(event.localDate || event.occurredAt))}))
+        .map((event) => ({event, date: eventDateKey(event)}))
+        .filter((entry): entry is {event: CheckinEvent; date: string} => Boolean(entry.date))
         .filter((entry) => entry.date >= startDate && entry.date <= endDate)
         .sort((left, right) => left.date.localeCompare(right.date) || left.event.id.localeCompare(right.event.id));
     const contributingDates = [...new Set(candidates.map((entry) => entry.date))];
     const progress = rule.distinctDates ? contributingDates.length : candidates.reduce((total, entry) => total + entry.event.value, 0);
-    const quota = Math.max(0, Number.isFinite(rule.quota) ? rule.quota : 0);
-    return {period: rule.period, periodKey, startDate, endDate, quota, progress, remaining: Math.max(0, quota - progress), complete: progress >= quota, contributingDates};
+    const quota = Number.isFinite(rule.quota) && rule.quota > 0 ? rule.quota : 0;
+    return {period: rule.period, periodKey, startDate, endDate, quota, progress, remaining: Math.max(0, quota - progress), complete: quota > 0 && progress >= quota, contributingDates};
+}
+
+function eventDateKey(event: CheckinEvent): string | undefined {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(event.localDate)) return event.localDate;
+    const occurredAt = new Date(event.occurredAt);
+    return Number.isNaN(occurredAt.getTime()) ? undefined : localDateKey(occurredAt);
 }
 
 function dateFromKey(value: string): Date {
