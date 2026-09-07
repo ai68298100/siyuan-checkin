@@ -868,10 +868,11 @@
     .lc-checkin__item {
         display: grid;
         grid-template-columns: 40px minmax(0, 1fr);
-        grid-template-areas: "icon body" "icon action";
+        grid-template-areas: "icon body" "icon action" "icon exact";
         align-items: start;
         gap: 7px;
         padding: 9px;
+        min-width: 0;
     }
 
     .lc-checkin__item-icon {
@@ -884,16 +885,34 @@
     }
 
     .lc-checkin__item-topline {
+        position: relative;
         flex-wrap: wrap;
         align-items: center;
     }
 
     .lc-checkin__item-name {
-        flex: 1 1 8em;
+        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+        padding-right: 2px;
+    }
+
+    .lc-checkin__item-topline .lc-checkin__small-button {
+        position: absolute;
+        top: -2px;
+        right: 0;
+        display: none;
+        background: var(--b3-theme-surface);
+    }
+
+    .lc-checkin__item:hover .lc-checkin__item-topline .lc-checkin__small-button,
+    .lc-checkin__item:focus-within .lc-checkin__item-topline .lc-checkin__small-button {
+        display: inline-flex;
     }
 
     .lc-checkin__item-action {
         grid-area: action;
+        width: 100%;
         justify-content: flex-start;
         max-width: 100%;
         flex-wrap: wrap;
@@ -908,7 +927,7 @@
     }
 
     .lc-checkin__exact-entry {
-        grid-column: 2;
+        grid-area: exact;
         flex-wrap: wrap;
         max-width: 100%;
     }
