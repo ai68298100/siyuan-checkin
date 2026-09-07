@@ -525,10 +525,11 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showInsights(item?: CheckinItem) {
-        const candidate = item || this.store.items.find((entry) => !entry.archived);
+        const candidate = item || this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived) || this.store.items.find((entry) => !entry.archived);
         if (!candidate) return;
         this.currentPage = "insights";
         this.insightsItemId = candidate.id;
+        void this.persistViewPreferences();
         this.editingId = undefined;
         this.editingFingerprint = undefined;
         this.render();
@@ -1233,7 +1234,8 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
             if (!this.store.items.some((item) => item.id === itemId && !item.archived)) return;
-            this.insightsItemId = itemId;
+        this.insightsItemId = itemId;
+            void this.persistViewPreferences();
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
@@ -2112,6 +2114,7 @@ export default class CheckinPlugin extends Plugin {
         this.todaySortMode = preferences.sortMode;
         this.completedCollapsed = preferences.completedCollapsed;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
+        this.insightsItemId = preferences.lastInsightsItemId;
     }
 
     private persistViewPreferences(): Promise<void> {
@@ -2121,6 +2124,7 @@ export default class CheckinPlugin extends Plugin {
             sortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
+            lastInsightsItemId: this.insightsItemId,
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

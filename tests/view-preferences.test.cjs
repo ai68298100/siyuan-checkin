@@ -4,6 +4,7 @@ const source = fs.readFileSync("src/view-preferences.ts", "utf8");
 const plugin = fs.readFileSync("src/index.ts", "utf8");
 assert.match(source, /normalizeViewPreferences/);
 assert.match(source, /collapsedGroups/);
+assert.match(source, /lastInsightsItemId/);
 assert.match(source, /slice\(0, 200\)/);
 assert.match(plugin, /async onDataChanged\(\)[\s\S]*VIEW_PREFERENCES_NAME/);
 assert.match(plugin, /applyViewPreferences\(preferences\)/);
