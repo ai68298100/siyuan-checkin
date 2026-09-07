@@ -774,12 +774,12 @@ export default class CheckinPlugin extends Plugin {
         if (!this.quickDialog || this.currentPage !== "today") return "";
         const latest = [...this.store.events]
             .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id))
-            .map((event) => this.store.items.find((item) => item.id === event.itemId && !item.archived))
-            .filter((item): item is CheckinItem => Boolean(item))
-            .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+            .map((event) => ({event, item: this.store.items.find((item) => item.id === event.itemId && !item.archived)}))
+            .filter((entry): entry is {event: CheckinEvent; item: CheckinItem} => Boolean(entry.item))
+            .filter((entry, index, items) => items.findIndex((candidate) => candidate.item.id === entry.item.id) === index)
             .slice(0, 4);
         if (!latest.length) return "";
-        return `<section class="lc-checkin__quick-recent" aria-label="最近记录"><div class="lc-checkin__quick-recent-heading"><strong>最近记录</strong><small>点击再次记录</small></div><div class="lc-checkin__quick-recent-list">${latest.map((item) => `<button type="button" data-quick-recent="${escapeHtml(item.id)}"><span>${escapeHtml(item.icon)}</span><strong>${escapeHtml(item.name)}</strong></button>`).join("")}</div></section>`;
+        return `<section class="lc-checkin__quick-recent" aria-label="最近记录"><div class="lc-checkin__quick-recent-heading"><strong>最近记录</strong><small>点击再次记录</small></div><div class="lc-checkin__quick-recent-list">${latest.map(({event, item}) => { const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"}); const source = HISTORY_SOURCE_LABELS[event.source] || event.source; const meta = `${time} · ${formatNumber(event.value)}${event.unit} · ${source}`; return `<button type="button" data-quick-recent="${escapeHtml(item.id)}" title="${escapeHtml(event.note ? `${meta} · ${event.note}` : meta)}"><span>${escapeHtml(item.icon)}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(meta)}</small></button>`; }).join("")}</div></section>`;
     }
 
     private renderInsights(): string {
