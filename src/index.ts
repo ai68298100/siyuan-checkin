@@ -1,6 +1,6 @@
 import {Dialog, getFrontend, openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
-import {buildSummaryContext, getEventsInRange} from "./analytics";
+import {buildCustomSummaryContext, buildSummaryContext, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
@@ -135,6 +135,7 @@ export default class CheckinPlugin extends Plugin {
     private focusAdapters = new Map<string, FocusAdapter>();
     private summaryProviders = new Map<string, SummaryProvider>();
     private summaryRange: SummaryRange = "week";
+    private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
     private storageReady = false;
     private activeFocusAdapter?: FocusAdapter;
@@ -977,7 +978,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderSummary(): string {
-        const summary = buildSummaryContext(this.store, this.summaryRange);
+        const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange) : buildSummaryContext(this.store, this.summaryRange);
         const rows = summary.items.length ? summary.items.map((item) => {
             const quotaMeta = item.quota
                 ? `${item.quota.completedPeriods}/${item.quota.elapsedPeriods} 个已结束周期 · 当前 ${item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : "暂无"}`
@@ -986,8 +987,9 @@ export default class CheckinPlugin extends Plugin {
         }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
         const providerButton = this.summaryProviders.size ? `<button class="lc-checkin__text-button" type="button" data-action="generate-summary">生成智能总结</button>` : "";
         const generated = this.summaryText ? `<div class="lc-checkin__summary-text">${escapeHtml(this.summaryText)}</div>` : "";
-        const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? "日" : range === "month" ? "月" : "周"}</button>`).join("");
-        return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">总结</h1></header><div class="lc-checkin__range-tabs">${tabs}</div><div class="lc-checkin__summary-total">${summary.totalEvents} 条记录 · ${summary.completedItems}/${summary.scheduledItems} 项有完成</div><main class="lc-checkin__history-list">${rows}</main>${generated}${providerButton}</div>`;
+        const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!this.summaryCustomRange && this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? "日" : range === "month" ? "月" : "周"}</button>`).join("");
+        const custom = `<form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form>`;
+        return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">总结</h1></header><div class="lc-checkin__range-tabs">${tabs}</div>${custom}<div class="lc-checkin__summary-total">${summary.totalEvents} 条记录 · ${summary.completedItems}/${summary.scheduledItems} 项有完成</div><main class="lc-checkin__history-list">${rows}</main>${generated}${providerButton}</div>`;
     }
 
     private renderArchived(): string {
@@ -1394,6 +1396,7 @@ export default class CheckinPlugin extends Plugin {
             const range = button.dataset.summaryRange;
             if (range === "day" || range === "week" || range === "month") {
                 this.summaryRange = range;
+                this.summaryCustomRange = undefined;
                 this.summaryText = undefined;
                 this.summaryRequestId += 1;
                 this.render();
@@ -1677,6 +1680,20 @@ export default class CheckinPlugin extends Plugin {
             updateConditionalFields(true);
             ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
         }));
+        root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget as HTMLFormElement);
+            const startDate = String(data.get("customStartDate") || "");
+            const endDate = String(data.get("customEndDate") || "");
+            if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) {
+                showMessage("请选择有效的日期范围");
+                return;
+            }
+            this.summaryCustomRange = {startDate, endDate};
+            this.summaryText = undefined;
+            this.summaryRequestId += 1;
+            this.render();
+        });
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
         root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.addEventListener("change", () => updateConditionalFields(false));

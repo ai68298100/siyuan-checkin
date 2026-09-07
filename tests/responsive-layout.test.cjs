@@ -18,5 +18,7 @@ assert.match(styles, /\.lc-checkin__item-body\s*\{[\s\S]*max-width:\s*100%;[\s\S
     "item bodies must stay shrinkable inside narrow docks");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
+assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
+    "custom summary dates need a compact responsive control");
 
 console.log("Responsive surface layout checks passed.");
