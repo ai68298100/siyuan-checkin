@@ -1108,15 +1108,13 @@ export default class CheckinPlugin extends Plugin {
             searchTimer = window.setTimeout(() => {
                 this.todayQuery = value;
                 this.render();
-                const nextSearch = root.querySelector<HTMLInputElement>("[data-today-search]");
-                nextSearch?.focus();
-                nextSearch?.setSelectionRange(value.length, value.length);
+                this.focusTodaySearch(value.length);
             }, 120);
         });
         root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
             this.todayQuery = "";
             this.render();
-            root.querySelector<HTMLInputElement>("[data-today-search]")?.focus();
+            this.focusTodaySearch();
         }));
         root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
@@ -2088,6 +2086,15 @@ export default class CheckinPlugin extends Plugin {
             showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
         });
         return write;
+    }
+
+    private focusTodaySearch(selection?: number) {
+        window.setTimeout(() => {
+            const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
+            const input = roots.map((element) => element.querySelector<HTMLInputElement>("[data-today-search]")).find((candidate): candidate is HTMLInputElement => Boolean(candidate));
+            input?.focus();
+            if (selection !== undefined) input?.setSelectionRange(selection, selection);
+        }, 0);
     }
 
     private applyViewPreferences(preferences: CheckinViewPreferences) {
