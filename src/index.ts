@@ -105,6 +105,9 @@ interface RecentRecord {
     eventId: string;
     itemId: string;
     message: string;
+    progress: number;
+    target: number;
+    unit: string;
 }
 
 interface LockManagerLike {
@@ -844,7 +847,7 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__group-items" ${this.completedCollapsed ? "hidden" : ""}>${completedItems.map((item) => this.renderItem(item, now)).join("")}</div>
             </section>` : ""}`;
         const recentRecord = this.recentRecord ? `<div class="lc-checkin__recent-record" role="status" aria-live="polite">
-            <span><i>✓</i>${escapeHtml(this.recentRecord.message)}</span>
+            <span><i>✓</i><strong>${escapeHtml(this.recentRecord.message)}</strong><small>当前 ${escapeHtml(formatNumber(this.recentRecord.progress))}/${escapeHtml(formatNumber(this.recentRecord.target))} ${escapeHtml(this.recentRecord.unit)}</small></span>
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
         const saveStatus = this.renderSaveStatus();
@@ -2065,7 +2068,14 @@ export default class CheckinPlugin extends Plugin {
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item: current, event});
-        this.setRecentRecord({eventId: event.id, itemId: current.id, message: `已记录 ${current.name} +${formatNumber(value)} ${revision.unit || "次"}`});
+        this.setRecentRecord({
+            eventId: event.id,
+            itemId: current.id,
+            message: `已记录 ${current.name} +${formatNumber(value)} ${revision.unit || "次"}`,
+            progress: getProgress(this.store, current, actionDate),
+            target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
+            unit: revision.unit || "次",
+        });
         this.renderBackgroundUpdate();
         return {...event};
     }

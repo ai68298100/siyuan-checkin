@@ -51,6 +51,8 @@ assert.match(source, /toLocaleTimeString\("zh-CN", \{hour: "2-digit", minute: "2
     "recent records should expose the latest record time");
 assert.match(source, /HISTORY_SOURCE_LABELS\[event\.source\]/,
     "recent records should expose the latest record source");
+assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/,
+    "record feedback should expose current progress");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
