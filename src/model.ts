@@ -1,4 +1,5 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
+import {normalizeQuota} from "./quota";
 
 export const STORE_VERSION = 2 as const;
 
@@ -410,7 +411,7 @@ function normalizeEventTombstones(value: unknown): CheckinEventTombstone[] {
 
 function normalizeSchedule(value: unknown): CheckinSchedule {
     const schedule = isRecord(value) ? value : {};
-    const type = schedule.type === "weekly" || schedule.type === "workdays" || schedule.type === "custom" || schedule.type === "interval" ? schedule.type : "daily";
+    const type = schedule.type === "weekly" || schedule.type === "workdays" || schedule.type === "custom" || schedule.type === "interval" || schedule.type === "quota" ? schedule.type : "daily";
     const weekdays = Array.isArray(schedule.weekdays)
         ? [...new Set(schedule.weekdays.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))].sort((left, right) => left - right)
         : undefined;
@@ -418,6 +419,10 @@ function normalizeSchedule(value: unknown): CheckinSchedule {
         const numericInterval = Number(schedule.intervalDays ?? schedule.everyDays ?? schedule.interval);
         const intervalDays = Number.isFinite(numericInterval) ? Math.max(1, Math.min(3650, Math.round(numericInterval))) : 1;
         return {type, intervalDays, ...(isValidDateKey(schedule.anchorDate) ? {anchorDate: schedule.anchorDate} : {})};
+    }
+    if (type === "quota") {
+        const quota = normalizeQuota(schedule.quota);
+        return quota ? {type, quota} : {type: "daily"};
     }
     return {type, weekdays: type === "daily" || type === "workdays" ? undefined : weekdays?.length ? weekdays : [1, 2, 3, 4, 5]};
 }
@@ -481,7 +486,7 @@ function migrateArchivedItem(item: CheckinItem): CheckinItem {
 }
 
 function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
-    return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined};
+    return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined, ...(schedule.quota ? {quota: {...schedule.quota}} : {})};
 }
 
 function localCalendarDayNumber(key: string): number {

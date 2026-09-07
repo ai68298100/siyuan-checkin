@@ -9,7 +9,7 @@ process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-core-"));
 
-for (const filename of ["model.ts", "analytics.ts", "export.ts"]) {
+for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "types.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {
@@ -23,6 +23,10 @@ for (const filename of ["model.ts", "analytics.ts", "export.ts"]) {
 const model = require(path.join(outputRoot, "model.js"));
 const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
+const quota = require(path.join(outputRoot, "quota.js"));
+
+assert.deepEqual(quota.normalizeQuota({period: "week", amount: "3", countMode: "dates"}), {period: "week", amount: 3, countMode: "dates", weekStartsOn: 1});
+assert.equal(quota.normalizeQuota({period: "year", amount: 3, countMode: "dates"}), undefined);
 
 const item = {
     id: "reading",

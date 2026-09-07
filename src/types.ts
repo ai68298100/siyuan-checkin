@@ -6,7 +6,17 @@ export type CheckinTimeSlot = "any" | "morning" | "afternoon" | "evening";
 
 export type CheckinItemSortMode = "manual" | "group" | "priority" | "createdAt" | "updatedAt" | "name";
 
-export type ScheduleType = "daily" | "weekly" | "workdays" | "custom" | "interval";
+export type ScheduleType = "daily" | "weekly" | "workdays" | "custom" | "interval" | "quota";
+
+export type QuotaPeriod = "week" | "month";
+export type QuotaCountMode = "dates" | "value";
+
+export interface CheckinQuota {
+    period: QuotaPeriod;
+    amount: number;
+    countMode: QuotaCountMode;
+    weekStartsOn?: 1;
+}
 
 export interface CheckinSchedule {
     type: ScheduleType;
@@ -15,6 +25,7 @@ export interface CheckinSchedule {
     intervalDays?: number;
     /** Inclusive local date used as the first scheduled occurrence. */
     anchorDate?: string;
+    quota?: CheckinQuota;
 }
 
 export interface CheckinItemRevision {
