@@ -113,6 +113,7 @@ export default class CheckinPlugin extends Plugin {
     private tabElement?: HTMLElement;
     private quickDialog?: Dialog;
     private quickDialogElement?: HTMLElement;
+    private quickDialogViewportCleanup?: () => void;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
     private isMobileFrontend = false;
@@ -615,6 +616,7 @@ export default class CheckinPlugin extends Plugin {
         }
         this.quickDialog = dialog;
         this.quickDialogElement = root;
+        this.bindQuickDialogViewport(dialog);
         this.renderInto(root);
     }
 
@@ -629,6 +631,8 @@ export default class CheckinPlugin extends Plugin {
 
     private handleQuickDialogDestroyed(dialog: Dialog) {
         if (this.quickDialog !== dialog) return;
+        this.quickDialogViewportCleanup?.();
+        this.quickDialogViewportCleanup = undefined;
         this.quickDialog = undefined;
         this.quickDialogElement = undefined;
         if (this.disposed || this.disposing) return;
@@ -637,6 +641,35 @@ export default class CheckinPlugin extends Plugin {
         this.editingFingerprint = undefined;
         this.render();
         void this.reconcileStore();
+    }
+
+    private bindQuickDialogViewport(dialog: Dialog) {
+        if (!this.isMobileFrontend) return;
+        const viewport = window.visualViewport;
+        const container = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
+        if (!viewport || !container) return;
+        let frame = 0;
+        const sync = () => {
+            if (frame) return;
+            frame = window.requestAnimationFrame(() => {
+                frame = 0;
+                if (this.quickDialog !== dialog) return;
+                const height = Math.max(280, Math.floor(viewport.height - 16));
+                container.style.height = `${height}px`;
+                container.style.maxHeight = `${height}px`;
+            });
+        };
+        viewport.addEventListener("resize", sync);
+        viewport.addEventListener("scroll", sync);
+        window.addEventListener("resize", sync);
+        sync();
+        this.quickDialogViewportCleanup = () => {
+            viewport.removeEventListener("resize", sync);
+            viewport.removeEventListener("scroll", sync);
+            window.removeEventListener("resize", sync);
+            if (frame) window.cancelAnimationFrame(frame);
+            frame = 0;
+        };
     }
 
     private getTabId(): string {
