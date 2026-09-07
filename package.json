@@ -7,7 +7,7 @@
     "dev": "webpack --config webpack.config.js --mode development",
     "build": "webpack --config webpack.config.js --mode production",
     "check": "tsc --noEmit",
-    "test": "pnpm run check && node tests/model.test.cjs"
+    "test": "pnpm run check && node tests/model.test.cjs && node tests/rules.test.cjs && node tests/interval-editor.test.cjs"
   },
   "keywords": [
     "siyuan",

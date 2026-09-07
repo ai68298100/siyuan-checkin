@@ -182,7 +182,8 @@ export function getEventDateKey(event: CheckinEvent): string {
 }
 
 export function isScheduledToday(item: CheckinItem, date = new Date()): boolean {
-    const schedule = getItemRevisionForDate(item, date).schedule;
+    const revision = getItemRevisionForDate(item, date);
+    const schedule = revision.schedule;
     if (schedule.type === "daily") {
         return true;
     }
@@ -192,6 +193,11 @@ export function isScheduledToday(item: CheckinItem, date = new Date()): boolean 
     }
     if (schedule.type === "weekly") {
         return (schedule.weekdays || []).includes(date.getDay());
+    }
+    if (schedule.type === "interval") {
+        const anchorDate = schedule.anchorDate || revision.effectiveDate || item.createdDate;
+        const difference = localCalendarDayNumber(dateKey(date)) - localCalendarDayNumber(anchorDate);
+        return difference >= 0 && difference % (schedule.intervalDays || 1) === 0;
     }
     return (schedule.weekdays || []).includes(date.getDay());
 }
@@ -404,14 +410,16 @@ function normalizeEventTombstones(value: unknown): CheckinEventTombstone[] {
 
 function normalizeSchedule(value: unknown): CheckinSchedule {
     const schedule = isRecord(value) ? value : {};
-    const type = schedule.type === "weekly" || schedule.type === "workdays" || schedule.type === "custom" ? schedule.type : "daily";
+    const type = schedule.type === "weekly" || schedule.type === "workdays" || schedule.type === "custom" || schedule.type === "interval" ? schedule.type : "daily";
     const weekdays = Array.isArray(schedule.weekdays)
         ? [...new Set(schedule.weekdays.map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))].sort((left, right) => left - right)
         : undefined;
-    return {
-        type,
-        weekdays: type === "daily" || type === "workdays" ? undefined : weekdays?.length ? weekdays : [1, 2, 3, 4, 5],
-    };
+    if (type === "interval") {
+        const numericInterval = Number(schedule.intervalDays ?? schedule.everyDays ?? schedule.interval);
+        const intervalDays = Number.isFinite(numericInterval) ? Math.max(1, Math.min(3650, Math.round(numericInterval))) : 1;
+        return {type, intervalDays, ...(isValidDateKey(schedule.anchorDate) ? {anchorDate: schedule.anchorDate} : {})};
+    }
+    return {type, weekdays: type === "daily" || type === "workdays" ? undefined : weekdays?.length ? weekdays : [1, 2, 3, 4, 5]};
 }
 
 function normalizeRevisions(value: unknown, fallback: CheckinItemRevision): CheckinItemRevision[] {
@@ -474,6 +482,11 @@ function migrateArchivedItem(item: CheckinItem): CheckinItem {
 
 function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
     return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined};
+}
+
+function localCalendarDayNumber(key: string): number {
+    const [year, month, day] = key.split("-").map(Number);
+    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
 function cloneRevision(revision: CheckinItemRevision): CheckinItemRevision {
