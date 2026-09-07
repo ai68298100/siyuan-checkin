@@ -1818,6 +1818,22 @@
     border-top: 1px solid var(--b3-border-color);
 }
 
+.lc-checkin__quota-schedule {
+    display: flex;
+    gap: 8px;
+    flex-direction: column;
+    padding: 9px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, var(--b3-border-color));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--lc-checkin-accent-soft) 55%, var(--b3-theme-surface));
+}
+
+.lc-checkin__quota-help {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    line-height: 1.4;
+}
+
 .lc-checkin__field-action {
     align-self: flex-start;
     min-height: 28px;

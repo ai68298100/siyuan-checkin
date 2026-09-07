@@ -956,14 +956,15 @@ export default class CheckinPlugin extends Plugin {
         const revision = getItemRevisionForDate(item, date);
         const progress = getProgress(this.store, item, date);
         const complete = isComplete(this.store, item, date);
-        const percent = Math.min(100, Math.round((progress / revision.target) * 100));
-        const isBinary = revision.kind === "binary";
+        const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
+        const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
+        const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
         const canFocus = !isBinary && Boolean(this.findFocusAdapter(item, date));
         const recordStep = getRecordStep(revision.kind, revision.unit);
         const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
-        const scheduleMeta = revision.schedule.type === "interval" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
-        const meta = (isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.unit || "次"}` : ""}`) + scheduleMeta;
+        const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
+        const meta = (isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
         const unit = revision.unit || "次";
@@ -1005,6 +1006,9 @@ export default class CheckinPlugin extends Plugin {
         const weekdays = schedule.weekdays || [1, 2, 3, 4, 5, 6, 0];
         const intervalDays = schedule.intervalDays || 2;
         const anchorDate = schedule.anchorDate || item?.createdDate || dateKey(currentCalendarDate());
+        const quotaPeriod = schedule.type === "quota" ? schedule.quota?.period || "week" : "week";
+        const quotaAmount = schedule.type === "quota" ? schedule.quota?.amount || 3 : 3;
+        const quotaCountMode = schedule.type === "quota" ? schedule.quota?.countMode || "dates" : "dates";
         const selectedIcon = item?.icon || "✓";
         const selectedKind = item?.kind || "binary";
         const selectedKindOption = KIND_OPTIONS.find((option) => option.kind === selectedKind) || KIND_OPTIONS[0];
@@ -1089,6 +1093,14 @@ export default class CheckinPlugin extends Plugin {
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
                                 <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">今天</button></label>
+                            </div>
+                            <div class="lc-checkin__quota-schedule" data-quota-schedule hidden>
+                                <div class="lc-checkin__form-row">
+                                    <label class="lc-checkin__field"><span>配额周期</span><select name="quotaPeriod"><option value="week" ${quotaPeriod === "week" ? "selected" : ""}>每周</option><option value="month" ${quotaPeriod === "month" ? "selected" : ""}>每月</option></select></label>
+                                    <label class="lc-checkin__field"><span data-quota-amount-label>周期配额</span><input name="quotaAmount" type="number" min="1" step="1" value="${formatNumber(quotaAmount)}" /></label>
+                                </div>
+                                <label class="lc-checkin__field"><span>计算方式</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>按完成天数</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>按记录数值</option></select></label>
+                                <small class="lc-checkin__quota-help" data-quota-help>同一自然日多次记录只计 1 天，适合“每周运动 3 天”。</small>
                             </div>
                         </div>
                     </details>
@@ -1554,6 +1566,7 @@ export default class CheckinPlugin extends Plugin {
             const valueFields = root.querySelector<HTMLElement>("[data-value-fields]");
             const weekdays = root.querySelector<HTMLElement>("[data-weekdays]");
             const intervalSchedule = root.querySelector<HTMLElement>("[data-interval-schedule]");
+            const quotaSchedule = root.querySelector<HTMLElement>("[data-quota-schedule]");
             if (valueFields) {
                 valueFields.hidden = kind === "binary";
             }
@@ -1566,6 +1579,17 @@ export default class CheckinPlugin extends Plugin {
                 }
             }
             if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
+            if (quotaSchedule) quotaSchedule.hidden = scheduleSelect?.value !== "quota";
+            const quotaMode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value || "dates";
+            const quotaAmount = root.querySelector<HTMLInputElement>("input[name='quotaAmount']");
+            const quotaAmountLabel = root.querySelector<HTMLElement>("[data-quota-amount-label]");
+            const quotaHelp = root.querySelector<HTMLElement>("[data-quota-help]");
+            if (quotaAmount) {
+                quotaAmount.min = quotaMode === "dates" ? "1" : String(getEditorStep(kind, unitInput?.value || kindOption.defaultUnit));
+                quotaAmount.step = quotaMode === "dates" ? "1" : String(getEditorStep(kind, unitInput?.value || kindOption.defaultUnit));
+            }
+            if (quotaAmountLabel) quotaAmountLabel.textContent = quotaMode === "dates" ? "周期天数" : `周期${getTargetLabel(kind).replace(/^目标/, "")}`;
+            if (quotaHelp) quotaHelp.textContent = quotaMode === "dates" ? "同一自然日多次记录只计 1 天，适合“每周运动 3 天”。" : "按当前单位累加周期内记录值，适合“每月阅读 600 分钟”。";
             const help = root.querySelector<HTMLElement>("[data-kind-help]");
             if (help) help.textContent = kindOption.description;
             const targetLabel = root.querySelector<HTMLElement>("[data-target-label]");
@@ -1604,6 +1628,7 @@ export default class CheckinPlugin extends Plugin {
         }));
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
+        root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.addEventListener("change", () => updateConditionalFields(false));
         root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
             const anchor = root.querySelector<HTMLInputElement>("input[name='anchorDate']");
             if (!anchor) return;
@@ -1741,15 +1766,21 @@ export default class CheckinPlugin extends Plugin {
         const requestedKind = String(data.get("kind") || "binary");
         const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
         const requestedSchedule = String(data.get("schedule") || "daily");
-        const scheduleType: ScheduleType = ["daily", "workdays", "weekly", "custom", "interval"].includes(requestedSchedule) ? requestedSchedule as ScheduleType : "daily";
+        const scheduleType: ScheduleType = ["daily", "workdays", "weekly", "custom", "interval", "quota"].includes(requestedSchedule) ? requestedSchedule as ScheduleType : "daily";
         const checkedWeekdays = data.getAll("weekday").map((value) => Number(value));
         const requestedInterval = Number(data.get("intervalDays"));
         const intervalDaysValue = Number.isFinite(requestedInterval) ? Math.max(1, Math.min(3650, Math.round(requestedInterval))) : 1;
         const requestedAnchor = String(data.get("anchorDate") || "");
         const anchorDateValue = isValidLocalDateInput(requestedAnchor) ? requestedAnchor : submittedAt.localDate;
+        const requestedQuotaPeriod = data.get("quotaPeriod") === "month" ? "month" : "week";
+        const requestedQuotaMode = data.get("quotaCountMode") === "value" ? "value" : "dates";
+        const requestedQuotaAmount = Number(data.get("quotaAmount"));
+        const quotaAmountValue = Number.isFinite(requestedQuotaAmount) ? Math.max(requestedQuotaMode === "dates" ? 1 : 0.1, requestedQuotaAmount) : 0;
         const schedule: CheckinSchedule = scheduleType === "interval"
             ? {type: scheduleType, intervalDays: intervalDaysValue, anchorDate: anchorDateValue}
-            : {type: scheduleType, weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays};
+            : scheduleType === "quota"
+                ? {type: scheduleType, quota: {period: requestedQuotaPeriod, amount: Math.round(quotaAmountValue * 100) / 100, countMode: requestedQuotaMode, ...(requestedQuotaPeriod === "week" ? {weekStartsOn: 1 as const} : {})}}
+                : {type: scheduleType, weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays};
         const existing = editingId ? this.store.items.find((item) => item.id === editingId) : undefined;
         if (editingId && (!existing || !expectedFingerprint || this.itemFingerprint(existing) !== expectedFingerprint)) {
             showMessage("[小驴打卡] 项目已在其他窗口更新，本次编辑未保存");
@@ -1758,6 +1789,10 @@ export default class CheckinPlugin extends Plugin {
         }
         if ((scheduleType === "weekly" || scheduleType === "custom") && checkedWeekdays.length === 0) {
             showMessage("请选择至少一天");
+            return;
+        }
+        if (scheduleType === "quota" && quotaAmountValue <= 0) {
+            showMessage("请输入大于 0 的周期配额");
             return;
         }
         const createdDate = existing?.createdDate || submittedAt.localDate;
@@ -2255,7 +2290,9 @@ function formatNumber(value: number): string {
 }
 
 function formatScheduleLabel(schedule: CheckinSchedule): string {
-    return schedule.type === "interval" ? `每隔 ${schedule.intervalDays || 1} 天` : SCHEDULE_LABELS[schedule.type];
+    if (schedule.type === "interval") return `每隔 ${schedule.intervalDays || 1} 天`;
+    if (schedule.type === "quota" && schedule.quota) return `${schedule.quota.period === "week" ? "每周" : "每月"} ${schedule.quota.amount}${schedule.quota.countMode === "dates" ? "天" : "单位"}`;
+    return SCHEDULE_LABELS[schedule.type];
 }
 
 function getTargetLabel(kind: CheckinKind): string {
