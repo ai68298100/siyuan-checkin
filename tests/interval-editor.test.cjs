@@ -12,5 +12,6 @@ assert.match(source, /scheduleType === "interval"[\s\S]*intervalDays: intervalDa
 assert.match(source, /formatScheduleLabel\(revision\.schedule\)/);
 assert.match(source, /isValidLocalDateInput\(requestedAnchor\)/);
 assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
+assert.match(source, /!weekdays\.querySelector<HTMLInputElement>\("input\[name='weekday'\]:checked"\)/);
 
 console.log("Interval editor structure checks passed.");

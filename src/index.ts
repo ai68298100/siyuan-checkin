@@ -1546,6 +1546,11 @@ export default class CheckinPlugin extends Plugin {
             }
             if (weekdays) {
                 weekdays.hidden = scheduleSelect?.value !== "weekly" && scheduleSelect?.value !== "custom";
+                if (!weekdays.hidden && !weekdays.querySelector<HTMLInputElement>("input[name='weekday']:checked")) {
+                    const today = (new Date().getDay() + 6) % 7;
+                    const fallback = weekdays.querySelector<HTMLInputElement>(`input[name='weekday'][value='${today}']`);
+                    if (fallback) fallback.checked = true;
+                }
             }
             if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
             const help = root.querySelector<HTMLElement>("[data-kind-help]");
