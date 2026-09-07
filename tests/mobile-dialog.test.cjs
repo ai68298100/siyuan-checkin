@@ -17,10 +17,16 @@ const cleanup = source.match(/private handleQuickDialogDestroyed\(dialog: Dialog
 assert.match(cleanup, /if \(this\.quickDialog !== dialog\) return;/, "dialog cleanup must be idempotent");
 assert.match(cleanup, /this\.currentPage = "today";/, "closing the dialog must restore the shared view");
 assert.match(cleanup, /void this\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
+assert.match(source, /data-action=\\?"close-dialog\\?"/,
+    "the dialog content must expose an explicit close action");
+assert.match(source, /private bindDialogClose\(root: HTMLElement\)[\s\S]*this\.closeQuickDialog\(\)/,
+    "the explicit close action must use the shared close path");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
 assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 16px\)/,
     "mobile dialog must follow the visual viewport when the keyboard opens");
+assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
+    "mobile dialog close action must meet a touch-friendly target size");
 
 console.log("mobile dialog lifecycle checks passed");
