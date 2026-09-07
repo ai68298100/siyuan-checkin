@@ -9,6 +9,11 @@ export interface DateRange {
     end: Date;
 }
 
+export interface CustomSummaryRange {
+    startDate: string;
+    endDate: string;
+}
+
 export interface ItemSummary {
     itemId: string;
     name: string;
@@ -67,6 +72,19 @@ export function getEventsInRange(store: CheckinStore, range: SummaryRange, date 
 
 export function buildSummaryContext(store: CheckinStore, range: SummaryRange, date = new Date()): SummaryContext {
     const bounds = getDateRange(range, date);
+    return buildSummaryForBounds(store, range, bounds, date);
+}
+
+export function buildCustomSummaryContext(store: CheckinStore, range: CustomSummaryRange, asOf = new Date()): SummaryContext {
+    const start = dateFromKey(range.startDate);
+    const end = dateFromKey(range.endDate);
+    if (!start || !end || start > end) {
+        return buildSummaryContext(store, "day", asOf);
+    }
+    return buildSummaryForBounds(store, "day", {start, end: addDays(end, 1)}, asOf);
+}
+
+function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds: DateRange, date: Date): SummaryContext {
     const elapsedBounds = {...bounds, end: getElapsedEnd(bounds, date)};
     const itemIds = new Set(store.items.map((item) => item.id));
     const events = getEventsInRange(store, range, date).filter((event) => itemIds.has(event.itemId));
@@ -81,6 +99,13 @@ export function buildSummaryContext(store: CheckinStore, range: SummaryRange, da
         completedItems: items.filter((item) => item.completedDays > 0 || Boolean(item.quota?.completedPeriods)).length,
         scheduledItems: items.filter((item) => item.scheduledDays > 0 || Boolean(item.quota?.elapsedPeriods)).length,
     };
+}
+
+function dateFromKey(value: string): Date | undefined {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return dateKey(date) === value ? date : undefined;
 }
 
 function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): ItemSummary {
