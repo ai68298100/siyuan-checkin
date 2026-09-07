@@ -842,7 +842,7 @@ export default class CheckinPlugin extends Plugin {
             <span><i>✓</i>${escapeHtml(this.recentRecord.message)}</span>
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
-        const saveStatus = this.saveState === "saving" ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>` : this.saveState === "error" ? `<div class="lc-checkin__save-status is-error" role="alert"><span>保存失败</span><button type="button" data-action="retry-save">重试保存</button></div>` : "";
+        const saveStatus = this.renderSaveStatus();
         return `<div class="lc-checkin">
             <header class="lc-checkin__header">
                 <div>
@@ -872,6 +872,14 @@ export default class CheckinPlugin extends Plugin {
             </div>` : ""}
             <main class="lc-checkin__list">${list}</main>
         </div>`;
+    }
+
+    private renderSaveStatus(): string {
+        return this.saveState === "saving"
+            ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>`
+            : this.saveState === "error"
+                ? `<div class="lc-checkin__save-status is-error" role="alert"><span>保存失败</span><button type="button" data-action="retry-save">重试保存</button></div>`
+                : "";
     }
 
     private renderTodayGroups(items: CheckinItem[], date: Date): string {
@@ -1169,6 +1177,7 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? "保存修改" : "保存打卡项"}</button>
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? "恢复打卡项" : "暂时归档"}</button>` : ""}
+                    ${this.renderSaveStatus()}
                 </div>
             </form>
         </div>`;
@@ -1551,6 +1560,9 @@ export default class CheckinPlugin extends Plugin {
 
     private bindEditor(root: HTMLElement) {
         this.bindDialogClose(root);
+        root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
+            void this.retrySave();
+        });
         const ensureEditorVisible = (element?: HTMLElement | null) => {
             if (!element) return;
             window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
