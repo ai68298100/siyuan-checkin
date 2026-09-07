@@ -23,6 +23,7 @@ const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const API_VERSION = 3;
+const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 const KIND_LABELS: Record<CheckinKind, string> = {
@@ -360,13 +361,13 @@ export default class CheckinPlugin extends Plugin {
             const now = currentCalendarDate();
             const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
             const summaryItemIds = new Set(context.items.map((item) => item.itemId));
-            const output = await provider.summarize({
+            const output = await withTimeout(provider.summarize({
                 range,
                 ...(customRange ? {customRange} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
                 events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
-            });
+            }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
             return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
         };
         return {
@@ -1543,13 +1544,13 @@ export default class CheckinPlugin extends Plugin {
         const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
         const summaryItemIds = new Set(context.items.map((item) => item.itemId));
         try {
-            const summaryText = await provider.summarize({
+            const summaryText = await withTimeout(provider.summarize({
                 range,
                 ...(customRange ? {customRange} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
                 events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
-            });
+            }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
             if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "summary" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
@@ -2424,6 +2425,19 @@ function escapeHtml(value: string): string {
             case "\"": return "&quot;";
             default: return character;
         }
+    });
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then((value) => {
+            window.clearTimeout(timer);
+            resolve(value);
+        }, (error) => {
+            window.clearTimeout(timer);
+            reject(error);
+        });
     });
 }
 
