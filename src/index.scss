@@ -130,6 +130,8 @@
     width: 100%;
     height: 100%;
     min-height: 280px;
+    container-name: lc-checkin;
+    container-type: inline-size;
     overflow: auto;
     box-sizing: border-box;
     padding: 20px 18px 14px;
@@ -656,9 +658,12 @@
     display: flex;
     align-items: center;
     gap: 5px;
+    min-width: 0;
 }
 
 .lc-checkin__item-name {
+    flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     color: var(--b3-theme-on-background);
     font-size: 14px;
@@ -849,6 +854,85 @@
         color: var(--b3-theme-on-background);
         background: var(--b3-theme-background);
         font-size: 11px;
+    }
+}
+
+// A dock can be narrow while the SiYuan window remains wide. Container
+// queries keep each surface readable when its own available width changes.
+@container lc-checkin (max-width: 560px) {
+    .lc-checkin {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .lc-checkin__item {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        grid-template-areas: "icon body" "icon action";
+        align-items: start;
+        gap: 7px;
+        padding: 9px;
+    }
+
+    .lc-checkin__item-icon {
+        grid-area: icon;
+    }
+
+    .lc-checkin__item-body {
+        grid-area: body;
+        width: 100%;
+    }
+
+    .lc-checkin__item-topline {
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .lc-checkin__item-name {
+        flex: 1 1 8em;
+    }
+
+    .lc-checkin__item-action {
+        grid-area: action;
+        justify-content: flex-start;
+        max-width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .lc-checkin__quick-button {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .lc-checkin__exact-entry {
+        grid-column: 2;
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+
+    .lc-checkin__header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 5px;
+    }
+}
+
+@container lc-checkin (max-width: 360px) {
+    .lc-checkin__item {
+        grid-template-columns: 36px minmax(0, 1fr);
+        padding: 8px;
+    }
+
+    .lc-checkin__item-icon {
+        width: 34px;
+        height: 34px;
+    }
+
+    .lc-checkin__item-action .lc-checkin__quick-button {
+        flex: 1 1 auto;
     }
 }
 
