@@ -56,6 +56,7 @@ const SCHEDULE_LABELS: Record<ScheduleType, string> = {
     workdays: "工作日",
     weekly: "每周指定日",
     custom: "自定义日",
+    interval: "每隔 N 天",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
@@ -886,7 +887,8 @@ export default class CheckinPlugin extends Plugin {
         const recordStep = getRecordStep(revision.kind, revision.unit);
         const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
-        const meta = isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.unit || "次"}` : ""}`;
+        const scheduleMeta = revision.schedule.type === "interval" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
+        const meta = (isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(revision.target)} ${revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.unit || "次"}` : ""}`) + scheduleMeta;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
         const unit = revision.unit || "次";
@@ -926,6 +928,8 @@ export default class CheckinPlugin extends Plugin {
         const item = this.editingId ? this.store.items.find((candidate) => candidate.id === this.editingId) : undefined;
         const schedule = item?.schedule || {type: "daily" as const};
         const weekdays = schedule.weekdays || [1, 2, 3, 4, 5, 6, 0];
+        const intervalDays = schedule.intervalDays || 2;
+        const anchorDate = schedule.anchorDate || item?.createdDate || dateKey(currentCalendarDate());
         const selectedIcon = item?.icon || "✓";
         const selectedKind = item?.kind || "binary";
         const selectedKindOption = KIND_OPTIONS.find((option) => option.kind === selectedKind) || KIND_OPTIONS[0];
@@ -943,7 +947,7 @@ export default class CheckinPlugin extends Plugin {
             item?.group || "未分组",
             PRIORITY_LABELS[initialPriority],
             initialTimeSlot === "any" ? "" : TIME_SLOT_LABELS[initialTimeSlot],
-            SCHEDULE_LABELS[schedule.type],
+            formatScheduleLabel(schedule),
         ].filter(Boolean).join(" · ");
         const templates = !item ? `<section class="lc-checkin__template-section">
             <div class="lc-checkin__field-heading"><span>从常用打卡开始</span><small>选择后仍可修改</small></div>
@@ -1007,6 +1011,10 @@ export default class CheckinPlugin extends Plugin {
                             </div>
                             <div class="lc-checkin__field"><span>频率</span><select name="schedule">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${label}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
+                            <div class="lc-checkin__form-row" data-interval-schedule hidden>
+                                <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
+                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /></label>
+                            </div>
                         </div>
                     </details>
                 </div>
@@ -1406,12 +1414,14 @@ export default class CheckinPlugin extends Plugin {
             const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
             const valueFields = root.querySelector<HTMLElement>("[data-value-fields]");
             const weekdays = root.querySelector<HTMLElement>("[data-weekdays]");
+            const intervalSchedule = root.querySelector<HTMLElement>("[data-interval-schedule]");
             if (valueFields) {
                 valueFields.hidden = kind === "binary";
             }
             if (weekdays) {
                 weekdays.hidden = scheduleSelect?.value !== "weekly" && scheduleSelect?.value !== "custom";
             }
+            if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
             const help = root.querySelector<HTMLElement>("[data-kind-help]");
             if (help) help.textContent = kindOption.description;
             const targetLabel = root.querySelector<HTMLElement>("[data-target-label]");
@@ -1522,7 +1532,9 @@ export default class CheckinPlugin extends Plugin {
             const priority = normalizePriorityInput(root.querySelector<HTMLSelectElement>("select[name='priority']")?.value || null);
             const timeSlot = normalizeTimeSlotInput(root.querySelector<HTMLSelectElement>("select[name='timeSlot']")?.value || null);
             const schedule = root.querySelector<HTMLSelectElement>("select[name='schedule']")?.value as ScheduleType || "daily";
-            const pieces = [group, PRIORITY_LABELS[priority], timeSlot === "any" ? "" : TIME_SLOT_LABELS[timeSlot], SCHEDULE_LABELS[schedule]].filter(Boolean);
+            const interval = Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1);
+            const scheduleLabel = schedule === "interval" ? `每隔 ${Math.max(1, Math.round(interval))} 天` : SCHEDULE_LABELS[schedule];
+            const pieces = [group, PRIORITY_LABELS[priority], timeSlot === "any" ? "" : TIME_SLOT_LABELS[timeSlot], scheduleLabel].filter(Boolean);
             root.querySelector<HTMLElement>("[data-advanced-summary]")?.replaceChildren(document.createTextNode(pieces.join(" · ")));
         };
         root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("input", updateAdvancedSummary));
@@ -1557,12 +1569,16 @@ export default class CheckinPlugin extends Plugin {
         }
         const requestedKind = String(data.get("kind") || "binary");
         const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
-        const scheduleType = String(data.get("schedule") || "daily") as ScheduleType;
+        const requestedSchedule = String(data.get("schedule") || "daily");
+        const scheduleType: ScheduleType = ["daily", "workdays", "weekly", "custom", "interval"].includes(requestedSchedule) ? requestedSchedule as ScheduleType : "daily";
         const checkedWeekdays = data.getAll("weekday").map((value) => Number(value));
-        const schedule: CheckinSchedule = {
-            type: scheduleType,
-            weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays,
-        };
+        const requestedInterval = Number(data.get("intervalDays"));
+        const intervalDaysValue = Number.isFinite(requestedInterval) ? Math.max(1, Math.min(3650, Math.round(requestedInterval))) : 1;
+        const requestedAnchor = String(data.get("anchorDate") || "");
+        const anchorDateValue = isValidLocalDateInput(requestedAnchor) ? requestedAnchor : submittedAt.localDate;
+        const schedule: CheckinSchedule = scheduleType === "interval"
+            ? {type: scheduleType, intervalDays: intervalDaysValue, anchorDate: anchorDateValue}
+            : {type: scheduleType, weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays};
         const existing = editingId ? this.store.items.find((item) => item.id === editingId) : undefined;
         if (editingId && (!existing || !expectedFingerprint || this.itemFingerprint(existing) !== expectedFingerprint)) {
             showMessage("[小驴打卡] 项目已在其他窗口更新，本次编辑未保存");
@@ -2034,6 +2050,10 @@ function formatNumber(value: number): string {
     return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
 }
 
+function formatScheduleLabel(schedule: CheckinSchedule): string {
+    return schedule.type === "interval" ? `每隔 ${schedule.intervalDays || 1} 天` : SCHEDULE_LABELS[schedule.type];
+}
+
 function getTargetLabel(kind: CheckinKind): string {
     return kind === "duration" ? "目标时长" : kind === "quantity" ? "目标数量" : kind === "count" ? "目标次数" : "目标值";
 }
@@ -2078,6 +2098,11 @@ function currentCalendarDate(): Date {
 function calendarDateFromKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
     return new Date(year, month - 1, day, 12);
+}
+
+function isValidLocalDateInput(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    return dateKey(calendarDateFromKey(value)) === value;
 }
 
 function formatHistoryDate(value: string): string {
