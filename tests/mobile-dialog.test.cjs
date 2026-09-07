@@ -47,6 +47,10 @@ assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule
     "date quotas must record one qualifying day at a time");
 assert.match(source, /private renderQuickRecent\(\): string/,
     "recent records must be rendered through a dedicated section");
+assert.match(source, /toLocaleTimeString\("zh-CN", \{hour: "2-digit", minute: "2-digit"\}\)/,
+    "recent records should expose the latest record time");
+assert.match(source, /HISTORY_SOURCE_LABELS\[event\.source\]/,
+    "recent records should expose the latest record source");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
