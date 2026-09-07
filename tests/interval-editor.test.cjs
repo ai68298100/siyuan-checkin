@@ -11,5 +11,6 @@ assert.match(source, /intervalSchedule\.hidden = scheduleSelect\?\.value !== "in
 assert.match(source, /scheduleType === "interval"[\s\S]*intervalDays: intervalDaysValue, anchorDate: anchorDateValue/);
 assert.match(source, /formatScheduleLabel\(revision\.schedule\)/);
 assert.match(source, /isValidLocalDateInput\(requestedAnchor\)/);
+assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
 
 console.log("Interval editor structure checks passed.");

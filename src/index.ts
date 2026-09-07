@@ -1556,6 +1556,14 @@ export default class CheckinPlugin extends Plugin {
                 const step = getEditorStep(kind, unitInput?.value || kindOption.defaultUnit);
                 targetInput.min = String(step);
                 targetInput.step = String(step);
+                const current = Number(targetInput.value);
+                if (!Number.isFinite(current) || current < step) {
+                    targetInput.value = String(step);
+                } else {
+                    const aligned = Math.ceil(current / step - 1e-9) * step;
+                    const precision = step < 1 ? 2 : 6;
+                    targetInput.value = String(Number(aligned.toFixed(precision)));
+                }
             }
             if (unitInput) {
                 const oldDefault = KIND_OPTIONS.find((option) => option.kind === previousKind)?.defaultUnit;
