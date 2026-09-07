@@ -52,6 +52,21 @@
     }
 }
 
+.lc-checkin-dialog-host--mobile {
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+
+    .lc-checkin,
+    .lc-checkin__form-scroll {
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .lc-checkin__form-scroll {
+        scroll-padding: 12px 0 calc(72px + env(safe-area-inset-bottom));
+    }
+}
+
 .lc-checkin-tab-host {
     width: 100%;
     height: 100%;
@@ -166,6 +181,10 @@
         }
     }
 
+    .lc-checkin-dialog-host--mobile .lc-checkin {
+        padding-top: calc(18px + env(safe-area-inset-top));
+    }
+
     .lc-checkin-tab-host .lc-checkin__mobile-nav { display: none; }
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
     .lc-checkin__mobile-nav {
@@ -178,6 +197,13 @@
             &.is-selected { color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
             &:last-child { color: var(--lc-checkin-accent); }
         }
+    }
+}
+
+@supports (height: 100dvh) {
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) {
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px);
     }
 }
 
