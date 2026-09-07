@@ -27,6 +27,8 @@ assert.match(source, /viewport\.addEventListener\("resize", sync\)[\s\S]*viewpor
     "keyboard and rotation viewport changes must trigger a size sync");
 assert.match(source, /this\.quickDialogViewportCleanup\?\.\(\);[\s\S]*this\.quickDialogViewportCleanup = undefined;/,
     "viewport listeners must be removed when the dialog closes");
+assert.match(source, /scrollIntoView\(\{behavior: "smooth", block: "center"/,
+    "editor actions should keep the active control visible on mobile");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");

@@ -1456,6 +1456,10 @@ export default class CheckinPlugin extends Plugin {
 
     private bindEditor(root: HTMLElement) {
         this.bindDialogClose(root);
+        const ensureEditorVisible = (element?: HTMLElement | null) => {
+            if (!element) return;
+            window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
+        };
         let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || ICON_GROUPS[0].id;
         const selectIcon = (icon: string) => {
             root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
@@ -1585,7 +1589,10 @@ export default class CheckinPlugin extends Plugin {
             }
             previousKind = kind;
         };
-        root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => updateConditionalFields(true)));
+        root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
+            updateConditionalFields(true);
+            ensureEditorVisible(input.closest(".lc-checkin__kind-option"));
+        }));
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
         root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
@@ -1594,6 +1601,7 @@ export default class CheckinPlugin extends Plugin {
             anchor.value = dateKey(new Date());
             anchor.dispatchEvent(new Event("change", {bubbles: true}));
             updateAdvancedSummary();
+            ensureEditorVisible(anchor);
         });
         bindUnitOptions();
         root.querySelectorAll<HTMLButtonElement>("[data-group-value]").forEach((button) => button.addEventListener("click", () => {
@@ -1676,6 +1684,7 @@ export default class CheckinPlugin extends Plugin {
             if (iconGroup) selectIconGroup(iconGroup.id);
             updateConditionalFields(false);
             updateAdvancedSummary();
+            ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
             root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
         }));
         const updateAdvancedSummary = () => {
