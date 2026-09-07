@@ -14,5 +14,9 @@ assert.match(styles, /\.lc-checkin__item-name\s*\{[\s\S]*flex:\s*1 1 auto;[\s\S]
     "item names must retain a shrinkable flex slot");
 assert.match(styles, /@container\s+lc-checkin\s*\(max-width:\s*360px\)/,
     "very narrow surfaces need a second compact layout tier");
+assert.match(styles, /\.lc-checkin__item-body\s*\{[\s\S]*max-width:\s*100%;[\s\S]*overflow:\s*hidden;/,
+    "item bodies must stay shrinkable inside narrow docks");
+assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
+    "metadata tags must not consume the item name slot");
 
 console.log("Responsive surface layout checks passed.");

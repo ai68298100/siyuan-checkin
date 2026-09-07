@@ -651,6 +651,8 @@
 
 .lc-checkin__item-body {
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     flex: 1;
 }
 
@@ -674,12 +676,16 @@
 
 .lc-checkin__item-tag {
     flex: 0 0 auto;
+    max-width: 32%;
+    overflow: hidden;
     padding: 1px 4px;
     border-radius: 4px;
     color: var(--b3-theme-on-surface-light);
     background: var(--b3-theme-surface-lighter);
     font-size: 9px;
     line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 
     &.is-high {
         color: var(--lc-checkin-accent);
@@ -882,19 +888,30 @@
     .lc-checkin__item-body {
         grid-area: body;
         width: 100%;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .lc-checkin__item-topline {
         position: relative;
         flex-wrap: wrap;
         align-items: center;
+        padding-right: 24px;
     }
 
     .lc-checkin__item-name {
         flex: 1 1 100%;
         width: 100%;
         min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         padding-right: 2px;
+    }
+
+    .lc-checkin__item-tag {
+        max-width: 45%;
     }
 
     .lc-checkin__item-topline .lc-checkin__small-button {
