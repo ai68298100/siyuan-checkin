@@ -858,6 +858,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__count">${completed}<span>/</span>${scheduledItems.length}</span>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">⌁</button>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
@@ -1228,6 +1229,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
+        root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
