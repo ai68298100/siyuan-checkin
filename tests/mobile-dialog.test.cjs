@@ -48,5 +48,7 @@ assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-clos
     "mobile dialog close action must meet a touch-friendly target size");
 assert.match(styles, /\.lc-checkin__quick-recent-list/,
     "recent records need a responsive layout");
+assert.match(styles, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*env\(safe-area-inset-bottom\)/,
+    "mobile editor actions must clear the device safe area");
 
 console.log("mobile dialog lifecycle checks passed");

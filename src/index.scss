@@ -66,6 +66,10 @@
     .lc-checkin__form-scroll {
         scroll-padding: 12px 0 calc(72px + env(safe-area-inset-bottom));
     }
+
+    .lc-checkin--editor .lc-checkin__editor-actions {
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
+    }
 }
 
 .lc-checkin__dialog-close {
@@ -2300,10 +2304,20 @@
     }
 }
 
-.lc-checkin__custom-range-separator {
+    .lc-checkin__custom-range-separator {
     padding-bottom: 8px;
     color: var(--b3-theme-on-surface-light);
     font-size: 11px;
+}
+
+@media (max-width: 380px) {
+    .lc-checkin__custom-range {
+        align-items: stretch;
+        flex-wrap: wrap;
+
+        .lc-checkin__custom-range-separator { display: none; }
+        .lc-checkin__text-button { width: 100%; margin-top: 0; }
+    }
 }
 
 .lc-checkin__insight-picker {
