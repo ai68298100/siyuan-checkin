@@ -1682,6 +1682,8 @@ export default class CheckinPlugin extends Plugin {
             if (iconGroup) selectIconGroup(iconGroup.id);
             updateConditionalFields(false);
             updateAdvancedSummary();
+            const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
+            if (advanced) advanced.open = true;
             ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
             root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
         }));
