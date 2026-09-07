@@ -35,6 +35,8 @@ assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
 assert.match(source, /data-quick-recent/,
     "quick dialog must expose recently recorded items");
+assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
+    "date quotas must record one qualifying day at a time");
 assert.match(source, /private renderQuickRecent\(\): string/,
     "recent records must be rendered through a dedicated section");
 

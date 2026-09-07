@@ -1963,7 +1963,10 @@ export default class CheckinPlugin extends Plugin {
             return;
         }
         const revision = getItemRevisionForDate(item, actionDate);
-        const remaining = Math.max(revision.target - getProgress(this.store, item, actionDate), 0.1);
+        const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
+        const remaining = revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates"
+            ? 1
+            : Math.max(target - getProgress(this.store, item, actionDate), 0.1);
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
