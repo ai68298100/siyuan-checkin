@@ -842,7 +842,7 @@ export default class CheckinPlugin extends Plugin {
             <span><i>✓</i>${escapeHtml(this.recentRecord.message)}</span>
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
-        const saveStatus = this.saveState === "saving" ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>` : this.saveState === "error" ? `<div class="lc-checkin__save-status is-error" role="alert">保存失败，请重试</div>` : "";
+        const saveStatus = this.saveState === "saving" ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>` : this.saveState === "error" ? `<div class="lc-checkin__save-status is-error" role="alert"><span>保存失败</span><button type="button" data-action="retry-save">重试保存</button></div>` : "";
         return `<div class="lc-checkin">
             <header class="lc-checkin__header">
                 <div>
@@ -1194,6 +1194,9 @@ export default class CheckinPlugin extends Plugin {
             this.focusTodaySearch();
         }));
         root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
+        root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
+            void this.retrySave();
+        });
         root.querySelectorAll<HTMLElement>("[data-quick-recent]").forEach((button) => button.addEventListener("click", () => {
             const item = this.store.items.find((candidate) => candidate.id === button.dataset.quickRecent && !candidate.archived);
             if (!item) return;
@@ -2230,6 +2233,15 @@ export default class CheckinPlugin extends Plugin {
             this.renderBackgroundUpdate();
         }, () => undefined);
         return write;
+    }
+
+    private async retrySave() {
+        if (this.saveState !== "error" || this.disposed || !this.storageReady) return;
+        try {
+            await this.persist(this.store);
+        } catch {
+            // persist updates the visible error state and toast.
+        }
     }
 
     private focusTodaySearch(selection?: number) {

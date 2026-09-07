@@ -661,6 +661,10 @@
 }
 
 .lc-checkin__save-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
     margin: 6px 0 0;
     color: var(--b3-theme-on-surface-light);
     font-size: 10px;
@@ -668,6 +672,16 @@
 
     &.is-saving { color: var(--lc-checkin-accent); }
     &.is-error { color: var(--b3-theme-error); }
+
+    button {
+        border: 0;
+        padding: 0;
+        color: inherit;
+        background: transparent;
+        font: inherit;
+        text-decoration: underline;
+        cursor: pointer;
+    }
 }
 
 .lc-checkin__item-topline {
