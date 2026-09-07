@@ -794,7 +794,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["archived", "归档", "▤"]] as const;
+        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
@@ -1456,6 +1456,7 @@ export default class CheckinPlugin extends Plugin {
             if (page === "today") this.showToday();
             else if (page === "history") this.showHistory();
             else if (page === "summary") this.showSummary();
+            else if (page === "insights") this.showInsights();
             else if (page === "archived") this.showArchived();
             else if (page === "add") this.showEditor();
         }));
