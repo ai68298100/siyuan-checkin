@@ -614,7 +614,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private getTabId(): string {
-        return `${this.name || "siyuan-checkin"}-${TAB_TYPE}`;
+        return `${this.name || "siyuan-checkin"}${TAB_TYPE}`;
     }
 
     private renderBackgroundUpdate() {
