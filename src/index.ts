@@ -939,7 +939,12 @@ export default class CheckinPlugin extends Plugin {
 
     private renderSummary(): string {
         const summary = buildSummaryContext(this.store, this.summaryRange);
-        const rows = summary.items.length ? summary.items.map((item) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(item.name)}</strong><span>${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%</span></div>`).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
+        const rows = summary.items.length ? summary.items.map((item) => {
+            const quotaMeta = item.quota
+                ? `${item.quota.completedPeriods}/${item.quota.elapsedPeriods} 个已结束周期 · 当前 ${item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : "暂无"}`
+                : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
+            return `<div class="lc-checkin__history-row"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(quotaMeta)}</span></div>`;
+        }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
         const providerButton = this.summaryProviders.size ? `<button class="lc-checkin__text-button" type="button" data-action="generate-summary">生成智能总结</button>` : "";
         const generated = this.summaryText ? `<div class="lc-checkin__summary-text">${escapeHtml(this.summaryText)}</div>` : "";
         const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? "日" : range === "month" ? "月" : "周"}</button>`).join("");

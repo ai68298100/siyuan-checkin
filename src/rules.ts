@@ -45,6 +45,12 @@ export interface PeriodQuotaProgress {
     contributingDates: string[];
 }
 
+export interface QuotaPeriodBounds {
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+}
+
 export function isScheduled(schedule: CheckinSchedule, date: Date, fallbackAnchorDate?: string): boolean {
     if (schedule.type === "daily") return true;
     if (schedule.type === "workdays") return date.getDay() >= 1 && date.getDay() <= 5;
@@ -110,9 +116,8 @@ export function evaluateQuotaSchedule(schedule: CheckinSchedule, events: readonl
 
 /** Evaluate a future weekly/monthly quota without changing persisted schedule types. */
 export function evaluatePeriodQuota(rule: PeriodQuotaRule, events: readonly CheckinEvent[], itemId: string, date: Date, unit?: string): PeriodQuotaProgress {
-    const periodKey = rule.period === "week" ? weekKey(date) : monthKey(date);
-    const startDate = rule.period === "week" ? periodKey : `${periodKey}-01`;
-    const endDate = rule.period === "week" ? localDateKey(addCalendarDays(dateFromKey(startDate), 6)) : localDateKey(addCalendarDays(dateFromKey(startDate), daysInMonth(dateFromKey(startDate)) - 1));
+    const bounds = getQuotaPeriodBounds(rule.period, date);
+    const {periodKey, startDate, endDate} = bounds;
     const candidates = events
         .filter((event) => event.itemId === itemId && (!unit || event.unit === unit))
         .map((event) => ({event, date: eventDateKey(event)}))
@@ -123,6 +128,15 @@ export function evaluatePeriodQuota(rule: PeriodQuotaRule, events: readonly Chec
     const progress = rule.distinctDates ? contributingDates.length : candidates.reduce((total, entry) => total + entry.event.value, 0);
     const quota = Number.isFinite(rule.quota) && rule.quota > 0 ? rule.quota : 0;
     return {period: rule.period, periodKey, startDate, endDate, quota, progress, remaining: Math.max(0, quota - progress), complete: quota > 0 && progress >= quota, contributingDates};
+}
+
+export function getQuotaPeriodBounds(period: QuotaPeriod, date: Date): QuotaPeriodBounds {
+    const periodKey = period === "week" ? weekKey(date) : monthKey(date);
+    const startDate = period === "week" ? periodKey : `${periodKey}-01`;
+    const endDate = period === "week"
+        ? localDateKey(addCalendarDays(dateFromKey(startDate), 6))
+        : localDateKey(addCalendarDays(dateFromKey(startDate), daysInMonth(dateFromKey(startDate)) - 1));
+    return {periodKey, startDate, endDate};
 }
 
 function eventDateKey(event: CheckinEvent): string | undefined {

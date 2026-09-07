@@ -152,6 +152,11 @@ assert.equal(month.items[0].scheduledDays, 1);
 assert.equal(month.items[0].completionRate, 0);
 const intervalMonth = analytics.buildSummaryContext({version: 2, items: [intervalItem], events: [], eventTombstones: []}, "month", weekDate);
 assert.equal(intervalMonth.items[0].scheduledDays, 3, "September 1, 4, and 7 are due before the September 8 cutoff");
+const quotaSummary = analytics.buildSummaryContext({version: 2, items: [dateQuotaItem], events: dateQuotaEvents, eventTombstones: []}, "month", weekDate);
+assert.equal(quotaSummary.items[0].scheduledDays, 0, "quota items do not become fake daily opportunities");
+assert.equal(quotaSummary.items[0].quota.current.progress, 2);
+assert.equal(quotaSummary.items[0].quota.elapsedPeriods, 1, "the completed prior week enters the quota denominator");
+assert.equal(quotaSummary.items[0].quota.completedPeriods, 0);
 
 const versionedItem = {
     ...item,
