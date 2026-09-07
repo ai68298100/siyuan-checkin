@@ -21,6 +21,12 @@ assert.match(source, /data-action=\\?"close-dialog\\?"/,
     "the dialog content must expose an explicit close action");
 assert.match(source, /private bindDialogClose\(root: HTMLElement\)[\s\S]*this\.closeQuickDialog\(\)/,
     "the explicit close action must use the shared close path");
+assert.match(source, /private bindQuickDialogViewport\(dialog: Dialog\)[\s\S]*visualViewport/,
+    "mobile dialogs must bind to visual viewport changes");
+assert.match(source, /viewport\.addEventListener\("resize", sync\)[\s\S]*viewport\.addEventListener\("scroll", sync\)/,
+    "keyboard and rotation viewport changes must trigger a size sync");
+assert.match(source, /this\.quickDialogViewportCleanup\?\.\(\);[\s\S]*this\.quickDialogViewportCleanup = undefined;/,
+    "viewport listeners must be removed when the dialog closes");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
