@@ -575,16 +575,15 @@ export default class CheckinPlugin extends Plugin {
         this.editingId = undefined;
         this.editingFingerprint = undefined;
         let dialog: Dialog | undefined;
+        const hostClass = this.isMobileFrontend ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
         dialog = new Dialog({
             title: "",
-            content: `<div class="lc-checkin-dialog-host" role="region" aria-label="小驴打卡快速窗口"></div>`,
+            content: `<div class="${hostClass}" role="region" aria-label="小驴打卡快速窗口"></div>`,
             width: this.isMobileFrontend ? "94vw" : "760px",
             height: this.isMobileFrontend ? "88vh" : "82vh",
             disableAnimation: this.isMobileFrontend,
             destroyCallback: () => {
-                if (this.quickDialog !== dialog) return;
-                this.quickDialog = undefined;
-                this.quickDialogElement = undefined;
+                if (dialog) this.handleQuickDialogDestroyed(dialog);
             },
         });
         const root = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
@@ -608,9 +607,23 @@ export default class CheckinPlugin extends Plugin {
 
     private closeQuickDialog() {
         const dialog = this.quickDialog;
+        if (!dialog) return;
+        dialog.destroy();
+        // SiYuan currently invokes destroyCallback synchronously; retain a
+        // fallback so a future asynchronous implementation cannot leave stale refs.
+        this.handleQuickDialogDestroyed(dialog);
+    }
+
+    private handleQuickDialogDestroyed(dialog: Dialog) {
+        if (this.quickDialog !== dialog) return;
         this.quickDialog = undefined;
         this.quickDialogElement = undefined;
-        dialog?.destroy();
+        if (this.disposed || this.disposing) return;
+        this.currentPage = "today";
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        this.render();
+        void this.reconcileStore();
     }
 
     private getTabId(): string {
