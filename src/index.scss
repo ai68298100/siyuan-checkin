@@ -2145,6 +2145,10 @@
     .lc-checkin__insight-stats { gap: 5px; }
     .lc-checkin__insight-stats div { min-height: 58px; }
     .lc-checkin__insight-stats strong { font-size: 16px; }
+    .lc-checkin__insight-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .lc-checkin__insight-picker { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .lc-checkin__insight-picker select { width: 100%; }
+    .lc-checkin__insight-legend { gap: 5px 8px; }
 
     .lc-checkin__history-filter-row {
         grid-template-columns: 1fr;
