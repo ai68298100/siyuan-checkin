@@ -660,6 +660,16 @@
     flex: 1;
 }
 
+.lc-checkin__save-status {
+    margin: 6px 0 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    text-align: right;
+
+    &.is-saving { color: var(--lc-checkin-accent); }
+    &.is-error { color: var(--b3-theme-error); }
+}
+
 .lc-checkin__item-topline {
     display: flex;
     align-items: center;

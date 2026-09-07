@@ -153,6 +153,7 @@ export default class CheckinPlugin extends Plugin {
     private midnightTimer?: number;
     private recentRecord?: RecentRecord;
     private recentRecordTimer?: number;
+    private saveState: "idle" | "saving" | "error" = "idle";
     private disposed = false;
     private disposing = false;
     private acceptingOperations = true;
@@ -834,6 +835,7 @@ export default class CheckinPlugin extends Plugin {
             <span><i>✓</i>${escapeHtml(this.recentRecord.message)}</span>
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
+        const saveStatus = this.saveState === "saving" ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>` : this.saveState === "error" ? `<div class="lc-checkin__save-status is-error" role="alert">保存失败，请重试</div>` : "";
         return `<div class="lc-checkin">
             <header class="lc-checkin__header">
                 <div>
@@ -850,6 +852,7 @@ export default class CheckinPlugin extends Plugin {
             </header>
             <div class="lc-checkin__progress"><span style="width: ${scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0}%"></span></div>
             ${recentRecord}
+            ${saveStatus}
             ${this.renderQuickRecent()}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
@@ -2207,10 +2210,18 @@ export default class CheckinPlugin extends Plugin {
             return Promise.reject(new Error("数据存储尚未就绪"));
         }
         const snapshot = this.cloneStore(store);
+        this.saveState = "saving";
+        this.renderBackgroundUpdate();
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined));
         this.saveQueue = write.catch((error) => {
+            this.saveState = "error";
             showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
+            this.renderBackgroundUpdate();
         });
+        void write.then(() => {
+            if (this.saveState === "saving") this.saveState = "idle";
+            this.renderBackgroundUpdate();
+        }, () => undefined);
         return write;
     }
 

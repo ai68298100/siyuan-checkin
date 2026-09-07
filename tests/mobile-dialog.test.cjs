@@ -48,6 +48,10 @@ assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-clos
     "mobile dialog close action must meet a touch-friendly target size");
 assert.match(styles, /\.lc-checkin__quick-recent-list/,
     "recent records need a responsive layout");
+assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
+    "save state must be explicit for low-network feedback");
+assert.match(source, /正在保存…/,
+    "saving state must be visible to users");
 assert.match(styles, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*env\(safe-area-inset-bottom\)/,
     "mobile editor actions must clear the device safe area");
 
