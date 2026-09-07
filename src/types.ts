@@ -6,11 +6,15 @@ export type CheckinTimeSlot = "any" | "morning" | "afternoon" | "evening";
 
 export type CheckinItemSortMode = "manual" | "group" | "priority" | "createdAt" | "updatedAt" | "name";
 
-export type ScheduleType = "daily" | "weekly" | "workdays" | "custom";
+export type ScheduleType = "daily" | "weekly" | "workdays" | "custom" | "interval";
 
 export interface CheckinSchedule {
     type: ScheduleType;
     weekdays?: number[];
+    /** Number of local calendar days between scheduled occurrences. */
+    intervalDays?: number;
+    /** Inclusive local date used as the first scheduled occurrence. */
+    anchorDate?: string;
 }
 
 export interface CheckinItemRevision {

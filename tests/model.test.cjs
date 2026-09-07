@@ -60,6 +60,16 @@ assert.equal(noted.events[0].id, store.events[0].id);
 assert.equal(model.isScheduledToday({...item, schedule: {type: "workdays"}}, new Date(2026, 8, 6)), false);
 assert.equal(model.isScheduledToday({...item, schedule: {type: "workdays"}}, new Date(2026, 8, 7)), true);
 assert.equal(model.isScheduledToday({...item, schedule: {type: "weekly", weekdays: [1]}}, new Date(2026, 8, 7)), true);
+const intervalItem = {...item, createdDate: "2026-09-01", schedule: {type: "interval", intervalDays: 3, anchorDate: "2026-09-01"}, revisions: [{effectiveDate: "2026-09-01", kind: "duration", target: 25, unit: "分钟", schedule: {type: "interval", intervalDays: 3, anchorDate: "2026-09-01"}}]};
+assert.equal(model.isScheduledToday(intervalItem, new Date(2026, 8, 1)), true);
+assert.equal(model.isScheduledToday(intervalItem, new Date(2026, 8, 2)), false);
+assert.equal(model.isScheduledToday(intervalItem, new Date(2026, 8, 4)), true);
+assert.equal(model.isScheduledToday(intervalItem, new Date(2026, 9, 1)), true, "calendar-day arithmetic must cross month boundaries");
+const previousTimezone = process.env.TZ;
+process.env.TZ = "America/New_York";
+assert.equal(model.isScheduledToday({...intervalItem, schedule: {type: "interval", intervalDays: 2, anchorDate: "2026-03-07"}, revisions: []}, new Date(2026, 2, 9, 12)), true, "DST must not change calendar-day intervals");
+if (previousTimezone === undefined) delete process.env.TZ;
+else process.env.TZ = previousTimezone;
 const deletedAt = "2026-09-06T04:00:00.000Z";
 const removedStore = model.removeEventsForDay(store, item.id, localDay, deletedAt);
 assert.equal(removedStore.events.length, 0);
@@ -95,6 +105,20 @@ assert.equal(normalized.items[0].timeSlot, "any");
 assert.equal(normalized.events.length, 1);
 assert.deepEqual(normalized.eventTombstones, []);
 
+const normalizedIntervals = model.normalizeStore({
+    version: 2,
+    items: [
+        {...item, id: "interval-legacy", schedule: {type: "interval", everyDays: "4", anchorDate: "2026-09-02"}},
+        {...item, id: "interval-invalid", schedule: {type: "interval", intervalDays: 99999, anchorDate: "invalid"}},
+        {...item, id: "old-weekly", schedule: {type: "weekly", weekdays: [1, 3]}},
+    ],
+    events: [],
+});
+const normalizedIntervalsById = new Map(normalizedIntervals.items.map((candidate) => [candidate.id, candidate]));
+assert.deepEqual(normalizedIntervalsById.get("interval-legacy").schedule, {type: "interval", intervalDays: 4, anchorDate: "2026-09-02"});
+assert.deepEqual(normalizedIntervalsById.get("interval-invalid").schedule, {type: "interval", intervalDays: 3650});
+assert.deepEqual(normalizedIntervalsById.get("old-weekly").schedule, {type: "weekly", weekdays: [1, 3]});
+
 const weekDate = new Date(2026, 8, 8, 12, 0, 0);
 const weekEvent = {...event, occurredAt: new Date(2026, 8, 8, 9, 0, 0).toISOString(), localDate: "2026-09-08"};
 const weekStore = {...store, events: [weekEvent]};
@@ -112,6 +136,8 @@ assert.equal(model.isItemAvailableOnDate(newItem, new Date(2026, 8, 7)), false);
 assert.equal(model.isItemAvailableOnDate(newItem, new Date(2026, 8, 8)), true);
 assert.equal(month.items[0].scheduledDays, 1);
 assert.equal(month.items[0].completionRate, 0);
+const intervalMonth = analytics.buildSummaryContext({version: 2, items: [intervalItem], events: [], eventTombstones: []}, "month", weekDate);
+assert.equal(intervalMonth.items[0].scheduledDays, 3, "September 1, 4, and 7 are due before the September 8 cutoff");
 
 const versionedItem = {
     ...item,
@@ -146,6 +172,20 @@ assert.deepEqual(versionedSummary.items[0].totalsByUnit, [
     {unit: "分钟", totalValue: 2, eventCount: 2},
     {unit: "页", totalValue: 5, eventCount: 1},
 ]);
+
+const intervalRevisionItem = {
+    ...item,
+    createdDate: "2026-09-01",
+    schedule: {type: "interval", intervalDays: 2, anchorDate: "2026-09-10"},
+    revisions: [
+        {effectiveDate: "2026-09-01", kind: "duration", target: 25, unit: "分钟", schedule: {type: "daily"}},
+        {effectiveDate: "2026-09-10", kind: "duration", target: 25, unit: "分钟", schedule: {type: "interval", intervalDays: 2}},
+    ],
+};
+assert.equal(model.isScheduledToday(intervalRevisionItem, new Date(2026, 8, 9)), true, "historical daily revision remains daily");
+assert.equal(model.isScheduledToday(intervalRevisionItem, new Date(2026, 8, 10)), true, "revision date is the fallback interval anchor");
+assert.equal(model.isScheduledToday(intervalRevisionItem, new Date(2026, 8, 11)), false);
+assert.equal(model.isScheduledToday(intervalRevisionItem, new Date(2026, 8, 12)), true);
 
 const legacyEvent = {...event};
 delete legacyEvent.id;
