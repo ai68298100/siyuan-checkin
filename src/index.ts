@@ -794,7 +794,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["archived", "归档", "▤"]] as const;
+        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
@@ -858,6 +858,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__count">${completed}<span>/</span>${scheduledItems.length}</span>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">⌁</button>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
@@ -1000,7 +1001,7 @@ export default class CheckinPlugin extends Plugin {
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
             const sourceLabel = HISTORY_SOURCE_LABELS[event.source] || event.source;
-            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div>`;
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span>${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? "没有符合当前筛选条件的记录" : "当天没有记录"}</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -1228,6 +1229,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
+        root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -1456,6 +1458,7 @@ export default class CheckinPlugin extends Plugin {
             if (page === "today") this.showToday();
             else if (page === "history") this.showHistory();
             else if (page === "summary") this.showSummary();
+            else if (page === "insights") this.showInsights();
             else if (page === "archived") this.showArchived();
             else if (page === "add") this.showEditor();
         }));
@@ -1723,6 +1726,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
             updateConditionalFields(true);
             ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
+        }));
+        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
+            if (item) this.showInsights(item);
         }));
         root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
             event.preventDefault();
