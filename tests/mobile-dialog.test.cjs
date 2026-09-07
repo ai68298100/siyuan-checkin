@@ -41,6 +41,8 @@ assert.match(source, /else if \(page === "insights"\) this\.showInsights\(\)/,
     "insights navigation must reuse the shared insights page");
 assert.match(source, /data-action=\"insights\" aria-label=\"查看复盘\"/,
     "desktop today surfaces must expose a global insights action");
+assert.match(source, /data-history-insights-id/,
+    "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
 assert.match(source, /private renderQuickRecent\(\): string/,
