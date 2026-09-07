@@ -155,6 +155,7 @@ export default class CheckinPlugin extends Plugin {
     private recentRecord?: RecentRecord;
     private recentRecordTimer?: number;
     private saveState: "idle" | "saving" | "error" = "idle";
+    private syncNoticeTimer?: number;
     private disposed = false;
     private disposing = false;
     private acceptingOperations = true;
@@ -305,6 +306,10 @@ export default class CheckinPlugin extends Plugin {
         if (this.recentRecordTimer !== undefined) {
             window.clearTimeout(this.recentRecordTimer);
             this.recentRecordTimer = undefined;
+        }
+        if (this.syncNoticeTimer !== undefined) {
+            window.clearTimeout(this.syncNoticeTimer);
+            this.syncNoticeTimer = undefined;
         }
         this.closeQuickDialog();
         const openTabRequest = this.tabOpenPromise;
@@ -882,6 +887,12 @@ export default class CheckinPlugin extends Plugin {
                 : "";
     }
 
+    private renderSyncNotice(): string {
+        return this.syncNoticeTimer !== undefined
+            ? `<div class="lc-checkin__sync-notice" role="status" aria-live="polite">已同步其他窗口更新</div>`
+            : "";
+    }
+
     private renderTodayGroups(items: CheckinItem[], date: Date): string {
         const groups = new Map<string, CheckinItem[]>();
         items.forEach((item) => {
@@ -1177,7 +1188,8 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? "保存修改" : "保存打卡项"}</button>
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? "恢复打卡项" : "暂时归档"}</button>` : ""}
-                    ${this.renderSaveStatus()}
+            ${this.renderSaveStatus()}
+            ${this.renderSyncNotice()}
                 </div>
             </form>
         </div>`;
@@ -2300,6 +2312,7 @@ export default class CheckinPlugin extends Plugin {
                     const latest = mergeStores(this.store, remote);
                     refreshed = JSON.stringify(latest) !== JSON.stringify(this.store);
                     this.store = latest;
+                    if (refreshed) this.showSyncNotice();
                     if (JSON.stringify(latest) !== JSON.stringify(remote)) {
                         await this.persist();
                     }
@@ -2333,6 +2346,15 @@ export default class CheckinPlugin extends Plugin {
         const run = fallbackStorageQueue.then(operation, operation);
         fallbackStorageQueue = run.then(() => undefined, () => undefined);
         return run;
+    }
+
+    private showSyncNotice() {
+        if (this.disposed || this.disposing) return;
+        if (this.syncNoticeTimer !== undefined) window.clearTimeout(this.syncNoticeTimer);
+        this.syncNoticeTimer = window.setTimeout(() => {
+            this.syncNoticeTimer = undefined;
+            if (!this.disposed && !this.disposing) this.renderBackgroundUpdate();
+        }, 4200);
     }
 
     private settleReady(ready: boolean) {
