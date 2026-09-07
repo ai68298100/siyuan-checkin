@@ -684,6 +684,18 @@
     }
 }
 
+.lc-checkin__recent-record span {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.lc-checkin__recent-record small {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+}
+
 .lc-checkin__sync-notice {
     margin: 6px 0 0;
     color: var(--b3-theme-on-surface-light);
