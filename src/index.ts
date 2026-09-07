@@ -23,6 +23,7 @@ const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const API_VERSION = 3;
+const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 const KIND_LABELS: Record<CheckinKind, string> = {
@@ -163,6 +164,7 @@ export default class CheckinPlugin extends Plugin {
     private disposing = false;
     private acceptingOperations = true;
     private initializationState: "loading" | "ready" | "failed" = "loading";
+    private agentCapabilityRegistered = false;
     private readyResolver?: (ready: boolean) => void;
     private readonly readyPromise = new Promise<boolean>((resolve) => {
         this.readyResolver = resolve;
@@ -277,6 +279,7 @@ export default class CheckinPlugin extends Plugin {
             if (this.disposed || this.disposing) return;
             this.initializationState = "ready";
             this.settleReady(true);
+            this.registerSiYuanAgentCapability();
         } catch (error) {
             if (this.disposed || this.disposing) return;
             this.storageReady = false;
@@ -360,13 +363,13 @@ export default class CheckinPlugin extends Plugin {
             const now = currentCalendarDate();
             const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
             const summaryItemIds = new Set(context.items.map((item) => item.itemId));
-            const output = await provider.summarize({
+            const output = await withTimeout(provider.summarize({
                 range,
                 ...(customRange ? {customRange} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
                 events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
-            });
+            }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
             return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
         };
         return {
@@ -705,6 +708,55 @@ export default class CheckinPlugin extends Plugin {
             if (frame) window.cancelAnimationFrame(frame);
             frame = 0;
         };
+    }
+
+    private registerSiYuanAgentCapability() {
+        if (this.agentCapabilityRegistered || this.disposed || this.disposing || !this.api) return;
+        const plugin = this as Plugin & {
+            addAgentCapability?: (options: {
+                name: string;
+                title?: string;
+                description: string;
+                inputSchema: Record<string, unknown>;
+                outputSchema?: Record<string, unknown>;
+                effects?: {localRead?: boolean; localWrite?: boolean; dataEgress?: boolean; externalCost?: boolean};
+                handler: (args: Record<string, unknown>) => Promise<{result?: string; structuredContent?: unknown; error?: string}>;
+            }) => string;
+        };
+        if (typeof plugin.addAgentCapability !== "function") return;
+        try {
+            plugin.addAgentCapability({
+                name: "checkin-summary-context",
+                title: "读取小驴打卡复盘上下文",
+                description: "读取小驴打卡的日、周、月或自定义日期范围数据，用于生成复盘、趋势和完成率分析。该能力只读本插件数据，不会写入记录，也不会自行访问外部网络。",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        range: {type: "string", enum: ["day", "week", "month", "custom"], description: "总结范围，默认为 week"},
+                        startDate: {type: "string", description: "自定义范围开始日期，格式 YYYY-MM-DD"},
+                        endDate: {type: "string", description: "自定义范围结束日期，格式 YYYY-MM-DD"},
+                    },
+                    additionalProperties: false,
+                },
+                outputSchema: {type: "object"},
+                effects: {localRead: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const range = args.range === "day" || args.range === "month" || args.range === "custom" ? args.range : "week";
+                    if (range === "custom") {
+                        const startDate = typeof args.startDate === "string" ? args.startDate : "";
+                        const endDate = typeof args.endDate === "string" ? args.endDate : "";
+                        if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) return {error: "自定义日期范围无效，请使用 YYYY-MM-DD。"};
+                        const context = this.api?.getCustomSummaryContext({startDate, endDate});
+                        return context ? {result: `小驴打卡自定义范围 ${startDate} 至 ${endDate}，共 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
+                    }
+                    const context = this.api?.getSummaryContext(range);
+                    return context ? {result: `小驴打卡${range === "day" ? "今日" : range === "month" ? "本月" : "本周"}共有 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
+                },
+            });
+            this.agentCapabilityRegistered = true;
+        } catch (error) {
+            showMessage(`[小驴打卡] 注册思源智能体能力失败：${String(error)}`);
+        }
     }
 
     private getTabId(): string {
@@ -1543,13 +1595,13 @@ export default class CheckinPlugin extends Plugin {
         const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
         const summaryItemIds = new Set(context.items.map((item) => item.itemId));
         try {
-            const summaryText = await provider.summarize({
+            const summaryText = await withTimeout(provider.summarize({
                 range,
                 ...(customRange ? {customRange} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
                 events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
-            });
+            }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
             if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "summary" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
@@ -2424,6 +2476,19 @@ function escapeHtml(value: string): string {
             case "\"": return "&quot;";
             default: return character;
         }
+    });
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then((value) => {
+            window.clearTimeout(timer);
+            resolve(value);
+        }, (error) => {
+            window.clearTimeout(timer);
+            reject(error);
+        });
     });
 }
 
