@@ -750,6 +750,7 @@
 
         span { flex: 0 0 auto; font-size: 16px; }
         strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        small { overflow: hidden; color: var(--b3-theme-on-surface-light); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
     }
 }
 
