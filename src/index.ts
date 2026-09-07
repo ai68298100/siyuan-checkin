@@ -1035,7 +1035,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${CHECKIN_TEMPLATES.length} 个模板</span><button type="button" data-action="clear-template-filter" hidden>清除筛选</button></div>
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
                 const searchText = [template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" ");
-                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
+                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
             }).join("")}</div>
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>没有匹配的模板</strong><span>换个关键词，或清除筛选后浏览全部模板。</span><button type="button" data-action="clear-template-filter">查看全部</button></div>
         </section>` : "";
@@ -1084,7 +1084,7 @@ export default class CheckinPlugin extends Plugin {
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
-                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /></label>
+                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">今天</button></label>
                             </div>
                         </div>
                     </details>
@@ -1108,15 +1108,13 @@ export default class CheckinPlugin extends Plugin {
             searchTimer = window.setTimeout(() => {
                 this.todayQuery = value;
                 this.render();
-                const nextSearch = root.querySelector<HTMLInputElement>("[data-today-search]");
-                nextSearch?.focus();
-                nextSearch?.setSelectionRange(value.length, value.length);
+                this.focusTodaySearch(value.length);
             }, 120);
         });
         root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
             this.todayQuery = "";
             this.render();
-            root.querySelector<HTMLInputElement>("[data-today-search]")?.focus();
+            this.focusTodaySearch();
         }));
         root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
@@ -1456,6 +1454,10 @@ export default class CheckinPlugin extends Plugin {
 
     private bindEditor(root: HTMLElement) {
         this.bindDialogClose(root);
+        const ensureEditorVisible = (element?: HTMLElement | null) => {
+            if (!element) return;
+            window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
+        };
         let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || ICON_GROUPS[0].id;
         const selectIcon = (icon: string) => {
             root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
@@ -1546,6 +1548,11 @@ export default class CheckinPlugin extends Plugin {
             }
             if (weekdays) {
                 weekdays.hidden = scheduleSelect?.value !== "weekly" && scheduleSelect?.value !== "custom";
+                if (!weekdays.hidden && !weekdays.querySelector<HTMLInputElement>("input[name='weekday']:checked")) {
+                    const today = (new Date().getDay() + 6) % 7;
+                    const fallback = weekdays.querySelector<HTMLInputElement>(`input[name='weekday'][value='${today}']`);
+                    if (fallback) fallback.checked = true;
+                }
             }
             if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
             const help = root.querySelector<HTMLElement>("[data-kind-help]");
@@ -1556,6 +1563,14 @@ export default class CheckinPlugin extends Plugin {
                 const step = getEditorStep(kind, unitInput?.value || kindOption.defaultUnit);
                 targetInput.min = String(step);
                 targetInput.step = String(step);
+                const current = Number(targetInput.value);
+                if (!Number.isFinite(current) || current < step) {
+                    targetInput.value = String(step);
+                } else {
+                    const aligned = Math.ceil(current / step - 1e-9) * step;
+                    const precision = step < 1 ? 2 : 6;
+                    targetInput.value = String(Number(aligned.toFixed(precision)));
+                }
             }
             if (unitInput) {
                 const oldDefault = KIND_OPTIONS.find((option) => option.kind === previousKind)?.defaultUnit;
@@ -1572,9 +1587,20 @@ export default class CheckinPlugin extends Plugin {
             }
             previousKind = kind;
         };
-        root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => updateConditionalFields(true)));
+        root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
+            updateConditionalFields(true);
+            ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
+        }));
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
+        root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
+            const anchor = root.querySelector<HTMLInputElement>("input[name='anchorDate']");
+            if (!anchor) return;
+            anchor.value = dateKey(new Date());
+            anchor.dispatchEvent(new Event("change", {bubbles: true}));
+            updateAdvancedSummary();
+            ensureEditorVisible(anchor);
+        });
         bindUnitOptions();
         root.querySelectorAll<HTMLButtonElement>("[data-group-value]").forEach((button) => button.addEventListener("click", () => {
             const input = root.querySelector<HTMLInputElement>("input[name='group']");
@@ -1630,6 +1656,11 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((button) => button.addEventListener("click", () => {
             const template = CHECKIN_TEMPLATES[Number(button.dataset.templateIndex)];
             if (!template) return;
+            root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((candidate) => {
+                const selected = candidate === button;
+                candidate.classList.toggle("is-selected", selected);
+                candidate.setAttribute("aria-pressed", String(selected));
+            });
             const setInput = (name: string, value: string) => {
                 const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
                 if (control) control.value = value;
@@ -1651,6 +1682,7 @@ export default class CheckinPlugin extends Plugin {
             if (iconGroup) selectIconGroup(iconGroup.id);
             updateConditionalFields(false);
             updateAdvancedSummary();
+            ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
             root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
         }));
         const updateAdvancedSummary = () => {
@@ -2054,6 +2086,15 @@ export default class CheckinPlugin extends Plugin {
             showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
         });
         return write;
+    }
+
+    private focusTodaySearch(selection?: number) {
+        window.setTimeout(() => {
+            const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
+            const input = roots.map((element) => element.querySelector<HTMLInputElement>("[data-today-search]")).find((candidate): candidate is HTMLInputElement => Boolean(candidate));
+            input?.focus();
+            if (selection !== undefined) input?.setSelectionRange(selection, selection);
+        }, 0);
     }
 
     private applyViewPreferences(preferences: CheckinViewPreferences) {
