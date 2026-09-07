@@ -1,10 +1,10 @@
 # 周期配额设计
 
-这份设计定义 weekly/monthly quota 的数据和统计边界。当前版本只提供 `src/rules.ts` 中的纯函数合同，不把 quota 写入既有 `CheckinSchedule`，也不改变旧项目的统计结果。
+这份设计定义 weekly/monthly quota 的数据和统计边界。当前版本已经把 quota 作为可选排程写入 `CheckinSchedule`，并接入规则计算、模型进度、编辑器和今日卡片；没有 quota 的旧项目仍按原规则运行。
 
 ## 数据模型
 
-在后续存储版本中，为 `CheckinSchedule` 增加可选字段：
+当前 `CheckinSchedule` 使用以下可选字段：
 
 ```ts
 type ScheduleType = "daily" | "weekly" | "workdays" | "custom" | "interval" | "quota";
@@ -32,7 +32,8 @@ interface CheckinSchedule {
 - 存储版本保持向后读取：没有 `quota` 的旧 schedule 原样归一化为 daily/workdays/weekly/custom/interval。
 - 新字段只接受合法周期、正整数/正数配额和合法日期；非法字段丢弃并回退旧规则。
 - `target`、`unit`、`revisions` 不迁移成 quota。旧项目的历史分母因此保持不变。
-- 引入 quota 时将存储版本递增，并为每个 revision 归一化 `quota`，保证历史日期仍使用当时的周期规则。
+- 当前仍保持存储版本 2，因为字段是可选且旧数据无需迁移；后续引入正式导入版本标记时再递增存储版本。
+- 每个 revision 都独立保存 `quota`，历史日期继续使用当时的周期规则。
 - 导入未知 quota 字段时保留核心项目和事件，忽略无法验证的规则，不阻塞整个文件导入。
 
 ## 统计分母
@@ -58,4 +59,4 @@ interface CheckinSchedule {
 4. 当前周期是否显示预计达标率，以及跨周期修订如何展示。
 5. 导入导出 schemaVersion 和旧客户端遇到 `type: "quota"` 时的降级行为。
 
-在这些问题确定前，不应把 `quota` 加入编辑器或修改 `analytics.ts` 的 `scheduledDays` 语义。当前 `evaluatePeriodQuota` 可作为 fixture 和 UI 的唯一计算入口，先完成 schema 评审再接入存储迁移。
+`src/rules.ts` 的 `evaluateQuotaSchedule` 是编辑器、今日卡片和后续洞察应复用的计算入口。`analytics.ts` 的每日 `scheduledDays` 语义仍不把 quota 伪造成每日机会，周期洞察接入时应直接使用该入口计算已结束周期。

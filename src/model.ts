@@ -1,5 +1,6 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeQuota} from "./quota";
+import {evaluateQuotaSchedule} from "./rules";
 
 export const STORE_VERSION = 2 as const;
 
@@ -200,6 +201,9 @@ export function isScheduledToday(item: CheckinItem, date = new Date()): boolean 
         const difference = localCalendarDayNumber(dateKey(date)) - localCalendarDayNumber(anchorDate);
         return difference >= 0 && difference % (schedule.intervalDays || 1) === 0;
     }
+    if (schedule.type === "quota") {
+        return Boolean(schedule.quota);
+    }
     return (schedule.weekdays || []).includes(date.getDay());
 }
 
@@ -238,12 +242,18 @@ export function getEventsForDay(store: CheckinStore, itemId: string, date = new 
 }
 
 export function getProgress(store: CheckinStore, item: CheckinItem, date = new Date()): number {
-    const unit = getItemRevisionForDate(item, date).unit;
+    const revision = getItemRevisionForDate(item, date);
+    if (revision.schedule.type === "quota") {
+        return evaluateQuotaSchedule(revision.schedule, store.events, item.id, date, revision.schedule.quota?.countMode === "value" ? revision.unit : undefined)?.progress || 0;
+    }
+    const unit = revision.unit;
     return getEventsForDay(store, item.id, date).filter((event) => event.unit === unit).reduce((total, event) => total + event.value, 0);
 }
 
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {
-    return getProgress(store, item, date) >= getItemRevisionForDate(item, date).target;
+    const revision = getItemRevisionForDate(item, date);
+    const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || 0 : revision.target;
+    return target > 0 && getProgress(store, item, date) >= target;
 }
 
 export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinStore {

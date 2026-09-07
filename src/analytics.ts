@@ -1,5 +1,6 @@
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
-import {dateKey, getEventDateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
+import {dateKey, getEventDateKey, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
 
 export type SummaryRange = "day" | "week" | "month";
 
@@ -16,6 +17,15 @@ export interface ItemSummary {
     scheduledDays: number;
     completedDays: number;
     completionRate: number;
+    quota?: QuotaSummary;
+}
+
+export interface QuotaSummary {
+    period: "week" | "month";
+    elapsedPeriods: number;
+    completedPeriods: number;
+    completionRate: number;
+    current?: ReturnType<typeof evaluateQuotaSchedule>;
 }
 
 export interface SummaryContext {
@@ -61,22 +71,23 @@ export function buildSummaryContext(store: CheckinStore, range: SummaryRange, da
     const itemIds = new Set(store.items.map((item) => item.id));
     const events = getEventsInRange(store, range, date).filter((event) => itemIds.has(event.itemId));
     const items = store.items.map((item) => summarizeItem(store, item, elapsedBounds, events))
-        .filter((item) => item.scheduledDays > 0 || item.eventCount > 0);
+        .filter((item) => item.scheduledDays > 0 || item.eventCount > 0 || Boolean(item.quota));
     return {
         range,
         startDate: dateKey(elapsedBounds.start),
         endDate: dateKey(addDays(elapsedBounds.end, -1)),
         items,
         totalEvents: events.length,
-        completedItems: items.filter((item) => item.completedDays > 0).length,
-        scheduledItems: items.filter((item) => item.scheduledDays > 0).length,
+        completedItems: items.filter((item) => item.completedDays > 0 || Boolean(item.quota?.completedPeriods)).length,
+        scheduledItems: items.filter((item) => item.scheduledDays > 0 || Boolean(item.quota?.elapsedPeriods)).length,
     };
 }
 
 function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): ItemSummary {
+    const quota = summarizeQuota(store, item, bounds, events);
     let scheduledDays = 0;
     let completedDays = 0;
-    for (let day = new Date(bounds.start); day < bounds.end; day.setDate(day.getDate() + 1)) {
+    for (let day = new Date(bounds.start); day < bounds.end && !quota; day.setDate(day.getDate() + 1)) {
         if (!isItemAvailableOnDate(item, day) || !isScheduledToday(item, day)) {
             continue;
         }
@@ -103,6 +114,41 @@ function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange
         scheduledDays,
         completedDays,
         completionRate: scheduledDays ? Math.round((completedDays / scheduledDays) * 100) : 0,
+        ...(quota ? {quota} : {}),
+    };
+}
+
+function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): QuotaSummary | undefined {
+    const asOf = new Date(bounds.end.getTime() - 86400000);
+    const revision = getItemRevisionForDate(item, asOf);
+    if (revision.schedule.type !== "quota" || !revision.schedule.quota) return undefined;
+    const period = revision.schedule.quota.period;
+    const elapsedEndKey = dateKey(new Date(bounds.end.getTime() - 86400000));
+    const periods = new Map<string, Date>();
+    for (let day = new Date(bounds.start); day < bounds.end; day.setDate(day.getDate() + 1)) {
+        const key = getQuotaPeriodBounds(period, day).periodKey;
+        if (!periods.has(key)) periods.set(key, new Date(day));
+    }
+    let elapsedPeriods = 0;
+    let completedPeriods = 0;
+    let current: ReturnType<typeof evaluateQuotaSchedule>;
+    for (const representative of periods.values()) {
+        if (!isItemAvailableOnDate(item, representative)) continue;
+        const progress = evaluateQuotaSchedule(revision.schedule, events, item.id, representative, revision.schedule.quota.countMode === "value" ? revision.unit : undefined);
+        if (!progress) continue;
+        if (progress.endDate < elapsedEndKey) {
+            elapsedPeriods += 1;
+            if (progress.complete) completedPeriods += 1;
+        } else {
+            current = progress;
+        }
+    }
+    return {
+        period,
+        elapsedPeriods,
+        completedPeriods,
+        completionRate: elapsedPeriods ? Math.round((completedPeriods / elapsedPeriods) * 100) : 0,
+        ...(current ? {current} : {}),
     };
 }
 

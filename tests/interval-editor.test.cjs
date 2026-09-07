@@ -5,11 +5,17 @@ const path = require("node:path");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(source, /interval:\s*"每隔 N 天"/);
+assert.match(source, /quota:\s*"周期配额"/);
 assert.match(source, /name="intervalDays"[^>]*min="1"[^>]*max="3650"/);
 assert.match(source, /name="anchorDate"[^>]*type="date"/);
 assert.match(source, /intervalSchedule\.hidden = scheduleSelect\?\.value !== "interval"/);
 assert.match(source, /scheduleType === "interval"[\s\S]*intervalDays: intervalDaysValue, anchorDate: anchorDateValue/);
+assert.match(source, /scheduleType === "quota"[\s\S]*quota: \{period: requestedQuotaPeriod, amount: Math\.round\(quotaAmountValue \* 100\) \/ 100, countMode: requestedQuotaMode/);
+assert.match(source, /name="quotaPeriod"/);
+assert.match(source, /name="quotaCountMode"/);
+assert.match(source, /quotaSchedule\.hidden = scheduleSelect\?\.value !== "quota"/);
 assert.match(source, /formatScheduleLabel\(revision\.schedule\)/);
+assert.match(source, /revision\.kind === "binary" && revision\.schedule\.type !== "quota"/);
 assert.match(source, /isValidLocalDateInput\(requestedAnchor\)/);
 assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
 assert.match(source, /!weekdays\.querySelector<HTMLInputElement>\("input\[name='weekday'\]:checked"\)/);
