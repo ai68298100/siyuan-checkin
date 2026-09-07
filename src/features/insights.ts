@@ -1,5 +1,6 @@
 import {dateKey, getEventDateKey, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday} from "../model";
-import type {CheckinEvent, CheckinItem, CheckinKind, CheckinStore} from "../types";
+import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
+import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
 
 export type HabitDayStatus = "complete" | "partial" | "missed" | "pending" | "off" | "unavailable";
 
@@ -86,12 +87,17 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const events = item ? eventsByDate.get(key) || [] : [];
         const revision = item ? getItemRevisionForDate(item, date) : null;
         const available = Boolean(item && isItemAvailableOnDate(item, date));
-        const scheduled = Boolean(available && item && isScheduledToday(item, date));
         const unit = revision?.unit || "";
+        const quotaSchedule: CheckinSchedule | undefined = revision?.schedule.type === "quota" ? revision.schedule : undefined;
+        const quotaProgress = quotaSchedule && item
+            ? evaluateQuotaSchedule(quotaSchedule, store.events, item.id, date, quotaSchedule.quota?.countMode === "value" ? unit : undefined)
+            : undefined;
+        const scheduled = Boolean(available && item && (quotaSchedule ? isQuotaOpportunityDay(quotaSchedule, date, endDate) : isScheduledToday(item, date)));
         const target = revision?.target || 1;
-        const progress = sumValues(events.filter((event) => event.unit === unit).map((event) => event.value));
+        const progress = quotaProgress?.progress ?? sumValues(events.filter((event) => event.unit === unit).map((event) => event.value));
         const isToday = key === endDate;
-        const complete = progress > 0 && target > 0 && atLeast(progress, target);
+        const effectiveTarget = quotaProgress?.quota ?? target;
+        const complete = progress > 0 && effectiveTarget > 0 && atLeast(progress, effectiveTarget);
         const status: HabitDayStatus = !available ? "unavailable"
             : !scheduled ? "off"
                 : complete ? "complete"
@@ -107,7 +113,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
             closed: key < endDate,
             kind: revision?.kind || "binary",
             progress,
-            target,
+            target: effectiveTarget,
             unit,
             events,
             totalsByUnit: unitTotals(events),
@@ -226,6 +232,14 @@ function sumValues(values: readonly number[]): number {
 function atLeast(progress: number, target: number): boolean {
     const tolerance = Number.EPSILON * Math.max(Math.abs(progress), Math.abs(target)) * 8;
     return progress >= target || target - progress <= tolerance;
+}
+
+function isQuotaOpportunityDay(schedule: CheckinSchedule, date: Date, asOfKey: string): boolean {
+    const periodKey = periodKeyForSchedule(schedule, date);
+    const asOfPeriod = periodKeyForSchedule(schedule, new Date(`${asOfKey}T12:00:00`));
+    if (periodKey === asOfPeriod) return dateKey(date) === asOfKey;
+    if (schedule.quota?.period === "week") return date.getDay() === ((schedule.quota.weekStartsOn || 1) + 6) % 7;
+    return date.getDate() === new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
 function localCalendarDate(date: Date): Date {

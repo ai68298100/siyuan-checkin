@@ -102,6 +102,15 @@ try {
         assert.equal(result.weeklyTrend[1].completionRate, null);
     });
 
+    check("quota schedules evaluate one opportunity per period", () => {
+        const habit = item({schedule: {type: "quota", quota: {period: "week", amount: 3, countMode: "dates", weekStartsOn: 1}}});
+        const events = ["2026-09-01", "2026-09-03", "2026-09-05"].map((date) => event(date, 1));
+        const result = report(store(habit, events), new Date(2026, 8, 6, 9), 7);
+        assert.equal(result.aggregates.scheduledDays, 1);
+        assert.equal(result.aggregates.completedDays, 1);
+        assert.equal(result.days.filter((day) => day.status === "missed").length, 0);
+    });
+
     check("today partial preserves streak and only today complete enters rate denominator", () => {
         const habit = item({schedule: {type: "workdays"}});
         const events = [1, 2, 3, 4].map((day) => event(`2026-09-0${day}`));
