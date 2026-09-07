@@ -655,7 +655,8 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "insights" ? this.renderInsights()
-                        : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+                    : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+        root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">×</button>`);
         if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         if (this.currentPage === "editor") {
             this.bindEditor(root);
@@ -1027,6 +1028,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindToday(root: HTMLElement) {
+        this.bindDialogClose(root);
         this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
         let searchTimer: number | undefined;
@@ -1152,6 +1154,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindPageNavigation(root: HTMLElement) {
+        this.bindDialogClose(root);
         this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
@@ -1209,6 +1212,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
         root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
+    }
+
+    private bindDialogClose(root: HTMLElement) {
+        root.querySelector<HTMLElement>("[data-action='close-dialog']")?.addEventListener("click", () => this.closeQuickDialog());
     }
 
     private bindMobileNav(root: HTMLElement) {
@@ -1330,6 +1337,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindEditor(root: HTMLElement) {
+        this.bindDialogClose(root);
         let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || ICON_GROUPS[0].id;
         const selectIcon = (icon: string) => {
             root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
