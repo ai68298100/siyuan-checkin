@@ -2174,6 +2174,17 @@
     }
 }
 
+.lc-checkin__insight-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+
+    select { min-width: 0; flex: 1; min-height: 36px; }
+}
+
 .lc-checkin__insight-heading {
     display: flex;
     align-items: baseline;
