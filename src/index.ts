@@ -4,6 +4,7 @@ import {buildSummaryContext, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
+import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-filter";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
@@ -11,6 +12,7 @@ import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
 import type {SummaryRange} from "./analytics";
+import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 
 const STORAGE_NAME = "checkin-store";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
@@ -61,6 +63,13 @@ const SCHEDULE_LABELS: Record<ScheduleType, string> = {
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 const CALENDAR_WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+const HISTORY_SOURCE_OPTIONS: readonly [HistorySourceFilter, string][] = [
+    ["all", "全部来源"],
+    ["manual", HISTORY_SOURCE_LABELS.manual],
+    ["tomato", HISTORY_SOURCE_LABELS.tomato],
+    ["import", HISTORY_SOURCE_LABELS.import],
+    ["api", HISTORY_SOURCE_LABELS.api],
+];
 
 interface CheckinApi {
     version: number;
@@ -131,6 +140,9 @@ export default class CheckinPlugin extends Plugin {
     private apiSubscriptions = new Set<() => void>();
     private historyMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     private selectedHistoryDate = dateKey(new Date());
+    private historyQuery = "";
+    private historySource: HistorySourceFilter = "all";
+    private historyOrder: HistorySortOrder = "newest";
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
     private midnightTimer?: number;
@@ -840,8 +852,18 @@ export default class CheckinPlugin extends Plugin {
             }),
         ].join("");
         const selectedEvents = eventsByDay.get(this.selectedHistoryDate) || [];
+        const selectedRecords = selectedEvents.map((event) => ({
+            event,
+            itemName: itemNames.get(event.itemId) || "已删除项目",
+        }));
+        const filteredRecords = filterHistoryRecords(selectedRecords, {
+            query: this.historyQuery,
+            source: this.historySource,
+            order: this.historyOrder,
+        });
+        const filteredEvents = filteredRecords.map((record) => record.event);
         const totals = new Map<string, {name: string; unit: string; value: number}>();
-        selectedEvents.forEach((event) => {
+        filteredEvents.forEach((event) => {
             const key = `${event.itemId}\u0000${event.unit}`;
             const current = totals.get(key);
             totals.set(key, {
@@ -851,16 +873,20 @@ export default class CheckinPlugin extends Plugin {
             });
         });
         const aggregateDetails = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : "";
-        const eventDetails = selectedEvents.length ? `<div class="lc-checkin__history-events">${selectedEvents.slice().sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).map((event) => {
-            const name = itemNames.get(event.itemId) || "已删除项目";
+        const hasHistoryFilter = Boolean(this.historyQuery.trim()) || this.historySource !== "all";
+        const eventDetails = filteredRecords.length ? `<div class="lc-checkin__history-events">${filteredRecords.map(({event, itemName}) => {
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
-            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(time)} · ${escapeHtml(event.source)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}">撤销</button></div>`;
-        }).join("")}</div>` : `<div class="lc-checkin__history-empty">当天没有记录</div>`;
+            const sourceLabel = HISTORY_SOURCE_LABELS[event.source] || event.source;
+            return `<div class="lc-checkin__history-event"><div><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div>`;
+        }).join("")}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? "没有符合当前筛选条件的记录" : "当天没有记录"}</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const nextDisabled = this.historyMonth >= currentMonth;
-        return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">历史</h1></header><div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div><div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div><section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${selectedEvents.length} 条记录</span></div>${details}</section><div class="lc-checkin__history-actions"><button class="lc-checkin__text-button" type="button" data-action="export-json">导出 JSON</button><button class="lc-checkin__text-button" type="button" data-action="export-csv">导出 CSV</button><button class="lc-checkin__text-button" type="button" data-action="archived">已归档</button></div></div>`;
+        const historySourceOptions = HISTORY_SOURCE_OPTIONS.map(([value, label]) => `<option value="${value}" ${this.historySource === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+        const historyOrderOptions = [["newest", "最新在前"], ["oldest", "最早在前"]] as const;
+        const resultLabel = hasHistoryFilter ? `显示 ${filteredEvents.length} / ${selectedEvents.length} 条记录` : `${selectedEvents.length} 条记录`;
+        return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">历史</h1></header><div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div><div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div><section class="lc-checkin__history-tools" role="search" aria-label="筛选历史记录"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="搜索项目、备注、单位或来源" aria-label="搜索项目、备注、单位或来源" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="清除搜索关键词" title="清除搜索">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>来源</span><select data-history-source aria-label="按来源筛选">${historySourceOptions}</select></label><label><span>时间</span><select data-history-order aria-label="历史记录排序">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${label}</option>`).join("")}</select></label></div></section><div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">清除筛选</button>` : ""}</div><section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section><div class="lc-checkin__history-actions"><button class="lc-checkin__text-button" type="button" data-action="export-json">导出 JSON</button><button class="lc-checkin__text-button" type="button" data-action="export-csv">导出 CSV</button><button class="lc-checkin__text-button" type="button" data-action="archived">已归档</button></div></div>`;
     }
 
     private renderSummary(): string {
@@ -1158,6 +1184,50 @@ export default class CheckinPlugin extends Plugin {
         this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
+        const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
+        let historySearchTimer: number | undefined;
+        historySearch?.addEventListener("input", () => {
+            if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+            const value = historySearch.value;
+            historySearchTimer = window.setTimeout(() => {
+                if (this.disposed || this.disposing || this.currentPage !== "history") return;
+                this.historyQuery = value;
+                this.render();
+                const nextSearch = root.querySelector<HTMLInputElement>("[data-history-search]");
+                nextSearch?.focus();
+                nextSearch?.setSelectionRange(value.length, value.length);
+            }, 120);
+        });
+        root.querySelector<HTMLElement>("[data-action='clear-history-query']")?.addEventListener("click", () => {
+            if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+            this.historyQuery = "";
+            this.render();
+            root.querySelector<HTMLInputElement>("[data-history-search]")?.focus();
+        });
+        root.querySelector<HTMLElement>("[data-action='clear-history-filters']")?.addEventListener("click", () => {
+            if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+            this.historyQuery = "";
+            this.historySource = "all";
+            this.historyOrder = "newest";
+            this.render();
+            root.querySelector<HTMLInputElement>("[data-history-search]")?.focus();
+        });
+        root.querySelector<HTMLSelectElement>("[data-history-source]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            if (value === "all" || value === "manual" || value === "tomato" || value === "import" || value === "api") {
+                this.historySource = value;
+                this.render();
+                root.querySelector<HTMLSelectElement>("[data-history-source]")?.focus();
+            }
+        });
+        root.querySelector<HTMLSelectElement>("[data-history-order]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            if (value === "newest" || value === "oldest") {
+                this.historyOrder = value;
+                this.render();
+                root.querySelector<HTMLSelectElement>("[data-history-order]")?.focus();
+            }
+        });
         root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
             this.changeHistoryMonth(Number(button.dataset.historyMonth));
         }));
