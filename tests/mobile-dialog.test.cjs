@@ -35,6 +35,14 @@ assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
 assert.match(source, /data-quick-recent/,
     "quick dialog must expose recently recorded items");
+assert.match(source, /\[\["today", "今日", "⌂"\][\s\S]*\["insights", "复盘", "⌁"\]/,
+    "quick dialog navigation must expose habit insights");
+assert.match(source, /else if \(page === "insights"\) this\.showInsights\(\)/,
+    "insights navigation must reuse the shared insights page");
+assert.match(source, /data-action=\"insights\" aria-label=\"查看复盘\"/,
+    "desktop today surfaces must expose a global insights action");
+assert.match(source, /data-history-insights-id/,
+    "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
 assert.match(source, /private renderQuickRecent\(\): string/,
@@ -48,6 +56,8 @@ assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-clos
     "mobile dialog close action must meet a touch-friendly target size");
 assert.match(styles, /\.lc-checkin__quick-recent-list/,
     "recent records need a responsive layout");
+assert.match(styles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
+    "mobile navigation must fit the added insights entry");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
 assert.match(source, /正在保存…/,
