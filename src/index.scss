@@ -684,6 +684,13 @@
     }
 }
 
+.lc-checkin__sync-notice {
+    margin: 6px 0 0;
+    color: var(--b3-theme-on-surface-light);
+    font-size: 10px;
+    text-align: right;
+}
+
 .lc-checkin__item-topline {
     display: flex;
     align-items: center;
