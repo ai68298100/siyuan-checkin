@@ -723,6 +723,44 @@ export default class CheckinPlugin extends Plugin {
         } else {
             this.bindPageNavigation(root);
         }
+        if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
+    }
+
+    private bindQuickKeyboard(root: HTMLElement) {
+        if (root.dataset.quickKeyboardBound === "true") return;
+        root.dataset.quickKeyboardBound = "true";
+        root.addEventListener("keydown", (event) => {
+            if (this.currentPage !== "today") return;
+            if (event.defaultPrevented || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+            const target = event.target as HTMLElement | null;
+            if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+            const index = Number(event.key) - 1;
+            if (!Number.isInteger(index) || index < 0 || index > 8) return;
+            const items = this.getQuickTodayItems();
+            const item = items[index];
+            if (!item) return;
+            event.preventDefault();
+            const date = calendarDateFromKey(dateKey(currentCalendarDate()));
+            const revision = getItemRevisionForDate(item, date);
+            this.enqueueMutation(() => this.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), this.revisionFingerprint(item, date)));
+        });
+    }
+
+    private getQuickTodayItems(): CheckinItem[] {
+        const date = currentCalendarDate();
+        return sortCheckinItems(this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date)), "priority");
+    }
+
+    private renderQuickRecent(): string {
+        if (!this.quickDialog || this.currentPage !== "today") return "";
+        const latest = [...this.store.events]
+            .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id))
+            .map((event) => this.store.items.find((item) => item.id === event.itemId && !item.archived))
+            .filter((item): item is CheckinItem => Boolean(item))
+            .filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index)
+            .slice(0, 4);
+        if (!latest.length) return "";
+        return `<section class="lc-checkin__quick-recent" aria-label="最近记录"><div class="lc-checkin__quick-recent-heading"><strong>最近记录</strong><small>点击再次记录</small></div><div class="lc-checkin__quick-recent-list">${latest.map((item) => `<button type="button" data-quick-recent="${escapeHtml(item.id)}"><span>${escapeHtml(item.icon)}</span><strong>${escapeHtml(item.name)}</strong></button>`).join("")}</div></section>`;
     }
 
     private renderInsights(): string {
@@ -806,6 +844,7 @@ export default class CheckinPlugin extends Plugin {
             </header>
             <div class="lc-checkin__progress"><span style="width: ${scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0}%"></span></div>
             ${recentRecord}
+            ${this.renderQuickRecent()}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
                 <label><span>分组</span><select data-group-mode aria-label="分组方式">
@@ -1138,6 +1177,13 @@ export default class CheckinPlugin extends Plugin {
             this.focusTodaySearch();
         }));
         root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
+        root.querySelectorAll<HTMLElement>("[data-quick-recent]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.quickRecent && !candidate.archived);
+            if (!item) return;
+            const date = currentCalendarDate();
+            const revision = getItemRevisionForDate(item, date);
+            this.enqueueMutation(() => this.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), this.revisionFingerprint(item, date)));
+        }));
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
@@ -1917,7 +1963,10 @@ export default class CheckinPlugin extends Plugin {
             return;
         }
         const revision = getItemRevisionForDate(item, actionDate);
-        const remaining = Math.max(revision.target - getProgress(this.store, item, actionDate), 0.1);
+        const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
+        const remaining = revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates"
+            ? 1
+            : Math.max(target - getProgress(this.store, item, actionDate), 0.1);
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 

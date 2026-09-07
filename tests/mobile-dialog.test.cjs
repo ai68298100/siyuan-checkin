@@ -29,6 +29,16 @@ assert.match(source, /this\.quickDialogViewportCleanup\?\.\(\);[\s\S]*this\.quic
     "viewport listeners must be removed when the dialog closes");
 assert.match(source, /scrollIntoView\(\{behavior: "smooth", block: "center"/,
     "editor actions should keep the active control visible on mobile");
+assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
+    "quick dialog must provide keyboard recording shortcuts");
+assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
+    "quick dialog keyboard binding must remain idempotent across rerenders");
+assert.match(source, /data-quick-recent/,
+    "quick dialog must expose recently recorded items");
+assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
+    "date quotas must record one qualifying day at a time");
+assert.match(source, /private renderQuickRecent\(\): string/,
+    "recent records must be rendered through a dedicated section");
 
 assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
@@ -36,5 +46,7 @@ assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 
     "mobile dialog must follow the visual viewport when the keyboard opens");
 assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
     "mobile dialog close action must meet a touch-friendly target size");
+assert.match(styles, /\.lc-checkin__quick-recent-list/,
+    "recent records need a responsive layout");
 
 console.log("mobile dialog lifecycle checks passed");
