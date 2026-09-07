@@ -24,6 +24,27 @@ export function getRuleStatus(item: CheckinItem, date: Date): RuleStatus {
     return isScheduled(revision?.schedule ?? item.schedule, date, revision?.effectiveDate ?? item.createdDate) ? "scheduled" : "off";
 }
 
+export type QuotaPeriod = "week" | "month";
+
+export interface PeriodQuotaRule {
+    period: QuotaPeriod;
+    quota: number;
+    /** Count at most one qualifying completion per local date. */
+    distinctDates?: boolean;
+}
+
+export interface PeriodQuotaProgress {
+    period: QuotaPeriod;
+    periodKey: string;
+    startDate: string;
+    endDate: string;
+    quota: number;
+    progress: number;
+    remaining: number;
+    complete: boolean;
+    contributingDates: string[];
+}
+
 export function isScheduled(schedule: CheckinSchedule, date: Date, fallbackAnchorDate?: string): boolean {
     if (schedule.type === "daily") return true;
     if (schedule.type === "workdays") return date.getDay() >= 1 && date.getDay() <= 5;
@@ -69,4 +90,42 @@ export function periodKeyForSchedule(schedule: CheckinSchedule, date: Date): str
     if (schedule.type === "daily" || schedule.type === "interval") return localDateKey(date);
     if (schedule.type === "weekly" || schedule.type === "workdays") return weekKey(date);
     return monthKey(date);
+}
+
+/** Evaluate a future weekly/monthly quota without changing persisted schedule types. */
+export function evaluatePeriodQuota(rule: PeriodQuotaRule, events: readonly CheckinEvent[], itemId: string, date: Date, unit?: string): PeriodQuotaProgress {
+    const periodKey = rule.period === "week" ? weekKey(date) : monthKey(date);
+    const startDate = rule.period === "week" ? periodKey : `${periodKey}-01`;
+    const endDate = rule.period === "week" ? localDateKey(addCalendarDays(dateFromKey(startDate), 6)) : localDateKey(addCalendarDays(dateFromKey(startDate), daysInMonth(dateFromKey(startDate)) - 1));
+    const candidates = events
+        .filter((event) => event.itemId === itemId && (!unit || event.unit === unit))
+        .map((event) => ({event, date: eventDateKey(event)}))
+        .filter((entry): entry is {event: CheckinEvent; date: string} => Boolean(entry.date))
+        .filter((entry) => entry.date >= startDate && entry.date <= endDate)
+        .sort((left, right) => left.date.localeCompare(right.date) || left.event.id.localeCompare(right.event.id));
+    const contributingDates = [...new Set(candidates.map((entry) => entry.date))];
+    const progress = rule.distinctDates ? contributingDates.length : candidates.reduce((total, entry) => total + entry.event.value, 0);
+    const quota = Number.isFinite(rule.quota) && rule.quota > 0 ? rule.quota : 0;
+    return {period: rule.period, periodKey, startDate, endDate, quota, progress, remaining: Math.max(0, quota - progress), complete: quota > 0 && progress >= quota, contributingDates};
+}
+
+function eventDateKey(event: CheckinEvent): string | undefined {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(event.localDate)) return event.localDate;
+    const occurredAt = new Date(event.occurredAt);
+    return Number.isNaN(occurredAt.getTime()) ? undefined : localDateKey(occurredAt);
+}
+
+function dateFromKey(value: string): Date {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 12);
+}
+
+function addCalendarDays(date: Date, amount: number): Date {
+    const result = dateFromKey(localDateKey(date));
+    result.setDate(result.getDate() + amount);
+    return result;
+}
+
+function daysInMonth(date: Date): number {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
