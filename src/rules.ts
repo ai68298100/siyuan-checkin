@@ -48,6 +48,7 @@ export interface PeriodQuotaProgress {
 export function isScheduled(schedule: CheckinSchedule, date: Date, fallbackAnchorDate?: string): boolean {
     if (schedule.type === "daily") return true;
     if (schedule.type === "workdays") return date.getDay() >= 1 && date.getDay() <= 5;
+    if (schedule.type === "quota") return Boolean(schedule.quota);
     if (schedule.type === "interval") {
         const anchorDate = schedule.anchorDate || fallbackAnchorDate;
         if (!anchorDate) return false;
@@ -80,16 +81,31 @@ export function evaluateRule(item: CheckinItem, events: readonly CheckinEvent[],
     const revision = [...(item.revisions || [])].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate)).reverse().find((candidate) => candidate.effectiveDate <= localDateKey(date));
     const target = revision?.target ?? item.target;
     const unit = revision?.unit ?? item.unit;
-    const periodKey = periodKeyForSchedule(revision?.schedule ?? item.schedule, date);
-    const progress = status === "scheduled" ? events.filter((event) => event.itemId === item.id && event.unit === unit && localDateKey(new Date(event.localDate || event.occurredAt)) === localDateKey(date)).reduce((total, event) => total + event.value, 0) : 0;
-    const complete = status === "scheduled" && progress >= target;
-    return {status, periodKey, target, progress, complete, unit, remaining: status === "scheduled" ? Math.max(0, target - progress) : undefined};
+    const schedule = revision?.schedule ?? item.schedule;
+    const periodKey = periodKeyForSchedule(schedule, date);
+    const quotaProgress = status === "scheduled" ? evaluateQuotaSchedule(schedule, events, item.id, date, schedule.type === "quota" && schedule.quota?.countMode === "value" ? unit : undefined) : undefined;
+    const progress = quotaProgress?.progress ?? (status === "scheduled" ? events.filter((event) => event.itemId === item.id && event.unit === unit && localDateKey(new Date(event.localDate || event.occurredAt)) === localDateKey(date)).reduce((total, event) => total + event.value, 0) : 0);
+    const effectiveTarget = quotaProgress?.quota ?? target;
+    const complete = status === "scheduled" && progress >= effectiveTarget && effectiveTarget > 0;
+    return {status, periodKey, target: effectiveTarget, progress, complete, unit, remaining: status === "scheduled" ? Math.max(0, effectiveTarget - progress) : undefined};
 }
 
 export function periodKeyForSchedule(schedule: CheckinSchedule, date: Date): string {
     if (schedule.type === "daily" || schedule.type === "interval") return localDateKey(date);
     if (schedule.type === "weekly" || schedule.type === "workdays") return weekKey(date);
+    if (schedule.type === "quota") return schedule.quota?.period === "week" ? weekKey(date) : monthKey(date);
     return monthKey(date);
+}
+
+/** Evaluate a persisted quota schedule using the same result shape as the legacy helper. */
+export function evaluateQuotaSchedule(schedule: CheckinSchedule, events: readonly CheckinEvent[], itemId: string, date: Date, unit?: string): PeriodQuotaProgress | undefined {
+    if (schedule.type !== "quota" || !schedule.quota) return undefined;
+    const quota = schedule.quota;
+    return evaluatePeriodQuota({
+        period: quota.period,
+        quota: quota.amount,
+        distinctDates: quota.countMode === "dates",
+    }, events, itemId, date, unit);
 }
 
 /** Evaluate a future weekly/monthly quota without changing persisted schedule types. */
