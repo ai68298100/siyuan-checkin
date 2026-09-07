@@ -13,8 +13,11 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
 import type {SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
+import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
+import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
 
 const STORAGE_NAME = "checkin-store";
+const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
@@ -50,8 +53,6 @@ const SORT_LABELS: Partial<Record<CheckinItemSortMode, string>> = {
     createdAt: "创建时间",
     updatedAt: "最近修改",
 };
-
-type TodayGroupMode = "group" | "time" | "priority";
 
 const SCHEDULE_LABELS: Record<ScheduleType, string> = {
     daily: "每天",
@@ -118,10 +119,10 @@ export default class CheckinPlugin extends Plugin {
     private tabInstance?: {close: () => void};
     private isMobileFrontend = false;
     private supportsCustomTab = true;
-    private todayGroupMode: TodayGroupMode = "group";
-    private todaySortMode: CheckinItemSortMode = "manual";
+    private todayGroupMode: TodayGroupMode = DEFAULT_VIEW_PREFERENCES.groupMode;
+    private todaySortMode: CheckinItemSortMode = DEFAULT_VIEW_PREFERENCES.sortMode;
     private todayQuery = "";
-    private completedCollapsed = true;
+    private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
     private collapsedTodayGroups = new Set<string>();
     private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" = "today";
     private insightsItemId?: string;
@@ -255,8 +256,10 @@ export default class CheckinPlugin extends Plugin {
         try {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
+                const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
+                this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
                     await this.persist();
@@ -1116,6 +1119,7 @@ export default class CheckinPlugin extends Plugin {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "group" || value === "time" || value === "priority") {
                 this.todayGroupMode = value;
+                void this.persistViewPreferences();
                 this.render();
             }
         });
@@ -1123,11 +1127,13 @@ export default class CheckinPlugin extends Plugin {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "manual" || value === "priority" || value === "name" || value === "createdAt" || value === "updatedAt") {
                 this.todaySortMode = value;
+                void this.persistViewPreferences();
                 this.render();
             }
         });
         root.querySelector<HTMLElement>("[data-action='toggle-completed']")?.addEventListener("click", () => {
             this.completedCollapsed = !this.completedCollapsed;
+            void this.persistViewPreferences();
             this.render();
         });
         root.querySelectorAll<HTMLElement>("[data-group-toggle]").forEach((button) => button.addEventListener("click", () => {
@@ -1135,6 +1141,7 @@ export default class CheckinPlugin extends Plugin {
             if (!key) return;
             if (this.collapsedTodayGroups.has(key)) this.collapsedTodayGroups.delete(key);
             else this.collapsedTodayGroups.add(key);
+            void this.persistViewPreferences();
             this.render();
         }));
         root.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => this.showEditor()));
@@ -2037,6 +2044,28 @@ export default class CheckinPlugin extends Plugin {
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined));
         this.saveQueue = write.catch((error) => {
             showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
+        });
+        return write;
+    }
+
+    private applyViewPreferences(preferences: CheckinViewPreferences) {
+        this.todayGroupMode = preferences.groupMode;
+        this.todaySortMode = preferences.sortMode;
+        this.completedCollapsed = preferences.completedCollapsed;
+        this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
+    }
+
+    private persistViewPreferences(): Promise<void> {
+        if (this.disposed || !this.storageReady) return Promise.resolve();
+        const preferences: CheckinViewPreferences = {
+            groupMode: this.todayGroupMode,
+            sortMode: this.todaySortMode,
+            completedCollapsed: this.completedCollapsed,
+            collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
+        };
+        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
+        this.saveQueue = write.catch((error) => {
+            showMessage(`[小驴打卡] 保存界面偏好失败：${String(error)}`);
         });
         return write;
     }
