@@ -54,6 +54,8 @@ assert.match(source, /正在保存…/,
     "saving state must be visible to users");
 assert.match(source, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
+assert.match(source, /private renderSaveStatus\(\): string/,
+    "save feedback should be shared by today and editor surfaces");
 assert.match(styles, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*env\(safe-area-inset-bottom\)/,
     "mobile editor actions must clear the device safe area");
 
