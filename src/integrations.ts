@@ -1,5 +1,5 @@
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem} from "./types";
-import type {SummaryContext} from "./analytics";
+import type {CustomSummaryRange, SummaryContext, SummaryRange} from "./analytics";
 
 export const CHECKIN_EVENT_NAMES = {
     itemCreated: "checkin:item-created",
@@ -20,7 +20,8 @@ export interface SummaryProvider {
     id: string;
     name: string;
     summarize(input: {
-        range: "day" | "week" | "month";
+        range: SummaryRange;
+        customRange?: CustomSummaryRange;
         items: CheckinItem[];
         events: CheckinEvent[];
         context?: SummaryContext;

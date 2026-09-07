@@ -154,6 +154,8 @@ const customSummary = analytics.buildCustomSummaryContext(store, {startDate: "20
 assert.equal(customSummary.startDate, "2026-09-06");
 assert.equal(customSummary.endDate, "2026-09-06");
 assert.equal(customSummary.totalEvents, 1);
+assert.equal(analytics.getEventsInCustomRange(store, {startDate: "2026-09-06", endDate: "2026-09-06"}).length, 1);
+assert.deepEqual(analytics.getEventsInCustomRange(store, {startDate: "2026-02-30", endDate: "2026-03-01"}), []);
 assert.equal(analytics.buildCustomSummaryContext(store, {startDate: "bad", endDate: "2026-09-06"}, weekDate).range, "day");
 const intervalMonth = analytics.buildSummaryContext({version: 2, items: [intervalItem], events: [], eventTombstones: []}, "month", weekDate);
 assert.equal(intervalMonth.items[0].scheduledDays, 3, "September 1, 4, and 7 are due before the September 8 cutoff");

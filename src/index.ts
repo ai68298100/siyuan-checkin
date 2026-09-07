@@ -1,6 +1,6 @@
 import {Dialog, getFrontend, openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
-import {buildCustomSummaryContext, buildSummaryContext, getEventsInRange} from "./analytics";
+import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
@@ -1497,23 +1497,25 @@ export default class CheckinPlugin extends Plugin {
         const provider = this.summaryProviders.values().next().value as SummaryProvider | undefined;
         if (!provider) return;
         const range = this.summaryRange;
+        const customRange = this.summaryCustomRange;
         const requestId = ++this.summaryRequestId;
         const now = currentCalendarDate();
-        const context = buildSummaryContext(this.store, range, now);
+        const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
         const summaryItemIds = new Set(context.items.map((item) => item.itemId));
         try {
             const summaryText = await provider.summarize({
                 range,
+                ...(customRange ? {customRange} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
-                events: this.getSummaryEvents(range, now),
+                events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
             });
-            if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "summary" || this.summaryRange !== range || this.summaryProviders.get(provider.id) !== provider) return;
+            if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "summary" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
             this.render();
         } catch (error) {
-            if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "summary" && this.summaryRange === range) {
+            if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "summary" && this.summaryRange === range && this.summaryCustomRange === customRange) {
                 showMessage(`[小驴打卡] 总结失败：${String(error)}`);
             }
         }

@@ -70,6 +70,17 @@ export function getEventsInRange(store: CheckinStore, range: SummaryRange, date 
     });
 }
 
+export function getEventsInCustomRange(store: CheckinStore, range: CustomSummaryRange): CheckinEvent[] {
+    const start = dateFromKey(range.startDate);
+    const end = dateFromKey(range.endDate);
+    if (!start || !end || range.startDate > range.endDate) return [];
+    const endExclusive = dateKey(addDays(end, 1));
+    return store.events.filter((event) => {
+        const key = getEventDateKey(event);
+        return key >= range.startDate && key < endExclusive;
+    });
+}
+
 export function buildSummaryContext(store: CheckinStore, range: SummaryRange, date = new Date()): SummaryContext {
     const bounds = getDateRange(range, date);
     return buildSummaryForBounds(store, range, bounds, date);
