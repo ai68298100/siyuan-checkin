@@ -9,7 +9,7 @@ const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-insight
 const previousTimeZone = process.env.TZ;
 process.env.TZ = "Asia/Shanghai";
 
-for (const filename of ["model.ts", "features/insights.ts"]) {
+for (const filename of ["model.ts", "quota.ts", "features/insights.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},

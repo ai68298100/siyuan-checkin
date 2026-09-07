@@ -60,6 +60,7 @@ const SCHEDULE_LABELS: Record<ScheduleType, string> = {
     weekly: "每周指定日",
     custom: "自定义日",
     interval: "每隔 N 天",
+    quota: "周期配额",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];

@@ -31,6 +31,16 @@ const valueQuota = rules.evaluatePeriodQuota({period: "month", quota: 4}, quotaE
 assert.equal(valueQuota.periodKey, "2026-09");
 assert.equal(valueQuota.progress, 3);
 assert.equal(valueQuota.endDate, "2026-09-30");
+const quotaItem = {...item, schedule: {type: "quota", quota: {period: "week", amount: 2, countMode: "dates", weekStartsOn: 1}}};
+assert.equal(rules.isScheduled(quotaItem.schedule, day), true, "quota schedules remain active throughout their period");
+assert.equal(rules.periodKeyForSchedule(quotaItem.schedule, day), "2026-09-07");
+const quotaScheduleProgress = rules.evaluateQuotaSchedule(quotaItem.schedule, quotaEvents, "read", new Date(2026, 8, 10, 12), "次");
+assert.equal(quotaScheduleProgress.progress, 2);
+assert.equal(quotaScheduleProgress.complete, true);
+const quotaRuleProgress = rules.evaluateRule(quotaItem, quotaEvents, new Date(2026, 8, 10, 12));
+assert.deepEqual({status: quotaRuleProgress.status, target: quotaRuleProgress.target, progress: quotaRuleProgress.progress, complete: quotaRuleProgress.complete}, {status: "scheduled", target: 2, progress: 2, complete: true});
+const valueQuotaItem = {...item, unit: "分钟", schedule: {type: "quota", quota: {period: "month", amount: 3, countMode: "value"}}};
+assert.equal(rules.evaluateRule(valueQuotaItem, quotaEvents, new Date(2026, 8, 10, 12)).progress, 0, "value quotas still respect the configured unit");
 const filteredQuota = rules.evaluatePeriodQuota({period: "month", quota: 2}, [
     ...quotaEvents,
     {...quotaEvents[0], id: "outside", localDate: "2026-10-01", value: 10},
