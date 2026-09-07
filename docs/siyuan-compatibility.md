@@ -1,0 +1,15 @@
+# 思源兼容矩阵
+
+| 思源版本 | 桌面端 | 移动端 | 关键检查 |
+| --- | --- | --- | --- |
+| 3.8.3 | 目标支持 | 目标支持 | `Dialog`、`addDock`、`addTab`、快捷键、`visualViewport` |
+| 3.8.x 后续版本 | 持续验证 | 持续验证 | 发布前运行完整测试和生产构建 |
+
+插件只依赖思源公开插件接口：`Plugin`、`Dialog`、`addDock`、`addTab`、`addCommand`、`showMessage` 和 `getFrontend`。业务数据保存在插件自身存储中，未直接依赖思源内部 DOM 结构。
+
+发布前检查：
+
+- 桌面端验证侧边栏、页签和快速弹窗三种入口。
+- 移动端验证软键盘、旋转、安全区、触控按钮和窄宽度卡片。
+- 验证 `package.zip` 内包含 `plugin.json`、`index.js`、`index.css`、图标、预览、README 和 LICENSE。
+- 验证 `plugin.json.version` 与 `package.json.version` 一致，并与 Release tag 一致。
