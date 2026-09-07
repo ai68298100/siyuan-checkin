@@ -1818,6 +1818,18 @@
     border-top: 1px solid var(--b3-border-color);
 }
 
+.lc-checkin__field-action {
+    align-self: flex-start;
+    min-height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 6px;
+    color: var(--lc-checkin-accent);
+    background: transparent;
+    font-size: 11px;
+    cursor: pointer;
+}
+
 .lc-checkin__history-tools {
     display: flex;
     min-width: 0;

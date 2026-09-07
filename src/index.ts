@@ -1084,7 +1084,7 @@ export default class CheckinPlugin extends Plugin {
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
-                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /></label>
+                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">今天</button></label>
                             </div>
                         </div>
                     </details>
@@ -1588,6 +1588,13 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => updateConditionalFields(true)));
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
+        root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
+            const anchor = root.querySelector<HTMLInputElement>("input[name='anchorDate']");
+            if (!anchor) return;
+            anchor.value = dateKey(new Date());
+            anchor.dispatchEvent(new Event("change", {bubbles: true}));
+            updateAdvancedSummary();
+        });
         bindUnitOptions();
         root.querySelectorAll<HTMLButtonElement>("[data-group-value]").forEach((button) => button.addEventListener("click", () => {
             const input = root.querySelector<HTMLInputElement>("input[name='group']");
