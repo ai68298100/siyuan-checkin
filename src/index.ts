@@ -22,7 +22,7 @@ const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
-const API_VERSION = 1;
+const API_VERSION = 2;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 const KIND_LABELS: Record<CheckinKind, string> = {
