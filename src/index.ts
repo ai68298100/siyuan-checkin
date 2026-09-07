@@ -282,6 +282,14 @@ export default class CheckinPlugin extends Plugin {
 
     async onDataChanged() {
         await this.reconcileStore();
+        if (!this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) return;
+        try {
+            const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
+            this.applyViewPreferences(preferences);
+            this.renderBackgroundUpdate();
+        } catch (error) {
+            if (!this.disposing) showMessage(`[小驴打卡] 刷新界面偏好失败：${String(error)}`);
+        }
     }
 
     async onunload() {
