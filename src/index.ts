@@ -1035,7 +1035,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${CHECKIN_TEMPLATES.length} 个模板</span><button type="button" data-action="clear-template-filter" hidden>清除筛选</button></div>
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
                 const searchText = [template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" ");
-                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
+                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
             }).join("")}</div>
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>没有匹配的模板</strong><span>换个关键词，或清除筛选后浏览全部模板。</span><button type="button" data-action="clear-template-filter">查看全部</button></div>
         </section>` : "";
@@ -1630,6 +1630,11 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((button) => button.addEventListener("click", () => {
             const template = CHECKIN_TEMPLATES[Number(button.dataset.templateIndex)];
             if (!template) return;
+            root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((candidate) => {
+                const selected = candidate === button;
+                candidate.classList.toggle("is-selected", selected);
+                candidate.setAttribute("aria-pressed", String(selected));
+            });
             const setInput = (name: string, value: string) => {
                 const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
                 if (control) control.value = value;
