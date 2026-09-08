@@ -33,4 +33,5 @@ assert.equal(api.integrationKey({source: " tasks ", externalRef: " task-42 "}), 
 const unsupported = api.probeAgentCapabilityHost({}); assert.equal(unsupported.supported, false); assert.equal(unsupported.register({}).registered, false);
 const supported = api.probeAgentCapabilityHost({addAgentCapability: () => "ok"}); assert.equal(supported.supported, true); assert.equal(supported.register({name: "demo"}).registered, true);
 const failing = api.probeAgentCapabilityHost({addAgentCapability: () => { throw new Error("blocked"); }}); assert.equal(failing.register({}).error, "blocked");
-console.log("Integration ecosystem checks passed.");
+const registered = api.registerAgentCapabilities(supported, [{name: "summary"}, {name: "record", effects: {localWrite: true, localRead: false}}, {name: "insight"}]); assert.deepEqual(registered.registered, ["summary", "insight"]); assert.deepEqual(registered.skipped, ["record"]);
+api.safeAgentCall(() => "ok").then((result) => { assert.deepEqual(result, {ok: true, value: "ok"}); return api.safeAgentCall(() => { throw new Error("offline"); }); }).then((result) => { assert.equal(result.offline, true); assert.equal(result.error, "offline"); console.log("Integration ecosystem checks passed."); fs.rmSync(path.dirname(output), {recursive: true, force: true}); });

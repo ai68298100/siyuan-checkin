@@ -46,6 +46,25 @@ export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined):
     };
 }
 
+export function registerAgentCapabilities(probe: AgentCapabilityProbe, capabilities: readonly {name: string; effects?: {localRead?: boolean; localWrite?: boolean}}[]): {registered: string[]; skipped: string[]; errors: string[]} {
+    const registered: string[] = [], skipped: string[] = [], errors: string[] = [];
+    for (const capability of capabilities) {
+        if (!capability || !capability.name || (capability.effects?.localWrite && capability.effects.localRead === false)) { skipped.push(capability?.name || "unknown"); continue; }
+        const result = probe.register(capability);
+        if (result.registered) registered.push(capability.name); else if (result.error) errors.push(`${capability.name}: ${result.error}`); else skipped.push(capability.name);
+    }
+    return {registered, skipped, errors};
+}
+
+export async function safeAgentCall<T>(call: () => Promise<T> | T, timeoutMs = 12000): Promise<{ok: true; value: T} | {ok: false; error: string; offline: true}> {
+    try {
+        const value = await Promise.race([Promise.resolve().then(call), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("智能体调用超时")), timeoutMs))]);
+        return {ok: true, value};
+    } catch (error) {
+        return {ok: false, error: String(error instanceof Error ? error.message : error), offline: true};
+    }
+}
+
 const INTEGRATION_CAPABILITIES = new Set(["record", "focus", "calendar"] as const);
 
 export function isIntegrationAdapter(value: unknown): value is IntegrationAdapter {
