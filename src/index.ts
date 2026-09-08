@@ -165,6 +165,7 @@ export default class CheckinPlugin extends Plugin {
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
+    private editingHistoryNoteId?: string;
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
     private midnightTimer?: number;
@@ -1383,8 +1384,9 @@ export default class CheckinPlugin extends Plugin {
         const eventDetails = filteredRecords.length ? `<div class="lc-checkin__history-events">${filteredRecords.map(({event, itemName}) => {
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
+            const noteEditor = this.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">保存备注</button>` : "";
             const sourceLabel = HISTORY_SOURCE_LABELS[event.source] || event.source;
-            return `<div class="lc-checkin__history-event"><div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div></div>`;
+            return `<div class="lc-checkin__history-event"><div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}${noteEditor}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? "没有符合当前筛选条件的记录" : "当天没有记录"}</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -1876,8 +1878,14 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
             const event = this.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
             if (!event) return;
-            const note = window.prompt("记录备注（可填写思源块引用）", event.note || "");
-            if (note === null) return;
+            this.editingHistoryNoteId = event.id;
+            this.render();
+        }));
+        root.querySelectorAll<HTMLElement>("[data-save-history-note-id]").forEach((button) => button.addEventListener("click", () => {
+            const event = this.store.events.find((candidate) => candidate.id === button.dataset.saveHistoryNoteId);
+            const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input='${button.dataset.saveHistoryNoteId}']`);
+            if (!event || !input) return;
+            const note = input.value.trim();
             void this.enqueueMutation(async () => {
                 const previous = this.store;
                 const next = updateEventNote(this.store, event.id, note);
@@ -1885,6 +1893,7 @@ export default class CheckinPlugin extends Plugin {
                 this.store = next;
                 try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 备注保存失败，请重试"); return; }
                 this.invalidateSummary();
+                this.editingHistoryNoteId = undefined;
                 this.renderBackgroundUpdate();
             });
         }));
