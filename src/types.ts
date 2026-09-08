@@ -90,6 +90,23 @@ export interface CheckinStore {
     items: CheckinItem[];
     events: CheckinEvent[];
     eventTombstones: CheckinEventTombstone[];
+    templates?: UserTemplate[];
+}
+
+export interface UserTemplate {
+    id: string;
+    name: string;
+    icon: string;
+    kind: CheckinKind;
+    target: number;
+    unit: string;
+    schedule: CheckinSchedule;
+    group: string;
+    priority: CheckinPriority;
+    timeSlot?: CheckinTimeSlot;
+    note: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface CheckinIntegrationEvent {

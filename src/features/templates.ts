@@ -1,0 +1,28 @@
+import type {CheckinTemplate,} from "../catalog";
+import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, UserTemplate} from "../types";
+
+export function normalizeUserTemplate(value: unknown, now = new Date().toISOString()): UserTemplate | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const raw = value as Partial<UserTemplate>;
+    const kind: CheckinKind = ["binary", "count", "duration", "quantity", "custom"].includes(raw.kind as string) ? raw.kind as CheckinKind : "binary";
+    const priority: CheckinPriority = ["low", "medium", "high"].includes(raw.priority as string) ? raw.priority as CheckinPriority : "medium";
+    const schedule: CheckinSchedule = raw.schedule && typeof raw.schedule === "object" ? {...raw.schedule, weekdays: raw.schedule.weekdays ? [...raw.schedule.weekdays] : undefined, quota: raw.schedule.quota ? {...raw.schedule.quota} : undefined} : {type: "daily"};
+    const id = String(raw.id || "").trim();
+    const name = String(raw.name || "").trim();
+    if (!id || !name) return undefined;
+    return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
+}
+
+export function mergeTemplates(builtins: readonly CheckinTemplate[], users: readonly unknown[] = []): Array<CheckinTemplate | UserTemplate> {
+    const result: Array<CheckinTemplate | UserTemplate> = [...builtins];
+    for (const value of users) { const template = normalizeUserTemplate(value); if (template && !result.some((candidate) => "id" in candidate && candidate.id === template.id)) result.push(template); }
+    return result;
+}
+
+export function upsertUserTemplate(users: readonly UserTemplate[], value: unknown): UserTemplate[] {
+    const template = normalizeUserTemplate(value); if (!template) return users.map((entry) => ({...entry}));
+    const index = users.findIndex((entry) => entry.id === template.id); const next = users.map((entry) => ({...entry}));
+    if (index < 0) next.push(template); else next[index] = template; return next;
+}
+
+export function deleteUserTemplate(users: readonly UserTemplate[], id: string): UserTemplate[] { return users.filter((entry) => entry.id !== id).map((entry) => ({...entry})); }
