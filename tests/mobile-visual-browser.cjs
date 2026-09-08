@@ -19,8 +19,12 @@ let playwright;
 try {
     playwright = require("playwright");
 } catch {
-    console.error("BLOCKED: Playwright is not installed in the project runtime. Install it or run the external QA harness.");
-    process.exit(2);
+    try {
+        playwright = require("C:/Users/sunku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+    } catch {
+        console.error("BLOCKED: Playwright is not installed in the project runtime. Install it or run the external QA harness.");
+        process.exit(2);
+    }
 }
 
 void playwright;
