@@ -25,6 +25,18 @@ export interface IntegrationAdapter {
     normalize(input: unknown): NormalizedExternalRecord | undefined;
 }
 
+const INTEGRATION_CAPABILITIES = new Set(["record", "focus", "calendar"] as const);
+
+export function isIntegrationAdapter(value: unknown): value is IntegrationAdapter {
+    if (!value || typeof value !== "object") return false;
+    const adapter = value as Partial<IntegrationAdapter>;
+    return typeof adapter.id === "string" && Boolean(adapter.id.trim())
+        && typeof adapter.name === "string" && Boolean(adapter.name.trim())
+        && Array.isArray(adapter.capabilities) && adapter.capabilities.length > 0
+        && adapter.capabilities.every((capability) => INTEGRATION_CAPABILITIES.has(capability as "record" | "focus" | "calendar"))
+        && typeof adapter.normalize === "function";
+}
+
 export interface ExternalCompletion {
     id: string;
     source: string;
@@ -61,7 +73,7 @@ export function createIntegrationRegistry() {
     const adapters = new Map<string, IntegrationAdapter>();
     return {
         register(adapter: IntegrationAdapter): () => void {
-            if (!adapter || !adapter.id || !adapter.name || typeof adapter.normalize !== "function") return () => undefined;
+            if (!isIntegrationAdapter(adapter)) return () => undefined;
             adapters.set(adapter.id, adapter);
             return () => { if (adapters.get(adapter.id) === adapter) adapters.delete(adapter.id); };
         },
