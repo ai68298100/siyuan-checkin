@@ -30,4 +30,7 @@ assert.equal(completion.value, 1);
 assert.match(completion.note, /晨跑/);
 assert.equal(api.completionToRecord({id: "x", source: "tasks", itemId: "run", completedAt: "invalid"}), undefined);
 assert.equal(api.integrationKey({source: " tasks ", externalRef: " task-42 "}), "tasks::task-42");
+const unsupported = api.probeAgentCapabilityHost({}); assert.equal(unsupported.supported, false); assert.equal(unsupported.register({}).registered, false);
+const supported = api.probeAgentCapabilityHost({addAgentCapability: () => "ok"}); assert.equal(supported.supported, true); assert.equal(supported.register({name: "demo"}).registered, true);
+const failing = api.probeAgentCapabilityHost({addAgentCapability: () => { throw new Error("blocked"); }}); assert.equal(failing.register({}).error, "blocked");
 console.log("Integration ecosystem checks passed.");
