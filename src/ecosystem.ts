@@ -46,6 +46,16 @@ export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined):
     };
 }
 
+export function registerAgentCapabilities(probe: AgentCapabilityProbe, capabilities: readonly {name: string; effects?: {localRead?: boolean; localWrite?: boolean}}[]): {registered: string[]; skipped: string[]; errors: string[]} {
+    const registered: string[] = [], skipped: string[] = [], errors: string[] = [];
+    for (const capability of capabilities) {
+        if (!capability || !capability.name || (capability.effects?.localWrite && capability.effects.localRead === false)) { skipped.push(capability?.name || "unknown"); continue; }
+        const result = probe.register(capability);
+        if (result.registered) registered.push(capability.name); else if (result.error) errors.push(`${capability.name}: ${result.error}`); else skipped.push(capability.name);
+    }
+    return {registered, skipped, errors};
+}
+
 const INTEGRATION_CAPABILITIES = new Set(["record", "focus", "calendar"] as const);
 
 export function isIntegrationAdapter(value: unknown): value is IntegrationAdapter {

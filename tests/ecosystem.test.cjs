@@ -33,4 +33,5 @@ assert.equal(api.integrationKey({source: " tasks ", externalRef: " task-42 "}), 
 const unsupported = api.probeAgentCapabilityHost({}); assert.equal(unsupported.supported, false); assert.equal(unsupported.register({}).registered, false);
 const supported = api.probeAgentCapabilityHost({addAgentCapability: () => "ok"}); assert.equal(supported.supported, true); assert.equal(supported.register({name: "demo"}).registered, true);
 const failing = api.probeAgentCapabilityHost({addAgentCapability: () => { throw new Error("blocked"); }}); assert.equal(failing.register({}).error, "blocked");
+const registered = api.registerAgentCapabilities(supported, [{name: "summary"}, {name: "record", effects: {localWrite: true, localRead: false}}, {name: "insight"}]); assert.deepEqual(registered.registered, ["summary", "insight"]); assert.deepEqual(registered.skipped, ["record"]);
 console.log("Integration ecosystem checks passed.");
