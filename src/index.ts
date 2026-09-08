@@ -1,7 +1,7 @@
 import {Dialog, getFrontend, openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
-import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
+import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
@@ -11,17 +11,19 @@ import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
 import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
-import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType} from "./types";
+import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
 import {validateEditorInput} from "./editor-validation";
+import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
 import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 
 const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
+const USER_TEMPLATES_NAME = "checkin-user-templates";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
@@ -125,6 +127,7 @@ interface LockManagerLike {
 export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private occasionStore: OccasionStore = createDefaultOccasionStore();
+    private userTemplates: UserTemplate[] = [];
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
     private quickDialog?: Dialog;
@@ -288,9 +291,11 @@ export default class CheckinPlugin extends Plugin {
                 const stored = await this.loadData(STORAGE_NAME);
                 const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
                 const occasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
+                const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.occasionStore = occasions;
+                this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -321,6 +326,8 @@ export default class CheckinPlugin extends Plugin {
         try {
             const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
             this.occasionStore = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
+            const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
+            this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();
         } catch (error) {
@@ -1492,6 +1499,7 @@ export default class CheckinPlugin extends Plugin {
             ...CHECKIN_TEMPLATES.map((template) => template.group),
         ].filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
         const templateGroups = [...new Set(CHECKIN_TEMPLATES.map((template) => template.group))];
+        const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>我的模板</span><small>${this.userTemplates.length} 个</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" "))}" title="${escapeHtml(template.note)}" aria-label="使用我的模板 ${escapeHtml(template.name)}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`).join("")}</div>` : "";
         const initialPriority = item?.priority || "medium";
         const initialTimeSlot = item?.timeSlot || "any";
         const advancedSummary = [
@@ -1516,7 +1524,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
                 const searchText = [template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" ");
                 return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
-            }).join("")}</div>
+            }).join("")}</div>${userTemplateMarkup}
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>没有匹配的模板</strong><span>换个关键词，或清除筛选后浏览全部模板。</span><button type="button" data-action="clear-template-filter">查看全部</button></div>
         </section>` : "";
         return `<div class="lc-checkin lc-checkin--editor">
@@ -2328,6 +2336,19 @@ export default class CheckinPlugin extends Plugin {
             if (advanced) advanced.open = true;
             ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
             root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
+        }));
+        root.querySelectorAll<HTMLButtonElement>("[data-user-template-id]").forEach((button) => button.addEventListener("click", () => {
+            const template = this.userTemplates.find((candidate) => candidate.id === button.dataset.userTemplateId);
+            if (!template) return;
+            const setInput = (name: string, value: string) => {
+                const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+                if (control) control.value = value;
+            };
+            setInput("name", template.name); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("schedule", template.schedule.type);
+            const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
+            root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
+            selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
+            ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
         }));
         const updateAdvancedSummary = () => {
             const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || "未分组";
