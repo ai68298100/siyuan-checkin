@@ -2385,7 +2385,9 @@ export default class CheckinPlugin extends Plugin {
                 priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
             };
             this.userTemplates = upsertUserTemplate(this.userTemplates, template);
-            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 已保存到我的模板"); this.render(); });
+            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 已保存到我的模板"); this.render(); }).catch(() => {
+                showMessage("[小驴打卡] 模板保存失败，请稍后重试");
+            });
         });
         const updateAdvancedSummary = () => {
             const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || "未分组";
