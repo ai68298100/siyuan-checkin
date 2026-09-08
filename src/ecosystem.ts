@@ -25,6 +25,38 @@ export interface IntegrationAdapter {
     normalize(input: unknown): NormalizedExternalRecord | undefined;
 }
 
+export interface ExternalCompletion {
+    id: string;
+    source: string;
+    itemId: string;
+    completedAt: string;
+    value?: number;
+    unit?: string;
+    title?: string;
+}
+
+export function completionToRecord(input: unknown): NormalizedExternalRecord | undefined {
+    if (!input || typeof input !== "object") return undefined;
+    const completion = input as Partial<ExternalCompletion>;
+    const source = typeof completion.source === "string" ? completion.source.trim() : "";
+    const id = typeof completion.id === "string" ? completion.id.trim() : "";
+    const completedAt = typeof completion.completedAt === "string" ? completion.completedAt : "";
+    if (!source || !id || !completedAt || !Number.isFinite(Date.parse(completedAt))) return undefined;
+    return normalizeExternalRecord({
+        itemId: completion.itemId,
+        value: completion.value === undefined ? 1 : completion.value,
+        unit: completion.unit,
+        source,
+        externalRef: `${source}:${id}`,
+        occurredAt: completedAt,
+        note: completion.title ? `来自${source}：${completion.title}` : `来自${source}的完成记录`,
+    }, source);
+}
+
+export function integrationKey(record: Pick<ExternalCheckinRecord, "source" | "externalRef">): string {
+    return `${record.source.trim()}::${record.externalRef.trim()}`;
+}
+
 export function createIntegrationRegistry() {
     const adapters = new Map<string, IntegrationAdapter>();
     return {
@@ -56,7 +88,8 @@ export function normalizeExternalRecord(input: unknown, fallbackSource = "extern
 }
 
 export function hasExternalRecord(events: readonly Pick<CheckinEvent, "source" | "externalRef">[], record: Pick<ExternalCheckinRecord, "source" | "externalRef">): boolean {
-    return events.some((event) => event.source === record.source && event.externalRef === record.externalRef);
+    const key = integrationKey(record);
+    return events.some((event) => Boolean(event.externalRef) && integrationKey({source: event.source, externalRef: event.externalRef || ""}) === key);
 }
 
 export function toCalendarSyncRecord(event: CheckinEvent): {id: string; itemId: string; start: string; value: number; unit: string; source: string; externalRef?: string} {
