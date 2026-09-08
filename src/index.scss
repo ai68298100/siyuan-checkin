@@ -3047,9 +3047,9 @@
 
 @container lc-checkin (max-width: 340px) {
     .lc-checkin__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-    .lc-checkin__header-actions { max-width: 176px; }
+    .lc-checkin__header-actions { max-width: 176px; flex-wrap: wrap; justify-content: flex-end; row-gap: 3px; }
     .lc-checkin__header-actions .lc-checkin__always-visible { width: 28px; height: 28px; }
-    .lc-checkin__header-actions .lc-checkin__count { width: 100%; text-align: right; }
+    .lc-checkin__header-actions .lc-checkin__count { flex-basis: 100%; width: auto; text-align: right; }
     .lc-checkin__item { padding: 9px; }
     .lc-checkin__item-icon { width: 34px; height: 34px; font-size: 17px; }
     .lc-checkin__item-name { font-size: 13px; }
