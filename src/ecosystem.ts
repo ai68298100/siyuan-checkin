@@ -25,6 +25,27 @@ export interface IntegrationAdapter {
     normalize(input: unknown): NormalizedExternalRecord | undefined;
 }
 
+export interface AgentCapabilityHost {
+    addAgentCapability?: (options: unknown) => unknown;
+}
+
+export interface AgentCapabilityProbe {
+    supported: boolean;
+    register: (options: unknown) => {registered: boolean; error?: string};
+}
+
+export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined): AgentCapabilityProbe {
+    const add = host && typeof host.addAgentCapability === "function" ? host.addAgentCapability.bind(host) : undefined;
+    return {
+        supported: Boolean(add),
+        register: (options) => {
+            if (!add) return {registered: false, error: "宿主不支持智能体能力注册，将使用离线模式。"};
+            try { add(options); return {registered: true}; }
+            catch (error) { return {registered: false, error: String(error instanceof Error ? error.message : error)}; }
+        },
+    };
+}
+
 const INTEGRATION_CAPABILITIES = new Set(["record", "focus", "calendar"] as const);
 
 export function isIntegrationAdapter(value: unknown): value is IntegrationAdapter {
