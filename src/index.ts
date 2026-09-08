@@ -2366,11 +2366,22 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             const existing = this.userTemplates.find((template) => template.name === name);
+            const weekdays = data.getAll("weekday").map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+            const intervalDays = Math.max(1, Math.min(3650, Math.round(Number(data.get("intervalDays")) || 1)));
+            const anchorDate = String(data.get("anchorDate") || dateKey(currentCalendarDate()));
+            const quotaPeriod = data.get("quotaPeriod") === "month" ? "month" : "week";
+            const quotaCountMode = data.get("quotaCountMode") === "value" ? "value" : "dates";
+            const quotaAmount = Math.max(quotaCountMode === "dates" ? 1 : 0.1, Number(data.get("quotaAmount")) || 1);
+            const schedule: CheckinSchedule = scheduleType === "interval"
+                ? {type: "interval", intervalDays, anchorDate}
+                : scheduleType === "quota"
+                    ? {type: "quota", quota: {period: quotaPeriod, amount: quotaAmount, countMode: quotaCountMode, ...(quotaPeriod === "week" ? {weekStartsOn: 1 as const} : {})}}
+                    : {type: scheduleType, weekdays: scheduleType === "weekly" || scheduleType === "custom" ? weekdays : undefined};
             const now = new Date().toISOString();
             const template: UserTemplate = {
                 id: existing?.id || makeId("template"), name, icon: String(data.get("icon") || "✓"), kind,
                 target: kind === "binary" ? 1 : Math.max(0.1, target || 1), unit: unit || "次",
-                schedule: existing?.schedule || {type: scheduleType}, group: String(data.get("group") || "").trim(),
+                schedule, group: String(data.get("group") || "").trim(),
                 priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
             };
             this.userTemplates = upsertUserTemplate(this.userTemplates, template);
