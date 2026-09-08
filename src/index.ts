@@ -1884,6 +1884,10 @@ export default class CheckinPlugin extends Plugin {
                 this.renderBackgroundUpdate();
             });
         }));
+        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
+            if (item) this.showInsights(item);
+        }));
         root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
         root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
             const range = button.dataset.summaryRange;
@@ -2216,10 +2220,6 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
             updateConditionalFields(true);
             ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
-        }));
-        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
-            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
-            if (item) this.showInsights(item);
         }));
         root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
             event.preventDefault();
