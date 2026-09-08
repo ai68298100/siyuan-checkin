@@ -11,7 +11,9 @@
     "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-editor-structure.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs",
     "test:mobile-dialog": "node tests/mobile-dialog.test.cjs",
     "test:mobile:visual": "pnpm run test:mobile && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs && node tests/mobile-visual-regression.test.cjs",
-    "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs"
+    "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
+    "test:mobile:visual:evidence": "pnpm run build && node tests/mobile-visual-evidence.cjs",
+    "test:mobile:visual:compare": "node tests/mobile-visual-compare.cjs"
   },
   "keywords": [
     "siyuan",
