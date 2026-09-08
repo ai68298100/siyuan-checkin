@@ -1499,7 +1499,7 @@ export default class CheckinPlugin extends Plugin {
             ...CHECKIN_TEMPLATES.map((template) => template.group),
         ].filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
         const templateGroups = [...new Set(CHECKIN_TEMPLATES.map((template) => template.group))];
-        const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>我的模板</span><small>${this.userTemplates.length} 个</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" "))}" title="${escapeHtml(template.note)}" aria-label="使用我的模板 ${escapeHtml(template.name)}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`).join("")}</div>` : "";
+        const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>我的模板</span><small>${this.userTemplates.length} 个</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" "))}" title="${escapeHtml(template.note)}" aria-label="使用我的模板 ${escapeHtml(template.name)}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="删除模板 ${escapeHtml(template.name)}">删除</button></div>`).join("")}</div>` : "";
         const initialPriority = item?.priority || "medium";
         const initialTimeSlot = item?.timeSlot || "any";
         const advancedSummary = [
@@ -2350,6 +2350,13 @@ export default class CheckinPlugin extends Plugin {
             root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
             selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
             ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
+        }));
+        root.querySelectorAll<HTMLButtonElement>("[data-user-template-delete]").forEach((button) => button.addEventListener("click", () => {
+            const id = button.dataset.userTemplateDelete;
+            const template = this.userTemplates.find((candidate) => candidate.id === id);
+            if (!id || !template || !window.confirm(`删除模板“${template.name}”？`)) return;
+            this.userTemplates = deleteUserTemplate(this.userTemplates, id);
+            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 模板已删除"); this.render(); }).catch(() => showMessage("[小驴打卡] 模板删除失败，请稍后重试"));
         }));
         root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
             const form = root.querySelector<HTMLFormElement>("form");
