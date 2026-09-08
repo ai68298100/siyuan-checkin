@@ -1,0 +1,25 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+const source = fs.readFileSync("src/occasions.ts", "utf8");
+
+assert.match(source, /getVisibleOccasions/);
+assert.match(source, /remindBeforeDays/);
+assert.match(source, /recurrence === "once"/);
+assert.match(source, /markOccasionCompleted/);
+assert.match(source, /completedDates/);
+const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions-")), "occasions.js");
+fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+const occasions = require(output);
+const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
+assert.equal(annual.date, "2026-09-12");
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [annual]}, new Date(2026, 8, 9, 12))[0].daysUntil, 3);
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [annual]}, new Date(2026, 8, 12, 12))[0].status, "today");
+const completed = occasions.markOccasionCompleted({version: 1, occasions: [annual]}, "birthday", "2026-09-12", true);
+assert.equal(occasions.isOccasionCompleted(completed.occasions[0], "2026-09-12"), true);
+const once = occasions.normalizeOccasion({id: "loan", name: "还房贷", kind: "scheduled", date: "2026-09-15", recurrence: "once", remindBeforeDays: 2, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 13, 12))[0].daysUntil, 2);
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 16, 12)).length, 0);
+console.log("Occasion model structure checks passed.");

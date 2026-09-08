@@ -16,6 +16,8 @@ import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
 import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
+import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
+import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 
 const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
@@ -23,7 +25,7 @@ const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
-const API_VERSION = 3;
+const API_VERSION = 4;
 const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
@@ -82,6 +84,9 @@ interface CheckinApi {
     getStore: () => CheckinStore;
     getItems: () => CheckinItem[];
     getEvents: () => CheckinEvent[];
+    getOccasions: () => Occasion[];
+    getTodayOccasions: () => VisibleOccasion[];
+    completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
     getSummaryContext: (range: SummaryRange) => ReturnType<typeof buildSummaryContext>;
     getCustomSummaryContext: (range: CustomSummaryRange) => ReturnType<typeof buildCustomSummaryContext>;
     getArchivedItems: () => CheckinItem[];
@@ -118,11 +123,13 @@ interface LockManagerLike {
 
 export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
+    private occasionStore: OccasionStore = createDefaultOccasionStore();
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
     private quickDialog?: Dialog;
     private quickDialogElement?: HTMLElement;
     private quickDialogViewportCleanup?: () => void;
+    private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
     private isMobileFrontend = false;
@@ -132,7 +139,7 @@ export default class CheckinPlugin extends Plugin {
     private todayQuery = "";
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
     private collapsedTodayGroups = new Set<string>();
-    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" = "today";
+    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" | "occasions" = "today";
     private insightsItemId?: string;
     private editingId?: string;
     private editingFingerprint?: string;
@@ -166,6 +173,13 @@ export default class CheckinPlugin extends Plugin {
     private acceptingOperations = true;
     private initializationState: "loading" | "ready" | "failed" = "loading";
     private agentCapabilityRegistered = false;
+    private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
+    private quickActionAdapterTargets = new Map<string, CheckinQuickActionTarget[]>();
+    private mobileTopBarButton?: HTMLElement;
+    private mobileTopBarRetryTimer?: number;
+    private speedSwitchQuickActionDisposers: Array<() => void> = [];
+    private speedSwitchRetryTimer?: number;
+    private editingOccasionId?: string;
     private readyResolver?: (ready: boolean) => void;
     private readonly readyPromise = new Promise<boolean>((resolve) => {
         this.readyResolver = resolve;
@@ -173,6 +187,8 @@ export default class CheckinPlugin extends Plugin {
     private readonly handleWindowFocus = () => {
         this.refreshDateBoundary();
         void this.reconcileStore();
+        this.ensureMobileTopBarButton();
+        this.ensureSpeedSwitchQuickActions();
     };
 
     onload() {
@@ -255,6 +271,7 @@ export default class CheckinPlugin extends Plugin {
         this.api = this.createApi();
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
         window.addEventListener("focus", this.handleWindowFocus);
+        if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
     async onLayoutReady() {
@@ -269,8 +286,10 @@ export default class CheckinPlugin extends Plugin {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
                 const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
+                const occasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
+                this.occasionStore = occasions;
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -281,6 +300,8 @@ export default class CheckinPlugin extends Plugin {
             this.initializationState = "ready";
             this.settleReady(true);
             this.registerSiYuanAgentCapability();
+            if (this.isMobileFrontend) this.ensureMobileTopBarButton();
+            this.ensureSpeedSwitchQuickActions();
         } catch (error) {
             if (this.disposed || this.disposing) return;
             this.storageReady = false;
@@ -298,6 +319,7 @@ export default class CheckinPlugin extends Plugin {
         if (!this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) return;
         try {
             const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
+            this.occasionStore = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();
         } catch (error) {
@@ -310,6 +332,19 @@ export default class CheckinPlugin extends Plugin {
         this.disposing = true;
         this.settleReady(false);
         window.removeEventListener("focus", this.handleWindowFocus);
+        this.mobileTopBarButton?.remove();
+        this.mobileTopBarButton = undefined;
+        if (this.mobileTopBarRetryTimer !== undefined) {
+            window.clearTimeout(this.mobileTopBarRetryTimer);
+            this.mobileTopBarRetryTimer = undefined;
+        }
+        this.speedSwitchQuickActionDisposers.splice(0).forEach((dispose) => dispose());
+        if (this.speedSwitchRetryTimer !== undefined) {
+            window.clearTimeout(this.speedSwitchRetryTimer);
+            this.speedSwitchRetryTimer = undefined;
+        }
+        this.quickActionAdapters.clear();
+        this.quickActionAdapterTargets.clear();
         if (this.recentRecordTimer !== undefined) {
             window.clearTimeout(this.recentRecordTimer);
             this.recentRecordTimer = undefined;
@@ -380,6 +415,9 @@ export default class CheckinPlugin extends Plugin {
             getStore: () => this.cloneStore(),
             getItems: () => this.store.items.filter((item) => !item.archived).map((item) => this.cloneItem(item)),
             getEvents: () => this.store.events.map((event) => ({...event})),
+            getOccasions: () => this.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
+            getTodayOccasions: () => getVisibleOccasions(this.occasionStore, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
+            completeOccasion: (id, occurrenceDate, completed) => this.enqueueMutation(() => this.setOccasionCompleted(id, occurrenceDate, completed)),
             getSummaryContext: (range) => {
                 if (!isSummaryRange(range)) throw new TypeError("range 必须是 day、week 或 month");
                 return buildSummaryContext(this.store, range, currentCalendarDate());
@@ -569,6 +607,13 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
+    private showOccasions() {
+        this.currentPage = "occasions";
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        this.render();
+    }
+
     private showEditor(item?: CheckinItem) {
         this.currentPage = "editor";
         this.editingId = item?.id;
@@ -655,6 +700,7 @@ export default class CheckinPlugin extends Plugin {
         }
         this.quickDialog = dialog;
         this.quickDialogElement = root;
+        this.quickDialogFullscreen = false;
         this.bindQuickDialogViewport(dialog);
         this.renderInto(root);
     }
@@ -674,12 +720,101 @@ export default class CheckinPlugin extends Plugin {
         this.quickDialogViewportCleanup = undefined;
         this.quickDialog = undefined;
         this.quickDialogElement = undefined;
+        this.quickDialogFullscreen = false;
         if (this.disposed || this.disposing) return;
         this.currentPage = "today";
         this.editingId = undefined;
         this.editingFingerprint = undefined;
         this.render();
         void this.reconcileStore();
+    }
+
+    /** Runtime adapter used by 小驴速切 and other optional launchers. */
+    public registerQuickAction(options: CheckinQuickActionOptions): () => void {
+        if (!options || !/^[A-Za-z0-9._:-]+$/.test(options.id) || typeof options.handler !== "function") return () => undefined;
+        const handler = options.handler;
+        this.quickActionAdapters.set(options.id, handler);
+        const targets = Array.isArray(options.targets)
+            ? options.targets.filter((target, index, list): target is CheckinQuickActionTarget => ["desktop", "sidebar", "mobile"].includes(target) && list.indexOf(target) === index)
+            : undefined;
+        if (targets) this.quickActionAdapterTargets.set(options.id, targets);
+        else this.quickActionAdapterTargets.delete(options.id);
+        return () => {
+            if (this.quickActionAdapters.get(options.id) === handler) {
+                this.quickActionAdapters.delete(options.id);
+                this.quickActionAdapterTargets.delete(options.id);
+            }
+        };
+    }
+
+    public registerQuickActionAdapter(id: string, handler: (value: string) => void | Promise<void>, targets?: CheckinQuickActionTarget[]): () => void {
+        return this.registerQuickAction({id, label: id, handler, targets});
+    }
+
+    private ensureMobileTopBarButton() {
+        if (!this.isMobileFrontend || this.disposed || this.disposing) return;
+        const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
+        if (!topBar) {
+            if (this.mobileTopBarRetryTimer === undefined) {
+                this.mobileTopBarRetryTimer = window.setTimeout(() => {
+                    this.mobileTopBarRetryTimer = undefined;
+                    this.ensureMobileTopBarButton();
+                }, 800);
+            }
+            return;
+        }
+        if (this.mobileTopBarButton?.isConnected || topBar.querySelector("#lcCheckinMobileTopBarButton")) return;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = "lcCheckinMobileTopBarButton";
+        button.className = "toolbar__button";
+        button.setAttribute("aria-label", "打开小驴打卡");
+        button.setAttribute("title", "打开小驴打卡");
+        button.innerHTML = `<svg aria-hidden="true"><use xlink:href="#iconLvCheckin"></use></svg>`;
+        button.addEventListener("click", () => this.toggleQuickDialog());
+        topBar.appendChild(button);
+        this.mobileTopBarButton = button;
+    }
+
+    /** Register optional launcher actions when 小驴速切 is installed. */
+    private ensureSpeedSwitchQuickActions() {
+        if (this.disposed || this.disposing || this.speedSwitchQuickActionDisposers.length) return;
+        const plugins = (this.app as unknown as {plugins?: unknown}).plugins;
+        const candidates = Array.isArray(plugins)
+            ? plugins
+            : plugins && typeof plugins === "object" ? Object.values(plugins as Record<string, unknown>) : [];
+        const speedSwitch = candidates.find((candidate) => {
+            if (!candidate || typeof candidate !== "object") return false;
+            const plugin = candidate as {name?: unknown; registerQuickAction?: unknown};
+            return typeof plugin.registerQuickAction === "function" && (plugin.name === "siyuan-speed-switch" || plugin.name === "小驴速切" || plugin.name === "siyuanSpeedSwitch");
+        }) as SpeedSwitchPluginLike | undefined;
+        if (!speedSwitch?.registerQuickAction) {
+            if (this.speedSwitchRetryTimer === undefined) {
+                this.speedSwitchRetryTimer = window.setTimeout(() => {
+                    this.speedSwitchRetryTimer = undefined;
+                    this.ensureSpeedSwitchQuickActions();
+                }, 1200);
+            }
+            return;
+        }
+        const actions: Array<{id: string; label: string; value: string; handler: () => void}> = [
+            {id: "xiaolv-checkin-open", label: "打卡", value: "open", handler: () => this.openQuickDialog()},
+            {id: "xiaolv-checkin-today", label: "今日", value: "today", handler: () => { this.openQuickDialog(); this.showToday(); }},
+            {id: "xiaolv-checkin-add", label: "新建", value: "add", handler: () => { this.openQuickDialog(); this.showEditor(); }},
+            {id: "xiaolv-checkin-insights", label: "复盘", value: "insights", handler: () => { this.openQuickDialog(); this.showInsights(); }},
+            {id: "xiaolv-checkin-summary", label: "总结", value: "summary", handler: () => { this.openQuickDialog(); this.showSummary(); }},
+        ];
+        actions.forEach((action) => {
+            const dispose = speedSwitch.registerQuickAction({
+                id: action.id,
+                label: action.label,
+                icon: "iconLvCheckin",
+                value: action.value,
+                targets: ["desktop", "sidebar", "mobile"],
+                handler: () => action.handler(),
+            });
+            if (typeof dispose === "function") this.speedSwitchQuickActionDisposers.push(dispose);
+        });
     }
 
     private bindQuickDialogViewport(dialog: Dialog) {
@@ -878,6 +1013,37 @@ export default class CheckinPlugin extends Plugin {
                     };
                 },
             });
+            plugin.addAgentCapability({
+                name: "checkin-list-occasions",
+                title: "读取小驴打卡日期事项",
+                description: "列出生日、纪念日和定时事项，并返回今天或提前提醒窗口内的事项。该能力只读本地数据。",
+                inputSchema: {type: "object", properties: {includeDisabled: {type: "boolean", description: "是否包含已停用事项"}}, additionalProperties: false},
+                outputSchema: {type: "object"},
+                effects: {localRead: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const includeDisabled = args.includeDisabled === true;
+                    const occasions = this.occasionStore.occasions.filter((item) => includeDisabled || item.enabled).map((item) => ({...item, completedDates: [...item.completedDates]}));
+                    const upcoming = getVisibleOccasions(this.occasionStore, currentCalendarDate()).map((item) => ({id: item.id, name: item.name, kind: item.kind, occurrenceDate: item.occurrenceDate, daysUntil: item.daysUntil, status: item.status, completed: isOccasionCompleted(item, item.occurrenceDate)}));
+                    return {result: "找到 " + occasions.length + " 个日期事项，当前提醒窗口内有 " + upcoming.length + " 个。", structuredContent: {occasions, upcoming}};
+                },
+            });
+            plugin.addAgentCapability({
+                name: "checkin-complete-occasion",
+                title: "处理小驴打卡日期事项",
+                description: "在用户明确要求时标记生日、纪念日或定时事项为已处理或未处理，并保存到本地。",
+                inputSchema: {type: "object", properties: {id: {type: "string", description: "事项 ID"}, occurrenceDate: {type: "string", description: "发生日期 YYYY-MM-DD"}, completed: {type: "boolean", description: "是否标记为已处理"}}, required: ["id", "occurrenceDate", "completed"], additionalProperties: false},
+                outputSchema: {type: "object"},
+                effects: {localRead: true, localWrite: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const id = typeof args.id === "string" ? args.id.trim() : "";
+                    const occurrenceDate = typeof args.occurrenceDate === "string" ? args.occurrenceDate : "";
+                    if (!id || !isValidLocalDateInput(occurrenceDate) || typeof args.completed !== "boolean") return {error: "事项 ID、日期或处理状态无效。"};
+                    const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
+                    if (!item) return {error: "找不到对应的日期事项。"};
+                    const ok = await this.enqueueMutation(() => this.setOccasionCompleted(id, occurrenceDate, args.completed as boolean));
+                    return ok ? {result: (args.completed ? "已处理" : "已取消处理") + "日期事项“" + item.name + "”。", structuredContent: {id, occurrenceDate, completed: args.completed}} : {error: "事项状态保存失败。"};
+                },
+            });
             this.agentCapabilityRegistered = true;
         } catch (error) {
             showMessage(`[小驴打卡] 注册思源智能体能力失败：${String(error)}`);
@@ -912,13 +1078,26 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "insights" ? this.renderInsights()
-                    : this.currentPage === "archived" ? this.renderArchived() : this.renderToday();
+                    : this.currentPage === "archived" ? this.renderArchived()
+                    : this.currentPage === "occasions" ? this.renderOccasions() : this.renderToday();
         root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">×</button>`);
+        if (this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend) {
+            const button = document.createElement("button");
+            button.className = "lc-checkin__dialog-fullscreen";
+            button.type = "button";
+            button.dataset.action = "toggle-fullscreen";
+            button.setAttribute("aria-label", this.quickDialogFullscreen ? "退出全屏" : "全屏显示");
+            button.title = this.quickDialogFullscreen ? "退出全屏" : "全屏显示";
+            button.textContent = this.quickDialogFullscreen ? "⊙" : "□";
+            root.prepend(button);
+        }
         if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
             this.bindToday(root);
+        } else if (this.currentPage === "occasions") {
+            this.bindOccasions(root);
         } else {
             this.bindPageNavigation(root);
         }
@@ -976,7 +1155,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "⌂"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"]] as const;
+        const entries = [["today", "今日", "⌂"], ["occasions", "事项", "◷"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
@@ -1030,6 +1209,7 @@ export default class CheckinPlugin extends Plugin {
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
         const saveStatus = this.renderSaveStatus();
+        const occasionSection = this.renderOccasionSection(now);
         return `<div class="lc-checkin">
             <header class="lc-checkin__header">
                 <div>
@@ -1041,6 +1221,7 @@ export default class CheckinPlugin extends Plugin {
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">⌁</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="occasions" aria-label="管理事项" title="事项">◷</button>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
@@ -1058,8 +1239,19 @@ export default class CheckinPlugin extends Plugin {
                 </select></label>
                 <label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
             </div>` : ""}
-            <main class="lc-checkin__list">${list}</main>
+            <main class="lc-checkin__list">${list}${occasionSection}</main>
         </div>`;
+    }
+
+    private renderOccasionSection(date: Date): string {
+        const items = getVisibleOccasions(this.occasionStore, date);
+        const rows = items.length ? items.map((item) => {
+            const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
+            const completed = isOccasionCompleted(item, item.occurrenceDate);
+            const timing = item.status === "today" ? "今天" : String(item.daysUntil) + " 天后";
+            return "<article class=\"lc-checkin__occasion " + (completed ? "is-complete" : "") + "\" data-occasion-id=\"" + escapeHtml(item.id) + "\" data-occasion-date=\"" + escapeHtml(item.occurrenceDate) + "\"><span class=\"lc-checkin__occasion-icon\" aria-hidden=\"true\">" + icon + "</span><div class=\"lc-checkin__occasion-body\"><strong>" + escapeHtml(item.name) + "</strong><small>" + escapeHtml(timing) + " · " + (item.recurrence === "annual" ? "每年" : "一次性") + (item.note ? " · " + escapeHtml(item.note) : "") + "</small></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"toggle-occasion\" aria-label=\"" + (completed ? "取消处理" : "标记已处理") + " " + escapeHtml(item.name) + "\">" + (completed ? "已处理" : "处理") + "</button></article>";
+        }).join("") : "<div class=\"lc-checkin__occasion-empty\">未来提醒会在这里出现。</div>";
+        return "<section class=\"lc-checkin__occasions\" aria-label=\"日期事项\"><div class=\"lc-checkin__section-heading\"><div><span class=\"lc-checkin__section-kicker\">日期提醒</span><strong>生日、纪念日与定时事项</strong></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"occasions\">管理</button></div><div class=\"lc-checkin__occasion-list\">" + rows + "</div></section>";
     }
 
     private renderSaveStatus(): string {
@@ -1213,6 +1405,21 @@ export default class CheckinPlugin extends Plugin {
         const items = this.store.items.filter((item) => item.archived);
         const rows = items.length ? items.map((item) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(item.icon)} ${escapeHtml(item.name)}</strong><button class="lc-checkin__text-button" type="button" data-restore-id="${escapeHtml(item.id)}">恢复</button></div>`).join("") : `<div class="lc-checkin__empty-description">没有已归档项目。</div>`;
         return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">已归档</h1></header><main class="lc-checkin__history-list">${rows}</main></div>`;
+    }
+
+    private renderOccasions(): string {
+        const editing = this.editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId) : undefined;
+        const rows = this.occasionStore.occasions.length ? [...this.occasionStore.occasions].sort((left, right) => left.date.localeCompare(right.date)).map((item) => {
+            const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
+            const kind = item.kind === "birthday" ? "生日" : item.kind === "anniversary" ? "纪念日" : "定时事项";
+            const recurrence = item.recurrence === "annual" ? "每年 " + item.date.slice(5) : item.date;
+            return '<article class="lc-checkin__occasion-manager-row ' + (item.enabled ? "" : "is-disabled") + '"><span class="lc-checkin__occasion-icon" aria-hidden="true">' + icon + '</span><div><strong>' + escapeHtml(item.name) + '</strong><small>' + kind + ' · ' + recurrence + ' · 提前 ' + item.remindBeforeDays + ' 天</small></div><button class="lc-checkin__small-button" type="button" data-occasion-edit="' + escapeHtml(item.id) + '" aria-label="编辑' + escapeHtml(item.name) + '" title="编辑">⚙</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="' + escapeHtml(item.id) + '" aria-label="切换' + escapeHtml(item.name) + '">' + (item.enabled ? "✓" : "○") + '</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="' + escapeHtml(item.id) + '" aria-label="删除' + escapeHtml(item.name) + '" title="删除">×</button></article>';
+        }).join("") : '<div class="lc-checkin__empty-description">还没有日期事项。添加后，它们会在提醒窗口和今日页单独显示。</div>';
+        const date = editing?.date || dateKey(currentCalendarDate());
+        const editLabel = editing ? "编辑事项" : "新建事项";
+        const kind = editing?.kind || "scheduled";
+        const recurrence = editing?.recurrence || "annual";
+        return '<div class="lc-checkin lc-checkin--history lc-checkin--occasions"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header><div class="lc-checkin__occasion-manager"><section class="lc-checkin__occasion-form-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">' + editLabel + '</span><strong>按日期提醒</strong></div></div><form data-occasion-form><label class="lc-checkin__field"><span>名称</span><input name="name" required maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="' + escapeHtml(editing?.name || "") + '" /></label><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday" ' + (kind === "birthday" ? "selected" : "") + '>生日</option><option value="anniversary" ' + (kind === "anniversary" ? "selected" : "") + '>纪念日</option><option value="scheduled" ' + (kind === "scheduled" ? "selected" : "") + '>定时事项</option></select></label><label class="lc-checkin__field"><span>日期</span><input name="date" type="date" required value="' + escapeHtml(date) + '" /></label></div><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>重复</span><select name="recurrence"><option value="annual" ' + (recurrence === "annual" ? "selected" : "") + '>每年</option><option value="once" ' + (recurrence === "once" ? "selected" : "") + '>一次性</option></select></label><label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" value="' + (editing?.remindBeforeDays ?? 3) + '" /></label></div><label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">' + escapeHtml(editing?.note || "") + '</textarea></label><div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">' + (editing ? "保存修改" : "添加事项") + '</button>' + (editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : "") + '</div></form></section><section class="lc-checkin__occasion-list-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">' + this.occasionStore.occasions.length + '</span></div><div class="lc-checkin__occasion-manager-list">' + rows + '</div></section></div></div>';
     }
 
     private renderItem(item: CheckinItem, date: Date): string {
@@ -1412,6 +1619,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
+        root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => this.showOccasions()));
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -1515,6 +1723,37 @@ export default class CheckinPlugin extends Plugin {
                 }
             });
         });
+        root.querySelectorAll<HTMLElement>("[data-action='toggle-occasion']").forEach((button) => button.addEventListener("click", () => {
+            const row = button.closest<HTMLElement>("[data-occasion-id]");
+            const id = row?.dataset.occasionId || "";
+            const occurrenceDate = row?.dataset.occasionDate || "";
+            const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
+            if (item) void this.enqueueMutation(() => this.setOccasionCompleted(id, occurrenceDate, !isOccasionCompleted(item, occurrenceDate)));
+        }));
+    }
+
+    private bindOccasions(root: HTMLElement) {
+        this.bindDialogClose(root);
+        this.bindMobileNav(root);
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        root.querySelector<HTMLElement>("[data-action='new-occasion']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
+        root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
+        root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { this.editingOccasionId = button.dataset.occasionEdit; this.render(); }));
+        root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
+            const id = button.dataset.occasionToggle || "";
+            const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
+            if (item) void this.enqueueMutation(() => this.updateOccasion({...item, enabled: !item.enabled}));
+        }));
+        root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
+            const id = button.dataset.occasionDelete || "";
+            const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
+            if (!item || !window.confirm("删除日期事项？")) return;
+            void this.enqueueMutation(() => this.deleteOccasion(id));
+        }));
+        root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            void this.enqueueMutation(() => this.saveOccasionForm(new FormData(event.currentTarget as HTMLFormElement)));
+        });
     }
 
     private bindPageNavigation(root: HTMLElement) {
@@ -1529,6 +1768,7 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
+        root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => this.showOccasions());
         const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
         let historySearchTimer: number | undefined;
         historySearch?.addEventListener("input", () => {
@@ -1632,6 +1872,13 @@ export default class CheckinPlugin extends Plugin {
 
     private bindDialogClose(root: HTMLElement) {
         root.querySelector<HTMLElement>("[data-action='close-dialog']")?.addEventListener("click", () => this.closeQuickDialog());
+        root.querySelector<HTMLElement>("[data-action='toggle-fullscreen']")?.addEventListener("click", () => {
+            const container = this.quickDialog?.element.querySelector<HTMLElement>(".b3-dialog__container");
+            if (!container) return;
+            this.quickDialogFullscreen = !this.quickDialogFullscreen;
+            container.classList.toggle("lc-checkin-dialog--fullscreen", this.quickDialogFullscreen);
+            this.renderInto(root);
+        });
     }
 
     private bindMobileNav(root: HTMLElement) {
@@ -1642,6 +1889,7 @@ export default class CheckinPlugin extends Plugin {
             else if (page === "summary") this.showSummary();
             else if (page === "insights") this.showInsights();
             else if (page === "archived") this.showArchived();
+            else if (page === "occasions") this.showOccasions();
             else if (page === "add") this.showEditor();
         }));
     }
@@ -2455,6 +2703,59 @@ export default class CheckinPlugin extends Plugin {
         return write;
     }
 
+    private persistOccasions(store: OccasionStore = this.occasionStore): Promise<void> {
+        if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
+        const snapshot: OccasionStore = {version: 1, occasions: store.occasions.map((item) => ({...item, completedDates: [...item.completedDates]}))};
+        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
+        this.saveQueue = write.catch((error) => showMessage("[小驴打卡] 保存日期事项失败：" + String(error)));
+        return write;
+    }
+
+    private async saveOccasionForm(data: FormData) {
+        const name = String(data.get("name") || "").trim();
+        const date = String(data.get("date") || "");
+        const kindValue = String(data.get("kind") || "scheduled");
+        const recurrenceValue = String(data.get("recurrence") || "annual");
+        const kind: OccasionKind = kindValue === "birthday" || kindValue === "anniversary" ? kindValue : "scheduled";
+        const recurrence: OccasionRecurrence = recurrenceValue === "once" ? "once" : "annual";
+        const remindBeforeDays = Math.max(0, Math.min(365, Math.round(Number(data.get("remindBeforeDays")) || 0)));
+        const existing = this.editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId) : undefined;
+        const normalized = normalizeOccasion({id: existing?.id, name, kind, date, recurrence, remindBeforeDays, note: String(data.get("note") || ""), enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString()});
+        if (!normalized) { showMessage("请填写有效的事项名称和日期"); return; }
+        const previous = this.occasionStore;
+        this.occasionStore = {...previous, occasions: existing ? previous.occasions.map((item) => item.id === normalized.id ? normalized : item) : [...previous.occasions, normalized]};
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项保存失败，请重试"); return; }
+        this.editingOccasionId = undefined;
+        this.render();
+    }
+
+    private async updateOccasion(item: Occasion) {
+        const normalized = normalizeOccasion(item);
+        if (!normalized) return;
+        const previous = this.occasionStore;
+        this.occasionStore = {...previous, occasions: previous.occasions.map((candidate) => candidate.id === normalized.id ? normalized : candidate)};
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项更新失败，请重试"); return; }
+        this.renderBackgroundUpdate();
+    }
+
+    private async deleteOccasion(id: string) {
+        const previous = this.occasionStore;
+        this.occasionStore = {...previous, occasions: previous.occasions.filter((item) => item.id !== id)};
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项删除失败，请重试"); return; }
+        if (this.editingOccasionId === id) this.editingOccasionId = undefined;
+        this.render();
+    }
+
+    private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {
+        const previous = this.occasionStore;
+        const next = markOccasionCompleted(previous, id, occurrenceDate, completed);
+        if (next === previous) return true;
+        this.occasionStore = next;
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项状态保存失败，请重试"); return false; }
+        this.renderBackgroundUpdate();
+        return true;
+    }
+
     private async retrySave() {
         if (this.saveState !== "error" || this.disposed || !this.storageReady) return;
         try {
@@ -2511,6 +2812,10 @@ export default class CheckinPlugin extends Plugin {
                     if (refreshed) this.showSyncNotice();
                     if (JSON.stringify(latest) !== JSON.stringify(remote)) {
                         await this.persist();
+                    }
+                    const remoteOccasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
+                    if (JSON.stringify(remoteOccasions) !== JSON.stringify(this.occasionStore)) {
+                        this.occasionStore = remoteOccasions;
                     }
                 } catch (error) {
                     if (!this.disposing) showMessage(`[小驴打卡] 刷新数据失败，本次操作已取消：${String(error)}`);
@@ -2604,6 +2909,29 @@ function escapeHtml(value: string): string {
             default: return character;
         }
     });
+}
+
+type CheckinQuickActionTarget = "desktop" | "sidebar" | "mobile";
+
+interface SpeedSwitchPluginLike {
+    name?: string;
+    registerQuickAction: (options: {
+        id: string;
+        label: string;
+        icon?: string;
+        value?: string;
+        targets?: CheckinQuickActionTarget[];
+        handler: (value: string) => void | Promise<void>;
+    }) => (() => void) | void;
+}
+
+interface CheckinQuickActionOptions {
+    id: string;
+    label: string;
+    icon?: string;
+    value?: string;
+    targets?: CheckinQuickActionTarget[];
+    handler: (value: string) => void | Promise<void>;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
