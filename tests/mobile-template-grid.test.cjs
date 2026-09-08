@@ -9,6 +9,8 @@ assert.match(styles, /\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\
     "normal editor widths must use a stable three-column template grid");
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
     "320/360px widths must switch templates to two columns");
+assert.match(styles, /@media \(max-width:\s*340px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+    "320px widths must degrade templates to one column");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px/,
     "template cards must retain a stable touch height");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/,

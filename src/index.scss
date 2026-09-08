@@ -2551,6 +2551,11 @@
     .is-missed { background: color-mix(in srgb, var(--lc-checkin-accent) 52%, var(--b3-theme-surface-lighter)); }
     .is-off { opacity: .45; }
 }
+@media (max-width: 340px) {
+    .lc-checkin__templates {
+        grid-template-columns: 1fr;
+    }
+}
 
 @media (hover: none), (pointer: coarse) {
     .lc-checkin--history .lc-checkin__history-search input,
