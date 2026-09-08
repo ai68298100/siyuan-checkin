@@ -4,12 +4,15 @@ const os = require("node:os");
 const path = require("node:path");
 const ts = require("typescript");
 const source = fs.readFileSync("src/occasions.ts", "utf8");
+const indexSource = fs.readFileSync("src/index.ts", "utf8");
 
 assert.match(source, /getVisibleOccasions/);
 assert.match(source, /remindBeforeDays/);
 assert.match(source, /recurrence === "once"/);
 assert.match(source, /markOccasionCompleted/);
 assert.match(source, /completedDates/);
+assert.match(indexSource, /data-occasion-form novalidate/);
+assert.match(indexSource, /isValidLocalDateInput\(String\(data\.get\("date"\)/);
 const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions-")), "occasions.js");
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const occasions = require(output);
