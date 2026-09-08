@@ -6,15 +6,17 @@ export interface TemplateManagerState {query: string; editingId?: string; confir
 export function createTemplateManagerState(): TemplateManagerState { return {query: ""}; }
 
 export function selectTemplates(store: readonly UserTemplate[], query = ""): UserTemplate[] {
-    const normalized = query.trim().toLocaleLowerCase();
+    const normalized = String(query ?? "").trim().toLocaleLowerCase();
     return store.map((template) => ({...template})).filter((template) => !normalized || [template.name, template.group, template.note, template.unit].join(" ").toLocaleLowerCase().includes(normalized));
 }
 
 export function renderTemplateManager(store: readonly UserTemplate[], state: TemplateManagerState): string {
-    const templates = selectTemplates(store, state.query);
-    const editing = state.editingId ? store.find((template) => template.id === state.editingId) : undefined;
-    const clear = state.query.trim() ? `<button type="button" data-template-action="clear-search" aria-label="清除模板筛选">清除筛选</button>` : "";
-    return `<section class="lc-template-manager" aria-labelledby="template-manager-title"><header><div><span class="lc-checkin__eyebrow">我的模板</span><h2 id="template-manager-title">常用打卡模板</h2><p>保存自己的打卡方式，下次新建时直接套用。</p></div><button type="button" data-template-action="new" aria-label="新建模板">新建模板</button></header>${state.statusMessage ? `<p class="lc-template-manager__status" role="status">${escapeHtml(state.statusMessage)}</p>` : ""}<label class="lc-template-manager__search"><span>搜索模板</span><input type="search" data-template-query value="${escapeHtml(state.query)}" placeholder="搜索名称、分组或备注" aria-controls="template-manager-list" />${clear}</label>${editing ? renderTemplateForm(editing) : ""}<div class="lc-template-manager__count" aria-live="polite">${templates.length} 个模板</div><div class="lc-template-manager__list" id="template-manager-list">${templates.length ? templates.map((template) => renderTemplateCard(template, state.confirmDeleteId)).join("") : `<p class="lc-template-manager__empty" role="status">${state.query.trim() ? "没有匹配的模板" : "还没有自定义模板"}</p>`}</div></section>`;
+    const safeState = state || createTemplateManagerState();
+    const query = String(safeState.query ?? "");
+    const templates = selectTemplates(store || [], query);
+    const editing = safeState.editingId ? store.find((template) => template.id === safeState.editingId) : undefined;
+    const clear = query.trim() ? `<button type="button" data-template-action="clear-search" aria-label="清除模板筛选">清除筛选</button>` : "";
+    return `<section class="lc-template-manager" aria-labelledby="template-manager-title"><header><div><span class="lc-checkin__eyebrow">我的模板</span><h2 id="template-manager-title">常用打卡模板</h2><p>保存自己的打卡方式，下次新建时直接套用。</p></div><button type="button" data-template-action="new" aria-label="新建模板">新建模板</button></header>${safeState.statusMessage ? `<p class="lc-template-manager__status" role="status">${escapeHtml(safeState.statusMessage)}</p>` : ""}<label class="lc-template-manager__search"><span>搜索模板</span><input type="search" data-template-query value="${escapeHtml(query)}" placeholder="搜索名称、分组或备注" aria-controls="template-manager-list" />${clear}</label>${editing ? renderTemplateForm(editing) : ""}<div class="lc-template-manager__count" aria-live="polite">${templates.length} 个模板</div><div class="lc-template-manager__list" id="template-manager-list">${templates.length ? templates.map((template) => renderTemplateCard(template, safeState.confirmDeleteId)).join("") : `<p class="lc-template-manager__empty" role="status">${query.trim() ? "没有匹配的模板" : "还没有自定义模板"}</p>`}</div></section>`;
 }
 
 export function saveManagedTemplate(store: readonly UserTemplate[], input: unknown): UserTemplate[] { return upsertUserTemplate(store, input); }
