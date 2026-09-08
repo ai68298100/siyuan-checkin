@@ -1978,8 +1978,12 @@
 
 .lc-checkin__calendar-empty,
 .lc-checkin__calendar-day {
-    aspect-ratio: 1;
     min-width: 0;
+}
+
+.lc-checkin__calendar-empty,
+.lc-checkin__calendar-day {
+    min-height: 58px;
 }
 
 .lc-checkin__calendar-day {
@@ -2066,6 +2070,14 @@
     background: transparent;
     font-size: 11px;
     cursor: pointer;
+
+    > span { align-self: flex-start; margin-top: 8px; }
+    > b { position: absolute; right: 6px; bottom: 5px; color: var(--b3-theme-on-surface-light); font-size: 9px; font-weight: 400; }
+}
+
+@media (max-width: 700px) {
+    .lc-checkin__calendar-empty,
+    .lc-checkin__calendar-day { min-height: 0; aspect-ratio: 1; }
 }
 
 .lc-checkin__template-delete:hover,

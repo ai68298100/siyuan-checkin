@@ -1354,7 +1354,7 @@ export default class CheckinPlugin extends Plugin {
                     key === today ? "is-today" : "",
                 ].filter(Boolean).join(" ");
                 const label = `${formatHistoryDate(key)}，${completed}/${scheduled.length} 项完成，${eventCount} 条记录`;
-                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<i>${eventCount}</i>` : ""}</button>`;
+                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount}条</b>` : ""}</button>`;
             }),
         ].join("");
         const selectedEvents = eventsByDay.get(this.selectedHistoryDate) || [];
