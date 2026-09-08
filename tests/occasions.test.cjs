@@ -28,4 +28,11 @@ assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthly]}, n
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthly]}, new Date(2026, 1, 27, 12)).length, 0);
 const monthEnd = occasions.normalizeOccasion({id: "month-end", name: "月末扣费", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthEnd]}, new Date(2026, 1, 27, 12))[0].occurrenceDate, "2026-02-28");
+const leapBirthday = occasions.normalizeOccasion({id:"leap", name:"闰年生日", kind:"birthday", date:"2028-02-29", recurrence:"annual", remindBeforeDays:3});
+assert.equal(occasions.getVisibleOccasions({version:1, occasions:[leapBirthday]}, new Date(2027, 1, 27, 12)).length, 0);
+assert.equal(occasions.getVisibleOccasions({version:1, occasions:[leapBirthday]}, new Date(2028, 1, 26, 12))[0].occurrenceDate, "2028-02-29");
+const capped = occasions.normalizeOccasion({id:"capped", name:"限制", date:"2026-09-20", recurrence:"once", remindBeforeDays:999, completedDates:["2026-09-20","bad","2026-09-19"]});
+assert.equal(capped.remindBeforeDays, 365); assert.deepEqual(capped.completedDates, ["2026-09-20","2026-09-19"]);
+const unchanged = {version:1, occasions:[once]}; assert.equal(occasions.markOccasionCompleted(unchanged, "missing", "2026-09-15", true), unchanged);
+const marked = occasions.markOccasionCompleted(unchanged, "loan", "2026-09-15", true); assert.notEqual(marked, unchanged); assert.equal(occasions.isOccasionCompleted(marked.occasions[0], "2026-09-15"), true); const unmarked = occasions.markOccasionCompleted(marked, "loan", "2026-09-15", false); assert.equal(occasions.isOccasionCompleted(unmarked.occasions[0], "2026-09-15"), false);
 console.log("Occasion model structure checks passed.");
