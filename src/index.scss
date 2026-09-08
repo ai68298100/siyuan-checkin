@@ -3195,6 +3195,10 @@
 .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) auto auto; }
 
 @container lc-checkin (max-width: 440px) {
+    .lc-checkin__month-nav button { min-width: 36px; min-height: 36px; border-radius: 9px; }
+    .lc-checkin__history-filter-row { gap: 8px; }
+    .lc-checkin__history-filter-row label { min-width: 0; flex: 1 1 140px; }
+    .lc-checkin__history-filter-row select { min-width: 0; width: 100%; min-height: 36px; }
     .lc-checkin__summary-stats { gap: 6px; margin-top: 10px; }
     .lc-checkin__summary-stats div { min-height: 60px; }
     .lc-checkin__summary-stats strong { font-size: 17px; }
