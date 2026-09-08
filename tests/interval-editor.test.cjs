@@ -21,6 +21,8 @@ assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
 assert.match(source, /data-editor-preview/);
 assert.match(source, /updateEditorPreview/);
 assert.match(source, /data-preview-action/);
+assert.match(source, /data-action="save-template"/);
+assert.match(source, /保存为我的模板/);
 assert.match(source, /!weekdays\.querySelector<HTMLInputElement>\("input\[name='weekday'\]:checked"\)/);
 assert.match(source, /const advanced = root\.querySelector<HTMLDetailsElement>\("\[data-advanced\]"\)/);
 
