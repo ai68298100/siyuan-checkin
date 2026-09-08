@@ -1799,6 +1799,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => this.showOccasions());
+        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
+            if (item) this.showInsights(item);
+        }));
         const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
         let historySearchTimer: number | undefined;
         historySearch?.addEventListener("input", () => {
@@ -2216,10 +2220,6 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
             updateConditionalFields(true);
             ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
-        }));
-        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
-            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
-            if (item) this.showInsights(item);
         }));
         root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
             event.preventDefault();
