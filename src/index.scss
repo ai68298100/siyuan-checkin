@@ -2859,6 +2859,9 @@
 }
 
 @container lc-checkin (max-width: 420px) {
+    .lc-checkin--occasions .lc-checkin__field input,
+    .lc-checkin--occasions .lc-checkin__field select { min-height: 38px; }
+    .lc-checkin--occasions .lc-checkin__editor-actions .lc-checkin__primary-button { min-height: 42px; }
     .lc-checkin__occasion,
     .lc-checkin__occasion-manager-row { grid-template-columns: auto minmax(0, 1fr) auto; }
     .lc-checkin__occasion-manager-row { row-gap: 6px; padding: 9px; }
