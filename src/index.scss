@@ -2450,6 +2450,26 @@
     }
 }
 
+.lc-checkin__history-note-editor {
+    width: 100%;
+    min-height: 56px;
+    box-sizing: border-box;
+    margin-top: 6px;
+    padding: 8px 10px;
+    resize: vertical;
+    border: 1px solid var(--b3-border-color);
+    border-radius: 8px;
+    color: var(--b3-theme-on-background);
+    background: var(--b3-theme-background);
+    font: inherit;
+    line-height: 1.5;
+}
+
+.lc-checkin__history-note-editor:focus {
+    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 35%, transparent);
+    border-color: var(--lc-checkin-accent);
+}
+
 .lc-checkin__coaching-list {
     display: grid;
     gap: 8px;

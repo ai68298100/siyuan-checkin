@@ -165,6 +165,7 @@ export default class CheckinPlugin extends Plugin {
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
+    private editingHistoryNoteId?: string;
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
     private midnightTimer?: number;
@@ -1354,7 +1355,7 @@ export default class CheckinPlugin extends Plugin {
                     key === today ? "is-today" : "",
                 ].filter(Boolean).join(" ");
                 const label = `${formatHistoryDate(key)}，${completed}/${scheduled.length} 项完成，${eventCount} 条记录`;
-                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<i>${eventCount}</i>` : ""}</button>`;
+                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount}条</b>` : ""}</button>`;
             }),
         ].join("");
         const selectedEvents = eventsByDay.get(this.selectedHistoryDate) || [];
@@ -1383,8 +1384,9 @@ export default class CheckinPlugin extends Plugin {
         const eventDetails = filteredRecords.length ? `<div class="lc-checkin__history-events">${filteredRecords.map(({event, itemName}) => {
             const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
+            const noteEditor = this.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">保存备注</button>` : "";
             const sourceLabel = HISTORY_SOURCE_LABELS[event.source] || event.source;
-            return `<div class="lc-checkin__history-event"><div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div></div>`;
+            return `<div class="lc-checkin__history-event"><div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}${noteEditor}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? "没有符合当前筛选条件的记录" : "当天没有记录"}</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -1428,7 +1430,7 @@ export default class CheckinPlugin extends Plugin {
         const editLabel = editing ? "编辑事项" : "新建事项";
         const kind = editing?.kind || "scheduled";
         const recurrence = editing?.recurrence || "annual";
-        return '<div class="lc-checkin lc-checkin--history lc-checkin--occasions"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header><div class="lc-checkin__occasion-manager"><section class="lc-checkin__occasion-form-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">' + editLabel + '</span><strong>按日期提醒</strong></div></div><form data-occasion-form novalidate><label class="lc-checkin__field"><span>名称</span><input name="name" maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="' + escapeHtml(editing?.name || "") + '" /></label><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday" ' + (kind === "birthday" ? "selected" : "") + '>生日</option><option value="anniversary" ' + (kind === "anniversary" ? "selected" : "") + '>纪念日</option><option value="scheduled" ' + (kind === "scheduled" ? "selected" : "") + '>定时事项</option></select></label><label class="lc-checkin__field"><span>日期</span><input name="date" type="date" value="' + escapeHtml(date) + '" /></label></div><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>重复</span><select name="recurrence"><option value="annual" ' + (recurrence === "annual" ? "selected" : "") + '>每年</option><option value="once" ' + (recurrence === "once" ? "selected" : "") + '>一次性</option></select></label><label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" value="' + (editing?.remindBeforeDays ?? 3) + '" /></label></div><label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">' + escapeHtml(editing?.note || "") + '</textarea></label><div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">' + (editing ? "保存修改" : "添加事项") + '</button>' + (editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : "") + '</div></form></section><section class="lc-checkin__occasion-list-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">' + this.occasionStore.occasions.length + '</span></div><div class="lc-checkin__occasion-manager-list">' + rows + '</div></section></div></div>';
+        return '<div class="lc-checkin lc-checkin--history lc-checkin--occasions"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header><div class="lc-checkin__occasion-manager"><section class="lc-checkin__occasion-form-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">' + editLabel + '</span><strong>按日期提醒</strong></div></div><form data-occasion-form><label class="lc-checkin__field"><span>名称</span><input name="name" required maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="' + escapeHtml(editing?.name || "") + '" /></label><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday" ' + (kind === "birthday" ? "selected" : "") + '>生日</option><option value="anniversary" ' + (kind === "anniversary" ? "selected" : "") + '>纪念日</option><option value="scheduled" ' + (kind === "scheduled" ? "selected" : "") + '>定时事项</option></select></label><label class="lc-checkin__field"><span>日期</span><input name="date" type="date" required value="' + escapeHtml(date) + '" /></label></div><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>重复</span><select name="recurrence"><option value="annual" ' + (recurrence === "annual" ? "selected" : "") + '>每年</option><option value="once" ' + (recurrence === "once" ? "selected" : "") + '>一次性</option></select></label><label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" value="' + (editing?.remindBeforeDays ?? 3) + '" /></label></div><label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">' + escapeHtml(editing?.note || "") + '</textarea></label><div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">' + (editing ? "保存修改" : "添加事项") + '</button>' + (editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : "") + '</div></form></section><section class="lc-checkin__occasion-list-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">' + this.occasionStore.occasions.length + '</span></div><div class="lc-checkin__occasion-manager-list">' + rows + '</div></section></div></div>';
     }
 
     private renderItem(item: CheckinItem, date: Date): string {
@@ -1782,15 +1784,7 @@ export default class CheckinPlugin extends Plugin {
         }));
         root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
             event.preventDefault();
-            const form = event.currentTarget as HTMLFormElement;
-            const data = new FormData(form);
-            if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
-                showMessage("请填写有效的事项名称和日期");
-                return;
-            }
-            const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
-            if (submit) submit.disabled = true;
-            void this.enqueueMutation(() => this.saveOccasionForm(data)).finally(() => { if (submit) submit.disabled = false; });
+            void this.enqueueMutation(() => this.saveOccasionForm(new FormData(event.currentTarget as HTMLFormElement)));
         });
     }
 
@@ -1807,6 +1801,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => this.showOccasions());
+        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
+            if (item) this.showInsights(item);
+        }));
         const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
         let historySearchTimer: number | undefined;
         historySearch?.addEventListener("input", () => {
@@ -1880,8 +1878,14 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
             const event = this.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
             if (!event) return;
-            const note = window.prompt("记录备注（可填写思源块引用）", event.note || "");
-            if (note === null) return;
+            this.editingHistoryNoteId = event.id;
+            this.render();
+        }));
+        root.querySelectorAll<HTMLElement>("[data-save-history-note-id]").forEach((button) => button.addEventListener("click", () => {
+            const event = this.store.events.find((candidate) => candidate.id === button.dataset.saveHistoryNoteId);
+            const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input='${button.dataset.saveHistoryNoteId}']`);
+            if (!event || !input) return;
+            const note = input.value.trim();
             void this.enqueueMutation(async () => {
                 const previous = this.store;
                 const next = updateEventNote(this.store, event.id, note);
@@ -1889,12 +1893,9 @@ export default class CheckinPlugin extends Plugin {
                 this.store = next;
                 try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 备注保存失败，请重试"); return; }
                 this.invalidateSummary();
+                this.editingHistoryNoteId = undefined;
                 this.renderBackgroundUpdate();
             });
-        }));
-        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
-            const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
-            if (item) this.showInsights(item);
         }));
         root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
         root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
