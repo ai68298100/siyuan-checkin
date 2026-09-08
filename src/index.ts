@@ -2355,8 +2355,12 @@ export default class CheckinPlugin extends Plugin {
             const id = button.dataset.userTemplateDelete;
             const template = this.userTemplates.find((candidate) => candidate.id === id);
             if (!id || !template || !window.confirm(`删除模板“${template.name}”？`)) return;
-            this.userTemplates = deleteUserTemplate(this.userTemplates, id);
-            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 模板已删除"); this.render(); }).catch(() => showMessage("[小驴打卡] 模板删除失败，请稍后重试"));
+            const nextTemplates = deleteUserTemplate(this.userTemplates, id);
+            void this.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => {
+                this.userTemplates = nextTemplates;
+                showMessage("[小驴打卡] 模板已删除");
+                this.render();
+            }).catch(() => showMessage("[小驴打卡] 模板删除失败，请稍后重试"));
         }));
         root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
             const form = root.querySelector<HTMLFormElement>("form");
