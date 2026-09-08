@@ -2067,6 +2067,14 @@
     background: transparent;
     font-size: 11px;
     cursor: pointer;
+
+    transition: transform .16s ease, border-color .16s ease, background-color .16s ease;
+
+    &:hover {
+        z-index: 1;
+        border-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--b3-border-color));
+        transform: translateY(-1px);
+    }
 }
 
 .lc-checkin__template-delete:hover,
@@ -3073,8 +3081,10 @@
         justify-content: center;
         flex-direction: column;
         gap: 3px;
-        border: 1px solid var(--b3-border-color);
-        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+        border-radius: 12px;
+        background: linear-gradient(145deg, color-mix(in srgb, var(--b3-theme-surface) 92%, white), var(--b3-theme-surface));
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent);
         background: var(--lc-checkin-muted-surface);
     }
 
@@ -3087,6 +3097,23 @@
     span {
         color: var(--b3-theme-on-surface-light);
         font-size: 10px;
+    }
+}
+
+.lc-checkin--history .lc-checkin__month-nav {
+    margin-top: 4px;
+    margin-bottom: 8px;
+}
+
+.lc-checkin--history .lc-checkin__calendar {
+    gap: 6px;
+    margin-bottom: 14px;
+}
+
+@container lc-checkin (min-width: 720px) {
+    .lc-checkin--history .lc-checkin__calendar-day,
+    .lc-checkin--history .lc-checkin__calendar-empty {
+        min-height: 48px;
     }
 }
 
