@@ -1,0 +1,15 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+const source = fs.readFileSync("src/ecosystem.ts", "utf8");
+const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-ecosystem-")), "ecosystem.js");
+fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+const api = require(output);
+const record = api.normalizeExternalRecord({itemId: "run", value: 2, unit: "公里", source: "tomato", externalRef: "session-1", note: "完成"});
+assert.equal(record.source, "tomato"); assert.equal(record.value, 2); assert.equal(api.hasExternalRecord([{source: "tomato", externalRef: "session-1"}], record), true);
+assert.equal(api.normalizeExternalRecord({itemId: "run", value: -1, source: "x", externalRef: "bad"}), undefined);
+assert.equal(api.normalizeExternalRecord({itemId: "run", value: 1, source: "x"}), undefined);
+assert.equal(api.normalizeExternalRecord({itemId: "run", value: 1, externalRef: "x"}).source, "external");
+console.log("Integration ecosystem checks passed.");

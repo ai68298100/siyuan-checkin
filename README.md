@@ -81,6 +81,23 @@ interface CheckinEvent {
 
 ## 跨插件 API
 
+### 生态适配协议
+
+番茄钟、任务管理器或日历插件可以把完成记录转换为统一的外部记录，再调用 `recordEvent`。建议始终提供稳定的 `source` 和 `externalRef`，插件会按两者去重，重复同步不会生成重复记录。适配器也可以通过 `startFocus` / `registerFocusAdapter` 接入专注状态，通过 `subscribe` 接收记录变化。
+
+```js
+await window.siyuanCheckin.recordEvent({
+    itemId: "run-item-id",
+    value: 25,
+    unit: "分钟",
+    source: "tomato",
+    externalRef: "tomato-session-2026-09-08-001",
+    note: "来自番茄钟的完成记录",
+});
+```
+
+没有外部插件时不需要启用任何适配器；核心打卡、统计和导出仍然完全独立运行。
+
 插件加载后提供 `window.siyuanCheckin`，当前 API 版本为 `3`：
 
 ```js
