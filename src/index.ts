@@ -15,6 +15,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
+import {validateEditorInput} from "./editor-validation";
 import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
 import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
@@ -2366,9 +2367,6 @@ export default class CheckinPlugin extends Plugin {
 
     private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string) {
         const name = String(data.get("name") || "").trim();
-        if (!name) {
-            return;
-        }
         const requestedKind = String(data.get("kind") || "binary");
         const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
         const requestedSchedule = String(data.get("schedule") || "daily");
@@ -2382,6 +2380,11 @@ export default class CheckinPlugin extends Plugin {
         const requestedQuotaMode = data.get("quotaCountMode") === "value" ? "value" : "dates";
         const requestedQuotaAmount = Number(data.get("quotaAmount"));
         const quotaAmountValue = Number.isFinite(requestedQuotaAmount) ? Math.max(requestedQuotaMode === "dates" ? 1 : 0.1, requestedQuotaAmount) : 0;
+        const validation = validateEditorInput({name, kind, target: kind === "binary" ? 1 : Number(data.get("target")), unit: kind === "binary" ? "次" : String(data.get("unit") || "").trim(), schedule: scheduleType, weekdays: checkedWeekdays, quotaAmount: requestedQuotaAmount});
+        if (!validation.valid) {
+            showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || "请检查表单内容"}`);
+            return;
+        }
         const schedule: CheckinSchedule = scheduleType === "interval"
             ? {type: scheduleType, intervalDays: intervalDaysValue, anchorDate: anchorDateValue}
             : scheduleType === "quota"
@@ -2391,14 +2394,6 @@ export default class CheckinPlugin extends Plugin {
         if (editingId && (!existing || !expectedFingerprint || this.itemFingerprint(existing) !== expectedFingerprint)) {
             showMessage("[小驴打卡] 项目已在其他窗口更新，本次编辑未保存");
             this.showToday();
-            return;
-        }
-        if ((scheduleType === "weekly" || scheduleType === "custom") && checkedWeekdays.length === 0) {
-            showMessage("请选择至少一天");
-            return;
-        }
-        if (scheduleType === "quota" && quotaAmountValue <= 0) {
-            showMessage("请输入大于 0 的周期配额");
             return;
         }
         const createdDate = existing?.createdDate || submittedAt.localDate;
