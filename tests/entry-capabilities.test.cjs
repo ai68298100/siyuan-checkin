@@ -22,6 +22,12 @@ assert.match(source, /withTimeout\(provider\.summarize\([\s\S]*SUMMARY_TIMEOUT_M
 assert.match(source, /function withTimeout<T>\(promise: Promise<T>, timeoutMs: number, message: string\)/);
 assert.match(source, /addAgentCapability\?:/);
 assert.match(source, /checkin-summary-context/);
+assert.match(source, /checkin-list-items/);
+assert.match(source, /checkin-item-insights/);
+assert.match(source, /checkin-record-event/);
 assert.match(source, /localRead: true, dataEgress: true, externalCost: false/);
+assert.match(source, /localRead: true, localWrite: true, dataEgress: true, externalCost: false/);
+assert.match(source, /required: \["itemId"\]/);
+assert.match(source, /今日可用的打卡项目/);
 assert.match(source, /自定义日期范围无效，请使用 YYYY-MM-DD/);
 console.log("Entry capability structure checks passed.");
