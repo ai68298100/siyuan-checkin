@@ -6,3 +6,25 @@ const builtin = [{name:"内置", icon:"✓", kind:"binary", target:1, unit:"次"
 const user = normalizeUserTemplate({id:"u1", name:"自定义", kind:"bad", target:"x", schedule:{type:"daily"}}, "2026-01-01T00:00:00Z");
 assert.equal(user.kind, "binary"); assert.equal(user.target, 1); assert.equal(mergeTemplates(builtin, [user]).length, 2); assert.equal(mergeTemplates(builtin, [user, user]).length, 2);
 assert.equal(upsertUserTemplate([], user).length, 1); assert.equal(upsertUserTemplate([user], {...user, name:"更新"})[0].name, "更新"); assert.equal(deleteUserTemplate([user], "u1").length, 0); console.log("User template model checks passed.");
+
+const persisted = [
+    {...user, id: "persisted", name: "持久化模板", updatedAt: "2026-09-08T00:00:00Z"},
+    {...user, id: "persisted", name: "重复 ID 的最新版本", updatedAt: "2026-09-09T00:00:00Z"},
+    null,
+    {id: "", name: "没有 ID"},
+    {id: "invalid-kind", name: "非法类型", kind: "unknown", target: -4},
+];
+const normalizedPersisted = persisted.map((entry) => normalizeUserTemplate(entry, "2026-09-10T00:00:00Z")).filter(Boolean);
+const deduped = normalizedPersisted.reduce((entries, entry) => upsertUserTemplate(entries, entry), []);
+assert.equal(deduped.filter((entry) => entry.id === "persisted").length, 1);
+assert.equal(deduped.find((entry) => entry.id === "persisted").name, "重复 ID 的最新版本");
+assert.equal(deduped.find((entry) => entry.id === "invalid-kind").kind, "binary");
+assert.equal(deduped.find((entry) => entry.id === "invalid-kind").target, 0);
+
+const isolatedBuiltin = mergeTemplates(builtin, deduped);
+const afterDelete = deleteUserTemplate(deduped, "persisted");
+assert.equal(afterDelete.some((entry) => entry.id === "persisted"), false);
+assert.equal(isolatedBuiltin.some((entry) => entry.name === "内置"), true);
+assert.equal(isolatedBuiltin.filter((entry) => entry.name === "内置").length, 1);
+assert.notEqual(afterDelete, deduped);
+console.log("User template persistence, duplicate IDs, invalid filtering and builtin isolation checks passed.");
