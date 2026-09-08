@@ -895,6 +895,7 @@
     .lc-checkin__item-action {
         grid-area: action;
         justify-content: flex-start;
+        min-width: 0;
         max-width: 100%;
         flex-wrap: wrap;
     }
@@ -905,6 +906,12 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+
+        span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 
     .lc-checkin__exact-entry {
