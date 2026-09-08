@@ -1551,6 +1551,14 @@ export default class CheckinPlugin extends Plugin {
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
                         <label class="lc-checkin__field"><span>单位</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
                     </div>
+                    <section class="lc-checkin__editor-preview" aria-label="打卡项预览">
+                        <div class="lc-checkin__field-heading"><span>卡片预览</span><small>随设置实时更新</small></div>
+                        <article class="lc-checkin__preview-card" data-editor-preview>
+                            <span class="lc-checkin__preview-icon" data-preview-icon>${escapeHtml(selectedIcon)}</span>
+                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || "未命名打卡")}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? "完成一次 · " + formatScheduleLabel(schedule) : `${KIND_LABELS[selectedKind]} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
+                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
+                        </article>
+                    </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
                         <summary><span><strong>安排与分类</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__advanced-content">
@@ -2084,6 +2092,35 @@ export default class CheckinPlugin extends Plugin {
         const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
         const targetInput = root.querySelector<HTMLInputElement>("input[name='target']");
         const getKind = () => (root.querySelector<HTMLInputElement>("input[name='kind']:checked")?.value || "binary") as CheckinKind;
+        const updateEditorPreview = () => {
+            const kind = getKind();
+            const option = KIND_OPTIONS.find((candidate) => candidate.kind === kind) || KIND_OPTIONS[0];
+            const name = root.querySelector<HTMLInputElement>("input[name='name']")?.value.trim() || "未命名打卡";
+            const icon = root.querySelector<HTMLInputElement>("input[name='icon']")?.value || "✓";
+            const unit = unitInput?.value.trim() || option.defaultUnit;
+            const target = Number(targetInput?.value || option.step);
+            const scheduleType = (scheduleSelect?.value || "daily") as ScheduleType;
+            let scheduleLabel = SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily;
+            if (scheduleType === "interval") {
+                const days = Math.max(1, Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1));
+                scheduleLabel = `每隔 ${formatNumber(days)} 天`;
+            } else if (scheduleType === "quota") {
+                const period = root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.value === "month" ? "每月" : "每周";
+                const amount = Number(root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.value || 1);
+                const mode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value === "value" ? unit : "天";
+                scheduleLabel = `${period} ${formatNumber(amount)} ${mode}`;
+            }
+            const previewName = root.querySelector<HTMLElement>("[data-preview-name]");
+            const previewIcon = root.querySelector<HTMLElement>("[data-preview-icon]");
+            const previewMeta = root.querySelector<HTMLElement>("[data-preview-meta]");
+            const previewAction = root.querySelector<HTMLElement>("[data-preview-action]");
+            const previewProgress = root.querySelector<HTMLElement>("[data-preview-progress]");
+            if (previewName) previewName.textContent = name;
+            if (previewIcon) previewIcon.textContent = icon;
+            if (previewMeta) previewMeta.textContent = kind === "binary" ? `完成一次 · ${scheduleLabel}` : `${KIND_LABELS[kind]} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
+            if (previewAction) previewAction.textContent = kind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(kind, unit))} ${unit}`;
+            if (previewProgress) previewProgress.hidden = kind === "binary";
+        };
         let previousKind = getKind();
         const bindUnitOptions = () => {
             root.querySelectorAll<HTMLButtonElement>("[data-unit]").forEach((button) => button.addEventListener("click", () => {
@@ -2164,6 +2201,7 @@ export default class CheckinPlugin extends Plugin {
                 bindUnitOptions();
             }
             previousKind = kind;
+            updateEditorPreview();
         };
         root.querySelectorAll<HTMLInputElement>("input[name='kind']").forEach((input) => input.addEventListener("change", () => {
             updateConditionalFields(true);
@@ -2189,7 +2227,12 @@ export default class CheckinPlugin extends Plugin {
         });
         scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
         unitInput?.addEventListener("change", () => updateConditionalFields(false));
+        root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", updateEditorPreview);
+        root.querySelector<HTMLInputElement>("input[name='target']")?.addEventListener("input", updateEditorPreview);
+        root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.addEventListener("input", updateEditorPreview);
+        root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.addEventListener("input", updateEditorPreview);
         root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.addEventListener("change", () => updateConditionalFields(false));
+        root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.addEventListener("change", updateEditorPreview);
         root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
             const anchor = root.querySelector<HTMLInputElement>("input[name='anchorDate']");
             if (!anchor) return;
@@ -2278,6 +2321,7 @@ export default class CheckinPlugin extends Plugin {
             const iconGroup = ICON_GROUPS.find((group) => group.icons.includes(template.icon));
             if (iconGroup) selectIconGroup(iconGroup.id);
             updateConditionalFields(false);
+            updateEditorPreview();
             updateAdvancedSummary();
             const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
             if (advanced) advanced.open = true;
@@ -2297,6 +2341,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("input", updateAdvancedSummary));
         root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("change", updateAdvancedSummary));
         updateConditionalFields();
+        updateEditorPreview();
         applyIconFilter();
         applyTemplateFilter();
         updateAdvancedSummary();

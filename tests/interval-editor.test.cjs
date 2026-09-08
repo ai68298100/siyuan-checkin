@@ -18,6 +18,9 @@ assert.match(source, /formatScheduleLabel\(revision\.schedule\)/);
 assert.match(source, /revision\.kind === "binary" && revision\.schedule\.type !== "quota"/);
 assert.match(source, /isValidLocalDateInput\(requestedAnchor\)/);
 assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
+assert.match(source, /data-editor-preview/);
+assert.match(source, /updateEditorPreview/);
+assert.match(source, /data-preview-action/);
 assert.match(source, /!weekdays\.querySelector<HTMLInputElement>\("input\[name='weekday'\]:checked"\)/);
 assert.match(source, /const advanced = root\.querySelector<HTMLDetailsElement>\("\[data-advanced\]"\)/);
 
