@@ -21,6 +21,20 @@ assert.equal(deduped.find((entry) => entry.id === "persisted").name, "重复 ID 
 assert.equal(deduped.find((entry) => entry.id === "invalid-kind").kind, "binary");
 assert.equal(deduped.find((entry) => entry.id === "invalid-kind").target, 0);
 
+const migrated = normalizeUserTemplate({id:"legacy-schedule", name:"旧版周期", schedule:{type:"quota", quota:{period:"year", amount:-2, countMode:"unknown"}}}, "2026-01-01T00:00:00Z");
+assert.equal(migrated.note, "");
+assert.equal(migrated.schedule.type, "quota");
+assert.equal(migrated.schedule.quota, undefined);
+const validQuota = normalizeUserTemplate({id:"valid-quota", name:"每周三次", schedule:{type:"quota", quota:{period:"week", amount:3, countMode:"dates"}}});
+assert.deepEqual(validQuota.schedule.quota, {period:"week", amount:3, countMode:"dates"});
+const duplicateUsers = [
+    {id:"dup", name:"旧名称", note:""},
+    {id:"dup", name:"新名称", note:"更新"},
+].map((value) => normalizeUserTemplate(value)).filter(Boolean);
+const duplicateResult = duplicateUsers.reduce((entries, entry) => upsertUserTemplate(entries, entry), []);
+assert.equal(duplicateResult.length, 1);
+assert.equal(duplicateResult[0].name, "新名称");
+
 const isolatedBuiltin = mergeTemplates(builtin, deduped);
 const afterDelete = deleteUserTemplate(deduped, "persisted");
 assert.equal(afterDelete.some((entry) => entry.id === "persisted"), false);

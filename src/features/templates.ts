@@ -6,7 +6,10 @@ export function normalizeUserTemplate(value: unknown, now = new Date().toISOStri
     const raw = value as Partial<UserTemplate>;
     const kind: CheckinKind = ["binary", "count", "duration", "quantity", "custom"].includes(raw.kind as string) ? raw.kind as CheckinKind : "binary";
     const priority: CheckinPriority = ["low", "medium", "high"].includes(raw.priority as string) ? raw.priority as CheckinPriority : "medium";
-    const schedule: CheckinSchedule = raw.schedule && typeof raw.schedule === "object" ? {...raw.schedule, weekdays: raw.schedule.weekdays ? [...raw.schedule.weekdays] : undefined, quota: raw.schedule.quota ? {...raw.schedule.quota} : undefined} : {type: "daily"};
+    const rawSchedule = raw.schedule && typeof raw.schedule === "object" ? raw.schedule : undefined;
+    const rawQuota = rawSchedule?.quota;
+    const quota = rawQuota && typeof rawQuota === "object" && (rawQuota.period === "week" || rawQuota.period === "month") && (rawQuota.countMode === "dates" || rawQuota.countMode === "value") && Number.isFinite(rawQuota.amount) && Number(rawQuota.amount) > 0 ? {...rawQuota, amount: Number(rawQuota.amount)} : undefined;
+    const schedule: CheckinSchedule = rawSchedule ? (({quota: _ignoredQuota, ...scheduleWithoutQuota}) => ({...scheduleWithoutQuota, weekdays: rawSchedule.weekdays ? [...rawSchedule.weekdays] : undefined, ...(quota ? {quota} : {})}))(rawSchedule) : {type: "daily"};
     const id = String(raw.id || "").trim();
     const name = String(raw.name || "").trim();
     if (!id || !name) return undefined;
