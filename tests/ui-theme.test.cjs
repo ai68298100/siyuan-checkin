@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
 assert.match(styles, /--lc-checkin-shadow:/);
@@ -12,4 +13,9 @@ assert.match(styles, /@container\s+lc-checkin\s+\(min-width:\s*720px\)[\s\S]*\.l
 assert.match(styles, /@container\s+lc-checkin\s+\(max-width:\s*440px\)[\s\S]*\.lc-checkin__item-name[\s\S]*overflow-wrap:\s*anywhere/);
 assert.match(styles, /@container\s+lc-checkin\s+\(max-width:\s*340px\)/);
 assert.match(styles, /backdrop-filter:\s*blur\(12px\)/);
+assert.match(styles, /\.lc-checkin__summary-stats[\s\S]*grid-template-columns:\s*repeat\(3/);
+assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-checkin__text-button[\s\S]*min-width:\s*36px/);
+assert.match(source, /lc-checkin--summary[\s\S]*lc-checkin__summary-stats/);
+assert.match(source, /lc-checkin--archived[\s\S]*暂不参与今日计划/);
+assert.match(source, /lc-checkin__eyebrow">记录与回看/);
 console.log("Modern responsive UI theme checks passed.");

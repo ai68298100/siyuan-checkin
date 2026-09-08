@@ -3011,3 +3011,85 @@
     .lc-checkin__item-meta { font-size: 10px; }
     .lc-checkin__insight-stats div { min-height: 64px; }
 }
+
+/* Secondary pages keep the same visual rhythm as the today view while remaining readable in a dock. */
+.lc-checkin__summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0 18px;
+
+    div {
+        display: flex;
+        min-width: 0;
+        min-height: 66px;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 3px;
+        border: 1px solid var(--b3-border-color);
+        border-radius: 8px;
+        background: var(--lc-checkin-muted-surface);
+    }
+
+    strong {
+        color: var(--lc-checkin-accent);
+        font-size: 19px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    span {
+        color: var(--b3-theme-on-surface-light);
+        font-size: 10px;
+    }
+}
+
+.lc-checkin--summary .lc-checkin__history-list,
+.lc-checkin--archived .lc-checkin__history-list { margin-top: 2px; }
+
+.lc-checkin--summary .lc-checkin__text-button,
+.lc-checkin--archived .lc-checkin__text-button { align-self: flex-start; }
+
+.lc-checkin--history .lc-checkin__history-event .lc-checkin__text-button {
+    min-width: 36px;
+    margin: 0;
+    padding: 5px 7px;
+    border: 1px solid transparent;
+    background: transparent;
+}
+
+.lc-checkin--history .lc-checkin__history-event .lc-checkin__text-button:hover {
+    border-color: var(--b3-border-color);
+    background: var(--lc-checkin-muted-surface);
+}
+
+.lc-checkin__history-event-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-direction: row;
+    gap: 3px;
+    min-width: 0;
+}
+
+.lc-checkin__history-event > .lc-checkin__history-event-actions { flex-direction: row; }
+
+.lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) auto auto; }
+
+@container lc-checkin (max-width: 440px) {
+    .lc-checkin__summary-stats { gap: 6px; margin-top: 10px; }
+    .lc-checkin__summary-stats div { min-height: 60px; }
+    .lc-checkin__summary-stats strong { font-size: 17px; }
+    .lc-checkin__history-event {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+    }
+    .lc-checkin__history-event-main { grid-column: 1; }
+    .lc-checkin__history-event-value { grid-column: 2; grid-row: 1; padding-top: 2px; }
+    .lc-checkin__history-event-actions { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; }
+}
+
+@container lc-checkin (max-width: 340px) {
+    .lc-checkin__summary-stats { grid-template-columns: 1fr; }
+    .lc-checkin__summary-stats div { min-height: 48px; flex-direction: row; justify-content: space-between; padding: 0 12px; }
+}
