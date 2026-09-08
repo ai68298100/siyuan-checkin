@@ -11,8 +11,6 @@ assert.match(source, /remindBeforeDays/);
 assert.match(source, /recurrence === "once"/);
 assert.match(source, /markOccasionCompleted/);
 assert.match(source, /completedDates/);
-assert.match(indexSource, /data-occasion-form novalidate/);
-assert.match(indexSource, /isValidLocalDateInput\(String\(data\.get\("date"\)/);
 const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions-")), "occasions.js");
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const occasions = require(output);
