@@ -1978,7 +1978,8 @@
 
 .lc-checkin__calendar-empty,
 .lc-checkin__calendar-day {
-    aspect-ratio: 1;
+    aspect-ratio: auto;
+    min-height: 54px;
     min-width: 0;
 }
 
@@ -3006,7 +3007,7 @@
 }
 
 @container lc-checkin (min-width: 720px) {
-    .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin__group-items { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
     .lc-checkin__form-scroll { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-content: start; column-gap: 24px; }
     .lc-checkin__form-scroll > .lc-checkin__template-section,
     .lc-checkin__form-scroll > .lc-checkin__field--name,
