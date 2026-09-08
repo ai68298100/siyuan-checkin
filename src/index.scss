@@ -2039,6 +2039,34 @@
     border-top: 1px solid var(--b3-border-color);
 }
 
+.lc-checkin__template-wrap {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.lc-checkin__template-wrap .lc-checkin__template {
+    width: 100%;
+}
+
+.lc-checkin__template-delete {
+    min-height: 30px;
+    padding: 3px 8px;
+    border: 0;
+    border-radius: 6px;
+    color: var(--b3-theme-on-surface-light);
+    background: transparent;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.lc-checkin__template-delete:hover,
+.lc-checkin__template-delete:focus-visible {
+    color: var(--b3-theme-error);
+    background: var(--b3-theme-error-light);
+}
+
 .lc-checkin__quota-schedule {
     display: flex;
     gap: 8px;
