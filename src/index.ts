@@ -1595,6 +1595,7 @@ export default class CheckinPlugin extends Plugin {
                 </div>
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? "保存修改" : "保存打卡项"}</button>
+                    <button class="lc-checkin__text-button" type="button" data-action="save-template">保存为我的模板</button>
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? "恢复打卡项" : "暂时归档"}</button>` : ""}
             ${this.renderSaveStatus()}
             ${this.renderSyncNotice()}
@@ -2350,6 +2351,31 @@ export default class CheckinPlugin extends Plugin {
             selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
             ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
         }));
+        root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
+            const form = root.querySelector<HTMLFormElement>("form");
+            if (!form) return;
+            const data = new FormData(form);
+            const name = String(data.get("name") || "").trim();
+            const kind = String(data.get("kind") || "binary") as CheckinKind;
+            const scheduleType = String(data.get("schedule") || "daily") as ScheduleType;
+            const target = kind === "binary" ? 1 : Number(data.get("target"));
+            const unit = kind === "binary" ? "次" : String(data.get("unit") || "").trim();
+            const validation = validateEditorInput({name, kind, target, unit, schedule: scheduleType, weekdays: data.getAll("weekday").map(Number), quotaAmount: Number(data.get("quotaAmount"))});
+            if (!validation.valid) {
+                showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || "请检查表单内容"}`);
+                return;
+            }
+            const existing = this.userTemplates.find((template) => template.name === name);
+            const now = new Date().toISOString();
+            const template: UserTemplate = {
+                id: existing?.id || makeId("template"), name, icon: String(data.get("icon") || "✓"), kind,
+                target: kind === "binary" ? 1 : Math.max(0.1, target || 1), unit: unit || "次",
+                schedule: existing?.schedule || {type: scheduleType}, group: String(data.get("group") || "").trim(),
+                priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
+            };
+            this.userTemplates = upsertUserTemplate(this.userTemplates, template);
+            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 已保存到我的模板"); this.render(); });
+        });
         const updateAdvancedSummary = () => {
             const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || "未分组";
             const priority = normalizePriorityInput(root.querySelector<HTMLSelectElement>("select[name='priority']")?.value || null);
