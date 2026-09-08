@@ -3138,3 +3138,31 @@
     .lc-checkin__preview-icon { width: 32px; height: 32px; }
     .lc-checkin__preview-action { grid-column: 2; justify-self: start; }
 }
+.lc-template-manager {
+    display: grid; gap: 16px; padding: 18px; border: 1px solid var(--b3-border-color); border-radius: 8px;
+    background: var(--b3-theme-background);
+    h2, h3, p { margin: 0; }
+    > header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+    > header p { color: var(--b3-theme-on-surface); opacity: .72; margin-top: 4px; }
+    button { min-height: 32px; padding: 5px 10px; border-radius: 6px; }
+}
+.lc-template-manager__search { display: grid; gap: 6px; font-size: 12px; opacity: .8; }
+.lc-template-manager__search input, .lc-template-form input, .lc-template-form textarea { width: 100%; border: 1px solid var(--b3-border-color); border-radius: 6px; padding: 8px 10px; background: var(--b3-theme-background); color: var(--b3-theme-on-background); }
+.lc-template-manager__count { color: var(--b3-theme-on-surface); opacity: .72; font-size: 12px; }
+.lc-template-manager__list { display: grid; gap: 8px; }
+.lc-template-card { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--b3-border-color); border-radius: 6px; }
+.lc-template-card__icon { font-size: 22px; text-align: center; }
+.lc-template-card h3 { font-size: 14px; overflow-wrap: anywhere; }
+.lc-template-card p, .lc-template-card small { display: block; margin-top: 3px; color: var(--b3-theme-on-surface); opacity: .7; font-size: 11px; overflow-wrap: anywhere; }
+.lc-template-card__actions { display: flex; gap: 4px; }
+.lc-template-form { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--b3-theme-primary); border-radius: 6px; }
+.lc-template-form label { display: grid; gap: 5px; font-size: 12px; }
+.lc-template-form textarea { min-height: 70px; resize: vertical; }
+.lc-template-form > div { display: flex; justify-content: flex-end; gap: 6px; }
+@media (max-width: 560px) {
+    .lc-template-manager { padding: 12px; }
+    .lc-template-manager > header { display: grid; }
+    .lc-template-manager > header button { width: 100%; }
+    .lc-template-card { grid-template-columns: 30px minmax(0,1fr); }
+    .lc-template-card__actions { grid-column: 2; }
+}
