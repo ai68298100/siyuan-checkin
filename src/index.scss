@@ -2861,6 +2861,9 @@
 @container lc-checkin (max-width: 420px) {
     .lc-checkin__occasion,
     .lc-checkin__occasion-manager-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .lc-checkin__occasion-manager-row { row-gap: 6px; padding: 9px; }
+    .lc-checkin__occasion-manager-row > button { min-width: 34px; min-height: 34px; }
+    .lc-checkin__occasion-manager-row > div { overflow: hidden; }
     .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(-n+2) { grid-row: 2; }
     .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(2) { grid-column: 2; justify-self: end; }
     .lc-checkin__occasion-manager-row .lc-checkin__small-button:last-child { grid-column: 3; }
