@@ -3217,7 +3217,9 @@
 
 @container lc-checkin (max-width: 340px) {
     .lc-checkin__summary-stats { grid-template-columns: 1fr; }
-    .lc-checkin__summary-stats div { min-height: 48px; flex-direction: row; justify-content: space-between; padding: 0 12px; }
+    .lc-checkin__summary-stats div { min-height: 52px; flex-direction: row; justify-content: space-between; gap: 12px; padding: 0 12px; }
+    .lc-checkin__summary-stats strong { min-width: 48px; text-align: right; }
+    .lc-checkin__summary-stats span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin__preview-card { grid-template-columns: 32px minmax(0, 1fr); }
     .lc-checkin__preview-icon { width: 32px; height: 32px; }
     .lc-checkin__preview-action { grid-column: 2; justify-self: start; }
