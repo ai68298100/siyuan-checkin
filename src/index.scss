@@ -2979,16 +2979,32 @@
     .lc-checkin__organize label { flex: 1 1 120px; }
     .lc-checkin__organize label select { width: 100%; }
     .lc-checkin__item { grid-template-columns: 38px minmax(0, 1fr); }
-    .lc-checkin__item-name { white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__item-name {
+        display: -webkit-box;
+        overflow: hidden;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
     .lc-checkin__item-action { min-width: 0; }
     .lc-checkin__quick-button { max-width: 100%; }
     .lc-checkin__insight-stats { gap: 6px; }
     .lc-checkin__insight-stats strong { font-size: 17px; }
+    .lc-checkin__header > div:first-child { min-width: 72px; }
+    .lc-checkin__header-actions { max-width: calc(100% - 80px); }
+    .lc-checkin__occasion-body small,
+    .lc-checkin__occasion-manager-row small {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
 }
 
 @container lc-checkin (max-width: 340px) {
-    .lc-checkin__header-actions { max-width: 62%; }
-    .lc-checkin__header-actions .lc-checkin__always-visible { width: 30px; }
+    .lc-checkin__header { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+    .lc-checkin__header-actions { max-width: 176px; }
+    .lc-checkin__header-actions .lc-checkin__always-visible { width: 28px; height: 28px; }
+    .lc-checkin__header-actions .lc-checkin__count { width: 100%; text-align: right; }
     .lc-checkin__item { padding: 9px; }
     .lc-checkin__item-icon { width: 34px; height: 34px; font-size: 17px; }
     .lc-checkin__item-name { font-size: 13px; }

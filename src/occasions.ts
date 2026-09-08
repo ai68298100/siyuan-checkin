@@ -1,5 +1,5 @@
 export type OccasionKind = "birthday" | "anniversary" | "scheduled";
-export type OccasionRecurrence = "annual" | "once";
+export type OccasionRecurrence = "annual" | "monthly" | "once";
 
 export interface Occasion {
     id: string;
@@ -47,7 +47,7 @@ export function normalizeOccasion(value: unknown): Occasion | undefined {
     const name = typeof source.name === "string" ? source.name.trim().slice(0, 120) : "";
     const date = typeof source.date === "string" ? source.date.trim() : "";
     const kind = source.kind === "birthday" || source.kind === "anniversary" || source.kind === "scheduled" ? source.kind : "scheduled";
-    const recurrence = source.recurrence === "once" ? "once" : "annual";
+    const recurrence = source.recurrence === "once" ? "once" : source.recurrence === "monthly" ? "monthly" : "annual";
     if (!name || !isValidOccasionDate(date, recurrence)) return undefined;
     const now = new Date().toISOString();
     const completedDates = Array.isArray(source.completedDates) ? source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)).slice(-120) : [];
@@ -81,6 +81,13 @@ export function toVisibleOccasion(item: Occasion, localDate: string): VisibleOcc
 export function getOccurrenceDate(item: Occasion, localDate: string): string | undefined {
     if (!isValidLocalDate(localDate)) return undefined;
     if (item.recurrence === "once") return isValidLocalDate(item.date) && item.date >= localDate ? item.date : undefined;
+    if (item.recurrence === "monthly") {
+        const seedDay = Number(item.date.slice(8));
+        const [year, month] = localDate.split("-").slice(0, 2).map(Number);
+        const current = monthDate(year, month, seedDay);
+        if (current >= localDate) return current;
+        return monthDate(month === 12 ? year + 1 : year, month === 12 ? 1 : month + 1, seedDay);
+    }
     const monthDay = item.date.slice(5);
     const year = Number(localDate.slice(0, 4));
     const candidate = String(year) + "-" + monthDay;
@@ -108,7 +115,7 @@ export function markOccasionCompleted(store: OccasionStore, id: string, occurren
 }
 
 export function isValidOccasionDate(value: string, recurrence: OccasionRecurrence): boolean {
-    return recurrence === "annual" ? /^\d{4}-\d{2}-\d{2}$/.test(value) && isValidLocalDate(value) : isValidLocalDate(value);
+    return (recurrence === "annual" || recurrence === "monthly") ? /^\d{4}-\d{2}-\d{2}$/.test(value) && isValidLocalDate(value) : isValidLocalDate(value);
 }
 
 export function toLocalDateKey(date: Date): string {
@@ -122,6 +129,11 @@ function differenceInDays(from: string, to: string): number {
 function parseLocalDate(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
     return new Date(year, month - 1, day);
+}
+
+function monthDate(year: number, month: number, day: number): string {
+    const safeDay = Math.min(day, new Date(year, month, 0).getDate());
+    return toLocalDateKey(new Date(year, month - 1, safeDay));
 }
 
 function isValidLocalDate(value: string): boolean {

@@ -22,4 +22,9 @@ assert.equal(occasions.isOccasionCompleted(completed.occasions[0], "2026-09-12")
 const once = occasions.normalizeOccasion({id: "loan", name: "还房贷", kind: "scheduled", date: "2026-09-15", recurrence: "once", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 13, 12))[0].daysUntil, 2);
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 16, 12)).length, 0);
+const monthly = occasions.normalizeOccasion({id: "card", name: "信用卡还款", kind: "scheduled", date: "2026-01-15", recurrence: "monthly", remindBeforeDays: 2, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthly]}, new Date(2026, 8, 13, 12))[0].daysUntil, 2);
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthly]}, new Date(2026, 1, 27, 12)).length, 0);
+const monthEnd = occasions.normalizeOccasion({id: "month-end", name: "月末扣费", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", remindBeforeDays: 2, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [monthEnd]}, new Date(2026, 1, 27, 12))[0].occurrenceDate, "2026-02-28");
 console.log("Occasion model structure checks passed.");

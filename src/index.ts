@@ -1249,7 +1249,8 @@ export default class CheckinPlugin extends Plugin {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
             const completed = isOccasionCompleted(item, item.occurrenceDate);
             const timing = item.status === "today" ? "今天" : String(item.daysUntil) + " 天后";
-            return "<article class=\"lc-checkin__occasion " + (completed ? "is-complete" : "") + "\" data-occasion-id=\"" + escapeHtml(item.id) + "\" data-occasion-date=\"" + escapeHtml(item.occurrenceDate) + "\"><span class=\"lc-checkin__occasion-icon\" aria-hidden=\"true\">" + icon + "</span><div class=\"lc-checkin__occasion-body\"><strong>" + escapeHtml(item.name) + "</strong><small>" + escapeHtml(timing) + " · " + (item.recurrence === "annual" ? "每年" : "一次性") + (item.note ? " · " + escapeHtml(item.note) : "") + "</small></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"toggle-occasion\" aria-label=\"" + (completed ? "取消处理" : "标记已处理") + " " + escapeHtml(item.name) + "\">" + (completed ? "已处理" : "处理") + "</button></article>";
+            const recurrence = item.recurrence === "annual" ? "每年" : item.recurrence === "monthly" ? "每月" : "一次性";
+            return "<article class=\"lc-checkin__occasion " + (completed ? "is-complete" : "") + "\" data-occasion-id=\"" + escapeHtml(item.id) + "\" data-occasion-date=\"" + escapeHtml(item.occurrenceDate) + "\"><span class=\"lc-checkin__occasion-icon\" aria-hidden=\"true\">" + icon + "</span><div class=\"lc-checkin__occasion-body\"><strong>" + escapeHtml(item.name) + "</strong><small>" + escapeHtml(timing) + " · " + recurrence + (item.note ? " · " + escapeHtml(item.note) : "") + "</small></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"toggle-occasion\" aria-label=\"" + (completed ? "取消处理" : "标记已处理") + " " + escapeHtml(item.name) + "\">" + (completed ? "已处理" : "处理") + "</button></article>";
         }).join("") : "<div class=\"lc-checkin__occasion-empty\">未来提醒会在这里出现。</div>";
         return "<section class=\"lc-checkin__occasions\" aria-label=\"日期事项\"><div class=\"lc-checkin__section-heading\"><div><span class=\"lc-checkin__section-kicker\">日期提醒</span><strong>生日、纪念日与定时事项</strong></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"occasions\">管理</button></div><div class=\"lc-checkin__occasion-list\">" + rows + "</div></section>";
     }
@@ -1412,7 +1413,7 @@ export default class CheckinPlugin extends Plugin {
         const rows = this.occasionStore.occasions.length ? [...this.occasionStore.occasions].sort((left, right) => left.date.localeCompare(right.date)).map((item) => {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
             const kind = item.kind === "birthday" ? "生日" : item.kind === "anniversary" ? "纪念日" : "定时事项";
-            const recurrence = item.recurrence === "annual" ? "每年 " + item.date.slice(5) : item.date;
+            const recurrence = item.recurrence === "annual" ? "每年 " + item.date.slice(5) : item.recurrence === "monthly" ? "每月 " + Number(item.date.slice(8)) + " 日" : item.date;
             return '<article class="lc-checkin__occasion-manager-row ' + (item.enabled ? "" : "is-disabled") + '"><span class="lc-checkin__occasion-icon" aria-hidden="true">' + icon + '</span><div><strong>' + escapeHtml(item.name) + '</strong><small>' + kind + ' · ' + recurrence + ' · 提前 ' + item.remindBeforeDays + ' 天</small></div><button class="lc-checkin__small-button" type="button" data-occasion-edit="' + escapeHtml(item.id) + '" aria-label="编辑' + escapeHtml(item.name) + '" title="编辑">⚙</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="' + escapeHtml(item.id) + '" aria-label="切换' + escapeHtml(item.name) + '">' + (item.enabled ? "✓" : "○") + '</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="' + escapeHtml(item.id) + '" aria-label="删除' + escapeHtml(item.name) + '" title="删除">×</button></article>';
         }).join("") : '<div class="lc-checkin__empty-description">还没有日期事项。添加后，它们会在提醒窗口和今日页单独显示。</div>';
         const date = editing?.date || dateKey(currentCalendarDate());
@@ -1735,6 +1736,17 @@ export default class CheckinPlugin extends Plugin {
     private bindOccasions(root: HTMLElement) {
         this.bindDialogClose(root);
         this.bindMobileNav(root);
+        const recurrence = root.querySelector<HTMLSelectElement>("[name='recurrence']");
+        if (recurrence && !recurrence.querySelector("option[value='monthly']")) {
+            const option = document.createElement("option");
+            option.value = "monthly";
+            option.textContent = "每月";
+            recurrence.insertBefore(option, recurrence.querySelector("option[value='once']") || null);
+        }
+        if (recurrence && this.editingOccasionId) {
+            const editing = this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId);
+            if (editing) recurrence.value = editing.recurrence;
+        }
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='new-occasion']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
         root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
@@ -2717,7 +2729,7 @@ export default class CheckinPlugin extends Plugin {
         const kindValue = String(data.get("kind") || "scheduled");
         const recurrenceValue = String(data.get("recurrence") || "annual");
         const kind: OccasionKind = kindValue === "birthday" || kindValue === "anniversary" ? kindValue : "scheduled";
-        const recurrence: OccasionRecurrence = recurrenceValue === "once" ? "once" : "annual";
+        const recurrence: OccasionRecurrence = recurrenceValue === "once" ? "once" : recurrenceValue === "monthly" ? "monthly" : "annual";
         const remindBeforeDays = Math.max(0, Math.min(365, Math.round(Number(data.get("remindBeforeDays")) || 0)));
         const existing = this.editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId) : undefined;
         const normalized = normalizeOccasion({id: existing?.id, name, kind, date, recurrence, remindBeforeDays, note: String(data.get("note") || ""), enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString()});
