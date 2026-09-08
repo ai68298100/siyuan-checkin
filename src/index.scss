@@ -2389,6 +2389,28 @@
     }
 }
 
+.lc-checkin__coaching-list {
+    display: grid;
+    gap: 8px;
+}
+
+.lc-checkin__coaching-item {
+    display: grid;
+    gap: 5px;
+    padding: 10px 11px;
+    border-left: 3px solid var(--b3-border-color);
+    border-radius: 6px;
+    background: var(--b3-theme-surface);
+
+    div { display: grid; gap: 3px; min-width: 0; }
+    strong { color: var(--b3-theme-on-background); font-size: 12px; font-weight: 600; }
+    span { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.55; }
+    small { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+    &.is-positive { border-left-color: #55a875; }
+    &.is-attention { border-left-color: #d28b35; }
+    &.is-neutral { border-left-color: var(--lc-checkin-accent); }
+}
+
 .lc-checkin__custom-range {
     display: flex;
     align-items: end;

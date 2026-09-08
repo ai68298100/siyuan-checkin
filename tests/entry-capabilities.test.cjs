@@ -29,5 +29,7 @@ assert.match(source, /localRead: true, dataEgress: true, externalCost: false/);
 assert.match(source, /localRead: true, localWrite: true, dataEgress: true, externalCost: false/);
 assert.match(source, /required: \["itemId"\]/);
 assert.match(source, /今日可用的打卡项目/);
+assert.match(source, /buildCoachingSuggestions\(report\)/);
+assert.match(source, /suggestions,/);
 assert.match(source, /自定义日期范围无效，请使用 YYYY-MM-DD/);
 console.log("Entry capability structure checks passed.");

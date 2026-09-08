@@ -4,6 +4,7 @@ import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, 
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
+import {buildCoachingSuggestions} from "./features/coaching";
 import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-filter";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
@@ -808,6 +809,7 @@ export default class CheckinPlugin extends Plugin {
                     const requestedDays = typeof args.days === "number" && Number.isFinite(args.days) ? Math.round(args.days) : 84;
                     const days = Math.max(7, Math.min(366, requestedDays));
                     const report = buildHabitInsights(this.store, item.id, {days, asOf: currentCalendarDate()});
+                    const suggestions = buildCoachingSuggestions(report);
                     const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
                     return {
                         result: `${item.name}近 ${days} 天完成率 ${rate}，当前连续 ${report.currentStreak} 天，最长连续 ${report.longestStreak} 天。`,
@@ -821,6 +823,7 @@ export default class CheckinPlugin extends Plugin {
                             totalsByUnit: report.totalsByUnit,
                             days: report.days,
                             records: report.records,
+                            suggestions,
                         },
                     };
                 },
@@ -963,11 +966,13 @@ export default class CheckinPlugin extends Plugin {
         const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
         if (!item) return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
         const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
+        const suggestions = buildCoachingSuggestions(report);
         const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
         const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
         const insightItems = this.store.items.filter((entry) => !entry.archived).sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
         const itemPicker = insightItems.length > 1 ? `<label class="lc-checkin__insight-picker"><span>复盘项目</span><select data-insight-item aria-label="选择复盘项目">${insightItems.map((entry) => `<option value="${escapeHtml(entry.id)}" ${entry.id === item.id ? "selected" : ""}>${escapeHtml(entry.icon)} ${escapeHtml(entry.name)}</option>`).join("")}</select></label>` : "";
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header>${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div><section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>近 84 天</h2><div class="lc-checkin__insight-legend" role="list" aria-label="完成状态图例"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>已完成</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>部分完成</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>未完成</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>未安排</span></div></div><div class="lc-checkin__insight-grid" role="list" aria-label="近 84 天完成情况">${report.days.map((day) => { const label = `${day.date}，${day.status === "complete" ? "已完成" : day.status === "partial" ? "部分完成" : day.status === "missed" ? "未完成" : "未安排"}，${day.progress}/${day.target} ${day.unit}`; return `<span class="is-${day.status}" role="listitem" tabindex="0" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></span>`; }).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
+        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>行动建议</h2><small>根据本地记录生成</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion) => `<div class="lc-checkin__coaching-item is-${suggestion.tone}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small></div>`).join("")}</div></section>` : "";
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header>${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div>${coaching}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>近 84 天</h2><div class="lc-checkin__insight-legend" role="list" aria-label="完成状态图例"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>已完成</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>部分完成</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>未完成</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>未安排</span></div></div><div class="lc-checkin__insight-grid" role="list" aria-label="近 84 天完成情况">${report.days.map((day) => { const label = `${day.date}，${day.status === "complete" ? "已完成" : day.status === "partial" ? "部分完成" : day.status === "missed" ? "未完成" : "未安排"}，${day.progress}/${day.target} ${day.unit}`; return `<span class="is-${day.status}" role="listitem" tabindex="0" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></span>`; }).join("")}</div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
     }
 
     private renderMobileNav(): string {
