@@ -12,4 +12,11 @@ assert.equal(record.source, "tomato"); assert.equal(record.value, 2); assert.equ
 assert.equal(api.normalizeExternalRecord({itemId: "run", value: -1, source: "x", externalRef: "bad"}), undefined);
 assert.equal(api.normalizeExternalRecord({itemId: "run", value: 1, source: "x"}), undefined);
 assert.equal(api.normalizeExternalRecord({itemId: "run", value: 1, externalRef: "x"}).source, "external");
+const registry = api.createIntegrationRegistry();
+const adapter = {id: "tomato", name: "番茄钟", capabilities: ["record"], normalize: (input) => api.normalizeExternalRecord(input, "tomato")};
+const dispose = registry.register(adapter);
+assert.equal(registry.list().length, 1);
+assert.equal(registry.normalize("tomato", {itemId: "run", value: 1, externalRef: "s1"}).source, "tomato");
+dispose();
+assert.equal(registry.list().length, 0);
 console.log("Integration ecosystem checks passed.");

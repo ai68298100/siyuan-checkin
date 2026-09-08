@@ -25,6 +25,20 @@ export interface IntegrationAdapter {
     normalize(input: unknown): NormalizedExternalRecord | undefined;
 }
 
+export function createIntegrationRegistry() {
+    const adapters = new Map<string, IntegrationAdapter>();
+    return {
+        register(adapter: IntegrationAdapter): () => void {
+            if (!adapter || !adapter.id || !adapter.name || typeof adapter.normalize !== "function") return () => undefined;
+            adapters.set(adapter.id, adapter);
+            return () => { if (adapters.get(adapter.id) === adapter) adapters.delete(adapter.id); };
+        },
+        get(id: string): IntegrationAdapter | undefined { return adapters.get(id); },
+        list(): IntegrationAdapter[] { return [...adapters.values()]; },
+        normalize(id: string, input: unknown): NormalizedExternalRecord | undefined { return adapters.get(id)?.normalize(input); },
+    };
+}
+
 export function normalizeExternalRecord(input: unknown, fallbackSource = "external"): NormalizedExternalRecord | undefined {
     if (!input || typeof input !== "object") return undefined;
     const value = input as Partial<ExternalCheckinRecord>;
