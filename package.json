@@ -9,7 +9,7 @@
     "check": "tsc --noEmit",
     "check:release": "node tests/release-assets.test.cjs",
     "test": "pnpm run check && node tests/model.test.cjs && node tests/rules.test.cjs && node tests/insights.test.cjs && node tests/coaching.test.cjs && node tests/insight-records.test.cjs && node tests/record-notes.test.cjs && node tests/mobile-dialog.test.cjs && node tests/interval-editor.test.cjs && node tests/editor-validation.test.cjs && node tests/template-manager.test.cjs && node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/occasions.test.cjs && node tests/history-filter.test.cjs && node tests/view-preferences.test.cjs && node tests/entry-capabilities.test.cjs && node tests/insight-a11y.test.cjs",
-    "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs",
+    "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs && node tests/mobile-preview-overflow.test.cjs",
     "test:mobile-dialog": "node tests/mobile-dialog.test.cjs"
   },
   "keywords": [
