@@ -425,6 +425,28 @@
     .lc-checkin--today .lc-checkin__item.is-missed .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, var(--b3-theme-on-background)); }
 }
 
+@media (min-width: 900px) {
+    .lc-checkin--editor .lc-checkin__form-scroll {
+        display: grid;
+        grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr);
+        align-items: start;
+        gap: 16px 20px;
+    }
+    .lc-checkin--editor .lc-checkin__template-section,
+    .lc-checkin--editor .lc-checkin__field--name,
+    .lc-checkin--editor .lc-checkin__field--icons,
+    .lc-checkin--editor .lc-checkin__kind-field,
+    .lc-checkin--editor .lc-checkin__advanced { margin: 0; }
+    .lc-checkin--editor .lc-checkin__template-section { grid-row: span 3; }
+    .lc-checkin--editor .lc-checkin__editor-actions { grid-column: 1 / -1; }
+    .lc-checkin--editor .lc-checkin__templates,
+    .lc-checkin--editor .lc-checkin__icon-grid { scrollbar-width: thin; }
+    .lc-checkin--editor .lc-checkin__template-card,
+    .lc-checkin--editor .lc-checkin__kind-option { transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast); }
+    .lc-checkin--editor .lc-checkin__template-card:hover,
+    .lc-checkin--editor .lc-checkin__kind-option:hover { transform: translateY(-1px); border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+}
+
 @media (prefers-contrast: more) {
     .lc-checkin { --lc-checkin-border: var(--b3-theme-on-surface-light); }
     .lc-checkin__mobile-nav { backdrop-filter: none; }
