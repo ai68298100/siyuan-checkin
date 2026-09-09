@@ -3195,6 +3195,19 @@
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { flex: 1 1 auto; min-height: 34px; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { align-self: center; }
     .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action { opacity: .72; }
+
+    .lc-checkin__mobile-nav button small { max-width: 100%; letter-spacing: -.02em; }
+    .lc-checkin__mobile-nav button span { display: block; height: 19px; }
+    .lc-checkin__mobile-nav button.is-selected { background: var(--lc-checkin-accent-soft); }
+}
+
+@media (max-width: 600px) and (orientation: landscape) {
+    .lc-checkin__mobile-nav { min-height: 50px; }
+    .lc-checkin__mobile-nav button { min-height: 42px; }
+    .lc-checkin__mobile-nav button span { height: 16px; font-size: 15px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today [data-action="add"] { bottom: calc(60px + env(safe-area-inset-bottom)); }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
