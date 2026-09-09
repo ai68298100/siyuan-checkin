@@ -612,6 +612,15 @@
         .lc-checkin__summary-custom .lc-checkin__field { flex: 1 1 0; }
         .lc-checkin__summary-custom .lc-checkin__primary-button { min-width: 92px; }
     }
+
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived) {
+        .lc-checkin__history-event { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; }
+        .lc-checkin__history-event-main { min-width: 0; }
+        .lc-checkin__history-event-main > span { display: block; margin-top: 2px; }
+        .lc-checkin__history-event-value { min-width: 64px; text-align: right; font-weight: 600; }
+        .lc-checkin__history-event-actions { justify-content: flex-end; }
+        .lc-checkin__history-event-note { display: block; max-width: 48ch; overflow: hidden; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; }
+    }
 }
 
 @media (forced-colors: active) {
