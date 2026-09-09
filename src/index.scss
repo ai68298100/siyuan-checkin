@@ -2942,6 +2942,13 @@
     .lc-checkin-dialog-host--mobile { isolation: isolate; }
     .lc-checkin-dialog-host--mobile .lc-checkin { position: relative; z-index: 1; }
     .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { box-shadow: 0 2px 8px color-mix(in srgb, var(--b3-theme-on-background) 10%, transparent); }
+
+    .lc-checkin__quick-recent-list button { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 5px; row-gap: 1px; align-items: center; }
+    .lc-checkin__quick-recent-list button span { grid-row: 1 / span 2; }
+    .lc-checkin__quick-recent-list button strong,
+    .lc-checkin__quick-recent-list button small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__quick-recent-list button strong { font-size: 11px; }
+    .lc-checkin__quick-recent-list button small { font-size: 8px; }
 }
 
 @media (max-width: 600px) {
