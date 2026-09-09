@@ -2963,6 +2963,21 @@
     .lc-checkin__history-filter-row select { min-width: 0; width: 100%; }
     .lc-checkin__history-selected { margin-top: 10px; padding: 10px; border-radius: 11px; }
     .lc-checkin__history-event { gap: 7px; padding: 9px; }
+
+    .lc-checkin__insight-stats,
+    .lc-checkin__summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 14px; }
+    .lc-checkin__insight-stats div,
+    .lc-checkin__summary-stats div { min-height: 64px; border-radius: 9px; }
+    .lc-checkin__insight-stats strong,
+    .lc-checkin__summary-stats strong { font-size: 18px; }
+    .lc-checkin__insight-stats span,
+    .lc-checkin__summary-stats span { font-size: 9px; }
+    .lc-checkin__coaching { gap: 8px; }
+    .lc-checkin__coaching-item { padding: 10px; border-radius: 9px; }
+    .lc-checkin__coaching-item strong { font-size: 14px; }
+    .lc-checkin__coaching-item p { margin-top: 5px; font-size: 11px; line-height: 1.5; }
+    .lc-checkin__insight-section { margin-top: 14px; padding: 12px; border-radius: 10px; }
+    .lc-checkin__insight-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; }
 }
 
 .lc-checkin__history-events {
