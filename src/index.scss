@@ -3179,6 +3179,14 @@
     .lc-checkin--editor .lc-checkin__field input:focus,
     .lc-checkin--editor .lc-checkin__field select:focus,
     .lc-checkin--editor .lc-checkin__field textarea:focus { scroll-margin-bottom: 112px; }
+
+    .lc-checkin--today .lc-checkin__progress { height: 5px; margin: 8px 0 12px; border-radius: 99px; }
+    .lc-checkin--today .lc-checkin__count { color: var(--lc-checkin-accent); font-weight: 650; }
+    .lc-checkin--today .lc-checkin__quick-recent-heading strong { font-size: 12px; }
+    .lc-checkin--today .lc-checkin__quick-recent-heading small { font-size: 9px; }
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="界面密度"],
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="在页签打开"] { display: none; }
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__icon-button { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-accent) 22%, transparent); }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
