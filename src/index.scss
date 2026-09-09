@@ -3000,6 +3000,11 @@
     .lc-checkin--today .lc-checkin__all-done { padding: 12px; border-radius: 10px; font-size: 11px; }
     .lc-checkin--today .lc-checkin__occasion-section:empty { display: none; }
     .lc-checkin--today .lc-checkin__section-count { min-width: 22px; padding: 2px 6px; border-radius: 99px; background: var(--b3-theme-surface-lighter); font-size: 9px; text-align: center; }
+
+    .lc-checkin--history .lc-checkin__history-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin--history .lc-checkin__history-actions .lc-checkin__text-button { min-height: 36px; border-radius: 8px; }
+    .lc-checkin--history .lc-checkin__history-actions .lc-checkin__text-button:last-child { grid-column: 1 / -1; }
+    .lc-checkin--summary .lc-checkin__history-list + * { margin-top: 10px; }
 }
 
 @media (max-width: 600px) {
