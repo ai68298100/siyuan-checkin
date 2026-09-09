@@ -3113,6 +3113,19 @@
     .lc-checkin *, .lc-checkin *::before, .lc-checkin *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
 
+@media (max-width: 600px) {
+    .lc-checkin__loading,
+    .lc-checkin__error,
+    .lc-checkin__empty,
+    .lc-checkin__history-empty,
+    .lc-checkin__empty-description { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 88px; padding: 16px 12px; border-radius: 10px; }
+    .lc-checkin__error { min-height: 0; }
+    .lc-checkin__empty-title { font-size: 15px; }
+    .lc-checkin__empty-description { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.5; }
+    .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__history-event-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
 .lc-checkin__history-events {
     display: flex;
     flex-direction: column;
