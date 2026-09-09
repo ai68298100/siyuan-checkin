@@ -3230,6 +3230,13 @@
     .lc-checkin__calendar-day:focus-visible { outline-offset: -3px; }
     .lc-checkin__item:focus-within,
     .lc-checkin__occasion-manager-row:focus-within { border-color: var(--lc-checkin-accent); }
+
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: 0 2px 8px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header .lc-checkin__eyebrow,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header .lc-checkin__eyebrow { opacity: .82; }
+    [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: none; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
