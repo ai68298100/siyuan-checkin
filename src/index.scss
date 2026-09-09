@@ -3026,6 +3026,13 @@
     @supports (height: 100svh) {
         .lc-checkin-dialog { height: 100svh !important; max-height: 100svh; }
     }
+
+    .lc-checkin__calendar-day { min-height: 44px; min-width: 0; padding: 5px 3px; }
+    .lc-checkin__calendar-day button,
+    .lc-checkin__calendar-day[data-date] { min-height: 38px; }
+    .lc-checkin__calendar-day.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__text-button { min-width: 38px; min-height: 34px; padding: 3px 6px; }
 }
 
 @media (max-width: 600px) {
