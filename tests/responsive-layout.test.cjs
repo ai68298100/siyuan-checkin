@@ -6,6 +6,7 @@ const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), 
 const todayStyles = fs.readFileSync(path.join(__dirname, "..", "src", "today-v4.scss"), "utf8");
 const historyStyles = fs.readFileSync(path.join(__dirname, "..", "src", "history-v4.scss"), "utf8");
 const summaryStyles = fs.readFileSync(path.join(__dirname, "..", "src", "summary-v4.scss"), "utf8");
+const settingsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "settings-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
@@ -38,6 +39,10 @@ assert.match(summaryStyles, /\.lc-checkin--summary \.lc-checkin__summary-stats\s
     "summary must present its three overview metrics as a stable row");
 assert.match(summaryStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin--summary \.lc-checkin__custom-range\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/,
     "summary custom dates must collapse into two safe mobile columns");
+assert.match(settingsStyles, /\.lc-checkin--settings \.lc-checkin__field\s*\{[\s\S]*grid-template-columns:\s*minmax\(110px,\s*\.34fr\)\s+minmax\(0,\s*\.66fr\)/,
+    "settings desktop fields must align labels and controls predictably");
+assert.match(settingsStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin--settings \.lc-checkin__field\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
+    "settings mobile fields must stack labels above controls");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,

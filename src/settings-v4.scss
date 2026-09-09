@@ -1,0 +1,57 @@
+/* 4.0 Settings surface. Treat preferences as a calm control panel. */
+.lc-checkin--settings {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 18px 24px 42px;
+}
+.lc-checkin--settings > .lc-checkin__editor-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+}
+.lc-checkin--settings .lc-checkin__settings-card {
+    margin: 0 0 12px;
+    padding: 18px 20px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 12px;
+    background: var(--b3-theme-surface);
+    box-shadow: none;
+}
+.lc-checkin--settings .lc-checkin__settings-card h2 { margin: 0; font-size: 17px; line-height: 1.25; }
+.lc-checkin--settings .lc-checkin__settings-card p { max-width: 60ch; margin: 6px 0 14px; color: var(--b3-theme-on-surface-light); font-size: 12px; line-height: 1.5; }
+.lc-checkin--settings .lc-checkin__density-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 12px; }
+.lc-checkin--settings .lc-checkin__density-options button {
+    display: grid;
+    min-height: 66px;
+    align-content: center;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent);
+    border-radius: 9px;
+    color: var(--b3-theme-on-background);
+    background: var(--b3-theme-background);
+    text-align: left;
+}
+.lc-checkin--settings .lc-checkin__density-options button:hover { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+.lc-checkin--settings .lc-checkin__density-options button[aria-checked="true"] { border-color: var(--lc-checkin-accent); color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); box-shadow: inset 3px 0 0 var(--lc-checkin-accent); }
+.lc-checkin--settings .lc-checkin__density-options small { color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.lc-checkin--settings .lc-checkin__field { display: grid; grid-template-columns: minmax(110px, .34fr) minmax(0, .66fr); align-items: center; gap: 14px; min-height: 48px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 48%, transparent); }
+.lc-checkin--settings .lc-checkin__field > span { color: var(--b3-theme-on-surface-light); font-size: 12px; }
+.lc-checkin--settings .lc-checkin__field select { width: 100%; min-height: 38px; box-sizing: border-box; border-radius: 8px; }
+.lc-checkin--settings .lc-checkin__settings-check { display: flex; min-height: 48px; align-items: center; gap: 10px; }
+.lc-checkin--settings .lc-checkin__settings-check input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--lc-checkin-accent); }
+.lc-checkin--settings .lc-checkin__settings-check span { color: var(--b3-theme-on-background); line-height: 1.4; }
+.lc-checkin--settings .lc-checkin__settings-card > .lc-checkin__text-button { min-height: 36px; margin-top: 10px; border-radius: 8px; }
+@media (max-width: 600px) {
+    .lc-checkin--settings { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--settings .lc-checkin__settings-card { padding: 15px; }
+    .lc-checkin--settings .lc-checkin__density-options { grid-template-columns: 1fr; }
+    .lc-checkin--settings .lc-checkin__field { grid-template-columns: 1fr; align-items: stretch; gap: 5px; padding: 9px 0; }
+    .lc-checkin--settings .lc-checkin__field select { min-height: 42px; }
+    .lc-checkin--settings .lc-checkin__settings-check { display: flex; min-height: 48px; }
+    .lc-checkin--settings .lc-checkin__settings-card > .lc-checkin__text-button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .lc-checkin--settings * { transition-duration: 0ms; } }
