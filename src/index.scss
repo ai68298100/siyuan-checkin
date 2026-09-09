@@ -3251,6 +3251,13 @@
     .lc-checkin__mobile-nav button { min-width: 0; }
     .lc-checkin__mobile-nav button small { overflow-wrap: anywhere; }
     .lc-checkin__field > span:first-child { overflow-wrap: anywhere; }
+
+    [data-appearance="dark"] .lc-checkin__mobile-nav button.is-selected { color: var(--lc-checkin-accent); background: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--b3-theme-surface)); }
+    [data-appearance="dark"] .lc-checkin--today .lc-checkin__item:not(.is-complete) .lc-checkin__record-button { color: #fff; background: var(--lc-checkin-accent); }
+    [data-appearance="dark"] .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 14%, var(--b3-theme-surface)); }
+    [data-appearance="dark"] .lc-checkin__item-tag.is-high { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, #fff); }
+    [data-appearance="dark"] .lc-checkin__settings-danger { border-color: color-mix(in srgb, var(--lc-checkin-danger) 58%, var(--b3-border-color)); }
+    [data-appearance="dark"] .lc-checkin button:active { background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--b3-theme-surface)); }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
