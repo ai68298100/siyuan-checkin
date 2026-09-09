@@ -3071,6 +3071,13 @@
     .lc-checkin__occasion-manager-row .is-overdue,
     .lc-checkin__occasion-manager-row .is-today { color: var(--lc-checkin-danger); }
     .lc-checkin__occasion-manager-row .is-upcoming { color: var(--lc-checkin-warning); }
+
+    .lc-checkin__calendar-day { position: relative; border: 1px solid transparent; }
+    .lc-checkin__calendar-day.is-today { border-color: var(--lc-checkin-accent); }
+    .lc-checkin__calendar-day.is-selected { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+    .lc-checkin__calendar-day.has-records::after { content: ""; position: absolute; right: 5px; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: var(--lc-checkin-accent); }
+    .lc-checkin__calendar-day.is-empty { color: color-mix(in srgb, var(--b3-theme-on-surface-light) 48%, transparent); }
+    .lc-checkin__month-nav strong { font-size: 17px; }
 }
 
 .lc-checkin__history-events {
