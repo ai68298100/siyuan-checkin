@@ -3141,6 +3141,14 @@
     .lc-checkin--occasions .lc-checkin__editor-actions { display: flex; gap: 8px; }
     .lc-checkin--occasions .lc-checkin__editor-actions button { flex: 1 1 0; min-height: 42px; }
     .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 16px; }
+
+    .lc-checkin__templates { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-height: 260px; }
+    .lc-checkin__templates button { min-width: 0; min-height: 46px; padding: 7px; border-radius: 8px; }
+    .lc-checkin__template-section .lc-checkin__search-field { width: 100%; }
+    .lc-checkin__icon-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin__icon-option { min-width: 0; min-height: 38px; height: 38px; border-radius: 8px; font-size: 18px; }
+    .lc-checkin__kind-grid { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+    .lc-checkin__kind-option span { min-height: 54px; padding: 8px 10px; border-radius: 8px; }
 }
 
 .lc-checkin__history-events {
