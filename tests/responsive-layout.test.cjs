@@ -11,6 +11,16 @@ const occasionsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "occas
 const insightsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "insights-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
+const v4Imports = ["today", "history", "summary", "settings", "occasions", "insights"]
+    .map((name) => `import \"./${name}-v4.scss\";`);
+const importPositions = v4Imports.map((statement) => source.indexOf(statement));
+assert.ok(importPositions.every((position) => position >= 0),
+    "all 4.0 surface style layers must be imported");
+assert.ok(importPositions.every((position, index) => index === 0 || position > importPositions[index - 1]),
+    "4.0 surface style layers must load after the legacy stylesheet in a stable order");
+assert.ok(source.indexOf('import "./index.scss";') < importPositions[0],
+    "legacy stylesheet must load before the 4.0 surface layers");
+
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
     "each check-in surface must expose its own inline-size container");
 assert.match(styles, /@container\s+lc-checkin\s*\(max-width:\s*560px\)[\s\S]*\.lc-checkin__item\s*\{[\s\S]*display:\s*grid;/,
