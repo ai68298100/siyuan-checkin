@@ -3128,6 +3128,17 @@
     .lc-checkin--history .lc-checkin__month-nav button { border-radius: 50%; }
     .lc-checkin--history .lc-checkin__history-date span { padding: 2px 6px; border-radius: 99px; background: var(--b3-theme-surface-lighter); font-size: 9px; }
     .lc-checkin--history .lc-checkin__history-selected { scroll-margin-top: 76px; }
+
+    .lc-checkin__insight-stats div,
+    .lc-checkin__summary-stats div { overflow: hidden; }
+    .lc-checkin__insight-stats strong,
+    .lc-checkin__summary-stats strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__insight-grid { width: 100%; min-width: 0; }
+}
+
+@media (max-width: 360px) {
+    .lc-checkin__insight-grid { gap: 2px; }
+    .lc-checkin__insight-grid span { min-height: 10px; }
 }
 
 @media (max-width: 600px) {
