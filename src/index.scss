@@ -3251,6 +3251,11 @@
     .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
     .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
     .lc-checkin__quick-recent-list button span { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+
+    .lc-checkin--history .lc-checkin__calendar-weekdays { margin-bottom: 2px; }
+    .lc-checkin--history .lc-checkin__calendar + .lc-checkin__history-tools { margin-top: 6px; }
+    .lc-checkin--history .lc-checkin__history-tools + .lc-checkin__history-result { margin-top: 4px; }
+    .lc-checkin--history .lc-checkin__history-result + .lc-checkin__history-selected { margin-top: 6px; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
