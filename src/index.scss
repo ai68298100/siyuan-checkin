@@ -2949,6 +2949,13 @@
     .lc-checkin__quick-recent-list button small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin__quick-recent-list button strong { font-size: 11px; }
     .lc-checkin__quick-recent-list button small { font-size: 8px; }
+
+    .lc-checkin--today .lc-checkin__item-topline { align-items: center; }
+    .lc-checkin--today .lc-checkin__item-tag { flex: 0 0 auto; max-width: 42%; padding: 2px 5px; line-height: 1.25; }
+    .lc-checkin--today .lc-checkin__item-meta { color: color-mix(in srgb, var(--b3-theme-on-surface-light) 92%, transparent); }
+    .lc-checkin--today .lc-checkin__item-progress { height: 3px; }
+    .lc-checkin--today .lc-checkin__item-progress span { min-width: 3px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { font-size: 12px; font-weight: 650; }
 }
 
 @media (max-width: 600px) {
