@@ -3157,6 +3157,14 @@
     .lc-checkin__insight-heading { gap: 8px; }
     .lc-checkin__insight-legend { display: grid; grid-template-columns: repeat(2, minmax(0, auto)); gap: 4px 8px; font-size: 9px; }
     .lc-checkin__insight-grid span { min-height: 12px; border-radius: 3px; }
+
+    .lc-checkin__history-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px 8px; }
+    .lc-checkin__history-event-main { min-width: 0; }
+    .lc-checkin__history-event-value { grid-column: 2; grid-row: 1; min-width: 48px; text-align: right; font-size: 12px; }
+    .lc-checkin__history-event-actions { grid-column: 1 / -1; justify-content: flex-start; gap: 4px; }
+    .lc-checkin__history-event-actions .lc-checkin__text-button { min-height: 28px; padding: 3px 7px; }
+    .lc-checkin--archived .lc-checkin__history-list { gap: 7px; }
+    .lc-checkin--archived .lc-checkin__history-row { min-height: 48px; padding: 0 9px; }
 }
 
 .lc-checkin__history-events {
