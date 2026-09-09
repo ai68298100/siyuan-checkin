@@ -3079,6 +3079,16 @@
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 8px; }
     .lc-checkin--history .lc-checkin__month-nav { margin-top: 2px; }
     .lc-checkin--history .lc-checkin__history-tools { margin-top: 6px; }
+
+    .lc-checkin__occasion-manager-list,
+    .lc-checkin__templates,
+    .lc-checkin__icon-grid { overscroll-behavior: contain; scrollbar-width: thin; }
+    .lc-checkin__occasion-manager-list::-webkit-scrollbar,
+    .lc-checkin__templates::-webkit-scrollbar { width: 4px; }
+    .lc-checkin__occasion-manager-list::-webkit-scrollbar-thumb,
+    .lc-checkin__templates::-webkit-scrollbar-thumb { border-radius: 99px; background: color-mix(in srgb, var(--lc-checkin-accent) 40%, transparent); }
+    .lc-checkin--today .lc-checkin__list { padding-bottom: 4px; }
+    .lc-checkin__mobile-nav { box-shadow: 0 -2px 10px color-mix(in srgb, var(--b3-theme-on-background) 7%, transparent); }
 }
 
 @media (max-width: 600px) {
