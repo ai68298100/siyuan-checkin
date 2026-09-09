@@ -3031,6 +3031,20 @@
     .lc-checkin__history-event:hover { box-shadow: 0 0 0 1px var(--lc-checkin-accent-soft); }
     .lc-checkin__item.is-complete { border-color: color-mix(in srgb, var(--lc-checkin-success) 30%, var(--b3-border-color)); }
     .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
+
+    .lc-checkin { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__title { font-size: clamp(23px, 7vw, 30px); letter-spacing: -.015em; }
+    .lc-checkin__eyebrow { line-height: 1.35; }
+    .lc-checkin__section-heading strong,
+    .lc-checkin__group-header span:first-child { font-size: 14px; }
+    .lc-checkin__item-name { font-size: 14px; line-height: 1.35; }
+    .lc-checkin__item-tag { font-size: 9px; }
+    .lc-checkin__item-meta { line-height: 1.35; }
+    .lc-checkin__item-icon { border-radius: 9px; font-size: 18px; }
+    .lc-checkin__quick-recent-list button span { width: 22px; text-align: center; }
+    .lc-checkin__history-event-main strong { font-size: 13px; }
+    .lc-checkin__history-event-main > span { font-size: 10px; line-height: 1.35; }
+    .lc-checkin__insight-section h2 { font-size: 15px; }
 }
 
 .lc-checkin__history-events {
