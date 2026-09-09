@@ -1,7 +1,7 @@
 {
   "name": "siyuan-checkin",
   "version": "3.0.0",
-  "description": "SiYuan plugin: 灏忛┐鎵撳崱",
+  "description": "SiYuan plugin: 小飞驴打卡",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --config webpack.config.js --mode development",
