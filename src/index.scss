@@ -627,6 +627,21 @@
     .lc-checkin--today .lc-checkin__organize { box-shadow: 0 4px 12px color-mix(in srgb, var(--b3-theme-on-background) 6%, transparent); }
     .lc-checkin--editor .lc-checkin__editor-actions { box-shadow: 0 -4px 12px color-mix(in srgb, var(--b3-theme-on-background) 6%, transparent); }
     .lc-checkin--editor .lc-checkin__form-scroll { scroll-padding-bottom: 92px; }
+
+    .lc-checkin {
+        --lc-checkin-button-sm: 28px;
+        --lc-checkin-button-md: 34px;
+        --lc-checkin-button-lg: 42px;
+    }
+
+    .lc-checkin__text-button { min-height: var(--lc-checkin-button-sm); }
+    .lc-checkin__small-button { width: var(--lc-checkin-button-sm); height: var(--lc-checkin-button-sm); }
+    .lc-checkin__icon-button { min-width: var(--lc-checkin-button-lg); min-height: var(--lc-checkin-button-lg); }
+    .lc-checkin__record-button,
+    .lc-checkin__quick-button,
+    .lc-checkin__more-button { min-height: var(--lc-checkin-button-md); }
+    .lc-checkin__organize select,
+    .lc-checkin__today-search { min-height: var(--lc-checkin-button-md); }
 }
 
 @media (forced-colors: active) {
