@@ -585,6 +585,16 @@
     .lc-checkin__status-dot.is-complete { background: var(--lc-checkin-success); }
     .lc-checkin__status-dot.is-partial { background: var(--lc-checkin-warning); }
     .lc-checkin__status-dot.is-missed { background: var(--lc-checkin-danger); }
+
+    .lc-checkin--editor {
+        .lc-checkin__template-section { order: -3; }
+        .lc-checkin__field--name { order: -2; }
+        .lc-checkin__kind-field { order: -1; }
+        .lc-checkin__template-section .lc-checkin__section-heading { margin-bottom: 10px; }
+        .lc-checkin__template-section .lc-checkin__search-field { max-width: 720px; }
+        .lc-checkin__field--name input { font-size: 16px; font-weight: 550; }
+        .lc-checkin__kind-option.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+    }
 }
 
 @media (forced-colors: active) {
