@@ -145,6 +145,27 @@
         .lc-checkin__record-button { min-width: 76px; }
     }
 
+    /* Wide screens act as a workbench: retain the same card grammar while
+       using the extra width for parallel scanning of grouped tasks. */
+    @media (min-width: 1180px) {
+        .lc-checkin--today .lc-checkin__list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            align-items: start;
+            gap: 24px 28px;
+        }
+        .lc-checkin--today .lc-checkin__group { margin-top: 0; }
+        .lc-checkin--today .lc-checkin__group-items { display: grid; gap: 10px; }
+        .lc-checkin--today .lc-checkin__completed-section,
+        .lc-checkin--today .lc-checkin__occasion-section { grid-column: 1 / -1; }
+        .lc-checkin--today .lc-checkin__quick-recent { max-width: 920px; }
+        .lc-checkin--today .lc-checkin__organize { max-width: 920px; }
+    }
+
+    @media (min-width: 1500px) {
+        .lc-checkin--today .lc-checkin__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 30px; }
+    }
+
     .lc-checkin--insights {
         .lc-checkin__insight-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .lc-checkin__insight-section { padding: 18px 20px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }
@@ -193,6 +214,12 @@
         .lc-checkin__range-tabs { max-width: 520px; }
         .lc-checkin__summary-stats div { min-height: 82px; }
         .lc-checkin__history-row { min-height: 54px; }
+    }
+
+    .lc-checkin--summary .lc-checkin__summary-stats div,
+    .lc-checkin--insights .lc-checkin__insight-stats div {
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--lc-checkin-accent-soft) 42%, var(--b3-theme-surface));
     }
 
     .lc-checkin--occasions {
