@@ -3245,6 +3245,12 @@
     .lc-checkin__settings-card,
     .lc-checkin__history-tools,
     .lc-checkin__history-selected { margin-right: 0; margin-left: 0; }
+
+    .lc-checkin--today .lc-checkin__item-icon { align-self: start; line-height: 1; }
+    .lc-checkin--today .lc-checkin__item-topline { min-height: 22px; }
+    .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
+    .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
+    .lc-checkin__quick-recent-list button span { display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
