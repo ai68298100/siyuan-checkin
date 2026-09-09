@@ -3072,6 +3072,13 @@
     .lc-checkin__dialog-close:active { transform: scale(.96); }
     .lc-checkin-dialog-host--mobile .lc-checkin__header,
     .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { padding-right: 52px; }
+
+    .lc-checkin--today .lc-checkin__progress + .lc-checkin__quick-recent { margin-top: 0; }
+    .lc-checkin--today .lc-checkin__quick-recent + .lc-checkin__organize { margin-top: 8px; }
+    .lc-checkin--today .lc-checkin__organize + .lc-checkin__list { margin-top: 4px; }
+    .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 8px; }
+    .lc-checkin--history .lc-checkin__month-nav { margin-top: 2px; }
+    .lc-checkin--history .lc-checkin__history-tools { margin-top: 6px; }
 }
 
 @media (max-width: 600px) {
