@@ -3085,6 +3085,17 @@
     .lc-checkin--summary .lc-checkin__summary-custom .lc-checkin__primary-button { grid-column: 1 / -1; min-height: 38px; }
     .lc-checkin--summary .lc-checkin__history-list { gap: 7px; }
     .lc-checkin--summary .lc-checkin__history-row { min-height: 46px; padding: 0 10px; }
+
+    .lc-checkin button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    .lc-checkin :is(button, select, input, textarea) { min-height: 40px; }
+    .lc-checkin__small-button { min-width: 32px; min-height: 32px; }
+    .lc-checkin__item-action .lc-checkin__more-button { min-width: 34px; min-height: 34px; }
+    .lc-checkin button:active { transform: scale(.98); }
+    .lc-checkin__item:active { transform: translateY(1px); }
+    .lc-checkin input:focus,
+    .lc-checkin select:focus,
+    .lc-checkin textarea:focus { border-color: var(--lc-checkin-accent); box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
+    .lc-checkin__mobile-nav button:active { transform: none; }
 }
 
 .lc-checkin__history-events {
