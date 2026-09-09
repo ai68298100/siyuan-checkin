@@ -3062,6 +3062,15 @@
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .72; }
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:active,
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:focus-within { opacity: 1; }
+
+    .lc-checkin__occasion-section { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--b3-border-color); }
+    .lc-checkin__occasion-section .lc-checkin__section-heading { margin-bottom: 8px; }
+    .lc-checkin__occasion-manager-row { min-height: 56px; padding: 9px; border-radius: 9px; }
+    .lc-checkin__occasion-manager-row + .lc-checkin__occasion-manager-row { margin-top: 7px; }
+    .lc-checkin__occasion-manager-row small { line-height: 1.4; }
+    .lc-checkin__occasion-manager-row .is-overdue,
+    .lc-checkin__occasion-manager-row .is-today { color: var(--lc-checkin-danger); }
+    .lc-checkin__occasion-manager-row .is-upcoming { color: var(--lc-checkin-warning); }
 }
 
 .lc-checkin__history-events {
