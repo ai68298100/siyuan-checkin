@@ -7,6 +7,7 @@ import "./settings-v4.scss";
 import "./occasions-v4.scss";
 import "./insights-v4.scss";
 import "./archived-v4.scss";
+import "./modern-v4.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
