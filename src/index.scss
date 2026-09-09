@@ -228,6 +228,41 @@
     @media (min-width: 1600px) {
         .lc-checkin-tab-host .lc-checkin:not(.lc-checkin--editor) { padding-right: clamp(72px, 9vw, 150px); padding-left: clamp(72px, 9vw, 150px); }
     }
+
+    .lc-checkin--today {
+        .lc-checkin__group-header { border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent); }
+        .lc-checkin__group-header span:first-child { letter-spacing: .02em; }
+        .lc-checkin__group-items:empty { display: none; }
+        .lc-checkin__completed-section { border-top-style: dashed; }
+        .lc-checkin__occasion-section { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--b3-border-color); }
+    }
+
+    .lc-checkin__empty,
+    .lc-checkin__history-empty,
+    .lc-checkin__empty-description {
+        border: 1px dashed color-mix(in srgb, var(--b3-border-color) 85%, transparent);
+        border-radius: var(--lc-checkin-radius);
+        background: color-mix(in srgb, var(--lc-checkin-muted-surface) 55%, transparent);
+    }
+
+    .lc-checkin--history .lc-checkin__history-result {
+        display: flex;
+        min-height: 32px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--b3-theme-on-surface-light);
+        font-size: 11px;
+    }
+
+    .lc-checkin--summary .lc-checkin__history-list,
+    .lc-checkin--archived .lc-checkin__history-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+
+    .lc-checkin--settings {
+        .lc-checkin__settings-card { border-color: color-mix(in srgb, var(--b3-border-color) 80%, transparent); background: var(--b3-theme-surface); }
+        .lc-checkin__settings-card h2 { margin-bottom: 6px; letter-spacing: .01em; }
+        .lc-checkin__settings-danger { border-color: color-mix(in srgb, var(--lc-checkin-danger) 30%, var(--b3-border-color)); }
+    }
 }
 
 .lc-checkin-dialog {
