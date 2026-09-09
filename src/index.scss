@@ -3278,6 +3278,19 @@
     .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { margin-left: auto; order: 3; }
     .lc-checkin--today .lc-checkin__item-meta { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
     .lc-checkin--today .lc-checkin__item-action { min-width: 0; }
+
+    .lc-checkin__mobile-nav,
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin--editor .lc-checkin__editor-actions { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .lc-checkin__item,
+    .lc-checkin__quick-recent,
+    .lc-checkin__organize { contain: layout paint; }
+    .lc-checkin__item:active { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+    @supports not (backdrop-filter: blur(1px)) {
+        .lc-checkin__mobile-nav,
+        .lc-checkin-dialog-host--mobile .lc-checkin__header,
+        .lc-checkin--editor .lc-checkin__editor-actions { background: var(--b3-theme-background); }
+    }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
