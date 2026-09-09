@@ -263,6 +263,28 @@
         .lc-checkin__settings-card h2 { margin-bottom: 6px; letter-spacing: .01em; }
         .lc-checkin__settings-danger { border-color: color-mix(in srgb, var(--lc-checkin-danger) 30%, var(--b3-border-color)); }
     }
+
+    .lc-checkin--editor {
+        .lc-checkin__editor-header { position: relative; }
+        .lc-checkin__form { max-width: 1080px; margin: 0 auto; }
+        .lc-checkin__form-scroll { padding-right: 4px; padding-left: 4px; }
+        .lc-checkin__template-section,
+        .lc-checkin__field--name,
+        .lc-checkin__field--icons,
+        .lc-checkin__kind-field,
+        .lc-checkin__advanced { padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 78%, transparent); border-radius: var(--lc-checkin-radius); background: var(--b3-theme-surface); }
+        .lc-checkin__template-section { background: var(--lc-checkin-muted-surface); }
+        .lc-checkin__editor-actions { position: sticky; bottom: 0; z-index: 2; margin-top: 4px; padding: 12px 4px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--b3-border-color); background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent); backdrop-filter: blur(10px); }
+        .lc-checkin__save-button { min-width: 180px; }
+    }
+
+    .lc-checkin--occasions {
+        .lc-checkin__occasion-manager { max-width: 1080px; margin: 0 auto; }
+        .lc-checkin__occasion-form-panel,
+        .lc-checkin__occasion-list-panel { padding: 18px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 80%, transparent); border-radius: var(--lc-checkin-radius); background: var(--b3-theme-surface); }
+        .lc-checkin__occasion-form-panel .lc-checkin__section-heading,
+        .lc-checkin__occasion-list-panel .lc-checkin__section-heading { margin: -18px -18px 16px; padding: 14px 18px; border-bottom: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius) var(--lc-checkin-radius) 0 0; background: var(--lc-checkin-muted-surface); }
+    }
 }
 
 .lc-checkin-dialog {
