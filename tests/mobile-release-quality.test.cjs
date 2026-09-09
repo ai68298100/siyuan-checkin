@@ -14,6 +14,8 @@ assert.match(packageJson.scripts["test:mobile:visual"], /test:mobile/,
     "mobile visual regression must be part of the release scripts");
 assert.match(packageJson.scripts["test:mobile:visual:browser"], /mobile-visual-browser/,
     "browser visual entry must be discoverable from package scripts");
+assert.match(packageJson.scripts["test:ui"], /responsive-layout\.test\.cjs/,
+    "4.0 UI verification must be discoverable from package scripts");
 
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)/,
     "release must include a touch-specific layout tier");
