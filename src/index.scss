@@ -3313,6 +3313,10 @@
     .lc-checkin--today .lc-checkin__item { will-change: transform; }
     .lc-checkin--today .lc-checkin__item.is-complete { will-change: auto; }
     .lc-checkin--today .lc-checkin__item-action { min-width: 0; }
+
+    .lc-checkin--today .lc-checkin__list > .lc-checkin__group + .lc-checkin__group { margin-top: 16px; }
+    .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 6px; }
+    .lc-checkin--today .lc-checkin__group-items + .lc-checkin__group-header { margin-top: 0; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
