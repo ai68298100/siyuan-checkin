@@ -3133,6 +3133,14 @@
     .lc-checkin__header-actions .lc-checkin__icon-button { flex: 0 0 40px; }
     .lc-checkin__dialog-fullscreen { display: none; }
     .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
+
+    .lc-checkin--occasions .lc-checkin__field { gap: 5px; font-size: 11px; }
+    .lc-checkin--occasions .lc-checkin__field input,
+    .lc-checkin--occasions .lc-checkin__field select { width: 100%; min-height: 40px; box-sizing: border-box; }
+    .lc-checkin--occasions .lc-checkin__field textarea { width: 100%; min-height: 100px; box-sizing: border-box; resize: vertical; }
+    .lc-checkin--occasions .lc-checkin__editor-actions { display: flex; gap: 8px; }
+    .lc-checkin--occasions .lc-checkin__editor-actions button { flex: 1 1 0; min-height: 42px; }
+    .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 16px; }
 }
 
 .lc-checkin__history-events {
