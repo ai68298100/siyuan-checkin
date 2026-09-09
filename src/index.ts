@@ -1291,7 +1291,7 @@ export default class CheckinPlugin extends Plugin {
         </div>` : "";
         const saveStatus = this.renderSaveStatus();
         const occasionSection = this.renderOccasionSection(now);
-        return `<div class="lc-checkin" data-density="${this.density}" data-appearance="${this.appearance}" data-reduced-motion="${this.reducedMotion}">
+        return `<div class="lc-checkin lc-checkin--today" data-density="${this.density}" data-appearance="${this.appearance}" data-reduced-motion="${this.reducedMotion}">
             <header class="lc-checkin__header">
                 <div>
                     <div class="lc-checkin__eyebrow">${escapeHtml(date)}</div>

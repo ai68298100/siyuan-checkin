@@ -84,6 +84,55 @@
         padding-right: clamp(32px, 5vw, 72px);
         padding-left: clamp(32px, 5vw, 72px);
     }
+
+    /* Desktop workbench: stronger hierarchy and denser, predictable columns. */
+    .lc-checkin:not(.lc-checkin--editor) {
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+
+    .lc-checkin--today {
+        .lc-checkin__header { align-items: center; }
+        .lc-checkin__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+        .lc-checkin__quick-recent { margin-top: 0; }
+        .lc-checkin__quick-recent-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .lc-checkin__organize { margin-bottom: 18px; }
+        .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .lc-checkin__item { min-height: 74px; }
+    }
+
+    .lc-checkin--history {
+        .lc-checkin__month-nav { margin-top: 4px; }
+        .lc-checkin__calendar { margin-bottom: 0; }
+        .lc-checkin__history-tools { margin-top: 0; }
+    }
+
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) {
+        display: grid;
+        grid-template-columns: minmax(360px, .95fr) minmax(0, 1.35fr);
+        column-gap: 28px;
+        align-content: start;
+        .lc-checkin__editor-header,
+        .lc-checkin__month-nav,
+        .lc-checkin__calendar-weekdays,
+        .lc-checkin__calendar { grid-column: 1; }
+        .lc-checkin__history-tools,
+        .lc-checkin__history-result,
+        .lc-checkin__history-selected,
+        .lc-checkin__history-actions { grid-column: 2; }
+        .lc-checkin__history-tools { grid-row: 2 / span 3; align-self: start; }
+        .lc-checkin__history-result { align-self: start; }
+        .lc-checkin__history-selected { align-self: start; min-height: 240px; }
+        .lc-checkin__history-actions { align-self: start; }
+    }
+
+    .lc-checkin--settings {
+        .lc-checkin__settings-card { padding: 20px 22px; }
+        .lc-checkin__settings-card + .lc-checkin__settings-card { margin-top: 14px; }
+        .lc-checkin__settings-card p { max-width: 60ch; }
+        .lc-checkin__field { max-width: 760px; }
+        .lc-checkin__density-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
 }
 
 .lc-checkin-dialog {
