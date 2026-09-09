@@ -9,9 +9,10 @@ const summaryStyles = fs.readFileSync(path.join(__dirname, "..", "src", "summary
 const settingsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "settings-v4.scss"), "utf8");
 const occasionsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "occasions-v4.scss"), "utf8");
 const insightsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "insights-v4.scss"), "utf8");
+const archivedStyles = fs.readFileSync(path.join(__dirname, "..", "src", "archived-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
-const v4Imports = ["today", "history", "summary", "settings", "occasions", "insights"]
+const v4Imports = ["today", "history", "summary", "settings", "occasions", "insights", "archived"]
     .map((name) => `import \"./${name}-v4.scss\";`);
 const importPositions = v4Imports.map((statement) => source.indexOf(statement));
 assert.ok(importPositions.every((position) => position >= 0),
@@ -63,6 +64,8 @@ assert.match(insightsStyles, /\.lc-checkin--insights \.lc-checkin__insight-grid\
     "insights desktop status grid must expose a stable two-week rhythm");
 assert.match(insightsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--insights \.lc-checkin__coaching-list\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
     "insights mobile coaching cards must stack for readable evidence");
+assert.match(archivedStyles, /\.lc-checkin--archived > \.lc-checkin__history-list \.lc-checkin__history-row\s*\{[\s\S]*min-height:\s*56px/,
+    "archived items must expose a stable recovery row");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,

@@ -13,7 +13,7 @@ for (const filename of ["index.js", "index.css", "plugin.json", "README.md", "LI
     assert.ok(filename && fs.existsSync(path.join(root, "dist", filename)), `dist asset missing: ${filename}`);
 }
 const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
-for (const surface of ["today", "history", "summary", "settings", "occasions", "insights"]) {
+for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {
     assert.match(builtCss, new RegExp(`\\.lc-checkin--${surface}`), `built CSS missing 4.0 ${surface} surface`);
 }
 console.log(`Release assets: v${plugin.version} checks passed.`);

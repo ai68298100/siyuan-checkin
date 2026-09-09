@@ -1,0 +1,33 @@
+/* 4.0 Archived surface. Keep recovery actions obvious and low-noise. */
+.lc-checkin--archived {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 18px 24px 42px;
+}
+.lc-checkin--archived > .lc-checkin__editor-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+}
+.lc-checkin--archived > .lc-checkin__history-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+.lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row {
+    min-height: 56px;
+    padding: 0 14px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 10px;
+    background: var(--b3-theme-surface);
+}
+.lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button { min-height: 34px; border-radius: 8px; }
+@media (max-width: 600px) {
+    .lc-checkin--archived { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row { min-height: 52px; padding: 0 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .lc-checkin--archived * { transition-duration: 0ms; } }
