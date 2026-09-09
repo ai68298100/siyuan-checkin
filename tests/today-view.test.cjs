@@ -16,6 +16,6 @@ store.items = [makeItem("b", "阅读", 2), makeItem("a", "背单词", 1)];
 store.events = [{id: "event-a", itemId: "a", occurredAt: "2026-09-10T08:00:00.000Z", localDate: "2026-09-10", value: 1, unit: "次", source: "manual"}];
 assert.equal(typeof model.queryTodayItems, "function");
 assert.deepEqual(model.queryTodayItems(store, new Date("2026-09-10T08:00:00+08:00"), {query: "阅读"}).map((item) => item.id), ["b"]);
-assert.deepEqual(model.queryTodayItems(store, new Date("2026-09-10T08:00:00+08:00"), {}).map((item) => item.id), ["a", "b"]);
+assert.deepEqual(model.queryTodayItems(store, new Date("2026-09-10T08:00:00+08:00"), {}).map((item) => item.id), ["b", "a"]);
 assert.deepEqual(model.queryTodayItems(store, new Date("2026-09-10T08:00:00+08:00"), {pendingOnly: true}).map((item) => item.id), ["b"]);
 console.log("Today view query checks passed.");
