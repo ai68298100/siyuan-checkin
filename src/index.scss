@@ -2953,6 +2953,16 @@
     .lc-checkin__organize label:not(.lc-checkin__today-search) { min-width: 0; }
     .lc-checkin__organize label:not(.lc-checkin__today-search) > span { display: block; margin-bottom: 3px; font-size: 9px; }
     .lc-checkin__organize select { width: 100%; min-width: 0; }
+
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) .lc-checkin__calendar { padding: 4px; margin-bottom: 10px; }
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) .lc-checkin__calendar-day { min-height: 42px; padding: 4px; border-radius: 7px; font-size: 10px; }
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) .lc-checkin__calendar-day strong { font-size: 11px; }
+    .lc-checkin__history-tools { padding: 9px; border-radius: 11px; box-shadow: none; }
+    .lc-checkin__history-filter-row { gap: 7px; }
+    .lc-checkin__history-filter-row label { min-width: 0; }
+    .lc-checkin__history-filter-row select { min-width: 0; width: 100%; }
+    .lc-checkin__history-selected { margin-top: 10px; padding: 10px; border-radius: 11px; }
+    .lc-checkin__history-event { gap: 7px; padding: 9px; }
 }
 
 .lc-checkin__history-events {
