@@ -3208,6 +3208,17 @@
     .lc-checkin--editor .lc-checkin__advanced[open] summary { color: var(--lc-checkin-accent); border-bottom: 1px solid var(--b3-border-color); }
     .lc-checkin--editor .lc-checkin__advanced-content .lc-checkin__field + .lc-checkin__field { margin-top: 3px; }
     .lc-checkin--editor .lc-checkin__form-row { gap: 10px; }
+
+    .lc-checkin,
+    .lc-checkin__mobile-nav,
+    .lc-checkin__item,
+    .lc-checkin__settings-card,
+    .lc-checkin__history-selected { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+    [data-reduced-motion="true"] .lc-checkin,
+    [data-reduced-motion="true"] .lc-checkin__mobile-nav,
+    [data-reduced-motion="true"] .lc-checkin__item,
+    [data-reduced-motion="true"] .lc-checkin__settings-card,
+    [data-reduced-motion="true"] .lc-checkin__history-selected { transition: none; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
