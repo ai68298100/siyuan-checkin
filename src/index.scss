@@ -3231,21 +3231,3 @@
     .lc-template-card { grid-template-columns: 30px minmax(0,1fr); }
     .lc-template-card__actions { grid-column: 2; }
 }
-.lc-checkin-dock--icon-only {
-    width: 72px !important;
-    min-width: 72px !important;
-    transition: width .18s ease;
-}
-
-.lc-checkin-dock--icon-only:hover,
-.lc-checkin-dock--icon-only:focus-within {
-    width: 320px !important;
-}
-
-.lc-checkin-dock--icon-only:not(:hover):not(:focus-within) .lc-checkin__item-body,
-.lc-checkin-dock--icon-only:not(:hover):not(:focus-within) .lc-checkin__item-action,
-.lc-checkin-dock--icon-only:not(:hover):not(:focus-within) .lc-checkin__item-exact,
-.lc-checkin-dock--icon-only:not(:hover):not(:focus-within) .lc-checkin__section-heading strong,
-.lc-checkin-dock--icon-only:not(:hover):not(:focus-within) .lc-checkin__section-count {
-    display: none;
-}
