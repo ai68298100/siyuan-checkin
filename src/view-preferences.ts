@@ -13,6 +13,7 @@ export interface CheckinViewPreferences {
     density: CheckinDensity;
     appearance: CheckinAppearance;
     reducedMotion: boolean;
+    todayQuery: string;
 }
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
@@ -23,6 +24,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     density: "standard",
     appearance: "system",
     reducedMotion: false,
+    todayQuery: "",
 };
 
 const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
@@ -39,7 +41,8 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const density = source.density === "compact" || source.density === "comfortable" ? source.density : DEFAULT_VIEW_PREFERENCES.density;
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
-    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion};
+    const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
+    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion, todayQuery};
 }
 
 export function densityLabel(density: CheckinDensity): string {

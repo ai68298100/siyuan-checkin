@@ -2996,6 +2996,7 @@ export default class CheckinPlugin extends Plugin {
         this.density = preferences.density;
         this.appearance = preferences.appearance;
         this.reducedMotion = preferences.reducedMotion;
+        this.todayQuery = preferences.todayQuery;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.insightsItemId = preferences.lastInsightsItemId;
     }
@@ -3018,6 +3019,7 @@ export default class CheckinPlugin extends Plugin {
             density: this.density,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
+            todayQuery: this.todayQuery,
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {
