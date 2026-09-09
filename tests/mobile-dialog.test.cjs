@@ -41,7 +41,7 @@ for (const destination of ["occasions", "history", "summary", "insights", "archi
     assert.match(source, new RegExp(`\\[\\"${destination}\\",`),
         `mobile navigation must include ${destination}`);
 }
-assert.match(source, /data-mobile-nav=\\"add\\"[\s\S]*新建/, "mobile navigation must include the add action");
+assert.match(source, /data-mobile-nav="add"[\s\S]*新建/, "mobile navigation must include the add action");
 assert.match(source, /else if \(page === "insights"\) this\.showInsights\(\)/,
     "insights navigation must reuse the shared insights page");
 assert.match(source, /data-action=\"insights\" aria-label=\"查看复盘\"/,
