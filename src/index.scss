@@ -370,7 +370,7 @@
         --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 92%, #fff 8%);
     }
 
-    [data-appearance="dark"] .lc-checkin--settings {
+[data-appearance="dark"] .lc-checkin--settings {
         color: var(--b3-theme-on-background);
         .lc-checkin__settings-card,
         .lc-checkin__settings-card h2,
@@ -395,6 +395,40 @@
         .lc-checkin__history-actions { display: none !important; }
         .lc-checkin { overflow: visible; }
     }
+}
+
+/* Semantic state tokens: keep the calm pastel language readable in both
+   appearance modes and at desktop viewing distances. */
+.lc-checkin :where(.is-complete, [aria-checked="true"], [aria-selected="true"]) {
+    --lc-checkin-state-color: var(--lc-checkin-success);
+}
+.lc-checkin :where(.is-missed, [data-status="missed"]) {
+    --lc-checkin-state-color: var(--lc-checkin-danger);
+}
+.lc-checkin :where(.is-partial, [data-status="partial"]) {
+    --lc-checkin-state-color: var(--lc-checkin-warning);
+}
+.lc-checkin :where(.is-complete, .is-missed, .is-partial) .lc-checkin__item-tag {
+    color: var(--lc-checkin-state-color);
+    border-color: color-mix(in srgb, var(--lc-checkin-state-color) 35%, var(--b3-border-color));
+    background: color-mix(in srgb, var(--lc-checkin-state-color) 12%, var(--b3-theme-surface));
+}
+.lc-checkin :where(input, select, textarea, button):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 72%, transparent);
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__item-meta,
+    .lc-checkin--today .lc-checkin__item-tag { font-size: 11px; }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-success) 78%, var(--b3-theme-on-background)); }
+    .lc-checkin--today .lc-checkin__item.is-missed .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, var(--b3-theme-on-background)); }
+}
+
+@media (prefers-contrast: more) {
+    .lc-checkin { --lc-checkin-border: var(--b3-theme-on-surface-light); }
+    .lc-checkin__mobile-nav { backdrop-filter: none; }
+    .lc-checkin--today .lc-checkin__item::before { width: 5px; opacity: 1; }
 }
 
 @container lc-checkin (min-width: 900px) and (max-width: 1120px) {
