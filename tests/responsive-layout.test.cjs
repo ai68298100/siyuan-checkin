@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
+const todayStyles = fs.readFileSync(path.join(__dirname, "..", "src", "today-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
@@ -19,6 +20,10 @@ assert.match(styles, /\.lc-checkin__item-body\s*\{[\s\S]*max-width:\s*100%;[\s\S
     "item bodies must stay shrinkable inside narrow docks");
 assert.match(source, /lc-checkin__today-summary/,
     "today view must expose a compact progress summary region");
+assert.match(todayStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin__mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/,
+    "mobile navigation must keep all eight destinations in one stable row");
+assert.match(todayStyles, /\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__today-search,[\s\S]*\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__filter-toggle\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
+    "today mobile filters must give search and pending toggle the full row");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
