@@ -1,0 +1,68 @@
+/* 4.0 Occasion manager. Keep setup and maintenance visible side by side. */
+.lc-checkin--occasions {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 18px 24px 42px;
+}
+.lc-checkin--occasions > .lc-checkin__editor-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+}
+.lc-checkin--occasions > .lc-checkin__editor-header .lc-checkin__icon-button { margin-left: auto; border-radius: 50%; }
+.lc-checkin--occasions .lc-checkin__occasion-manager { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
+.lc-checkin--occasions .lc-checkin__occasion-form-panel,
+.lc-checkin--occasions .lc-checkin__occasion-list-panel {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 12px;
+    background: var(--b3-theme-surface);
+    box-shadow: none;
+}
+.lc-checkin--occasions .lc-checkin__section-heading { margin: -16px -16px 14px; padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent); border-radius: 12px 12px 0 0; background: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background)); }
+.lc-checkin--occasions .lc-checkin__occasion-form-panel form { display: grid; gap: 10px; }
+.lc-checkin--occasions .lc-checkin__form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.lc-checkin--occasions .lc-checkin__field { display: grid; gap: 5px; min-width: 0; }
+.lc-checkin--occasions .lc-checkin__field > span { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.lc-checkin--occasions .lc-checkin__field input,
+.lc-checkin--occasions .lc-checkin__field select,
+.lc-checkin--occasions .lc-checkin__field textarea { width: 100%; min-width: 0; box-sizing: border-box; border-radius: 8px; }
+.lc-checkin--occasions .lc-checkin__field input,
+.lc-checkin--occasions .lc-checkin__field select { min-height: 40px; }
+.lc-checkin--occasions .lc-checkin__field textarea { min-height: 86px; resize: vertical; }
+.lc-checkin--occasions .lc-checkin__editor-actions { display: flex; gap: 8px; margin-top: 4px; }
+.lc-checkin--occasions .lc-checkin__editor-actions button { min-height: 40px; flex: 1 1 0; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-list { display: grid; gap: 7px; max-height: 640px; overflow: auto; overscroll-behavior: contain; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 58px;
+    padding: 9px 10px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent);
+    border-radius: 9px;
+    background: var(--b3-theme-background);
+}
+.lc-checkin--occasions .lc-checkin__occasion-manager-row > div { min-width: 0; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row small { display: block; margin-top: 3px; overflow: hidden; color: var(--b3-theme-on-surface-light); text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled { opacity: .58; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button { width: 32px; height: 32px; border-radius: 50%; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:hover { color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+@media (max-width: 700px) {
+    .lc-checkin--occasions { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: 1fr; gap: 12px; }
+    .lc-checkin--occasions .lc-checkin__form-row { grid-template-columns: 1fr; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(-n + 2) { grid-row: 2; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(2) { grid-column: 2; justify-self: end; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:last-child { grid-column: 3; }
+}
+@media (prefers-reduced-motion: reduce) { .lc-checkin--occasions * { transition-duration: 0ms; } }

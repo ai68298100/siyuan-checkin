@@ -4,6 +4,7 @@ import "./today-v4.scss";
 import "./history-v4.scss";
 import "./summary-v4.scss";
 import "./settings-v4.scss";
+import "./occasions-v4.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
