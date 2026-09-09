@@ -1780,7 +1780,13 @@ export default class CheckinPlugin extends Plugin {
         }));
         root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
             event.preventDefault();
-            void this.enqueueMutation(() => this.saveOccasionForm(new FormData(event.currentTarget as HTMLFormElement)));
+            const form = event.currentTarget as HTMLFormElement;
+            const data = new FormData(form);
+            if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
+                showMessage("请填写有效的事项名称和日期");
+                return;
+            }
+            void this.enqueueMutation(() => this.saveOccasionForm(data));
         });
     }
 
