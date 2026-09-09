@@ -10,7 +10,7 @@
 
 **Spec:** Confirmed in chat on 2026-09-10 as the first 4.0 sub-project.
 
-**Current UI migration status (2026-09-10):** Today, History, Summary, Settings, Occasions, and Insights now have isolated `*-v4.scss` surface layers loaded after the legacy stylesheet. Automated TypeScript, model, accessibility, responsive, mobile, build, and release checks pass. Final visual acceptance still requires opening the plugin in a real SiYuan desktop and mobile client.
+**Current UI migration status (2026-09-10):** Today, History, Summary, Settings, Occasions, Insights, and Archived now have isolated `*-v4.scss` surface layers loaded after the legacy stylesheet. Automated TypeScript, model, accessibility, responsive, mobile, build, and release checks pass. Final visual acceptance still requires opening the plugin in a real SiYuan desktop and mobile client.
 
 ## Global Constraints
 
@@ -81,6 +81,6 @@
 
 - [x] Lock the import order so legacy CSS loads before every 4.0 surface layer.
 - [x] Verify the generated production CSS keeps each 4.0 surface at the end of the cascade.
-- [ ] Open Today, History, Summary, Settings, Occasions, and Insights in a real SiYuan desktop client.
+- [ ] Open Today, History, Summary, Settings, Occasions, Insights, and Archived in a real SiYuan desktop client.
 - [ ] Open the same surfaces in a real SiYuan mobile client at narrow and rotated widths.
 - [ ] Remove legacy duplicate rules only after the client screenshots confirm no regressions.
