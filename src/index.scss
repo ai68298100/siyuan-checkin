@@ -621,6 +621,12 @@
         .lc-checkin__history-event-actions { justify-content: flex-end; }
         .lc-checkin__history-event-note { display: block; max-width: 48ch; overflow: hidden; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; }
     }
+
+    .lc-checkin--today > .lc-checkin__header,
+    .lc-checkin--history > .lc-checkin__editor-header { box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-border-color) 42%, transparent); }
+    .lc-checkin--today .lc-checkin__organize { box-shadow: 0 4px 12px color-mix(in srgb, var(--b3-theme-on-background) 6%, transparent); }
+    .lc-checkin--editor .lc-checkin__editor-actions { box-shadow: 0 -4px 12px color-mix(in srgb, var(--b3-theme-on-background) 6%, transparent); }
+    .lc-checkin--editor .lc-checkin__form-scroll { scroll-padding-bottom: 92px; }
 }
 
 @media (forced-colors: active) {
