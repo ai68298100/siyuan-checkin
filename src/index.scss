@@ -3116,6 +3116,12 @@
     .lc-checkin--today .lc-checkin__organize { margin-top: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
     .lc-checkin--today .lc-checkin__quick-recent + .lc-checkin__organize { border-top-color: color-mix(in srgb, var(--b3-border-color) 45%, transparent); }
     .lc-checkin--today .lc-checkin__quick-recent-heading small { color: var(--b3-theme-on-surface-light); }
+
+    .lc-checkin__occasion-body { min-width: 0; }
+    .lc-checkin__occasion-body strong { display: block; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__occasion-body small { display: block; margin-top: 2px; line-height: 1.4; }
+    .lc-checkin__occasion-action { flex: 0 0 auto; }
+    .lc-checkin__occasion-action button { min-width: 44px; min-height: 34px; border-radius: 8px; }
 }
 
 @media (max-width: 600px) {
