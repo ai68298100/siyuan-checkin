@@ -431,6 +431,56 @@
     .lc-checkin--today .lc-checkin__item::before { width: 5px; opacity: 1; }
 }
 
+@media (min-width: 900px) {
+    .lc-checkin--history .lc-checkin__calendar-day {
+        position: relative;
+        transition: transform var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+    }
+    .lc-checkin--history .lc-checkin__calendar-day:hover {
+        z-index: 1;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px color-mix(in srgb, var(--b3-theme-on-background) 10%, transparent);
+    }
+    .lc-checkin--history .lc-checkin__calendar-day.is-selected {
+        box-shadow: inset 0 0 0 2px var(--lc-checkin-accent), 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 14%, transparent);
+    }
+    .lc-checkin--history .lc-checkin__history-selected {
+        position: sticky;
+        top: 76px;
+        max-height: calc(100vh - 110px);
+        overflow: auto;
+        scrollbar-width: thin;
+    }
+    .lc-checkin--summary .lc-checkin__summary-stats,
+    .lc-checkin--insights .lc-checkin__insight-stats {
+        gap: 12px;
+    }
+    .lc-checkin--summary .lc-checkin__summary-stats div,
+    .lc-checkin--insights .lc-checkin__insight-stats div {
+        position: relative;
+        overflow: hidden;
+    }
+    .lc-checkin--summary .lc-checkin__summary-stats div::after,
+    .lc-checkin--insights .lc-checkin__insight-stats div::after {
+        position: absolute;
+        right: 12px;
+        bottom: 8px;
+        width: 28px;
+        height: 3px;
+        border-radius: 99px;
+        background: var(--lc-checkin-accent);
+        content: "";
+        opacity: .5;
+    }
+}
+
+@media (max-width: 600px) {
+    .lc-checkin--history .lc-checkin__calendar-day.is-selected { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
+    .lc-checkin--history .lc-checkin__history-selected { scroll-margin-top: 72px; }
+    .lc-checkin--summary .lc-checkin__summary-stats div,
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-height: 68px; }
+}
+
 @container lc-checkin (min-width: 900px) and (max-width: 1120px) {
     .lc-checkin--today .lc-checkin__group-items { grid-template-columns: minmax(0, 1fr); }
     .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) 150px 150px; }
