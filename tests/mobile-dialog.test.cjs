@@ -37,6 +37,11 @@ assert.match(source, /data-quick-recent/,
     "quick dialog must expose recently recorded items");
 assert.match(source, /\[\["today", "今日", "⌂"\][\s\S]*\["insights", "复盘", "⌁"\]/,
     "quick dialog navigation must expose habit insights");
+for (const destination of ["occasions", "history", "summary", "insights", "archived", "settings"]) {
+    assert.match(source, new RegExp(`data-mobile-nav=\\"${destination}\\"`),
+        `mobile navigation must include ${destination}`);
+}
+assert.match(source, /data-mobile-nav=\\"add\\"[\s\S]*新建/, "mobile navigation must include the add action");
 assert.match(source, /else if \(page === "insights"\) this\.showInsights\(\)/,
     "insights navigation must reuse the shared insights page");
 assert.match(source, /data-action=\"insights\" aria-label=\"查看复盘\"/,
