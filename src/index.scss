@@ -447,6 +447,54 @@
     .lc-checkin--editor .lc-checkin__kind-option:hover { transform: translateY(-1px); border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
 }
 
+/* Settings should feel like a control panel, not a collection of raw fields. */
+.lc-checkin--settings .lc-checkin__density-options,
+.lc-checkin--settings .lc-checkin__theme-options {
+    display: grid;
+    gap: 10px;
+}
+.lc-checkin--settings .lc-checkin__density-options button,
+.lc-checkin--settings .lc-checkin__theme-options button {
+    min-height: 54px;
+    padding: 10px 12px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 12px;
+    background: var(--b3-theme-surface);
+    text-align: left;
+    transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin--settings .lc-checkin__density-options button:hover,
+.lc-checkin--settings .lc-checkin__theme-options button:hover {
+    transform: translateY(-1px);
+    border-color: var(--lc-checkin-accent);
+}
+.lc-checkin--settings .lc-checkin__density-options button[aria-checked="true"],
+.lc-checkin--settings .lc-checkin__theme-options button[aria-checked="true"] {
+    color: var(--lc-checkin-accent);
+    border-color: var(--lc-checkin-accent);
+    background: var(--lc-checkin-accent-soft);
+    box-shadow: inset 3px 0 0 var(--lc-checkin-accent);
+}
+.lc-checkin--settings .lc-checkin__field > label,
+.lc-checkin--settings .lc-checkin__field > legend {
+    color: var(--b3-theme-on-surface-light);
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: .02em;
+}
+
+@media (min-width: 900px) {
+    .lc-checkin--settings .lc-checkin__density-options,
+    .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lc-checkin--settings .lc-checkin__settings-card { border-radius: 14px; }
+}
+
+@media (max-width: 600px) {
+    .lc-checkin--settings .lc-checkin__density-options,
+    .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: 1fr; }
+    .lc-checkin--settings .lc-checkin__settings-card { padding: 14px; border-radius: 14px; }
+}
+
 @media (prefers-contrast: more) {
     .lc-checkin { --lc-checkin-border: var(--b3-theme-on-surface-light); }
     .lc-checkin__mobile-nav { backdrop-filter: none; }
