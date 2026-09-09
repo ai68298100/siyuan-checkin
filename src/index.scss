@@ -3196,6 +3196,12 @@
     .lc-checkin__history-note-editor { width: 100%; min-height: 72px; box-sizing: border-box; margin-top: 5px; }
     .lc-checkin__history-event-actions { position: relative; z-index: 1; }
     .lc-checkin__history-event-actions .lc-checkin__text-button { white-space: nowrap; }
+
+    .lc-checkin--today .lc-checkin__group-header { color: var(--b3-theme-on-background); }
+    .lc-checkin--today .lc-checkin__group-header span:first-child { font-weight: 650; }
+    .lc-checkin--today .lc-checkin__group-header em { flex: 0 0 auto; min-width: 20px; padding: 2px 6px; text-align: center; }
+    .lc-checkin--today .lc-checkin__group-header .lc-checkin__section-arrow { flex: 0 0 auto; margin-left: 4px; }
+    .lc-checkin--today .lc-checkin__group-header[aria-expanded="false"] { color: var(--b3-theme-on-surface-light); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
