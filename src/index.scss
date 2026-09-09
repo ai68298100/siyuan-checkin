@@ -3122,6 +3122,12 @@
     .lc-checkin__occasion-body small { display: block; margin-top: 2px; line-height: 1.4; }
     .lc-checkin__occasion-action { flex: 0 0 auto; }
     .lc-checkin__occasion-action button { min-width: 44px; min-height: 34px; border-radius: 8px; }
+
+    .lc-checkin--history .lc-checkin__month-nav { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+    .lc-checkin--history .lc-checkin__month-nav strong { text-align: center; }
+    .lc-checkin--history .lc-checkin__month-nav button { border-radius: 50%; }
+    .lc-checkin--history .lc-checkin__history-date span { padding: 2px 6px; border-radius: 99px; background: var(--b3-theme-surface-lighter); font-size: 9px; }
+    .lc-checkin--history .lc-checkin__history-selected { scroll-margin-top: 76px; }
 }
 
 @media (max-width: 600px) {
