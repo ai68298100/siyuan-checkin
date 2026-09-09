@@ -133,6 +133,30 @@
         .lc-checkin__field { max-width: 760px; }
         .lc-checkin__density-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
+
+    .lc-checkin--today {
+        .lc-checkin__header-actions { max-width: 560px; flex-wrap: nowrap; }
+        .lc-checkin__header-actions .lc-checkin__always-visible { width: 30px; height: 30px; }
+        .lc-checkin__count { margin-right: 8px; }
+        .lc-checkin__organize { display: grid; grid-template-columns: minmax(0, 1fr) 180px 180px; }
+        .lc-checkin__organize label { min-width: 0; }
+        .lc-checkin__item-body { background: transparent; }
+        .lc-checkin__item-action { margin-left: auto; }
+        .lc-checkin__record-button { min-width: 76px; }
+    }
+
+    .lc-checkin--insights {
+        .lc-checkin__insight-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .lc-checkin__insight-section { padding: 18px 20px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }
+        .lc-checkin__insight-grid { grid-template-columns: repeat(14, minmax(0, 1fr)); }
+    }
+
+    .lc-checkin--summary {
+        .lc-checkin__summary-stats { max-width: 720px; }
+        .lc-checkin__history-list { max-width: 900px; }
+    }
+
+    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 22px; }
 }
 
 .lc-checkin-dialog {
