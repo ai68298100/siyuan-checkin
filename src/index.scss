@@ -3191,6 +3191,11 @@
     .lc-checkin--occasions .lc-checkin__occasion-list-panel .lc-checkin__section-heading { position: sticky; z-index: 2; top: 0; background: var(--b3-theme-surface); }
     .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin--occasions .lc-checkin__occasion-manager-row { min-width: 0; }
+
+    .lc-checkin__history-event-note { display: -webkit-box; max-height: 2.8em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+    .lc-checkin__history-note-editor { width: 100%; min-height: 72px; box-sizing: border-box; margin-top: 5px; }
+    .lc-checkin__history-event-actions { position: relative; z-index: 1; }
+    .lc-checkin__history-event-actions .lc-checkin__text-button { white-space: nowrap; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
