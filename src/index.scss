@@ -642,6 +642,12 @@
     .lc-checkin__more-button { min-height: var(--lc-checkin-button-md); }
     .lc-checkin__organize select,
     .lc-checkin__today-search { min-height: var(--lc-checkin-button-md); }
+
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: 42px; }
+    .lc-checkin:not(.lc-checkin--editor)::after { content: ""; display: block; min-height: 1px; }
+    .lc-checkin--editor { padding-bottom: 0; }
+    .lc-checkin--editor .lc-checkin__form { padding-bottom: 8px; }
+    .lc-checkin--history .lc-checkin__history-actions { padding-bottom: 8px; }
 }
 
 @media (forced-colors: active) {
