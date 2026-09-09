@@ -3170,6 +3170,15 @@
     .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav { animation: lc-checkin-mobile-nav-enter 160ms ease-out both; }
     [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin,
     [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav { animation: none; }
+
+    .lc-checkin--editor .lc-checkin__form-scroll { scroll-padding-top: 72px; scroll-padding-bottom: 108px; }
+    .lc-checkin--editor input[type="date"],
+    .lc-checkin--editor input[type="number"] { font-variant-numeric: tabular-nums; }
+    .lc-checkin--editor input[type="number"] { text-align: left; }
+    .lc-checkin--editor textarea { line-height: 1.5; }
+    .lc-checkin--editor .lc-checkin__field input:focus,
+    .lc-checkin--editor .lc-checkin__field select:focus,
+    .lc-checkin--editor .lc-checkin__field textarea:focus { scroll-margin-bottom: 112px; }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
