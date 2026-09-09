@@ -157,6 +157,49 @@
     }
 
     .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 22px; }
+
+    /* Desktop visual rhythm: let whitespace and type create hierarchy. */
+    .lc-checkin:not(.lc-checkin--editor) {
+        .lc-checkin__title { font-size: clamp(28px, 2.4vw, 38px); letter-spacing: -.02em; }
+        .lc-checkin__eyebrow { font-size: 12px; }
+        .lc-checkin__header,
+        .lc-checkin__editor-header { margin-bottom: 16px; }
+        .lc-checkin__section-heading { box-shadow: none; }
+    }
+
+    .lc-checkin--today {
+        .lc-checkin__progress { height: 5px; margin-top: 10px; margin-bottom: 20px; border-radius: 99px; }
+        .lc-checkin__group { margin-top: 22px; }
+        .lc-checkin__group-header { min-height: 34px; font-size: 13px; }
+        .lc-checkin__group-header em { padding: 2px 8px; border-radius: 99px; }
+        .lc-checkin__completed-section { margin-top: 30px; }
+        .lc-checkin__all-done { padding: 14px 16px; }
+    }
+
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) {
+        .lc-checkin__calendar { padding: 8px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }
+        .lc-checkin__calendar-day { min-height: 58px; }
+        .lc-checkin__history-tools { padding: 16px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }
+        .lc-checkin__history-selected { margin-top: 14px; padding: 16px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius); background: var(--b3-theme-surface); }
+        .lc-checkin__history-event { box-shadow: none; }
+    }
+
+    .lc-checkin--insights {
+        .lc-checkin__coaching { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .lc-checkin__coaching-item { min-height: 112px; }
+    }
+
+    .lc-checkin--summary {
+        .lc-checkin__range-tabs { max-width: 520px; }
+        .lc-checkin__summary-stats div { min-height: 82px; }
+        .lc-checkin__history-row { min-height: 54px; }
+    }
+
+    .lc-checkin--occasions {
+        .lc-checkin__occasion-form-panel,
+        .lc-checkin__occasion-list-panel { box-shadow: none; }
+        .lc-checkin__occasion-manager-list { max-height: 620px; overflow: auto; }
+    }
 }
 
 .lc-checkin-dialog {
