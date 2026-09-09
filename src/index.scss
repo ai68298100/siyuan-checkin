@@ -605,6 +605,13 @@
         .lc-checkin__coaching-item strong { font-size: 15px; }
         .lc-checkin__coaching-item p { max-width: 68ch; line-height: 1.5; }
     }
+
+    .lc-checkin--summary {
+        .lc-checkin__range-tabs { display: inline-grid; grid-template-columns: repeat(3, minmax(100px, 1fr)); min-height: 38px; }
+        .lc-checkin__summary-custom { display: flex; align-items: end; gap: 12px; max-width: 720px; padding: 12px 14px; border: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); }
+        .lc-checkin__summary-custom .lc-checkin__field { flex: 1 1 0; }
+        .lc-checkin__summary-custom .lc-checkin__primary-button { min-width: 92px; }
+    }
 }
 
 @media (forced-colors: active) {
