@@ -3155,6 +3155,14 @@
     .lc-checkin--settings .lc-checkin__settings-card:last-child { margin-bottom: 10px; }
     .lc-checkin__history-actions { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
     .lc-checkin__occasion-manager-list { padding-bottom: 4px; }
+
+    .lc-checkin__quick-recent,
+    .lc-checkin__organize,
+    .lc-checkin__history-tools { border-color: color-mix(in srgb, var(--b3-border-color) 70%, transparent); }
+    .lc-checkin__quick-recent + .lc-checkin__organize { border-top-width: 0; }
+    .lc-checkin__item + .lc-checkin__item { border-top-color: color-mix(in srgb, var(--b3-border-color) 46%, transparent); }
+    .lc-checkin__settings-card + .lc-checkin__settings-card { border-top-color: color-mix(in srgb, var(--b3-border-color) 54%, transparent); }
+    .lc-checkin__history-event + .lc-checkin__history-event { border-top-color: color-mix(in srgb, var(--b3-border-color) 46%, transparent); }
 }
 
 @media (max-width: 360px) {
