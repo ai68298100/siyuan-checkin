@@ -3298,6 +3298,11 @@
     .lc-checkin--editor .lc-checkin__kind-field { margin-top: 0; }
     .lc-checkin--editor .lc-checkin__field--name input { min-height: 44px; font-size: 15px; }
     .lc-checkin--editor .lc-checkin__kind-option span { min-height: 46px; }
+
+    .lc-checkin--insights .lc-checkin__coaching-item { overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__coaching-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--insights .lc-checkin__coaching-item p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__coaching-item small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
