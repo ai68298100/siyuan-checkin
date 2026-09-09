@@ -3256,6 +3256,11 @@
     .lc-checkin--history .lc-checkin__calendar + .lc-checkin__history-tools { margin-top: 6px; }
     .lc-checkin--history .lc-checkin__history-tools + .lc-checkin__history-result { margin-top: 4px; }
     .lc-checkin--history .lc-checkin__history-result + .lc-checkin__history-selected { margin-top: 6px; }
+
+    .lc-checkin--summary .lc-checkin__summary-stats div { justify-content: center; text-align: center; }
+    .lc-checkin--summary .lc-checkin__summary-stats div:first-child strong { font-size: 21px; }
+    .lc-checkin--summary .lc-checkin__summary-stats span { line-height: 1.2; }
+    .lc-checkin--summary .lc-checkin__summary-total { margin: 4px 0 8px; font-size: 10px; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
