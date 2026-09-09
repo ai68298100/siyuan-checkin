@@ -3219,6 +3219,11 @@
     [data-reduced-motion="true"] .lc-checkin__item,
     [data-reduced-motion="true"] .lc-checkin__settings-card,
     [data-reduced-motion="true"] .lc-checkin__history-selected { transition: none; }
+
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: max(88px, calc(72px + env(safe-area-inset-bottom))); }
+    .lc-checkin__mobile-nav { padding-bottom: max(5px, calc(5px + env(safe-area-inset-bottom))); }
+    .lc-checkin--editor .lc-checkin__form-scroll { padding-bottom: max(108px, calc(96px + env(safe-area-inset-bottom))); }
+    .lc-checkin--editor .lc-checkin__editor-actions { padding-bottom: max(9px, calc(9px + env(safe-area-inset-bottom))); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
