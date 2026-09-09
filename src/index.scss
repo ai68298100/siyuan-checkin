@@ -3099,6 +3099,12 @@
     .lc-checkin--today .lc-checkin__all-done { display: flex; min-height: 48px; align-items: center; justify-content: center; text-align: center; color: var(--lc-checkin-success); background: color-mix(in srgb, var(--lc-checkin-success) 10%, var(--b3-theme-surface)); border-color: color-mix(in srgb, var(--lc-checkin-success) 28%, var(--b3-border-color)); }
     .lc-checkin--today .lc-checkin__empty { margin-top: 12px; color: var(--b3-theme-on-surface-light); }
     .lc-checkin--today .lc-checkin__empty-title { color: var(--b3-theme-on-background); }
+
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+    .lc-checkin-dialog-host--mobile .lc-checkin { box-shadow: 0 -4px 24px color-mix(in srgb, var(--b3-theme-on-background) 12%, transparent); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: 0 1px 0 color-mix(in srgb, var(--b3-border-color) 55%, transparent); }
+    [data-reduced-motion="true"] .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 @media (max-width: 600px) {
