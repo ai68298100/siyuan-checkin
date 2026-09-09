@@ -3111,6 +3111,11 @@
     .lc-checkin--today .lc-checkin__item-action { border-top: 1px solid color-mix(in srgb, var(--b3-border-color) 48%, transparent); padding-top: 5px; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { box-shadow: none; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { color: var(--b3-theme-on-surface-light); }
+
+    .lc-checkin--today .lc-checkin__quick-recent { border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+    .lc-checkin--today .lc-checkin__organize { margin-top: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .lc-checkin--today .lc-checkin__quick-recent + .lc-checkin__organize { border-top-color: color-mix(in srgb, var(--b3-border-color) 45%, transparent); }
+    .lc-checkin--today .lc-checkin__quick-recent-heading small { color: var(--b3-theme-on-surface-light); }
 }
 
 @media (max-width: 600px) {
