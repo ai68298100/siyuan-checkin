@@ -543,6 +543,15 @@
     .lc-checkin__item-action button[title]:hover::after { top: auto; bottom: calc(100% + 7px); }
 }
 
+@media (min-width: 900px) {
+    .lc-checkin-dialog { border-radius: 18px; }
+    .lc-checkin-dialog-host .lc-checkin { padding-top: 26px; }
+    .lc-checkin-dialog-host .lc-checkin__dialog-fullscreen,
+    .lc-checkin-dialog-host .lc-checkin__dialog-close { top: 12px; }
+    .lc-checkin-tab-host .lc-checkin { padding-top: 28px; }
+    .lc-checkin-dialog--fullscreen .lc-checkin-dialog-host .lc-checkin { border-radius: 0; }
+}
+
 @media (forced-colors: active) {
     .lc-checkin,
     .lc-checkin * { forced-color-adjust: auto; }
