@@ -1254,6 +1254,8 @@ export default class CheckinPlugin extends Plugin {
         const pendingItems = sortCheckinItems(filteredItems.filter((item) => !isComplete(this.store, item, now)), this.todaySortMode);
         const completedItems = sortCheckinItems(filteredItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
         const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
+        const pending = Math.max(0, scheduledItems.length - completed);
+        const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
             <div class="lc-checkin__empty">
@@ -1312,7 +1314,8 @@ export default class CheckinPlugin extends Plugin {
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
             </header>
-            <div class="lc-checkin__progress"><span style="width: ${scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0}%"></span></div>
+            <section class="lc-checkin__today-summary" aria-label="今日进度"><div><strong>${completed}</strong><span>已完成</span></div><div><strong>${pending}</strong><span>待处理</span></div><div><strong>${completionRate}%</strong><span>完成率</span></div></section>
+            <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
             ${recentRecord}
             ${saveStatus}
             ${this.renderQuickRecent()}

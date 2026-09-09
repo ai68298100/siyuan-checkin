@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
     "each check-in surface must expose its own inline-size container");
@@ -16,6 +17,8 @@ assert.match(styles, /@container\s+lc-checkin\s*\(max-width:\s*360px\)/,
     "very narrow surfaces need a second compact layout tier");
 assert.match(styles, /\.lc-checkin__item-body\s*\{[\s\S]*max-width:\s*100%;[\s\S]*overflow:\s*hidden;/,
     "item bodies must stay shrinkable inside narrow docks");
+assert.match(source, /lc-checkin__today-summary/,
+    "today view must expose a compact progress summary region");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
