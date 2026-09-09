@@ -576,7 +576,15 @@
         .lc-checkin__item:not(.is-complete) .lc-checkin__record-button { color: #fff; background: var(--lc-checkin-accent); }
         .lc-checkin__item:not(.is-complete) .lc-checkin__record-button:hover { background: color-mix(in srgb, var(--lc-checkin-accent) 88%, #000); }
         .lc-checkin__completed-section .lc-checkin__section-title { color: var(--b3-theme-on-surface-light); }
+
+        .lc-checkin__item-tag.is-high { color: var(--lc-checkin-danger); background: color-mix(in srgb, var(--lc-checkin-danger) 12%, transparent); }
+        .lc-checkin__item-tag.is-medium { color: var(--lc-checkin-warning); background: color-mix(in srgb, var(--lc-checkin-warning) 14%, transparent); }
+        .lc-checkin__item-tag.is-low { color: var(--b3-theme-on-surface-light); background: var(--b3-theme-surface-lighter); }
     }
+
+    .lc-checkin__status-dot.is-complete { background: var(--lc-checkin-success); }
+    .lc-checkin__status-dot.is-partial { background: var(--lc-checkin-warning); }
+    .lc-checkin__status-dot.is-missed { background: var(--lc-checkin-danger); }
 }
 
 @media (forced-colors: active) {
