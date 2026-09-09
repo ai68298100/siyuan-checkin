@@ -3274,6 +3274,11 @@
     .lc-checkin--settings [data-setting-sort] { font-weight: 550; }
     .lc-checkin--settings .lc-checkin__settings-check span { line-height: 1.4; }
     .lc-checkin--settings .lc-checkin__settings-check input:checked { accent-color: var(--lc-checkin-accent); }
+
+    .lc-checkin--today .lc-checkin__item-progress span { transition: width 180ms ease, background-color 160ms ease; }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { transition: color 160ms ease, opacity 160ms ease; }
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item-progress span,
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { transition: none; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
