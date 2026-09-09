@@ -2929,6 +2929,13 @@
     [data-reduced-motion="true"] .lc-checkin--editor { scroll-behavior: auto; }
     .lc-checkin__history-selected:focus-within,
     .lc-checkin__insight-section:focus-within { outline: 1px solid var(--lc-checkin-accent-soft); outline-offset: 2px; }
+
+    .lc-checkin--today .lc-checkin__header > div:first-child { min-width: 0; }
+    .lc-checkin--today .lc-checkin__header > div:first-child .lc-checkin__eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--today .lc-checkin__title { font-size: 28px; }
+    .lc-checkin--history .lc-checkin__editor-header .lc-checkin__title { font-size: 26px; }
+    .lc-checkin--history .lc-checkin__editor-header .lc-checkin__eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__month-nav button { min-width: 36px; min-height: 36px; }
 }
 
 @media (max-width: 600px) {
