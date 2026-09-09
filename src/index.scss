@@ -852,16 +852,22 @@
 
 @media (max-width: 600px) {
     .lc-checkin-dialog {
-        width: 94vw !important;
-        height: 88vh !important;
-        max-width: 94vw;
-        max-height: 88vh;
+        width: 100vw !important;
+        height: 100dvh !important;
+        max-width: 100vw;
+        max-height: 100dvh;
+        border-radius: 18px 18px 0 0;
     }
 
     .lc-checkin-dialog-host {
         .lc-checkin {
-            padding: 18px 14px 12px;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            padding: 14px 12px 10px;
         }
+
+        .lc-checkin > * { width: 100%; max-width: 100%; min-width: 0; }
 
         .lc-checkin__group-items {
             display: flex;
@@ -913,14 +919,14 @@
     }
 
     .lc-checkin-tab-host .lc-checkin__mobile-nav { display: none; }
-    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
     .lc-checkin__mobile-nav {
         position: fixed; z-index: 3; right: 0; bottom: 0; left: 0;
-        display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px;
-        padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;
+        padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
         border-top: 1px solid var(--b3-border-color); background: var(--b3-theme-background);
-        button { min-width: 0; min-height: 46px; padding: 3px 2px; border: 0; border-radius: 7px; color: var(--b3-theme-on-surface-light); background: transparent; cursor: pointer; touch-action: manipulation;
-            span { font-size: 18px; line-height: 1; } small { font-size: 10px; line-height: 1.2; }
+        button { min-width: 0; min-height: 48px; padding: 3px 1px; border: 0; border-radius: 9px; color: var(--b3-theme-on-surface-light); background: transparent; cursor: pointer; touch-action: manipulation;
+            span { font-size: 17px; line-height: 1; } small { display: block; overflow: hidden; font-size: 9px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
             &.is-selected { color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
             &:last-child { color: var(--lc-checkin-accent); }
         }
