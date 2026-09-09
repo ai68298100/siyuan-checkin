@@ -552,6 +552,22 @@
     .lc-checkin-dialog--fullscreen .lc-checkin-dialog-host .lc-checkin { border-radius: 0; }
 }
 
+@container lc-checkin (min-width: 900px) {
+    .lc-checkin--occasions {
+        .lc-checkin__occasion-manager-row { min-height: 64px; padding: 10px 12px; border-radius: var(--lc-checkin-radius-sm); }
+        .lc-checkin__occasion-manager-row + .lc-checkin__occasion-manager-row { margin-top: 7px; }
+        .lc-checkin__occasion-manager-row:hover { border-color: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--b3-border-color)); }
+        .lc-checkin__occasion-manager-row small { line-height: 1.45; }
+        .lc-checkin__occasion-manager-row .is-overdue,
+        .lc-checkin__occasion-manager-row .is-today { color: var(--lc-checkin-danger); }
+        .lc-checkin__occasion-manager-row .is-upcoming { color: var(--lc-checkin-warning); }
+        .lc-checkin__occasion-manager-list { scrollbar-width: thin; }
+    }
+
+    .lc-checkin--archived .lc-checkin__history-row { min-height: 56px; }
+    .lc-checkin--archived .lc-checkin__history-row button { min-width: 56px; }
+}
+
 @media (forced-colors: active) {
     .lc-checkin,
     .lc-checkin * { forced-color-adjust: auto; }
