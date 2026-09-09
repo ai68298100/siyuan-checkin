@@ -3261,6 +3261,13 @@
     .lc-checkin--summary .lc-checkin__summary-stats div:first-child strong { font-size: 21px; }
     .lc-checkin--summary .lc-checkin__summary-stats span { line-height: 1.2; }
     .lc-checkin--summary .lc-checkin__summary-total { margin: 4px 0 8px; font-size: 10px; }
+
+    .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
+    .lc-checkin__insight-legend i.is-complete { background: var(--lc-checkin-success); }
+    .lc-checkin__insight-legend i.is-partial { background: var(--lc-checkin-warning); }
+    .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
+    .lc-checkin__insight-legend i.is-off { background: var(--b3-theme-surface-lighter); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
