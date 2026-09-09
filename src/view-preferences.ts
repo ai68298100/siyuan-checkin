@@ -14,6 +14,7 @@ export interface CheckinViewPreferences {
     appearance: CheckinAppearance;
     reducedMotion: boolean;
     todayQuery: string;
+    pendingOnly: boolean;
 }
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
@@ -25,6 +26,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     appearance: "system",
     reducedMotion: false,
     todayQuery: "",
+    pendingOnly: false,
 };
 
 const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
@@ -42,7 +44,8 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
-    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion, todayQuery};
+    const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
+    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion, todayQuery, pendingOnly};
 }
 
 export function densityLabel(density: CheckinDensity): string {

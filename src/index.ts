@@ -148,6 +148,7 @@ export default class CheckinPlugin extends Plugin {
     private todayGroupMode: TodayGroupMode = DEFAULT_VIEW_PREFERENCES.groupMode;
     private todaySortMode: CheckinItemSortMode = DEFAULT_VIEW_PREFERENCES.sortMode;
     private todayQuery = "";
+    private pendingOnly = false;
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
     private density: CheckinDensity = DEFAULT_VIEW_PREFERENCES.density;
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
@@ -1248,8 +1249,9 @@ export default class CheckinPlugin extends Plugin {
         const visibleItems = query
             ? scheduledItems.filter((item) => `${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query))
             : scheduledItems;
-        const pendingItems = sortCheckinItems(visibleItems.filter((item) => !isComplete(this.store, item, now)), this.todaySortMode);
-        const completedItems = sortCheckinItems(visibleItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
+        const filteredItems = this.pendingOnly ? visibleItems.filter((item) => !isComplete(this.store, item, now)) : visibleItems;
+        const pendingItems = sortCheckinItems(filteredItems.filter((item) => !isComplete(this.store, item, now)), this.todaySortMode);
+        const completedItems = sortCheckinItems(filteredItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
         const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
@@ -1321,6 +1323,7 @@ export default class CheckinPlugin extends Plugin {
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
                 </select></label>
                 <label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+                <button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button>
             </div>` : ""}
             <main class="lc-checkin__list">${list}${occasionSection}</main>
         </div>`;
@@ -1710,6 +1713,11 @@ export default class CheckinPlugin extends Plugin {
             const revision = getItemRevisionForDate(item, date);
             this.enqueueMutation(() => this.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), this.revisionFingerprint(item, date)));
         }));
+        root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
+            this.pendingOnly = !this.pendingOnly;
+            void this.persistViewPreferences();
+            this.render();
+        });
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
@@ -2997,6 +3005,7 @@ export default class CheckinPlugin extends Plugin {
         this.appearance = preferences.appearance;
         this.reducedMotion = preferences.reducedMotion;
         this.todayQuery = preferences.todayQuery;
+        this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.insightsItemId = preferences.lastInsightsItemId;
     }
@@ -3020,6 +3029,7 @@ export default class CheckinPlugin extends Plugin {
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
             todayQuery: this.todayQuery,
+            pendingOnly: this.pendingOnly,
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {
