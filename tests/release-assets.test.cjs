@@ -3,6 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
+for (const filename of ["package.json", "plugin.json", path.join("dist", "plugin.json")]) {
+    const bytes = fs.readFileSync(path.join(root, filename));
+    assert.ok(!bytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])), `${filename} must not contain a UTF-8 BOM`);
+}
 const plugin = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
 const packageManifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const distPlugin = JSON.parse(fs.readFileSync(path.join(root, "dist", "plugin.json"), "utf8"));
