@@ -2936,6 +2936,12 @@
     .lc-checkin--history .lc-checkin__editor-header .lc-checkin__title { font-size: 26px; }
     .lc-checkin--history .lc-checkin__editor-header .lc-checkin__eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin__month-nav button { min-width: 36px; min-height: 36px; }
+
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { background: color-mix(in srgb, #000 32%, transparent); }
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) .b3-dialog__content { overflow: hidden; border-radius: 18px 18px 0 0; }
+    .lc-checkin-dialog-host--mobile { isolation: isolate; }
+    .lc-checkin-dialog-host--mobile .lc-checkin { position: relative; z-index: 1; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { box-shadow: 0 2px 8px color-mix(in srgb, var(--b3-theme-on-background) 10%, transparent); }
 }
 
 @media (max-width: 600px) {
