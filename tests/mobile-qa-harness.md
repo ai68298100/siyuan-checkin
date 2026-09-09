@@ -15,4 +15,6 @@ The harness now reads `CHECKIN_QA_PROJECT_ROOT` and `CHECKIN_QA_OUTPUT_ROOT`. It
 
 The validated viewport matrix includes the 420px dock, 320px narrow dock, and 1180px tab layout. The existing harness can be extended with explicit 360px, 390px, and 430px screenshot loops when a separate screenshot baseline is needed.
 
-The repository browser entry point also probes standard Edge and Chrome installation paths. Set `CHECKIN_BROWSER` explicitly when the executable is installed elsewhere.
+The repository browser entry point probes standard Edge and Chrome installation paths, then executes the maintained harness with the current worktree in `CHECKIN_QA_PROJECT_ROOT`. Set `CHECKIN_BROWSER` explicitly when the executable is installed elsewhere, or set `CHECKIN_QA_HARNESS` when the harness is stored at another path.
+
+The current worktree passed the harness on 2026-09-10. It covered Today, History, Summary, Editor, narrow and wide layouts, template interactions, concurrent writes, API readiness, and reported no page errors. This is mock-client evidence; final acceptance in real SiYuan desktop and mobile clients remains separate.

@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const browserEntry = fs.readFileSync(path.join(root, "tests", "mobile-visual-browser.cjs"), "utf8");
 
 assert.equal(manifest.version, packageJson.version, "plugin and package versions must match");
 assert.ok(fs.existsSync(path.join(root, manifest.icon)), "manifest icon must exist");
@@ -14,6 +15,12 @@ assert.match(packageJson.scripts["test:mobile:visual"], /test:mobile/,
     "mobile visual regression must be part of the release scripts");
 assert.match(packageJson.scripts["test:mobile:visual:browser"], /mobile-visual-browser/,
     "browser visual entry must be discoverable from package scripts");
+assert.match(browserEntry, /CHECKIN_QA_HARNESS/,
+    "browser visual entry must support an explicit QA harness path");
+assert.match(browserEntry, /CHECKIN_QA_PROJECT_ROOT/,
+    "browser visual entry must pass the current worktree to the QA harness");
+assert.match(browserEntry, /spawnSync\(process\.execPath/,
+    "browser visual entry must execute the maintained QA harness");
 assert.match(packageJson.scripts["test:ui"], /responsive-layout\.test\.cjs/,
     "4.0 UI verification must be discoverable from package scripts");
 

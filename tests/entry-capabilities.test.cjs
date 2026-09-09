@@ -28,6 +28,8 @@ assert.match(source, /checkin-record-event/);
 assert.match(source, /checkin-list-occasions/);
 assert.match(source, /checkin-complete-occasion/);
 assert.match(source, /ensureSpeedSwitchQuickActions/);
+assert.match(source, /\(this\.app as unknown as \{plugins\?: unknown\} \| undefined\)\?\.plugins/,
+    "optional launcher discovery must tolerate hosts without an app plugin registry");
 assert.match(source, /lcCheckinMobileTopBarButton/);
 assert.match(source, /localRead: true, dataEgress: true, externalCost: false/);
 assert.match(source, /localRead: true, localWrite: true, dataEgress: true, externalCost: false/);

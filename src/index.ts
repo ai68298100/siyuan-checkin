@@ -819,7 +819,7 @@ export default class CheckinPlugin extends Plugin {
     /** Register optional launcher actions when 小驴速切 is installed. */
     private ensureSpeedSwitchQuickActions() {
         if (this.disposed || this.disposing || this.speedSwitchQuickActionDisposers.length) return;
-        const plugins = (this.app as unknown as {plugins?: unknown}).plugins;
+        const plugins = (this.app as unknown as {plugins?: unknown} | undefined)?.plugins;
         const candidates = Array.isArray(plugins)
             ? plugins
             : plugins && typeof plugins === "object" ? Object.values(plugins as Record<string, unknown>) : [];

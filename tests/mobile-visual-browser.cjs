@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 const fs = require("node:fs");
 const path = require("node:path");
+const {spawnSync} = require("node:child_process");
+
+const repoRoot = path.resolve(__dirname, "..");
+const defaultHarness = "C:/Users/sunku/.codex/visualizations/2026/09/06/01a0746c-a70f-78c0-b369-de9bc71c594e/qa-preview.cjs";
 
 if (process.argv.includes("--help")) {
     console.log("Browser visual entry point: set CHECKIN_BROWSER when the browser is not installed in a standard Windows path.");
-    console.log("The harness must mount the built plugin in a SiYuan-compatible DOM before taking 320/360/390/430px screenshots.");
+    console.log("Set CHECKIN_QA_HARNESS to override the maintained harness path.");
+    console.log("The harness mounts the built plugin in a SiYuan-compatible DOM before taking 320/360/390/430px screenshots.");
     process.exit(0);
 }
 
@@ -24,19 +29,31 @@ if (!browserPath) {
     process.exit(2);
 }
 
-let playwright;
-try {
-    playwright = require("playwright");
-} catch {
-    try {
-        playwright = require("C:/Users/sunku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
-    } catch {
-        console.error("BLOCKED: Playwright is not installed in the project runtime. Install it or run the external QA harness.");
-        process.exit(2);
-    }
+const distEntry = path.join(repoRoot, "dist", "index.js");
+if (!fs.existsSync(distEntry)) {
+    console.error("BLOCKED: dist/index.js is missing. Run pnpm run build first.");
+    process.exit(2);
 }
 
-void playwright;
-console.error("BLOCKED: a SiYuan-compatible preview mount is required before browser screenshots can be taken.");
-console.error("Run the maintained QA harness with CHECKIN_BROWSER and use the 320/360/390/430px viewport matrix.");
-process.exit(2);
+const harnessPath = path.resolve(process.env.CHECKIN_QA_HARNESS || defaultHarness);
+if (!fs.existsSync(harnessPath)) {
+    console.error(`BLOCKED: QA harness not found: ${harnessPath}`);
+    console.error("Set CHECKIN_QA_HARNESS to the maintained SiYuan-compatible preview harness.");
+    process.exit(2);
+}
+
+const result = spawnSync(process.execPath, [harnessPath], {
+    cwd: repoRoot,
+    env: {
+        ...process.env,
+        CHECKIN_BROWSER: browserPath,
+        CHECKIN_QA_PROJECT_ROOT: process.env.CHECKIN_QA_PROJECT_ROOT || repoRoot,
+    },
+    stdio: "inherit",
+});
+
+if (result.error) {
+    console.error(`BLOCKED: unable to start QA harness: ${result.error.message}`);
+    process.exit(2);
+}
+process.exit(typeof result.status === "number" ? result.status : 2);
