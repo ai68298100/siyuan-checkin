@@ -3307,6 +3307,12 @@
     .lc-checkin--settings .lc-checkin__settings-card p { max-height: 3.2em; overflow: hidden; }
     .lc-checkin--settings .lc-checkin__settings-card .lc-checkin__text-button { min-height: 40px; }
     .lc-checkin--settings .lc-checkin__settings-danger .lc-checkin__text-button { font-weight: 600; }
+
+    .lc-checkin--today .lc-checkin__group { contain: layout style; }
+    .lc-checkin--today .lc-checkin__group-items { contain: layout; }
+    .lc-checkin--today .lc-checkin__item { will-change: transform; }
+    .lc-checkin--today .lc-checkin__item.is-complete { will-change: auto; }
+    .lc-checkin--today .lc-checkin__item-action { min-width: 0; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
