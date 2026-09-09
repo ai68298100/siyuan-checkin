@@ -359,6 +359,26 @@
 
     .lc-checkin__text-button { transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast); }
     .lc-checkin__text-button:hover { background: var(--lc-checkin-accent-soft); }
+
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) {
+        .lc-checkin__month-nav { min-height: 38px; }
+        .lc-checkin__calendar-weekdays { padding: 0 8px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+        .lc-checkin__calendar-day { min-height: 50px; padding: 7px; font-size: 12px; }
+        .lc-checkin__calendar-day strong { font-size: 13px; }
+        .lc-checkin__history-date { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .lc-checkin__history-date strong { font-size: 16px; }
+    }
+
+    .lc-checkin--insights {
+        .lc-checkin__insight-stats div { border-color: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--b3-border-color)); background: var(--b3-theme-surface); }
+        .lc-checkin__insight-stats strong { font-size: 24px; }
+        .lc-checkin__insight-legend { font-size: 10px; }
+    }
+
+    .lc-checkin--summary {
+        .lc-checkin__summary-stats div:first-child { border-color: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--b3-border-color)); background: var(--lc-checkin-accent-soft); }
+        .lc-checkin__summary-stats strong { font-size: 23px; }
+    }
 }
 
 .lc-checkin-dialog {
