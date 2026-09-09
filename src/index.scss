@@ -2978,6 +2978,21 @@
     .lc-checkin__coaching-item p { margin-top: 5px; font-size: 11px; line-height: 1.5; }
     .lc-checkin__insight-section { margin-top: 14px; padding: 12px; border-radius: 10px; }
     .lc-checkin__insight-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; }
+
+    .lc-checkin--editor .lc-checkin__form-scroll { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 0 0 88px; }
+    .lc-checkin--editor .lc-checkin__template-section,
+    .lc-checkin--editor .lc-checkin__field--name,
+    .lc-checkin--editor .lc-checkin__field--icons,
+    .lc-checkin--editor .lc-checkin__kind-field,
+    .lc-checkin--editor .lc-checkin__advanced { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; padding: 12px; border-radius: 10px; }
+    .lc-checkin--editor .lc-checkin__organization-fields { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin--editor .lc-checkin__editor-actions { position: fixed; right: 0; bottom: 0; left: 0; z-index: 6; display: flex; gap: 8px; padding: 9px 12px calc(9px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--b3-theme-background) 96%, transparent); box-shadow: 0 -4px 14px color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent); backdrop-filter: blur(10px); }
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__save-button,
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__primary-button { flex: 1 1 auto; min-height: 42px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager { display: flex; flex-direction: column; gap: 12px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel,
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel { width: 100%; max-width: 100%; box-sizing: border-box; padding: 12px; border-radius: 10px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager .lc-checkin__form-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 .lc-checkin__history-events {
