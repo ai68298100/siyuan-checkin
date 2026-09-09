@@ -207,6 +207,14 @@ export function isScheduledToday(item: CheckinItem, date = new Date()): boolean 
     return (schedule.weekdays || []).includes(date.getDay());
 }
 
+export function queryTodayItems(store: CheckinStore, date = new Date(), options: {query?: string; pendingOnly?: boolean; sort?: CheckinItemSortMode} = {}): CheckinItem[] {
+    const query = options.query?.trim().toLocaleLowerCase() || "";
+    const visible = store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date))
+        .filter((item) => !query || `${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query))
+        .filter((item) => !options.pendingOnly || !isComplete(store, item, date));
+    return sortCheckinItemsForDate(store, visible, date, options.sort || "manual");
+}
+
 export function isItemAvailableOnDate(item: CheckinItem, date: Date): boolean {
     const createdDate = isValidDateKey(item.createdDate) ? item.createdDate : dateKey(new Date(item.createdAt));
     const key = dateKey(date);
