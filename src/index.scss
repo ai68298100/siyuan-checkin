@@ -566,6 +566,17 @@
 
     .lc-checkin--archived .lc-checkin__history-row { min-height: 56px; }
     .lc-checkin--archived .lc-checkin__history-row button { min-width: 56px; }
+
+    .lc-checkin--today {
+        .lc-checkin__group-header em { color: var(--b3-theme-on-surface-light); background: var(--b3-theme-surface-lighter); font-size: 10px; font-style: normal; }
+        .lc-checkin__group-header[aria-expanded="false"] { opacity: .78; }
+        .lc-checkin__item.is-complete { opacity: .82; }
+        .lc-checkin__item.is-complete:hover,
+        .lc-checkin__item.is-complete:focus-within { opacity: 1; }
+        .lc-checkin__item:not(.is-complete) .lc-checkin__record-button { color: #fff; background: var(--lc-checkin-accent); }
+        .lc-checkin__item:not(.is-complete) .lc-checkin__record-button:hover { background: color-mix(in srgb, var(--lc-checkin-accent) 88%, #000); }
+        .lc-checkin__completed-section .lc-checkin__section-title { color: var(--b3-theme-on-surface-light); }
+    }
 }
 
 @media (forced-colors: active) {
