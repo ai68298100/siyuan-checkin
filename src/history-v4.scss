@@ -1,0 +1,115 @@
+/* 4.0 History workbench. Behaviour stays in index.ts; this layer only owns layout. */
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) {
+    --history-border: color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    --history-muted-bg: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background));
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 18px 24px 42px;
+    color: var(--b3-theme-on-background);
+}
+
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__editor-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--history-border);
+}
+
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__month-nav {
+    margin: 0 0 10px;
+    padding: 4px;
+    border: 1px solid var(--history-border);
+    border-radius: 10px;
+    background: var(--history-muted-bg);
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__month-nav button { width: 36px; height: 36px; border-radius: 50%; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar-weekdays { padding: 0 5px; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar {
+    gap: 5px;
+    padding: 8px;
+    border: 1px solid var(--history-border);
+    border-radius: 12px;
+    background: var(--history-muted-bg);
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar-day {
+    min-height: 52px;
+    border-color: transparent;
+    background: var(--b3-theme-surface);
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar-day:hover:not(:disabled) { border-color: var(--lc-checkin-accent); }
+
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--history-border);
+    border-radius: 12px;
+    background: var(--history-muted-bg);
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-search input { min-height: 40px; border-radius: 999px; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-row { gap: 8px; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-row label { min-height: 36px; }
+
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-result {
+    margin-top: 8px;
+    padding: 0 3px;
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-selected {
+    margin-top: 8px;
+    padding: 14px;
+    border: 1px solid var(--history-border);
+    border-radius: 12px;
+    background: var(--b3-theme-surface);
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-events { display: grid; gap: 8px; margin-top: 10px; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--history-border) 70%, transparent);
+    box-shadow: none;
+}
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event:last-child { border-bottom: 0; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-main { min-width: 0; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-note { max-width: 52ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-value { min-width: 64px; color: var(--b3-theme-on-background); text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+
+@media (min-width: 900px) {
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) {
+        display: grid;
+        grid-template-columns: minmax(340px, .9fr) minmax(0, 1.15fr);
+        column-gap: 24px;
+        align-content: start;
+    }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__editor-header,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__month-nav,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__calendar-weekdays,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__calendar { grid-column: 1; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-tools,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-result,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-selected,
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-actions { grid-column: 2; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-tools { grid-row: 1 / span 2; align-self: start; margin-top: 0; }
+}
+
+@media (max-width: 600px) {
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar-day { min-height: 44px; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-value { grid-column: 2; grid-row: 1; min-width: 0; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-event-note { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) * { scroll-behavior: auto; transition-duration: 0ms; }
+}

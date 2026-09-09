@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
 const todayStyles = fs.readFileSync(path.join(__dirname, "..", "src", "today-v4.scss"), "utf8");
+const historyStyles = fs.readFileSync(path.join(__dirname, "..", "src", "history-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
@@ -28,6 +29,10 @@ assert.match(todayStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin__m
     "mobile navigation must keep all eight destinations in one stable row");
 assert.match(todayStyles, /\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__today-search,[\s\S]*\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__filter-toggle\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
     "today mobile filters must give search and pending toggle the full row");
+assert.match(historyStyles, /@media\s*\(min-width:\s*900px\)[\s\S]*grid-template-columns:\s*minmax\(340px,\s*\.9fr\)\s+minmax\(0,\s*1\.15fr\)/,
+    "history desktop layout must keep calendar and records in two columns");
+assert.match(historyStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin__history-event\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/,
+    "history mobile records must reserve a dedicated value column");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
