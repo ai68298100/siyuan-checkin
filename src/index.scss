@@ -3045,6 +3045,15 @@
     .lc-checkin__history-event-main strong { font-size: 13px; }
     .lc-checkin__history-event-main > span { font-size: 10px; line-height: 1.35; }
     .lc-checkin__insight-section h2 { font-size: 15px; }
+
+    .lc-checkin { overscroll-behavior-y: contain; scrollbar-width: thin; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { position: sticky; z-index: 4; top: 0; padding-top: max(8px, env(safe-area-inset-top)); background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent); backdrop-filter: blur(10px); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { z-index: 7; }
+    .lc-checkin__mobile-nav { z-index: 8; }
+    .lc-checkin--today [data-action="add"] { z-index: 9; }
+    .lc-checkin--editor .lc-checkin__editor-actions { z-index: 10; }
+    .lc-checkin:not(.lc-checkin--editor) { scroll-padding-top: 70px; scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 
 .lc-checkin__history-events {
