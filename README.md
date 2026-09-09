@@ -144,6 +144,7 @@ await checkin.recordEvent({
 ```bash
 corepack pnpm install
 corepack pnpm run check
+corepack pnpm run test:ui
 corepack pnpm run test
 corepack pnpm run build
 ```
