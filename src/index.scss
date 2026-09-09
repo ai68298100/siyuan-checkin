@@ -2993,6 +2993,18 @@
     .lc-checkin--occasions .lc-checkin__occasion-form-panel,
     .lc-checkin--occasions .lc-checkin__occasion-list-panel { width: 100%; max-width: 100%; box-sizing: border-box; padding: 12px; border-radius: 10px; }
     .lc-checkin--occasions .lc-checkin__occasion-manager .lc-checkin__form-row { grid-template-columns: minmax(0, 1fr); }
+
+    .lc-checkin--settings { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+    .lc-checkin--settings .lc-checkin__settings-card { width: 100%; max-width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 14px; border-radius: 11px; box-shadow: none; }
+    .lc-checkin--settings .lc-checkin__settings-card h2 { margin-bottom: 6px; font-size: 18px; }
+    .lc-checkin--settings .lc-checkin__settings-card p { font-size: 11px; line-height: 1.55; }
+    .lc-checkin--settings .lc-checkin__density-options { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+    .lc-checkin--settings .lc-checkin__density-options button { min-height: 48px; padding: 8px 10px; }
+    .lc-checkin--settings .lc-checkin__field { min-width: 0; }
+    .lc-checkin--settings .lc-checkin__field select { width: 100%; min-width: 0; }
+    .lc-checkin--settings .lc-checkin__settings-help { display: block; font-size: 10px; line-height: 1.45; }
+    [data-appearance="dark"].lc-checkin--settings .lc-checkin__settings-card p,
+    [data-appearance="dark"].lc-checkin--settings .lc-checkin__settings-help { color: color-mix(in srgb, var(--b3-theme-on-background) 76%, transparent); }
 }
 
 .lc-checkin__history-events {
