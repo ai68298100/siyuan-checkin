@@ -595,6 +595,16 @@
         .lc-checkin__field--name input { font-size: 16px; font-weight: 550; }
         .lc-checkin__kind-option.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
     }
+
+    .lc-checkin--insights {
+        .lc-checkin__insight-stats { order: 1; }
+        .lc-checkin__coaching { order: 2; }
+        .lc-checkin__insight-section { order: 3; }
+        .lc-checkin__insight-heading { align-items: baseline; }
+        .lc-checkin__insight-heading h2 { letter-spacing: .01em; }
+        .lc-checkin__coaching-item strong { font-size: 15px; }
+        .lc-checkin__coaching-item p { max-width: 68ch; line-height: 1.5; }
+    }
 }
 
 @media (forced-colors: active) {
