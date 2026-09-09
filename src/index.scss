@@ -3339,6 +3339,11 @@
     [data-appearance="dark"] .lc-checkin__organize select,
     [data-appearance="dark"] .lc-checkin__history-tools input { background: var(--b3-theme-surface-lighter); }
     [data-appearance="dark"] .lc-checkin__mobile-nav { background: color-mix(in srgb, var(--b3-theme-background) 96%, #000 4%); }
+
+    .lc-checkin--today .lc-checkin__item-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { width: 44px; }
 }
 
 @media (max-width: 600px) and (max-height: 620px) {
