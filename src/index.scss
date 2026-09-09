@@ -333,6 +333,34 @@
     .lc-checkin__item:has(:focus-visible) { border-color: var(--lc-checkin-accent); box-shadow: var(--lc-checkin-focus); }
 }
 
+@container lc-checkin (min-width: 900px) {
+    .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__header,
+    .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header {
+        position: sticky;
+        z-index: 4;
+        top: -1px;
+        padding-top: 4px;
+        padding-bottom: 12px;
+        background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent);
+        backdrop-filter: blur(10px);
+    }
+
+    .lc-checkin__header-actions .lc-checkin__icon-button {
+        min-width: 38px;
+        min-height: 38px;
+        border-radius: 50%;
+        box-shadow: var(--lc-checkin-shadow-sm);
+    }
+
+    .lc-checkin__primary-button,
+    .lc-checkin__save-button { transition: transform var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast); }
+    .lc-checkin__primary-button:hover,
+    .lc-checkin__save-button:hover { transform: translateY(-1px); box-shadow: 0 5px 14px color-mix(in srgb, var(--lc-checkin-accent) 24%, transparent); }
+
+    .lc-checkin__text-button { transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast); }
+    .lc-checkin__text-button:hover { background: var(--lc-checkin-accent-soft); }
+}
+
 .lc-checkin-dialog {
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
