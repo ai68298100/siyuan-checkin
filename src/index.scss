@@ -3224,6 +3224,12 @@
     .lc-checkin__mobile-nav { padding-bottom: max(5px, calc(5px + env(safe-area-inset-bottom))); }
     .lc-checkin--editor .lc-checkin__form-scroll { padding-bottom: max(108px, calc(96px + env(safe-area-inset-bottom))); }
     .lc-checkin--editor .lc-checkin__editor-actions { padding-bottom: max(9px, calc(9px + env(safe-area-inset-bottom))); }
+
+    .lc-checkin :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
+    .lc-checkin__mobile-nav button:focus-visible { outline-offset: -2px; }
+    .lc-checkin__calendar-day:focus-visible { outline-offset: -3px; }
+    .lc-checkin__item:focus-within,
+    .lc-checkin__occasion-manager-row:focus-within { border-color: var(--lc-checkin-accent); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
