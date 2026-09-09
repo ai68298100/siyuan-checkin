@@ -3142,6 +3142,12 @@
     .lc-checkin--today [data-action="add"] { border: 2px solid var(--b3-theme-background); box-shadow: 0 5px 14px color-mix(in srgb, var(--lc-checkin-accent) 32%, transparent); }
     .lc-checkin--today [data-action="add"]:active { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-accent) 26%, transparent); }
     .lc-checkin--editor [data-action="add"] { display: none; }
+
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="历史"],
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="总结"],
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="复盘"],
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="事项"] { display: none; }
+    .lc-checkin--today .lc-checkin__header-actions { gap: 4px; }
 }
 
 @media (max-width: 360px) {
