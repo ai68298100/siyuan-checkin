@@ -3138,6 +3138,10 @@
     .lc-checkin--settings .lc-checkin__settings-card + .lc-checkin__settings-card { margin-top: 12px; }
     .lc-checkin--settings .lc-checkin__settings-card h2 { scroll-margin-top: 72px; }
     .lc-checkin--settings .lc-checkin__settings-summary { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); font-size: 10px; }
+
+    .lc-checkin--today [data-action="add"] { border: 2px solid var(--b3-theme-background); box-shadow: 0 5px 14px color-mix(in srgb, var(--lc-checkin-accent) 32%, transparent); }
+    .lc-checkin--today [data-action="add"]:active { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-accent) 26%, transparent); }
+    .lc-checkin--editor [data-action="add"] { display: none; }
 }
 
 @media (max-width: 360px) {
