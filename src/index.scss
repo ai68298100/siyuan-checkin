@@ -3344,6 +3344,13 @@
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 0; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { width: 44px; }
+
+    .lc-checkin__item-tag,
+    .lc-checkin__section-count,
+    .lc-checkin__history-date span { min-height: 20px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 99px; }
+    .lc-checkin__item-tag.is-high { color: var(--lc-checkin-danger); background: color-mix(in srgb, var(--lc-checkin-danger) 12%, transparent); }
+    .lc-checkin__item-tag.is-medium { color: var(--lc-checkin-warning); background: color-mix(in srgb, var(--lc-checkin-warning) 13%, transparent); }
+    .lc-checkin__item-tag.is-low { color: var(--b3-theme-on-surface-light); background: var(--b3-theme-surface-lighter); }
 }
 
 @media (max-width: 600px) and (max-height: 620px) {
