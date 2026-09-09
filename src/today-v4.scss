@@ -137,6 +137,7 @@
     .lc-checkin--today .lc-checkin__today-summary > div { min-height: 52px; padding: 7px 9px; }
     .lc-checkin--today .lc-checkin__today-summary strong { font-size: 18px; }
     .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible { display: none; }
+    .lc-checkin--today > .lc-checkin__header .lc-checkin__icon-button[data-action="add"] { display: none; }
     .lc-checkin--today .lc-checkin__organize { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
     .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search,
     .lc-checkin--today .lc-checkin__organize .lc-checkin__filter-toggle { grid-column: 1 / -1; }
