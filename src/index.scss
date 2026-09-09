@@ -512,6 +512,21 @@
     .lc-checkin__history-event-value,
     .lc-checkin__summary-stats strong,
     .lc-checkin__insight-stats strong { font-variant-numeric: tabular-nums; }
+
+    .lc-checkin__save-status,
+    .lc-checkin__sync-notice { min-height: 18px; }
+
+    .lc-checkin__save-status { padding: 2px 0; }
+
+    .lc-checkin__loading,
+    .lc-checkin__error,
+    .lc-checkin__empty { max-width: 760px; margin-right: auto; margin-left: auto; }
+
+    .lc-checkin__loading { min-height: 120px; display: grid; place-items: center; border: 1px dashed var(--b3-border-color); border-radius: var(--lc-checkin-radius); color: var(--b3-theme-on-surface-light); background: var(--lc-checkin-muted-surface); }
+
+    .lc-checkin__error { padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lc-checkin-danger) 42%, var(--b3-border-color)); border-radius: var(--lc-checkin-radius); background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--b3-theme-surface)); }
+
+    .lc-checkin__sync-notice { border-radius: 6px; }
 }
 
 @media (forced-colors: active) {
