@@ -442,6 +442,17 @@
     .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 14px; background: color-mix(in srgb, var(--b3-border-color) 56%, transparent); }
 }
 
+@media (min-width: 1100px) {
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1040px); }
+    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 900px); }
+    .lc-checkin-dialog-host .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(300px, 1fr)); }
+}
+
+@media (min-width: 1450px) {
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1180px); }
+    .lc-checkin-dialog-host .lc-checkin__group-items { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
+}
+
 @media (forced-colors: active) {
     .lc-checkin,
     .lc-checkin * { forced-color-adjust: auto; }
