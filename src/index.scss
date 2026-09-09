@@ -3124,6 +3124,15 @@
     .lc-checkin__empty-description { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.5; }
     .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin__history-event-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .lc-checkin__back-button { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px; border-radius: 50%; }
+    .lc-checkin__editor-header > div { min-width: 0; }
+    .lc-checkin__editor-header .lc-checkin__icon-button { flex: 0 0 40px; width: 40px; height: 40px; }
+    .lc-checkin__header-actions { align-items: center; }
+    .lc-checkin__header-actions .lc-checkin__small-button { min-width: 30px; min-height: 30px; }
+    .lc-checkin__header-actions .lc-checkin__icon-button { flex: 0 0 40px; }
+    .lc-checkin__dialog-fullscreen { display: none; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
 }
 
 .lc-checkin__history-events {
