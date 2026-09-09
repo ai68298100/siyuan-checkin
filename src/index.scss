@@ -200,6 +200,34 @@
         .lc-checkin__occasion-list-panel { box-shadow: none; }
         .lc-checkin__occasion-manager-list { max-height: 620px; overflow: auto; }
     }
+
+    /* Desktop interaction affordances. */
+    .lc-checkin--today {
+        .lc-checkin__item { position: relative; }
+        .lc-checkin__item-action { opacity: .72; transition: opacity var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast); }
+        .lc-checkin__item:hover .lc-checkin__item-action,
+        .lc-checkin__item:focus-within .lc-checkin__item-action { opacity: 1; transform: translateX(-1px); }
+        .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 7%, var(--b3-theme-surface)); }
+        .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
+        .lc-checkin__item-action .lc-checkin__more-button { width: 28px; padding: 0; color: var(--b3-theme-on-surface-light); }
+        .lc-checkin__item-action .lc-checkin__record-button { transition: background-color var(--lc-checkin-motion-fast), color var(--lc-checkin-motion-fast); }
+        .lc-checkin__item-action .lc-checkin__record-button:hover { color: #fff; background: var(--lc-checkin-accent); }
+    }
+
+    .lc-checkin__header-actions .lc-checkin__small-button {
+        transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
+    }
+
+    .lc-checkin__header-actions .lc-checkin__small-button:hover { transform: translateY(-1px); }
+
+    .lc-checkin__history-event-actions,
+    .lc-checkin__history-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .lc-checkin--history .lc-checkin__text-button { min-height: 28px; padding: 3px 8px; border-radius: 6px; }
+
+    @media (min-width: 1600px) {
+        .lc-checkin-tab-host .lc-checkin:not(.lc-checkin--editor) { padding-right: clamp(72px, 9vw, 150px); padding-left: clamp(72px, 9vw, 150px); }
+    }
 }
 
 .lc-checkin-dialog {
