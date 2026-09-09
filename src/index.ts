@@ -1231,7 +1231,7 @@ export default class CheckinPlugin extends Plugin {
 
     private renderInsights(): string {
         const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
-        if (!item) return `<div class="lc-checkin lc-checkin--history"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
+        if (!item) return `<div class="lc-checkin lc-checkin--history lc-checkin--insights"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
         const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
         const suggestions = buildCoachingSuggestions(report);
         const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
