@@ -3148,6 +3148,13 @@
     .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="复盘"],
     .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="事项"] { display: none; }
     .lc-checkin--today .lc-checkin__header-actions { gap: 4px; }
+
+    .lc-checkin--today .lc-checkin__list,
+    .lc-checkin--history .lc-checkin__history-selected,
+    .lc-checkin--summary .lc-checkin__history-list,
+    .lc-checkin--settings .lc-checkin__settings-card:last-child { margin-bottom: 10px; }
+    .lc-checkin__history-actions { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+    .lc-checkin__occasion-manager-list { padding-bottom: 4px; }
 }
 
 @media (max-width: 360px) {
