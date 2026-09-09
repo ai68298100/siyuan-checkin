@@ -527,6 +527,20 @@
     .lc-checkin__error { padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lc-checkin-danger) 42%, var(--b3-border-color)); border-radius: var(--lc-checkin-radius); background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--b3-theme-surface)); }
 
     .lc-checkin__sync-notice { border-radius: 6px; }
+
+    .lc-checkin :is(button, select, input, textarea):disabled { cursor: not-allowed; opacity: .52; }
+    .lc-checkin button[aria-busy="true"] { cursor: progress; }
+    .lc-checkin__item[draggable="true"] { cursor: grab; }
+    .lc-checkin__item[draggable="true"]:active { cursor: grabbing; }
+    .lc-checkin__item.is-dragging { opacity: .58; border-style: dashed; border-color: var(--lc-checkin-accent); }
+
+    .lc-checkin__item-action button[title],
+    .lc-checkin__header-actions button[title] { position: relative; }
+
+    .lc-checkin__item-action button[title]:hover::after,
+    .lc-checkin__header-actions button[title]:hover::after { content: attr(title); position: absolute; z-index: 8; top: calc(100% + 7px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 4px 7px; border-radius: 5px; color: #fff; background: color-mix(in srgb, var(--b3-theme-on-background) 90%, #000); font-size: 10px; pointer-events: none; }
+
+    .lc-checkin__item-action button[title]:hover::after { top: auto; bottom: calc(100% + 7px); }
 }
 
 @media (forced-colors: active) {
