@@ -3134,6 +3134,10 @@
     .lc-checkin__insight-stats strong,
     .lc-checkin__summary-stats strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin__insight-grid { width: 100%; min-width: 0; }
+
+    .lc-checkin--settings .lc-checkin__settings-card + .lc-checkin__settings-card { margin-top: 12px; }
+    .lc-checkin--settings .lc-checkin__settings-card h2 { scroll-margin-top: 72px; }
+    .lc-checkin--settings .lc-checkin__settings-summary { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); font-size: 10px; }
 }
 
 @media (max-width: 360px) {
