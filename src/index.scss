@@ -2971,6 +2971,12 @@
     .lc-checkin--settings .lc-checkin__settings-check input { flex: 0 0 auto; width: 18px; height: 18px; }
     .lc-checkin--settings .lc-checkin__text-button { width: 100%; min-height: 38px; margin-top: 8px; border-radius: 8px; }
     .lc-checkin--settings .lc-checkin__settings-danger .lc-checkin__text-button { color: var(--lc-checkin-danger); background: color-mix(in srgb, var(--lc-checkin-danger) 8%, transparent); }
+
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__header,
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__editor-header { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 8px; }
+    .lc-checkin--today .lc-checkin__header { margin-bottom: 6px; }
+    .lc-checkin--history .lc-checkin__editor-header { margin-bottom: 10px; }
+    .lc-checkin__mobile-nav button.is-selected { box-shadow: inset 0 2px 0 var(--lc-checkin-accent); }
 }
 
 @media (max-width: 600px) {
