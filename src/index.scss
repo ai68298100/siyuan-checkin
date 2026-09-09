@@ -3391,6 +3391,13 @@
     .lc-checkin__mobile-nav button small { font-size: 8px; }
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
     .lc-checkin--today [data-action="add"] { bottom: calc(60px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today .lc-checkin__quick-recent { margin-top: 5px; margin-bottom: 6px; }
+    .lc-checkin--today .lc-checkin__quick-recent-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .lc-checkin--today .lc-checkin__group { margin-top: 12px; }
+    .lc-checkin--today .lc-checkin__item { padding: 8px; }
+    .lc-checkin--history .lc-checkin__calendar-day { min-height: 34px; }
+    .lc-checkin--summary .lc-checkin__summary-stats div,
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-height: 54px; }
 }
 
 @media (max-width: 600px) {
