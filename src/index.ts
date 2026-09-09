@@ -222,6 +222,7 @@ export default class CheckinPlugin extends Plugin {
             type: DOCK_TYPE,
             init: function (this: {element: Element}) {
                 plugin.dockElement = this.element as HTMLElement;
+                plugin.dockElement.classList.add("lc-checkin-dock--icon-only");
                 plugin.render();
             },
             update: function () {
@@ -808,6 +809,10 @@ export default class CheckinPlugin extends Plugin {
         }
         const actions: Array<{id: string; label: string; value: string; handler: () => void}> = [
             {id: "xiaolv-checkin-open", label: "打卡", value: "open", handler: () => this.openQuickDialog()},
+            {id: "xiaolv-checkin-today", label: "今日", value: "today", handler: () => { this.openQuickDialog(); this.showToday(); }},
+            {id: "xiaolv-checkin-add", label: "新建", value: "add", handler: () => { this.openQuickDialog(); this.showEditor(); }},
+            {id: "xiaolv-checkin-insights", label: "复盘", value: "insights", handler: () => { this.openQuickDialog(); this.showInsights(); }},
+            {id: "xiaolv-checkin-summary", label: "总结", value: "summary", handler: () => { this.openQuickDialog(); this.showSummary(); }},
         ];
         actions.forEach((action) => {
             const dispose = speedSwitch.registerQuickAction({
