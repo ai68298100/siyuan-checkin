@@ -3095,6 +3095,10 @@
     .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle:focus-visible { color: var(--lc-checkin-accent); }
     .lc-checkin__occasion-manager-row:active { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
     .lc-checkin__occasion-manager-row .lc-checkin__text-button:active { transform: scale(.97); }
+
+    .lc-checkin--today .lc-checkin__all-done { display: flex; min-height: 48px; align-items: center; justify-content: center; text-align: center; color: var(--lc-checkin-success); background: color-mix(in srgb, var(--lc-checkin-success) 10%, var(--b3-theme-surface)); border-color: color-mix(in srgb, var(--lc-checkin-success) 28%, var(--b3-border-color)); }
+    .lc-checkin--today .lc-checkin__empty { margin-top: 12px; color: var(--b3-theme-on-surface-light); }
+    .lc-checkin--today .lc-checkin__empty-title { color: var(--b3-theme-on-background); }
 }
 
 @media (max-width: 600px) {
