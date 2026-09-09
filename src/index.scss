@@ -2941,6 +2941,18 @@
     .lc-checkin__header-actions .lc-checkin__count { font-size: 11px; }
     .lc-checkin__icon-button { min-width: 38px; min-height: 38px; }
     .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { width: 40px; height: 40px; }
+
+    .lc-checkin__quick-recent { margin: 8px 0 10px; padding: 8px; border-radius: 11px; box-shadow: none; }
+    .lc-checkin__quick-recent-heading { min-height: 24px; }
+    .lc-checkin__quick-recent-list { gap: 6px; }
+    .lc-checkin__quick-recent-list button { min-height: 36px; padding: 5px; border-radius: 8px; }
+    .lc-checkin__quick-recent-list button span { font-size: 15px; }
+    .lc-checkin__quick-recent-list button small { font-size: 8px; }
+    .lc-checkin__organize { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; padding: 8px; border-radius: 11px; box-shadow: none; }
+    .lc-checkin__today-search { grid-column: 1 / -1; width: 100%; }
+    .lc-checkin__organize label:not(.lc-checkin__today-search) { min-width: 0; }
+    .lc-checkin__organize label:not(.lc-checkin__today-search) > span { display: block; margin-bottom: 3px; font-size: 9px; }
+    .lc-checkin__organize select { width: 100%; min-width: 0; }
 }
 
 .lc-checkin__history-events {
