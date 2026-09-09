@@ -3258,6 +3258,11 @@
     [data-appearance="dark"] .lc-checkin__item-tag.is-high { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, #fff); }
     [data-appearance="dark"] .lc-checkin__settings-danger { border-color: color-mix(in srgb, var(--lc-checkin-danger) 58%, var(--b3-border-color)); }
     [data-appearance="dark"] .lc-checkin button:active { background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--b3-theme-surface)); }
+
+    .lc-checkin--history .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin--history .lc-checkin__history-filter-row label > span { display: block; margin-bottom: 3px; font-size: 9px; }
+    .lc-checkin--history .lc-checkin__history-result { display: flex; align-items: center; justify-content: space-between; min-height: 30px; gap: 8px; font-size: 10px; }
+    .lc-checkin--history .lc-checkin__history-result .lc-checkin__text-button { flex: 0 0 auto; min-height: 28px; }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
