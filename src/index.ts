@@ -1256,6 +1256,9 @@ export default class CheckinPlugin extends Plugin {
         const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
         const pending = Math.max(0, scheduledItems.length - completed);
         const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
+        const emptyProgressTitle = this.pendingOnly
+            ? "没有待处理的匹配项"
+            : query ? "匹配的项目都已完成" : "今天的计划已完成";
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
             <div class="lc-checkin__empty">
@@ -1281,7 +1284,7 @@ export default class CheckinPlugin extends Plugin {
                 <button class="lc-checkin__text-button" type="button" data-action="clear-search">清除筛选</button>
             </div>` : `${pendingItems.length
             ? this.renderTodayGroups(pendingItems, now)
-            : `<div class="lc-checkin__all-done"><span>✓</span><strong>今天的计划已完成</strong></div>`}
+            : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
             ${completedItems.length ? `<section class="lc-checkin__completed-section">
                 <button class="lc-checkin__section-toggle" type="button" data-action="toggle-completed" aria-expanded="${!this.completedCollapsed}">
                     <span class="lc-checkin__section-title"><i>✓</i> 已完成打卡项</span>

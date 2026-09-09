@@ -20,6 +20,10 @@ assert.match(styles, /\.lc-checkin__item-body\s*\{[\s\S]*max-width:\s*100%;[\s\S
     "item bodies must stay shrinkable inside narrow docks");
 assert.match(source, /lc-checkin__today-summary/,
     "today view must expose a compact progress summary region");
+assert.match(source, /没有待处理的匹配项/,
+    "today pending-only empty state must explain when no pending item matches");
+assert.match(source, /匹配的项目都已完成/,
+    "today search state must distinguish completed matches");
 assert.match(todayStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin__mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/,
     "mobile navigation must keep all eight destinations in one stable row");
 assert.match(todayStyles, /\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__today-search,[\s\S]*\.lc-checkin--today \.lc-checkin__organize \.lc-checkin__filter-toggle\s*\{[\s\S]*grid-column:\s*1\s*\/\s*-1;/,
