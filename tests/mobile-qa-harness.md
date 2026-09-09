@@ -17,4 +17,4 @@ The validated viewport matrix includes the 420px dock, 320px narrow dock, and 11
 
 The repository browser entry point probes standard Edge and Chrome installation paths, then executes the maintained harness with the current worktree in `CHECKIN_QA_PROJECT_ROOT`. Set `CHECKIN_BROWSER` explicitly when the executable is installed elsewhere, or set `CHECKIN_QA_HARNESS` when the harness is stored at another path.
 
-The current worktree passed the harness on 2026-09-10. It covered Today, History, Summary, Editor, narrow and wide layouts, template interactions, concurrent writes, API readiness, and reported no page errors. This is mock-client evidence; final acceptance in real SiYuan desktop and mobile clients remains separate.
+The current worktree passed the harness on 2026-09-10. It covered all seven 4.0 surfaces (Today, History, Summary, Occasions, Insights, Archived, and Settings), Editor, narrow and wide layouts, template interactions, concurrent writes, API readiness, and reported no page errors. This is mock-client evidence; final acceptance in real SiYuan desktop and mobile clients remains separate.

@@ -14,8 +14,10 @@
 }
 .lc-checkin--archived > .lc-checkin__history-list {
     display: grid;
+    flex: 0 0 auto;
     gap: 8px;
     margin: 0;
+    align-content: start;
 }
 .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row {
     min-height: 56px;

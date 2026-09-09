@@ -66,6 +66,8 @@ assert.match(insightsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin
     "insights mobile coaching cards must stack for readable evidence");
 assert.match(archivedStyles, /\.lc-checkin--archived > \.lc-checkin__history-list \.lc-checkin__history-row\s*\{[\s\S]*min-height:\s*56px/,
     "archived items must expose a stable recovery row");
+assert.match(archivedStyles, /\.lc-checkin--archived > \.lc-checkin__history-list\s*\{[\s\S]*flex:\s*0 0 auto;[\s\S]*align-content:\s*start;/,
+    "archived list must not stretch a single recovery row to fill the viewport");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
