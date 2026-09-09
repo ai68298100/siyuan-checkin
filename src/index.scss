@@ -3292,6 +3292,12 @@
     .lc-checkin__search-field > button { min-width: 32px; min-height: 32px; border-radius: 50%; }
     .lc-checkin--history .lc-checkin__history-search { min-width: 0; }
     .lc-checkin--history .lc-checkin__history-search input { width: 100%; min-width: 0; }
+
+    .lc-checkin--editor .lc-checkin__template-section { margin-bottom: 0; }
+    .lc-checkin--editor .lc-checkin__field--name { margin-top: 0; }
+    .lc-checkin--editor .lc-checkin__kind-field { margin-top: 0; }
+    .lc-checkin--editor .lc-checkin__field--name input { min-height: 44px; font-size: 15px; }
+    .lc-checkin--editor .lc-checkin__kind-option span { min-height: 46px; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
