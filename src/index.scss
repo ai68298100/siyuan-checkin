@@ -2988,6 +2988,12 @@
     .lc-checkin__insight-grid span.is-off { background: var(--b3-theme-surface-lighter); }
     .lc-checkin__item-progress span { background: var(--lc-checkin-accent); }
     .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
+
+    .lc-checkin--today .lc-checkin__group { min-width: 0; }
+    .lc-checkin--today .lc-checkin__group-header { position: sticky; z-index: 2; top: 56px; background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent); backdrop-filter: blur(6px); }
+    .lc-checkin--today .lc-checkin__group-items[hidden] { display: none; }
+    .lc-checkin--today .lc-checkin__group-items:not([hidden]) { margin-top: 2px; }
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-header { position: static; background: transparent; backdrop-filter: none; }
 }
 
 @media (max-width: 600px) {
