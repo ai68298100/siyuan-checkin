@@ -2956,6 +2956,13 @@
     .lc-checkin--today .lc-checkin__item-progress { height: 3px; }
     .lc-checkin--today .lc-checkin__item-progress span { min-width: 3px; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { font-size: 12px; font-weight: 650; }
+
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 238px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__templates { max-height: 164px; }
+    .lc-checkin--editor .lc-checkin__editor-actions { min-height: 58px; box-sizing: border-box; }
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__text-button { flex: 0 0 auto; min-width: 72px; }
+    .lc-checkin--editor .lc-checkin__save-button:focus-visible,
+    .lc-checkin--editor .lc-checkin__primary-button:focus-visible { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
 }
 
 @media (max-width: 600px) {
