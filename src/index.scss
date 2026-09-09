@@ -3149,6 +3149,14 @@
     .lc-checkin__icon-option { min-width: 0; min-height: 38px; height: 38px; border-radius: 8px; font-size: 18px; }
     .lc-checkin__kind-grid { grid-template-columns: minmax(0, 1fr); gap: 7px; }
     .lc-checkin__kind-option span { min-height: 54px; padding: 8px 10px; border-radius: 8px; }
+
+    .lc-checkin__coaching-item { border-left-width: 3px; background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--lc-checkin-accent-soft)); }
+    .lc-checkin__coaching-item:first-child { background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__coaching-item + .lc-checkin__coaching-item { margin-top: 7px; }
+    .lc-checkin__coaching-item p { max-height: 3.2em; overflow: hidden; }
+    .lc-checkin__insight-heading { gap: 8px; }
+    .lc-checkin__insight-legend { display: grid; grid-template-columns: repeat(2, minmax(0, auto)); gap: 4px 8px; font-size: 9px; }
+    .lc-checkin__insight-grid span { min-height: 12px; border-radius: 3px; }
 }
 
 .lc-checkin__history-events {
