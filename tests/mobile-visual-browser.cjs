@@ -3,15 +3,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 if (process.argv.includes("--help")) {
-    console.log("Browser visual entry point: set CHECKIN_BROWSER to a Chromium/Edge executable and run the repository QA harness.");
+    console.log("Browser visual entry point: set CHECKIN_BROWSER when the browser is not installed in a standard Windows path.");
     console.log("The harness must mount the built plugin in a SiYuan-compatible DOM before taking 320/360/390/430px screenshots.");
     process.exit(0);
 }
 
-const browserPath = process.env.CHECKIN_BROWSER;
-if (!browserPath || !fs.existsSync(browserPath)) {
-    console.error("BLOCKED: CHECKIN_BROWSER must point to an installed Chromium/Edge executable.");
-    console.error("Example PowerShell: $env:CHECKIN_BROWSER='C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'");
+const browserCandidates = [
+    process.env.CHECKIN_BROWSER,
+    process.env.ProgramFiles && path.join(process.env.ProgramFiles, "Microsoft", "Edge", "Application", "msedge.exe"),
+    process.env["ProgramFiles(x86)"] && path.join(process.env["ProgramFiles(x86)"], "Microsoft", "Edge", "Application", "msedge.exe"),
+    process.env.ProgramFiles && path.join(process.env.ProgramFiles, "Google", "Chrome", "Application", "chrome.exe"),
+    process.env["ProgramFiles(x86)"] && path.join(process.env["ProgramFiles(x86)"], "Google", "Chrome", "Application", "chrome.exe"),
+    process.env.LocalAppData && path.join(process.env.LocalAppData, "Microsoft", "Edge", "Application", "msedge.exe"),
+    process.env.LocalAppData && path.join(process.env.LocalAppData, "Google", "Chrome", "Application", "chrome.exe"),
+].filter(Boolean);
+const browserPath = browserCandidates.find((candidate) => fs.existsSync(candidate));
+if (!browserPath) {
+    console.error("BLOCKED: no Chromium/Edge executable was found.");
+    console.error("Set CHECKIN_BROWSER explicitly, or install Microsoft Edge/Google Chrome in a standard Windows path.");
     process.exit(2);
 }
 
