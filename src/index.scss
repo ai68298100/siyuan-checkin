@@ -3096,6 +3096,21 @@
     .lc-checkin select:focus,
     .lc-checkin textarea:focus { border-color: var(--lc-checkin-accent); box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
     .lc-checkin__mobile-nav button:active { transform: none; }
+
+    [data-appearance="dark"] .lc-checkin__item,
+    [data-appearance="dark"] .lc-checkin__quick-recent,
+    [data-appearance="dark"] .lc-checkin__organize,
+    [data-appearance="dark"] .lc-checkin__settings-card,
+    [data-appearance="dark"] .lc-checkin__history-selected { border-color: color-mix(in srgb, var(--b3-border-color) 92%, #fff 8%); }
+    [data-appearance="dark"] .lc-checkin__item-meta,
+    [data-appearance="dark"] .lc-checkin__history-event-main > span { color: color-mix(in srgb, var(--b3-theme-on-background) 72%, transparent); }
+    [data-reduced-motion="true"] .lc-checkin__item,
+    [data-reduced-motion="true"] .lc-checkin__mobile-nav button,
+    [data-reduced-motion="true"] .lc-checkin button { transition: none !important; transform: none !important; }
+}
+
+@media (max-width: 600px) and (prefers-reduced-motion: reduce) {
+    .lc-checkin *, .lc-checkin *::before, .lc-checkin *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
 
 .lc-checkin__history-events {
