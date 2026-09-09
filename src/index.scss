@@ -3317,6 +3317,18 @@
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group + .lc-checkin__group { margin-top: 16px; }
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 6px; }
     .lc-checkin--today .lc-checkin__group-items + .lc-checkin__group-header { margin-top: 0; }
+
+    .lc-checkin { background: var(--b3-theme-background); color: var(--b3-theme-on-background); }
+    .lc-checkin__item,
+    .lc-checkin__quick-recent,
+    .lc-checkin__organize,
+    .lc-checkin__history-tools,
+    .lc-checkin__history-selected,
+    .lc-checkin__settings-card,
+    .lc-checkin__insight-section { background: var(--b3-theme-surface); }
+    .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 8%, var(--b3-theme-surface)); }
+    .lc-checkin__quick-recent-heading strong,
+    .lc-checkin__section-heading strong { color: var(--b3-theme-on-background); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
