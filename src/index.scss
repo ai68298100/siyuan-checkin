@@ -2977,6 +2977,17 @@
     .lc-checkin--today .lc-checkin__header { margin-bottom: 6px; }
     .lc-checkin--history .lc-checkin__editor-header { margin-bottom: 10px; }
     .lc-checkin__mobile-nav button.is-selected { box-shadow: inset 0 2px 0 var(--lc-checkin-accent); }
+
+    .lc-checkin__calendar-day.is-complete,
+    .lc-checkin__insight-grid span.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 72%, var(--b3-theme-surface)); }
+    .lc-checkin__calendar-day.is-partial,
+    .lc-checkin__insight-grid span.is-partial { background: color-mix(in srgb, var(--lc-checkin-warning) 72%, var(--b3-theme-surface)); }
+    .lc-checkin__calendar-day.is-missed,
+    .lc-checkin__insight-grid span.is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 62%, var(--b3-theme-surface)); }
+    .lc-checkin__calendar-day.is-off,
+    .lc-checkin__insight-grid span.is-off { background: var(--b3-theme-surface-lighter); }
+    .lc-checkin__item-progress span { background: var(--lc-checkin-accent); }
+    .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
 }
 
 @media (max-width: 600px) {
