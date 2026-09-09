@@ -3202,6 +3202,12 @@
     .lc-checkin--today .lc-checkin__group-header em { flex: 0 0 auto; min-width: 20px; padding: 2px 6px; text-align: center; }
     .lc-checkin--today .lc-checkin__group-header .lc-checkin__section-arrow { flex: 0 0 auto; margin-left: 4px; }
     .lc-checkin--today .lc-checkin__group-header[aria-expanded="false"] { color: var(--b3-theme-on-surface-light); }
+
+    .lc-checkin--editor .lc-checkin__advanced { overflow: hidden; border-color: color-mix(in srgb, var(--b3-border-color) 74%, transparent); }
+    .lc-checkin--editor .lc-checkin__advanced summary { padding: 10px; background: color-mix(in srgb, var(--lc-checkin-muted-surface) 82%, transparent); }
+    .lc-checkin--editor .lc-checkin__advanced[open] summary { color: var(--lc-checkin-accent); border-bottom: 1px solid var(--b3-border-color); }
+    .lc-checkin--editor .lc-checkin__advanced-content .lc-checkin__field + .lc-checkin__field { margin-top: 3px; }
+    .lc-checkin--editor .lc-checkin__form-row { gap: 10px; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
