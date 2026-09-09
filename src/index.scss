@@ -3054,6 +3054,14 @@
     .lc-checkin--today [data-action="add"] { z-index: 9; }
     .lc-checkin--editor .lc-checkin__editor-actions { z-index: 10; }
     .lc-checkin:not(.lc-checkin--editor) { scroll-padding-top: 70px; scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+
+    .lc-checkin--today .lc-checkin__group-header { display: flex; align-items: center; min-height: 30px; padding: 0 2px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 65%, transparent); }
+    .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 9px; background: color-mix(in srgb, var(--b3-border-color) 45%, transparent); }
+    .lc-checkin--today .lc-checkin__group-header em { padding: 2px 7px; border-radius: 99px; font-size: 9px; font-style: normal; }
+    .lc-checkin--today .lc-checkin__completed-section { margin-top: 20px; padding-top: 10px; border-top: 1px dashed var(--b3-border-color); }
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .72; }
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:active,
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:focus-within { opacity: 1; }
 }
 
 .lc-checkin__history-events {
