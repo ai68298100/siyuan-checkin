@@ -285,6 +285,38 @@
         .lc-checkin__occasion-form-panel .lc-checkin__section-heading,
         .lc-checkin__occasion-list-panel .lc-checkin__section-heading { margin: -18px -18px 16px; padding: 14px 18px; border-bottom: 1px solid var(--b3-border-color); border-radius: var(--lc-checkin-radius) var(--lc-checkin-radius) 0 0; background: var(--lc-checkin-muted-surface); }
     }
+
+    /* Keep desktop dark mode readable: surface separation must not reduce text contrast. */
+    [data-appearance="dark"] {
+        --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 86%, #000 14%);
+        --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 92%, #fff 8%);
+    }
+
+    [data-appearance="dark"] .lc-checkin--settings {
+        color: var(--b3-theme-on-background);
+        .lc-checkin__settings-card,
+        .lc-checkin__settings-card h2,
+        .lc-checkin__settings-card strong { color: var(--b3-theme-on-background); }
+        .lc-checkin__settings-card p,
+        .lc-checkin__settings-help,
+        .lc-checkin__settings-card small { color: color-mix(in srgb, var(--b3-theme-on-background) 74%, transparent); }
+        .lc-checkin__settings-card select { color: var(--b3-theme-on-background); background: var(--b3-theme-surface-lighter); }
+    }
+
+    .lc-checkin--today,
+    .lc-checkin--history {
+        .lc-checkin__section-kicker,
+        .lc-checkin__section-count,
+        .lc-checkin__history-date span { font-variant-numeric: tabular-nums; }
+    }
+
+    @media print {
+        .lc-checkin__header-actions,
+        .lc-checkin__mobile-nav,
+        .lc-checkin__editor-actions,
+        .lc-checkin__history-actions { display: none !important; }
+        .lc-checkin { overflow: visible; }
+    }
 }
 
 .lc-checkin-dialog {
