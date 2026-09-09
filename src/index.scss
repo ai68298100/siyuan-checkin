@@ -3237,6 +3237,14 @@
     .lc-checkin-dialog-host--mobile .lc-checkin__editor-header .lc-checkin__eyebrow { opacity: .82; }
     [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__header,
     [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: none; }
+
+    .lc-checkin > * { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+    .lc-checkin__item,
+    .lc-checkin__quick-recent,
+    .lc-checkin__organize,
+    .lc-checkin__settings-card,
+    .lc-checkin__history-tools,
+    .lc-checkin__history-selected { margin-right: 0; margin-left: 0; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
