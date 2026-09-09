@@ -2931,6 +2931,16 @@
     .lc-checkin--today .lc-checkin__group-items { display: flex; flex-direction: column; gap: 8px; }
     .lc-checkin--today .lc-checkin__group { margin-top: 18px; }
     .lc-checkin--today .lc-checkin__group-header { min-height: 28px; }
+
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__header,
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__editor-header { min-height: 56px; align-items: center; margin-bottom: 10px; padding-bottom: 10px; }
+    .lc-checkin__title { max-width: calc(100vw - 126px); font-size: 26px; line-height: 1.15; }
+    .lc-checkin__eyebrow { font-size: 10px; }
+    .lc-checkin__header-actions { max-width: 52%; gap: 2px; }
+    .lc-checkin__header-actions .lc-checkin__always-visible { width: 26px; height: 26px; font-size: 13px; }
+    .lc-checkin__header-actions .lc-checkin__count { font-size: 11px; }
+    .lc-checkin__icon-button { min-width: 38px; min-height: 38px; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { width: 40px; height: 40px; }
 }
 
 .lc-checkin__history-events {
