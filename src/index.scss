@@ -3040,6 +3040,11 @@
     .lc-checkin--insights .lc-checkin__insight-stats div { min-width: 0; overflow: hidden; }
     .lc-checkin--insights .lc-checkin__insight-stats span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin--insights .lc-checkin__insight-stats strong { line-height: 1.1; }
+
+    .lc-checkin--settings .lc-checkin__density-options button[aria-checked="true"] { color: var(--lc-checkin-accent); border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); box-shadow: 0 0 0 2px color-mix(in srgb, var(--lc-checkin-accent) 16%, transparent); }
+    .lc-checkin--settings .lc-checkin__density-options button small { display: block; margin-top: 2px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+    .lc-checkin--settings .lc-checkin__settings-card select { box-sizing: border-box; }
+    .lc-checkin--settings .lc-checkin__settings-danger { margin-top: 16px; }
 }
 
 @media (max-width: 600px) {
