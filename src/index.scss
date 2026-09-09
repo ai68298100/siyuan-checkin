@@ -379,6 +379,30 @@
         .lc-checkin__summary-stats div:first-child { border-color: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--b3-border-color)); background: var(--lc-checkin-accent-soft); }
         .lc-checkin__summary-stats strong { font-size: 23px; }
     }
+
+    .lc-checkin[data-density="compact"] {
+        --lc-checkin-section-gap: 14px;
+        .lc-checkin__group { margin-top: 14px; }
+        .lc-checkin__group-items { gap: 7px; }
+        .lc-checkin__item { min-height: 62px; padding: 8px 10px; }
+        .lc-checkin__item-icon { width: 34px; height: 34px; flex-basis: 34px; font-size: 17px; }
+        .lc-checkin__item-meta { margin-top: 1px; }
+        .lc-checkin__item-progress { margin-top: 4px; }
+        .lc-checkin__quick-recent { padding: 6px 8px; }
+    }
+
+    .lc-checkin[data-density="comfortable"] {
+        --lc-checkin-section-gap: 28px;
+        .lc-checkin__group { margin-top: 28px; }
+        .lc-checkin__group-items { gap: 14px; }
+        .lc-checkin__item { min-height: 86px; padding: 14px 16px; }
+        .lc-checkin__item-icon { width: 44px; height: 44px; flex-basis: 44px; }
+        .lc-checkin__item-action .lc-checkin__record-button { min-height: 38px; }
+    }
+
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible[title="界面密度"] {
+        border-radius: 7px;
+    }
 }
 
 .lc-checkin-dialog {
