@@ -8,6 +8,7 @@ const historyStyles = fs.readFileSync(path.join(__dirname, "..", "src", "history
 const summaryStyles = fs.readFileSync(path.join(__dirname, "..", "src", "summary-v4.scss"), "utf8");
 const settingsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "settings-v4.scss"), "utf8");
 const occasionsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "occasions-v4.scss"), "utf8");
+const insightsStyles = fs.readFileSync(path.join(__dirname, "..", "src", "insights-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
@@ -48,6 +49,10 @@ assert.match(occasionsStyles, /\.lc-checkin--occasions \.lc-checkin__occasion-ma
     "occasion manager desktop layout must keep form and list side by side");
 assert.match(occasionsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--occasions \.lc-checkin__occasion-manager\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
     "occasion manager mobile layout must stack form and list");
+assert.match(insightsStyles, /\.lc-checkin--insights \.lc-checkin__insight-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(14,\s*minmax\(0,\s*1fr\)\)/,
+    "insights desktop status grid must expose a stable two-week rhythm");
+assert.match(insightsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--insights \.lc-checkin__coaching-list\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
+    "insights mobile coaching cards must stack for readable evidence");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,

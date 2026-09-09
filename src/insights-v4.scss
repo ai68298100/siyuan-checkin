@@ -1,0 +1,62 @@
+/* 4.0 Insights surface. Optimize for comparison and evidence, not ornament. */
+.lc-checkin--insights {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 18px 24px 42px;
+}
+.lc-checkin--insights > .lc-checkin__editor-header {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+}
+.lc-checkin--insights .lc-checkin__insight-picker { display: grid; gap: 5px; width: min(100%, 460px); margin-bottom: 14px; }
+.lc-checkin--insights .lc-checkin__insight-picker span { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.lc-checkin--insights .lc-checkin__insight-picker select { min-height: 40px; border-radius: 8px; }
+.lc-checkin--insights .lc-checkin__insight-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 18px; }
+.lc-checkin--insights .lc-checkin__insight-stats div { display: grid; min-width: 0; min-height: 84px; align-content: center; justify-items: center; gap: 4px; padding: 10px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent); border-radius: 12px; background: var(--b3-theme-surface); box-shadow: none; }
+.lc-checkin--insights .lc-checkin__insight-stats div:first-child { border-color: color-mix(in srgb, var(--lc-checkin-accent) 44%, var(--b3-border-color)); background: var(--lc-checkin-accent-soft); }
+.lc-checkin--insights .lc-checkin__insight-stats strong { color: var(--lc-checkin-accent); font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.lc-checkin--insights .lc-checkin__insight-stats span { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.lc-checkin--insights .lc-checkin__insight-section { margin-top: 14px; padding: 16px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent); border-radius: 12px; background: var(--b3-theme-surface); box-shadow: none; }
+.lc-checkin--insights .lc-checkin__insight-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.lc-checkin--insights .lc-checkin__insight-heading h2 { margin: 0; font-size: 16px; }
+.lc-checkin--insights .lc-checkin__insight-heading small { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.lc-checkin--insights .lc-checkin__insight-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 10px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.lc-checkin--insights .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.lc-checkin--insights .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
+.lc-checkin--insights .lc-checkin__insight-legend i.is-complete { background: var(--lc-checkin-success); }
+.lc-checkin--insights .lc-checkin__insight-legend i.is-partial { background: var(--lc-checkin-warning); }
+.lc-checkin--insights .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
+.lc-checkin--insights .lc-checkin__insight-legend i.is-off { background: var(--b3-theme-surface-lighter); }
+.lc-checkin--insights .lc-checkin__insight-grid { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; width: 100%; min-width: 0; }
+.lc-checkin--insights .lc-checkin__insight-grid span { min-width: 0; min-height: 18px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 35%, transparent); border-radius: 4px; background: var(--b3-theme-surface-lighter); }
+.lc-checkin--insights .lc-checkin__insight-grid span.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 76%, var(--b3-theme-surface)); }
+.lc-checkin--insights .lc-checkin__insight-grid span.is-partial { background: color-mix(in srgb, var(--lc-checkin-warning) 76%, var(--b3-theme-surface)); }
+.lc-checkin--insights .lc-checkin__insight-grid span.is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 66%, var(--b3-theme-surface)); }
+.lc-checkin--insights .lc-checkin__insight-grid span:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
+.lc-checkin--insights .lc-checkin__coaching-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.lc-checkin--insights .lc-checkin__coaching-item { min-width: 0; min-height: 112px; padding: 12px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent); border-left: 3px solid var(--lc-checkin-accent); border-radius: 9px; background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--lc-checkin-accent-soft)); }
+.lc-checkin--insights .lc-checkin__coaching-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--insights .lc-checkin__coaching-item span { display: block; margin-top: 6px; color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.45; }
+.lc-checkin--insights .lc-checkin__coaching-item small { display: block; margin-top: 8px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.lc-checkin--insights .lc-checkin__insight-row { display: flex; align-items: center; justify-content: space-between; min-height: 42px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 55%, transparent); color: var(--b3-theme-on-surface-light); font-size: 12px; }
+.lc-checkin--insights .lc-checkin__insight-row:last-child { border-bottom: 0; }
+.lc-checkin--insights .lc-checkin__insight-row strong { color: var(--b3-theme-on-background); font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) {
+    .lc-checkin--insights { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--insights .lc-checkin__insight-stats { gap: 6px; }
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-height: 68px; padding: 8px 5px; }
+    .lc-checkin--insights .lc-checkin__insight-stats strong { font-size: 19px; }
+    .lc-checkin--insights .lc-checkin__insight-stats span { font-size: 10px; }
+    .lc-checkin--insights .lc-checkin__insight-section { padding: 12px; }
+    .lc-checkin--insights .lc-checkin__insight-heading { display: grid; justify-content: stretch; gap: 8px; }
+    .lc-checkin--insights .lc-checkin__insight-legend { justify-content: flex-start; }
+    .lc-checkin--insights .lc-checkin__insight-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; }
+    .lc-checkin--insights .lc-checkin__insight-grid span { min-height: 15px; }
+    .lc-checkin--insights .lc-checkin__coaching-list { grid-template-columns: 1fr; }
+    .lc-checkin--insights .lc-checkin__coaching-item { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .lc-checkin--insights * { transition-duration: 0ms; } }
