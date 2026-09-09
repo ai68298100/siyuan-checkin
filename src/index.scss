@@ -3051,6 +3051,13 @@
     .lc-checkin--summary .lc-checkin__history-row span { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
     .lc-checkin--summary .lc-checkin__history-row button { flex: 0 0 auto; min-width: 44px; min-height: 32px; }
     .lc-checkin--summary .lc-checkin__history-list { min-width: 0; }
+
+    .lc-checkin--editor .lc-checkin__kind-field legend { margin-bottom: 6px; font-size: 12px; }
+    .lc-checkin--editor .lc-checkin__kind-option span { display: flex; min-height: 50px; align-items: center; justify-content: space-between; }
+    .lc-checkin--editor .lc-checkin__kind-option small { max-width: 70%; line-height: 1.35; }
+    .lc-checkin--editor .lc-checkin__advanced summary { min-height: 44px; }
+    .lc-checkin--editor .lc-checkin__advanced-content { gap: 10px; padding: 0 10px 10px; }
+    .lc-checkin--editor .lc-checkin__advanced:not([open]) { background: var(--lc-checkin-muted-surface); }
 }
 
 @media (max-width: 600px) {
