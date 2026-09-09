@@ -490,6 +490,28 @@
 
     .lc-checkin__primary-button,
     .lc-checkin__save-button { border-radius: var(--lc-checkin-radius-sm); }
+
+    .lc-checkin {
+        line-height: 1.55;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .lc-checkin__item-name,
+    .lc-checkin__history-row strong,
+    .lc-checkin__history-event strong { letter-spacing: .01em; }
+
+    .lc-checkin__item-meta,
+    .lc-checkin__history-event-main > span,
+    .lc-checkin__settings-card p { line-height: 1.45; }
+
+    .lc-checkin__item-meta,
+    .lc-checkin__history-event-main > span { text-overflow: ellipsis; }
+
+    .lc-checkin__title { max-width: min(58vw, 720px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .lc-checkin__history-event-value,
+    .lc-checkin__summary-stats strong,
+    .lc-checkin__insight-stats strong { font-variant-numeric: tabular-nums; }
 }
 
 @media (forced-colors: active) {
