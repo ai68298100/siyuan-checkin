@@ -76,5 +76,7 @@ assert.match(styles, /@container\s+lc-checkin\s*\(max-width:\s*440px\)[\s\S]*\.l
     "summary tabs must use the full narrow surface width");
 assert.match(styles, /@container\s+lc-checkin\s*\(max-width:\s*440px\)[\s\S]*\.lc-checkin__history-event\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/,
     "history records must keep actions usable inside narrow docks");
+assert.match(todayStyles, /@media\s*\(min-width:\s*601px\)[\s\S]*\.lc-checkin--today \.lc-checkin__item-name[\s\S]*white-space:\s*normal/,
+    "desktop today cards must allow item names to wrap instead of truncating them");
 
 console.log("Responsive surface layout checks passed.");

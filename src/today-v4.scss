@@ -115,6 +115,16 @@
     .lc-checkin--today .lc-checkin__occasion-section { grid-column: 1 / -1; }
 }
 @media (min-width: 1450px) { .lc-checkin--today .lc-checkin__list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 601px) {
+    .lc-checkin--today .lc-checkin__item-topline { align-items: flex-start; }
+    .lc-checkin--today .lc-checkin__item-name {
+        flex: 1 1 auto;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+        white-space: normal;
+    }
+}
 @media (max-width: 600px) {
     .lc-checkin__mobile-nav {
         grid-template-columns: repeat(8, minmax(0, 1fr));
