@@ -3263,6 +3263,14 @@
     .lc-checkin--history .lc-checkin__history-filter-row label > span { display: block; margin-bottom: 3px; font-size: 9px; }
     .lc-checkin--history .lc-checkin__history-result { display: flex; align-items: center; justify-content: space-between; min-height: 30px; gap: 8px; font-size: 10px; }
     .lc-checkin--history .lc-checkin__history-result .lc-checkin__text-button { flex: 0 0 auto; min-height: 28px; }
+
+    .lc-checkin--insights .lc-checkin__empty,
+    .lc-checkin--summary .lc-checkin__empty,
+    .lc-checkin--insights .lc-checkin__history-empty { margin-top: 8px; }
+    .lc-checkin--insights .lc-checkin__insight-stats:has(strong:first-child:empty) { display: none; }
+    .lc-checkin--summary .lc-checkin__history-list:empty { display: none; }
+    .lc-checkin--insights .lc-checkin__coaching:empty { display: none; }
+    .lc-checkin--summary .lc-checkin__summary-stats div { min-width: 0; }
 }
 
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
