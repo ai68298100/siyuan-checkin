@@ -3239,6 +3239,20 @@
     .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
 
+@media (max-width: 600px) {
+    .lc-checkin__item-name,
+    .lc-checkin__history-event-main strong,
+    .lc-checkin__occasion-manager-row strong { overflow-wrap: anywhere; white-space: normal; }
+    .lc-checkin__item-meta,
+    .lc-checkin__history-event-main > span,
+    .lc-checkin__occasion-manager-row small { overflow-wrap: anywhere; white-space: normal; }
+    .lc-checkin__header-actions { min-width: 0; }
+    .lc-checkin__header-actions .lc-checkin__count { white-space: nowrap; }
+    .lc-checkin__mobile-nav button { min-width: 0; }
+    .lc-checkin__mobile-nav button small { overflow-wrap: anywhere; }
+    .lc-checkin__field > span:first-child { overflow-wrap: anywhere; }
+}
+
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes lc-checkin-mobile-nav-enter { from { opacity: .7; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
