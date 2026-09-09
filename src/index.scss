@@ -3268,6 +3268,12 @@
     .lc-checkin__insight-legend i.is-partial { background: var(--lc-checkin-warning); }
     .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
     .lc-checkin__insight-legend i.is-off { background: var(--b3-theme-surface-lighter); }
+
+    .lc-checkin--settings [data-setting-appearance],
+    .lc-checkin--settings [data-setting-group],
+    .lc-checkin--settings [data-setting-sort] { font-weight: 550; }
+    .lc-checkin--settings .lc-checkin__settings-check span { line-height: 1.4; }
+    .lc-checkin--settings .lc-checkin__settings-check input:checked { accent-color: var(--lc-checkin-accent); }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
