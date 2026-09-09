@@ -453,6 +453,18 @@
     .lc-checkin-dialog-host .lc-checkin__group-items { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
 }
 
+@container lc-checkin (min-width: 1180px) {
+    .lc-checkin--today {
+        .lc-checkin__quick-recent { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 14px; padding: 10px 14px; }
+        .lc-checkin__quick-recent-heading { display: block; }
+        .lc-checkin__quick-recent-heading small { display: block; margin-top: 4px; }
+        .lc-checkin__quick-recent-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .lc-checkin__quick-recent-list button { min-height: 38px; }
+        .lc-checkin__list { min-width: 0; }
+        .lc-checkin__occasion-section { max-width: 760px; }
+    }
+}
+
 @media (forced-colors: active) {
     .lc-checkin,
     .lc-checkin * { forced-color-adjust: auto; }
