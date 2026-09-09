@@ -93,6 +93,20 @@
 .lc-checkin--today .lc-checkin__item-action { display: flex; align-items: center; gap: 6px; padding: 0 12px 11px 17px; border: 0; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 36px; border-radius: 999px; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { margin-left: auto; border-radius: 999px; }
+.lc-checkin--today .lc-checkin__completed-section {
+    margin-top: 4px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--today-card-border);
+}
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-header { color: var(--b3-theme-on-surface-light); }
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .78; box-shadow: none; }
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:hover { opacity: 1; }
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item-progress { opacity: .7; }
+.lc-checkin--today .lc-checkin__occasions { margin-top: 2px; padding: 14px; }
+.lc-checkin--today .lc-checkin__occasions .lc-checkin__section-heading { min-height: 34px; margin: 0 0 8px; padding: 0 0 10px; border-bottom: 1px solid var(--today-card-border); box-shadow: none; }
+.lc-checkin--today .lc-checkin__occasion-list { display: grid; gap: 6px; }
+.lc-checkin--today .lc-checkin__occasion { min-height: 48px; padding: 8px 10px; border: 1px solid transparent; border-radius: 9px; background: var(--today-card-bg); }
+.lc-checkin--today .lc-checkin__occasion:hover { border-color: var(--today-card-border); }
 
 @media (min-width: 900px) {
     .lc-checkin--today .lc-checkin__quick-recent-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -113,5 +127,7 @@
     .lc-checkin--today .lc-checkin__organize label:nth-of-type(3) { grid-column: span 1; }
     .lc-checkin--today .lc-checkin__filter-toggle { grid-column: 2; grid-row: 1; }
     .lc-checkin--today .lc-checkin__list { gap: 18px; }
+    .lc-checkin--today .lc-checkin__completed-section { padding-top: 14px; }
+    .lc-checkin--today .lc-checkin__occasions { padding: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--today > .lc-checkin__progress span { transition: none; } }
