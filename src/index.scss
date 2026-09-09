@@ -3331,6 +3331,17 @@
     .lc-checkin__section-heading strong { color: var(--b3-theme-on-background); }
 }
 
+@media (max-width: 600px) and (max-height: 620px) {
+    .lc-checkin__mobile-nav { min-height: 48px; }
+    .lc-checkin__mobile-nav button { min-height: 40px; }
+    .lc-checkin__mobile-nav button span { height: 15px; font-size: 15px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today [data-action="add"] { width: 44px; height: 44px; min-width: 44px; bottom: calc(58px + env(safe-area-inset-bottom)); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { min-height: 48px; padding-bottom: 6px; }
+}
+
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
 
 @media (max-width: 360px) {
