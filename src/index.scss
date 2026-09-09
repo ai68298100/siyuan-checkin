@@ -3163,7 +3163,15 @@
     .lc-checkin__item + .lc-checkin__item { border-top-color: color-mix(in srgb, var(--b3-border-color) 46%, transparent); }
     .lc-checkin__settings-card + .lc-checkin__settings-card { border-top-color: color-mix(in srgb, var(--b3-border-color) 54%, transparent); }
     .lc-checkin__history-event + .lc-checkin__history-event { border-top-color: color-mix(in srgb, var(--b3-border-color) 46%, transparent); }
+
+    .lc-checkin--today .lc-checkin__item,
+    .lc-checkin--today .lc-checkin__item-action button,
+    .lc-checkin__mobile-nav button { transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, opacity 160ms ease; }
+    .lc-checkin--today .lc-checkin__item.is-complete { animation: lc-checkin-complete-pulse 220ms ease-out; }
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item { animation: none; }
 }
+
+@keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
 
 @media (max-width: 360px) {
     .lc-checkin__insight-grid { gap: 2px; }
