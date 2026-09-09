@@ -3058,6 +3058,12 @@
     .lc-checkin--editor .lc-checkin__advanced summary { min-height: 44px; }
     .lc-checkin--editor .lc-checkin__advanced-content { gap: 10px; padding: 0 10px 10px; }
     .lc-checkin--editor .lc-checkin__advanced:not([open]) { background: var(--lc-checkin-muted-surface); }
+
+    .lc-checkin__mobile-nav { padding-right: max(5px, env(safe-area-inset-right)); padding-left: max(5px, env(safe-area-inset-left)); }
+    .lc-checkin__mobile-nav button { min-width: 0; overflow: hidden; }
+    .lc-checkin__mobile-nav button span,
+    .lc-checkin__mobile-nav button small { pointer-events: none; }
+    .lc-checkin--today [data-action="add"] { right: max(14px, env(safe-area-inset-right)); }
 }
 
 @media (max-width: 600px) {
