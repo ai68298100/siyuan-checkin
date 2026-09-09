@@ -145,6 +145,45 @@
         .lc-checkin__record-button { min-width: 76px; }
     }
 
+    @media (min-width: 900px) {
+        .lc-checkin--today .lc-checkin__header {
+            position: sticky;
+            z-index: 4;
+            top: 0;
+            padding-top: 8px;
+            padding-bottom: 12px;
+            background: color-mix(in srgb, var(--b3-theme-background) 92%, transparent);
+            backdrop-filter: blur(12px);
+        }
+        .lc-checkin--today .lc-checkin__quick-recent-list {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .lc-checkin--today .lc-checkin__quick-recent-list button {
+            min-height: 52px;
+            border-radius: 10px;
+            transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+        }
+        .lc-checkin--today .lc-checkin__quick-recent-list button:hover {
+            transform: translateY(-1px);
+            border-color: var(--lc-checkin-accent);
+            background: var(--lc-checkin-accent-soft);
+        }
+        .lc-checkin--today .lc-checkin__group-header {
+            padding-right: 4px;
+            padding-left: 4px;
+        }
+        .lc-checkin--today .lc-checkin__group-header .lc-checkin__section-toggle {
+            border-radius: 999px;
+            transition: background-color var(--lc-checkin-motion-fast), color var(--lc-checkin-motion-fast);
+        }
+        .lc-checkin--today .lc-checkin__group-header .lc-checkin__section-toggle:hover {
+            color: var(--lc-checkin-accent);
+            background: var(--lc-checkin-accent-soft);
+        }
+    }
+
     /* Wide screens act as a workbench: retain the same card grammar while
        using the extra width for parallel scanning of grouped tasks. */
     @media (min-width: 1180px) {
@@ -280,6 +319,18 @@
         gap: 12px;
         color: var(--b3-theme-on-surface-light);
         font-size: 11px;
+    }
+
+    @media (min-width: 900px) {
+        .lc-checkin--history .lc-checkin__history-event,
+        .lc-checkin--summary .lc-checkin__history-row {
+            transition: background-color var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
+        }
+        .lc-checkin--history .lc-checkin__history-event:hover,
+        .lc-checkin--summary .lc-checkin__history-row:hover {
+            transform: translateX(2px);
+            background: color-mix(in srgb, var(--lc-checkin-accent-soft) 42%, var(--b3-theme-surface));
+        }
     }
 
     .lc-checkin--summary .lc-checkin__history-list,
