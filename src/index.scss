@@ -3287,6 +3287,11 @@
     .lc-checkin__header-actions { flex: 0 1 auto; min-width: 0; }
     .lc-checkin__header-actions .lc-checkin__count { flex: 0 0 auto; }
     .lc-checkin--today .lc-checkin__title { max-width: 100%; }
+
+    .lc-checkin__search-field input { min-height: 40px; }
+    .lc-checkin__search-field > button { min-width: 32px; min-height: 32px; border-radius: 50%; }
+    .lc-checkin--history .lc-checkin__history-search { min-width: 0; }
+    .lc-checkin--history .lc-checkin__history-search input { width: 100%; min-width: 0; }
 }
 
 @keyframes lc-checkin-complete-pulse { from { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); } to { box-shadow: none; } }
