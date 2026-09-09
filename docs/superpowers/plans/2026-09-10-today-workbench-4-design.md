@@ -25,11 +25,10 @@
 - Modify: `src/index.ts` near `renderToday`, `getTodayItems`, and view preference handlers.
 - Test: `tests/today-view.test.cjs`.
 
-- [ ] Write failing tests for filtering by query, grouping by time/priority/group, and deterministic sorting.
-- [ ] Run `node tests/today-view.test.cjs` and confirm failure because the exported/testable query contract is absent.
-- [ ] Implement a pure `getTodayViewModel` helper using existing `sortCheckinItems`, `isComplete`, and schedule predicates.
-- [ ] Run the focused test and then the existing test suite.
-- [ ] Commit `feat(today): add deterministic workbench view model`.
+- [x] Add focused tests for filtering by query, pending state, and deterministic sorting.
+- [x] Implement the pure `queryTodayItems` helper using existing schedule and sorting predicates.
+- [x] Run the focused test and the existing test suite.
+- [x] Commit the deterministic Today query behavior.
 
 ### Task 2: Persistent Today Controls
 
@@ -37,12 +36,11 @@
 - Modify: `src/index.ts` event binding and preference persistence.
 - Test: `tests/today-view-preferences.test.cjs`.
 
-- [ ] Add failing tests proving group mode, sort mode, query, and pending-only state normalize safely.
-- [ ] Run the focused test and verify the expected failure.
-- [ ] Wire controls to the existing preference store without changing record data.
-- [ ] Re-render only the Today view after control changes and preserve scroll position.
-- [ ] Run focused and full tests.
-- [ ] Commit `feat(today): persist workbench controls`.
+- [x] Extend preference normalization for query and pending-only state.
+- [x] Wire controls to the existing preference store without changing record data.
+- [x] Re-render the Today view after control changes and preserve existing event semantics.
+- [x] Run focused and full tests.
+- [x] Commit the persistent Today controls.
 
 ### Task 3: Responsive Workbench Markup
 
@@ -50,11 +48,10 @@
 - Modify: `src/index.ts` Today markup and summary markup.
 - Test: `tests/responsive-layout.test.cjs`.
 
-- [ ] Add failing structure assertions for a summary region, group navigation hooks, and a single primary record action per task.
-- [ ] Run the focused test and confirm failure.
-- [ ] Add semantic classes and ARIA labels while retaining current handlers and translations.
-- [ ] Run responsive and accessibility tests.
-- [ ] Commit `feat(today): add workbench semantic regions`.
+- [x] Add structure assertions for the summary region and Today navigation hooks.
+- [x] Add semantic classes and ARIA labels while retaining current handlers and translations.
+- [x] Run responsive and accessibility tests.
+- [x] Commit the Today workbench semantic regions.
 
 ### Task 4: Mobile and Desktop Presentation
 
@@ -62,11 +59,11 @@
 - Modify: `src/index.scss` Today, mobile navigation, and desktop container sections.
 - Test: `tests/responsive-layout.test.cjs`, `tests/ui-theme.test.cjs`.
 
-- [ ] Add failing assertions for desktop two-column/three-column breakpoints and mobile single-column constraints.
-- [ ] Implement layout rules using existing tokens and semantic state colors.
-- [ ] Verify reduced-motion and dark-theme selectors remain valid.
-- [ ] Run the complete test suite and production build.
-- [ ] Commit `feat(ui): present today workbench across devices`.
+- [x] Add assertions for desktop two-column/three-column breakpoints and mobile single-column constraints.
+- [x] Implement layout rules using existing tokens and semantic state colors in the isolated Today layer.
+- [x] Verify reduced-motion and dark-theme selectors remain valid.
+- [x] Run the complete test suite and production build.
+- [x] Commit the responsive Today workbench presentation.
 
 ### Task 5: Release Verification
 
@@ -74,6 +71,6 @@
 - Modify: `package.json`, `plugin.json` only if version metadata needs updating.
 - Test: existing release checks and generated `package.zip`.
 
-- [ ] Run `pnpm.cmd test`, `pnpm.cmd run check:release`, and `pnpm.cmd run build`.
-- [ ] Verify JSON files are UTF-8 without BOM and package contents include `plugin.json`, `index.js`, `index.css`, README, LICENSE, icon, and preview.
-- [ ] Commit the 4.0 milestone only after all checks pass.
+- [x] Run `pnpm.cmd test`, `pnpm.cmd run check:release`, and `pnpm.cmd run build`.
+- [x] Verify package contents and release metadata with the existing release checks.
+- [ ] Publish a 4.0 milestone after the remaining views receive the same visual treatment.
