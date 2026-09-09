@@ -3033,6 +3033,13 @@
     .lc-checkin__calendar-day.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
     .lc-checkin--occasions .lc-checkin__occasion-manager-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
     .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__text-button { min-width: 38px; min-height: 34px; padding: 3px 6px; }
+
+    .lc-checkin--insights .lc-checkin__item-picker,
+    .lc-checkin--insights .lc-checkin__item-picker select { width: 100%; min-width: 0; }
+    .lc-checkin--insights .lc-checkin__item-picker select { min-height: 42px; border-radius: 9px; }
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-width: 0; overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__insight-stats span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--insights .lc-checkin__insight-stats strong { line-height: 1.1; }
 }
 
 @media (max-width: 600px) {
