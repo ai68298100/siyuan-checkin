@@ -3329,6 +3329,16 @@
     .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 8%, var(--b3-theme-surface)); }
     .lc-checkin__quick-recent-heading strong,
     .lc-checkin__section-heading strong { color: var(--b3-theme-on-background); }
+
+    [data-appearance="dark"] .lc-checkin__quick-recent,
+    [data-appearance="dark"] .lc-checkin__organize,
+    [data-appearance="dark"] .lc-checkin__history-tools,
+    [data-appearance="dark"] .lc-checkin__history-selected,
+    [data-appearance="dark"] .lc-checkin__settings-card { background: color-mix(in srgb, var(--b3-theme-surface) 94%, #000 6%); }
+    [data-appearance="dark"] .lc-checkin__quick-recent-list button,
+    [data-appearance="dark"] .lc-checkin__organize select,
+    [data-appearance="dark"] .lc-checkin__history-tools input { background: var(--b3-theme-surface-lighter); }
+    [data-appearance="dark"] .lc-checkin__mobile-nav { background: color-mix(in srgb, var(--b3-theme-background) 96%, #000 4%); }
 }
 
 @media (max-width: 600px) and (max-height: 620px) {
