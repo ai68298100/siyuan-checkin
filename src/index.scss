@@ -2963,6 +2963,14 @@
     .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__text-button { flex: 0 0 auto; min-width: 72px; }
     .lc-checkin--editor .lc-checkin__save-button:focus-visible,
     .lc-checkin--editor .lc-checkin__primary-button:focus-visible { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
+
+    .lc-checkin--settings .lc-checkin__field { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 62%, transparent); }
+    .lc-checkin--settings .lc-checkin__field:last-of-type { border-bottom: 0; }
+    .lc-checkin--settings .lc-checkin__field select { min-height: 42px; border-radius: 8px; }
+    .lc-checkin--settings .lc-checkin__settings-check { display: flex; align-items: center; gap: 9px; }
+    .lc-checkin--settings .lc-checkin__settings-check input { flex: 0 0 auto; width: 18px; height: 18px; }
+    .lc-checkin--settings .lc-checkin__text-button { width: 100%; min-height: 38px; margin-top: 8px; border-radius: 8px; }
+    .lc-checkin--settings .lc-checkin__settings-danger .lc-checkin__text-button { color: var(--lc-checkin-danger); background: color-mix(in srgb, var(--lc-checkin-danger) 8%, transparent); }
 }
 
 @media (max-width: 600px) {
