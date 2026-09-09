@@ -3064,6 +3064,14 @@
     .lc-checkin__mobile-nav button span,
     .lc-checkin__mobile-nav button small { pointer-events: none; }
     .lc-checkin--today [data-action="add"] { right: max(14px, env(safe-area-inset-right)); }
+
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, calc(env(safe-area-inset-top) + 4px)); right: max(8px, calc(env(safe-area-inset-right) + 4px)); }
+    .lc-checkin__back-button,
+    .lc-checkin__dialog-close { -webkit-tap-highlight-color: transparent; }
+    .lc-checkin__back-button:active,
+    .lc-checkin__dialog-close:active { transform: scale(.96); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { padding-right: 52px; }
 }
 
 @media (max-width: 600px) {
