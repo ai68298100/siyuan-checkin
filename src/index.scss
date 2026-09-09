@@ -465,6 +465,33 @@
     }
 }
 
+@container lc-checkin (min-width: 900px) {
+    .lc-checkin {
+        --lc-checkin-radius-sm: 7px;
+        --lc-checkin-radius: 12px;
+        --lc-checkin-radius-lg: 16px;
+        scrollbar-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--b3-border-color)) transparent;
+        scrollbar-width: thin;
+    }
+
+    .lc-checkin ::selection { color: var(--b3-theme-background); background: var(--lc-checkin-accent); }
+
+    .lc-checkin :is(.is-selected, [aria-selected="true"], [aria-checked="true"]) {
+        border-color: color-mix(in srgb, var(--lc-checkin-accent) 62%, var(--b3-border-color));
+        box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft);
+    }
+
+    .lc-checkin__item,
+    .lc-checkin__history-row,
+    .lc-checkin__history-event,
+    .lc-checkin__settings-card,
+    .lc-checkin__occasion-form-panel,
+    .lc-checkin__occasion-list-panel { border-radius: var(--lc-checkin-radius); }
+
+    .lc-checkin__primary-button,
+    .lc-checkin__save-button { border-radius: var(--lc-checkin-radius-sm); }
+}
+
 @media (forced-colors: active) {
     .lc-checkin,
     .lc-checkin * { forced-color-adjust: auto; }
