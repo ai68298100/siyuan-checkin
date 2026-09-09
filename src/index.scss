@@ -3014,6 +3014,23 @@
     .lc-checkin__mobile-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: -2px; }
     .lc-checkin__mobile-nav + * { margin-bottom: 0; }
     .lc-checkin--today [data-action="add"] { position: fixed; right: 16px; bottom: calc(74px + env(safe-area-inset-bottom)); z-index: 5; width: 48px; height: 48px; min-width: 48px; border-radius: 50%; color: #fff; background: var(--lc-checkin-accent); box-shadow: 0 6px 16px color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent); }
+
+    .lc-checkin {
+        --lc-checkin-radius-sm: 7px;
+        --lc-checkin-radius: 11px;
+        --lc-checkin-radius-lg: 15px;
+    }
+    .lc-checkin__item,
+    .lc-checkin__quick-recent,
+    .lc-checkin__organize,
+    .lc-checkin__history-tools,
+    .lc-checkin__history-selected,
+    .lc-checkin__settings-card,
+    .lc-checkin__insight-section { border-radius: var(--lc-checkin-radius); box-shadow: none; }
+    .lc-checkin__item:hover,
+    .lc-checkin__history-event:hover { box-shadow: 0 0 0 1px var(--lc-checkin-accent-soft); }
+    .lc-checkin__item.is-complete { border-color: color-mix(in srgb, var(--lc-checkin-success) 30%, var(--b3-border-color)); }
+    .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
 }
 
 .lc-checkin__history-events {
