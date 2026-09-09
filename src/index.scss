@@ -422,6 +422,24 @@
 
     .lc-checkin__group-header:focus-visible,
     .lc-checkin__section-toggle:focus-visible { border-radius: 6px; box-shadow: var(--lc-checkin-focus); }
+
+    .lc-checkin--today .lc-checkin__organize {
+        position: sticky;
+        z-index: 3;
+        top: 58px;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--b3-theme-on-background) 7%, transparent);
+        background: color-mix(in srgb, var(--lc-checkin-muted-surface) 94%, transparent);
+        backdrop-filter: blur(8px);
+    }
+
+    .lc-checkin--today .lc-checkin__item-body { display: flex; flex-direction: column; justify-content: center; }
+    .lc-checkin--today .lc-checkin__item-topline { min-height: 20px; }
+    .lc-checkin--today .lc-checkin__item-meta { max-width: 72ch; }
+    .lc-checkin--today .lc-checkin__item-progress { max-width: 100%; }
+
+    .lc-checkin--today .lc-checkin__group-header,
+    .lc-checkin--today .lc-checkin__section-toggle { position: relative; }
+    .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 14px; background: color-mix(in srgb, var(--b3-border-color) 56%, transparent); }
 }
 
 @media (forced-colors: active) {
