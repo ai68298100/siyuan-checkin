@@ -319,6 +319,20 @@
     }
 }
 
+@container lc-checkin (min-width: 900px) and (max-width: 1120px) {
+    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) 150px 150px; }
+    .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--summary):not(.lc-checkin--archived) { grid-template-columns: minmax(300px, .9fr) minmax(0, 1.1fr); column-gap: 18px; }
+    .lc-checkin--insights .lc-checkin__coaching { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin--summary .lc-checkin__history-list,
+    .lc-checkin--archived .lc-checkin__history-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container lc-checkin (min-width: 1121px) {
+    .lc-checkin :is(button, input, select, textarea):focus-visible { outline-width: 2px; outline-offset: 3px; }
+    .lc-checkin__item:has(:focus-visible) { border-color: var(--lc-checkin-accent); box-shadow: var(--lc-checkin-focus); }
+}
+
 .lc-checkin-dialog {
     max-width: calc(100vw - 24px);
     max-height: calc(100vh - 24px);
