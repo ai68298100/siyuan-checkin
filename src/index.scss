@@ -5189,6 +5189,74 @@
 .lc-template-form label { display: grid; gap: 5px; font-size: 12px; }
 .lc-template-form textarea { min-height: 70px; resize: vertical; }
 .lc-template-form > div { display: flex; justify-content: flex-end; gap: 6px; }
+
+/* 3.0 reference-inspired task language: a quiet card, a visible status rail,
+   and one unambiguous completion control. */
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__item {
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--b3-theme-surface) 94%, var(--lc-checkin-accent-soft));
+        box-shadow: 0 3px 12px color-mix(in srgb, var(--b3-theme-on-background) 6%, transparent);
+    }
+    .lc-checkin--today .lc-checkin__item::before {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        border-radius: 14px 0 0 14px;
+        background: var(--lc-checkin-accent);
+        content: "";
+        opacity: .72;
+    }
+    .lc-checkin--today .lc-checkin__item.is-complete::before { background: var(--lc-checkin-success); }
+    .lc-checkin--today .lc-checkin__item-body { padding-left: 14px; }
+    .lc-checkin--today .lc-checkin__item-action { border-top: 0; padding-top: 7px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button {
+        min-width: 44px;
+        min-height: 40px;
+        border-radius: 999px;
+        padding: 0 16px;
+        font-weight: 700;
+        box-shadow: 0 2px 7px color-mix(in srgb, var(--lc-checkin-accent) 18%, transparent);
+    }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__record-button {
+        color: var(--lc-checkin-success);
+        background: color-mix(in srgb, var(--lc-checkin-success) 12%, var(--b3-theme-surface));
+        border-color: color-mix(in srgb, var(--lc-checkin-success) 35%, var(--b3-border-color));
+    }
+    .lc-checkin--today .lc-checkin__item-progress {
+        height: 5px;
+        margin-top: 8px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--b3-theme-on-surface-light) 14%, transparent);
+    }
+    .lc-checkin--today .lc-checkin__item-progress span { border-radius: 999px; }
+    .lc-checkin--today .lc-checkin__organize {
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--b3-theme-surface) 90%, var(--lc-checkin-accent-soft));
+    }
+    .lc-checkin--today .lc-checkin__organize select { border-radius: 999px; }
+    .lc-checkin__mobile-nav {
+        border-top: 1px solid color-mix(in srgb, var(--b3-border-color) 70%, transparent);
+        background: color-mix(in srgb, var(--b3-theme-background) 88%, transparent);
+        backdrop-filter: blur(14px);
+    }
+    .lc-checkin__mobile-nav button { border-radius: 12px; }
+    .lc-checkin__mobile-nav button.is-selected {
+        background: var(--lc-checkin-accent-soft);
+        box-shadow: none;
+    }
+    .lc-checkin--history .lc-checkin__calendar,
+    .lc-checkin--summary .lc-checkin__summary-stats,
+    .lc-checkin--summary .lc-checkin__history-list { border-radius: 14px; }
+}
+
+@media (min-width: 601px) {
+    .lc-checkin--today .lc-checkin__item { border-left: 3px solid var(--lc-checkin-accent); }
+    .lc-checkin--today .lc-checkin__item.is-complete { border-left-color: var(--lc-checkin-success); }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { border-radius: 999px; }
+}
 @media (max-width: 560px) {
     .lc-template-manager { padding: 12px; }
     .lc-template-manager > header { display: grid; }
