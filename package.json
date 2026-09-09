@@ -1,6 +1,6 @@
 {
   "name": "siyuan-checkin",
-  "version": "1.0.0-rc.1",
+  "version": "2.0.0",
   "description": "SiYuan plugin: 小驴打卡",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "test:mobile-dialog": "node tests/mobile-dialog.test.cjs",
     "test:mobile:visual": "pnpm run test:mobile && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs && node tests/mobile-visual-regression.test.cjs",
     "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
-    "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/ecosystem-docs.test.cjs"
+    "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/ecosystem-docs.test.cjs && node tests/api-contract.test.cjs && node tests/preferences-docs.test.cjs"
   },
   "keywords": [
     "siyuan",

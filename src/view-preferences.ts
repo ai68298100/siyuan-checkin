@@ -1,6 +1,8 @@
 import type {CheckinItemSortMode} from "./types";
 
 export type TodayGroupMode = "group" | "time" | "priority";
+export type CheckinDensity = "compact" | "standard" | "comfortable";
+export type CheckinAppearance = "system" | "light" | "dark";
 
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
@@ -8,6 +10,9 @@ export interface CheckinViewPreferences {
     completedCollapsed: boolean;
     collapsedGroups: string[];
     lastInsightsItemId?: string;
+    density: CheckinDensity;
+    appearance: CheckinAppearance;
+    reducedMotion: boolean;
 }
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
@@ -15,6 +20,9 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sortMode: "manual",
     completedCollapsed: true,
     collapsedGroups: [],
+    density: "standard",
+    appearance: "system",
+    reducedMotion: false,
 };
 
 const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
@@ -28,5 +36,16 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
         : [];
-    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined};
+    const density = source.density === "compact" || source.density === "comfortable" ? source.density : DEFAULT_VIEW_PREFERENCES.density;
+    const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
+    const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
+    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion};
+}
+
+export function densityLabel(density: CheckinDensity): string {
+    return density === "comfortable" ? "舒适" : density === "compact" ? "紧凑" : "标准";
+}
+
+export function nextDensity(density: CheckinDensity): CheckinDensity {
+    return density === "standard" ? "comfortable" : density === "comfortable" ? "compact" : "standard";
 }

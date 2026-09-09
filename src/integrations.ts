@@ -1,5 +1,6 @@
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem} from "./types";
 import type {CustomSummaryRange, SummaryContext, SummaryRange} from "./analytics";
+import {CHECKIN_INTEGRATION_EVENTS} from "./api-contract";
 
 export const CHECKIN_EVENT_NAMES = {
     itemCreated: "checkin:item-created",
@@ -7,6 +8,11 @@ export const CHECKIN_EVENT_NAMES = {
     eventRecorded: "checkin:event-recorded",
     eventDeleted: "checkin:event-deleted",
 } as const;
+
+// Keep the runtime map aligned with the public protocol snapshot.
+if (Object.values(CHECKIN_EVENT_NAMES).some((name) => !(CHECKIN_INTEGRATION_EVENTS as readonly string[]).includes(name))) {
+    throw new Error("小驴打卡事件契约不一致");
+}
 
 export interface FocusAdapter {
     id: string;

@@ -18,4 +18,14 @@ assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-che
 assert.match(source, /lc-checkin--summary[\s\S]*lc-checkin__summary-stats/);
 assert.match(source, /lc-checkin--archived[\s\S]*暂不参与今日计划/);
 assert.match(source, /lc-checkin__eyebrow">记录与回看/);
+assert.match(source, /surface\.dataset\.density = this\.density/);
+assert.match(source, /surface\.dataset\.appearance = this\.appearance/);
+assert.match(source, /surface\.dataset\.reducedMotion = String\(this\.reducedMotion\)/);
+assert.match(source, /lc-checkin__settings-summary/);
+assert.match(source, /确定恢复全部显示偏好吗/);
+assert.match(styles, /\.lc-checkin\[data-reduced-motion="true"\]/);
+assert.match(styles, /--lc-checkin-success:[^;]*#63c98d/);
+assert.match(styles, /--lc-checkin-danger:[^;]*#b83232/);
+assert.match(styles, /density-options button:focus-visible/);
+assert.match(source, /ArrowLeft.*ArrowRight/);
 console.log("Modern responsive UI theme checks passed.");

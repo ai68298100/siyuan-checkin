@@ -1,5 +1,7 @@
 # 小驴打卡
 
+当前开发线：2.0 UI、个性化设置与生态协议增强持续开发中；真实环境验收按计划延期到 2.0 完成后统一进行。
+
 小驴打卡是一个面向思源笔记的轻量打卡工作台。它负责可靠地记录目标在某一天发生的行动，并把统计、历史和跨插件协作建立在同一套事件数据上。
 
 ## 快速开始
@@ -35,6 +37,7 @@
 ## 当前能力
 
 - 今日页：一键完成二值项目，或输入次数、时长、数量和自定义值。
+- 界面密度：通过今日页工具栏循环切换标准、舒适和紧凑布局，并在所有入口持久化。
 - 今日快捷记录：数量、时长、按数量和自定义项目可直接按推荐步长记录，精确输入按需展开；最近一条记录可撤销，误点数量项目图标不会补满目标。
 - 今日筛选与空态：可按名称或分组快速筛选；首次使用、今天无安排和全部归档分别提供对应入口。
 - 今日分组：按自定义分组、晨间/午后/晚间或重要性查看；未完成项优先展示，已完成项统一收进底部的“已完成打卡项”。
@@ -50,6 +53,8 @@
 - 习惯复盘：从今日项目进入只读复盘页，查看完成率、连续记录、84 天热力图和每周趋势。
 - 本地行动建议：根据完成率、连续记录、趋势和当天进度生成带依据的建议，无需配置 AI 或联网。
 - 手机端导航：窄屏下提供今日、历史、总结、归档和新建的底部导航，并适配安全区和触控尺寸。
+- 显示设置：可在设置页调整界面密度（紧凑/标准/舒适）、主题（跟随思源/浅色/深色）和减少动效；设置会在侧栏、页签、弹窗和移动端共享。
+- 显示偏好重置：可单独恢复密度或一键恢复全部显示偏好；重置不会影响打卡项目、事件和日期事项数据。
 - 归档与恢复：暂时隐藏不使用的项目，之后可以从历史页恢复。
 - 本地持久化：数据以原子 `CheckinEvent` 保存，统计结果都可以追溯到原始记录；同一前端中的并行写入会串行保存，保持在线的多个窗口或客户端会在收到数据变更通知后重新加载并合并。
 
@@ -81,11 +86,16 @@ interface CheckinEvent {
 
 ## 跨插件 API
 
-插件加载后提供 `window.siyuanCheckin`，当前 API 版本为 `3`：
+插件加载后提供 `window.siyuanCheckin`，当前 API 版本为 `4`：
 
 ```js
 const checkin = window.siyuanCheckin;
 await checkin.whenReady();
+checkin.protocol; // "siyuan-checkin"
+checkin.capabilities; // 能力发现：按需降级兼容
+checkin.describe(); // 协议、API 版本、存储版本和能力快照
+checkin.hasCapability("events.record"); // 调用前检查单项能力
+checkin.getCapabilityInfo(); // 能力是否可用、是否仅本地执行
 checkin.getItems();
 checkin.getEvents();
 checkin.getSummaryContext("week");
@@ -99,7 +109,9 @@ await checkin.recordEvent({
 });
 ```
 
-可用能力包括：
+可用能力包括（当前 API 版本为 `4`）：
+
+第三方接入应优先使用 `capabilities` 和 `getCapabilityInfo()` 做能力协商；缺少能力时隐藏对应入口并保留离线或稍后重试路径。
 
 - `isReady()` 和 `whenReady()`，供其他插件等待本地数据完成加载；
 - `getStore()`、`getItems()`、`getArchivedItems()`、`getEvents()`；
@@ -120,6 +132,10 @@ await checkin.recordEvent({
 例如可以直接询问“总结我本周的打卡情况”“查看阅读这个项目近 30 天的连续记录”，或在确认后说“给跑步记录 2 公里并备注天气很好”。智能体应先通过项目列表获取稳定的 `itemId`，再调用洞察或记录能力；插件会校验项目日程、类型、当前版本单位和今日是否可记录。
 
 ## 开发与构建
+
+2.0 开发线的偏好字段与兼容策略见 [`docs/v2.0-migration-notes.md`](docs/v2.0-migration-notes.md)，生态 API 约定见 [`docs/ecosystem-integration.md`](docs/ecosystem-integration.md)。
+
+2.0 开发变更记录见 [`docs/v2.0-change-log.md`](docs/v2.0-change-log.md)，UI 重构范围见 [`docs/ui-redesign-roadmap.md`](docs/ui-redesign-roadmap.md)。
 
 在仓库根目录执行：
 

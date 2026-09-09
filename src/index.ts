@@ -14,12 +14,14 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
-import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences} from "./view-preferences";
+import {DEFAULT_VIEW_PREFERENCES, densityLabel, nextDensity, normalizeViewPreferences} from "./view-preferences";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
-import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, CheckinDensity, CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
 import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
+import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
+import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 
 const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
@@ -28,7 +30,6 @@ const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
-const API_VERSION = 4;
 const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
@@ -81,7 +82,13 @@ const HISTORY_SOURCE_OPTIONS: readonly [HistorySourceFilter, string][] = [
 ];
 
 interface CheckinApi {
+    name: string;
+    protocol: string;
     version: number;
+    capabilities: readonly CheckinCapability[];
+    hasCapability: (name: unknown) => name is CheckinCapability;
+    describe: () => Readonly<CheckinApiDescriptor>;
+    getCapabilityInfo: () => Readonly<Record<CheckinCapability, CheckinCapabilityInfo>>;
     isReady: () => boolean;
     whenReady: () => Promise<boolean>;
     getStore: () => CheckinStore;
@@ -142,8 +149,11 @@ export default class CheckinPlugin extends Plugin {
     private todaySortMode: CheckinItemSortMode = DEFAULT_VIEW_PREFERENCES.sortMode;
     private todayQuery = "";
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
+    private density: CheckinDensity = DEFAULT_VIEW_PREFERENCES.density;
+    private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
+    private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private collapsedTodayGroups = new Set<string>();
-    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" | "occasions" = "today";
+    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private editingId?: string;
     private editingFingerprint?: string;
@@ -418,7 +428,13 @@ export default class CheckinPlugin extends Plugin {
             return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
         };
         return {
-            version: API_VERSION,
+            name: CHECKIN_API_NAME,
+            protocol: CHECKIN_API_PROTOCOL,
+            version: CHECKIN_API_VERSION,
+            capabilities: CHECKIN_CAPABILITIES,
+            hasCapability: hasCheckinCapability,
+            describe: getCheckinApiDescriptor,
+            getCapabilityInfo: getCheckinCapabilityInfo,
             isReady: () => this.initializationState === "ready" && this.acceptingOperations && !this.disposed,
             whenReady: () => this.readyPromise.then((ready) => ready && this.acceptingOperations && !this.disposed),
             getStore: () => this.cloneStore(),
@@ -618,6 +634,13 @@ export default class CheckinPlugin extends Plugin {
 
     private showOccasions() {
         this.currentPage = "occasions";
+        this.editingId = undefined;
+        this.editingFingerprint = undefined;
+        this.render();
+    }
+
+    private showSettings() {
+        this.currentPage = "settings";
         this.editingId = undefined;
         this.editingFingerprint = undefined;
         this.render();
@@ -1083,8 +1106,15 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "history" ? this.renderHistory()
                 : this.currentPage === "summary" ? this.renderSummary()
                     : this.currentPage === "insights" ? this.renderInsights()
-                    : this.currentPage === "archived" ? this.renderArchived()
-                    : this.currentPage === "occasions" ? this.renderOccasions() : this.renderToday();
+            : this.currentPage === "archived" ? this.renderArchived()
+                    : this.currentPage === "occasions" ? this.renderOccasions()
+                        : this.currentPage === "settings" ? this.renderSettings() : this.renderToday();
+        const surface = root.querySelector<HTMLElement>(".lc-checkin");
+        if (surface) {
+            surface.dataset.density = this.density;
+            surface.dataset.appearance = this.appearance;
+            surface.dataset.reducedMotion = String(this.reducedMotion);
+        }
         root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">×</button>`);
         if (this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend) {
             const button = document.createElement("button");
@@ -1103,10 +1133,56 @@ export default class CheckinPlugin extends Plugin {
             this.bindToday(root);
         } else if (this.currentPage === "occasions") {
             this.bindOccasions(root);
+        } else if (this.currentPage === "settings") {
+            this.bindSettings(root);
         } else {
             this.bindPageNavigation(root);
         }
         if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
+    }
+
+    private renderSettings(): string {
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--settings" data-density="${this.density}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">个性化体验</div><h1 class="lc-checkin__title">设置</h1></div></header><section class="lc-checkin__settings-card"><h2>界面密度</h2><p>调整卡片间距和操作区域大小，所有入口共享此设置。</p><div class="lc-checkin__density-options" role="radiogroup" aria-label="界面密度"><button type="button" role="radio" aria-checked="${this.density === "compact"}" data-density-choice="compact">紧凑<small>信息更集中</small></button><button type="button" role="radio" aria-checked="${this.density === "standard"}" data-density-choice="standard">标准<small>推荐设置</small></button><button type="button" role="radio" aria-checked="${this.density === "comfortable"}" data-density-choice="comfortable">舒适<small>操作更宽松</small></button></div><button class="lc-checkin__text-button" type="button" data-action="reset-density">恢复标准密度</button></section><section class="lc-checkin__settings-card"><h2>今日默认视图</h2><label class="lc-checkin__field"><span>分组方式</span><select data-setting-group><option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option></select></label><label class="lc-checkin__field"><span>排序方式</span><select data-setting-sort><option value="manual" ${this.todaySortMode === "manual" ? "selected" : ""}>自定义顺序</option><option value="priority" ${this.todaySortMode === "priority" ? "selected" : ""}>重要性优先</option><option value="name" ${this.todaySortMode === "name" ? "selected" : ""}>名称</option><option value="updatedAt" ${this.todaySortMode === "updatedAt" ? "selected" : ""}>最近修改</option></select></label><label class="lc-checkin__field lc-checkin__settings-check"><input type="checkbox" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /><span>默认展开已完成打卡项</span></label><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">恢复默认视图</button></section></div>`;
+    }
+
+    private bindSettings(root: HTMLElement) {
+        this.bindDialogClose(root);
+        this.bindMobileNav(root);
+        root.querySelector(".lc-checkin__settings-card:last-child")?.insertAdjacentHTML("afterend", `<section class="lc-checkin__settings-card"><h2>外观与动效</h2><label class="lc-checkin__field"><span>主题</span><select data-setting-appearance><option value="system" ${this.appearance === "system" ? "selected" : ""}>跟随思源</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>浅色</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>深色</option></select></label><label class="lc-checkin__field lc-checkin__settings-check"><input type="checkbox" data-setting-motion ${this.reducedMotion ? "checked" : ""} /><span>减少界面动效</span></label></section>`);
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        const densityButtons = [...root.querySelectorAll<HTMLElement>("[data-density-choice]")];
+        densityButtons.forEach((button) => button.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            const index = densityButtons.indexOf(button);
+            const next = densityButtons[(index + (event.key === "ArrowRight" ? 1 : -1) + densityButtons.length) % densityButtons.length];
+            next.focus();
+            next.click();
+        }));
+        const savePreference = () => { void this.persistViewPreferences().then(() => showMessage("界面偏好已保存")).catch(() => showMessage("界面偏好保存失败")); };
+        densityButtons.forEach((button) => button.addEventListener("click", () => {
+            const value = button.dataset.densityChoice;
+            if (value === "compact" || value === "standard" || value === "comfortable") { this.density = value; savePreference(); this.render(); }
+        }));
+        root.querySelector<HTMLElement>("[data-action='reset-density']")?.addEventListener("click", () => { this.density = "standard"; savePreference(); this.render(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (["manual", "priority", "name", "updatedAt"].includes(value)) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
+        root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
+        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
+        root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.setAttribute("aria-describedby", "lc-checkin-appearance-help");
+        root.querySelector<HTMLInputElement>("[data-setting-motion]")?.setAttribute("aria-describedby", "lc-checkin-motion-help");
+        root.querySelector("[data-setting-appearance]")?.insertAdjacentHTML("afterend", `<small id="lc-checkin-appearance-help" class="lc-checkin__settings-help">主题只影响小驴打卡界面，不修改思源全局主题。</small>`);
+        root.querySelector("[data-setting-motion]")?.parentElement?.insertAdjacentHTML("beforeend", `<small id="lc-checkin-motion-help" class="lc-checkin__settings-help">减少动效会关闭页面过渡和加载动画。</small>`);
+        const summary = document.createElement("p");
+        summary.className = "lc-checkin__settings-summary";
+        summary.setAttribute("role", "status");
+        summary.setAttribute("aria-live", "polite");
+        summary.textContent = `当前：${densityLabel(this.density)} · ${this.appearance === "system" ? "跟随思源" : this.appearance === "light" ? "浅色" : "深色"}${this.reducedMotion ? " · 减少动效" : ""}`;
+        root.querySelector(".lc-checkin__settings-card:last-child")?.append(summary);
+        root.querySelector(".lc-checkin__settings-card:last-child")?.insertAdjacentHTML("afterend", `<section class="lc-checkin__settings-card lc-checkin__settings-danger"><h2>恢复默认</h2><p>只会重置显示偏好，不会删除打卡数据。</p><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复全部显示偏好</button></section>`);
     }
 
     private bindQuickKeyboard(root: HTMLElement) {
@@ -1160,7 +1236,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "⌂"], ["occasions", "事项", "◷"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"]] as const;
+        const entries = [["today", "今日", "⌂"], ["occasions", "事项", "◷"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"], ["settings", "设置", "⚙"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
     }
 
@@ -1215,7 +1291,7 @@ export default class CheckinPlugin extends Plugin {
         </div>` : "";
         const saveStatus = this.renderSaveStatus();
         const occasionSection = this.renderOccasionSection(now);
-        return `<div class="lc-checkin">
+        return `<div class="lc-checkin" data-density="${this.density}" data-appearance="${this.appearance}" data-reduced-motion="${this.reducedMotion}">
             <header class="lc-checkin__header">
                 <div>
                     <div class="lc-checkin__eyebrow">${escapeHtml(date)}</div>
@@ -1227,6 +1303,8 @@ export default class CheckinPlugin extends Plugin {
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">⌁</button>
                     <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="occasions" aria-label="管理事项" title="事项">◷</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="cycle-density" aria-label="切换界面密度" title="界面密度">▤</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="settings" aria-label="打开设置" title="设置">⚙</button>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
                 </div>
@@ -1637,6 +1715,8 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
         root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => this.showOccasions()));
+        root.querySelectorAll<HTMLElement>("[data-action='cycle-density']").forEach((button) => button.addEventListener("click", () => this.cycleDensity()));
+        root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => this.showSettings()));
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -1935,6 +2015,7 @@ export default class CheckinPlugin extends Plugin {
             else if (page === "insights") this.showInsights();
             else if (page === "archived") this.showArchived();
             else if (page === "occasions") this.showOccasions();
+            else if (page === "settings") this.showSettings();
             else if (page === "add") this.showEditor();
         }));
     }
@@ -2912,8 +2993,18 @@ export default class CheckinPlugin extends Plugin {
         this.todayGroupMode = preferences.groupMode;
         this.todaySortMode = preferences.sortMode;
         this.completedCollapsed = preferences.completedCollapsed;
+        this.density = preferences.density;
+        this.appearance = preferences.appearance;
+        this.reducedMotion = preferences.reducedMotion;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.insightsItemId = preferences.lastInsightsItemId;
+    }
+
+    private cycleDensity() {
+        this.density = nextDensity(this.density);
+        void this.persistViewPreferences();
+        this.render();
+        showMessage(`界面密度：${densityLabel(this.density)}`);
     }
 
     private persistViewPreferences(): Promise<void> {
@@ -2924,6 +3015,9 @@ export default class CheckinPlugin extends Plugin {
             completedCollapsed: this.completedCollapsed,
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
             lastInsightsItemId: this.insightsItemId,
+            density: this.density,
+            appearance: this.appearance,
+            reducedMotion: this.reducedMotion,
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

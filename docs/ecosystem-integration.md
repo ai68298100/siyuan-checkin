@@ -2,6 +2,8 @@
 
 第三方插件可以通过 `window.siyuanCheckin` 接入记录、专注和总结能力。接入必须把外部完成事件转换为稳定记录，并提供唯一的 `source` 与 `externalRef`。
 
+当前 API 版本为 `4`，名称为 `siyuanCheckin`，协议标识为 `siyuan-checkin`。`describe()` 返回协议、API 版本、存储版本、能力和事件名称快照；`hasCapability(name)` 用于调用前检查单项能力。接入方应先检查 `isReady()` / `whenReady()`，再读取项目和事件；可通过 `capabilities` 和 `getCapabilityInfo()` 协商能力与本地写入边界，能力不存在时必须保留自己的离线流程。事件名称固定为 `checkin:item-created`、`checkin:item-updated`、`checkin:event-recorded` 和 `checkin:event-deleted`，删除事件通过事件详情中的 `deletedEvents` 提供具体记录。删除事件目前只通过内部历史操作产生，公共 API 不声明外部删除能力。
+
 ## 记录同步
 
 ```js
@@ -50,3 +52,13 @@ await window.siyuanCheckin.recordEvent({
 5. 写入失败后使用原引用重试，避免产生重复记录。
 6. 卸载或停用适配器时调用注册函数返回的注销函数。
 7. AI 或宿主接口不可用时继续提供原有手动流程。
+
+## 2.0 能力协商建议
+
+接入方应把 `version` 作为协议主版本判断，把 `capabilities` 作为功能开关，不应通过插件版本号猜测能力。推荐流程：
+
+1. 检查 `window.siyuanCheckin` 的 `name` 和 `version`。
+2. 等待 `whenReady()` 完成，再读取 `capabilities`。
+3. 对需要写入的能力检查 `getCapabilityInfo()[name].localOnly`，并保留用户确认。
+4. 缺少能力时隐藏对应入口，保留本地或稍后重试路径。
+5. 外部事件始终携带稳定的 `source` 与 `externalRef`，不要依赖事件数组顺序。
