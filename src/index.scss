@@ -3045,6 +3045,12 @@
     .lc-checkin--settings .lc-checkin__density-options button small { display: block; margin-top: 2px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
     .lc-checkin--settings .lc-checkin__settings-card select { box-sizing: border-box; }
     .lc-checkin--settings .lc-checkin__settings-danger { margin-top: 16px; }
+
+    .lc-checkin--summary .lc-checkin__history-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .lc-checkin--summary .lc-checkin__history-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--summary .lc-checkin__history-row span { flex: 0 0 auto; margin-left: auto; white-space: nowrap; }
+    .lc-checkin--summary .lc-checkin__history-row button { flex: 0 0 auto; min-width: 44px; min-height: 32px; }
+    .lc-checkin--summary .lc-checkin__history-list { min-width: 0; }
 }
 
 @media (max-width: 600px) {
