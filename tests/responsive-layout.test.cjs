@@ -5,6 +5,7 @@ const path = require("node:path");
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
 const todayStyles = fs.readFileSync(path.join(__dirname, "..", "src", "today-v4.scss"), "utf8");
 const historyStyles = fs.readFileSync(path.join(__dirname, "..", "src", "history-v4.scss"), "utf8");
+const summaryStyles = fs.readFileSync(path.join(__dirname, "..", "src", "summary-v4.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 
 assert.match(styles, /\.lc-checkin\s*\{[\s\S]*container-name:\s*lc-checkin;[\s\S]*container-type:\s*inline-size;/,
@@ -33,6 +34,10 @@ assert.match(historyStyles, /@media\s*\(min-width:\s*900px\)[\s\S]*grid-template
     "history desktop layout must keep calendar and records in two columns");
 assert.match(historyStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin__history-event\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto;/,
     "history mobile records must reserve a dedicated value column");
+assert.match(summaryStyles, /\.lc-checkin--summary \.lc-checkin__summary-stats\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/,
+    "summary must present its three overview metrics as a stable row");
+assert.match(summaryStyles, /@media\s*\(max-width:\s*600px\)[\s\S]*\.lc-checkin--summary \.lc-checkin__custom-range\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/,
+    "summary custom dates must collapse into two safe mobile columns");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[\s\S]*max-width:\s*32%;[\s\S]*text-overflow:\s*ellipsis;/,
     "metadata tags must not consume the item name slot");
 assert.match(styles, /\.lc-checkin__custom-range\s*\{[\s\S]*display:\s*flex;/,
