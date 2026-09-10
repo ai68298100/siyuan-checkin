@@ -9,7 +9,10 @@
     --modern-border: color-mix(in srgb, var(--b3-border-color) 54%, transparent);
     --modern-border-strong: color-mix(in srgb, var(--b3-border-color) 76%, transparent);
     --modern-ink: var(--b3-theme-on-background);
-    --modern-muted: var(--b3-theme-on-surface-light);
+    /* Keep helper text legible across light and dark SiYuan themes. The
+       host's on-surface-light token is intentionally quiet, so blend a
+       little foreground back in instead of relying on a fixed gray. */
+    --modern-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 76%, var(--b3-theme-on-background));
     --modern-accent: var(--lc-checkin-accent);
     --modern-accent-soft: color-mix(in srgb, var(--modern-accent) 10%, transparent);
     --modern-radius: 10px;
@@ -103,12 +106,37 @@
     box-shadow: var(--modern-shadow);
     grid-column: 1 / -1;
 }
+.lc-checkin--today .lc-checkin__item-action {
+    /* Older responsive rules move actions to a second row. The compact
+       habit row keeps its primary action alongside the title and progress. */
+    display: flex;
+    grid-column: auto;
+    grid-row: 1 / span 2;
+    width: auto;
+    min-width: max-content;
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+}
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 2) { --card-accent: var(--lc-checkin-success); }
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 3) { --card-accent: var(--lc-checkin-warning); }
 .lc-checkin--today .lc-checkin__item:hover { border-color: color-mix(in srgb, var(--modern-accent) 48%, var(--modern-border)); box-shadow: 0 5px 16px color-mix(in srgb, var(--b3-theme-on-background) 9%, transparent); }
 .lc-checkin--today .lc-checkin__item::before { width: 3px; background: var(--card-accent); }
 .lc-checkin--today .lc-checkin__item.is-complete::before { background: var(--lc-checkin-success); }
-.lc-checkin--today .lc-checkin__item-icon { grid-area: icon; align-self: center; border-radius: 10px; background: var(--modern-surface-soft); }
+.lc-checkin--today .lc-checkin__item-icon {
+    grid-area: icon;
+    align-self: center;
+    box-sizing: border-box;
+    border: 3px solid transparent;
+    border-radius: 12px;
+    background: linear-gradient(var(--modern-surface-soft), var(--modern-surface-soft)) padding-box,
+        conic-gradient(var(--card-accent) var(--item-progress), color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface)) 0) border-box;
+}
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-icon {
+    --card-accent: var(--lc-checkin-success);
+    background: linear-gradient(var(--modern-surface-soft), var(--modern-surface-soft)) padding-box,
+        conic-gradient(var(--card-accent) var(--item-progress), color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface)) 0) border-box;
+}
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 1) .lc-checkin__item-icon { color: var(--modern-accent); background: color-mix(in srgb, var(--modern-accent) 13%, var(--modern-surface)); }
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 2) .lc-checkin__item-icon { color: var(--lc-checkin-success); background: color-mix(in srgb, var(--lc-checkin-success) 13%, var(--modern-surface)); }
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 3) .lc-checkin__item-icon { color: var(--lc-checkin-warning); background: color-mix(in srgb, var(--lc-checkin-warning) 15%, var(--modern-surface)); }
@@ -119,7 +147,23 @@
 .lc-checkin--today .lc-checkin__exact-entry { grid-area: exact; }
 .lc-checkin--today .lc-checkin__item-progress span { background: var(--card-accent); }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { color: var(--card-accent); background: color-mix(in srgb, var(--card-accent) 12%, var(--modern-surface)); }
-.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 34px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button {
+    width: auto;
+    min-width: 38px;
+    min-height: 34px;
+    padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--card-accent) 24%, var(--modern-border));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card-accent) 11%, var(--modern-surface));
+    font-weight: 650;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button:hover,
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button:hover {
+    color: #fff;
+    border-color: var(--card-accent);
+    background: var(--card-accent);
+}
 .lc-checkin--today .lc-checkin__completed-section { border-top: 1px solid var(--modern-border); }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .62; }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:hover { opacity: 1; }
@@ -278,12 +322,27 @@
     .lc-checkin--today .lc-checkin__title { font-size: 30px; }
     .lc-checkin--today .lc-checkin__today-summary > div { padding: 5px 8px; }
     .lc-checkin--today .lc-checkin__today-summary strong { font-size: 19px; }
-    .lc-checkin--today .lc-checkin__item { min-height: 72px; padding: 9px 10px; box-shadow: none; }
+    .lc-checkin--today .lc-checkin__item {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        grid-template-areas: "icon body action" "icon exact exact";
+        min-height: 64px;
+        padding: 8px 9px;
+        box-shadow: none;
+    }
+    .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; }
     .lc-checkin--today .lc-checkin__item-body { padding: 0 9px; }
     .lc-checkin--today .lc-checkin__item-name { display: -webkit-box; overflow: hidden; max-width: 100%; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-    .lc-checkin--today .lc-checkin__item-action { align-self: center; }
+    .lc-checkin--today .lc-checkin__item-meta {
+        display: -webkit-box;
+        overflow: hidden;
+        line-height: 1.35;
+        white-space: normal;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+    .lc-checkin--today .lc-checkin__item-action { align-self: center; grid-column: auto; grid-row: 1 / span 2; width: auto; margin-top: 0; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 32px; padding: 0 9px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 32px; min-width: 34px; padding: 0 8px; }
     .lc-checkin--today .lc-checkin__organize { box-shadow: none; }
     .lc-checkin--history .lc-checkin__calendar,
     .lc-checkin--history .lc-checkin__history-tools,
@@ -300,4 +359,174 @@
 
 @media (prefers-reduced-motion: reduce) {
     .lc-checkin * { transition-duration: 0ms !important; }
+}
+
+/* Product level composition pass. Keep the markup stable while giving every
+   surface the same editorial rhythm: one strong title, one action row, and
+   quiet secondary evidence. */
+.lc-checkin {
+    --modern-accent: color-mix(in srgb, var(--b3-theme-primary, #2f80ed) 88%, var(--b3-theme-on-background));
+    --modern-accent-soft: color-mix(in srgb, var(--modern-accent) 10%, transparent);
+    --modern-bg: color-mix(in srgb, var(--b3-theme-background) 97%, var(--b3-theme-surface));
+    --modern-surface: var(--b3-theme-surface);
+    --modern-surface-soft: color-mix(in srgb, var(--b3-theme-surface) 84%, var(--b3-theme-background));
+    --modern-border: color-mix(in srgb, var(--b3-border-color) 45%, transparent);
+    --modern-border-strong: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
+    --modern-radius: 12px;
+    --modern-shadow: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent), 0 8px 22px color-mix(in srgb, var(--b3-theme-on-background) 4%, transparent);
+    font-size: 13px;
+}
+.lc-checkin[data-appearance="dark"] {
+    --modern-bg: color-mix(in srgb, var(--b3-theme-background) 94%, #000);
+    --modern-surface-soft: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-background));
+    --modern-border: color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    --modern-border-strong: color-mix(in srgb, var(--b3-border-color) 90%, transparent);
+    --modern-shadow: 0 1px 2px #0006, 0 8px 22px #0004;
+}
+.lc-checkin__glyph { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.lc-checkin__mobile-nav .lc-checkin__glyph { width: 18px; height: 18px; }
+.lc-checkin__small-button .lc-checkin__glyph { width: 15px; height: 15px; margin: auto; }
+.lc-checkin__icon-button .lc-checkin__glyph { width: 20px; height: 20px; }
+
+.lc-checkin--today > .lc-checkin__header,
+.lc-checkin--history > .lc-checkin__editor-header,
+.lc-checkin--summary > .lc-checkin__editor-header,
+.lc-checkin--settings > .lc-checkin__editor-header,
+.lc-checkin--occasions > .lc-checkin__editor-header,
+.lc-checkin--insights > .lc-checkin__editor-header,
+.lc-checkin--archived > .lc-checkin__editor-header {
+    min-height: 58px;
+    align-items: center;
+    border-bottom: 1px solid var(--modern-border);
+}
+.lc-checkin :is(.lc-checkin__title, h1) { color: var(--modern-ink); font-size: clamp(27px, 3vw, 36px); font-weight: 760; letter-spacing: -.035em; line-height: 1.05; }
+.lc-checkin .lc-checkin__eyebrow { margin-bottom: 5px; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.lc-checkin--today .lc-checkin__count { padding: 5px 9px; border-radius: 999px; color: var(--modern-muted); background: var(--modern-surface-soft); font-size: 11px; font-weight: 650; }
+.lc-checkin--today .lc-checkin__count > span { margin: 0 2px; color: var(--modern-border-strong); }
+.lc-checkin--today .lc-checkin__header-actions { gap: 3px; }
+.lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible { width: 30px; height: 30px; border-radius: 8px; opacity: .72; }
+.lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible:hover { opacity: 1; background: var(--modern-accent-soft); }
+.lc-checkin--today .lc-checkin__header-actions .lc-checkin__icon-button { width: 38px; height: 38px; border-radius: 11px; color: #fff; border-color: transparent; background: var(--modern-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--modern-accent) 26%, transparent); }
+
+.lc-checkin--today .lc-checkin__today-summary {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 0;
+    margin: 18px 0 14px;
+    padding: 15px 0;
+    border: 1px solid var(--modern-border);
+    border-radius: var(--modern-radius);
+    background: var(--modern-surface);
+    box-shadow: var(--modern-shadow);
+}
+.lc-checkin--today .lc-checkin__today-summary > div { min-height: 54px; padding: 3px 18px; border-right: 1px solid var(--modern-border); }
+.lc-checkin--today .lc-checkin__today-summary > div:first-child strong { color: var(--modern-accent); font-size: 30px; }
+.lc-checkin--today .lc-checkin__today-summary strong { font-size: 22px; font-weight: 760; line-height: 1; }
+.lc-checkin--today .lc-checkin__today-summary span { font-size: 10px; letter-spacing: .02em; }
+.lc-checkin--today > .lc-checkin__progress { height: 4px; margin: 0 0 20px; background: color-mix(in srgb, var(--modern-accent) 12%, var(--modern-surface-soft)); }
+
+.lc-checkin--today .lc-checkin__organize {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 150px 150px auto;
+    gap: 7px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 7px;
+    border: 1px solid var(--modern-border);
+    border-radius: 11px;
+    background: var(--modern-surface-soft);
+    box-shadow: none;
+}
+.lc-checkin--today .lc-checkin__organize label > span { margin-bottom: 2px; font-size: 9px; }
+.lc-checkin--today .lc-checkin__organize :is(input, select),
+.lc-checkin--today .lc-checkin__filter-toggle { min-height: 34px; border-color: transparent; border-radius: 8px; }
+.lc-checkin--today .lc-checkin__filter-toggle { align-self: end; padding: 0 11px; color: var(--modern-muted); background: var(--modern-surface); font-size: 11px; }
+.lc-checkin--today .lc-checkin__filter-toggle.is-active { color: var(--modern-accent); background: var(--modern-accent-soft); }
+
+.lc-checkin--today .lc-checkin__list { gap: 18px; }
+.lc-checkin--today .lc-checkin__group { margin-top: 0; }
+.lc-checkin--today .lc-checkin__group-header { min-height: 28px; padding: 0 2px 8px; }
+.lc-checkin--today .lc-checkin__group-header::before { width: 4px; height: 14px; margin-right: 7px; background: var(--card-accent, var(--modern-accent)); }
+.lc-checkin--today .lc-checkin__group-header span:first-child { font-size: 13px; font-weight: 750; }
+.lc-checkin--today .lc-checkin__group-items { gap: 7px; margin-top: 8px; }
+.lc-checkin--today .lc-checkin__item {
+    min-height: 68px;
+    padding: 8px 11px;
+    border-color: var(--modern-border);
+    border-radius: 11px;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 4%, transparent);
+}
+.lc-checkin--today .lc-checkin__item:hover { border-color: color-mix(in srgb, var(--card-accent) 44%, var(--modern-border)); box-shadow: var(--modern-shadow); transform: translateY(-1px); }
+.lc-checkin--today .lc-checkin__item-name { font-size: 14px; font-weight: 720; line-height: 1.2; }
+.lc-checkin--today .lc-checkin__item-meta { margin-top: 3px; font-size: 10px; }
+.lc-checkin--today .lc-checkin__item-progress { height: 3px; margin-top: 6px; }
+.lc-checkin--today .lc-checkin__item-icon { width: 36px; height: 36px; flex-basis: 36px; border-radius: 11px; font-size: 18px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button,
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 31px; border-radius: 8px; font-size: 11px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { width: 26px; min-height: 30px; }
+.lc-checkin--today .lc-checkin__completed-section { margin-top: 2px; padding-top: 13px; }
+
+.lc-checkin--today .lc-checkin__occasions { margin-top: 2px; padding: 13px; border-radius: 12px; background: color-mix(in srgb, var(--modern-accent) 5%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__occasion { min-height: 42px; padding: 7px 8px; border-radius: 8px; background: var(--modern-surface); }
+.lc-checkin--today .lc-checkin__occasion-icon { width: 28px; height: 28px; border-radius: 9px; font-size: 15px; }
+.lc-checkin--today .lc-checkin__occasion-body strong { font-size: 12px; }
+.lc-checkin--today .lc-checkin__occasion-body small { font-size: 10px; }
+
+.lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings),
+.lc-checkin--summary, .lc-checkin--settings, .lc-checkin--occasions, .lc-checkin--insights, .lc-checkin--archived { max-width: 1100px; }
+.lc-checkin--history .lc-checkin__month-nav { min-height: 42px; border-color: var(--modern-border); background: var(--modern-surface); box-shadow: none; }
+.lc-checkin--history .lc-checkin__calendar { padding: 10px; border-color: var(--modern-border); background: var(--modern-surface-soft); box-shadow: none; }
+.lc-checkin--history .lc-checkin__calendar-day { min-height: 48px; border-radius: 9px; font-size: 11px; }
+.lc-checkin--history .lc-checkin__history-tools { padding: 10px; border-color: var(--modern-border); background: var(--modern-surface-soft); }
+.lc-checkin--history .lc-checkin__history-event { min-height: 46px; padding: 8px 0; }
+.lc-checkin--summary .lc-checkin__summary-stats,
+.lc-checkin--insights .lc-checkin__insight-stats { gap: 8px; }
+.lc-checkin--summary .lc-checkin__summary-stats div,
+.lc-checkin--insights .lc-checkin__insight-stats div { min-height: 78px; border-color: var(--modern-border); border-radius: 11px; box-shadow: none; }
+.lc-checkin--summary .lc-checkin__summary-stats strong,
+.lc-checkin--insights .lc-checkin__insight-stats strong { font-size: 25px; font-weight: 760; }
+.lc-checkin--settings .lc-checkin__settings-card,
+.lc-checkin--occasions .lc-checkin__occasion-form-panel,
+.lc-checkin--occasions .lc-checkin__occasion-list-panel,
+.lc-checkin--insights .lc-checkin__insight-section { border-color: var(--modern-border); border-radius: 12px; box-shadow: none; }
+.lc-checkin--settings .lc-checkin__settings-card h2 { font-size: 16px; }
+.lc-checkin--settings .lc-checkin__settings-card p { font-size: 11px; }
+.lc-checkin--insights .lc-checkin__insight-heading h2 { font-size: 15px; font-weight: 740; }
+.lc-checkin--insights .lc-checkin__insight-grid { gap: 3px; }
+.lc-checkin--insights .lc-checkin__insight-grid span { min-height: 16px; border-radius: 4px; }
+
+.lc-checkin__mobile-nav { gap: 0; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top-color: var(--modern-border); background: color-mix(in srgb, var(--modern-surface) 92%, transparent); }
+.lc-checkin__mobile-nav button { min-height: 48px; border-radius: 11px; color: var(--modern-muted); }
+.lc-checkin__mobile-nav button span { display: grid; place-items: center; width: 30px; height: 24px; margin: 0 auto 2px; border-radius: 8px; }
+.lc-checkin__mobile-nav button small { font-size: 9px; font-weight: 600; }
+.lc-checkin__mobile-nav button.is-selected { color: var(--modern-accent); background: transparent; }
+.lc-checkin__mobile-nav button.is-selected span { background: var(--modern-accent-soft); }
+.lc-checkin__mobile-nav button[data-mobile-nav="add"] { color: var(--modern-accent); }
+
+@media (max-width: 700px) {
+    .lc-checkin { padding-right: 12px; padding-left: 12px; }
+    .lc-checkin :is(.lc-checkin__title, h1) { font-size: 28px; }
+    .lc-checkin--today .lc-checkin__today-summary { margin-top: 14px; padding: 11px 0; }
+    .lc-checkin--today .lc-checkin__today-summary > div { padding: 3px 10px; }
+    .lc-checkin--today .lc-checkin__today-summary > div:first-child strong { font-size: 25px; }
+    .lc-checkin--today .lc-checkin__today-summary strong { font-size: 19px; }
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: 1fr 1fr; margin-bottom: 16px; }
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search,
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__filter-toggle { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__list { gap: 15px; }
+    .lc-checkin--today .lc-checkin__item { min-height: 64px; }
+    .lc-checkin--today .lc-checkin__item-body { padding: 0 8px; }
+    .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
+    .lc-checkin--today .lc-checkin__item-meta { font-size: 10px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { padding: 0 8px; }
+    .lc-checkin--history .lc-checkin__calendar-day { min-height: 42px; }
+    .lc-checkin--summary .lc-checkin__summary-stats div,
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-height: 68px; }
+}
+
+@media (max-width: 380px) {
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible { display: none; }
+    .lc-checkin--today .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr) auto; padding: 8px; }
+    .lc-checkin--today .lc-checkin__item-icon { width: 32px; height: 32px; flex-basis: 32px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
 }

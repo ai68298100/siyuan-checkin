@@ -89,6 +89,34 @@ const HISTORY_SOURCE_OPTIONS: readonly [HistorySourceFilter, string][] = [
     ["api", HISTORY_SOURCE_LABELS.api],
 ];
 
+const UI_ICON_PATHS: Record<string, string> = {
+    home: "M3 10.5 12 3l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z M9 20v-6h6v6",
+    calendar: "M6 3v3M18 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1z M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01",
+    history: "M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2",
+    summary: "M5 19V9M12 19V5M19 19v-7",
+    insight: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z",
+    archive: "M4 7h16v13H4z M3 4h18v3H3z M9 11h6",
+    settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9A7 7 0 0 0 15.5 6L15 3.5h-4L10.5 6a7 7 0 0 0-1.1.8l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 7 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9c.3.3.7.6 1.1.8l.5 2.5h4l.5-2.5c.4-.2.8-.5 1.1-.8l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z",
+    add: "M12 5v14M5 12h14",
+    back: "m15 5-7 7 7 7",
+    forward: "m9 5 7 7-7 7",
+    search: "m11 5a6 6 0 1 0 3.9 10.6L20 20",
+    external: "M14 5h5v5M19 5l-8 8",
+    focus: "M12 6v6l4 2M12 3a9 9 0 1 0 9 9",
+    more: "M5 12h.01M12 12h.01M19 12h.01",
+    edit: "m4 16.5-.8 3.3 3.3-.8L18 7.5 14.5 4zM13 5.5l3.5 3.5",
+    trash: "M5 7h14M10 11v6M14 11v6M9 7V4h6v3m-9 0 1 13h10l1-13",
+    timer: "M12 7v5l3 2M8 3h8M12 3v2M5.6 6.4 4 4.8M18.4 6.4 20 4.8M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
+    expand: "M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5",
+    close: "M6 6l12 12M18 6 6 18",
+    check: "m5 12 4 4L19 6",
+    circle: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+};
+
+function uiIcon(name: keyof typeof UI_ICON_PATHS, className = ""): string {
+    return `<svg class="lc-checkin__glyph ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${UI_ICON_PATHS[name]}" /></svg>`;
+}
+
 interface CheckinApi {
     name: string;
     protocol: string;
@@ -1117,14 +1145,15 @@ export default class CheckinPlugin extends Plugin {
                     : this.currentPage === "insights" ? this.renderInsights()
             : this.currentPage === "archived" ? this.renderArchived()
                     : this.currentPage === "occasions" ? this.renderOccasions()
-                        : this.currentPage === "settings" ? this.renderSettings() : this.renderToday();
+                    : this.currentPage === "settings" ? this.renderSettings() : this.renderToday();
+        this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
             surface.dataset.density = this.density;
             surface.dataset.appearance = this.appearance;
             surface.dataset.reducedMotion = String(this.reducedMotion);
         }
-        root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">×</button>`);
+        root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
         if (this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend) {
             const button = document.createElement("button");
             button.className = "lc-checkin__dialog-fullscreen";
@@ -1132,7 +1161,7 @@ export default class CheckinPlugin extends Plugin {
             button.dataset.action = "toggle-fullscreen";
             button.setAttribute("aria-label", this.quickDialogFullscreen ? "退出全屏" : "全屏显示");
             button.title = this.quickDialogFullscreen ? "退出全屏" : "全屏显示";
-            button.textContent = this.quickDialogFullscreen ? "⊙" : "□";
+            button.innerHTML = uiIcon("expand");
             root.prepend(button);
         }
         if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
@@ -1148,6 +1177,28 @@ export default class CheckinPlugin extends Plugin {
             this.bindPageNavigation(root);
         }
         if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
+    }
+
+    private normalizeUiIcons(root: HTMLElement) {
+        root.querySelectorAll<HTMLElement>(".lc-checkin__back-button").forEach((button) => { button.innerHTML = uiIcon("back"); });
+        root.querySelector<HTMLElement>("[data-history-month='-1']")?.replaceChildren(this.iconNode("back"));
+        root.querySelector<HTMLElement>("[data-history-month='1']")?.replaceChildren(this.iconNode("forward"));
+        root.querySelectorAll<HTMLElement>(".lc-checkin__search-symbol, .lc-checkin__today-search > span").forEach((node) => { node.innerHTML = uiIcon("search"); });
+        root.querySelectorAll<HTMLElement>("[data-action='clear-search'], [data-action='clear-history-query'], [data-action='clear-template-query'], [data-action='clear-icon-query']").forEach((button) => { button.innerHTML = uiIcon("close"); });
+        root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { button.innerHTML = uiIcon("insight"); });
+        root.querySelectorAll<HTMLElement>("[data-action='edit'], [data-occasion-edit]").forEach((button) => { button.innerHTML = uiIcon("edit"); });
+        root.querySelectorAll<HTMLElement>("[data-action='focus']").forEach((button) => { button.innerHTML = uiIcon("timer"); });
+        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']").forEach((button) => { button.innerHTML = uiIcon("more"); });
+        root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => { button.innerHTML = uiIcon("trash"); });
+        root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => { button.innerHTML = button.textContent?.includes("✓") ? uiIcon("check") : uiIcon("circle"); });
+        root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { button.innerHTML = uiIcon("add"); });
+        root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { node.innerHTML = uiIcon("calendar"); });
+    }
+
+    private iconNode(name: keyof typeof UI_ICON_PATHS): SVGElement {
+        const template = document.createElement("template");
+        template.innerHTML = uiIcon(name);
+        return template.content.firstElementChild as SVGElement;
     }
 
     private renderSettings(): string {
@@ -1245,8 +1296,8 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "⌂"], ["occasions", "事项", "◷"], ["history", "历史", "▦"], ["summary", "总结", "◒"], ["insights", "复盘", "⌁"], ["archived", "归档", "▤"], ["settings", "设置", "⚙"]] as const;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span aria-hidden="true">${icon}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span aria-hidden="true">＋</span><small>新建</small></button></nav>`;
+        const entries = [["today", "今日", "home"], ["occasions", "事项", "calendar"], ["history", "历史", "history"], ["summary", "总结", "summary"], ["insights", "复盘", "insight"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span>${uiIcon("add")}</span><small>新建</small></button></nav>`;
     }
 
     private renderToday(): string {
@@ -1314,14 +1365,14 @@ export default class CheckinPlugin extends Plugin {
                 </div>
                 <div class="lc-checkin__header-actions">
                     <span class="lc-checkin__count">${completed}<span>/</span>${scheduledItems.length}</span>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">▦</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">◒</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">⌁</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="occasions" aria-label="管理事项" title="事项">◷</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="cycle-density" aria-label="切换界面密度" title="界面密度">▤</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="settings" aria-label="打开设置" title="设置">⚙</button>
-                    ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">↗</button>` : ""}
-                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">+</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">${uiIcon("history")}</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">${uiIcon("summary")}</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">${uiIcon("insight")}</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="occasions" aria-label="管理事项" title="事项">${uiIcon("calendar")}</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="cycle-density" aria-label="切换界面密度" title="界面密度">${uiIcon("summary")}</button>
+                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="settings" aria-label="打开设置" title="设置">${uiIcon("settings")}</button>
+                    ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
+                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
                 </div>
             </header>
             <section class="lc-checkin__today-summary" aria-label="今日进度"><div><strong>${completed}</strong><span>已完成</span></div><div><strong>${pending}</strong><span>待处理</span></div><div><strong>${completionRate}%</strong><span>完成率</span></div></section>
@@ -1543,7 +1594,7 @@ export default class CheckinPlugin extends Plugin {
         const icon = isBinary
             ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${escapeHtml(item.icon)}</button>`
             : `<span class="lc-checkin__item-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`;
-        return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}">
+        return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
             ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">

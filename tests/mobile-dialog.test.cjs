@@ -35,8 +35,10 @@ assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
 assert.match(source, /data-quick-recent/,
     "quick dialog must expose recently recorded items");
-assert.match(source, /\[\["today", "今日", "⌂"\][\s\S]*\["insights", "复盘", "⌁"\]/,
-    "quick dialog navigation must expose habit insights");
+assert.match(source, /const entries = \[\["today", "今日", "home"\][\s\S]*\["insights", "复盘", "insight"\]/,
+    "quick dialog navigation must expose habit insights with the shared icon system");
+assert.match(source, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
+    "navigation icons must use the shared vector icon system");
 for (const destination of ["occasions", "history", "summary", "insights", "archived", "settings"]) {
     assert.match(source, new RegExp(`\\[\\"${destination}\\",`),
         `mobile navigation must include ${destination}`);
