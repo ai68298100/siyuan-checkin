@@ -34,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.4.0";
+const PLUGIN_VERSION = "8.5.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -1435,6 +1435,7 @@ export default class CheckinPlugin extends Plugin {
                 body: `
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>存储用量</span><small>打卡 ${this.store.items.length} 项 · 记录 ${this.store.events.length} 条${photoEvents.length ? ` · 照片 ${photoEvents.length} 张约 ${photoKb} KB` : ""}${iconKb ? ` · 图标库约 ${iconKb} KB` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 JSON（恢复备份）</span><small>用之前导出的 JSON 文件整体恢复打卡数据，将覆盖当前数据。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-json accept=".json,application/json" />选择文件</label></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 CSV</span><small>表头需含 名称、日期，可选 数值、单位。相同记录自动跳过。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />选择文件</label></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
             },
@@ -1485,6 +1486,35 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
+        root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const parsed = JSON.parse(await file.text());
+                if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items) || !Array.isArray(parsed.events)) {
+                    showMessage("JSON 格式不正确，请使用小驴打卡导出的文件");
+                    return;
+                }
+                const eventCount = parsed.events.length;
+                    const itemCount = parsed.items.length;
+                    if (!window.confirm(`将用备份文件恢复：${itemCount} 个项目、${eventCount} 条记录。当前数据将被覆盖，是否继续？`)) { input.value = ""; return; }
+                const previous = this.store;
+                this.store = normalizeStore(parsed);
+                try {
+                    await this.persist();
+                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录`);
+                } catch {
+                    this.store = previous;
+                    showMessage("恢复失败，原数据未变");
+                    return;
+                }
+                this.render();
+            } catch (error) {
+                showMessage(`导入失败：${String(error)}`);
+            }
+            input.value = "";
+        });
         root.querySelector<HTMLInputElement>("[data-import-csv]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
