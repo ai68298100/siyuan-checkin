@@ -719,6 +719,22 @@
 .lc-checkin__mobile-more-menu button { min-height: 48px; border: 0; border-radius: 9px; color: var(--modern-muted); background: transparent; }
 .lc-checkin__mobile-more-menu button:hover,
 .lc-checkin__mobile-more-menu button.is-selected { color: var(--modern-accent); background: var(--modern-accent-soft); }
+.lc-checkin__mobile-fab {
+    position: absolute;
+    right: 15px;
+    bottom: calc(100% + 12px);
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background: var(--modern-accent);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--modern-accent) 34%, transparent);
+}
+.lc-checkin__mobile-fab:hover { color: #fff; transform: translateY(-1px); filter: brightness(.97); }
+.lc-checkin__mobile-fab .lc-checkin__glyph { width: 22px; height: 22px; }
 
 @media (max-width: 600px) {
     /* Keep the first viewport focused on check-in rows: search, grouping,
@@ -740,4 +756,5 @@
     .lc-checkin__mobile-nav { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
     .lc-checkin__mobile-nav button { min-height: 43px; }
     .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin__mobile-fab { right: 14px; bottom: calc(100% + 10px); width: 44px; height: 44px; }
 }
