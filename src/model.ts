@@ -329,7 +329,7 @@ export function makeId(prefix: string): string {
     return `${prefix}-${Date.now().toString(36)}-${random}`;
 }
 
-function normalizeItem(value: unknown): CheckinItem | undefined {
+export function normalizeItem(value: unknown): CheckinItem | undefined {
     if (!isRecord(value) || typeof value.id !== "string" || !value.id.trim() || typeof value.name !== "string" || !value.name.trim()) {
         return undefined;
     }
@@ -373,6 +373,7 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
         timeSlot,
         completionSource,
         tomatoMode,
+        linkedOccasionId: typeof value.linkedOccasionId === "string" && value.linkedOccasionId.trim() ? value.linkedOccasionId.trim().slice(0, 64) : undefined,
     };
 }
 

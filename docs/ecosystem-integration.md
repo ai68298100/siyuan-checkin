@@ -19,6 +19,21 @@ await window.siyuanCheckin.recordEvent({
 
 相同 `source + externalRef` 的事件会被去重。同步失败时，外部插件应保留原始事件并允许稍后重试，不要生成新的随机引用。
 
+## 快速开始（10 分钟接入）
+
+最短路径：等待就绪 → 能力检查 → 写记录。可运行的完整示例见 [examples/tomato-bridge](../examples/tomato-bridge/plugin.js)：
+
+```js
+const checkin = window.siyuanCheckin;
+await checkin.whenReady();                      // 1. 等待数据加载
+if (!checkin.hasCapability("events.record")) return; // 2. 能力协商
+const item = checkin.getItems().find((i) => !i.archived); // 3. 选择项目
+await checkin.recordEvent({                     // 4. 写入记录（去重安全）
+    itemId: item.id, value: 25, unit: "分钟",
+    source: "tomato", externalRef: "session-001",
+});
+```
+
 ## 专注联动
 
 番茄钟可以通过 `registerFocusAdapter` 提供开始和停止专注能力。适配器不可用、宿主不支持或调用超时时，核心打卡仍可离线使用。

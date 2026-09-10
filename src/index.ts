@@ -12,7 +12,7 @@ import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-fi
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
-import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
+import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -30,7 +30,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "5.0.1";
+const PLUGIN_VERSION = "6.0.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -246,6 +246,8 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerInterval?: number;
     private focusTimerRoot?: HTMLElement;
     private focusTimerMinutes = 25;
+    private bulkMode = false;
+    private bulkSelected = new Set<string>();
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
@@ -1543,6 +1545,14 @@ export default class CheckinPlugin extends Plugin {
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
                 </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button></div></details>
+                <button class="lc-checkin__filter-toggle ${this.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${this.bulkMode}">多选</button>
+            </div>` : ""}
+            ${this.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="批量操作">
+                <strong>已选 ${this.bulkSelected.size}</strong>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-all">全选待办</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">全部完成</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">归档</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">退出多选</button>
             </div>` : ""}
             <main class="lc-checkin__list">${list}${occasionBanner}</main>
         </div>`;
@@ -1781,7 +1791,7 @@ export default class CheckinPlugin extends Plugin {
             const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
             const countdown = next ? `${next} · 还有 ${Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))} 天` : "已结束";
             const recurrence = describeRecurrence(item);
-            return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">编辑</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="切换${escapeHtml(item.name)}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="删除${escapeHtml(item.name)}" title="删除">×</button></article>`;
+            return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><button class="lc-checkin__text-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}">转打卡</button><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">编辑</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="切换${escapeHtml(item.name)}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="删除${escapeHtml(item.name)}" title="删除">×</button></article>`;
         }).join("") : '<div class="lc-checkin__empty-description">还没有日期事项。可以从模板开始，或自行添加。</div>';
         const date = editing?.date || dateKey(currentCalendarDate());
         const editLabel = editing ? "编辑事项" : "新建事项";
@@ -1886,6 +1896,7 @@ export default class CheckinPlugin extends Plugin {
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
+                ${this.bulkMode ? `<button class="lc-checkin__bulk-check${this.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${this.bulkSelected.has(item.id)}" aria-label="选择 ${escapeHtml(item.name)}">${this.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="开始专注" title="开始专注">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? "取消" : "打卡"}</button>`
@@ -2052,6 +2063,7 @@ export default class CheckinPlugin extends Plugin {
     private bindToday(root: HTMLElement) {
         this.bindDialogClose(root);
         this.bindItemDrag(root);
+        this.bindBulkMode(root);
         this.bindFocusTimerPanel(root);
         this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
@@ -2219,6 +2231,9 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='new-occasion']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
         root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
         root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { this.editingOccasionId = button.dataset.occasionEdit; this.render(); }));
+        root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
+            void this.enqueueMutation(async () => { await this.createOccasionLinkedItem(button.dataset.occasionToitem || ""); });
+        }));
         root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
             const id = button.dataset.occasionToggle || "";
             const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
@@ -3275,6 +3290,10 @@ export default class CheckinPlugin extends Plugin {
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item: current, event});
+        /* 6.0 occasion linkage: completing a generated one-shot item resolves its occasion. */
+        if (current.linkedOccasionId && isComplete(this.store, current, actionDate)) {
+            void this.setOccasionCompleted(current.linkedOccasionId, moment.localDate, true);
+        }
         this.setRecentRecord({
             eventId: event.id,
             itemId: current.id,
@@ -3491,6 +3510,64 @@ export default class CheckinPlugin extends Plugin {
         return write;
     }
 
+    /* 6.0 P1 bulk operations: multi-select pending rows, then complete/archive in one pass. */
+    private bindBulkMode(root: HTMLElement) {
+        root.querySelector<HTMLElement>("[data-action='toggle-bulk']")?.addEventListener("click", () => {
+            this.bulkMode = !this.bulkMode;
+            this.bulkSelected.clear();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='bulk-exit']")?.addEventListener("click", () => {
+            this.bulkMode = false;
+            this.bulkSelected.clear();
+            this.render();
+        });
+        root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((button) => button.addEventListener("click", () => {
+            const id = button.dataset.bulkCheck || "";
+            if (!id) return;
+            if (this.bulkSelected.has(id)) this.bulkSelected.delete(id);
+            else this.bulkSelected.add(id);
+            this.render();
+        }));
+        root.querySelector<HTMLElement>("[data-action='bulk-all']")?.addEventListener("click", () => {
+            const date = currentCalendarDate();
+            for (const item of this.store.items) {
+                if (item.archived || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date) || isComplete(this.store, item, date)) continue;
+                this.bulkSelected.add(item.id);
+            }
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", () => {
+            const ids = [...this.bulkSelected];
+            if (!ids.length) return;
+            const date = currentCalendarDate();
+            for (const id of ids) {
+                const item = this.store.items.find((candidate) => candidate.id === id && !candidate.archived);
+                if (!item || isComplete(this.store, item, date)) continue;
+                const moment = captureActionMoment();
+                const revision = getItemRevisionForDate(item, date);
+                const fingerprint = this.revisionFingerprint(item, date);
+                const remaining = evaluateRule(item, this.store.events, date).remaining ?? 0;
+                const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
+                if (value <= 0) continue;
+                void this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint));
+            }
+            this.bulkMode = false;
+            this.bulkSelected.clear();
+        });
+        root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", () => {
+            const ids = [...this.bulkSelected];
+            if (!ids.length) return;
+            for (const id of ids) {
+                const item = this.store.items.find((candidate) => candidate.id === id && !candidate.archived);
+                if (!item) continue;
+                void this.enqueueMutation(() => this.setItemArchived(id, true, captureActionMoment(), this.itemFingerprint(item)));
+            }
+            this.bulkMode = false;
+            this.bulkSelected.clear();
+        });
+    }
+
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;
        drop persists group-local sortOrder 1..N (manual sort mode only). */
     private bindItemDrag(root: HTMLElement) {
@@ -3665,6 +3742,49 @@ export default class CheckinPlugin extends Plugin {
             panel.querySelectorAll("[data-focus-timer-minutes]").forEach((entry) => entry.classList.toggle("is-selected", entry === button));
             this.paintFocusTimer(panel, this.focusTimerState);
         }));
+    }
+
+    /* 6.0 P3 occasion → checkin linkage: generate a one-shot binary item that is
+       only visible on the occasion's next occurrence date; completing it (or the
+       manual "处理" action) resolves the occasion for that date. */
+    private async createOccasionLinkedItem(occasionId: string): Promise<boolean> {
+        const occasion = this.occasionStore.occasions.find((candidate) => candidate.id === occasionId);
+        if (!occasion) return false;
+        const today = dateKey(currentCalendarDate());
+        const occurrence = getOccurrenceDate(occasion, today) ?? occasion.date;
+        if (!isValidLocalDateInput(occurrence)) return false;
+        const dayAfter = dateKey(new Date(calendarDateFromKey(occurrence).getFullYear(), calendarDateFromKey(occurrence).getMonth(), calendarDateFromKey(occurrence).getDate() + 1));
+        const now = new Date().toISOString();
+        const created = normalizeCheckinItem({
+            id: makeId("item"),
+            name: occasion.name,
+            icon: occasion.kind === "birthday" ? "🎂" : occasion.kind === "anniversary" ? "💍" : "◷",
+            kind: "binary",
+            target: 1,
+            unit: "次",
+            schedule: {type: "daily"},
+            createdDate: today,
+            createdAt: now,
+            updatedAt: now,
+            archivePeriods: [{startDate: "0000-01-01", endDate: occurrence}, {startDate: dayAfter}],
+            linkedOccasionId: occasion.id,
+        });
+        if (!created) { showMessage("无法生成打卡项"); return false; }
+        if (this.store.items.some((candidate) => candidate.linkedOccasionId === occasion.id && !candidate.archived)) {
+            showMessage("该事项已生成过打卡项");
+            return false;
+        }
+        const previous = this.store;
+        this.store = {...this.store, items: [...this.store.items, created]};
+        try {
+            await this.persist();
+        } catch {
+            this.store = previous;
+            showMessage("打卡项生成失败，请重试");
+            return false;
+        }
+        showMessage(`已在今日页生成打卡项：${occasion.name}`);
+        return true;
     }
 
     private async saveOccasionForm(data: FormData) {

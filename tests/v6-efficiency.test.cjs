@@ -25,3 +25,25 @@ assert.match(source, /recordEvent\(item, value, moment, fingerprint, `专注 \$\
 assert.match(source, /registerFocusAdapter/, "external focus adapters keep priority over the built-in timer");
 
 console.log("6.0 efficiency feature checks passed.");
+
+/* 6.0 P1 批量操作 */
+assert.match(source, /data-action="toggle-bulk"/, "today exposes a bulk-select toggle");
+assert.match(source, /data-bulk-check=/, "pending rows expose selection checkboxes");
+assert.match(source, /data-action="bulk-complete"/, "bulk completion action exists");
+assert.match(source, /data-action="bulk-archive"/, "bulk archive action exists");
+assert.match(source, /bulk-all/, "select-all-pending action exists");
+
+/* 6.0 P3 日期事项 → 打卡项联动 */
+assert.match(source, /data-occasion-toitem=/, "occasion rows can generate a check-in item");
+assert.match(source, /private async createOccasionLinkedItem\(/, "linked item creation exists");
+assert.match(source, /linkedOccasionId: occasion\.id/, "generated item links back to the occasion");
+assert.match(source, /archivePeriods: \[\{startDate: "0000-01-01", endDate: occurrence\}, \{startDate: dayAfter\}\]/,
+    "generated item is visible only on the occurrence date");
+assert.match(source, /linkedOccasionId && isComplete\(this\.store, current, actionDate\)/,
+    "completing the generated item resolves the occasion");
+
+/* 数据模型 */
+const model = fs.readFileSync(path.join(root, "src", "model.ts"), "utf8");
+assert.match(model, /linkedOccasionId: typeof value\.linkedOccasionId === "string"/, "model normalizes the linkage field");
+const types = fs.readFileSync(path.join(root, "src", "types.ts"), "utf8");
+assert.match(types, /linkedOccasionId\?: string;/, "CheckinItem declares the linkage field");

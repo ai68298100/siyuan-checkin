@@ -66,6 +66,8 @@ export interface CheckinItem {
     sortOrder?: number;
     /** Optional part of day used by the time grouping view. */
     timeSlot?: CheckinTimeSlot;
+    /** Set on one-shot items generated from a date occasion; links completion back to it. */
+    linkedOccasionId?: string;
     /** How completion is supplied. Tomato mode is written by a compatible plugin. */
     completionSource?: CompletionSource;
     /** Whether tomato completion contributes minutes or completed sessions. */

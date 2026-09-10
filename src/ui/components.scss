@@ -1539,3 +1539,37 @@
 .lc-checkin__focus-actions { display: flex; justify-content: center; gap: 6px; }
 .lc-checkin__focus-actions .lc-checkin__text-button { color: rgba(245, 245, 250, 0.75); }
 .lc-checkin__focus-actions .lc-checkin__text-button:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* ============================================================
+   6.0 P1 批量操作
+   ============================================================ */
+.lc-checkin__bulk-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    padding: 9px 14px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, var(--lc-checkin-border));
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin__bulk-bar strong { color: var(--lc-checkin-accent-strong); font-size: 12.5px; font-weight: 700; }
+.lc-checkin__bulk-bar .lc-checkin__text-button { min-height: 28px; font-size: 11.5px; }
+.lc-checkin__bulk-check {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    margin-right: 2px;
+    border: 2px solid var(--lc-checkin-border-strong);
+    border-radius: 50%;
+    color: #fff;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin__bulk-check.is-selected { border-color: transparent; background: var(--lc-checkin-accent); }
