@@ -530,3 +530,89 @@
     .lc-checkin--today .lc-checkin__item-icon { width: 32px; height: 32px; flex-basis: 32px; }
     .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
+
+/* Dense workbench cards: groups become true two-column shelves on desktop,
+   while the item itself keeps its internal icon/body/action grid.  The
+   previous legacy layer forced every item to span the entire group, which
+   made a long list feel sparse and pushed the primary action away from the
+   habit name. */
+@media (min-width: 701px) {
+    .lc-checkin--today .lc-checkin__group-items {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+    }
+    .lc-checkin--today .lc-checkin__item { grid-column: auto; }
+}
+
+@media (max-width: 700px) {
+    .lc-checkin--today .lc-checkin__group-items {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .lc-checkin--today .lc-checkin__item { grid-column: auto; }
+}
+
+/* Keep the progress ring and the soft icon tint together.  The old
+   nth-child color rules replaced the conic-gradient entirely, so the ring
+   was visually absent even though --item-progress was populated. */
+.lc-checkin--today .lc-checkin__item-icon {
+    --icon-tint: var(--modern-surface-soft);
+    background: linear-gradient(var(--icon-tint), var(--icon-tint)) padding-box,
+        conic-gradient(var(--card-accent) var(--item-progress), color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface)) 0) border-box;
+}
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 1) .lc-checkin__item-icon {
+    --icon-tint: color-mix(in srgb, var(--modern-accent) 13%, var(--modern-surface));
+    color: var(--modern-accent);
+}
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 2) .lc-checkin__item-icon {
+    --icon-tint: color-mix(in srgb, var(--lc-checkin-success) 13%, var(--modern-surface));
+    color: var(--lc-checkin-success);
+}
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 3) .lc-checkin__item-icon {
+    --icon-tint: color-mix(in srgb, var(--lc-checkin-warning) 15%, var(--modern-surface));
+    color: var(--lc-checkin-warning);
+}
+.lc-checkin--today .lc-checkin__item-name { text-align: left; }
+
+/* Final emphasis pass: cards should read as tangible work items, while
+   completed items remain legible instead of fading into the background. */
+.lc-checkin--today .lc-checkin__item {
+    border-color: color-mix(in srgb, var(--card-accent) 25%, var(--modern-border));
+    background: linear-gradient(100deg, color-mix(in srgb, var(--card-accent) 5%, var(--modern-surface)), var(--modern-surface) 46%);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--card-accent) 9%, transparent);
+}
+.lc-checkin--today .lc-checkin__item::before { width: 4px; border-radius: 4px; }
+.lc-checkin--today .lc-checkin__item.is-complete { opacity: 1; border-color: color-mix(in srgb, var(--lc-checkin-success) 32%, var(--modern-border)); background: color-mix(in srgb, var(--lc-checkin-success) 5%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { color: var(--modern-muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--lc-checkin-success) 50%, transparent); }
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-meta { color: var(--modern-muted); }
+.lc-checkin--today .lc-checkin__item-icon { background: linear-gradient(var(--icon-tint, var(--modern-surface-soft)), var(--icon-tint, var(--modern-surface-soft))) padding-box, conic-gradient(var(--card-accent) var(--item-progress), color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface)) 0) border-box; }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 1) .lc-checkin__item-icon,
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 2) .lc-checkin__item-icon,
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 3) .lc-checkin__item-icon { background: linear-gradient(var(--icon-tint, var(--modern-surface-soft)), var(--icon-tint, var(--modern-surface-soft))) padding-box, conic-gradient(var(--card-accent) var(--item-progress), color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface)) 0) border-box; }
+
+.lc-checkin__mobile-nav { position: relative; }
+.lc-checkin__mobile-more-menu { position: absolute; right: 8px; bottom: calc(100% + 8px); display: grid; grid-template-columns: repeat(3, minmax(62px, 1fr)); gap: 5px; min-width: 210px; padding: 7px; border: 1px solid var(--modern-border); border-radius: 13px; background: color-mix(in srgb, var(--modern-surface) 96%, transparent); box-shadow: 0 10px 28px color-mix(in srgb, var(--b3-theme-on-background) 16%, transparent); backdrop-filter: blur(16px); }
+.lc-checkin__mobile-more-menu[hidden] { display: none; }
+.lc-checkin__mobile-more-menu button { min-height: 48px; border: 0; border-radius: 9px; color: var(--modern-muted); background: transparent; }
+.lc-checkin__mobile-more-menu button:hover,
+.lc-checkin__mobile-more-menu button.is-selected { color: var(--modern-accent); background: var(--modern-accent-soft); }
+
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; margin-bottom: 10px; padding: 5px; border-radius: 9px; }
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__organize label > span { margin: 0; height: 0; overflow: hidden; font-size: 0; }
+    .lc-checkin--today .lc-checkin__organize :is(input, select) { min-height: 30px; height: 30px; padding-top: 0; padding-bottom: 0; font-size: 11px; }
+    .lc-checkin--today .lc-checkin__filter-toggle { grid-column: 1 / -1; min-height: 28px; height: 28px; padding: 0 8px; font-size: 10px; }
+    .lc-checkin--today .lc-checkin__list { gap: 10px; }
+    .lc-checkin--today .lc-checkin__group { margin-top: 14px; }
+    .lc-checkin--today .lc-checkin__group-items { gap: 5px; }
+    .lc-checkin--today .lc-checkin__item { min-height: 58px; padding: 7px 8px; }
+    .lc-checkin--today .lc-checkin__item-icon { width: 31px; height: 31px; border-radius: 10px; font-size: 16px; }
+    .lc-checkin--today .lc-checkin__item-body { padding: 0 7px; }
+    .lc-checkin--today .lc-checkin__item-meta { margin-top: 1px; font-size: 9px; }
+    .lc-checkin--today .lc-checkin__item-progress { margin-top: 4px; }
+    .lc-checkin__mobile-nav { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+    .lc-checkin__mobile-nav button { min-height: 43px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+}

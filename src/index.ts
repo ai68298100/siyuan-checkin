@@ -1296,8 +1296,10 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "home"], ["occasions", "事项", "calendar"], ["history", "历史", "history"], ["summary", "总结", "summary"], ["insights", "复盘", "insight"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span>${uiIcon("add")}</span><small>新建</small></button></nav>`;
+        const entries = [["today", "今日", "home"], ["history", "历史", "history"], ["summary", "总结", "summary"], ["insights", "复盘", "insight"]] as const;
+        const secondary = [["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        const secondaryActive = secondary.some(([page]) => this.currentPage === page);
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航"><div class="lc-checkin__mobile-more-menu" data-mobile-more-menu hidden>${secondary.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="more" class="${secondaryActive ? "is-selected" : ""}" aria-expanded="false" aria-label="更多导航"><span>${uiIcon("more")}</span><small>更多</small></button><button type="button" data-mobile-nav="add" aria-label="新建打卡项"><span>${uiIcon("add")}</span><small>新建</small></button></nav>`;
     }
 
     private renderToday(): string {
@@ -2082,6 +2084,14 @@ export default class CheckinPlugin extends Plugin {
     private bindMobileNav(root: HTMLElement) {
         root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
             const page = button.dataset.mobileNav;
+            if (page === "more") {
+                const menu = root.querySelector<HTMLElement>("[data-mobile-more-menu]");
+                const trigger = button;
+                const open = menu?.hasAttribute("hidden") ?? true;
+                if (menu) menu.toggleAttribute("hidden", !open);
+                trigger.setAttribute("aria-expanded", String(open));
+                return;
+            }
             if (page === "today") this.showToday();
             else if (page === "history") this.showHistory();
             else if (page === "summary") this.showSummary();
