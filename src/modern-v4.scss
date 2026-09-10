@@ -608,6 +608,16 @@
 .lc-checkin--editor .lc-checkin__custom-icon-row { display: flex; gap: 6px; }
 .lc-checkin--editor .lc-checkin__custom-icon-row input { min-width: 0; min-height: 33px; flex: 1; border-radius: 999px; font-size: 11px; }
 .lc-checkin--editor .lc-checkin__custom-icon-row button { min-width: 52px; border: 0; border-radius: 999px; color: #fff; background: var(--modern-accent); font-size: 11px; font-weight: 700; }
+.lc-checkin--editor .lc-checkin__custom-icon-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
+.lc-checkin--editor .lc-checkin__custom-icon-tools button,
+.lc-checkin--editor .lc-checkin__file-button { min-height: 28px; padding: 0 10px; border: 1px solid var(--modern-border); border-radius: 999px; color: var(--modern-ink); background: var(--modern-surface); font-size: 10px; font-weight: 650; cursor: pointer; }
+.lc-checkin--editor .lc-checkin__file-button input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.lc-checkin--editor .lc-checkin__custom-icon-tools small { flex: 1 1 180px; color: var(--modern-muted); font-size: 9px; line-height: 1.35; }
+.lc-checkin--editor .lc-checkin__custom-icon-tools button:hover,
+.lc-checkin--editor .lc-checkin__file-button:hover { border-color: var(--modern-accent); color: var(--modern-accent); background: var(--modern-lilac-soft); }
+.lc-checkin--editor .lc-checkin__custom-library { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--modern-border); }
+.lc-checkin--editor .lc-checkin__custom-library > small { display: block; margin-bottom: 5px; color: var(--modern-muted); font-size: 9px; }
+.lc-checkin--editor .lc-checkin__custom-library .lc-checkin__icon-option img { width: 70%; height: 70%; object-fit: contain; }
 .lc-checkin--editor :is(.lc-checkin__preview-icon, .lc-checkin__item-icon) img { display: block; width: 70%; height: 70%; object-fit: contain; border-radius: 50%; }
 .lc-checkin--editor .lc-checkin__integration-help { margin: -3px 0 0; color: var(--modern-muted); font-size: 10px; line-height: 1.45; }
 @media (max-width: 600px) {

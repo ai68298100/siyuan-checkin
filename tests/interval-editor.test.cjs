@@ -30,5 +30,10 @@ assert.match(source, /name="tomatoMode"/);
 assert.match(source, /data-tomato-mode-field/);
 assert.match(source, /source=tomato/);
 assert.match(source, /completionSource: data\.get\("completionSource"\) === "tomato"/);
+assert.match(source, /data-custom-icon-file/);
+assert.match(source, /data-custom-icon-library/);
+assert.match(source, /data-action="open-iconfont"/);
+assert.match(source, /data-action='download-custom-icon'/);
+assert.match(source, /normalizeCustomIconLibrary/);
 
 console.log("Interval editor structure checks passed.");

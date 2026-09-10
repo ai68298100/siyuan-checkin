@@ -34,7 +34,10 @@ import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} fro
 const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
+const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
+const MAX_CUSTOM_ICON_BYTES = 240_000;
+const MAX_CUSTOM_LIBRARY_ITEMS = 128;
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
@@ -171,6 +174,7 @@ export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private occasionStore: OccasionStore = createDefaultOccasionStore();
     private userTemplates: UserTemplate[] = [];
+    private customIconLibrary: string[] = [];
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
     private quickDialog?: Dialog;
@@ -340,10 +344,12 @@ export default class CheckinPlugin extends Plugin {
                 const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
                 const occasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
                 const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
+                const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
+                this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -375,7 +381,9 @@ export default class CheckinPlugin extends Plugin {
             const preferences = normalizeViewPreferences(await this.loadData(VIEW_PREFERENCES_NAME));
             this.occasionStore = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
             const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
+            const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
             this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
+            this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();
         } catch (error) {
@@ -1714,8 +1722,11 @@ export default class CheckinPlugin extends Plugin {
                         }).join("")}</div></section>`).join("")}</div>
                         <div class="lc-checkin__search-empty lc-checkin__search-empty--compact" data-icon-empty hidden><strong>没有匹配的图标</strong><button type="button" data-action="clear-icon-query">清除搜索</button></div>
                         <div class="lc-checkin__custom-icon" data-custom-icon-panel>
-                            <div class="lc-checkin__custom-icon-heading"><strong>自定义图标</strong><small>支持 emoji、符号或 HTTPS 图片地址</small></div>
+                            <div class="lc-checkin__custom-icon-heading"><strong>自定义图标</strong><small>本地图片会占用插件存储空间，单图上限约 234 KB</small></div>
                             <div class="lc-checkin__custom-icon-row"><input type="text" data-custom-icon-input maxlength="500" value="${escapeHtml(ICON_GROUPS.some((group) => group.icons.includes(selectedIcon)) ? "" : selectedIcon)}" placeholder="例如：🎯 或 https://example.com/icon.png" aria-label="自定义图标" /><button type="button" data-action="apply-custom-icon">应用</button></div>
+                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-file accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" />上传图片</label><button type="button" data-action="download-custom-icon">保存远程图</button><button type="button" data-action="open-iconfont">阿里图标库</button></div>
+                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-library accept=".json,.txt,application/json,text/plain" />导入图标库</label><small>支持图标 URL、data URL 或 emoji，每行一个，也支持 JSON 数组</small></div>
+                            ${this.customIconLibrary.length ? `<div class="lc-checkin__custom-library" data-custom-library><small>我的图标库 · ${this.customIconLibrary.length} 个</small><div class="lc-checkin__icon-grid">${this.customIconLibrary.map((icon) => `<button class="lc-checkin__icon-option" type="button" data-library-icon="${escapeHtml(icon)}" aria-label="使用自定义图标">${renderIconMarkup(icon)}</button>`).join("")}</div></div>` : ""}
                         </div>
                         <input name="icon" type="hidden" value="${escapeHtml(selectedIcon)}" />
                     </div>
@@ -2344,9 +2355,74 @@ export default class CheckinPlugin extends Plugin {
             if (input) input.value = customIcon;
             updateEditorPreview();
         };
+        const applyLocalIcon = (icon: string, storageLabel: string) => {
+            if (icon.length > MAX_CUSTOM_ICON_BYTES) {
+                showMessage(`[小驴打卡] 图片过大，${storageLabel}后会占用超过 ${Math.round(MAX_CUSTOM_ICON_BYTES / 1024)} KB，请选择更小的图片`);
+                return;
+            }
+            const sizeKb = Math.max(1, Math.round(icon.length * 0.75 / 1024));
+            if (!window.confirm(`将图片保存到打卡数据中，预计占用约 ${sizeKb} KB。是否继续？`)) return;
+            selectIcon(icon);
+            const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
+            if (input) input.value = icon;
+            updateEditorPreview();
+        };
+        const readImageFile = async (file: File): Promise<string> => {
+            if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
+            if (file.size > MAX_CUSTOM_ICON_BYTES) throw new Error(`图片超过 ${Math.round(MAX_CUSTOM_ICON_BYTES / 1024)} KB 限制`);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("图片读取失败"));
+                reader.onerror = () => reject(new Error("图片读取失败"));
+                reader.readAsDataURL(file);
+            });
+        };
         root.querySelector<HTMLElement>("[data-action='apply-custom-icon']")?.addEventListener("click", applyCustomIcon);
         root.querySelector<HTMLInputElement>("[data-custom-icon-input]")?.addEventListener("keydown", (event) => {
             if (event.key === "Enter") { event.preventDefault(); applyCustomIcon(); }
+        });
+        root.querySelector<HTMLInputElement>("[data-custom-icon-file]")?.addEventListener("change", async (event) => {
+            const file = (event.currentTarget as HTMLInputElement).files?.[0];
+            if (!file) return;
+            try { applyLocalIcon(await readImageFile(file), "上传"); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
+        });
+        root.querySelector<HTMLElement>("[data-action='download-custom-icon']")?.addEventListener("click", async () => {
+            const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
+            const url = normalizeCustomIcon(input?.value || "");
+            if (!url || !/^https:\/\//i.test(url)) { showMessage("请先输入 HTTPS 图片地址"); input?.focus(); return; }
+            try {
+                const response = await fetch(url, {credentials: "omit"});
+                if (!response.ok) throw new Error(`下载失败（${response.status}）`);
+                const blob = await response.blob();
+                if (!blob.type.startsWith("image/")) throw new Error("地址返回的不是图片");
+                applyLocalIcon(await readImageFile(new File([blob], "icon", {type: blob.type})), "下载");
+            } catch (error) {
+                showMessage(`[小驴打卡] 无法下载图片，可能是站点禁止跨域访问。你也可以直接上传图片：${String(error instanceof Error ? error.message : error)}`);
+            }
+        });
+        root.querySelector<HTMLElement>("[data-action='open-iconfont']")?.addEventListener("click", () => {
+            window.open("https://www.iconfont.cn/", "_blank", "noopener,noreferrer");
+        });
+        root.querySelectorAll<HTMLButtonElement>("[data-library-icon]").forEach((button) => button.addEventListener("click", () => {
+            const icon = button.dataset.libraryIcon || "";
+            if (icon) { selectIcon(icon); const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]"); if (input) input.value = icon; updateEditorPreview(); }
+        }));
+        root.querySelector<HTMLInputElement>("[data-custom-icon-library]")?.addEventListener("change", async (event) => {
+            const file = (event.currentTarget as HTMLInputElement).files?.[0];
+            if (!file) return;
+            try {
+                const parsed = parseCustomIconLibrary(await file.text());
+                if (!parsed.length) throw new Error("没有找到可用图标");
+                const merged = normalizeCustomIconLibrary([...this.customIconLibrary, ...parsed]);
+                const added = merged.length - this.customIconLibrary.length;
+                if (!added) throw new Error("图标库中没有新的图标");
+                const sizeKb = Math.max(1, Math.round(merged.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
+                if (!window.confirm(`将导入 ${added} 个图标，图标库预计占用约 ${sizeKb} KB。是否继续？`)) return;
+                this.customIconLibrary = merged;
+                await this.saveData(CUSTOM_ICON_LIBRARY_NAME, this.customIconLibrary);
+                showMessage(`[小驴打卡] 已导入 ${added} 个自定义图标`);
+                this.render();
+            } catch (error) { showMessage(`[小驴打卡] 导入图标库失败：${String(error instanceof Error ? error.message : error)}`); }
         });
         let previousKind = getKind();
         const bindUnitOptions = () => {
@@ -3286,6 +3362,10 @@ function escapeHtml(value: string): string {
 function normalizeCustomIcon(value: string): string | undefined {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
+    if (/^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,/i.test(trimmed)) {
+        const compact = trimmed.replace(/\s+/g, "");
+        return /^[\x00-\x7F]*$/.test(compact) && compact.length <= MAX_CUSTOM_ICON_BYTES ? compact : undefined;
+    }
     if (!/^https:\/\//i.test(trimmed)) return trimmed.slice(0, 24);
     try {
         const url = new URL(trimmed);
@@ -3296,8 +3376,28 @@ function normalizeCustomIcon(value: string): string | undefined {
     }
 }
 
+function normalizeCustomIconLibrary(value: unknown): string[] {
+    const entries = Array.isArray(value) ? value : [];
+    const result: string[] = [];
+    for (const entry of entries) {
+        const icon = typeof entry === "string" ? normalizeCustomIcon(entry) : undefined;
+        if (icon && !result.includes(icon)) result.push(icon);
+        if (result.length >= MAX_CUSTOM_LIBRARY_ITEMS) break;
+    }
+    return result;
+}
+
+function parseCustomIconLibrary(text: string): string[] {
+    let entries: unknown = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    try {
+        const parsed = JSON.parse(text) as unknown;
+        entries = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" && Array.isArray((parsed as {icons?: unknown}).icons) ? (parsed as {icons: unknown[]}).icons : entries;
+    } catch { /* newline-separated format */ }
+    return normalizeCustomIconLibrary(entries);
+}
+
 function renderIconMarkup(value: string): string {
-    if (/^https:\/\//i.test(value)) {
+    if (/^(?:https:\/\/|data:image\/)/i.test(value)) {
         return `<img src="${escapeHtml(value)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
     }
     return escapeHtml(value);
