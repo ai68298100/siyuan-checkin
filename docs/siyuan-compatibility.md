@@ -7,7 +7,7 @@
 
 插件只依赖思源公开插件接口：`Plugin`、`Dialog`、`addDock`、`addTab`、`addCommand`、`showMessage` 和 `getFrontend`。业务数据保存在插件自身存储中，未直接依赖思源内部 DOM 结构。插件 API 通过 `window.siyuanCheckin` 提供标准总结与自定义日期范围总结，不依赖思源内部接口。
 
-在支持 `addAgentCapability` 的思源版本中，插件向思源自带智能体注册四项能力：`checkin-summary-context` 读取日、周、月或自定义范围的聚合上下文，`checkin-list-items` 列出项目配置，`checkin-item-insights` 读取单项完成率、连续记录和趋势，`checkin-record-event` 在用户明确要求时记录一次打卡。前三项只读并声明本地读取，最后一项单独声明本地写入，思源智能体可以据此执行权限确认。能力输出使用结构化 JSON，智能体可以先查询再分析，最后在确认后执行写入；插件沿用思源已经配置的模型和密钥，无需重复维护 API，也不直接调用未公开的 `/api/ai/agent/chat` 内部端点。较旧版本没有该方法时，核心打卡、公开 API 和第三方总结适配器保持可用。
+在支持 `addAgentCapability` 的思源版本中，插件向思源自带智能体注册六项能力：`checkin-summary-context` 读取日、周、月或自定义范围的聚合上下文，`checkin-list-items` 列出项目配置，`checkin-item-insights` 读取单项完成率、连续记录和趋势，`checkin-list-occasions` 读取日期事项，`checkin-record-event` 在用户明确要求时记录一次打卡，`checkin-complete-occasion` 在用户明确要求时处理日期事项。前四项只读并声明本地读取，后两项单独声明本地写入，思源智能体可以据此执行权限确认。能力输出使用结构化 JSON，智能体可以先查询再分析，最后在确认后执行写入；插件沿用思源已经配置的模型和密钥，无需重复维护 API，也不直接调用未公开的 `/api/ai/agent/chat` 内部端点。较旧版本没有该方法时，核心打卡、公开 API 和第三方总结适配器保持可用。
 
 `window.siyuanCheckin.version` 当前为 4。版本 2 新增 `getCustomSummaryContext`，版本 3 新增 `summarizeCustom`，版本 4 新增日期事项读取与处理接口（`getOccasions`、`getTodayOccasions`、`completeOccasion`）；调用方应先检查版本，再使用这些能力。
 
