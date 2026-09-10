@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const readme = fs.readFileSync("README.md", "utf8");
 const changeLog = fs.readFileSync("docs/v4.0-ui-change-log.md", "utf8");
 const roadmap = fs.readFileSync("docs/ui-product-roadmap.md", "utf8");
-assert.match(readme, /当前开发线：4\.0/);
+assert.match(readme, /思源 v3\.4\.2/);
 assert.match(readme, /pnpm run test:ui/);
 assert.match(readme, /docs\/v4\.0-ui-change-log\.md/);
 assert.match(readme, /docs\/ui-product-roadmap\.md/);

@@ -1,6 +1,6 @@
 {
   "name": "siyuan-checkin",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "SiYuan plugin: 小飞驴打卡",
   "main": "index.js",
   "scripts": {
