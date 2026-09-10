@@ -1085,6 +1085,10 @@
 @media (max-width: 600px) {
     .lc-checkin-dialog {
         width: 100vw !important;
+        /* Keep a stable fallback for engines without dynamic viewport units;
+           the 100dvh/100svh rules below take precedence when supported. */
+        height: 88vh !important;
+        max-height: 88vh;
         height: 100dvh !important;
         max-width: 100vw;
         max-height: 100dvh;

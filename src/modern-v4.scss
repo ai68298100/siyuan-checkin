@@ -896,3 +896,17 @@
     .lc-checkin--today .lc-checkin__today-filters { grid-column: 1 / -1; }
     .lc-checkin--today .lc-checkin__today-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Editor mobile hierarchy: templates and the icon catalog remain available,
+   but their scroll areas no longer push the name and target fields below the
+   first screen. */
+@media (max-width: 600px) {
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 190px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__templates { max-height: 112px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__field--icons { max-height: 360px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__icon-results { max-height: 170px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__custom-icon { margin-top: 7px; }
+    .lc-checkin--editor .lc-checkin__custom-icon-tools { gap: 4px; }
+    .lc-checkin--editor .lc-checkin__custom-icon-tools button,
+    .lc-checkin--editor .lc-checkin__file-button { min-height: 26px; padding-inline: 8px; font-size: 9px; }
+}
