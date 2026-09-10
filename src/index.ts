@@ -836,8 +836,8 @@ export default class CheckinPlugin extends Plugin {
         dialog = new Dialog({
             title: "",
             content: `<div class="${hostClass}" role="region" aria-label="小驴打卡快速窗口"></div>`,
-            width: this.isMobileFrontend ? "94vw" : size.width,
-            height: this.isMobileFrontend ? "88vh" : size.height,
+            width: this.isMobileFrontend ? "100vw" : size.width,
+            height: this.isMobileFrontend ? "100dvh" : size.height,
             disableAnimation: this.isMobileFrontend,
             destroyCallback: () => {
                 if (dialog) this.handleQuickDialogDestroyed(dialog);
@@ -1356,6 +1356,10 @@ export default class CheckinPlugin extends Plugin {
             button.title = this.quickDialogFullscreen ? "退出全屏" : "全屏显示";
             button.innerHTML = uiIcon("expand");
             root.prepend(button);
+        }
+        if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
+            root.querySelector(".lc-checkin")?.insertAdjacentHTML("afterbegin",
+                `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><span class="lc-checkin__topbar-spacer"></span></div>`);
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
@@ -4013,6 +4017,17 @@ export default class CheckinPlugin extends Plugin {
             this.store = previous;
             showMessage("[小驴打卡] 排序保存失败，请重试");
             return false;
+        }
+    }
+
+    private getPageTitle(): string {
+        switch (this.currentPage) {
+            case "review": return t("review.title");
+            case "occasions": return t("occasions.title");
+            case "archived": return t("archived.title");
+            case "settings": return t("settings.title");
+            case "editor": return this.editingId ? t("editor.edit") : t("editor.create");
+            default: return t("today.title");
         }
     }
 
