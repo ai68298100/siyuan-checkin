@@ -531,6 +531,51 @@
     .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
 
+/* Icon picker: make the catalog feel like a visual palette instead of a
+   dense character sheet. The selected mark uses the same lilac language as
+   the dashboard and remains readable in dark themes. */
+.lc-checkin--editor .lc-checkin__icon-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    overflow-x: auto;
+    border: 1px solid var(--modern-border);
+    border-radius: 999px;
+    background: var(--modern-surface-soft);
+    scrollbar-width: none;
+}
+.lc-checkin--editor .lc-checkin__icon-tabs::-webkit-scrollbar { display: none; }
+.lc-checkin--editor .lc-checkin__icon-tabs button {
+    min-height: 29px;
+    padding: 0 11px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--modern-muted);
+    background: transparent;
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 650;
+}
+.lc-checkin--editor .lc-checkin__icon-tabs button.is-selected,
+.lc-checkin--editor .lc-checkin__icon-tabs button[aria-pressed="true"] { color: var(--modern-accent); background: var(--modern-surface); box-shadow: var(--modern-shadow); }
+.lc-checkin--editor .lc-checkin__icon-grid { gap: 8px; }
+.lc-checkin--editor .lc-checkin__icon-option {
+    min-height: 44px;
+    border: 1px solid transparent;
+    border-radius: 14px;
+    color: var(--modern-ink);
+    background: var(--modern-surface-soft);
+    font-size: 20px;
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+.lc-checkin--editor .lc-checkin__icon-option:hover { border-color: color-mix(in srgb, var(--modern-accent) 38%, var(--modern-border)); background: var(--modern-lilac-soft); transform: translateY(-1px); }
+.lc-checkin--editor .lc-checkin__icon-option.is-selected { border-color: var(--modern-accent); background: var(--modern-lilac-soft); box-shadow: inset 0 0 0 1px var(--modern-accent); }
+@media (max-width: 600px) {
+    .lc-checkin--editor .lc-checkin__icon-tabs button { padding: 0 9px; }
+    .lc-checkin--editor .lc-checkin__icon-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+    .lc-checkin--editor .lc-checkin__icon-option { min-height: 37px; border-radius: 11px; font-size: 17px; }
+}
+
 /* Reference-inspired palette and shapes: soft lavender surfaces, pill
    controls, and circular status marks. All colors still derive from SiYuan
    theme tokens so dark themes retain their own contrast. */
@@ -668,11 +713,14 @@
 .lc-checkin__mobile-more-menu button.is-selected { color: var(--modern-accent); background: var(--modern-accent-soft); }
 
 @media (max-width: 600px) {
-    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px; margin-bottom: 10px; padding: 5px; border-radius: 9px; }
-    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search { grid-column: 1 / -1; }
+    /* Keep the first viewport focused on check-in rows: search, grouping,
+       ordering and the pending toggle share two compact rows instead of
+       stacking into a tall filter panel. */
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 4px; margin-bottom: 10px; padding: 5px; border-radius: 9px; }
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search { grid-column: auto; }
     .lc-checkin--today .lc-checkin__organize label > span { margin: 0; height: 0; overflow: hidden; font-size: 0; }
     .lc-checkin--today .lc-checkin__organize :is(input, select) { min-height: 30px; height: 30px; padding-top: 0; padding-bottom: 0; font-size: 11px; }
-    .lc-checkin--today .lc-checkin__filter-toggle { grid-column: 1 / -1; min-height: 28px; height: 28px; padding: 0 8px; font-size: 10px; }
+    .lc-checkin--today .lc-checkin__filter-toggle { grid-column: auto; min-height: 28px; height: 28px; padding: 0 8px; font-size: 10px; }
     .lc-checkin--today .lc-checkin__list { gap: 10px; }
     .lc-checkin--today .lc-checkin__group { margin-top: 14px; }
     .lc-checkin--today .lc-checkin__group-items { gap: 5px; }
