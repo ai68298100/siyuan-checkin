@@ -242,6 +242,10 @@ export default class CheckinPlugin extends Plugin {
     private collapsedTodayGroups = new Set<string>();
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
+    private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
+    private focusTimerInterval?: number;
+    private focusTimerRoot?: HTMLElement;
+    private focusTimerMinutes = 25;
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
@@ -1246,6 +1250,7 @@ export default class CheckinPlugin extends Plugin {
         if (layout) {
             layout.insertAdjacentHTML("afterbegin", this.renderRail());
             if (this.currentPage !== "editor") layout.insertAdjacentHTML("beforeend", this.renderMobileNav());
+            if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
         if (this.currentPage === "editor") {
             this.bindEditor(root);
@@ -1853,7 +1858,7 @@ export default class CheckinPlugin extends Plugin {
         const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
         const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
         const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
-        const canFocus = !isBinary && Boolean(this.findFocusAdapter(item, date));
+        const canFocus = revision.kind === "duration";
         const recordStep = getRecordStep(revision.kind, revision.unit);
         const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
@@ -1886,6 +1891,7 @@ export default class CheckinPlugin extends Plugin {
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? "取消" : "打卡"}</button>`
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="记录 ${formatNumber(recordStep)} ${escapeHtml(unit)}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
                     <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="输入精确记录值" title="精确记录" aria-expanded="false">${uiIcon("more")}</button>`}
+                ${this.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="拖动排序 ${escapeHtml(item.name)}" title="拖动排序">${uiIcon("more")}</button>` : ""}
             </div>
             ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
                 <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>
@@ -2045,6 +2051,8 @@ export default class CheckinPlugin extends Plugin {
 
     private bindToday(root: HTMLElement) {
         this.bindDialogClose(root);
+        this.bindItemDrag(root);
+        this.bindFocusTimerPanel(root);
         this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
         let searchTimer: number | undefined;
@@ -2140,7 +2148,14 @@ export default class CheckinPlugin extends Plugin {
                 const eventsToUndo = desiredComplete ? [] : getEventsForDay(this.store, itemId, actionDate).map((event) => ({...event}));
                 this.enqueueMutation(() => this.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
             });
-            element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => this.startFocus(itemId));
+            element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
+                const focusItem = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+                if (focusItem && this.findFocusAdapter(focusItem, currentCalendarDate())) void this.startFocus(itemId);
+                else {
+                    this.focusTimerRoot = element.closest(".lc-checkin")?.parentElement ?? undefined;
+                    this.openFocusTimer(itemId);
+                }
+            });
             element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", () => {
                 const item = this.store.items.find((candidate) => candidate.id === itemId);
                 if (!item) return;
@@ -3474,6 +3489,182 @@ export default class CheckinPlugin extends Plugin {
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
         this.saveQueue = write.catch((error) => showMessage("[小驴打卡] 保存日期事项失败：" + String(error)));
         return write;
+    }
+
+    /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;
+       drop persists group-local sortOrder 1..N (manual sort mode only). */
+    private bindItemDrag(root: HTMLElement) {
+        root.querySelectorAll<HTMLElement>("[data-drag-handle]").forEach((handle) => {
+            handle.addEventListener("pointerdown", (event) => {
+                if (this.todaySortMode !== "manual") return;
+                const item = handle.closest<HTMLElement>(".lc-checkin__item");
+                const container = item?.parentElement;
+                if (!item || !container || item.closest(".lc-checkin__completed-section")) return;
+                event.preventDefault();
+                try { handle.setPointerCapture(event.pointerId); } catch { /* pointer may be released already */ }
+                item.classList.add("is-dragging");
+                const onMove = (moveEvent: PointerEvent) => {
+                    const siblings = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].filter((el) => el !== item);
+                    const target = siblings.find((sibling) => {
+                        const box = sibling.getBoundingClientRect();
+                        return moveEvent.clientY < box.top + box.height / 2;
+                    });
+                    if (target) container.insertBefore(item, target);
+                    else container.appendChild(item);
+                };
+                const finish = () => {
+                    item.classList.remove("is-dragging");
+                    window.removeEventListener("pointermove", onMove);
+                    window.removeEventListener("pointerup", finish);
+                    window.removeEventListener("pointercancel", finish);
+                    const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")]
+                        .map((el) => el.dataset.itemId || "")
+                        .filter(Boolean);
+                    if (orderedIds.length) void this.enqueueMutation(() => this.reorderItems(orderedIds));
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", finish);
+                window.addEventListener("pointercancel", finish);
+            });
+        });
+        root.addEventListener("keydown", (event) => {
+            if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+            const target = event.target as HTMLElement | null;
+            const item = target?.closest?.(".lc-checkin__item");
+            if (!item || item.closest(".lc-checkin__completed-section") || this.todaySortMode !== "manual") return;
+            const container = item.parentElement;
+            if (!container) return;
+            event.preventDefault();
+            if (event.key === "ArrowUp" && item.previousElementSibling) container.insertBefore(item, item.previousElementSibling);
+            if (event.key === "ArrowDown" && item.nextElementSibling) container.insertBefore(item.nextElementSibling, item);
+            const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].map((el) => el.dataset.itemId || "").filter(Boolean);
+            if (orderedIds.length) void this.enqueueMutation(() => this.reorderItems(orderedIds));
+        });
+    }
+
+    private async reorderItems(orderedIds: string[]): Promise<boolean> {
+        const orderIndex = new Map(orderedIds.map((id, index) => [id, index + 1]));
+        const previous = this.store;
+        const now = new Date().toISOString();
+        let changed = false;
+        this.store = {...this.store, items: this.store.items.map((item) => {
+            const index = orderIndex.get(item.id);
+            if (index === undefined || index === item.sortOrder) return item;
+            changed = true;
+            return {...item, sortOrder: index, updatedAt: now};
+        })};
+        if (!changed) return true;
+        try {
+            await this.persist();
+            return true;
+        } catch {
+            this.store = previous;
+            showMessage("[小驴打卡] 排序保存失败，请重试");
+            return false;
+        }
+    }
+
+    /* 6.0 P2 built-in focus timer: countdown panel for duration items; external
+       focus adapters (tomato plugins) keep priority via startFocus routing. */
+    private openFocusTimer(itemId: string) {
+        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        if (!item) return;
+        if (this.focusTimerInterval !== undefined) { window.clearInterval(this.focusTimerInterval); this.focusTimerInterval = undefined; }
+        this.focusTimerState = {itemId, totalSec: this.focusTimerMinutes * 60, remainingSec: this.focusTimerMinutes * 60, running: true};
+        this.focusTimerInterval = window.setInterval(() => this.tickFocusTimer(), 1000);
+        this.render();
+    }
+
+    private tickFocusTimer() {
+        const state = this.focusTimerState;
+        if (!state || !state.running) return;
+        state.remainingSec = Math.max(0, state.remainingSec - 1);
+        const panel = document.querySelector("[data-focus-timer]");
+        if (panel) this.paintFocusTimer(panel as HTMLElement, state);
+        if (state.remainingSec <= 0) void this.finishFocusTimer(true);
+    }
+
+    private paintFocusTimer(panel: HTMLElement, state: {remainingSec: number; totalSec: number; running: boolean}) {
+        const time = panel.querySelector<HTMLElement>("[data-focus-remaining]");
+        if (time) {
+            const minutes = Math.floor(state.remainingSec / 60);
+            const seconds = state.remainingSec % 60;
+            time.textContent = `${minutes}:${String(seconds).padStart(2, "0")}`;
+        }
+        const bar = panel.querySelector<HTMLElement>("[data-focus-progress] span");
+        if (bar) bar.style.width = `${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%`;
+        const toggle = panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']");
+        if (toggle) toggle.textContent = state.running ? "暂停" : "继续";
+    }
+
+    private async finishFocusTimer(complete: boolean) {
+        const state = this.focusTimerState;
+        if (!state) return;
+        if (this.focusTimerInterval !== undefined) { window.clearInterval(this.focusTimerInterval); this.focusTimerInterval = undefined; }
+        this.focusTimerState = undefined;
+        this.focusTimerRoot = undefined;
+        const elapsedMinutes = Math.floor((state.totalSec - state.remainingSec) / 60);
+        if (complete && elapsedMinutes >= 1) {
+            const item = this.store.items.find((candidate) => candidate.id === state.itemId && !candidate.archived);
+            if (item) {
+                const moment = captureActionMoment();
+                const date = calendarDateFromKey(moment.localDate);
+                const fingerprint = this.revisionFingerprint(item, date);
+                let unit = item.unit || "分钟";
+                let value = elapsedMinutes;
+                if (unit === "小时") { value = Math.round(elapsedMinutes / 6) / 10; unit = "小时"; }
+                void this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint, `专注 ${elapsedMinutes} 分钟`));
+            }
+            showMessage(`已记录专注 ${elapsedMinutes} 分钟`);
+        } else if (complete) {
+            showMessage("专注不足 1 分钟，未记录");
+        }
+        this.render();
+    }
+
+    private renderFocusTimerPanel(): string {
+        const state = this.focusTimerState;
+        if (!state) return "";
+        const item = this.store.items.find((candidate) => candidate.id === state.itemId);
+        const name = item ? item.name : "专注";
+        const icon = item ? item.icon : "⏱";
+        const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
+        const minutes = Math.floor(state.remainingSec / 60);
+        const seconds = state.remainingSec % 60;
+        return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="专注计时">
+            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong>${escapeHtml(name)}</strong></div>
+            <div class="lc-checkin__focus-time" data-focus-remaining>${minutes}:${String(seconds).padStart(2, "0")}</div>
+            <div class="lc-checkin__focus-progress" data-focus-progress><span style="width: ${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%"></span></div>
+            <div class="lc-checkin__focus-presets" role="group" aria-label="专注时长">${presets}</div>
+            <div class="lc-checkin__focus-actions">
+                <button class="lc-checkin__text-button" type="button" data-action="focus-toggle">${state.running ? "暂停" : "继续"}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="focus-finish">完成</button>
+                <button class="lc-checkin__text-button" type="button" data-action="focus-abandon">放弃</button>
+            </div>
+        </div>`;
+    }
+
+    private bindFocusTimerPanel(root: HTMLElement) {
+        const panel = root.querySelector<HTMLElement>("[data-focus-timer]");
+        if (!panel || panel.dataset.bound === "true") return;
+        panel.dataset.bound = "true";
+        panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']")?.addEventListener("click", () => {
+            if (!this.focusTimerState) return;
+            this.focusTimerState.running = !this.focusTimerState.running;
+            this.paintFocusTimer(panel, this.focusTimerState);
+        });
+        panel.querySelector<HTMLElement>("[data-action='focus-finish']")?.addEventListener("click", () => void this.finishFocusTimer(true));
+        panel.querySelector<HTMLElement>("[data-action='focus-abandon']")?.addEventListener("click", () => void this.finishFocusTimer(false));
+        panel.querySelectorAll<HTMLButtonElement>("[data-focus-timer-minutes]").forEach((button) => button.addEventListener("click", () => {
+            const minutes = Number(button.dataset.focusTimerMinutes);
+            if (!this.focusTimerState || !Number.isFinite(minutes)) return;
+            this.focusTimerMinutes = minutes;
+            this.focusTimerState.totalSec = minutes * 60;
+            this.focusTimerState.remainingSec = minutes * 60;
+            this.focusTimerState.running = true;
+            panel.querySelectorAll("[data-focus-timer-minutes]").forEach((entry) => entry.classList.toggle("is-selected", entry === button));
+            this.paintFocusTimer(panel, this.focusTimerState);
+        }));
     }
 
     private async saveOccasionForm(data: FormData) {

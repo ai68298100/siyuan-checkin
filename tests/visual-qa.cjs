@@ -123,6 +123,24 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
 
     const goToday = async () => { const btn = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="today"]`); if (await btn.count() && await btn.isVisible().catch(() => false)) await btn.click(); else await page.locator(`.lc-checkin__rail [data-mobile-nav="today"]`).evaluate((b) => b.click()); };
     const results = {today: await inspect("today")};
+    results.dragSort = await (async () => {
+        const handles = page.locator("[data-drag-handle]");
+        const count = await handles.count();
+        if (!count) return {handles: 0};
+        const before = await page.evaluate(() => [...document.querySelectorAll(".lc-checkin__group-items .lc-checkin__item")].map((el) => el.dataset.itemId));
+        const box = await handles.nth(0).boundingBox();
+        if (!box) return {handles: count, error: "no box"};
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 90, {steps: 8});
+        await page.mouse.up();
+        await page.waitForTimeout(120);
+        const after = await page.evaluate(() => ({
+            order: [...document.querySelectorAll(".lc-checkin__group-items .lc-checkin__item")].map((el) => el.dataset.itemId),
+            saved: window.siyuanCheckin.getItems().some((item) => (item.sortOrder || 0) > 0),
+        }));
+        return {handles: count, moved: before.join() !== after.order.join(), ...after};
+    })();
     results.todayStructure = await page.evaluate(() => ({
         groupCount: document.querySelectorAll("[data-group-toggle]").length,
         completedCount: document.querySelectorAll(".lc-checkin__completed-section [data-item-id]").length,
