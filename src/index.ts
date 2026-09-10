@@ -1604,8 +1604,8 @@ export default class CheckinPlugin extends Plugin {
         const timeSlot = item.timeSlot || "any";
         const unit = revision.unit || "次";
         const icon = isBinary
-            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${escapeHtml(item.icon)}</button>`
-            : `<span class="lc-checkin__item-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>`;
+            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${renderIconMarkup(item.icon)}</button>`
+            : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
         return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
             ${icon}
             <div class="lc-checkin__item-body">
@@ -1708,6 +1708,10 @@ export default class CheckinPlugin extends Plugin {
                             return `<button class="lc-checkin__icon-option ${selectedIcon === icon ? "is-selected" : ""}" type="button" data-icon="${escapeHtml(icon)}" data-icon-search-text="${escapeHtml([icon, group.name, ...group.keywords, keywords].join(" "))}" aria-label="选择${escapeHtml(accessibleName || group.name)}图标 ${escapeHtml(icon)}" title="${escapeHtml(keywords || group.name)}">${escapeHtml(icon)}</button>`;
                         }).join("")}</div></section>`).join("")}</div>
                         <div class="lc-checkin__search-empty lc-checkin__search-empty--compact" data-icon-empty hidden><strong>没有匹配的图标</strong><button type="button" data-action="clear-icon-query">清除搜索</button></div>
+                        <div class="lc-checkin__custom-icon" data-custom-icon-panel>
+                            <div class="lc-checkin__custom-icon-heading"><strong>自定义图标</strong><small>支持 emoji、符号或 HTTPS 图片地址</small></div>
+                            <div class="lc-checkin__custom-icon-row"><input type="text" data-custom-icon-input maxlength="500" value="${escapeHtml(ICON_GROUPS.some((group) => group.icons.includes(selectedIcon)) ? "" : selectedIcon)}" placeholder="例如：🎯 或 https://example.com/icon.png" aria-label="自定义图标" /><button type="button" data-action="apply-custom-icon">应用</button></div>
+                        </div>
                         <input name="icon" type="hidden" value="${escapeHtml(selectedIcon)}" />
                     </div>
                     <fieldset class="lc-checkin__kind-field"><legend>类型</legend><div class="lc-checkin__kind-grid">${KIND_OPTIONS.map((option) => `<label class="lc-checkin__kind-option"><input type="radio" name="kind" value="${option.kind}" ${selectedKind === option.kind ? "checked" : ""}/><span><strong>${escapeHtml(option.label)}</strong><small>${escapeHtml(option.description)}</small></span></label>`).join("")}</div></fieldset>
@@ -1719,7 +1723,7 @@ export default class CheckinPlugin extends Plugin {
                     <section class="lc-checkin__editor-preview" aria-label="打卡项预览">
                         <div class="lc-checkin__field-heading"><span>卡片预览</span><small>随设置实时更新</small></div>
                         <article class="lc-checkin__preview-card" data-editor-preview>
-                            <span class="lc-checkin__preview-icon" data-preview-icon>${escapeHtml(selectedIcon)}</span>
+                            <span class="lc-checkin__preview-icon" data-preview-icon>${renderIconMarkup(selectedIcon)}</span>
                             <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || "未命名打卡")}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? "完成一次 · " + formatScheduleLabel(schedule) : `${KIND_LABELS[selectedKind]} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
                             <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
                         </article>
@@ -2315,11 +2319,27 @@ export default class CheckinPlugin extends Plugin {
             const previewAction = root.querySelector<HTMLElement>("[data-preview-action]");
             const previewProgress = root.querySelector<HTMLElement>("[data-preview-progress]");
             if (previewName) previewName.textContent = name;
-            if (previewIcon) previewIcon.textContent = icon;
+            if (previewIcon) previewIcon.innerHTML = renderIconMarkup(icon);
             if (previewMeta) previewMeta.textContent = kind === "binary" ? `完成一次 · ${scheduleLabel}` : `${KIND_LABELS[kind]} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
             if (previewAction) previewAction.textContent = kind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(kind, unit))} ${unit}`;
             if (previewProgress) previewProgress.hidden = kind === "binary";
         };
+        const applyCustomIcon = () => {
+            const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
+            const customIcon = normalizeCustomIcon(input?.value || "");
+            if (!customIcon) {
+                showMessage("请输入 emoji、符号或有效的 HTTPS 图标地址");
+                input?.focus();
+                return;
+            }
+            selectIcon(customIcon);
+            if (input) input.value = customIcon;
+            updateEditorPreview();
+        };
+        root.querySelector<HTMLElement>("[data-action='apply-custom-icon']")?.addEventListener("click", applyCustomIcon);
+        root.querySelector<HTMLInputElement>("[data-custom-icon-input]")?.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") { event.preventDefault(); applyCustomIcon(); }
+        });
         let previousKind = getKind();
         const bindUnitOptions = () => {
             root.querySelectorAll<HTMLButtonElement>("[data-unit]").forEach((button) => button.addEventListener("click", () => {
@@ -3234,6 +3254,26 @@ function escapeHtml(value: string): string {
             default: return character;
         }
     });
+}
+
+function normalizeCustomIcon(value: string): string | undefined {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    if (!/^https:\/\//i.test(trimmed)) return trimmed.slice(0, 24);
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "https:" || url.username || url.password || url.hostname.length < 2) return undefined;
+        return url.toString().slice(0, 500);
+    } catch {
+        return undefined;
+    }
+}
+
+function renderIconMarkup(value: string): string {
+    if (/^https:\/\//i.test(value)) {
+        return `<img src="${escapeHtml(value)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
+    }
+    return escapeHtml(value);
 }
 
 type CheckinQuickActionTarget = "desktop" | "sidebar" | "mobile";
