@@ -12,6 +12,31 @@
     padding-bottom: 14px;
     border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
 }
+.lc-checkin--archived .lc-checkin__archived-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.lc-checkin--archived .lc-checkin__archived-search {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    width: min(100%, 430px);
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
+    border-radius: 9px;
+    background: var(--b3-theme-surface);
+}
+.lc-checkin--archived .lc-checkin__archived-search:focus-within { border-color: var(--lc-checkin-accent); box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+.lc-checkin--archived .lc-checkin__archived-search > span { color: var(--b3-theme-on-surface-light); }
+.lc-checkin--archived .lc-checkin__archived-search input { width: 100%; min-width: 0; height: 34px; padding: 0; border: 0; outline: 0; background: transparent; }
+.lc-checkin--archived .lc-checkin__archived-search button { width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; color: var(--b3-theme-on-surface-light); background: transparent; cursor: pointer; }
+.lc-checkin--archived .lc-checkin__archived-search button:hover { color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+.lc-checkin--archived .lc-checkin__archived-result { flex: 0 0 auto; color: var(--b3-theme-on-surface-light); font-size: 11px; }
 .lc-checkin--archived > .lc-checkin__history-list {
     display: grid;
     flex: 0 0 auto;
@@ -20,18 +45,33 @@
     align-content: start;
 }
 .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
     min-height: 56px;
     padding: 0 14px;
     border: 1px solid color-mix(in srgb, var(--b3-border-color) 72%, transparent);
     border-radius: 10px;
     background: var(--b3-theme-surface);
 }
-.lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--archived .lc-checkin__archived-icon { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; overflow: hidden; border-radius: 9px; background: var(--lc-checkin-accent-soft); font-size: 18px; }
+.lc-checkin--archived .lc-checkin__archived-icon img { width: 22px; height: 22px; object-fit: contain; }
+.lc-checkin--archived .lc-checkin__archived-main { min-width: 0; }
+.lc-checkin--archived .lc-checkin__archived-main strong,
+.lc-checkin--archived .lc-checkin__archived-main small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--archived .lc-checkin__archived-main small { margin-top: 2px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
 .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button { min-height: 34px; border-radius: 8px; }
+.lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button[aria-busy="true"] { opacity: .58; }
 @media (max-width: 600px) {
     .lc-checkin--archived { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
+    .lc-checkin--archived .lc-checkin__archived-tools { display: grid; gap: 5px; margin-bottom: 8px; }
+    .lc-checkin--archived .lc-checkin__archived-search { width: 100%; min-height: 36px; }
+    .lc-checkin--archived .lc-checkin__archived-result { padding-left: 2px; }
     .lc-checkin--archived > .lc-checkin__history-list { gap: 6px; }
-    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row { min-height: 48px; padding: 0 9px; }
+    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row { grid-template-columns: 32px minmax(0, 1fr) auto; gap: 7px; min-height: 48px; padding: 5px 8px; }
+    .lc-checkin--archived .lc-checkin__archived-icon { width: 30px; height: 30px; border-radius: 8px; font-size: 16px; }
+    .lc-checkin--archived .lc-checkin__archived-icon img { width: 20px; height: 20px; }
     .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button { min-height: 36px; padding: 0 10px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--archived * { transition-duration: 0ms; } }

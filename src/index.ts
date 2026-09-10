@@ -216,6 +216,7 @@ export default class CheckinPlugin extends Plugin {
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
+    private archivedQuery = "";
     private editingHistoryNoteId?: string;
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
@@ -1578,9 +1579,17 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderArchived(): string {
-        const items = this.store.items.filter((item) => item.archived);
-        const rows = items.length ? items.map((item) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(item.icon)} ${escapeHtml(item.name)}</strong><button class="lc-checkin__text-button" type="button" data-restore-id="${escapeHtml(item.id)}">恢复</button></div>`).join("") : `<div class="lc-checkin__empty-description">没有已归档项目。</div>`;
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--archived"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">暂不参与今日计划</div><h1 class="lc-checkin__title">已归档</h1></div></header><main class="lc-checkin__history-list">${rows}</main></div>`;
+        const archivedItems = this.store.items.filter((item) => item.archived);
+        const query = this.archivedQuery.trim().toLocaleLowerCase();
+        const items = query ? archivedItems.filter((item) => [item.name, item.group, item.unit, item.icon].some((value) => value?.toLocaleLowerCase().includes(query))) : archivedItems;
+        const rows = items.length ? items.map((item) => {
+            const openPeriod = item.archivePeriods.find((period) => !period.endDate);
+            const pausedLabel = openPeriod ? `${openPeriod.startDate} 起暂停` : "已暂停";
+            const groupLabel = item.group || "未分组";
+            return `<article class="lc-checkin__history-row"><span class="lc-checkin__archived-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span><div class="lc-checkin__archived-main"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(groupLabel)} · ${escapeHtml(pausedLabel)}</small></div><button class="lc-checkin__text-button" type="button" data-restore-id="${escapeHtml(item.id)}" aria-label="恢复${escapeHtml(item.name)}">恢复</button></article>`;
+        }).join("") : query ? `<div class="lc-checkin__empty-description">没有匹配“${escapeHtml(this.archivedQuery.trim())}”的归档项目。</div>` : `<div class="lc-checkin__empty-description">没有已归档项目。</div>`;
+        const resultLabel = query ? `找到 ${items.length} 个，共 ${archivedItems.length} 个归档项目` : `共 ${archivedItems.length} 个归档项目`;
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--archived"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">暂不参与今日计划</div><h1 class="lc-checkin__title">已归档</h1></div></header><section class="lc-checkin__archived-tools" role="search" aria-label="搜索归档项目"><label class="lc-checkin__archived-search"><span aria-hidden="true">⌕</span><input data-archived-search type="search" value="${escapeHtml(this.archivedQuery)}" placeholder="搜索名称、分组或单位" aria-label="搜索归档项目" enterkeyhint="search" />${this.archivedQuery ? `<button type="button" data-action="clear-archived-query" aria-label="清除归档搜索" title="清除搜索">×</button>` : ""}</label><span class="lc-checkin__archived-result" role="status" aria-live="polite">${resultLabel}</span></section><main class="lc-checkin__history-list">${rows}</main></div>`;
     }
 
     private renderOccasions(): string {
@@ -2090,7 +2099,31 @@ export default class CheckinPlugin extends Plugin {
                 this.renderBackgroundUpdate();
             });
         }));
-        root.querySelectorAll<HTMLElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => this.restoreItem(button.dataset.restoreId || "")));
+        const archivedSearch = root.querySelector<HTMLInputElement>("[data-archived-search]");
+        let archivedSearchTimer: number | undefined;
+        archivedSearch?.addEventListener("input", () => {
+            if (archivedSearchTimer !== undefined) window.clearTimeout(archivedSearchTimer);
+            const value = archivedSearch.value;
+            archivedSearchTimer = window.setTimeout(() => {
+                if (this.disposed || this.disposing || this.currentPage !== "archived") return;
+                this.archivedQuery = value;
+                this.render();
+                const nextSearch = root.querySelector<HTMLInputElement>("[data-archived-search]");
+                nextSearch?.focus();
+                nextSearch?.setSelectionRange(value.length, value.length);
+            }, 120);
+        });
+        root.querySelector<HTMLElement>("[data-action='clear-archived-query']")?.addEventListener("click", () => {
+            if (archivedSearchTimer !== undefined) window.clearTimeout(archivedSearchTimer);
+            this.archivedQuery = "";
+            this.render();
+            root.querySelector<HTMLInputElement>("[data-archived-search]")?.focus();
+        });
+        root.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => {
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            void this.restoreItem(button.dataset.restoreId || "");
+        }));
         root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
             const range = button.dataset.summaryRange;
             if (range === "day" || range === "week" || range === "month") {
@@ -2159,7 +2192,9 @@ export default class CheckinPlugin extends Plugin {
         const moment = captureActionMoment();
         const expectedItem = this.store.items.find((item) => item.id === itemId);
         const expectedFingerprint = expectedItem ? this.itemFingerprint(expectedItem) : undefined;
-        await this.enqueueMutation(() => this.setItemArchived(itemId, false, moment, expectedFingerprint));
+        let restored = false;
+        await this.enqueueMutation(async () => { restored = await this.setItemArchived(itemId, false, moment, expectedFingerprint); });
+        if (restored && expectedItem) showMessage(`[小驴打卡] 已恢复「${expectedItem.name}」`);
     }
 
     private async setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean> {
