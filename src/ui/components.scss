@@ -10,9 +10,10 @@
 }
 .lc-checkin__layout {
     box-sizing: border-box;
+    width: 100%;
     margin: 0 auto;
     padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
-    max-width: 1160px;
+    max-width: 1320px;
     transition: background-color var(--lc-checkin-motion);
 }
 .lc-checkin *,
@@ -1323,4 +1324,90 @@
     .lc-checkin__editor-header { flex-wrap: wrap; }
     .lc-checkin__header-actions { flex-wrap: wrap; justify-content: flex-start; width: 100%; }
     .lc-checkin--review .lc-checkin__header-actions { width: 100%; }
+}
+
+/* ============================================================
+   v5.0.1 布局修正：宿主尺寸自适应（全屏 / 80% 弹窗 / 窄窗口 / 侧边栏）
+   ============================================================ */
+
+/* 全局画布加宽，双栏页在宽屏不再大片留白 */
+.lc-checkin__layout { max-width: 1320px; position: relative; }
+
+/* 底部导航与 FAB：锚定在面板内（sticky），绝不逃出宿主容器 */
+.lc-checkin__layout { flex: 1 0 auto; }
+.lc-checkin__mobile-nav {
+    position: sticky;
+    right: auto;
+    left: auto;
+    bottom: 0;
+    margin-top: 12px;
+}
+.lc-checkin__mobile-fab {
+    position: absolute;
+    right: 12px;
+    bottom: calc(100% + 12px);
+}
+
+/* 任何宿主都禁止横向溢出 */
+.lc-checkin__layout { overflow-x: clip; }
+
+/* 编辑器：配置区永远单列（legacy 的多列 grid 在宽窗口会把表单挤成竖条） */
+.lc-checkin--editor .lc-checkin__form-scroll {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+.lc-checkin--editor .lc-checkin__filter-row { flex-wrap: wrap; }
+.lc-checkin__templates { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+
+/* 今日：两列货架改为按最小卡宽自动填充，少卡片时不再半空 */
+.lc-checkin--today .lc-checkin__group-items {
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+}
+
+/* 今日：筛选胶囊不被拉伸；卡片名称拥挤时优先生长换行 */
+.lc-checkin--today .lc-checkin__today-filters { flex: 0 0 auto; }
+.lc-checkin--today .lc-checkin__item-topline { flex-wrap: wrap; row-gap: 2px; }
+.lc-checkin--today .lc-checkin__item-name { flex: 1 1 96px; order: 0; }
+.lc-checkin--today .lc-checkin__item-tag { order: 1; }
+.lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { order: 2; margin-left: auto; }
+
+/* 回顾：右栏保底宽度（仅宽容器）；当日明细行在窄列下换行而不是竖排挤碎 */
+@container lc5 (min-width: 880px) {
+    .lc-checkin__review-layout { grid-template-columns: minmax(0, 1.05fr) minmax(340px, .95fr); }
+}
+.lc-checkin__history-event {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+.lc-checkin__history-event-main { flex: 1 1 150px; }
+.lc-checkin__history-event-value { order: 1; }
+.lc-checkin__history-event-actions { order: 2; margin-left: auto; }
+
+/* 回顾：自定义范围展开为浮层，不再推挤头部 */
+.lc-checkin--review .lc-checkin__custom-range-disclosure { position: relative; }
+.lc-checkin--review .lc-checkin__custom-range-disclosure[open] .lc-checkin__custom-range {
+    position: absolute;
+    z-index: var(--lc-checkin-z-popup);
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: min(430px, 100%);
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-surface);
+    box-shadow: var(--lc-checkin-shadow-lg);
+}
+
+/* 日期事项：宽容器下表单栏定宽、列表吃满剩余空间 */
+@container lc5 (min-width: 880px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+    }
+}
+
+/* 设置：宽容器下分类栏稍宽，卡片吃满 */
+@container lc5 (min-width: 820px) {
+    .lc-checkin__settings-layout { grid-template-columns: 200px minmax(0, 1fr); }
 }
