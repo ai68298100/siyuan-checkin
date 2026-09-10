@@ -789,4 +789,41 @@
     .lc-checkin__mobile-nav button { min-height: 43px; }
     .lc-checkin__mobile-nav button small { font-size: 8px; }
     .lc-checkin__mobile-fab { right: 14px; bottom: calc(100% + 10px); width: 44px; height: 44px; }
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__always-visible { display: none; }
+}
+
+/* Desktop workbench layouts: use the wider canvas for context and results,
+   while leaving the mobile flow deliberately linear. */
+@media (min-width: 701px) {
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr);
+        column-gap: 18px;
+        align-items: start;
+    }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__editor-header,
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-actions { grid-column: 1 / -1; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__month-nav,
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__calendar-weekdays,
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__calendar { grid-column: 1; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-tools,
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-result,
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-selected { grid-column: 2; }
+
+    .lc-checkin--summary { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr); gap: 14px 18px; align-items: start; }
+    .lc-checkin--summary > .lc-checkin__editor-header,
+    .lc-checkin--summary > .lc-checkin__range-tabs,
+    .lc-checkin--summary > .lc-checkin__summary-stats { grid-column: 1 / -1; }
+    .lc-checkin--summary > .lc-checkin__history-list { grid-column: 1; }
+    .lc-checkin--summary > .lc-checkin__summary-text,
+    .lc-checkin--summary > .lc-checkin__summary-generated { grid-column: 2; }
+
+    .lc-checkin--insights { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 14px 18px; align-items: start; }
+    .lc-checkin--insights > .lc-checkin__editor-header,
+    .lc-checkin--insights > .lc-checkin__insight-picker,
+    .lc-checkin--insights > .lc-checkin__insight-stats { grid-column: 1 / -1; }
+    .lc-checkin--insights > .lc-checkin__insight-section { grid-column: auto; }
+
+    .lc-checkin--settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-items: start; }
+    .lc-checkin--settings > .lc-checkin__editor-header { grid-column: 1 / -1; }
 }
