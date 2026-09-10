@@ -22,6 +22,8 @@ export interface CheckinViewPreferences {
     dialogSizeMode: DialogSizeMode;
     /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
     palette: CheckinPalette;
+    /** ISO timestamp of the last JSON/CSV export, drives the gentle backup reminder. */
+    lastExportAt?: string;
     /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
     dialogScale: number;
     /** Fixed size in px when dialogSizeMode is "fixed". */
@@ -37,6 +39,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     reducedMotion: false,
     todayQuery: "",
     pendingOnly: false,
+    lastExportAt: undefined,
     showWeekStrip: false,
     dialogSizeMode: "percent",
     palette: "lavender",
@@ -80,6 +83,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         reducedMotion,
         todayQuery,
         pendingOnly,
+        lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
         palette,
         showWeekStrip: source.showWeekStrip === true,
         dialogSizeMode,

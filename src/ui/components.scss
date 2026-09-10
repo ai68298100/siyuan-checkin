@@ -1664,3 +1664,46 @@
     border: 1px solid var(--lc-checkin-border);
     object-fit: cover;
 }
+
+/* ============================================================
+   8.2 年度活跃热力图
+   ============================================================ */
+.lc-checkin__year-heatmap {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-lg);
+    background: var(--lc-checkin-surface);
+}
+.lc-checkin__year-heatmap > summary {
+    color: var(--lc-checkin-text);
+    font-size: 13.5px;
+    font-weight: 720;
+    list-style: none;
+    cursor: pointer;
+}
+.lc-checkin__year-heatmap > summary::-webkit-details-marker { display: none; }
+.lc-checkin__yearheatmap-scroll { overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
+.lc-checkin__yearheatmap { min-width: 640px; display: block; }
+.lc-checkin__yearheatmap .is-empty { fill: var(--lc-checkin-muted-surface); }
+.lc-checkin__yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 25%, var(--lc-checkin-surface)); }
+.lc-checkin__yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--lc-checkin-surface)); }
+.lc-checkin__yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 70%, var(--lc-checkin-surface)); }
+.lc-checkin__yearheatmap .is-level-4 { fill: var(--lc-checkin-accent); }
+.lc-checkin__yearheatmap-total { display: block; margin-top: 8px; color: var(--lc-checkin-muted); font-size: 10.5px; }
+
+/* 8.2 备份提醒横幅 */
+.lc-checkin__backup-reminder {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-warm) 35%, var(--lc-checkin-border));
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-warm-soft);
+    color: var(--lc-checkin-text);
+    font-size: 12px;
+}
+.lc-checkin__backup-reminder strong { color: var(--lc-checkin-warning); }

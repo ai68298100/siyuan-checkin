@@ -5,7 +5,7 @@ import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
 import {t} from "./i18n";
-import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, renderBarChart, renderLineChart} from "./charts";
+import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap} from "./charts";
 import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {parseCheckinCsv, serializeCsv, serializeJson} from "./export";
@@ -33,7 +33,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.1.0";
+const PLUGIN_VERSION = "8.2.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -252,6 +252,7 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerMinutes = 25;
     private bulkMode = false;
     private bulkSelected = new Set<string>();
+    private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
@@ -1396,6 +1397,10 @@ export default class CheckinPlugin extends Plugin {
 
     private renderSettings(): string {
         const agentStatus = this.agentCapabilityRegistered ? "已向思源智能体注册能力" : "未检测到可用的思源智能体入口";
+        const photoEvents = this.store.events.filter((event) => event.attachment);
+        const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
+        const iconKb = Math.max(0, Math.round(this.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
+        const storageKb = Math.max(1, Math.round((this.store.events.length * 160 + this.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
         const groups: Array<{id: string; label: string; body: string}> = [
             {
                 id: "appearance",
@@ -1428,6 +1433,7 @@ export default class CheckinPlugin extends Plugin {
                 label: "数据与导出",
                 body: `
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>存储用量</span><small>打卡 ${this.store.items.length} 项 · 记录 ${this.store.events.length} 条${photoEvents.length ? ` · 照片 ${photoEvents.length} 张约 ${photoKb} KB` : ""}${iconKb ? ` · 图标库约 ${iconKb} KB` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 CSV</span><small>表头需含 名称、日期，可选 数值、单位。相同记录自动跳过。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />选择文件</label></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
             },
@@ -1612,6 +1618,7 @@ export default class CheckinPlugin extends Plugin {
             const isToday = dateKey(day) === dateKey(now);
             return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(`${day.toLocaleDateString("zh-CN", {month: "long", day: "numeric"})}：${done}/${items.length} 项完成`)}"><small>${day.toLocaleDateString("zh-CN", {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
         }).join("");
+        const backupNeeded = this.store.events.length >= 30 && (!this.lastExportAt || Date.now() - Date.parse(this.lastExportAt) > 30 * 86400000);
         const emptyProgressTitle = this.pendingOnly
             ? "没有待处理的匹配项"
             : query ? "匹配的项目都已完成" : "今天的计划已完成";
@@ -1687,6 +1694,7 @@ export default class CheckinPlugin extends Plugin {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">归档</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">退出多选</button>
             </div>` : ""}
+            ${backupNeeded ? `<div class="lc-checkin__backup-reminder" role="note"><span>已积累 <strong>${this.store.events.length}</strong> 条记录，建议导出备份。</span><button class="lc-checkin__text-button" type="button" data-action="review">去导出</button></div>` : ""}
             <main class="lc-checkin__list">${list}${occasionBanner}</main>
         </div>`;
     }
@@ -1849,6 +1857,8 @@ export default class CheckinPlugin extends Plugin {
                 : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
             return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
         }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
+        const heatmapYear = new Date().getFullYear();
+        const heatmap = buildYearHeatmap(this.store, heatmapYear);
         const weeklyTrend = buildWeeklyCompletionTrend(this.store, 12);
         const monthlyTrend = buildMonthlyEventTrend(this.store, 6);
         const achievements = buildAchievements(this.store);
@@ -1861,7 +1871,7 @@ export default class CheckinPlugin extends Plugin {
         const custom = `<details class="lc-checkin__custom-range-disclosure" ${this.summaryCustomRange ? "open" : ""}><summary>自定义${this.summaryCustomRange ? " · 已启用" : ""}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
         return `<div class="lc-checkin lc-checkin--review" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header">
-                <div><div class="lc-checkin__eyebrow">数据回顾</div><h1 class="lc-checkin__title">回顾</h1></div>
+                <div><div class="lc-checkin__eyebrow">${t("review.eyebrow")}</div><h1 class="lc-checkin__title">${t("review.title")}</h1></div>
                 <div class="lc-checkin__header-actions">
                     <div class="lc-checkin__range-tabs" role="tablist" aria-label="统计范围">${tabs}${custom}</div>
                     <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="导出 JSON" title="导出 JSON">${uiIcon("summary")}</button>
@@ -1881,6 +1891,11 @@ export default class CheckinPlugin extends Plugin {
                     <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section>
                 </div>
             </div>
+            <details class="lc-checkin__year-heatmap" aria-label="年度活跃热力图">
+                <summary>年度活跃热力图 · ${heatmapYear}</summary>
+                <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
+                <small class="lc-checkin__yearheatmap-total">${heatmapYear} 年共 ${heatmap.total} 条记录</small>
+            </details>
             <section class="lc-checkin__trend" aria-label="趋势">
                 <h2>趋势</h2>
                 <div class="lc-checkin__trend-grid">
@@ -2792,6 +2807,8 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private downloadExport(format: "json" | "csv") {
+        this.lastExportAt = new Date().toISOString();
+        void this.persistViewPreferences();
         const content = format === "json" ? serializeJson(this.cloneStore()) : serializeCsv(this.cloneStore());
         const blob = new Blob([content], {type: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
         const url = URL.createObjectURL(blob);
@@ -4126,6 +4143,7 @@ export default class CheckinPlugin extends Plugin {
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.insightsItemId = preferences.lastInsightsItemId;
         this.weekStripVisible = preferences.showWeekStrip;
+        this.lastExportAt = preferences.lastExportAt;
     }
 
     private persistViewPreferences(): Promise<void> {
@@ -4141,6 +4159,7 @@ export default class CheckinPlugin extends Plugin {
             todayQuery: this.todayQuery,
             pendingOnly: this.pendingOnly,
             showWeekStrip: this.weekStripVisible,
+            lastExportAt: this.lastExportAt,
             dialogSizeMode: this.dialogSizeMode,
             dialogScale: this.dialogScale,
             palette: this.palette,

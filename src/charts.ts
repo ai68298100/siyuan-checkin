@@ -103,3 +103,72 @@ export function renderBarChart(series: TrendSeries, options: {width?: number; he
     }).join("");
     return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${series.title}" preserveAspectRatio="none">${bars}</svg>`;
 }
+
+/* ============================================================
+   8.2 年度活跃热力图：按"当日记录条数"分级，O(E) 聚合。
+   ============================================================ */
+
+export interface YearHeatmapDay {
+    date: string;
+    count: number;
+    level: number;
+}
+
+export interface YearHeatmap {
+    year: number;
+    days: YearHeatmapDay[];
+    max: number;
+    total: number;
+}
+
+export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap {
+    const prefix = `${year}-`;
+    const counts = new Map<string, number>();
+    let total = 0;
+    let max = 0;
+    for (const event of store.events) {
+        if (!event.localDate.startsWith(prefix)) continue;
+        const count = (counts.get(event.localDate) || 0) + 1;
+        counts.set(event.localDate, count);
+        max = Math.max(max, count);
+        total += 1;
+    }
+    const days: YearHeatmapDay[] = [];
+    const cursor = new Date(year, 0, 1);
+    while (cursor.getFullYear() === year) {
+        const key = dateKey(cursor);
+        const count = counts.get(key) || 0;
+        let level = 0;
+        if (count > 0) level = count >= Math.max(6, Math.ceil(max * 0.75)) ? 4 : count >= Math.max(3, Math.ceil(max * 0.5)) ? 3 : count >= 2 ? 2 : 1;
+        days.push({date: key, count, level});
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return {year, days, max, total};
+}
+
+/** 年度热力图 SVG：列为周、行为星期（周一在上）。 */
+export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number; gap?: number} = {}): string {
+    const cell = options.cell ?? 11;
+    const gap = options.gap ?? 3;
+    const weeks: YearHeatmapDay[][] = [];
+    let currentWeek: YearHeatmapDay[] = [];
+    // 第一天之前的空位（周一起始）
+    const firstDay = new Date(Number(heatmap.days[0].date.slice(0, 4)), 0, 1);
+    const leading = (firstDay.getDay() + 6) % 7;
+    for (let index = 0; index < leading; index += 1) currentWeek.push({date: "", count: -1, level: -1});
+    for (const day of heatmap.days) {
+        currentWeek.push(day);
+        if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
+    }
+    if (currentWeek.length) weeks.push(currentWeek);
+    const width = weeks.length * (cell + gap) + gap;
+    const height = 7 * (cell + gap) + gap;
+    const levelClass = (level: number): string => level <= 0 ? "is-empty" : `is-level-${level}`;
+    const cells = weeks.map((week, weekIndex) => week.map((day, dayIndex) => {
+        if (day.count < 0) return "";
+        const x = gap + weekIndex * (cell + gap);
+        const y = gap + dayIndex * (cell + gap);
+        return `<rect class="${levelClass(day.level)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${day.date}：${day.count} 条记录</title></rect>`;
+    }).join("")).join("");
+    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年活跃热力图，共 ${heatmap.total} 条记录">${cells}</svg>`;
+}

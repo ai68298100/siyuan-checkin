@@ -17,7 +17,7 @@ assert.match(styles, /\.lc-checkin__summary-stats[\s\S]*grid-template-columns:\s
 assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-checkin__text-button[\s\S]*min-width:\s*36px/);
 assert.match(source, /lc-checkin--review[\s\S]*lc-checkin__summary-stats/);
 assert.match(source, /lc-checkin--archived[\s\S]*暂不参与今日计划/);
-assert.match(source, /lc-checkin__eyebrow">数据回顾/);
+assert.ok(source.includes('t("review.eyebrow")'), "review eyebrow uses the i18n dictionary");
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);
 assert.match(source, /surface\.dataset\.reducedMotion = String\(this\.reducedMotion\)/);
