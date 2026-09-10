@@ -1181,3 +1181,67 @@
 
 /* dialog host on mobile keeps the sheet look */
 .lc-checkin-dialog { border-radius: 18px 18px 0 0; }
+
+/* ---------------- occasions v5 additions ---------------- */
+.lc-checkin__occasion-templates {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--lc-checkin-border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.lc-checkin__occasion-templates::-webkit-scrollbar { display: none; }
+.lc-checkin__occasion-template {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 5px;
+    min-height: 30px;
+    padding: 4px 12px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 999px;
+    color: var(--lc-checkin-text);
+    background: var(--lc-checkin-muted-surface);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color var(--lc-checkin-motion-fast), color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin__occasion-template:hover { border-color: var(--lc-checkin-accent); color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__occasion-form-panel .lc-checkin__field { min-width: 0; }
+.lc-checkin__field-label { color: var(--lc-checkin-muted); font-size: 11px; font-weight: 620; }
+.lc-checkin__field-hint { color: var(--lc-checkin-accent); font-size: 10.5px; }
+.lc-checkin__occasion-row-body { display: grid; gap: 2px; min-width: 0; }
+.lc-checkin__occasion-row-body strong { overflow: hidden; color: var(--lc-checkin-text); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__occasion-row-body small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__occasion-row-note { color: color-mix(in srgb, var(--lc-checkin-muted) 80%, transparent); }
+.lc-checkin__occasion-manager-row.is-disabled { opacity: .55; }
+.lc-checkin__upcoming { margin-top: 16px; padding: 12px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
+.lc-checkin__upcoming h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 13.5px; font-weight: 720; }
+.lc-checkin__upcoming-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) auto auto;
+    gap: 10px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--lc-checkin-border);
+    font-size: 12.5px;
+}
+.lc-checkin__upcoming-row:last-child { border-bottom: 0; }
+.lc-checkin__upcoming-row strong { overflow: hidden; color: var(--lc-checkin-text); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__upcoming-row span:nth-child(3) { color: var(--lc-checkin-muted); font-variant-numeric: tabular-nums; }
+.lc-checkin__upcoming-row em {
+    min-width: 56px;
+    padding: 1px 9px;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 10.5px;
+    font-style: normal;
+    font-weight: 650;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}

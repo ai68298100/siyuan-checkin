@@ -12,7 +12,9 @@ assert.match(source, /recurrence === "once"/);
 assert.match(source, /markOccasionCompleted/);
 assert.match(source, /completedDates/);
 const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions-")), "occasions.js");
-fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
+fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions}).outputText);
+fs.writeFileSync(path.join(path.dirname(output), "lunar.js"), ts.transpileModule(fs.readFileSync("src/lunar.ts", "utf8"), {compilerOptions}).outputText);
 const occasions = require(output);
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");
@@ -35,4 +37,22 @@ const capped = occasions.normalizeOccasion({id:"capped", name:"限制", date:"20
 assert.equal(capped.remindBeforeDays, 365); assert.deepEqual(capped.completedDates, ["2026-09-20","2026-09-19"]);
 const unchanged = {version:1, occasions:[once]}; assert.equal(occasions.markOccasionCompleted(unchanged, "missing", "2026-09-15", true), unchanged);
 const marked = occasions.markOccasionCompleted(unchanged, "loan", "2026-09-15", true); assert.notEqual(marked, unchanged); assert.equal(occasions.isOccasionCompleted(marked.occasions[0], "2026-09-15"), true); const unmarked = occasions.markOccasionCompleted(marked, "loan", "2026-09-15", false); assert.equal(occasions.isOccasionCompleted(unmarked.occasions[0], "2026-09-15"), false);
+// v5 recurrence engine: lunar annual, weekly, quarterly, interval, month-end/nth-week variants.
+const lunarBirthday = occasions.normalizeOccasion({id: "lunar-bday", name: "农历生日", kind: "birthday", date: "2026-02-17", recurrence: "annual", calendar: "lunar", remindBeforeDays: 3, enabled: true});
+assert.ok(lunarBirthday, "lunar birthday normalizes");
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [lunarBirthday]}, new Date(2027, 1, 4, 12))[0].occurrenceDate, "2027-02-06",
+    "lunar annual must land on 正月初一 2027 (2027-02-06)");
+const weekly = occasions.normalizeOccasion({id: "weekly", name: "周会", kind: "scheduled", date: "2026-09-10", recurrence: "weekly", weekday: 4, remindBeforeDays: 1, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [weekly]}, new Date(2026, 8, 10, 12))[0].status, "today");
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [weekly]}, new Date(2026, 8, 16, 12))[0].occurrenceDate, "2026-09-17");
+const quarterly = occasions.normalizeOccasion({id: "q", name: "物业费", kind: "scheduled", date: "2026-03-10", recurrence: "quarterly", remindBeforeDays: 5, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [quarterly]}, new Date(2026, 8, 8, 12))[0].occurrenceDate, "2026-09-10");
+const interval = occasions.normalizeOccasion({id: "iv", name: "体检", kind: "scheduled", date: "2026-03-15", recurrence: "interval", intervalUnit: "month", intervalCount: 6, remindBeforeDays: 7, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [interval]}, new Date(2026, 8, 12, 12))[0].occurrenceDate, "2026-09-15");
+const nthWeek = occasions.normalizeOccasion({id: "moms-day", name: "母亲节", kind: "scheduled", date: "2026-05-10", recurrence: "annual", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0, remindBeforeDays: 7, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [nthWeek]}, new Date(2026, 4, 8, 12))[0].occurrenceDate, "2026-05-10",
+    "mother's day 2026 is the 2nd sunday of may");
+const lastDay = occasions.normalizeOccasion({id: "last", name: "月末", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", monthlySubtype: "lastday", remindBeforeDays: 2, enabled: true});
+assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [lastDay]}, new Date(2026, 3, 28, 12))[0].occurrenceDate, "2026-04-30");
+assert.ok(occasions.OCCASION_TEMPLATES.length >= 15, "occasion template library ships with the common fixtures");
 console.log("Occasion model structure checks passed.");

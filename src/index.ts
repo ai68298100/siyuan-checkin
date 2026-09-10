@@ -3,6 +3,7 @@ import "./index.scss";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
+import {formatLunar, solarToLunar} from "./lunar";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
@@ -20,7 +21,7 @@ import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinViewPref
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
-import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
+import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, upsertOccasion, WEEKDAY_NAMES, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
@@ -30,6 +31,11 @@ const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const PLUGIN_VERSION = "5.0.0";
+type OccasionImport = import("./occasions").Occasion;
+function parseLocalDateKey(value: string): Date {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+}
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const MAX_CUSTOM_ICON_BYTES = 240_000;
 const MAX_CUSTOM_LIBRARY_ITEMS = 128;
@@ -1690,9 +1696,28 @@ export default class CheckinPlugin extends Plugin {
                 </div>
             </div>
             <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
+            ${this.renderUpcomingOccasions()}
             ${generated}
             ${providerButton}
         </div>`;
+    }
+
+    private renderUpcomingOccasions(): string {
+        const today = dateKey(currentCalendarDate());
+        const horizonDate = new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() + 60);
+        const horizon = dateKey(horizonDate);
+        const items = this.occasionStore.occasions.filter((item) => item.enabled)
+            .map((item) => ({item, next: getOccurrenceDate(item, today)}))
+            .filter((entry): entry is {item: Occasion; next: string} => typeof entry.next === "string" && entry.next <= horizon)
+            .sort((left, right) => left.next.localeCompare(right.next))
+            .slice(0, 6);
+        if (!items.length) return "";
+        const rows = items.map(({item, next}) => {
+            const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
+            const days = Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(today).getTime()) / 86400000));
+            return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? "今天" : days + " 天后"}</em></div>`;
+        }).join("");
+        return `<section class="lc-checkin__upcoming" aria-label="近期事项"><h2>近期事项 · 60 天</h2>${rows}</section>`;
     }
 
     private renderArchived(): string {
@@ -1714,14 +1739,77 @@ export default class CheckinPlugin extends Plugin {
         const rows = this.occasionStore.occasions.length ? [...this.occasionStore.occasions].sort((left, right) => left.date.localeCompare(right.date)).map((item) => {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
             const kind = item.kind === "birthday" ? "生日" : item.kind === "anniversary" ? "纪念日" : "定时事项";
-            const recurrence = item.recurrence === "annual" ? "每年 " + item.date.slice(5) : item.recurrence === "monthly" ? "每月 " + Number(item.date.slice(8)) + " 日" : item.date;
-            return '<article class="lc-checkin__occasion-manager-row ' + (item.enabled ? "" : "is-disabled") + '"><span class="lc-checkin__occasion-icon" aria-hidden="true">' + icon + '</span><div><strong>' + escapeHtml(item.name) + '</strong><small>' + kind + ' · ' + recurrence + ' · 提前 ' + item.remindBeforeDays + ' 天</small></div><button class="lc-checkin__small-button" type="button" data-occasion-edit="' + escapeHtml(item.id) + '" aria-label="编辑' + escapeHtml(item.name) + '" title="编辑">⚙</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="' + escapeHtml(item.id) + '" aria-label="切换' + escapeHtml(item.name) + '">' + (item.enabled ? "✓" : "○") + '</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="' + escapeHtml(item.id) + '" aria-label="删除' + escapeHtml(item.name) + '" title="删除">×</button></article>';
-        }).join("") : '<div class="lc-checkin__empty-description">还没有日期事项。添加后，它们会在提醒窗口和今日页单独显示。</div>';
+            const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
+            const countdown = next ? `${next} · 还有 ${Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))} 天` : "已结束";
+            const recurrence = describeRecurrence(item);
+            return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">编辑</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="切换${escapeHtml(item.name)}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="删除${escapeHtml(item.name)}" title="删除">×</button></article>`;
+        }).join("") : '<div class="lc-checkin__empty-description">还没有日期事项。可以从模板开始，或自行添加。</div>';
         const date = editing?.date || dateKey(currentCalendarDate());
         const editLabel = editing ? "编辑事项" : "新建事项";
-        const kind = editing?.kind || "scheduled";
-        const recurrence = editing?.recurrence || "annual";
-        return '<div class="lc-checkin lc-checkin--history lc-checkin--occasions" data-appearance="' + this.resolvedAppearance() + '"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header><div class="lc-checkin__occasion-manager"><section class="lc-checkin__occasion-form-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">' + editLabel + '</span><strong>按日期提醒</strong></div></div><form data-occasion-form><label class="lc-checkin__field"><span>名称</span><input name="name" required maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="' + escapeHtml(editing?.name || "") + '" /></label><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday" ' + (kind === "birthday" ? "selected" : "") + '>生日</option><option value="anniversary" ' + (kind === "anniversary" ? "selected" : "") + '>纪念日</option><option value="scheduled" ' + (kind === "scheduled" ? "selected" : "") + '>定时事项</option></select></label><label class="lc-checkin__field"><span>日期</span><input name="date" type="date" required value="' + escapeHtml(date) + '" /></label></div><div class="lc-checkin__form-row"><label class="lc-checkin__field"><span>重复</span><select name="recurrence"><option value="annual" ' + (recurrence === "annual" ? "selected" : "") + '>每年</option><option value="once" ' + (recurrence === "once" ? "selected" : "") + '>一次性</option></select></label><label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" value="' + (editing?.remindBeforeDays ?? 3) + '" /></label></div><label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">' + escapeHtml(editing?.note || "") + '</textarea></label><div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">' + (editing ? "保存修改" : "添加事项") + '</button>' + (editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : "") + '</div></form></section><section class="lc-checkin__occasion-list-panel"><div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">' + this.occasionStore.occasions.length + '</span></div><div class="lc-checkin__occasion-manager-list">' + rows + '</div></section></div></div>';
+        const kind: OccasionKind = editing?.kind || "scheduled";
+        const recurrence: OccasionRecurrence = editing?.recurrence || "annual";
+        const calendar = editing?.calendar || "solar";
+        const annualSubtype = editing?.annualSubtype || "byday";
+        const monthlySubtype: MonthlySubtype = editing?.monthlySubtype || "byday";
+        const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
+        const templateChips = OCCASION_TEMPLATES.map((template, index) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as OccasionImport)}"><span aria-hidden="true">${template.icon}</span>${template.name}</button>`).join("");
+        const weekdayOptions = WEEKDAY_NAMES.map((label, value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${label}</option>`).join("");
+        const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${index + 1} 月</option>`).join("");
+        const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>` + ["第1个", "第2个", "第3个", "第4个", "第5个"][value - 1] + "</option>").join("");
+        return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${this.resolvedAppearance()}">
+            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header>
+            <div class="lc-checkin__occasion-manager">
+                <section class="lc-checkin__occasion-form-panel">
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>按日期提醒</strong></div></div>
+                    <div class="lc-checkin__occasion-templates" aria-label="常用模板">${templateChips}</div>
+                    <form data-occasion-form>
+                        <label class="lc-checkin__field"><span>名称</span><input name="name" required maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="${escapeHtml(editing?.name || "")}" /></label>
+                        <div class="lc-checkin__form-row">
+                            <label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday"${sel("birthday", kind)}>生日</option><option value="anniversary"${sel("anniversary", kind)}>纪念日</option><option value="scheduled"${sel("scheduled", kind)}>定时事项</option></select></label>
+                            <label class="lc-checkin__field"><span>日期</span><input name="date" type="date" required value="${escapeHtml(date)}" /></label>
+                        </div>
+                        <div class="lc-checkin__form-row">
+                            <label class="lc-checkin__field"><span>重复</span><select name="recurrence" data-occasion-recurrence>
+                                <option value="once"${sel("once", recurrence)}>一次性</option>
+                                <option value="annual"${sel("annual", recurrence)}>每年</option>
+                                <option value="monthly"${sel("monthly", recurrence)}>每月</option>
+                                <option value="weekly"${sel("weekly", recurrence)}>每周</option>
+                                <option value="quarterly"${sel("quarterly", recurrence)}>每季度</option>
+                                <option value="halfyearly"${sel("halfyearly", recurrence)}>每半年</option>
+                                <option value="interval"${sel("interval", recurrence)}>自定义间隔</option>
+                            </select></label>
+                            <div class="lc-checkin__field" data-occasion-block="annual-calendar"${recurrence === "annual" ? "" : " hidden"}><span class="lc-checkin__field-label">历法</span><select name="calendar" data-occasion-calendar><option value="solar"${sel("solar", calendar)}>公历</option><option value="lunar"${sel("lunar", calendar)}>农历</option></select><small class="lc-checkin__field-hint" data-occasion-lunar-hint hidden></small></div>
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>月份</span><select name="annualMonth">${monthOptions}</select></label>
+                            <label class="lc-checkin__field"><span>星期</span><select name="annualNth">${nthOptions}</select></label>
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>星期（年度第N个）</span><select name="annualWeekday">${weekdayOptions}</select></label>
+                            <input type="hidden" name="annualSubtype" value="${annualSubtype}" />
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="monthly-sub"${recurrence === "monthly" ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>方式</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>每月固定日（取日期）</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>每月第N个星期</option><option value="lastday"${sel("lastday", monthlySubtype)}>每月最后一天</option></select></label>
+                            <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">星期</span><select name="monthlyWeekday">${weekdayOptions}</select></div>
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="weekly"${recurrence === "weekly" ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>星期</span><select name="weeklyWeekday">${weekdayOptions}</select></label>
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="interval"${recurrence === "interval" ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>间隔数量</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${editing?.intervalCount ?? 1}" /></label>
+                            <label class="lc-checkin__field"><span>单位</span><select name="intervalUnit"><option value="day"${sel("day", editing?.intervalUnit)}>天</option><option value="month"${sel("month", editing?.intervalUnit || "month")}>个月</option><option value="year"${sel("year", editing?.intervalUnit)}>年</option></select></label>
+                        </div>
+                        <label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
+                        <label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">${escapeHtml(editing?.note || "")}</textarea></label>
+                        <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? "保存修改" : "添加事项"}</button>${editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : ""}</div>
+                    </form>
+                </section>
+                <section class="lc-checkin__occasion-list-panel">
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">${this.occasionStore.occasions.length}</span></div>
+                    <div class="lc-checkin__occasion-manager-list">${rows}</div>
+                </section>
+            </div>
+        </div>`;
     }
 
     private renderItem(item: CheckinItem, date: Date): string {
@@ -2069,17 +2157,6 @@ export default class CheckinPlugin extends Plugin {
     private bindOccasions(root: HTMLElement) {
         this.bindDialogClose(root);
         this.bindMobileNav(root);
-        const recurrence = root.querySelector<HTMLSelectElement>("[name='recurrence']");
-        if (recurrence && !recurrence.querySelector("option[value='monthly']")) {
-            const option = document.createElement("option");
-            option.value = "monthly";
-            option.textContent = "每月";
-            recurrence.insertBefore(option, recurrence.querySelector("option[value='once']") || null);
-        }
-        if (recurrence && this.editingOccasionId) {
-            const editing = this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId);
-            if (editing) recurrence.value = editing.recurrence;
-        }
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
         root.querySelector<HTMLElement>("[data-action='new-occasion']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
         root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { this.editingOccasionId = undefined; this.render(); });
@@ -2093,8 +2170,56 @@ export default class CheckinPlugin extends Plugin {
             const id = button.dataset.occasionDelete || "";
             const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
             if (!item || !window.confirm("删除日期事项？")) return;
-            void this.enqueueMutation(() => this.deleteOccasion(id));
+            void this.enqueueMutation(async () => { const previous = this.occasionStore; this.occasionStore = deleteOccasion(previous, id); try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项删除失败，请重试"); } if (this.editingOccasionId === id) this.editingOccasionId = undefined; this.render(); });
         }));
+
+        const syncBlocks = () => {
+            const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");
+            if (!form) return;
+            const recurrence = form.querySelector<HTMLSelectElement>("[name='recurrence']")?.value || "annual";
+            const monthlySubtype = form.querySelector<HTMLSelectElement>("[data-occasion-monthly-subtype]")?.value || "byday";
+            form.querySelectorAll<HTMLElement>("[data-occasion-block]").forEach((block) => {
+                const key = block.dataset.occasionBlock || "";
+                let visible = key === recurrence;
+                if (key === "annual-calendar") visible = recurrence === "annual";
+                if (key === "annual-nthweek") visible = recurrence === "annual" && form.querySelector<HTMLInputElement>("[name='annualSubtype']")?.value === "nthweek";
+                if (key === "monthly-sub") visible = recurrence === "monthly";
+                if (key === "monthly-nthweek") visible = recurrence === "monthly" && monthlySubtype === "nthweek";
+                block.hidden = !visible;
+            });
+            this.syncOccasionLunarHint(form);
+        };
+        root.querySelector<HTMLSelectElement>("[data-occasion-recurrence]")?.addEventListener("change", syncBlocks);
+        root.querySelector<HTMLSelectElement>("[data-occasion-monthly-subtype]")?.addEventListener("change", syncBlocks);
+        root.querySelector<HTMLInputElement>("[name='date']")?.addEventListener("change", () => this.syncOccasionLunarHint(root.querySelector<HTMLFormElement>("[data-occasion-form]")));
+        root.querySelector<HTMLSelectElement>("[data-occasion-calendar]")?.addEventListener("change", () => this.syncOccasionLunarHint(root.querySelector<HTMLFormElement>("[data-occasion-form]")));
+        syncBlocks();
+
+        root.querySelectorAll<HTMLButtonElement>("[data-occasion-template]").forEach((button) => button.addEventListener("click", () => {
+            const template = OCCASION_TEMPLATES[Number(button.dataset.occasionTemplate)];
+            if (!template) return;
+            const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");
+            if (!form) return;
+            const set = (name: string, value: string) => { const field = form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`); if (field) field.value = value; };
+            set("name", template.name);
+            set("kind", template.kind);
+            set("date", template.date || dateKey(currentCalendarDate()));
+            set("recurrence", template.recurrence);
+            set("calendar", template.calendar || "solar");
+            set("annualSubtype", template.annualSubtype || "byday");
+            set("annualMonth", String(template.month || 1));
+            set("annualNth", String(template.nthWeek || 1));
+            set("annualWeekday", String(template.weekday ?? 0));
+            set("monthlySubtype", template.monthlySubtype || "byday");
+            set("monthlyWeekday", String(template.weekday ?? 0));
+            set("weeklyWeekday", String(template.weekday ?? 0));
+            set("intervalCount", String(template.intervalCount || 1));
+            set("intervalUnit", template.intervalUnit || "month");
+            set("remindBeforeDays", String(template.remindBeforeDays));
+            this.editingOccasionId = undefined;
+            syncBlocks();
+        }));
+
         root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
@@ -2105,6 +2230,18 @@ export default class CheckinPlugin extends Plugin {
             }
             void this.enqueueMutation(() => this.saveOccasionForm(data));
         });
+    }
+
+    private syncOccasionLunarHint(form: HTMLFormElement | null) {
+        if (!form) return;
+        const hint = form.querySelector<HTMLElement>("[data-occasion-lunar-hint]");
+        if (!hint) return;
+        const date = form.querySelector<HTMLInputElement>("[name='date']")?.value || "";
+        const calendar = form.querySelector<HTMLSelectElement>("[data-occasion-calendar]")?.value;
+        if (calendar !== "lunar" || !isValidLocalDateInput(date)) { hint.hidden = true; return; }
+        const lunar = solarToLunar(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))));
+        hint.textContent = lunar ? `将按农历 ${formatLunar(lunar)} 循环` : "";
+        hint.hidden = !lunar;
     }
 
     private bindPageNavigation(root: HTMLElement) {
@@ -3302,13 +3439,27 @@ export default class CheckinPlugin extends Plugin {
         const kindValue = String(data.get("kind") || "scheduled");
         const recurrenceValue = String(data.get("recurrence") || "annual");
         const kind: OccasionKind = kindValue === "birthday" || kindValue === "anniversary" ? kindValue : "scheduled";
-        const recurrence: OccasionRecurrence = recurrenceValue === "once" ? "once" : recurrenceValue === "monthly" ? "monthly" : "annual";
+        const recurrence: OccasionRecurrence = ["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"].includes(recurrenceValue) ? recurrenceValue as OccasionRecurrence : "annual";
         const remindBeforeDays = Math.max(0, Math.min(365, Math.round(Number(data.get("remindBeforeDays")) || 0)));
         const existing = this.editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId) : undefined;
-        const normalized = normalizeOccasion({id: existing?.id, name, kind, date, recurrence, remindBeforeDays, note: String(data.get("note") || ""), enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString()});
+        const lunar = solarToLunar(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))));
+        const normalized = normalizeOccasion({
+            id: existing?.id, name, kind, date, recurrence,
+            calendar: recurrence === "annual" ? String(data.get("calendar") || "solar") : "solar",
+            lunarLeap: recurrence === "annual" && String(data.get("calendar")) === "lunar" ? lunar?.leap === true : false,
+            annualSubtype: String(data.get("annualSubtype") || "byday"),
+            month: Number(data.get("annualMonth")) || undefined,
+            nthWeek: Number(data.get("annualNth")) || Number(data.get("monthlyNth")) || undefined,
+            weekday: data.has("annualWeekday") ? Number(data.get("annualWeekday")) : data.has("weeklyWeekday") ? Number(data.get("weeklyWeekday")) : undefined,
+            monthlySubtype: String(data.get("monthlySubtype") || "byday"),
+            intervalUnit: String(data.get("intervalUnit") || "month"),
+            intervalCount: Number(data.get("intervalCount")) || undefined,
+            remindBeforeDays, note: String(data.get("note") || ""),
+            enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString(),
+        });
         if (!normalized) { showMessage("请填写有效的事项名称和日期"); return; }
         const previous = this.occasionStore;
-        this.occasionStore = {...previous, occasions: existing ? previous.occasions.map((item) => item.id === normalized.id ? normalized : item) : [...previous.occasions, normalized]};
+        this.occasionStore = upsertOccasion(previous, normalized);
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项保存失败，请重试"); return; }
         this.editingOccasionId = undefined;
         this.render();
@@ -3321,14 +3472,6 @@ export default class CheckinPlugin extends Plugin {
         this.occasionStore = {...previous, occasions: previous.occasions.map((candidate) => candidate.id === normalized.id ? normalized : candidate)};
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项更新失败，请重试"); return; }
         this.renderBackgroundUpdate();
-    }
-
-    private async deleteOccasion(id: string) {
-        const previous = this.occasionStore;
-        this.occasionStore = {...previous, occasions: previous.occasions.filter((item) => item.id !== id)};
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项删除失败，请重试"); return; }
-        if (this.editingOccasionId === id) this.editingOccasionId = undefined;
-        this.render();
     }
 
     private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {
