@@ -1,4 +1,4 @@
-import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot} from "./types";
+import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CompletionSource, TomatoValueMode} from "./types";
 
 /** A themed collection of icons that can be used by the item editor. */
 export interface IconGroup {
@@ -31,6 +31,8 @@ export interface CheckinTemplate {
     group: string;
     priority: CheckinPriority;
     timeSlot?: CheckinTimeSlot;
+    completionSource?: CompletionSource;
+    tomatoMode?: TomatoValueMode;
     note: string;
 }
 

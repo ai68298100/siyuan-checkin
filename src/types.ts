@@ -4,6 +4,9 @@ export type CheckinPriority = "low" | "medium" | "high";
 
 export type CheckinTimeSlot = "any" | "morning" | "afternoon" | "evening";
 
+export type CompletionSource = "manual" | "tomato";
+export type TomatoValueMode = "minutes" | "sessions";
+
 export type CheckinItemSortMode = "manual" | "group" | "priority" | "createdAt" | "updatedAt" | "name";
 
 export type ScheduleType = "daily" | "weekly" | "workdays" | "custom" | "interval" | "quota";
@@ -63,6 +66,10 @@ export interface CheckinItem {
     sortOrder?: number;
     /** Optional part of day used by the time grouping view. */
     timeSlot?: CheckinTimeSlot;
+    /** How completion is supplied. Tomato mode is written by a compatible plugin. */
+    completionSource?: CompletionSource;
+    /** Whether tomato completion contributes minutes or completed sessions. */
+    tomatoMode?: TomatoValueMode;
 }
 
 export interface CheckinEvent {
@@ -105,6 +112,8 @@ export interface UserTemplate {
     priority: CheckinPriority;
     timeSlot?: CheckinTimeSlot;
     note: string;
+    completionSource?: CompletionSource;
+    tomatoMode?: TomatoValueMode;
     createdAt: string;
     updatedAt: string;
 }

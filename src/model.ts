@@ -347,6 +347,8 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
     const sortOrder = normalizeCheckinSortOrder(value.sortOrder ?? value.order ?? value.position);
     const priority = normalizeCheckinPriority(value.priority);
     const timeSlot = normalizeCheckinTimeSlot(value.timeSlot ?? value.timeOfDay);
+    const completionSource = value.completionSource === "tomato" ? "tomato" as const : "manual" as const;
+    const tomatoMode = value.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
     const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
@@ -369,6 +371,8 @@ function normalizeItem(value: unknown): CheckinItem | undefined {
         priority,
         sortOrder,
         timeSlot,
+        completionSource,
+        tomatoMode,
     };
 }
 

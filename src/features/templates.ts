@@ -13,7 +13,9 @@ export function normalizeUserTemplate(value: unknown, now = new Date().toISOStri
     const id = String(raw.id || "").trim();
     const name = String(raw.name || "").trim();
     if (!id || !name) return undefined;
-    return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
+    const completionSource = raw.completionSource === "tomato" ? "tomato" as const : "manual" as const;
+    const tomatoMode = raw.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
+    return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), completionSource, tomatoMode, note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
 }
 
 export function mergeTemplates(builtins: readonly CheckinTemplate[], users: readonly unknown[] = []): Array<CheckinTemplate | UserTemplate> {

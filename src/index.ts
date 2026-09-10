@@ -19,7 +19,7 @@ import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
 import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
-import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, ScheduleType, UserTemplate} from "./types";
+import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, densityLabel, nextDensity, normalizeViewPreferences} from "./view-preferences";
@@ -1602,6 +1602,7 @@ export default class CheckinPlugin extends Plugin {
         const meta = (isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
+        const completionSource = item.completionSource || "manual";
         const unit = revision.unit || "次";
         const icon = isBinary
             ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${renderIconMarkup(item.icon)}</button>`
@@ -1613,6 +1614,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
+                    ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? "番茄钟·次数" : "番茄钟·分钟"}</span>` : ""}
                     <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="查看${escapeHtml(item.name)}的复盘" title="复盘">${uiIcon("insight")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="设置 ${escapeHtml(item.name)}" title="设置">${uiIcon("edit")}</button>
                 </div>
@@ -1658,10 +1660,13 @@ export default class CheckinPlugin extends Plugin {
         const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>我的模板</span><small>${this.userTemplates.length} 个</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" "))}" title="${escapeHtml(template.note)}" aria-label="使用我的模板 ${escapeHtml(template.name)}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="删除模板 ${escapeHtml(template.name)}">删除</button></div>`).join("")}</div>` : "";
         const initialPriority = item?.priority || "medium";
         const initialTimeSlot = item?.timeSlot || "any";
+        const initialCompletionSource: CompletionSource = item?.completionSource === "tomato" ? "tomato" : "manual";
+        const initialTomatoMode: TomatoValueMode = item?.tomatoMode === "sessions" ? "sessions" : "minutes";
         const advancedSummary = [
             item?.group || "未分组",
             PRIORITY_LABELS[initialPriority],
             initialTimeSlot === "any" ? "" : TIME_SLOT_LABELS[initialTimeSlot],
+            initialCompletionSource === "tomato" ? "番茄钟联动" : "手动记录",
             formatScheduleLabel(schedule),
         ].filter(Boolean).join(" · ");
         const templates = !item ? `<section class="lc-checkin__template-section">
@@ -1735,6 +1740,9 @@ export default class CheckinPlugin extends Plugin {
                                 <label class="lc-checkin__field"><span>分组</span><input name="group" type="text" maxlength="32" placeholder="例如：健康、学习" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
                                 <label class="lc-checkin__field"><span>重要性</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${PRIORITY_LABELS[priority]}</option>`).join("")}</select></label>
                                 <label class="lc-checkin__field"><span>时间段</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${TIME_SLOT_LABELS[slot]}</option>`).join("")}</select></label>
+                                <label class="lc-checkin__field"><span>完成来源</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>手动记录</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>番茄钟插件</option></select></label>
+                                <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>番茄钟计入</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>累计分钟</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>完成番茄钟数量</option></select></label>
+                                <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>安装兼容的番茄钟插件后，它可以通过小驴打卡 API 写入 source=tomato 的记录；未安装时仍可手动记录。</p>
                             </div>
                             <div class="lc-checkin__field"><span>频率</span><select name="schedule">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${label}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
@@ -2526,6 +2534,8 @@ export default class CheckinPlugin extends Plugin {
             setInput("group", template.group);
             setInput("priority", template.priority);
             setInput("timeSlot", template.timeSlot || "any");
+            setInput("completionSource", template.completionSource || "manual");
+            setInput("tomatoMode", template.tomatoMode || "minutes");
             setInput("schedule", template.schedule.type);
             const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`);
             if (kindInput) kindInput.checked = true;
@@ -2536,6 +2546,8 @@ export default class CheckinPlugin extends Plugin {
             const iconGroup = ICON_GROUPS.find((group) => group.icons.includes(template.icon));
             if (iconGroup) selectIconGroup(iconGroup.id);
             updateConditionalFields(false);
+            root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
+            root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
             updateEditorPreview();
             updateAdvancedSummary();
             const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
@@ -2550,10 +2562,10 @@ export default class CheckinPlugin extends Plugin {
                 const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
                 if (control) control.value = value;
             };
-            setInput("name", template.name); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("schedule", template.schedule.type);
+            setInput("name", template.name); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
             const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
             root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
-            selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
+            selectIcon(template.icon); updateConditionalFields(false); root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); updateEditorPreview(); updateAdvancedSummary();
             ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
         }));
         root.querySelectorAll<HTMLButtonElement>("[data-user-template-delete]").forEach((button) => button.addEventListener("click", () => {
@@ -2598,7 +2610,7 @@ export default class CheckinPlugin extends Plugin {
                 id: existing?.id || makeId("template"), name, icon: String(data.get("icon") || "✓"), kind,
                 target: kind === "binary" ? 1 : Math.max(0.1, target || 1), unit: unit || "次",
                 schedule, group: String(data.get("group") || "").trim(),
-                priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
+                priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), completionSource: data.get("completionSource") === "tomato" ? "tomato" : "manual", tomatoMode: data.get("tomatoMode") === "sessions" ? "sessions" : "minutes", note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
             };
             this.userTemplates = upsertUserTemplate(this.userTemplates, template);
             void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 已保存到我的模板"); this.render(); }).catch(() => {
@@ -2609,18 +2621,29 @@ export default class CheckinPlugin extends Plugin {
             const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || "未分组";
             const priority = normalizePriorityInput(root.querySelector<HTMLSelectElement>("select[name='priority']")?.value || null);
             const timeSlot = normalizeTimeSlotInput(root.querySelector<HTMLSelectElement>("select[name='timeSlot']")?.value || null);
+            const linkedToTomato = root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato";
+            const completionSource = linkedToTomato ? `番茄钟·${root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.value === "sessions" ? "次数" : "分钟"}` : "手动记录";
             const schedule = root.querySelector<HTMLSelectElement>("select[name='schedule']")?.value as ScheduleType || "daily";
             const interval = Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1);
             const scheduleLabel = schedule === "interval" ? `每隔 ${Math.max(1, Math.round(interval))} 天` : SCHEDULE_LABELS[schedule];
-            const pieces = [group, PRIORITY_LABELS[priority], timeSlot === "any" ? "" : TIME_SLOT_LABELS[timeSlot], scheduleLabel].filter(Boolean);
+            const pieces = [group, PRIORITY_LABELS[priority], timeSlot === "any" ? "" : TIME_SLOT_LABELS[timeSlot], completionSource, scheduleLabel].filter(Boolean);
             root.querySelector<HTMLElement>("[data-advanced-summary]")?.replaceChildren(document.createTextNode(pieces.join(" · ")));
+        };
+        const updateTomatoFields = () => {
+            const linked = root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato";
+            root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", !linked);
+            root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", !linked);
+            updateAdvancedSummary();
         };
         root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("input", updateAdvancedSummary));
         root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("change", updateAdvancedSummary));
+        root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.addEventListener("change", updateTomatoFields);
+        root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.addEventListener("change", updateAdvancedSummary);
         updateConditionalFields();
         updateEditorPreview();
         applyIconFilter();
         applyTemplateFilter();
+        updateTomatoFields();
         updateAdvancedSummary();
         root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
             event.preventDefault();
@@ -2679,6 +2702,8 @@ export default class CheckinPlugin extends Plugin {
         const group = String(data.get("group") || "").trim().slice(0, 32);
         const priority = normalizePriorityInput(data.get("priority"));
         const timeSlot = normalizeTimeSlotInput(data.get("timeSlot"));
+        const completionSource: CompletionSource = data.get("completionSource") === "tomato" ? "tomato" : "manual";
+        const tomatoMode: TomatoValueMode = data.get("tomatoMode") === "sessions" ? "sessions" : "minutes";
         const sortOrder = existing?.sortOrder ?? this.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
         const revision: CheckinItemRevision = {
             effectiveDate: submittedAt.localDate,
@@ -2716,6 +2741,8 @@ export default class CheckinPlugin extends Plugin {
             priority,
             sortOrder,
             timeSlot,
+            completionSource,
+            tomatoMode,
         };
         const previous = this.store;
         this.store = {

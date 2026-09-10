@@ -25,5 +25,10 @@ assert.match(source, /data-action="save-template"/);
 assert.match(source, /保存为我的模板/);
 assert.match(source, /!weekdays\.querySelector<HTMLInputElement>\("input\[name='weekday'\]:checked"\)/);
 assert.match(source, /const advanced = root\.querySelector<HTMLDetailsElement>\("\[data-advanced\]"\)/);
+assert.match(source, /name="completionSource"/);
+assert.match(source, /name="tomatoMode"/);
+assert.match(source, /data-tomato-mode-field/);
+assert.match(source, /source=tomato/);
+assert.match(source, /completionSource: data\.get\("completionSource"\) === "tomato"/);
 
 console.log("Interval editor structure checks passed.");
