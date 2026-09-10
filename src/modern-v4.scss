@@ -90,6 +90,7 @@
 .lc-checkin--today .lc-checkin__group-header em { color: var(--modern-muted); background: var(--modern-surface-soft); }
 .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .lc-checkin--today .lc-checkin__item {
+    --card-accent: var(--modern-accent);
     display: grid;
     grid-template-columns: 38px minmax(0, 1fr) auto;
     grid-template-areas: "icon body action" "icon exact exact";
@@ -102,8 +103,10 @@
     box-shadow: var(--modern-shadow);
     grid-column: 1 / -1;
 }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 2) { --card-accent: var(--lc-checkin-success); }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 3) { --card-accent: var(--lc-checkin-warning); }
 .lc-checkin--today .lc-checkin__item:hover { border-color: color-mix(in srgb, var(--modern-accent) 48%, var(--modern-border)); box-shadow: 0 5px 16px color-mix(in srgb, var(--b3-theme-on-background) 9%, transparent); }
-.lc-checkin--today .lc-checkin__item::before { width: 3px; background: color-mix(in srgb, var(--modern-accent) 82%, #fff); }
+.lc-checkin--today .lc-checkin__item::before { width: 3px; background: var(--card-accent); }
 .lc-checkin--today .lc-checkin__item.is-complete::before { background: var(--lc-checkin-success); }
 .lc-checkin--today .lc-checkin__item-icon { grid-area: icon; align-self: center; border-radius: 10px; background: var(--modern-surface-soft); }
 .lc-checkin--today .lc-checkin__item:nth-child(3n + 1) .lc-checkin__item-icon { color: var(--modern-accent); background: color-mix(in srgb, var(--modern-accent) 13%, var(--modern-surface)); }
@@ -114,6 +117,8 @@
 .lc-checkin--today .lc-checkin__item-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lc-checkin--today .lc-checkin__item-action { grid-area: action; align-self: center; padding: 0; }
 .lc-checkin--today .lc-checkin__exact-entry { grid-area: exact; }
+.lc-checkin--today .lc-checkin__item-progress span { background: var(--card-accent); }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { color: var(--card-accent); background: color-mix(in srgb, var(--card-accent) 12%, var(--modern-surface)); }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 34px; }
 .lc-checkin--today .lc-checkin__completed-section { border-top: 1px solid var(--modern-border); }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .62; }
