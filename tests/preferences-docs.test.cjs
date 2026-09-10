@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const readme = fs.readFileSync("README.md", "utf8");
 const source = fs.readFileSync("src/index.ts", "utf8");
 const migration = fs.readFileSync("docs/v2.0-migration-notes.md", "utf8");
-assert.match(readme, /界面密度/);
+assert.match(readme, /弹窗尺寸/);
 assert.match(readme, /跟随思源\/浅色\/深色/);
 assert.match(readme, /减少动效/);
 assert.match(readme, /显示偏好重置/);

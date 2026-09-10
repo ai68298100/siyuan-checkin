@@ -1313,3 +1313,14 @@
     opacity: 0;
     cursor: pointer;
 }
+
+/* rows keep one clean surface: no legacy body tint */
+.lc-checkin--today .lc-checkin__item-body { background: transparent; }
+
+/* narrow containers: header actions wrap to their own full-width row */
+@container lc5 (max-width: 719px) {
+    .lc-checkin__header,
+    .lc-checkin__editor-header { flex-wrap: wrap; }
+    .lc-checkin__header-actions { flex-wrap: wrap; justify-content: flex-start; width: 100%; }
+    .lc-checkin--review .lc-checkin__header-actions { width: 100%; }
+}
