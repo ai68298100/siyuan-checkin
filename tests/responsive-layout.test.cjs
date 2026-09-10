@@ -62,6 +62,8 @@ assert.match(occasionsStyles, /\.lc-checkin--occasions \.lc-checkin__occasion-ma
     "occasion manager desktop layout must keep form and list side by side");
 assert.match(occasionsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--occasions \.lc-checkin__occasion-manager\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
     "occasion manager mobile layout must stack form and list");
+assert.match(occasionsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--occasions \.lc-checkin__occasion-manager-row\s*\{[\s\S]*grid-template-columns:\s*30px\s+minmax\(0,\s*1fr\)\s+repeat\(3,\s*32px\)/,
+    "occasion mobile rows must keep all compact actions on one scan line");
 assert.match(insightsStyles, /\.lc-checkin--insights \.lc-checkin__insight-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(14,\s*minmax\(0,\s*1fr\)\)/,
     "insights desktop status grid must expose a stable two-week rhythm");
 assert.match(insightsStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*\.lc-checkin--insights \.lc-checkin__coaching-list\s*\{[\s\S]*grid-template-columns:\s*1fr;/,

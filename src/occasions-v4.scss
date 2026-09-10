@@ -64,14 +64,14 @@
        targets. Low-frequency actions can move into a disclosure in a later
        interaction pass. */
     .lc-checkin--occasions .lc-checkin__occasion-manager-row {
-        grid-template-columns: 30px minmax(0, 1fr) repeat(3, 36px);
+        grid-template-columns: 30px minmax(0, 1fr) repeat(3, 32px);
         gap: 6px;
         min-height: 48px;
         padding: 6px 8px;
     }
     .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
     }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--occasions * { transition-duration: 0ms; } }
