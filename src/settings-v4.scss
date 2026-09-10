@@ -45,6 +45,12 @@
 .lc-checkin--settings .lc-checkin__settings-check input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--lc-checkin-accent); }
 .lc-checkin--settings .lc-checkin__settings-check span { color: var(--b3-theme-on-background); line-height: 1.4; }
 .lc-checkin--settings .lc-checkin__settings-card > .lc-checkin__text-button { min-height: 36px; margin-top: 10px; border-radius: 8px; }
+.lc-checkin--settings .lc-checkin__settings-integrations { border-color: color-mix(in srgb, var(--lc-checkin-accent) 34%, var(--b3-border-color)); }
+.lc-checkin--settings .lc-checkin__settings-status-list { display: grid; gap: 0; margin-top: 12px; }
+.lc-checkin--settings .lc-checkin__settings-status-list > div { display: grid; grid-template-columns: minmax(90px, .28fr) minmax(0, .72fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid color-mix(in srgb, var(--b3-border-color) 48%, transparent); }
+.lc-checkin--settings .lc-checkin__settings-status-list span { color: var(--b3-theme-on-surface-light); font-size: 11px; }
+.lc-checkin--settings .lc-checkin__settings-status-list strong { color: var(--b3-theme-on-background); font-size: 12px; }
+.lc-checkin--settings .lc-checkin__settings-status-list small { grid-column: 2; color: var(--b3-theme-on-surface-light); font-size: 10px; line-height: 1.4; }
 @media (max-width: 600px) {
     .lc-checkin--settings { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
     .lc-checkin--settings .lc-checkin__settings-card { padding: 15px; }
@@ -53,5 +59,7 @@
     .lc-checkin--settings .lc-checkin__field select { min-height: 42px; }
     .lc-checkin--settings .lc-checkin__settings-check { display: flex; min-height: 48px; }
     .lc-checkin--settings .lc-checkin__settings-card > .lc-checkin__text-button { width: 100%; }
+    .lc-checkin--settings .lc-checkin__settings-status-list > div { grid-template-columns: 1fr; gap: 4px; }
+    .lc-checkin--settings .lc-checkin__settings-status-list small { grid-column: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--settings * { transition-duration: 0ms; } }
