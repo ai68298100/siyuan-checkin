@@ -4,8 +4,10 @@ import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
+import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, renderBarChart, renderLineChart} from "./charts";
+import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
-import {serializeCsv, serializeJson} from "./export";
+import {parseCheckinCsv, serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-filter";
@@ -30,7 +32,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "6.0.0";
+const PLUGIN_VERSION = "7.0.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -1189,6 +1191,104 @@ export default class CheckinPlugin extends Plugin {
                     return ok ? {result: (args.completed ? "已处理" : "已取消处理") + "日期事项“" + item.name + "”。", structuredContent: {id, occurrenceDate, completed: args.completed}} : {error: "事项状态保存失败。"};
                 },
             });
+            plugin.addAgentCapability({
+                name: "checkin-list-upcoming",
+                title: "查询小驴打卡近期事项",
+                description: "查询未来指定天数内即将发生的日期事项（生日、还款、体检等），按剩余天数排序。该能力只读本地数据。",
+                inputSchema: {type: "object", properties: {days: {type: "number", description: "查询未来多少天，默认 30，最大 365"}}, additionalProperties: false},
+                outputSchema: {type: "object"},
+                effects: {localRead: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const days = Math.min(365, Math.max(1, Math.round(Number(args.days) || 30)));
+                    const today = dateKey(currentCalendarDate());
+                    const horizon = dateKey(new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() + days));
+                    const items = this.occasionStore.occasions.filter((item) => item.enabled)
+                        .map((item) => ({item, next: getOccurrenceDate(item, today)}))
+                        .filter((entry) => typeof entry.next === "string" && entry.next <= horizon)
+                        .sort((left, right) => (left.next as string).localeCompare(right.next as string));
+                    return {result: "未来 " + days + " 天共有 " + items.length + " 个日期事项。", structuredContent: {days, occasions: items.map(({item, next}) => ({id: item.id, name: item.name, kind: item.kind, date: next, repeat: item.recurrence, note: item.note}))}};
+                },
+            });
+            plugin.addAgentCapability({
+                name: "checkin-weekly-report",
+                title: "生成小驴打卡周报",
+                description: "根据最近一周的打卡记录生成纯文本周报，包含完成率、亮点与待改进。该能力只读本地数据。",
+                inputSchema: {type: "object", properties: {}, additionalProperties: false},
+                outputSchema: {type: "object"},
+                effects: {localRead: true, dataEgress: true, externalCost: false},
+                handler: async () => {
+                    const summary = buildSummaryContext(this.store, "week");
+                    const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
+                    const top = [...summary.items].sort((left, right) => right.completionRate - left.completionRate).slice(0, 3);
+                    const lines = [
+                        "本周共 " + summary.totalEvents + " 条记录，" + summary.completedItems + "/" + summary.scheduledItems + " 项有完成（" + rate + "%）。",
+                        ...top.map((item) => "· " + item.name + "：" + item.completedDays + "/" + item.scheduledDays + " 天（" + item.completionRate + "%）"),
+                    ];
+                    return {result: lines.join("\n"), structuredContent: {totalEvents: summary.totalEvents, completedItems: summary.completedItems, scheduledItems: summary.scheduledItems, rate}};
+                },
+            });
+            plugin.addAgentCapability({
+                name: "checkin-create-item",
+                title: "代建小驴打卡项",
+                description: "在用户明确要求时创建一个新的打卡项目（名称必填，支持按时长/按次数等类型）。",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        name: {type: "string", description: "项目名称"},
+                        kind: {type: "string", enum: ["binary", "count", "duration", "quantity", "custom"], description: "记录类型，默认 binary"},
+                        target: {type: "number", description: "目标值，默认 1"},
+                        unit: {type: "string", description: "单位，默认 次"},
+                        group: {type: "string", description: "分组"},
+                    },
+                    required: ["name"],
+                    additionalProperties: false,
+                },
+                outputSchema: {type: "object"},
+                effects: {localRead: true, localWrite: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const name = typeof args.name === "string" ? args.name.trim().slice(0, 40) : "";
+                    if (!name) return {error: "项目名称无效。"};
+                    if (this.store.items.some((candidate) => !candidate.archived && candidate.name === name)) return {error: "已存在同名打卡项。"};
+                    const kind = args.kind === "count" || args.kind === "duration" || args.kind === "quantity" || args.kind === "custom" ? args.kind : "binary";
+                    const target = Number.isFinite(Number(args.target)) && Number(args.target) > 0 ? Number(args.target) : 1;
+                    const now = new Date().toISOString();
+                    const created = normalizeCheckinItem({id: makeId("item"), name, icon: "✓", kind, target, unit: typeof args.unit === "string" && args.unit.trim() ? args.unit.trim().slice(0, 16) : "次", schedule: {type: "daily"}, group: typeof args.group === "string" ? args.group.trim().slice(0, 32) : "", createdDate: dateKey(currentCalendarDate()), createdAt: now, updatedAt: now});
+                    if (!created) return {error: "打卡项参数无效。"};
+                    this.store = {...this.store, items: [...this.store.items, created]};
+                    await this.persist();
+                    this.render();
+                    return {result: "已创建打卡项“" + created.name + "”。", structuredContent: {id: created.id, name: created.name}};
+                },
+            });
+            plugin.addAgentCapability({
+                name: "checkin-create-occasion",
+                title: "代建小驴打卡日期事项",
+                description: "在用户明确要求时创建一个日期事项（如生日提醒、还款提醒）。名称与日期必填，重复方式默认一次性。",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        name: {type: "string", description: "事项名称"},
+                        date: {type: "string", description: "日期 YYYY-MM-DD"},
+                        recurrence: {type: "string", enum: ["once", "annual", "monthly", "weekly"], description: "重复方式，默认 once"},
+                    },
+                    required: ["name", "date"],
+                    additionalProperties: false,
+                },
+                outputSchema: {type: "object"},
+                effects: {localRead: true, localWrite: true, dataEgress: true, externalCost: false},
+                handler: async (args) => {
+                    const name = typeof args.name === "string" ? args.name.trim().slice(0, 120) : "";
+                    const date = typeof args.date === "string" ? args.date.trim() : "";
+                    const recurrence = args.recurrence === "annual" || args.recurrence === "monthly" || args.recurrence === "weekly" ? args.recurrence : "once";
+                    if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return {error: "事项名称或日期无效。"};
+                    const created = normalizeOccasion({name, kind: "scheduled", date, recurrence, remindBeforeDays: 3, enabled: true});
+                    if (!created) return {error: "日期事项参数无效。"};
+                    this.occasionStore = {...this.occasionStore, occasions: [...this.occasionStore.occasions, created]};
+                    await this.persistOccasions();
+                    this.render();
+                    return {result: "已创建日期事项“" + created.name + "”（" + date + "）。", structuredContent: {id: created.id, name: created.name, date}};
+                },
+            });
             this.agentCapabilityRegistered = true;
         } catch (error) {
             showMessage(`[小驴打卡] 注册思源智能体能力失败：${String(error)}`);
@@ -1323,6 +1423,7 @@ export default class CheckinPlugin extends Plugin {
                 label: "数据与导出",
                 body: `
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 CSV</span><small>表头需含 名称、日期，可选 数值、单位。相同记录自动跳过。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />选择文件</label></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
             },
             {
@@ -1364,6 +1465,25 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
+        root.querySelector<HTMLInputElement>("[data-import-csv]")?.addEventListener("change", async (event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+                const parsed = parseCheckinCsv(await file.text());
+                const names = [...new Set(parsed.rows.map((row) => row.name))];
+                if (!parsed.rows.length) { showMessage("没有找到可导入的记录"); return; }
+                const skip = parsed.invalid;
+                if (!window.confirm(`将导入 ${names.length} 个项目、${parsed.rows.length} 条记录（跳过 ${skip} 行无效数据）。是否继续？`)) { input.value = ""; return; }
+                const report = this.importCsvRows(parsed.rows);
+                await this.persist();
+                showMessage(`已导入 ${report.itemsCreated} 个项目、${report.eventsCreated} 条记录，跳过重复 ${report.duplicates} 条`);
+                this.render();
+            } catch (error) {
+                showMessage(`导入失败：${String(error)}`);
+            }
+            input.value = "";
+        });
 
         const modeSelect = root.querySelector<HTMLSelectElement>("[data-setting-dialog-mode]");
         const scaleRow = root.querySelector<HTMLElement>("[data-dialog-scale-row]");
@@ -1716,6 +1836,10 @@ export default class CheckinPlugin extends Plugin {
                 : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
             return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
         }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
+        const weeklyTrend = buildWeeklyCompletionTrend(this.store, 12);
+        const monthlyTrend = buildMonthlyEventTrend(this.store, 6);
+        const achievements = buildAchievements(this.store);
+        const earnedCount = achievements.filter((entry) => entry.achieved).length;
         const providerButton = this.summaryProviders.size
             ? `<div class="lc-checkin__summary-agent"><span>思源智能体已连接</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">生成智能总结</button></div>`
             : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>本地总结可直接使用；连接支持的思源智能体后可生成自然语言复盘。</span></div>`;
@@ -1744,7 +1868,21 @@ export default class CheckinPlugin extends Plugin {
                     <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section>
                 </div>
             </div>
+            <section class="lc-checkin__trend" aria-label="趋势">
+                <h2>趋势</h2>
+                <div class="lc-checkin__trend-grid">
+                    <div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div>
+                    <div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div>
+                </div>
+            </section>
             <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
+            ${this.renderCheckinLog()}
+            <section class="lc-checkin__achievements" aria-label="成就">
+                <h2>成就 · ${earnedCount}/${achievements.length}</h2>
+                <div class="lc-checkin__achievement-grid">
+                    ${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? "已达成" : `${entry.progress}/${entry.target}`}</small></div>`).join("")}
+                </div>
+            </section>
             ${this.renderUpcomingOccasions()}
             ${generated}
             ${providerButton}
@@ -1767,6 +1905,32 @@ export default class CheckinPlugin extends Plugin {
             return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? "今天" : days + " 天后"}</em></div>`;
         }).join("");
         return `<section class="lc-checkin__upcoming" aria-label="近期事项"><h2>近期事项 · 60 天</h2>${rows}</section>`;
+    }
+
+    /* 7.0 打卡日志：最近 14 天有记录的日期时间线（图标 + 名称 + 数值 + 备注）。 */
+    private renderCheckinLog(): string {
+        const itemNames = new Map(this.store.items.map((item) => [item.id, item]));
+        const byDay = new Map<string, CheckinEvent[]>();
+        for (const event of this.store.events) {
+            const day = getEventDateKey(event);
+            const list = byDay.get(day);
+            if (list) list.push(event);
+            else byDay.set(day, [event]);
+        }
+        const days = [...byDay.keys()].filter((day) => day <= dateKey(currentCalendarDate())).sort((left, right) => right.localeCompare(left)).slice(0, 14);
+        if (!days.length) return "";
+        const daySections = days.map((day) => {
+            const events = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+            const rows = events.map((event) => {
+                const item = itemNames.get(event.itemId);
+                const icon = item?.icon || "✓";
+                const name = itemNames.get(event.itemId)?.name || "已删除项目";
+                const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+                return `<div class="lc-checkin__log-row"><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
+            }).join("");
+            return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
+        }).join("");
+        return `<section class="lc-checkin__log" aria-label="打卡日志"><h2>打卡日志 · 最近 14 天</h2>${daySections}</section>`;
     }
 
     private renderArchived(): string {
@@ -3566,6 +3730,62 @@ export default class CheckinPlugin extends Plugin {
             this.bulkMode = false;
             this.bulkSelected.clear();
         });
+    }
+
+    /* 7.0 P3 CSV import: group rows by name, create missing items (binary when
+       every value is 1), append events with source "import"; identical
+       item+date+value+unit rows are skipped as duplicates. */
+    private importCsvRows(rows: Array<{name: string; date: string; value: number; unit: string; binary: boolean}>): {itemsCreated: number; eventsCreated: number; duplicates: number} {
+        const byName = new Map<string, CheckinItem>();
+        let itemsCreated = 0;
+        const now = new Date().toISOString();
+        const today = dateKey(new Date());
+        const resolveItem = (name: string, unit: string, binary: boolean): CheckinItem => {
+            const existing = byName.get(name) || this.store.items.find((candidate) => !candidate.archived && candidate.name === name);
+            if (existing) return existing;
+            const created = normalizeCheckinItem({
+                id: makeId("item"),
+                name,
+                icon: "✓",
+                kind: binary ? "binary" : "count",
+                target: 1,
+                unit: binary ? "次" : unit,
+                schedule: {type: "daily"},
+                createdDate: today,
+                createdAt: now,
+                updatedAt: now,
+            })!;
+            byName.set(name, created);
+            itemsCreated += 1;
+            return created;
+        };
+        const resolved: CheckinItem[] = [];
+        const events: CheckinEvent[] = [];
+        let eventsCreated = 0;
+        let duplicates = 0;
+        for (const row of rows) {
+            const item = resolveItem(row.name, row.unit, row.binary);
+            resolved.push(item);
+            const date = row.date;
+            const duplicate = this.store.events.some((event) => event.itemId === item.id && event.localDate === date && event.value === row.value && event.unit === row.unit)
+                || events.some((event) => event.itemId === item.id && event.localDate === date && event.value === row.value && event.unit === row.unit);
+            if (duplicate) { duplicates += 1; continue; }
+            events.push({
+                id: makeId("event"),
+                itemId: item.id,
+                occurredAt: new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), 12, 0).toISOString(),
+                localDate: date,
+                value: row.value,
+                unit: row.unit || item.unit,
+                source: "import",
+            });
+            eventsCreated += 1;
+        }
+        const knownIds = new Set([...this.store.items, ...resolved].map((item) => item.id));
+        const items = [...this.store.items, ...resolved.filter((item) => !this.store.items.some((existing) => existing.id === item.id))];
+        void knownIds;
+        this.store = {...this.store, items, events: [...this.store.events, ...events]};
+        return {itemsCreated, eventsCreated, duplicates};
     }
 
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;
