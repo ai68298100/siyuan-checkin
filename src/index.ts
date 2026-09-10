@@ -1603,18 +1603,18 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
-                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="查看${escapeHtml(item.name)}的复盘" title="复盘">⌁</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="设置 ${escapeHtml(item.name)}" title="设置">⚙</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="查看${escapeHtml(item.name)}的复盘" title="复盘">${uiIcon("insight")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="设置 ${escapeHtml(item.name)}" title="设置">${uiIcon("edit")}</button>
                 </div>
                 <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
-                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="开始专注" title="开始专注">⌛</button>` : ""}
+                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="开始专注" title="开始专注">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? "取消" : "打卡"}</button>`
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="记录 ${formatNumber(recordStep)} ${escapeHtml(unit)}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
-                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="输入精确记录值" title="精确记录" aria-expanded="false">⋯</button>`}
+                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="输入精确记录值" title="精确记录" aria-expanded="false">${uiIcon("more")}</button>`}
             </div>
             ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
                 <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>

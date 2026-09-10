@@ -633,6 +633,14 @@
 }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 34px; border-radius: 999px; }
+.lc-checkin--today .lc-checkin__item-topline { gap: 5px; }
+.lc-checkin--today .lc-checkin__item-tag { padding: 2px 6px; border-radius: 999px; color: var(--modern-muted); background: var(--modern-surface-soft); font-size: 9px; font-weight: 700; }
+.lc-checkin--today .lc-checkin__item-tag.is-high { color: var(--lc-checkin-warning); background: var(--modern-warm-soft); }
+.lc-checkin--today .lc-checkin__small-button { width: 26px; height: 26px; border-radius: 50%; color: var(--modern-muted); }
+.lc-checkin--today .lc-checkin__small-button:hover { color: var(--modern-accent); background: var(--modern-lilac-soft); }
+.lc-checkin--today .lc-checkin__focus-button { width: 30px; height: 30px; border-radius: 50%; color: var(--modern-accent); background: var(--modern-lilac-soft); }
+.lc-checkin--today .lc-checkin__focus-button .lc-checkin__glyph { width: 15px; height: 15px; }
+.lc-checkin--today .lc-checkin__recent-record { border-color: color-mix(in srgb, var(--modern-lilac) 30%, var(--modern-border)); border-radius: 14px; background: var(--modern-lilac-soft); }
 .lc-checkin__mobile-nav button span { border-radius: 50%; }
 .lc-checkin__mobile-nav button.is-selected span { box-shadow: 0 2px 8px color-mix(in srgb, var(--modern-accent) 18%, transparent); }
 
