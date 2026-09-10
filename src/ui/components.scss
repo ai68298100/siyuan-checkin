@@ -1739,3 +1739,30 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   8.6 连续记录展示
+   ============================================================ */
+.lc-checkin__streak-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    padding: 1px 6px;
+    border-radius: 999px;
+    color: var(--lc-checkin-warning);
+    background: var(--lc-checkin-warm-soft);
+    font-size: 10px;
+    font-weight: 720;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__header-streak {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    color: var(--lc-checkin-warning);
+    background: var(--lc-checkin-warm-soft);
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+}

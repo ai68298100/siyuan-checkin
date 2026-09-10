@@ -34,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.5.0";
+const PLUGIN_VERSION = "8.6.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -255,6 +255,9 @@ export default class CheckinPlugin extends Plugin {
     private bulkSelected = new Set<string>();
     private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();
+    private currentStreaks = new Map<string, number>();
+    private bestStreakItem?: CheckinItem;
+    private bestStreakValue = 0;
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
@@ -1626,6 +1629,36 @@ export default class CheckinPlugin extends Plugin {
         return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
+    /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
+    private computeStreaks(): Map<string, number> {
+        const streaks = new Map<string, number>();
+        const itemDays = new Map<string, Set<string>>();
+        for (const event of this.store.events) {
+            if (!itemDays.has(event.itemId)) itemDays.set(event.itemId, new Set());
+            itemDays.get(event.itemId)!.add(event.localDate);
+        }
+        const today = dateKey(currentCalendarDate());
+        const yesterdayDate = new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() - 1);
+        const yesterday = dateKey(yesterdayDate);
+        for (const item of this.store.items) {
+            if (item.archived) { streaks.set(item.id, 0); continue; }
+            const days = itemDays.get(item.id);
+            if (!days || !days.size) { streaks.set(item.id, 0); continue; }
+            // 从今天或昨天开始往回数（今天没打卡但昨天打了也不断）
+            let startKey = today;
+            if (!days.has(startKey)) startKey = yesterday;
+            if (!days.has(startKey)) { streaks.set(item.id, 0); continue; }
+            let streak = 0;
+            const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)));
+            while (days.has(dateKey(check))) {
+                streak += 1;
+                check.setDate(check.getDate() - 1);
+            }
+            streaks.set(item.id, streak);
+        }
+        return streaks;
+    }
+
     private renderToday(): string {
         const now = currentCalendarDate();
         const activeItems = this.store.items.filter((item) => !item.archived);
@@ -1691,6 +1724,14 @@ export default class CheckinPlugin extends Plugin {
             <span><i>✓</i><strong>${escapeHtml(this.recentRecord.message)}</strong><small>当前 ${escapeHtml(formatNumber(this.recentRecord.progress))}/${escapeHtml(formatNumber(this.recentRecord.target))} ${escapeHtml(this.recentRecord.unit)}</small></span>
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
+        this.currentStreaks = this.computeStreaks();
+        let bestStreakId = "";
+        let bestStreak = 0;
+        for (const [id, streak] of this.currentStreaks) {
+            if (streak > bestStreak) { bestStreak = streak; bestStreakId = id; }
+        }
+        this.bestStreakItem = bestStreakId ? this.store.items.find((item) => item.id === bestStreakId) : undefined;
+        this.bestStreakValue = bestStreak;
         const saveStatus = this.renderSaveStatus();
         const occasionBanner = this.renderOccasionSection(now);
         return `<div class="lc-checkin lc-checkin--today" data-appearance="${this.resolvedAppearance()}" data-reduced-motion="${this.reducedMotion}">
@@ -1700,6 +1741,7 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
                 </div>
                 <div class="lc-checkin__header-actions">
+                    ${this.bestStreakValue > 1 && this.bestStreakItem ? `<span class="lc-checkin__header-streak" title="当前最佳连续">🔥 ${escapeHtml(this.bestStreakItem.name)} ${this.bestStreakValue} 天</span>` : ""}
                     <span class="lc-checkin__count" role="status" aria-label="今日完成进度">${completed}<span>/</span>${scheduledItems.length}</span>
                     ${this.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
@@ -2128,6 +2170,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
+                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<span class="lc-checkin__streak-badge" title="连续 ${this.currentStreaks.get(item.id)} 天">🔥 ${this.currentStreaks.get(item.id)}</span>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? "番茄钟·次数" : "番茄钟·分钟"}</span>` : ""}
