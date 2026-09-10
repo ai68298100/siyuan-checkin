@@ -1411,3 +1411,38 @@
 @container lc5 (min-width: 820px) {
     .lc-checkin__settings-layout { grid-template-columns: 200px minmax(0, 1fr); }
 }
+
+/* ============================================================
+   手机速记形态（<720px 容器）：像手机 App，一切为快速打卡服务
+   ============================================================ */
+@container lc5 (max-width: 719px) {
+    /* 单列清单：绝不多列，绝不横向溢出 */
+    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: minmax(0, 1fr); }
+
+    /* 行式卡片：图标 + 名称/元信息 + 大打卡钮，两行以内 */
+    .lc-checkin--today .lc-checkin__item { grid-template-columns: 40px minmax(0, 1fr) auto; min-height: 64px; }
+    .lc-checkin--today .lc-checkin__item-topline { flex-wrap: nowrap; }
+    .lc-checkin--today .lc-checkin__item-name { flex: 0 1 auto; }
+    /* 次要信息退出首屏：标签只留"重要"，复盘/编辑小钮隐藏（长按或回顾页可达） */
+    .lc-checkin--today .lc-checkin__item-tag { display: none; }
+    .lc-checkin--today .lc-checkin__item-tag.is-high { display: inline-block; }
+    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none; }
+    .lc-checkin--today .lc-checkin__item-meta { white-space: nowrap; }
+    /* 大号触控打卡钮 */
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        min-height: 42px;
+        min-width: 68px;
+        font-size: 13px;
+    }
+
+    /* 回顾：范围切换文字不竖排 */
+    .lc-checkin--review .lc-checkin__range-tabs button { white-space: nowrap; padding: 0 11px; }
+}
+
+/* 平板/桌面：两列以上货架按最小卡宽自动填充 */
+@container lc5 (min-width: 900px) {
+    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+
+/* 范围切换与导出在窄容器内允许换行，不被裁切 */
+.lc-checkin--review .lc-checkin__range-tabs { flex-wrap: wrap; max-width: 100%; }
