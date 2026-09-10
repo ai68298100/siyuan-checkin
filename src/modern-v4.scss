@@ -1,6 +1,8 @@
 /* Final visual pass for the 4.0 surfaces. This is intentionally a small,
    cross-page layer: it aligns tone and hierarchy without changing markup. */
 .lc-checkin {
+    --lc-checkin-accent: var(--b3-theme-primary, #2f80ed);
+    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 11%, transparent);
     --modern-bg: color-mix(in srgb, var(--b3-theme-background) 94%, var(--b3-theme-surface));
     --modern-surface: var(--b3-theme-surface);
     --modern-surface-soft: color-mix(in srgb, var(--b3-theme-surface) 74%, var(--b3-theme-background));
@@ -86,13 +88,32 @@
 .lc-checkin--today .lc-checkin__group-header { min-height: 30px; padding-bottom: 9px; border-bottom: 1px solid var(--modern-border-strong); }
 .lc-checkin--today .lc-checkin__group-header::before { width: 3px; height: 16px; margin-right: 8px; border-radius: 2px; background: var(--modern-accent); content: ""; }
 .lc-checkin--today .lc-checkin__group-header em { color: var(--modern-muted); background: var(--modern-surface-soft); }
-.lc-checkin--today .lc-checkin__item { border-color: var(--modern-border); border-radius: var(--modern-radius); background: var(--modern-surface); box-shadow: var(--modern-shadow); }
+.lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lc-checkin--today .lc-checkin__item {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    grid-template-areas: "icon body action" "icon exact exact";
+    align-items: center;
+    min-height: 76px;
+    padding: 10px 12px;
+    border-color: var(--modern-border);
+    border-radius: var(--modern-radius);
+    background: var(--modern-surface);
+    box-shadow: var(--modern-shadow);
+    grid-column: 1 / -1;
+}
 .lc-checkin--today .lc-checkin__item:hover { border-color: color-mix(in srgb, var(--modern-accent) 48%, var(--modern-border)); box-shadow: 0 5px 16px color-mix(in srgb, var(--b3-theme-on-background) 9%, transparent); }
 .lc-checkin--today .lc-checkin__item::before { width: 3px; background: color-mix(in srgb, var(--modern-accent) 82%, #fff); }
 .lc-checkin--today .lc-checkin__item.is-complete::before { background: var(--lc-checkin-success); }
-.lc-checkin--today .lc-checkin__item-icon { border-radius: 10px; background: var(--modern-surface-soft); }
+.lc-checkin--today .lc-checkin__item-icon { grid-area: icon; align-self: center; border-radius: 10px; background: var(--modern-surface-soft); }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 1) .lc-checkin__item-icon { color: var(--modern-accent); background: color-mix(in srgb, var(--modern-accent) 13%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 2) .lc-checkin__item-icon { color: var(--lc-checkin-success); background: color-mix(in srgb, var(--lc-checkin-success) 13%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__item:nth-child(3n + 3) .lc-checkin__item-icon { color: var(--lc-checkin-warning); background: color-mix(in srgb, var(--lc-checkin-warning) 15%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__item-body { grid-area: body; min-width: 0; padding: 0 12px; }
 .lc-checkin--today .lc-checkin__item-name { font-weight: 680; }
-.lc-checkin--today .lc-checkin__item-action { padding-bottom: 12px; }
+.lc-checkin--today .lc-checkin__item-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--today .lc-checkin__item-action { grid-area: action; align-self: center; padding: 0; }
+.lc-checkin--today .lc-checkin__exact-entry { grid-area: exact; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 34px; }
 .lc-checkin--today .lc-checkin__completed-section { border-top: 1px solid var(--modern-border); }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .62; }
@@ -252,7 +273,12 @@
     .lc-checkin--today .lc-checkin__title { font-size: 30px; }
     .lc-checkin--today .lc-checkin__today-summary > div { padding: 5px 8px; }
     .lc-checkin--today .lc-checkin__today-summary strong { font-size: 19px; }
-    .lc-checkin--today .lc-checkin__item { box-shadow: none; }
+    .lc-checkin--today .lc-checkin__item { min-height: 72px; padding: 9px 10px; box-shadow: none; }
+    .lc-checkin--today .lc-checkin__item-body { padding: 0 9px; }
+    .lc-checkin--today .lc-checkin__item-name { display: -webkit-box; overflow: hidden; max-width: 100%; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .lc-checkin--today .lc-checkin__item-action { align-self: center; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 32px; padding: 0 9px; }
     .lc-checkin--today .lc-checkin__organize { box-shadow: none; }
     .lc-checkin--history .lc-checkin__calendar,
     .lc-checkin--history .lc-checkin__history-tools,
