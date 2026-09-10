@@ -1402,13 +1402,11 @@ export default class CheckinPlugin extends Plugin {
             ${this.renderQuickRecent()}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <label><span>分组</span><select data-group-mode aria-label="分组方式">
+                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>筛选与排序${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
-                </select></label>
-                <label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-                <button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button>
+                </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button></div></details>
             </div>` : ""}
             <main class="lc-checkin__list">${list}${occasionSection}</main>
         </div>`;

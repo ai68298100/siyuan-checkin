@@ -562,6 +562,41 @@
     .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
 
+/* P0 mobile information hierarchy: search stays visible, secondary controls
+   collapse into one compact disclosure instead of pushing cards below the fold. */
+.lc-checkin--today .lc-checkin__today-filters { min-width: 0; }
+.lc-checkin--today .lc-checkin__today-filters > summary {
+    min-height: 30px;
+    padding: 0 11px;
+    border: 1px solid var(--modern-border);
+    border-radius: 999px;
+    color: var(--modern-muted);
+    background: var(--modern-surface);
+    font-size: 11px;
+    line-height: 30px;
+    cursor: pointer;
+    list-style: none;
+}
+.lc-checkin--today .lc-checkin__today-filters > summary::-webkit-details-marker { display: none; }
+.lc-checkin--today .lc-checkin__today-filters > summary::after { float: right; content: "⌄"; }
+.lc-checkin--today .lc-checkin__today-filters[open] > summary::after { content: "⌃"; }
+.lc-checkin--today .lc-checkin__today-filter-fields { display: grid; gap: 7px; padding-top: 7px; }
+.lc-checkin--today .lc-checkin__today-filter-fields label { min-width: 0; }
+@media (min-width: 601px) {
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) 170px 170px auto; }
+    .lc-checkin--today .lc-checkin__today-filters { display: contents; }
+    .lc-checkin--today .lc-checkin__today-filters > summary { display: none; }
+    .lc-checkin--today .lc-checkin__today-filter-fields { display: contents; padding: 0; }
+    .lc-checkin--today .lc-checkin__today-filter-fields label { min-width: 0; }
+}
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) minmax(104px, auto); gap: 5px; padding: 5px; margin-bottom: 12px; }
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__today-filters { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__today-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin--today .lc-checkin__today-filter-fields .lc-checkin__filter-toggle { width: 100%; }
+}
+
 /* Icon picker: make the catalog feel like a visual palette instead of a
    dense character sheet. The selected mark uses the same lilac language as
    the dashboard and remains readable in dark themes. */
@@ -851,4 +886,13 @@
 
     .lc-checkin--settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; align-items: start; }
     .lc-checkin--settings > .lc-checkin__editor-header { grid-column: 1 / -1; }
+}
+
+/* Final cascade guard: secondary Today controls stay behind one compact
+   disclosure on narrow screens. */
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) minmax(104px, auto); gap: 5px; padding: 5px; margin-bottom: 12px; }
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__today-filters { grid-column: 1 / -1; }
+    .lc-checkin--today .lc-checkin__today-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

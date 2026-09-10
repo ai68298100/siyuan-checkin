@@ -4,6 +4,9 @@ const os = require("node:os");
 const path = require("node:path");
 const ts = require("typescript");
 const sourceRoot = path.join(__dirname, "..", "src");
+const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
+assert.match(indexSource, /data-today-filters/);
+assert.match(indexSource, /筛选与排序/);
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-today-view-"));
 for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts"]) {
   const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
