@@ -844,7 +844,8 @@
     .lc-checkin--today .lc-checkin__item-body { padding: 0 7px; }
     .lc-checkin--today .lc-checkin__item-meta { margin-top: 1px; font-size: 9px; }
     .lc-checkin--today .lc-checkin__item-progress { margin-top: 4px; }
-    .lc-checkin__mobile-nav { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+    .lc-checkin__mobile-nav { position: fixed; padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+    .lc-checkin__mobile-more-menu { right: 68px; }
     .lc-checkin__mobile-nav button { min-height: 43px; }
     .lc-checkin__mobile-nav button small { font-size: 8px; }
     .lc-checkin__mobile-fab { right: 14px; bottom: calc(100% + 10px); width: 44px; height: 44px; }
@@ -910,3 +911,98 @@
     .lc-checkin--editor .lc-checkin__custom-icon-tools button,
     .lc-checkin--editor .lc-checkin__file-button { min-height: 26px; padding-inline: 8px; font-size: 9px; }
 }
+
+/* Reference pass (用户参考图 001-003)：淡紫蓝画布 + 纯净白卡 + 圆形实心操作。
+   参考图的语言是：色值承载在图标块、操作按钮和摘要瓷砖上，卡片本身保持安静；
+   所有色值仍从思源主题变量派生，深色主题自动跟随。 */
+.lc-checkin {
+    --modern-radius: 14px;
+    --modern-warm: var(--lc-checkin-warning);
+    --modern-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 14%, var(--modern-surface));
+    --modern-bg: color-mix(in srgb, var(--modern-lilac) 7%, var(--b3-theme-background));
+}
+.lc-checkin[data-appearance="dark"] { --modern-bg: color-mix(in srgb, var(--modern-lilac) 5%, var(--b3-theme-background)); }
+
+/* Today 卡片：去掉左侧色条和整卡染色，回到参考图的干净白卡。 */
+.lc-checkin--today .lc-checkin__item {
+    border: 1px solid var(--modern-border);
+    border-radius: 16px;
+    background: var(--modern-surface);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 4%, transparent), 0 6px 18px color-mix(in srgb, var(--b3-theme-on-background) 4%, transparent);
+}
+.lc-checkin--today .lc-checkin__item::before { display: none; }
+.lc-checkin--today .lc-checkin__item:hover {
+    border-color: color-mix(in srgb, var(--card-accent) 40%, var(--modern-border));
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent), 0 10px 24px color-mix(in srgb, var(--card-accent) 12%, transparent);
+}
+.lc-checkin--today .lc-checkin__item.is-complete {
+    border-color: color-mix(in srgb, var(--lc-checkin-success) 20%, var(--modern-border));
+    background: var(--modern-surface);
+}
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { text-decoration-color: color-mix(in srgb, var(--lc-checkin-success) 55%, transparent); }
+
+/* 图标块：圆角方砖 + 2px 进度环，色值集中在砖面上。 */
+.lc-checkin--today .lc-checkin__item-icon {
+    border-width: 2px;
+    border-radius: 12px;
+}
+
+/* 操作按钮：参考图的实心圆形语言。打卡 = 实心色块，+N = 软色块。 */
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button {
+    border: 0;
+    color: #fff;
+    background: var(--card-accent);
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--card-accent) 28%, transparent);
+    font-weight: 700;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button:hover { color: #fff; filter: brightness(.94); }
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action .lc-checkin__record-button {
+    color: var(--modern-muted);
+    background: var(--modern-surface-soft);
+    box-shadow: none;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button {
+    border: 0;
+    color: var(--card-accent);
+    background: color-mix(in srgb, var(--card-accent) 13%, var(--modern-surface));
+    font-weight: 700;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button:hover { color: #fff; background: var(--card-accent); }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { border: 0; color: var(--modern-muted); background: transparent; }
+
+/* 进度条：柔和轨道 + 主色渐变填充。 */
+.lc-checkin--today .lc-checkin__item-progress { background: color-mix(in srgb, var(--modern-accent) 9%, var(--modern-surface-soft)); }
+.lc-checkin--today .lc-checkin__item-progress span { background: linear-gradient(90deg, var(--modern-accent), var(--modern-lilac)); }
+
+/* 摘要瓷砖：参考图的“紫砖 + 暖砖”对，数字承担视觉锚点。 */
+.lc-checkin--today .lc-checkin__today-summary > div { border-radius: 18px; }
+.lc-checkin--today .lc-checkin__today-summary > div:first-child {
+    border-color: transparent;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--modern-lilac) 22%, var(--modern-surface)), color-mix(in srgb, var(--modern-lilac) 7%, var(--modern-surface)));
+}
+.lc-checkin--today .lc-checkin__today-summary > div:nth-child(2) {
+    border-color: transparent;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--modern-warm) 20%, var(--modern-surface)), color-mix(in srgb, var(--modern-warm) 6%, var(--modern-surface)));
+}
+.lc-checkin--today .lc-checkin__today-summary > div:first-child strong { color: var(--modern-lilac); }
+.lc-checkin--today .lc-checkin__today-summary > div:nth-child(2) strong { color: var(--modern-warm); }
+
+/* 周条：今日 = 实心主色圆角块（参考图 "Today" 徽章）。 */
+.lc-checkin--today .lc-checkin__day-chip { border-radius: 12px; background: var(--modern-surface); box-shadow: 0 1px 3px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent); }
+.lc-checkin--today .lc-checkin__day-chip.is-today {
+    border-color: transparent;
+    color: #fff;
+    background: var(--modern-accent);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--modern-accent) 30%, transparent);
+}
+.lc-checkin--today .lc-checkin__day-chip.is-today strong { color: #fff; }
+.lc-checkin--today .lc-checkin__day-chip.is-today i { background: color-mix(in srgb, #fff 82%, transparent); }
+
+/* 移动端导航：选中图标 = 实心主色圆片，白色字形。 */
+.lc-checkin__mobile-nav button.is-selected span {
+    color: #fff;
+    background: var(--modern-accent);
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--modern-accent) 32%, transparent);
+}
+
+/* 桌面端行距：紧凑两列货架沿用，卡片悬浮更接近参考图的轻浮起。 */
