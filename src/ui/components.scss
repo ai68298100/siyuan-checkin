@@ -1446,3 +1446,23 @@
 
 /* 范围切换与导出在窄容器内允许换行，不被裁切 */
 .lc-checkin--review .lc-checkin__range-tabs { flex-wrap: wrap; max-width: 100%; }
+
+/* ============================================================
+   独立主题配套微调
+   ============================================================ */
+
+/* 行内次要按钮：悬停行时才浮现，名称不再被挤截断 */
+.lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { opacity: 0; transition: opacity var(--lc-checkin-motion-fast); }
+.lc-checkin--today .lc-checkin__item:hover .lc-checkin__item-topline .lc-checkin__small-button,
+.lc-checkin--today .lc-checkin__item:focus-within .lc-checkin__item-topline .lc-checkin__small-button { opacity: 1; }
+@container lc5 (max-width: 719px) {
+    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none; }
+}
+
+/* 已完成卡：实线描边，清除 legacy 虚线观感 */
+.lc-checkin--today .lc-checkin__item.is-complete,
+.lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { border-style: solid; }
+
+/* 名称优先截断：标签与按钮不被压缩 */
+.lc-checkin--today .lc-checkin__item-tag,
+.lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { flex-shrink: 0; }

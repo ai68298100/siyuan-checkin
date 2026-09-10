@@ -76,10 +76,15 @@ assert.match(source, /private quickDialogSize\(\): \{width: string; height: stri
     "quick dialog sizing must follow the stored preference");
 assert.match(source, /dialogSizeMode === "fullscreen"/, "fullscreen dialog mode must be supported");
 
-/* Appearance tokens remain theme-derived. */
-assert.match(tokens, /--lc-checkin-accent:\s*#5560e8;/, "light palette keeps the periwinkle accent");
-assert.match(tokens, /\[data-appearance="dark"\]\s*\{[^}]*--lc-checkin-accent:\s*#7580f5;/,
+/* Standalone dual themes: fixed palette, no runtime dependency on host --b3-* values. */
+assert.match(tokens, /--lc-checkin-accent:\s*#7B85F4;/, "light palette keeps the periwinkle accent");
+assert.match(tokens, /\[data-appearance="dark"\]\s*\{[^}]*--lc-checkin-accent:\s*#8B93F8;/,
     "dark palette has its own accent");
+const aliasOnly = tokens.replace(/--b3-[a-z-]+:\s*var\(--lc-checkin-[a-z-]+\);?/g, "");
+assert.ok(!aliasOnly.includes("var(--b3-"), "tokens must not derive colors from host --b3-* variables");
+assert.match(tokens, /--b3-theme-background:\s*var\(--lc-checkin-bg\);/,
+    "legacy floor inherits the standalone palette via scoped aliases");
+assert.ok(!components.includes("--b3-"), "component layer must not reference host variables");
 
 /* Kept behaviours from the 4.0 line. */
 assert.match(source, /没有待处理的匹配项/, "pending-only empty state must explain when nothing matches");

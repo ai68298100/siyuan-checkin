@@ -1,42 +1,50 @@
 /* ============================================================
-   小驴打卡 5.0 · Design tokens
-   单一来源：所有颜色从思源 --b3-* 变量派生，浅/深主题各自覆盖。
-   本文件同时重定义 legacy 变量名，使旧规则自然继承新语言。
+   小驴打卡 5.0 · Design tokens（独立双色板）
+   完全脱离思源主题：明亮 / 暗黑两套固定配色，照参考图定死。
+   在 .lc-checkin 作用域内同时重定义 --b3-* 别名，使 legacy
+   底层样式自然继承本设计，且不影响宿主思源本身。
    ============================================================ */
 
 .lc-checkin {
-    /* ---- brand & semantic palette ---- */
-    --lc-checkin-accent: #5560e8;
-    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent);
-    --lc-checkin-success: var(--b3-theme-success, #2f9e65);
-    --lc-checkin-warning: var(--b3-theme-warning, #d98a1f);
-    --lc-checkin-danger: var(--b3-theme-error, #d14c4c);
-    --lc-checkin-lilac: #7d87f2;
-    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 13%, var(--lc-checkin-surface));
-    --lc-checkin-warm: var(--lc-checkin-warning);
-    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 13%, var(--lc-checkin-surface));
+    /* ---- brand & semantic ---- */
+    --lc-checkin-accent: #7B85F4;
+    --lc-checkin-accent-strong: #5B65E8;
+    --lc-checkin-accent-soft: #E9EAFE;
+    --lc-checkin-success: #3BA55D;
+    --lc-checkin-success-soft: #E3F4E9;
+    --lc-checkin-warning: #E89A2B;
+    --lc-checkin-danger: #E5484D;
+    --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-soft: #E9EAFE;
+    --lc-checkin-warm: #F6A94B;
+    --lc-checkin-warm-soft: #FDF0DC;
 
     /* ---- surfaces ---- */
-    --lc-checkin-bg: var(--b3-theme-background);
-    --lc-checkin-surface: var(--b3-theme-surface);
-    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-on-background) 2%);
-    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
-    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 62%, transparent);
-    --lc-checkin-border-strong: var(--b3-border-color);
-    --lc-checkin-text: var(--b3-theme-on-background);
-    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 82%, var(--b3-theme-on-background));
+    --lc-checkin-bg: #EEF0FB;
+    --lc-checkin-surface: #FFFFFF;
+    --lc-checkin-surface-raised: #FFFFFF;
+    --lc-checkin-muted-surface: #EFF0FA;
+    --lc-checkin-border: #E4E6F4;
+    --lc-checkin-border-strong: #D6D8EC;
+    --lc-checkin-text: #2A2B35;
+    --lc-checkin-muted: #85869A;
+
+    /* ---- deep card（参考图的炭黑卡 + 金色开关）---- */
+    --lc-checkin-deep: #27272E;
+    --lc-checkin-deep-text: #F5F5FA;
+    --lc-checkin-gold: #F5C242;
 
     /* ---- elevation ---- */
-    --lc-checkin-shadow-sm: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent);
-    --lc-checkin-shadow: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent), 0 6px 18px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent);
-    --lc-checkin-shadow-md: 0 2px 6px color-mix(in srgb, var(--b3-theme-on-background) 7%, transparent), 0 12px 32px color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
-    --lc-checkin-shadow-lg: 0 6px 16px color-mix(in srgb, var(--b3-theme-on-background) 10%, transparent), 0 20px 48px color-mix(in srgb, var(--b3-theme-on-background) 14%, transparent);
-    --lc-checkin-focus: 0 0 0 3px color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
+    --lc-checkin-shadow-sm: 0 1px 2px rgba(84, 88, 178, 0.05);
+    --lc-checkin-shadow: 0 2px 6px rgba(84, 88, 178, 0.07), 0 10px 28px rgba(84, 88, 178, 0.09);
+    --lc-checkin-shadow-md: 0 4px 10px rgba(84, 88, 178, 0.08), 0 16px 40px rgba(84, 88, 178, 0.12);
+    --lc-checkin-shadow-lg: 0 8px 20px rgba(50, 54, 130, 0.10), 0 24px 56px rgba(50, 54, 130, 0.14);
+    --lc-checkin-focus: 0 0 0 3px rgba(123, 133, 244, 0.30);
 
     /* ---- shape & rhythm ---- */
-    --lc-checkin-radius-sm: 8px;
-    --lc-checkin-radius: 12px;
-    --lc-checkin-radius-lg: 16px;
+    --lc-checkin-radius-sm: 10px;
+    --lc-checkin-radius: 14px;
+    --lc-checkin-radius-lg: 20px;
     --lc-checkin-space-1: 4px;
     --lc-checkin-space-2: 8px;
     --lc-checkin-space-3: 12px;
@@ -50,62 +58,128 @@
     --lc-checkin-rail-width: 76px;
     --lc-checkin-nav-height: 58px;
 
-    /* ---- z-index ladder (single source) ---- */
+    /* ---- z-index ladder ---- */
     --lc-checkin-z-banner: 2;
     --lc-checkin-z-header: 5;
     --lc-checkin-z-nav: 20;
     --lc-checkin-z-fab: 21;
     --lc-checkin-z-popup: 30;
 
+    /* ---- 思源变量别名（仅插件作用域内）：legacy 底层引用 --b3-* 时拿到本设计的固定色 ---- */
+    --b3-theme-background: var(--lc-checkin-bg);
+    --b3-theme-surface: var(--lc-checkin-surface);
+    --b3-theme-surface-light: var(--lc-checkin-muted-surface);
+    --b3-border-color: var(--lc-checkin-border-strong);
+    --b3-theme-on-background: var(--lc-checkin-text);
+    --b3-theme-on-surface-light: var(--lc-checkin-muted);
+    --b3-theme-primary: var(--lc-checkin-accent);
+    --b3-theme-success: var(--lc-checkin-success);
+    --b3-theme-warning: var(--lc-checkin-warning);
+    --b3-theme-error: var(--lc-checkin-danger);
+
     color: var(--lc-checkin-text);
     background: var(--lc-checkin-bg);
+    color-scheme: light;
     font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
 
     /* container queries drive every layout decision */
     container: lc5 / inline-size;
 }
 
-.lc-checkin[data-appearance="dark"] {
-    --lc-checkin-accent: #7580f5;
-    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 18%, transparent);
-    --lc-checkin-lilac: #8b94ff;
-    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 16%, var(--lc-checkin-surface));
-    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 18%, var(--lc-checkin-surface));
-    --lc-checkin-bg: color-mix(in srgb, var(--b3-theme-background) 94%, #000);
-    --lc-checkin-surface: color-mix(in srgb, var(--b3-theme-surface) 92%, #000);
-    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 96%, #fff 1%);
-    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 88%, #000);
-    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 80%, transparent);
-    --lc-checkin-text: var(--b3-theme-on-background);
-    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 88%, #fff 4%);
-    --lc-checkin-shadow-sm: 0 1px 2px #0006;
-    --lc-checkin-shadow: 0 1px 2px #0006, 0 8px 22px #0005;
-    --lc-checkin-shadow-md: 0 2px 8px #0007, 0 14px 34px #0006;
-    --lc-checkin-shadow-lg: 0 8px 20px #0008, 0 24px 56px #0007;
+.lc-checkin[data-appearance="light"] {
+    --lc-checkin-accent: #7B85F4;
+    --lc-checkin-accent-strong: #5B65E8;
+    --lc-checkin-accent-soft: #E9EAFE;
+    --lc-checkin-success: #3BA55D;
+    --lc-checkin-success-soft: #E3F4E9;
+    --lc-checkin-warning: #E89A2B;
+    --lc-checkin-danger: #E5484D;
+    --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-soft: #E9EAFE;
+    --lc-checkin-warm: #F6A94B;
+    --lc-checkin-warm-soft: #FDF0DC;
+
+    --lc-checkin-bg: #EEF0FB;
+    --lc-checkin-surface: #FFFFFF;
+    --lc-checkin-surface-raised: #FFFFFF;
+    --lc-checkin-muted-surface: #EFF0FA;
+    --lc-checkin-border: #E4E6F4;
+    --lc-checkin-border-strong: #D6D8EC;
+    --lc-checkin-text: #2A2B35;
+    --lc-checkin-muted: #85869A;
+
+    --lc-checkin-deep: #27272E;
+    --lc-checkin-deep-text: #F5F5FA;
+    --lc-checkin-gold: #F5C242;
+
+    --lc-checkin-shadow-sm: 0 1px 2px rgba(84, 88, 178, 0.05);
+    --lc-checkin-shadow: 0 2px 6px rgba(84, 88, 178, 0.07), 0 10px 28px rgba(84, 88, 178, 0.09);
+    --lc-checkin-shadow-md: 0 4px 10px rgba(84, 88, 178, 0.08), 0 16px 40px rgba(84, 88, 178, 0.12);
+    --lc-checkin-shadow-lg: 0 8px 20px rgba(50, 54, 130, 0.10), 0 24px 56px rgba(50, 54, 130, 0.14);
+    --lc-checkin-focus: 0 0 0 3px rgba(123, 133, 244, 0.30);
+
+    --b3-theme-background: var(--lc-checkin-bg);
+    --b3-theme-surface: var(--lc-checkin-surface);
+    --b3-theme-surface-light: var(--lc-checkin-muted-surface);
+    --b3-border-color: var(--lc-checkin-border-strong);
+    --b3-theme-on-background: var(--lc-checkin-text);
+    --b3-theme-on-surface-light: var(--lc-checkin-muted);
+    --b3-theme-primary: var(--lc-checkin-accent);
+    --b3-theme-success: var(--lc-checkin-success);
+    --b3-theme-warning: var(--lc-checkin-warning);
+    --b3-theme-error: var(--lc-checkin-danger);
+
+    color-scheme: light;
 }
 
-/* The legacy floor declares the same selectors at (0,2,0); matching that
-   specificity keeps this file's palette authoritative regardless of order. */
-.lc-checkin[data-appearance="light"] {
-    --lc-checkin-accent: #5560e8;
-    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent);
-    --lc-checkin-lilac: #7d87f2;
-    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 13%, var(--lc-checkin-surface));
-    --lc-checkin-warm: var(--lc-checkin-warning);
-    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 13%, var(--lc-checkin-surface));
-    --lc-checkin-bg: var(--b3-theme-background);
-    --lc-checkin-surface: var(--b3-theme-surface);
-    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-on-background) 2%);
-    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
-    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 62%, transparent);
-    --lc-checkin-border-strong: var(--b3-border-color);
-    --lc-checkin-text: var(--b3-theme-on-background);
-    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 82%, var(--b3-theme-on-background));
+.lc-checkin[data-appearance="dark"] {
+    --lc-checkin-accent: #8B93F8;
+    --lc-checkin-accent-strong: #A5AEF8;
+    --lc-checkin-accent-soft: #2B2C44;
+    --lc-checkin-success: #4CBB7F;
+    --lc-checkin-success-soft: #1F3329;
+    --lc-checkin-warning: #F0B45C;
+    --lc-checkin-danger: #F07C7C;
+    --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-soft: #2B2C44;
+    --lc-checkin-warm: #F6B04E;
+    --lc-checkin-warm-soft: #38301F;
+
+    --lc-checkin-bg: #141419;
+    --lc-checkin-surface: #1D1E24;
+    --lc-checkin-surface-raised: #23242C;
+    --lc-checkin-muted-surface: #26272F;
+    --lc-checkin-border: #2C2D38;
+    --lc-checkin-border-strong: #3A3B48;
+    --lc-checkin-text: #EFEFF6;
+    --lc-checkin-muted: #9FA0AC;
+
+    --lc-checkin-deep: #101014;
+    --lc-checkin-deep-text: #F5F5FA;
+
+    --lc-checkin-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --lc-checkin-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+    --lc-checkin-shadow-md: 0 4px 10px rgba(0, 0, 0, 0.40), 0 16px 40px rgba(0, 0, 0, 0.40);
+    --lc-checkin-shadow-lg: 0 8px 20px rgba(0, 0, 0, 0.45), 0 24px 56px rgba(0, 0, 0, 0.45);
+    --lc-checkin-focus: 0 0 0 3px rgba(139, 147, 248, 0.38);
+
+    --b3-theme-background: var(--lc-checkin-bg);
+    --b3-theme-surface: var(--lc-checkin-surface);
+    --b3-theme-surface-light: var(--lc-checkin-muted-surface);
+    --b3-border-color: var(--lc-checkin-border-strong);
+    --b3-theme-on-background: var(--lc-checkin-text);
+    --b3-theme-on-surface-light: var(--lc-checkin-muted);
+    --b3-theme-primary: var(--lc-checkin-accent);
+    --b3-theme-success: var(--lc-checkin-success);
+    --b3-theme-warning: var(--lc-checkin-warning);
+    --b3-theme-error: var(--lc-checkin-danger);
+
+    color-scheme: dark;
 }
 
 /* ---- base interaction affordances ---- */
 .lc-checkin :is(button, select, input, textarea, a):focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 75%, #fff);
+    outline: 2px solid var(--lc-checkin-accent);
     outline-offset: 2px;
 }
 
@@ -123,6 +197,7 @@
 .lc-checkin ::-webkit-scrollbar { width: 8px; height: 8px; }
 .lc-checkin ::-webkit-scrollbar-thumb { border-radius: 8px; background: color-mix(in srgb, var(--lc-checkin-text) 18%, transparent); }
 .lc-checkin ::-webkit-scrollbar-track { background: transparent; }
+.lc-checkin ::selection { color: #fff; background: var(--lc-checkin-accent); }
 
 /* ---- glyph system ---- */
 .lc-checkin__glyph { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
