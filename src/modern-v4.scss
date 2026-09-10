@@ -531,6 +531,75 @@
     .lc-checkin__mobile-nav button small { font-size: 8px; }
 }
 
+/* Reference-inspired palette and shapes: soft lavender surfaces, pill
+   controls, and circular status marks. All colors still derive from SiYuan
+   theme tokens so dark themes retain their own contrast. */
+.lc-checkin {
+    --modern-lilac: color-mix(in srgb, var(--modern-accent) 72%, #b9b3ff);
+    --modern-lilac-soft: color-mix(in srgb, var(--modern-lilac) 14%, var(--modern-surface));
+    --modern-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 17%, var(--modern-surface));
+}
+.lc-checkin--today .lc-checkin__today-summary {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.lc-checkin--today .lc-checkin__today-summary > div {
+    min-height: 72px;
+    padding: 13px 15px;
+    border: 1px solid var(--modern-border);
+    border-radius: 16px;
+    background: var(--modern-surface);
+    box-shadow: var(--modern-shadow);
+}
+.lc-checkin--today .lc-checkin__today-summary > div:first-child {
+    border-color: color-mix(in srgb, var(--modern-lilac) 48%, var(--modern-border));
+    background: linear-gradient(135deg, var(--modern-lilac-soft), var(--modern-surface));
+}
+.lc-checkin--today .lc-checkin__today-summary > div:nth-child(2) {
+    background: var(--modern-warm-soft);
+}
+.lc-checkin--today .lc-checkin__today-summary strong { font-size: 27px; letter-spacing: -.04em; }
+.lc-checkin--today .lc-checkin__today-summary > div:first-child strong { color: var(--modern-lilac); }
+.lc-checkin--today .lc-checkin__today-summary span { display: block; margin-top: 5px; font-size: 10px; font-weight: 650; }
+.lc-checkin--today .lc-checkin__organize {
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--modern-lilac) 5%, var(--modern-surface));
+}
+.lc-checkin--today .lc-checkin__organize :is(input, select),
+.lc-checkin--today .lc-checkin__filter-toggle { border-radius: 999px; }
+.lc-checkin--today .lc-checkin__group-header { border-bottom: 0; }
+.lc-checkin--today .lc-checkin__group-header::before { width: 7px; height: 7px; border-radius: 50%; }
+.lc-checkin--today .lc-checkin__group-header span:first-child { font-size: 14px; }
+.lc-checkin--today .lc-checkin__item {
+    min-height: 78px;
+    padding: 11px 13px;
+    border-radius: 16px;
+    background: var(--modern-surface);
+}
+.lc-checkin--today .lc-checkin__item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 18px;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 34px; border-radius: 999px; }
+.lc-checkin__mobile-nav button span { border-radius: 50%; }
+.lc-checkin__mobile-nav button.is-selected span { box-shadow: 0 2px 8px color-mix(in srgb, var(--modern-accent) 18%, transparent); }
+
+@media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__today-summary { gap: 5px; }
+    .lc-checkin--today .lc-checkin__today-summary > div { min-height: 62px; padding: 10px 9px; border-radius: 13px; }
+    .lc-checkin--today .lc-checkin__today-summary strong { font-size: 22px; }
+    .lc-checkin--today .lc-checkin__today-summary span { margin-top: 3px; font-size: 9px; }
+    .lc-checkin--today .lc-checkin__item { min-height: 62px; border-radius: 14px; }
+    .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; font-size: 16px; }
+}
+
 /* Dense workbench cards: groups become true two-column shelves on desktop,
    while the item itself keeps its internal icon/body/action grid.  The
    previous legacy layer forced every item to span the entire group, which
