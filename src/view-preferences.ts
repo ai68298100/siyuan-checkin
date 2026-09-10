@@ -4,6 +4,7 @@ export type TodayGroupMode = "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
 /** How the quick dialog sizes itself on desktop. "percent" adapts to the host window. */
 export type DialogSizeMode = "percent" | "fullscreen" | "fixed";
+export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
 
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
@@ -19,6 +20,8 @@ export interface CheckinViewPreferences {
     showWeekStrip: boolean;
     /** Quick dialog size preference (desktop). */
     dialogSizeMode: DialogSizeMode;
+    /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
+    palette: CheckinPalette;
     /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
     dialogScale: number;
     /** Fixed size in px when dialogSizeMode is "fixed". */
@@ -36,6 +39,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     pendingOnly: false,
     showWeekStrip: false,
     dialogSizeMode: "percent",
+    palette: "lavender",
     dialogScale: 80,
     dialogFixedSize: {width: 720, height: 560},
 };
@@ -43,6 +47,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
 const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["percent", "fullscreen", "fixed"]);
+const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
     const parsed = typeof value === "number" ? value : Number(value);
@@ -62,6 +67,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
+    const palette = PALETTES.has(source.palette as CheckinPalette) ? source.palette as CheckinPalette : DEFAULT_VIEW_PREFERENCES.palette;
     const legacySize = (source as {dialogSize?: unknown}).dialogSize;
     const fixedSource = (source.dialogFixedSize && typeof source.dialogFixedSize === "object" ? source.dialogFixedSize : legacySize && typeof legacySize === "object" ? legacySize : {}) as Record<string, unknown>;
     return {
@@ -74,6 +80,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         reducedMotion,
         todayQuery,
         pendingOnly,
+        palette,
         showWeekStrip: source.showWeekStrip === true,
         dialogSizeMode,
         dialogScale: clampNumber(source.dialogScale, 50, 100, DEFAULT_VIEW_PREFERENCES.dialogScale),

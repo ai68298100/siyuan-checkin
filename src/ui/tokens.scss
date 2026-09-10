@@ -205,3 +205,56 @@
 .lc-checkin__rail .lc-checkin__glyph { width: 20px; height: 20px; }
 .lc-checkin__small-button .lc-checkin__glyph { width: 15px; height: 15px; margin: auto; }
 .lc-checkin__icon-button .lc-checkin__glyph { width: 20px; height: 20px; }
+
+/* ============================================================
+   8.0 主题色板系统：强调色可选，仍为固定双模式。
+   每个色板覆盖 accent / lilac 家族；画布与表面保持不变。
+   ============================================================ */
+
+/* ---- 海洋蓝 ---- */
+.lc-checkin[data-palette="ocean"] {
+    --lc-checkin-accent: #3E97E0;
+    --lc-checkin-accent-strong: #2C7CC2;
+    --lc-checkin-accent-soft: #E3F0FC;
+    --lc-checkin-lilac: #4FA3E8;
+    --lc-checkin-lilac-soft: #E3F0FC;
+}
+.lc-checkin[data-appearance="dark"][data-palette="ocean"] {
+    --lc-checkin-accent: #5CA9EE;
+    --lc-checkin-accent-strong: #8CC3F4;
+    --lc-checkin-accent-soft: #1E3040;
+    --lc-checkin-lilac: #5CA9EE;
+    --lc-checkin-lilac-soft: #1E3040;
+}
+
+/* ---- 森林绿 ---- */
+.lc-checkin[data-palette="forest"] {
+    --lc-checkin-accent: #43A878;
+    --lc-checkin-accent-strong: #348D63;
+    --lc-checkin-accent-soft: #E3F4EB;
+    --lc-checkin-lilac: #4FBA88;
+    --lc-checkin-lilac-soft: #E3F4EB;
+}
+.lc-checkin[data-appearance="dark"][data-palette="forest"] {
+    --lc-checkin-accent: #5BBF8C;
+    --lc-checkin-accent-strong: #7ED3A6;
+    --lc-checkin-accent-soft: #1F3329;
+    --lc-checkin-lilac: #5BBF8C;
+    --lc-checkin-lilac-soft: #1F3329;
+}
+
+/* ---- 落日橙 ---- */
+.lc-checkin[data-palette="sunset"] {
+    --lc-checkin-accent: #EE7F5B;
+    --lc-checkin-accent-strong: #D4643F;
+    --lc-checkin-accent-soft: #FDEAE3;
+    --lc-checkin-lilac: #F0926F;
+    --lc-checkin-lilac-soft: #FDEAE3;
+}
+.lc-checkin[data-appearance="dark"][data-palette="sunset"] {
+    --lc-checkin-accent: #F49B7A;
+    --lc-checkin-accent-strong: #F8B79D;
+    --lc-checkin-accent-soft: #3A2620;
+    --lc-checkin-lilac: #F49B7A;
+    --lc-checkin-lilac-soft: #3A2620;
+}

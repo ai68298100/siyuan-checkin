@@ -4,6 +4,7 @@ import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
+import {t} from "./i18n";
 import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, renderBarChart, renderLineChart} from "./charts";
 import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
@@ -19,7 +20,7 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
-import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
+import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -32,7 +33,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "7.0.0";
+const PLUGIN_VERSION = "8.0.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -195,6 +196,7 @@ export default class CheckinPlugin extends Plugin {
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
     private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
+    private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
     private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
     private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
 
@@ -1329,6 +1331,7 @@ export default class CheckinPlugin extends Plugin {
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
             surface.dataset.appearance = this.resolvedAppearance();
+            surface.dataset.palette = this.palette;
             surface.dataset.reducedMotion = String(this.reducedMotion);
             /* container queries cannot style their own container, so all page
                content lives in one layout wrapper inside the container. */
@@ -1398,7 +1401,8 @@ export default class CheckinPlugin extends Plugin {
                 label: "外观",
                 body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>主题</span><small>只影响小驴打卡界面，不修改思源全局主题。</small></span><select data-setting-appearance aria-label="主题"><option value="system" ${this.appearance === "system" ? "selected" : ""}>跟随思源</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>浅色</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>深色</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>减少界面动效</span><small>关闭页面过渡和加载动画。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>减少界面动效</span><small>关闭页面过渡和加载动画。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>强调色</span><small>按钮与高亮的主色调，四套可选。</small></span><select data-setting-palette aria-label="强调色"><option value="lavender"${this.palette === "lavender" ? " selected" : ""}>薰衣草紫</option><option value="ocean"${this.palette === "ocean" ? " selected" : ""}>海洋蓝</option><option value="forest"${this.palette === "forest" ? " selected" : ""}>森林绿</option><option value="sunset"${this.palette === "sunset" ? " selected" : ""}>落日橙</option></select></label>`,
             },
             {
                 id: "today",
@@ -1462,6 +1466,14 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {
+                this.palette = value;
+                void this.persistViewPreferences().then(() => showMessage("强调色已保存")).catch(() => showMessage("强调色保存失败"));
+                this.render();
+            }
+        });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
@@ -1565,7 +1577,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-fab" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
     }
 
@@ -4083,6 +4095,7 @@ export default class CheckinPlugin extends Plugin {
         this.appearance = preferences.appearance;
         this.dialogSizeMode = preferences.dialogSizeMode;
         this.dialogScale = preferences.dialogScale;
+        this.palette = preferences.palette;
         this.dialogFixedSize = {...preferences.dialogFixedSize};
         this.reducedMotion = preferences.reducedMotion;
         this.todayQuery = preferences.todayQuery;
@@ -4107,6 +4120,7 @@ export default class CheckinPlugin extends Plugin {
             showWeekStrip: this.weekStripVisible,
             dialogSizeMode: this.dialogSizeMode,
             dialogScale: this.dialogScale,
+            palette: this.palette,
             dialogFixedSize: {...this.dialogFixedSize},
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));

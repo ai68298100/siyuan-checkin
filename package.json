@@ -1,46 +1,46 @@
 {
-  "name": "siyuan-checkin",
-  "version": "7.0.0",
-  "description": "SiYuan plugin: 小飞驴打卡",
-  "main": "index.js",
-  "scripts": {
-    "dev": "webpack --config webpack.config.js --mode development",
-    "build": "webpack --config webpack.config.js --mode production",
-    "check": "tsc --noEmit",
-    "check:release": "node tests/release-assets.test.cjs",
-    "test:ui": "node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/insight-a11y.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/ui-docs.test.cjs && node tests/mobile-release-quality.test.cjs && node tests/release-assets.test.cjs",
-    "test": "pnpm run check && node tests/model.test.cjs && node tests/rules.test.cjs && node tests/insights.test.cjs && node tests/coaching.test.cjs && node tests/insight-records.test.cjs && node tests/record-notes.test.cjs && node tests/mobile-dialog.test.cjs && node tests/interval-editor.test.cjs && node tests/editor-validation.test.cjs && node tests/template-manager.test.cjs && node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/history-filter.test.cjs && node tests/view-preferences.test.cjs && node tests/entry-capabilities.test.cjs && node tests/insight-a11y.test.cjs",
-    "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs",
-    "test:mobile-dialog": "node tests/mobile-dialog.test.cjs",
-    "test:mobile:visual": "pnpm run test:mobile && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs && node tests/mobile-visual-regression.test.cjs",
-    "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
-    "test:visual:harness": "node tests/mobile-qa-harness-status.cjs",
-    "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/ecosystem-docs.test.cjs && node tests/api-contract.test.cjs && node tests/preferences-docs.test.cjs"
-  },
-  "keywords": [
-    "siyuan",
-    "plugin",
-    "checkin",
-    "habit"
-  ],
-  "author": "ai68298100",
-  "license": "MIT",
-  "packageManager": "pnpm@11.4.0",
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "copy-webpack-plugin": "^14.0.0",
-    "css-loader": "^7.1.4",
-    "esbuild-loader": "^4.4.3",
-    "mini-css-extract-plugin": "^2.10.2",
-    "sass": "^1.100.0",
-    "sass-loader": "^16.0.5",
-    "siyuan": "1.2.6",
-    "typescript": "^5.5.4",
-    "webpack": "^5.101.3",
-    "webpack-cli": "^6.0.1",
-    "yazl": "3.3.1"
-  }
+    "name": "siyuan-checkin",
+    "version": "8.0.0",
+    "description": "SiYuan plugin: 小飞驴打卡",
+    "main": "index.js",
+    "scripts": {
+        "dev": "webpack --config webpack.config.js --mode development",
+        "build": "webpack --config webpack.config.js --mode production",
+        "check": "tsc --noEmit",
+        "check:release": "node tests/release-assets.test.cjs",
+        "test:ui": "node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/insight-a11y.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/ui-docs.test.cjs && node tests/mobile-release-quality.test.cjs && node tests/release-assets.test.cjs",
+        "test": "pnpm run check && node tests/model.test.cjs && node tests/rules.test.cjs && node tests/insights.test.cjs && node tests/coaching.test.cjs && node tests/insight-records.test.cjs && node tests/record-notes.test.cjs && node tests/mobile-dialog.test.cjs && node tests/interval-editor.test.cjs && node tests/editor-validation.test.cjs && node tests/template-manager.test.cjs && node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/history-filter.test.cjs && node tests/view-preferences.test.cjs && node tests/entry-capabilities.test.cjs && node tests/insight-a11y.test.cjs",
+        "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs",
+        "test:mobile-dialog": "node tests/mobile-dialog.test.cjs",
+        "test:mobile:visual": "pnpm run test:mobile && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs && node tests/mobile-visual-regression.test.cjs",
+        "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
+        "test:visual:harness": "node tests/mobile-qa-harness-status.cjs",
+        "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/ecosystem-docs.test.cjs && node tests/api-contract.test.cjs && node tests/preferences-docs.test.cjs",
+        "test:perf": "node tests/performance.test.cjs"
+    },
+    "keywords": [
+        "siyuan",
+        "plugin",
+        "checkin",
+        "habit"
+    ],
+    "author": "ai68298100",
+    "license": "MIT",
+    "packageManager": "pnpm@11.4.0",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "devDependencies": {
+        "copy-webpack-plugin": "^14.0.0",
+        "css-loader": "^7.1.4",
+        "esbuild-loader": "^4.4.3",
+        "mini-css-extract-plugin": "^2.10.2",
+        "sass": "^1.100.0",
+        "sass-loader": "^16.0.5",
+        "siyuan": "1.2.6",
+        "typescript": "^5.5.4",
+        "webpack": "^5.101.3",
+        "webpack-cli": "^6.0.1",
+        "yazl": "3.3.1"
+    }
 }
-
