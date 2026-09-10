@@ -1237,7 +1237,6 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (["manual", "priority", "name", "updatedAt"].includes(value)) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
         root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences(); this.render(); });
-        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.setAttribute("aria-describedby", "lc-checkin-appearance-help");
@@ -1251,6 +1250,7 @@ export default class CheckinPlugin extends Plugin {
         summary.textContent = `当前：${densityLabel(this.density)} · ${this.appearance === "system" ? "跟随思源" : this.appearance === "light" ? "浅色" : "深色"}${this.reducedMotion ? " · 减少动效" : ""}`;
         root.querySelector(".lc-checkin__settings-card:last-child")?.append(summary);
         root.querySelector(".lc-checkin__settings-card:last-child")?.insertAdjacentHTML("afterend", `<section class="lc-checkin__settings-card lc-checkin__settings-danger"><h2>恢复默认</h2><p>只会重置显示偏好，不会删除打卡数据。</p><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复全部显示偏好</button></section>`);
+        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
     }
 
     private bindQuickKeyboard(root: HTMLElement) {
