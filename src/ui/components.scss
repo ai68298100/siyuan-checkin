@@ -1797,3 +1797,218 @@
 
 /* 弹窗关闭按钮在暗色主题下可见度 */
 .lc-checkin__dialog-close { color: var(--lc-checkin-muted); border-color: var(--lc-checkin-border); }
+
+/* ============================================================
+   打卡卡片精致化：统一操作区、清晰层级、一致高度
+   ============================================================ */
+
+/* --- 卡片本体：统一高度与内距 --- */
+.lc-checkin--today .lc-checkin__item {
+    grid-template-columns: 42px minmax(0, 1fr) 78px;
+    grid-template-areas: "icon body action" "icon exact exact";
+    align-items: center;
+    min-height: 64px;
+    padding: 10px 14px;
+    gap: 0 12px;
+}
+
+/* --- 图标砖：统一尺寸 + 进度环 --- */
+.lc-checkin--today .lc-checkin__item-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    font-size: 19px;
+    align-self: center;
+}
+
+/* --- 信息区 --- */
+.lc-checkin--today .lc-checkin__item-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    min-width: 0;
+    overflow: visible;
+}
+
+/* 第一行：名称 + 标签（名称永不换行、永不缩小到不可读） */
+.lc-checkin--today .lc-checkin__item-topline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow: hidden;
+}
+.lc-checkin--today .lc-checkin__item-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--lc-checkin-text);
+    font-size: 14.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    order: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* 标签紧凑化：只显示必要信息 */
+.lc-checkin--today .lc-checkin__item-tag {
+    flex: none;
+    order: 1;
+    max-width: 72px;
+    overflow: hidden;
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+    font-size: 9.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin--today .lc-checkin__item-tag.is-high {
+    color: var(--lc-checkin-warning);
+    background: var(--lc-checkin-warm-soft);
+    font-weight: 700;
+}
+.lc-checkin--today .lc-checkin__item-tag.is-tomato {
+    color: var(--lc-checkin-accent);
+    background: var(--lc-checkin-lilac-soft);
+}
+
+/* 第二行：元信息（类型 · 进度 · 剩余） */
+.lc-checkin--today .lc-checkin__item-meta {
+    flex: none;
+    margin-top: 2px;
+    color: var(--lc-checkin-muted);
+    font-size: 11px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    order: 2;
+}
+
+/* 第三行：进度条（仅非二值项显示） */
+.lc-checkin--today .lc-checkin__item-progress {
+    flex: none;
+    height: 3px;
+    margin-top: 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--lc-checkin-accent) 10%, var(--lc-checkin-muted-surface));
+    overflow: hidden;
+    order: 3;
+}
+.lc-checkin--today .lc-checkin__item-progress span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--lc-checkin-accent), var(--lc-checkin-lilac));
+    transition: width 300ms ease;
+}
+
+/* --- 操作区：固定宽度，按钮右对齐、垂直居中 --- */
+.lc-checkin--today .lc-checkin__item-action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    width: 78px;
+    min-width: 78px;
+    max-width: 78px;
+    margin: 0;
+    padding: 0;
+}
+
+/* 打卡按钮（二值项）：实心主色胶囊 */
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button {
+    flex: none;
+    min-width: 68px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--lc-checkin-accent);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-accent) 22%, transparent);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    cursor: pointer;
+    transition: filter var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button:hover {
+    filter: brightness(.93);
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button:active {
+    transform: scale(.97);
+}
+
+/* 步长按钮（数值项）：软色胶囊 */
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button {
+    flex: none;
+    min-width: 68px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-strong);
+    background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--lc-checkin-surface));
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color var(--lc-checkin-motion-fast), color var(--lc-checkin-motion-fast);
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button:hover {
+    color: #fff;
+    background: var(--lc-checkin-accent);
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button span {
+    font-weight: 500;
+}
+
+/* ⋯ 按钮：幽灵风格，紧凑 */
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button,
+.lc-checkin--today .lc-checkin__focus-button {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    cursor: pointer;
+}
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button:hover,
+.lc-checkin--today .lc-checkin__focus-button:hover {
+    color: var(--lc-checkin-accent);
+    background: var(--lc-checkin-accent-soft);
+}
+
+/* 已完成态：打卡按钮变灰、名称划线 */
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action .lc-checkin__record-button {
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+    box-shadow: none;
+}
+
+/* --- topline 减负：名称优先，只保留重要标签 --- */
+.lc-checkin--today .lc-checkin__item-tag { display: none; }
+.lc-checkin--today .lc-checkin__item-tag.is-high { display: inline-block; }
+
+/* 连续徽章更紧凑 */
+.lc-checkin__streak-badge {
+    padding: 0 5px;
+    font-size: 9.5px;
+    line-height: 1.6;
+}
+
+/* 群组标题右箭头颜色更柔和 */
+.lc-checkin--today .lc-checkin__group-header .lc-checkin__small-button { color: var(--lc-checkin-muted); opacity: .5; }
