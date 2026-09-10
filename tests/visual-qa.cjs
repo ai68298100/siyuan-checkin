@@ -185,7 +185,9 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     const readingTemplate = page.locator("[data-template-index='6']");
     await readingTemplate.evaluate((element) => element.scrollIntoView({block: "nearest", inline: "nearest"}));
     await readingTemplate.evaluate((element) => element.click());
+    await page.locator("[data-icon-popup]").evaluate((el) => { el.open = true; });
     await page.click("[data-icon-group='health']");
+    await page.locator("[data-icon-popup]").evaluate((el) => { el.open = false; });
     await page.click("[data-unit='小时']");
     results.templateApplied = await page.evaluate(() => ({
         name: document.querySelector("input[name='name']")?.value,
