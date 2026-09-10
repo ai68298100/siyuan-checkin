@@ -419,6 +419,34 @@
     background: var(--modern-surface);
     box-shadow: var(--modern-shadow);
 }
+.lc-checkin--today .lc-checkin__week-strip {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 12px;
+    padding: 0 2px;
+}
+.lc-checkin--today .lc-checkin__day-chip {
+    display: grid;
+    min-height: 51px;
+    place-items: center;
+    gap: 1px;
+    padding: 5px 2px;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    color: var(--modern-muted);
+    background: var(--modern-surface-soft);
+    transition: transform 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+.lc-checkin--today .lc-checkin__day-chip small { font-size: 9px; line-height: 1; }
+.lc-checkin--today .lc-checkin__day-chip strong { color: var(--modern-ink); font-size: 14px; line-height: 1.1; }
+.lc-checkin--today .lc-checkin__day-chip i { width: 5px; height: 5px; border-radius: 50%; background: var(--modern-border-strong); }
+.lc-checkin--today .lc-checkin__day-chip.is-complete { color: var(--lc-checkin-success); background: color-mix(in srgb, var(--lc-checkin-success) 11%, var(--modern-surface)); }
+.lc-checkin--today .lc-checkin__day-chip.is-complete i { background: var(--lc-checkin-success); }
+.lc-checkin--today .lc-checkin__day-chip.is-partial { color: var(--modern-accent); background: var(--modern-lilac-soft); }
+.lc-checkin--today .lc-checkin__day-chip.is-partial i { background: var(--modern-accent); }
+.lc-checkin--today .lc-checkin__day-chip.is-today { border-color: var(--modern-accent); box-shadow: 0 2px 8px color-mix(in srgb, var(--modern-accent) 14%, transparent); }
+.lc-checkin--today .lc-checkin__day-chip:hover { transform: translateY(-1px); }
 .lc-checkin--today .lc-checkin__today-summary > div { min-height: 54px; padding: 3px 18px; border-right: 1px solid var(--modern-border); }
 .lc-checkin--today .lc-checkin__today-summary > div:first-child strong { color: var(--modern-accent); font-size: 30px; }
 .lc-checkin--today .lc-checkin__today-summary strong { font-size: 22px; font-weight: 760; line-height: 1; }
@@ -571,6 +599,10 @@
 .lc-checkin--editor .lc-checkin__icon-option:hover { border-color: color-mix(in srgb, var(--modern-accent) 38%, var(--modern-border)); background: var(--modern-lilac-soft); transform: translateY(-1px); }
 .lc-checkin--editor .lc-checkin__icon-option.is-selected { border-color: var(--modern-accent); background: var(--modern-lilac-soft); box-shadow: inset 0 0 0 1px var(--modern-accent); }
 @media (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__week-strip { gap: 4px; margin-bottom: 9px; }
+    .lc-checkin--today .lc-checkin__day-chip { min-height: 45px; border-radius: 11px; }
+    .lc-checkin--today .lc-checkin__day-chip small { font-size: 8px; }
+    .lc-checkin--today .lc-checkin__day-chip strong { font-size: 13px; }
     .lc-checkin--editor .lc-checkin__icon-tabs button { padding: 0 9px; }
     .lc-checkin--editor .lc-checkin__icon-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
     .lc-checkin--editor .lc-checkin__icon-option { min-height: 37px; border-radius: 11px; font-size: 17px; }

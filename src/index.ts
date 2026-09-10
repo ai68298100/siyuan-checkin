@@ -1316,6 +1316,15 @@ export default class CheckinPlugin extends Plugin {
         const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
         const pending = Math.max(0, scheduledItems.length - completed);
         const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
+        const weekStrip = Array.from({length: 7}, (_, index) => {
+            const day = new Date(now);
+            day.setDate(now.getDate() - (6 - index));
+            const items = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, day) && isScheduledToday(item, day));
+            const done = items.filter((item) => isComplete(this.store, item, day)).length;
+            const status = !items.length ? "empty" : done === items.length ? "complete" : done ? "partial" : "pending";
+            const isToday = dateKey(day) === dateKey(now);
+            return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(`${day.toLocaleDateString("zh-CN", {month: "long", day: "numeric"})}：${done}/${items.length} 项完成`)}"><small>${day.toLocaleDateString("zh-CN", {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
+        }).join("");
         const emptyProgressTitle = this.pendingOnly
             ? "没有待处理的匹配项"
             : query ? "匹配的项目都已完成" : "今天的计划已完成";
@@ -1377,6 +1386,7 @@ export default class CheckinPlugin extends Plugin {
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
                 </div>
             </header>
+            <section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>
             <section class="lc-checkin__today-summary" aria-label="今日进度"><div><strong>${completed}</strong><span>已完成</span></div><div><strong>${pending}</strong><span>待处理</span></div><div><strong>${completionRate}%</strong><span>完成率</span></div></section>
             <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
             ${recentRecord}
