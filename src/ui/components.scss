@@ -2084,3 +2084,61 @@
 /* 顶栏标题和右侧占位 */
 .lc-checkin__topbar-title { color: var(--lc-checkin-text); font-size: 15px; font-weight: 700; }
 .lc-checkin__topbar-spacer { width: 34px; flex: none; }
+
+/* ============================================================
+   8.6.1 图标砖精致化：白瓷画布 + 进度环 + 微影
+   设计原则：留白展示任何 emoji，进度环提供色彩锚点
+   ============================================================ */
+
+/* 明亮模式：白瓷底 */
+.lc-checkin--today .lc-checkin__item-icon {
+    --icon-canvas: #FFFFFF;
+    --icon-ring-track: var(--lc-checkin-border);
+    --icon-ring-color: var(--lc-checkin-accent);
+    --icon-shadow: 0 1px 3px rgba(84, 88, 178, 0.10), 0 2px 8px rgba(84, 88, 178, 0.06);
+
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: 2.5px solid transparent;
+
+    /* 白瓷画布 + conic 进度环 */
+    background:
+        linear-gradient(var(--icon-canvas), var(--icon-canvas)) padding-box,
+        conic-gradient(
+            var(--icon-ring-color) var(--item-progress, 0%),
+            var(--icon-ring-track) 0
+        ) border-box;
+
+    /* 微影：让图标砖从卡片上浮起 */
+    box-shadow: var(--icon-shadow);
+
+    display: grid;
+    place-items: center;
+    font-size: 21px;
+    line-height: 1;
+    color: var(--lc-checkin-text);
+    cursor: pointer;
+    transition: box-shadow var(--lc-checkin-motion), transform var(--lc-checkin-motion-fast);
+}
+
+/* 暗黑模式：深色画布略亮于卡片 */
+.lc-checkin[data-appearance="dark"] .lc-checkin--today .lc-checkin__item-icon {
+    --icon-canvas: #2A2B35;
+    --icon-ring-track: var(--lc-checkin-border-strong);
+    --icon-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 悬停：微微浮起 */
+.lc-checkin--today .lc-checkin__item-icon:hover {
+    box-shadow: 0 3px 8px rgba(84, 88, 178, 0.14), 0 6px 20px rgba(84, 88, 178, 0.10);
+}
+
+/* 已完成：进度环满格转绿，画布加淡绿底 */
+.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-icon {
+    --icon-ring-color: var(--lc-checkin-success);
+    --icon-canvas: var(--lc-checkin-success-soft, #E3F4E9);
+}
+.lc-checkin[data-appearance="dark"] .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-icon {
+    --icon-canvas: #1F3329;
+}
