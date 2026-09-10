@@ -11,6 +11,7 @@ import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type
 import {parseCheckinCsv, serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
+import {buildWeeklyReportMarkdown} from "./features/report";
 import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-filter";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
@@ -33,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.2.0";
+const PLUGIN_VERSION = "8.3.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -1874,6 +1875,7 @@ export default class CheckinPlugin extends Plugin {
                 <div><div class="lc-checkin__eyebrow">${t("review.eyebrow")}</div><h1 class="lc-checkin__title">${t("review.title")}</h1></div>
                 <div class="lc-checkin__header-actions">
                     <div class="lc-checkin__range-tabs" role="tablist" aria-label="统计范围">${tabs}${custom}</div>
+                    <button class="lc-checkin__text-button" type="button" data-action="copy-weekly-report">复制周报</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="导出 JSON" title="导出 JSON">${uiIcon("summary")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="导出 CSV" title="导出 CSV">${uiIcon("history")}</button>
                 </div>
@@ -1999,7 +2001,7 @@ export default class CheckinPlugin extends Plugin {
         const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${index + 1} 月</option>`).join("");
         const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>` + ["第1个", "第2个", "第3个", "第4个", "第5个"][value - 1] + "</option>").join("");
         return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${this.resolvedAppearance()}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">提醒与计划</div><h1 class="lc-checkin__title">日期事项</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header>
+            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header>
             <div class="lc-checkin__occasion-manager">
                 <section class="lc-checkin__occasion-form-panel">
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>按日期提醒</strong></div></div>
@@ -2161,7 +2163,7 @@ export default class CheckinPlugin extends Plugin {
         return `<div class="lc-checkin lc-checkin--editor" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header">
                 <button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button>
-                <h1 class="lc-checkin__title">${item ? "设置打卡项" : "新建打卡项"}</h1>
+                <h1 class="lc-checkin__title">${item ? t("editor.edit") : t("editor.create")}</h1>
             </header>
             <form class="lc-checkin__form">
                 <div class="lc-checkin__editor-columns">
@@ -2257,6 +2259,7 @@ export default class CheckinPlugin extends Plugin {
     private bindToday(root: HTMLElement) {
         this.bindDialogClose(root);
         this.bindItemDrag(root);
+        this.bindQuickKeyboard(root);
         this.bindBulkMode(root);
         this.bindFocusTimerPanel(root);
         this.bindMobileNav(root);
@@ -2682,7 +2685,17 @@ export default class CheckinPlugin extends Plugin {
             }
         }));
         root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => this.generateSummary());
-        root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => this.downloadExport("json"));
+        root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", async () => {
+            const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange) : buildSummaryContext(this.store, this.summaryRange);
+            const label = this.summaryRange === "day" ? "今日报告" : this.summaryRange === "month" ? "本月报告" : "本周报告";
+            const markdown = buildWeeklyReportMarkdown(summary, `${label}（${summary.startDate} ~ ${summary.endDate}）`);
+            try {
+                await navigator.clipboard.writeText(markdown);
+                showMessage("周报已复制到剪贴板");
+            } catch {
+                showMessage("复制失败：请检查剪贴板权限");
+            }
+        });
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
     }
 
