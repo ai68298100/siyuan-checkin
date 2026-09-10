@@ -28,6 +28,9 @@
     --modern-border: color-mix(in srgb, var(--b3-border-color) 68%, transparent);
     --modern-border-strong: color-mix(in srgb, var(--b3-border-color) 86%, transparent);
     --modern-shadow: 0 1px 2px #0005;
+    --modern-lilac: color-mix(in srgb, var(--modern-accent) 68%, #9d96ff);
+    --modern-lilac-soft: color-mix(in srgb, var(--modern-lilac) 22%, var(--modern-surface));
+    --modern-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 22%, var(--modern-surface));
 }
 
 .lc-checkin :is(input, select, textarea) {
@@ -767,6 +770,7 @@
 }
 .lc-checkin__mobile-fab:hover { color: #fff; transform: translateY(-1px); filter: brightness(.97); }
 .lc-checkin__mobile-fab .lc-checkin__glyph { width: 22px; height: 22px; }
+.lc-checkin :is(button, select, input, textarea):focus-visible { outline: 2px solid color-mix(in srgb, var(--modern-accent) 72%, white); outline-offset: 2px; }
 
 @media (max-width: 600px) {
     /* Keep the first viewport focused on check-in rows: search, grouping,
