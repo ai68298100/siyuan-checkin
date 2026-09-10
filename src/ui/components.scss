@@ -307,7 +307,8 @@
 }
 .lc-checkin--today .lc-checkin__today-search {
     display: flex;
-    flex: 1 1 200px;
+    flex: 1 1 140px;
+    min-width: 140px;
     align-items: center;
     gap: 6px;
     min-width: 0;
@@ -1766,3 +1767,33 @@
     font-weight: 650;
     white-space: nowrap;
 }
+
+/* ============================================================
+   UI 走查修复：多选按钮行内化、FAB 避让、间距统一
+   ============================================================ */
+
+/* 多选按钮与筛选同行，不独占一行 */
+.lc-checkin--today .lc-checkin__today-filters { flex: 1 1 auto; min-width: 0; }
+.lc-checkin--today .lc-checkin__organize [data-action="toggle-bulk"] {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+/* FAB 不遮挡末尾内容：列表底部留出 FAB 高度 */
+@container lc5 (max-width: 719px) {
+    .lc-checkin--today .lc-checkin__list { padding-bottom: 8px; }
+    .lc-checkin--today .lc-checkin__occasion-banner { margin-bottom: 4px; }
+}
+
+/* 群组标题的下划线去掉，用间距分隔 */
+.lc-checkin--today .lc-checkin__group-header { border-bottom: none; padding-bottom: 0; }
+
+/* 卡片内部间距微调：meta 行的省略更流畅 */
+.lc-checkin--today .lc-checkin__item-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 设置分类导航在窄容器下不截断 */
+.lc-checkin__settings-nav { scrollbar-width: none; -ms-overflow-style: none; }
+.lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
+
+/* 弹窗关闭按钮在暗色主题下可见度 */
+.lc-checkin__dialog-close { color: var(--lc-checkin-muted); border-color: var(--lc-checkin-border); }
