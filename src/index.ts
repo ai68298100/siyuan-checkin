@@ -2367,7 +2367,7 @@ export default class CheckinPlugin extends Plugin {
             if (input) input.value = icon;
             updateEditorPreview();
         };
-        const readImageFile = async (file: File): Promise<string> => {
+        const readImageBlob = async (file: Blob): Promise<string> => {
             if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
             if (file.size > MAX_CUSTOM_ICON_BYTES) throw new Error(`图片超过 ${Math.round(MAX_CUSTOM_ICON_BYTES / 1024)} KB 限制`);
             return new Promise((resolve, reject) => {
@@ -2384,7 +2384,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-custom-icon-file]")?.addEventListener("change", async (event) => {
             const file = (event.currentTarget as HTMLInputElement).files?.[0];
             if (!file) return;
-            try { applyLocalIcon(await readImageFile(file), "上传"); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
+            try { applyLocalIcon(await readImageBlob(file), "上传"); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
         });
         root.querySelector<HTMLElement>("[data-action='download-custom-icon']")?.addEventListener("click", async () => {
             const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
@@ -2395,7 +2395,7 @@ export default class CheckinPlugin extends Plugin {
                 if (!response.ok) throw new Error(`下载失败（${response.status}）`);
                 const blob = await response.blob();
                 if (!blob.type.startsWith("image/")) throw new Error("地址返回的不是图片");
-                applyLocalIcon(await readImageFile(new File([blob], "icon", {type: blob.type})), "下载");
+                applyLocalIcon(await readImageBlob(blob), "下载");
             } catch (error) {
                 showMessage(`[小驴打卡] 无法下载图片，可能是站点禁止跨域访问。你也可以直接上传图片：${String(error instanceof Error ? error.message : error)}`);
             }
