@@ -30,6 +30,8 @@
 .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button { min-height: 34px; border-radius: 8px; }
 @media (max-width: 600px) {
     .lc-checkin--archived { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
-    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row { min-height: 52px; padding: 0 10px; }
+    .lc-checkin--archived > .lc-checkin__history-list { gap: 6px; }
+    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__history-row { min-height: 48px; padding: 0 9px; }
+    .lc-checkin--archived > .lc-checkin__history-list .lc-checkin__text-button { min-height: 36px; padding: 0 10px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--archived * { transition-duration: 0ms; } }

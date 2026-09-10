@@ -59,10 +59,19 @@
     .lc-checkin--occasions { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
     .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: 1fr; gap: 12px; }
     .lc-checkin--occasions .lc-checkin__form-row { grid-template-columns: 1fr; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: none; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(-n + 2) { grid-row: 2; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:nth-last-child(2) { grid-column: 2; justify-self: end; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button:last-child { grid-column: 3; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: none; gap: 6px; }
+    /* Reserve one row for each reminder without reducing the existing action
+       targets. Low-frequency actions can move into a disclosure in a later
+       interaction pass. */
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 30px minmax(0, 1fr) repeat(3, 36px);
+        gap: 6px;
+        min-height: 48px;
+        padding: 6px 8px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__small-button {
+        width: 36px;
+        height: 36px;
+    }
 }
 @media (prefers-reduced-motion: reduce) { .lc-checkin--occasions * { transition-duration: 0ms; } }
