@@ -198,8 +198,12 @@ export default class CheckinPlugin extends Plugin {
 
     /* "跟随思源" must resolve against the host theme, otherwise the dark
        appearance overrides never activate (the attribute would stay "system"). */
+    /* 跟随思源：优先读思源 body 的 dark 类（实时反映主题切换），再退回配置与系统偏好。 */
     private resolvedAppearance(): "light" | "dark" {
         if (this.appearance === "system") {
+            const body = typeof document !== "undefined" ? document.body : undefined;
+            if (body?.classList.contains("dark")) return "dark";
+            if (body?.classList.contains("light")) return "light";
             const hostMode = (window as unknown as {siyuan?: {config?: {appearance?: {mode?: number}}}}).siyuan?.config?.appearance?.mode;
             if (hostMode === 1) return "dark";
             if (hostMode === 0) return "light";
@@ -207,9 +211,37 @@ export default class CheckinPlugin extends Plugin {
         }
         return this.appearance;
     }
+
+    /* Live-follow: when "跟随思源" is active and the host flips its theme,
+       re-render every open surface so the palette switches instantly. */
+    private startHostThemeWatcher() {
+        if (this.hostThemeObserver || typeof MutationObserver === "undefined" || !document.body) return;
+        let lastApplied = this.resolvedAppearance();
+        let scheduled = 0;
+        const apply = () => {
+            scheduled = 0;
+            if (this.disposed || this.disposing || this.appearance !== "system") return;
+            const next = this.resolvedAppearance();
+            if (next === lastApplied) return;
+            lastApplied = next;
+            this.render();
+        };
+        this.hostThemeObserver = new MutationObserver(() => {
+            if (scheduled) window.clearTimeout(scheduled);
+            scheduled = window.setTimeout(apply, 50);
+        });
+        this.hostThemeObserver.observe(document.body, {attributes: true, attributeFilter: ["class", "style"]});
+        if (document.documentElement) this.hostThemeObserver.observe(document.documentElement, {attributes: true, attributeFilter: ["class", "style", "data-theme-mode"]});
+    }
+
+    private stopHostThemeWatcher() {
+        this.hostThemeObserver?.disconnect();
+        this.hostThemeObserver = undefined;
+    }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private collapsedTodayGroups = new Set<string>();
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
+    private hostThemeObserver?: MutationObserver;
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
@@ -274,6 +306,7 @@ export default class CheckinPlugin extends Plugin {
         this.isMobileFrontend = frontend === "mobile" || frontend === "browser-mobile";
         this.supportsCustomTab = !this.isMobileFrontend;
         const plugin = this;
+        this.startHostThemeWatcher();
         this.addIcons(`<symbol id="iconLvCheckin" viewBox="0 0 32 32">
             <path d="M16 2.5 19.9 6l5.2-.3.8 5.1 4.1 3.2-2.6 4.5.9 5.1-5 1.4-2.8 4.3-4.8-2.1-4.8 2.1-2.8-4.3-5-1.4.9-5.1-2.6-4.5 4.1-3.2.8-5.1L12.1 6 16 2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
             <path d="m10 16 3.7 3.7L22.5 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -413,6 +446,7 @@ export default class CheckinPlugin extends Plugin {
         this.acceptingOperations = false;
         this.disposing = true;
         this.settleReady(false);
+        this.stopHostThemeWatcher();
         window.removeEventListener("focus", this.handleWindowFocus);
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
