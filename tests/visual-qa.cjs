@@ -29,9 +29,15 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     const page = await browser.newPage({viewport: {width: initialWidth, height: 760}, deviceScaleFactor: 1});
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    await page.setContent(`<style>:root{--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-font-family:Arial,sans-serif}body{margin:8px}</style><main id="frame" style="width:340px;height:720px;border:1px solid #ddd"><div id="dock" style="width:100%;height:100%"></div></main>`);
+    /* Dark mode mirrors SiYuan's dark theme tokens so the reference palette can
+       be verified against both appearances. */
+    const darkTheme = process.env.CHECKIN_QA_THEME === "dark";
+    const themeTokens = darkTheme
+        ? "--b3-theme-on-background:#dcdcdc;--b3-theme-on-surface-light:#9aa0a6;--b3-theme-background:#1e1e1e;--b3-theme-surface:#262626;--b3-theme-surface-lighter:#303030;--b3-border-color:#3a3a3a;--b3-theme-primary:#3575f0"
+        : "--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb";
+    await page.setContent(`<style>:root{${themeTokens};--b3-font-family:Arial,sans-serif}body{margin:8px;background:${darkTheme ? "#1e1e1e" : "#fff"}}</style><main id="frame" style="width:340px;height:720px;border:1px solid ${darkTheme ? "#3a3a3a" : "#ddd"}"><div id="dock" style="width:100%;height:100%"></div></main>`);
     await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
-    await page.evaluate(() => {
+    await page.evaluate((hostMode) => {
         const now = new Date();
         const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 10);
         const today = (hour, minute) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute).toISOString();
@@ -51,6 +57,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
             ],
         };
         window.module = {exports: {}};
+        window.siyuan = {config: {appearance: {mode: hostMode}, system: {appDir: "", os: "windows"}}};
         window.require = (name) => {
             if (name !== "siyuan") throw new Error(`Unexpected external: ${name}`);
             return {
@@ -76,7 +83,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
                 showMessage(message) { window.__messages = [...(window.__messages || []), message]; },
             };
         };
-    });
+    }, darkTheme ? 1 : 0);
     await page.addScriptTag({path: path.join(projectRoot, "dist", "index.js")});
     await page.evaluate(async () => {
         const PluginClass = window.module.exports.default || window.module.exports;
@@ -88,7 +95,8 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         await window.__plugin.onLayoutReady();
         window.__readyResult = await readyPromise;
         window.__readyAfter = window.siyuanCheckin.isReady();
-    });
+        window.__appearanceAttr = document.querySelector(".lc-checkin")?.dataset.appearance;
+    }, darkTheme ? 1 : 0);
 
     const inspect = async (name) => {
         await page.screenshot({path: path.join(outputRoot, `${name}.png`), fullPage: true});
