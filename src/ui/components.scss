@@ -1245,3 +1245,56 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
+
+/* ---------------- editor v5: wizard layout + icon popup ---------------- */
+.lc-checkin__editor-columns { display: grid; gap: 12px; }
+@container lc5 (min-width: 900px) {
+    .lc-checkin__editor-columns { grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr); align-items: start; }
+    .lc-checkin__editor-side {
+        position: sticky;
+        top: 12px;
+        display: grid;
+        gap: 10px;
+    }
+}
+.lc-checkin--editor .lc-checkin__editor-side .lc-checkin__editor-preview { margin: 0; }
+.lc-checkin--editor .lc-checkin__editor-actions { margin: 0; }
+
+/* icon picker collapsed to a single summary control */
+.lc-checkin__field--icons { position: relative; }
+.lc-checkin__icon-popup > summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 7px 12px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-muted-surface);
+    list-style: none;
+    cursor: pointer;
+    transition: border-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin__icon-popup > summary::-webkit-details-marker { display: none; }
+.lc-checkin__icon-popup > summary:hover { border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); }
+.lc-checkin__popup-current { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--lc-checkin-lilac-soft); font-size: 19px; }
+.lc-checkin__popup-current img { width: 70%; height: 70%; object-fit: contain; border-radius: 50%; }
+.lc-checkin__popup-summary-text { flex: 1; color: var(--lc-checkin-muted); font-size: 12.5px; font-weight: 620; }
+.lc-checkin__popup-arrow { color: var(--lc-checkin-muted); font-size: 12px; transition: transform var(--lc-checkin-motion-fast); }
+.lc-checkin__icon-popup[open] > summary .lc-checkin__popup-arrow { transform: rotate(180deg); }
+.lc-checkin__icon-popup[open] .lc-checkin__popup-body {
+    position: absolute;
+    z-index: var(--lc-checkin-z-popup);
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    max-height: 420px;
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-lg);
+    background: var(--lc-checkin-surface);
+    box-shadow: var(--lc-checkin-shadow-lg);
+    display: grid;
+    gap: 8px;
+}

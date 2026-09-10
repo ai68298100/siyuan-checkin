@@ -1919,11 +1919,15 @@ export default class CheckinPlugin extends Plugin {
                 <h1 class="lc-checkin__title">${item ? "设置打卡项" : "新建打卡项"}</h1>
             </header>
             <form class="lc-checkin__form">
+                <div class="lc-checkin__editor-columns">
                 <div class="lc-checkin__form-scroll">
                     ${templates}
                     <label class="lc-checkin__field lc-checkin__field--name"><span>名称</span><input name="name" type="text" required maxlength="40" placeholder="例如：阅读 20 分钟" value="${escapeHtml(item?.name || "")}" /></label>
                     <div class="lc-checkin__field lc-checkin__field--icons">
                         <span>图标</span>
+                        <details class="lc-checkin__icon-popup" data-icon-popup>
+                        <summary type="button"><span class="lc-checkin__popup-current" data-popup-current-icon>${renderIconMarkup(selectedIcon)}</span><span class="lc-checkin__popup-summary-text">更换图标</span><span class="lc-checkin__popup-arrow" aria-hidden="true">⌄</span></summary>
+                        <div class="lc-checkin__popup-body">
                         <label class="lc-checkin__search-field lc-checkin__search-field--icon">
                             <span class="lc-checkin__visually-hidden">搜索图标</span>
                             <span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span>
@@ -1945,6 +1949,8 @@ export default class CheckinPlugin extends Plugin {
                             <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-library accept=".json,.txt,application/json,text/plain" />导入图标库</label><small>支持图标 URL、data URL 或 emoji，每行一个，也支持 JSON 数组</small></div>
                             ${this.customIconLibrary.length ? `<div class="lc-checkin__custom-library" data-custom-library><small>我的图标库 · ${this.customIconLibrary.length} 个</small><div class="lc-checkin__icon-grid">${this.customIconLibrary.map((icon) => `<button class="lc-checkin__icon-option" type="button" data-library-icon="${escapeHtml(icon)}" aria-label="使用自定义图标">${renderIconMarkup(icon)}</button>`).join("")}</div></div>` : ""}
                         </div>
+                        </div>
+                        </details>
                         <input name="icon" type="hidden" value="${escapeHtml(selectedIcon)}" />
                     </div>
                     <fieldset class="lc-checkin__kind-field"><legend>类型</legend><div class="lc-checkin__kind-grid">${KIND_OPTIONS.map((option) => `<label class="lc-checkin__kind-option"><input type="radio" name="kind" value="${option.kind}" ${selectedKind === option.kind ? "checked" : ""}/><span><strong>${escapeHtml(option.label)}</strong><small>${escapeHtml(option.description)}</small></span></label>`).join("")}</div></fieldset>
@@ -1953,6 +1959,8 @@ export default class CheckinPlugin extends Plugin {
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
                         <label class="lc-checkin__field"><span>单位</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
                     </div>
+                </div>
+                <aside class="lc-checkin__editor-side">
                     <section class="lc-checkin__editor-preview" aria-label="打卡项预览">
                         <div class="lc-checkin__field-heading"><span>卡片预览</span><small>随设置实时更新</small></div>
                         <article class="lc-checkin__preview-card" data-editor-preview>
@@ -1988,13 +1996,14 @@ export default class CheckinPlugin extends Plugin {
                             </div>
                         </div>
                     </details>
-                </div>
+                </aside>
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? "保存修改" : "保存打卡项"}</button>
                     <button class="lc-checkin__text-button" type="button" data-action="save-template">保存为我的模板</button>
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? "恢复打卡项" : "暂时归档"}</button>` : ""}
             ${this.renderSaveStatus()}
             ${this.renderSyncNotice()}
+                </aside>
                 </div>
             </form>
         </div>`;
