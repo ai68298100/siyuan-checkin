@@ -1707,3 +1707,35 @@
     font-size: 12px;
 }
 .lc-checkin__backup-reminder strong { color: var(--lc-checkin-warning); }
+
+/* ============================================================
+   8.4 分类平衡
+   ============================================================ */
+.lc-checkin__balance {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-lg);
+    background: var(--lc-checkin-surface);
+}
+.lc-checkin__balance h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 14px; font-weight: 720; }
+.lc-checkin__balance-row {
+    display: grid;
+    grid-template-columns: 72px auto minmax(0, 1fr) 44px;
+    gap: 10px;
+    align-items: center;
+    padding: 6px 0;
+}
+.lc-checkin__balance-row strong { overflow: hidden; color: var(--lc-checkin-text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__balance-row span { color: var(--lc-checkin-muted); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lc-checkin__balance-bar { display: block; height: 6px; border-radius: 6px; background: color-mix(in srgb, var(--lc-checkin-accent) 10%, var(--lc-checkin-muted-surface)); overflow: hidden; }
+.lc-checkin__balance-bar span { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--lc-checkin-accent), var(--lc-checkin-lilac)); }
+.lc-checkin__balance-row em {
+    min-width: 36px;
+    color: var(--lc-checkin-accent);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 720;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}

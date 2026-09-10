@@ -34,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.3.0";
+const PLUGIN_VERSION = "8.4.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -1858,6 +1858,22 @@ export default class CheckinPlugin extends Plugin {
                 : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
             return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
         }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
+        const groupMap = new Map<string, {name: string; completed: number; scheduled: number}>();
+        for (const item of summary.items) {
+            const storeItem = this.store.items.find((candidate) => candidate.id === item.itemId);
+            const group = storeItem?.group || "未分组";
+            const entry = groupMap.get(group) || {name: group, completed: 0, scheduled: 0};
+            entry.completed += item.completedDays;
+            entry.scheduled += item.scheduledDays;
+            groupMap.set(group, entry);
+        }
+        const groupBars = [...groupMap.values()]
+            .filter((entry) => entry.scheduled > 0)
+            .sort((left, right) => right.completed / right.scheduled - left.completed / left.scheduled)
+            .map((entry) => {
+                const rate = Math.round((entry.completed / entry.scheduled) * 100);
+                return `<div class="lc-checkin__balance-row"><strong>${escapeHtml(entry.name)}</strong><span>${entry.completed}/${entry.scheduled}</span><i class="lc-checkin__balance-bar"><span style="width:${Math.min(100, Math.round((entry.completed / Math.max(1, entry.scheduled)) * 100))}%"></span></i><em>${rate}%</em></div>`;
+            }).join("");
         const heatmapYear = new Date().getFullYear();
         const heatmap = buildYearHeatmap(this.store, heatmapYear);
         const weeklyTrend = buildWeeklyCompletionTrend(this.store, 12);
@@ -1907,6 +1923,7 @@ export default class CheckinPlugin extends Plugin {
             </section>
             <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
             ${this.renderCheckinLog()}
+            ${groupBars ? `<section class="lc-checkin__balance" aria-label="分类平衡"><h2>分类平衡</h2>${groupBars}</section>` : ""}
             <section class="lc-checkin__achievements" aria-label="成就">
                 <h2>成就 · ${earnedCount}/${achievements.length}</h2>
                 <div class="lc-checkin__achievement-grid">
