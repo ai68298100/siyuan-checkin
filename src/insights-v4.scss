@@ -32,6 +32,8 @@
 .lc-checkin--insights .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
 .lc-checkin--insights .lc-checkin__insight-legend i.is-off { background: var(--b3-theme-surface-lighter); }
 .lc-checkin--insights .lc-checkin__insight-grid { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 4px; width: 100%; min-width: 0; }
+.lc-checkin--insights .lc-checkin__insight-grid-scroll { min-width: 0; }
+.lc-checkin--insights .lc-checkin__insight-grid-range { display: flex; justify-content: space-between; margin-top: 6px; color: var(--b3-theme-on-surface-light); font-size: 10px; font-variant-numeric: tabular-nums; }
 .lc-checkin--insights .lc-checkin__insight-grid span { min-width: 0; min-height: 18px; border: 1px solid color-mix(in srgb, var(--b3-border-color) 35%, transparent); border-radius: 4px; background: var(--b3-theme-surface-lighter); }
 .lc-checkin--insights .lc-checkin__insight-grid span.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 76%, var(--b3-theme-surface)); }
 .lc-checkin--insights .lc-checkin__insight-grid span.is-partial { background: color-mix(in srgb, var(--lc-checkin-warning) 76%, var(--b3-theme-surface)); }
@@ -42,6 +44,7 @@
 .lc-checkin--insights .lc-checkin__coaching-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lc-checkin--insights .lc-checkin__coaching-item span { display: block; margin-top: 6px; color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.45; }
 .lc-checkin--insights .lc-checkin__coaching-item small { display: block; margin-top: 8px; color: var(--b3-theme-on-surface-light); font-size: 10px; }
+.lc-checkin--insights .lc-checkin__coaching-item.is-primary { border-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--b3-border-color)); background: var(--lc-checkin-accent-soft); }
 .lc-checkin--insights .lc-checkin__insight-row { display: flex; align-items: center; justify-content: space-between; min-height: 42px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 55%, transparent); color: var(--b3-theme-on-surface-light); font-size: 12px; }
 .lc-checkin--insights .lc-checkin__insight-row:last-child { border-bottom: 0; }
 .lc-checkin--insights .lc-checkin__insight-row strong { color: var(--b3-theme-on-background); font-variant-numeric: tabular-nums; }
@@ -56,6 +59,8 @@
     .lc-checkin--insights .lc-checkin__insight-legend { justify-content: flex-start; }
     .lc-checkin--insights .lc-checkin__insight-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 3px; }
     .lc-checkin--insights .lc-checkin__insight-grid span { min-height: 15px; }
+    .lc-checkin--insights .lc-checkin__insight-grid-scroll { overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+    .lc-checkin--insights .lc-checkin__insight-grid { min-width: 420px; grid-template-columns: repeat(14, minmax(20px, 1fr)); }
     .lc-checkin--insights .lc-checkin__coaching-list { grid-template-columns: 1fr; }
     .lc-checkin--insights .lc-checkin__coaching-item { min-height: 0; }
 }

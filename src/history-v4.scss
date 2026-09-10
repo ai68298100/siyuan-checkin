@@ -100,6 +100,25 @@
     .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-tools { grid-row: 1 / span 2; align-self: start; margin-top: 0; }
 }
 
+.lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure > summary {
+    display: none;
+}
+@media (min-width: 900px) {
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) > .lc-checkin__history-filter-disclosure {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        align-self: start;
+    }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure .lc-checkin__history-tools { margin-top: 0; }
+}
+@media (max-width: 600px) {
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure { margin-top: 10px; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure > summary { min-height: 36px; padding: 0 12px; border: 1px solid var(--history-border); border-radius: 999px; color: var(--b3-theme-on-surface-light); background: var(--history-muted-bg); font-size: 11px; line-height: 36px; list-style: none; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure > summary::-webkit-details-marker { display: none; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure > summary::after { float: right; content: "⌄"; }
+    .lc-checkin--history:not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__history-filter-disclosure[open] > summary::after { content: "⌃"; }
+}
+
 @media (max-width: 600px) {
     .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) { padding: 12px 12px calc(86px + env(safe-area-inset-bottom)); }
     .lc-checkin--history:not(.lc-checkin--today):not(.lc-checkin--summary):not(.lc-checkin--insights):not(.lc-checkin--archived):not(.lc-checkin--occasions):not(.lc-checkin--settings) .lc-checkin__calendar-day { min-height: 44px; }
