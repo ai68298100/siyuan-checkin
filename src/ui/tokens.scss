@@ -1,0 +1,132 @@
+/* ============================================================
+   小驴打卡 5.0 · Design tokens
+   单一来源：所有颜色从思源 --b3-* 变量派生，浅/深主题各自覆盖。
+   本文件同时重定义 legacy 变量名，使旧规则自然继承新语言。
+   ============================================================ */
+
+.lc-checkin {
+    /* ---- brand & semantic palette ---- */
+    --lc-checkin-accent: #5560e8;
+    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent);
+    --lc-checkin-success: var(--b3-theme-success, #2f9e65);
+    --lc-checkin-warning: var(--b3-theme-warning, #d98a1f);
+    --lc-checkin-danger: var(--b3-theme-error, #d14c4c);
+    --lc-checkin-lilac: #7d87f2;
+    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 13%, var(--lc-checkin-surface));
+    --lc-checkin-warm: var(--lc-checkin-warning);
+    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 13%, var(--lc-checkin-surface));
+
+    /* ---- surfaces ---- */
+    --lc-checkin-bg: var(--b3-theme-background);
+    --lc-checkin-surface: var(--b3-theme-surface);
+    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-on-background) 2%);
+    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
+    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 62%, transparent);
+    --lc-checkin-border-strong: var(--b3-border-color);
+    --lc-checkin-text: var(--b3-theme-on-background);
+    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 82%, var(--b3-theme-on-background));
+
+    /* ---- elevation ---- */
+    --lc-checkin-shadow-sm: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent);
+    --lc-checkin-shadow: 0 1px 2px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent), 0 6px 18px color-mix(in srgb, var(--b3-theme-on-background) 5%, transparent);
+    --lc-checkin-shadow-md: 0 2px 6px color-mix(in srgb, var(--b3-theme-on-background) 7%, transparent), 0 12px 32px color-mix(in srgb, var(--b3-theme-on-background) 8%, transparent);
+    --lc-checkin-shadow-lg: 0 6px 16px color-mix(in srgb, var(--b3-theme-on-background) 10%, transparent), 0 20px 48px color-mix(in srgb, var(--b3-theme-on-background) 14%, transparent);
+    --lc-checkin-focus: 0 0 0 3px color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
+
+    /* ---- shape & rhythm ---- */
+    --lc-checkin-radius-sm: 8px;
+    --lc-checkin-radius: 12px;
+    --lc-checkin-radius-lg: 16px;
+    --lc-checkin-space-1: 4px;
+    --lc-checkin-space-2: 8px;
+    --lc-checkin-space-3: 12px;
+    --lc-checkin-space-4: 16px;
+    --lc-checkin-space-5: 22px;
+    --lc-checkin-space-6: 32px;
+    --lc-checkin-motion-fast: 120ms ease;
+    --lc-checkin-motion: 180ms ease;
+
+    /* ---- nav geometry ---- */
+    --lc-checkin-rail-width: 76px;
+    --lc-checkin-nav-height: 58px;
+
+    /* ---- z-index ladder (single source) ---- */
+    --lc-checkin-z-banner: 2;
+    --lc-checkin-z-header: 5;
+    --lc-checkin-z-nav: 20;
+    --lc-checkin-z-fab: 21;
+    --lc-checkin-z-popup: 30;
+
+    color: var(--lc-checkin-text);
+    background: var(--lc-checkin-bg);
+    font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+
+    /* container queries drive every layout decision */
+    container: lc5 / inline-size;
+}
+
+.lc-checkin[data-appearance="dark"] {
+    --lc-checkin-accent: #7580f5;
+    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 18%, transparent);
+    --lc-checkin-lilac: #8b94ff;
+    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 16%, var(--lc-checkin-surface));
+    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 18%, var(--lc-checkin-surface));
+    --lc-checkin-bg: color-mix(in srgb, var(--b3-theme-background) 94%, #000);
+    --lc-checkin-surface: color-mix(in srgb, var(--b3-theme-surface) 92%, #000);
+    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 96%, #fff 1%);
+    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 88%, #000);
+    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 80%, transparent);
+    --lc-checkin-text: var(--b3-theme-on-background);
+    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 88%, #fff 4%);
+    --lc-checkin-shadow-sm: 0 1px 2px #0006;
+    --lc-checkin-shadow: 0 1px 2px #0006, 0 8px 22px #0005;
+    --lc-checkin-shadow-md: 0 2px 8px #0007, 0 14px 34px #0006;
+    --lc-checkin-shadow-lg: 0 8px 20px #0008, 0 24px 56px #0007;
+}
+
+/* The legacy floor declares the same selectors at (0,2,0); matching that
+   specificity keeps this file's palette authoritative regardless of order. */
+.lc-checkin[data-appearance="light"] {
+    --lc-checkin-accent: #5560e8;
+    --lc-checkin-accent-soft: color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent);
+    --lc-checkin-lilac: #7d87f2;
+    --lc-checkin-lilac-soft: color-mix(in srgb, var(--lc-checkin-lilac) 13%, var(--lc-checkin-surface));
+    --lc-checkin-warm: var(--lc-checkin-warning);
+    --lc-checkin-warm-soft: color-mix(in srgb, var(--lc-checkin-warning) 13%, var(--lc-checkin-surface));
+    --lc-checkin-bg: var(--b3-theme-background);
+    --lc-checkin-surface: var(--b3-theme-surface);
+    --lc-checkin-surface-raised: color-mix(in srgb, var(--b3-theme-surface) 88%, var(--b3-theme-on-background) 2%);
+    --lc-checkin-muted-surface: color-mix(in srgb, var(--b3-theme-surface) 82%, var(--b3-theme-background));
+    --lc-checkin-border: color-mix(in srgb, var(--b3-border-color) 62%, transparent);
+    --lc-checkin-border-strong: var(--b3-border-color);
+    --lc-checkin-text: var(--b3-theme-on-background);
+    --lc-checkin-muted: color-mix(in srgb, var(--b3-theme-on-surface-light) 82%, var(--b3-theme-on-background));
+}
+
+/* ---- base interaction affordances ---- */
+.lc-checkin :is(button, select, input, textarea, a):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 75%, #fff);
+    outline-offset: 2px;
+}
+
+.lc-checkin[data-reduced-motion="true"] *,
+.lc-checkin[data-reduced-motion="true"] *::before,
+.lc-checkin[data-reduced-motion="true"] *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin * { transition-duration: 0ms !important; }
+}
+
+.lc-checkin ::-webkit-scrollbar { width: 8px; height: 8px; }
+.lc-checkin ::-webkit-scrollbar-thumb { border-radius: 8px; background: color-mix(in srgb, var(--lc-checkin-text) 18%, transparent); }
+.lc-checkin ::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- glyph system ---- */
+.lc-checkin__glyph { display: block; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.lc-checkin__mobile-nav .lc-checkin__glyph { width: 19px; height: 19px; }
+.lc-checkin__rail .lc-checkin__glyph { width: 20px; height: 20px; }
+.lc-checkin__small-button .lc-checkin__glyph { width: 15px; height: 15px; margin: auto; }
+.lc-checkin__icon-button .lc-checkin__glyph { width: 20px; height: 20px; }

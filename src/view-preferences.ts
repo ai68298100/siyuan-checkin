@@ -1,8 +1,9 @@
 import type {CheckinItemSortMode} from "./types";
 
 export type TodayGroupMode = "group" | "time" | "priority";
-export type CheckinDensity = "compact" | "standard" | "comfortable";
 export type CheckinAppearance = "system" | "light" | "dark";
+/** How the quick dialog sizes itself on desktop. "percent" adapts to the host window. */
+export type DialogSizeMode = "percent" | "fullscreen" | "fixed";
 
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
@@ -10,11 +11,18 @@ export interface CheckinViewPreferences {
     completedCollapsed: boolean;
     collapsedGroups: string[];
     lastInsightsItemId?: string;
-    density: CheckinDensity;
     appearance: CheckinAppearance;
     reducedMotion: boolean;
     todayQuery: string;
     pendingOnly: boolean;
+    /** Optional today-page extras (week strip). Off by default: the checklist is the first screen. */
+    showWeekStrip: boolean;
+    /** Quick dialog size preference (desktop). */
+    dialogSizeMode: DialogSizeMode;
+    /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
+    dialogScale: number;
+    /** Fixed size in px when dialogSizeMode is "fixed". */
+    dialogFixedSize: {width: number; height: number};
 }
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
@@ -22,15 +30,24 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sortMode: "manual",
     completedCollapsed: true,
     collapsedGroups: [],
-    density: "standard",
     appearance: "system",
     reducedMotion: false,
     todayQuery: "",
     pendingOnly: false,
+    showWeekStrip: false,
+    dialogSizeMode: "percent",
+    dialogScale: 80,
+    dialogFixedSize: {width: 720, height: 560},
 };
 
 const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
+const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["percent", "fullscreen", "fixed"]);
+
+function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.round(parsed))) : fallback;
+}
 
 export function normalizeViewPreferences(value: unknown): CheckinViewPreferences {
     if (!value || typeof value !== "object") return {...DEFAULT_VIEW_PREFERENCES};
@@ -40,18 +57,29 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
         : [];
-    const density = source.density === "compact" || source.density === "comfortable" ? source.density : DEFAULT_VIEW_PREFERENCES.density;
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
-    return {groupMode, sortMode, completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true, collapsedGroups, lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined, density, appearance, reducedMotion, todayQuery, pendingOnly};
-}
-
-export function densityLabel(density: CheckinDensity): string {
-    return density === "comfortable" ? "舒适" : density === "compact" ? "紧凑" : "标准";
-}
-
-export function nextDensity(density: CheckinDensity): CheckinDensity {
-    return density === "standard" ? "comfortable" : density === "comfortable" ? "compact" : "standard";
+    const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
+    const legacySize = (source as {dialogSize?: unknown}).dialogSize;
+    const fixedSource = (source.dialogFixedSize && typeof source.dialogFixedSize === "object" ? source.dialogFixedSize : legacySize && typeof legacySize === "object" ? legacySize : {}) as Record<string, unknown>;
+    return {
+        groupMode,
+        sortMode,
+        completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true,
+        collapsedGroups,
+        lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined,
+        appearance,
+        reducedMotion,
+        todayQuery,
+        pendingOnly,
+        showWeekStrip: source.showWeekStrip === true,
+        dialogSizeMode,
+        dialogScale: clampNumber(source.dialogScale, 50, 100, DEFAULT_VIEW_PREFERENCES.dialogScale),
+        dialogFixedSize: {
+            width: clampNumber(fixedSource.width, 320, 2560, DEFAULT_VIEW_PREFERENCES.dialogFixedSize.width),
+            height: clampNumber(fixedSource.height, 240, 2048, DEFAULT_VIEW_PREFERENCES.dialogFixedSize.height),
+        },
+    };
 }

@@ -1,13 +1,7 @@
 import {Dialog, getFrontend, openTab, Plugin, showMessage} from "siyuan";
 import "./index.scss";
-import "./today-v4.scss";
-import "./history-v4.scss";
-import "./summary-v4.scss";
-import "./settings-v4.scss";
-import "./occasions-v4.scss";
-import "./insights-v4.scss";
-import "./archived-v4.scss";
-import "./modern-v4.scss";
+import "./ui/tokens.scss";
+import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
 import {serializeCsv, serializeJson} from "./export";
@@ -22,10 +16,10 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
-import {DEFAULT_VIEW_PREFERENCES, densityLabel, nextDensity, normalizeViewPreferences} from "./view-preferences";
+import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
-import type {CheckinAppearance, CheckinDensity, CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
 import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
@@ -35,6 +29,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
+const PLUGIN_VERSION = "5.0.0";
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const MAX_CUSTOM_ICON_BYTES = 240_000;
 const MAX_CUSTOM_LIBRARY_ITEMS = 128;
@@ -190,8 +185,10 @@ export default class CheckinPlugin extends Plugin {
     private todayQuery = "";
     private pendingOnly = false;
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
-    private density: CheckinDensity = DEFAULT_VIEW_PREFERENCES.density;
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
+    private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
+    private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
+    private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
 
     /* "跟随思源" must resolve against the host theme, otherwise the dark
        appearance overrides never activate (the attribute would stay "system"). */
@@ -206,8 +203,10 @@ export default class CheckinPlugin extends Plugin {
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private collapsedTodayGroups = new Set<string>();
-    private currentPage: "today" | "editor" | "history" | "summary" | "archived" | "insights" | "occasions" | "settings" = "today";
+    private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
+    private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
+    private insightsReturnPage: "today" | "review" = "today";
     private editingId?: string;
     private editingFingerprint?: string;
     private saveQueue: Promise<void> = Promise.resolve();
@@ -658,23 +657,25 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
-    private showHistory() {
-        this.currentPage = "history";
+    private showReview() {
+        this.currentPage = "review";
         this.editingId = undefined;
         this.editingFingerprint = undefined;
         this.render();
     }
 
+    private showHistory() {
+        this.showReview();
+    }
+
     private showSummary() {
-        this.currentPage = "summary";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        this.showReview();
     }
 
     private showInsights(item?: CheckinItem) {
         const candidate = item || this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived) || this.store.items.find((entry) => !entry.archived);
         if (!candidate) return;
+        this.insightsReturnPage = this.currentPage === "review" ? "review" : "today";
         this.currentPage = "insights";
         this.insightsItemId = candidate.id;
         void this.persistViewPreferences();
@@ -749,6 +750,17 @@ export default class CheckinPlugin extends Plugin {
         this.openQuickDialog();
     }
 
+    /* Desktop quick dialog sizing follows the user preference: a percentage of
+       the host window (default 80%), fullscreen, or a fixed pixel size. */
+    private quickDialogSize(): {width: string; height: string} {
+        if (this.dialogSizeMode === "fullscreen") return {width: "100vw", height: "100vh"};
+        if (this.dialogSizeMode === "fixed") return {width: `${this.dialogFixedSize.width}px`, height: `${this.dialogFixedSize.height}px`};
+        const scale = Math.min(100, Math.max(50, this.dialogScale)) / 100;
+        const width = Math.round(window.innerWidth * scale);
+        const height = Math.round(window.innerHeight * scale);
+        return {width: `${width}px`, height: `${height}px`};
+    }
+
     private openQuickDialog() {
         if (this.disposed || this.disposing) return;
         if (this.quickDialog) {
@@ -764,11 +776,12 @@ export default class CheckinPlugin extends Plugin {
         this.editingFingerprint = undefined;
         let dialog: Dialog | undefined;
         const hostClass = this.isMobileFrontend ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
+        const size = this.quickDialogSize();
         dialog = new Dialog({
             title: "",
             content: `<div class="${hostClass}" role="region" aria-label="小驴打卡快速窗口"></div>`,
-            width: this.isMobileFrontend ? "94vw" : "760px",
-            height: this.isMobileFrontend ? "88vh" : "82vh",
+            width: this.isMobileFrontend ? "94vw" : size.width,
+            height: this.isMobileFrontend ? "88vh" : size.height,
             disableAnimation: this.isMobileFrontend,
             destroyCallback: () => {
                 if (dialog) this.handleQuickDialogDestroyed(dialog);
@@ -1161,18 +1174,22 @@ export default class CheckinPlugin extends Plugin {
             return;
         }
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
-            : this.currentPage === "history" ? this.renderHistory()
-                : this.currentPage === "summary" ? this.renderSummary()
-                    : this.currentPage === "insights" ? this.renderInsights()
+            : this.currentPage === "review" ? this.renderReview()
+                : this.currentPage === "insights" ? this.renderInsights()
             : this.currentPage === "archived" ? this.renderArchived()
                     : this.currentPage === "occasions" ? this.renderOccasions()
                     : this.currentPage === "settings" ? this.renderSettings() : this.renderToday();
         this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
-            surface.dataset.density = this.density;
             surface.dataset.appearance = this.resolvedAppearance();
             surface.dataset.reducedMotion = String(this.reducedMotion);
+            /* container queries cannot style their own container, so all page
+               content lives in one layout wrapper inside the container. */
+            const layout = document.createElement("div");
+            layout.className = "lc-checkin__layout";
+            while (surface.firstChild) layout.appendChild(surface.firstChild);
+            surface.appendChild(layout);
         }
         root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
         if (this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend) {
@@ -1185,7 +1202,11 @@ export default class CheckinPlugin extends Plugin {
             button.innerHTML = uiIcon("expand");
             root.prepend(button);
         }
-        if (this.currentPage !== "editor") root.insertAdjacentHTML("beforeend", this.renderMobileNav());
+        const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
+        if (layout) {
+            layout.insertAdjacentHTML("afterbegin", this.renderRail());
+            if (this.currentPage !== "editor") layout.insertAdjacentHTML("beforeend", this.renderMobileNav());
+        }
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -1224,47 +1245,117 @@ export default class CheckinPlugin extends Plugin {
 
     private renderSettings(): string {
         const agentStatus = this.agentCapabilityRegistered ? "已向思源智能体注册能力" : "未检测到可用的思源智能体入口";
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--settings" data-density="${this.density}" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">个性化体验</div><h1 class="lc-checkin__title">设置</h1></div></header><section class="lc-checkin__settings-card"><h2>界面密度</h2><p>调整卡片间距和操作区域大小，所有入口共享此设置。</p><div class="lc-checkin__density-options" role="radiogroup" aria-label="界面密度"><button type="button" role="radio" aria-checked="${this.density === "compact"}" data-density-choice="compact">紧凑<small>信息更集中</small></button><button type="button" role="radio" aria-checked="${this.density === "standard"}" data-density-choice="standard">标准<small>推荐设置</small></button><button type="button" role="radio" aria-checked="${this.density === "comfortable"}" data-density-choice="comfortable">舒适<small>操作更宽松</small></button></div><button class="lc-checkin__text-button" type="button" data-action="reset-density">恢复标准密度</button></section><section class="lc-checkin__settings-card"><h2>今日默认视图</h2><label class="lc-checkin__field"><span>分组方式</span><select data-setting-group><option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option></select></label><label class="lc-checkin__field"><span>排序方式</span><select data-setting-sort><option value="manual" ${this.todaySortMode === "manual" ? "selected" : ""}>自定义顺序</option><option value="priority" ${this.todaySortMode === "priority" ? "selected" : ""}>重要性优先</option><option value="name" ${this.todaySortMode === "name" ? "selected" : ""}>名称</option><option value="updatedAt" ${this.todaySortMode === "updatedAt" ? "selected" : ""}>最近修改</option></select></label><label class="lc-checkin__field lc-checkin__settings-check"><input type="checkbox" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /><span>默认展开已完成打卡项</span></label><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">恢复默认视图</button></section><section class="lc-checkin__settings-card lc-checkin__settings-integrations"><h2>连接与能力</h2><p>外部插件按能力接入，不会阻塞手动打卡。</p><div class="lc-checkin__settings-status-list"><div><span>番茄钟</span><strong>需兼容插件写入</strong><small>项目可按累计分钟或番茄钟次数计入。</small></div><div><span>思源智能体</span><strong>${agentStatus}</strong><small>只读复盘与项目查询可增强；写入能力需用户明确要求。</small></div><div><span>自定义图标</span><strong>${this.customIconLibrary.length} 个已保存</strong><small>图标库存于插件本地数据，上传图片前会提示空间。</small></div></div></section></div>`;
+        const groups: Array<{id: string; label: string; body: string}> = [
+            {
+                id: "appearance",
+                label: "外观",
+                body: `
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>主题</span><small>只影响小驴打卡界面，不修改思源全局主题。</small></span><select data-setting-appearance aria-label="主题"><option value="system" ${this.appearance === "system" ? "selected" : ""}>跟随思源</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>浅色</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>深色</option></select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>减少界面动效</span><small>关闭页面过渡和加载动画。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>`,
+            },
+            {
+                id: "today",
+                label: "今日视图",
+                body: `
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>分组方式</span><small>今日列表的默认分组。</small></span><select data-setting-group aria-label="分组方式"><option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option></select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>排序方式</span><small>今日列表的默认排序。</small></span><select data-setting-sort aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>默认展开已完成打卡项</span><small>关闭时已完成项折叠为一行。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>显示七日概览</span><small>在今日页顶部显示最近七天的打卡状态条。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${this.weekStripVisible ? "checked" : ""} /></label>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复默认视图</span><small>恢复分组、排序与折叠偏好。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">恢复</button></div>`,
+            },
+            {
+                id: "dialog",
+                label: "弹窗与页签",
+                body: `
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>快速弹窗大小</span><small>桌面端弹窗的默认尺寸。</small></span><select data-setting-dialog-mode aria-label="弹窗大小模式"><option value="percent" ${this.dialogSizeMode === "percent" ? "selected" : ""}>按屏幕比例</option><option value="fullscreen" ${this.dialogSizeMode === "fullscreen" ? "selected" : ""}>全屏</option><option value="fixed" ${this.dialogSizeMode === "fixed" ? "selected" : ""}>固定大小</option></select></label>
+                    <label class="lc-checkin__settings-row" data-dialog-scale-row ${this.dialogSizeMode === "percent" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>屏幕占比</span><small>当前 ${this.dialogScale}%</small></span><input type="range" min="50" max="100" step="5" value="${this.dialogScale}" data-setting-dialog-scale aria-label="屏幕占比" /></label>
+                    <div class="lc-checkin__settings-row" data-dialog-fixed-row ${this.dialogSizeMode === "fixed" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>固定宽高</span><small>像素值，适配特定屏幕。</small></span><span class="lc-checkin__settings-inline"><input type="number" min="320" max="2560" step="20" value="${this.dialogFixedSize.width}" data-setting-dialog-width aria-label="弹窗宽度" aria-describedby="lc-checkin-dialog-width-unit" /><span id="lc-checkin-dialog-width-unit">×</span><input type="number" min="240" max="2048" step="20" value="${this.dialogFixedSize.height}" data-setting-dialog-height aria-label="弹窗高度" aria-describedby="lc-checkin-dialog-width-unit" /></span></div>`,
+            },
+            {
+                id: "data",
+                label: "数据与导出",
+                body: `
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
+            },
+            {
+                id: "integrations",
+                label: "连接与能力",
+                body: `
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>番茄钟</span><small>项目可按累计分钟或番茄钟次数计入，需兼容插件写入。</small></span><span class="lc-checkin__settings-value">待接入</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>思源智能体</span><small>只读查询可增强；写入需用户明确要求。</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>自定义图标</span><small>图标库存于插件本地数据，上传前会提示空间。</small></span><span class="lc-checkin__settings-value">${this.customIconLibrary.length} 个</span></div>`,
+            },
+            {
+                id: "about",
+                label: "关于",
+                body: `
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>版本</span><small>思源 v3.4.2 及以上。</small></span><span class="lc-checkin__settings-value">${PLUGIN_VERSION}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>项目主页</span><small>反馈问题与查看文档。</small></span><a class="lc-checkin__settings-link" href="https://github.com/ai68298100/siyuan-checkin" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>`,
+            },
+        ];
+        return `<div class="lc-checkin lc-checkin--settings" data-appearance="${this.resolvedAppearance()}">
+            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">个性化体验</div><h1 class="lc-checkin__title">设置</h1></div></header>
+            <div class="lc-checkin__settings-layout">
+                <nav class="lc-checkin__settings-nav" aria-label="设置分组">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
+                <div class="lc-checkin__settings-groups">${groups.map((group) => `<section class="lc-checkin__settings-card" data-settings-group="${group.id}"><h2>${group.label}</h2>${group.body}</section>`).join("")}</div>
+            </div>
+        </div>`;
     }
 
     private bindSettings(root: HTMLElement) {
         this.bindDialogClose(root);
         this.bindMobileNav(root);
-        root.querySelector(".lc-checkin__settings-card:last-child")?.insertAdjacentHTML("afterend", `<section class="lc-checkin__settings-card"><h2>外观与动效</h2><label class="lc-checkin__field"><span>主题</span><select data-setting-appearance><option value="system" ${this.appearance === "system" ? "selected" : ""}>跟随思源</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>浅色</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>深色</option></select></label><label class="lc-checkin__field lc-checkin__settings-check"><input type="checkbox" data-setting-motion ${this.reducedMotion ? "checked" : ""} /><span>减少界面动效</span></label></section>`);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
-        const densityButtons = [...root.querySelectorAll<HTMLElement>("[data-density-choice]")];
-        densityButtons.forEach((button) => button.addEventListener("keydown", (event) => {
-            if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-            event.preventDefault();
-            const index = densityButtons.indexOf(button);
-            const next = densityButtons[(index + (event.key === "ArrowRight" ? 1 : -1) + densityButtons.length) % densityButtons.length];
-            next.focus();
-            next.click();
-        }));
         const savePreference = () => { void this.persistViewPreferences().then(() => showMessage("界面偏好已保存")).catch(() => showMessage("界面偏好保存失败")); };
-        densityButtons.forEach((button) => button.addEventListener("click", () => {
-            const value = button.dataset.densityChoice;
-            if (value === "compact" || value === "standard" || value === "comfortable") { this.density = value; savePreference(); this.render(); }
-        }));
-        root.querySelector<HTMLElement>("[data-action='reset-density']")?.addEventListener("click", () => { this.density = "standard"; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
-        root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (["manual", "priority", "name", "updatedAt"].includes(value)) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
         root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
-        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
-        root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.setAttribute("aria-describedby", "lc-checkin-appearance-help");
-        root.querySelector<HTMLInputElement>("[data-setting-motion]")?.setAttribute("aria-describedby", "lc-checkin-motion-help");
-        root.querySelector("[data-setting-appearance]")?.insertAdjacentHTML("afterend", `<small id="lc-checkin-appearance-help" class="lc-checkin__settings-help">主题只影响小驴打卡界面，不修改思源全局主题。</small>`);
-        root.querySelector("[data-setting-motion]")?.parentElement?.insertAdjacentHTML("beforeend", `<small id="lc-checkin-motion-help" class="lc-checkin__settings-help">减少动效会关闭页面过渡和加载动画。</small>`);
-        const summary = document.createElement("p");
-        summary.className = "lc-checkin__settings-summary";
-        summary.setAttribute("role", "status");
-        summary.setAttribute("aria-live", "polite");
-        summary.textContent = `当前：${densityLabel(this.density)} · ${this.appearance === "system" ? "跟随思源" : this.appearance === "light" ? "浅色" : "深色"}${this.reducedMotion ? " · 减少动效" : ""}`;
-        root.querySelector(".lc-checkin__settings-card:last-child")?.append(summary);
-        root.querySelector(".lc-checkin__settings-card:last-child")?.insertAdjacentHTML("afterend", `<section class="lc-checkin__settings-card lc-checkin__settings-danger"><h2>恢复默认</h2><p>只会重置显示偏好，不会删除打卡数据。</p><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复全部显示偏好</button></section>`);
+        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
+
+        const modeSelect = root.querySelector<HTMLSelectElement>("[data-setting-dialog-mode]");
+        const scaleRow = root.querySelector<HTMLElement>("[data-dialog-scale-row]");
+        const fixedRow = root.querySelector<HTMLElement>("[data-dialog-fixed-row]");
+        const syncDialogRows = () => {
+            if (scaleRow) scaleRow.hidden = this.dialogSizeMode !== "percent";
+            if (fixedRow) fixedRow.hidden = this.dialogSizeMode !== "fixed";
+        };
+        modeSelect?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            if (value === "percent" || value === "fullscreen" || value === "fixed") {
+                this.dialogSizeMode = value;
+                syncDialogRows();
+                savePreference();
+                this.render();
+            }
+        });
+        root.querySelector<HTMLInputElement>("[data-setting-dialog-scale]")?.addEventListener("change", (event) => {
+            const value = Number((event.currentTarget as HTMLInputElement).value);
+            if (Number.isFinite(value)) { this.dialogScale = Math.min(100, Math.max(50, Math.round(value))); savePreference(); this.render(); }
+        });
+        const bindFixedInput = (selector: string, key: "width" | "height") => {
+            root.querySelector<HTMLInputElement>(selector)?.addEventListener("change", (event) => {
+                const value = Number((event.currentTarget as HTMLInputElement).value);
+                if (Number.isFinite(value)) {
+                    this.dialogFixedSize = {...this.dialogFixedSize, [key]: key === "width" ? Math.min(2560, Math.max(320, Math.round(value))) : Math.min(2048, Math.max(240, Math.round(value)))};
+                    savePreference();
+                }
+            });
+        };
+        bindFixedInput("[data-setting-dialog-width]", "width");
+        bindFixedInput("[data-setting-dialog-height]", "height");
+
+        // Category nav: scroll the requested group into view (sticky rail on wide containers).
+        root.querySelectorAll<HTMLElement>("[data-settings-nav]").forEach((button) => button.addEventListener("click", () => {
+            const target = root.querySelector<HTMLElement>(`[data-settings-group="${button.dataset.settingsNav}"]`);
+            target?.scrollIntoView({behavior: this.reducedMotion ? "auto" : "smooth", block: "start"});
+            root.querySelectorAll("[data-settings-nav]").forEach((entry) => { entry.classList.toggle("is-active", entry === button); entry.setAttribute("aria-current", entry === button ? "true" : "false"); });
+        }));
     }
 
     private bindQuickKeyboard(root: HTMLElement) {
@@ -1292,18 +1383,6 @@ export default class CheckinPlugin extends Plugin {
         return sortCheckinItems(this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date)), "priority");
     }
 
-    private renderQuickRecent(): string {
-        if (!this.quickDialog || this.currentPage !== "today") return "";
-        const latest = [...this.store.events]
-            .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt) || right.id.localeCompare(left.id))
-            .map((event) => ({event, item: this.store.items.find((item) => item.id === event.itemId && !item.archived)}))
-            .filter((entry): entry is {event: CheckinEvent; item: CheckinItem} => Boolean(entry.item))
-            .filter((entry, index, items) => items.findIndex((candidate) => candidate.item.id === entry.item.id) === index)
-            .slice(0, 4);
-        if (!latest.length) return "";
-        return `<section class="lc-checkin__quick-recent" aria-label="最近记录"><div class="lc-checkin__quick-recent-heading"><strong>最近记录</strong><small>点击再次记录</small></div><div class="lc-checkin__quick-recent-list">${latest.map(({event, item}) => { const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"}); const source = HISTORY_SOURCE_LABELS[event.source] || event.source; const meta = `${time} · ${formatNumber(event.value)}${event.unit} · ${source}`; return `<button type="button" data-quick-recent="${escapeHtml(item.id)}" title="${escapeHtml(event.note ? `${meta} · ${event.note}` : meta)}"><span>${escapeHtml(item.icon)}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(meta)}</small></button>`; }).join("")}</div></section>`;
-    }
-
     private renderInsights(): string {
         const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
         if (!item) return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
@@ -1319,10 +1398,15 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", "今日", "home"], ["history", "历史", "history"], ["summary", "总结", "summary"], ["insights", "复盘", "insight"]] as const;
-        const secondary = [["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
-        const secondaryActive = secondary.some(([page]) => this.currentPage === page);
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航"><div class="lc-checkin__mobile-more-menu" data-mobile-more-menu hidden>${secondary.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button type="button" data-mobile-nav="more" class="${secondaryActive ? "is-selected" : ""}" aria-expanded="false" aria-label="更多导航"><span>${uiIcon("more")}</span><small>更多</small></button><button class="lc-checkin__mobile-fab" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
+        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-fab" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
+    }
+
+    /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
+       Both use data-mobile-nav so one binding covers them. */
+    private renderRail(): string {
+        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     private renderToday(): string {
@@ -1390,53 +1474,51 @@ export default class CheckinPlugin extends Plugin {
             <button type="button" data-action="undo-record">撤销</button>
         </div>` : "";
         const saveStatus = this.renderSaveStatus();
-        const occasionSection = this.renderOccasionSection(now);
-        return `<div class="lc-checkin lc-checkin--today" data-density="${this.density}" data-appearance="${this.resolvedAppearance()}" data-reduced-motion="${this.reducedMotion}">
+        const occasionBanner = this.renderOccasionSection(now);
+        return `<div class="lc-checkin lc-checkin--today" data-appearance="${this.resolvedAppearance()}" data-reduced-motion="${this.reducedMotion}">
             <header class="lc-checkin__header">
-                <div>
-                    <div class="lc-checkin__eyebrow">${escapeHtml(date)}</div>
+                <div class="lc-checkin__header-titles">
                     <h1 class="lc-checkin__title">今天</h1>
+                    <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
                 </div>
                 <div class="lc-checkin__header-actions">
-                    <span class="lc-checkin__count">${completed}<span>/</span>${scheduledItems.length}</span>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="history" aria-label="查看历史" title="历史">${uiIcon("history")}</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="summary" aria-label="查看总结" title="总结">${uiIcon("summary")}</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="insights" aria-label="查看复盘" title="复盘">${uiIcon("insight")}</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="occasions" aria-label="管理事项" title="事项">${uiIcon("calendar")}</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="cycle-density" aria-label="切换界面密度" title="界面密度">${uiIcon("summary")}</button>
-                    <button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="settings" aria-label="打开设置" title="设置">${uiIcon("settings")}</button>
-                    ${this.supportsCustomTab ? `<button class="lc-checkin__small-button lc-checkin__always-visible" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
+                    <span class="lc-checkin__count" role="status" aria-label="今日完成进度">${completed}<span>/</span>${scheduledItems.length}</span>
+                    ${this.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
                     <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
                 </div>
             </header>
-            <section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>
-            <section class="lc-checkin__today-summary" aria-label="今日进度"><div><strong>${completed}</strong><span>已完成</span></div><div><strong>${pending}</strong><span>待处理</span></div><div><strong>${completionRate}%</strong><span>完成率</span></div></section>
             <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
+            ${this.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>` : ""}
             ${recentRecord}
             ${saveStatus}
-            ${this.renderQuickRecent()}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>筛选与排序${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
+                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>筛选${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
                 </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button></div></details>
             </div>` : ""}
-            <main class="lc-checkin__list">${list}${occasionSection}</main>
+            <main class="lc-checkin__list">${list}${occasionBanner}</main>
         </div>`;
     }
 
     private renderOccasionSection(date: Date): string {
-        const items = getVisibleOccasions(this.occasionStore, date);
-        const rows = items.length ? items.map((item) => {
+        const items = getVisibleOccasions(this.occasionStore, date).slice(0, 3);
+        const chips = items.map((item) => {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
+            const timing = item.status === "today" ? "今天" : `${item.daysUntil} 天后`;
             const completed = isOccasionCompleted(item, item.occurrenceDate);
-            const timing = item.status === "today" ? "今天" : String(item.daysUntil) + " 天后";
-            const recurrence = item.recurrence === "annual" ? "每年" : item.recurrence === "monthly" ? "每月" : "一次性";
-            return "<article class=\"lc-checkin__occasion " + (completed ? "is-complete" : "") + "\" data-occasion-id=\"" + escapeHtml(item.id) + "\" data-occasion-date=\"" + escapeHtml(item.occurrenceDate) + "\"><span class=\"lc-checkin__occasion-icon\" aria-hidden=\"true\">" + icon + "</span><div class=\"lc-checkin__occasion-body\"><strong>" + escapeHtml(item.name) + "</strong><small>" + escapeHtml(timing) + " · " + recurrence + (item.note ? " · " + escapeHtml(item.note) : "") + "</small></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"toggle-occasion\" aria-label=\"" + (completed ? "取消处理" : "标记已处理") + " " + escapeHtml(item.name) + "\">" + (completed ? "已处理" : "处理") + "</button></article>";
-        }).join("") : "<div class=\"lc-checkin__occasion-empty\">未来提醒会在这里出现。</div>";
-        return "<section class=\"lc-checkin__occasions\" aria-label=\"日期事项\"><div class=\"lc-checkin__section-heading\"><div><span class=\"lc-checkin__section-kicker\">日期提醒</span><strong>生日、纪念日与定时事项</strong></div><button class=\"lc-checkin__text-button\" type=\"button\" data-action=\"occasions\">管理</button></div><div class=\"lc-checkin__occasion-list\">" + rows + "</div></section>";
+            return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="occasions" title="${escapeHtml(item.name)} · ${timing}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${timing}</small></button>`;
+        }).join("");
+        return `<section class="lc-checkin__occasion-banner" aria-label="日期提醒">
+            <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
+            <div class="lc-checkin__occasion-banner-body">
+                <strong>日期提醒</strong>
+                ${items.length ? `<div class="lc-checkin__occasion-chips">${chips}</div>` : `<small>未来提醒会在这里出现。</small>`}
+            </div>
+            <button class="lc-checkin__text-button" type="button" data-action="occasions">管理</button>
+        </section>`;
     }
 
     private renderSaveStatus(): string {
@@ -1494,7 +1576,7 @@ export default class CheckinPlugin extends Plugin {
         return key;
     }
 
-    private renderHistory(): string {
+    private renderReview(): string {
         const eventsByDay = new Map<string, CheckinEvent[]>();
         this.store.events.forEach((event) => {
             const key = getEventDateKey(event);
@@ -1530,7 +1612,7 @@ export default class CheckinPlugin extends Plugin {
                     key === today ? "is-today" : "",
                 ].filter(Boolean).join(" ");
                 const label = `${formatHistoryDate(key)}，${completed}/${scheduled.length} 项完成，${eventCount} 条记录`;
-                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount}条</b>` : ""}</button>`;
+                return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount > 999 ? "999+" : eventCount}</b>` : ""}</button>`;
             }),
         ].join("");
         const selectedEvents = eventsByDay.get(this.selectedHistoryDate) || [];
@@ -1570,24 +1652,47 @@ export default class CheckinPlugin extends Plugin {
         const historyOrderOptions = [["newest", "最新在前"], ["oldest", "最早在前"]] as const;
         const resultLabel = hasHistoryFilter ? `显示 ${filteredEvents.length} / ${selectedEvents.length} 条记录` : `${selectedEvents.length} 条记录`;
         const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>搜索与筛选${hasHistoryFilter ? " · 已启用" : ""}</summary><section class="lc-checkin__history-tools" role="search" aria-label="筛选历史记录"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="搜索项目、备注、单位或来源" aria-label="搜索项目、备注、单位或来源" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="清除搜索关键词" title="清除搜索">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>来源</span><select data-history-source aria-label="按来源筛选">${historySourceOptions}</select></label><label><span>时间</span><select data-history-order aria-label="历史记录排序">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${label}</option>`).join("")}</select></label></div></section></details>`;
-        return `<div class="lc-checkin lc-checkin--history" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">记录与回看</div><h1 class="lc-checkin__title">历史</h1></div></header><div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div><div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div>${historyTools}<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">清除筛选</button>` : ""}</div><section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section><div class="lc-checkin__history-actions"><button class="lc-checkin__text-button" type="button" data-action="export-json">导出 JSON</button><button class="lc-checkin__text-button" type="button" data-action="export-csv">导出 CSV</button><button class="lc-checkin__text-button" type="button" data-action="archived">已归档</button></div></div>`;
-    }
 
-    private renderSummary(): string {
         const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange) : buildSummaryContext(this.store, this.summaryRange);
-        const rows = summary.items.length ? summary.items.map((item) => {
+        const iconsById = new Map(this.store.items.map((item) => [item.id, item.icon]));
+        const projectRows = summary.items.length ? summary.items.map((item) => {
             const quotaMeta = item.quota
-                ? `${item.quota.completedPeriods}/${item.quota.elapsedPeriods} 个已结束周期 · 当前 ${item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : "暂无"}`
+                ? `${item.quota.completedPeriods}/${item.quota.elapsedPeriods} 个周期 · 当前 ${item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : "暂无"}`
                 : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
-            return `<div class="lc-checkin__history-row"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(quotaMeta)}</span></div>`;
+            return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
         }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
         const providerButton = this.summaryProviders.size
             ? `<div class="lc-checkin__summary-agent"><span>思源智能体已连接</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">生成智能总结</button></div>`
             : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>本地总结可直接使用；连接支持的思源智能体后可生成自然语言复盘。</span></div>`;
         const generated = this.summaryText ? `<div class="lc-checkin__summary-text">${escapeHtml(this.summaryText)}</div>` : "";
         const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!this.summaryCustomRange && this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? "今天" : range === "month" ? "本月" : "本周"}</button>`).join("");
-        const custom = `<details class="lc-checkin__custom-range-disclosure" ${this.summaryCustomRange ? "open" : ""}><summary>自定义日期范围${this.summaryCustomRange ? " · 已启用" : ""}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--summary" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">数据回顾</div><h1 class="lc-checkin__title">总结</h1></div></header><div class="lc-checkin__range-tabs" role="tablist" aria-label="总结范围">${tabs}</div>${custom}<section class="lc-checkin__summary-stats" aria-label="总结概览"><div><strong>${summary.totalEvents}</strong><span>条记录</span></div><div><strong>${summary.completedItems}</strong><span>项有完成</span></div><div><strong>${summary.scheduledItems}</strong><span>项有安排</span></div></section><main class="lc-checkin__history-list">${rows}</main>${generated}${providerButton}</div>`;
+        const custom = `<details class="lc-checkin__custom-range-disclosure" ${this.summaryCustomRange ? "open" : ""}><summary>自定义${this.summaryCustomRange ? " · 已启用" : ""}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
+        return `<div class="lc-checkin lc-checkin--review" data-appearance="${this.resolvedAppearance()}">
+            <header class="lc-checkin__editor-header">
+                <div><div class="lc-checkin__eyebrow">数据回顾</div><h1 class="lc-checkin__title">回顾</h1></div>
+                <div class="lc-checkin__header-actions">
+                    <div class="lc-checkin__range-tabs" role="tablist" aria-label="统计范围">${tabs}${custom}</div>
+                    <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="导出 JSON" title="导出 JSON">${uiIcon("summary")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="导出 CSV" title="导出 CSV">${uiIcon("history")}</button>
+                </div>
+            </header>
+            <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>条记录</span></div><div><strong>${summary.completedItems}</strong><span>项有完成</span></div><div><strong>${summary.scheduledItems}</strong><span>项有安排</span></div></section>
+            <div class="lc-checkin__review-layout">
+                <div class="lc-checkin__review-calendar">
+                    <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div>
+                    <div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div>
+                    <div class="lc-checkin__calendar">${calendarCells}</div>
+                </div>
+                <div class="lc-checkin__review-detail">
+                    ${historyTools}
+                    <div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">清除筛选</button>` : ""}</div>
+                    <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section>
+                </div>
+            </div>
+            <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
+            ${generated}
+            ${providerButton}
+        </div>`;
     }
 
     private renderArchived(): string {
@@ -1847,7 +1952,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
         root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => this.showOccasions()));
-        root.querySelectorAll<HTMLElement>("[data-action='cycle-density']").forEach((button) => button.addEventListener("click", () => this.cycleDensity()));
+
         root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => this.showSettings()));
         root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => this.openTabPage());
         root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
@@ -2012,10 +2117,17 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
+            if (this.currentPage === "insights" && this.insightsReturnPage === "review") this.showReview();
+            else this.showToday();
+        });
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
         root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => this.showOccasions());
-        root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
+        root.querySelectorAll<HTMLElement>("[data-review-insights-id]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.reviewInsightsId && !candidate.archived);
+            if (item) this.showInsights(item);
+        }));
+                root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
             const item = this.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
             if (item) this.showInsights(item);
         }));
@@ -2025,7 +2137,7 @@ export default class CheckinPlugin extends Plugin {
             if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
             const value = historySearch.value;
             historySearchTimer = window.setTimeout(() => {
-                if (this.disposed || this.disposing || this.currentPage !== "history") return;
+                if (this.disposed || this.disposing || this.currentPage !== "review") return;
                 this.historyQuery = value;
                 this.render();
                 const nextSearch = root.querySelector<HTMLInputElement>("[data-history-search]");
@@ -2165,17 +2277,8 @@ export default class CheckinPlugin extends Plugin {
     private bindMobileNav(root: HTMLElement) {
         root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
             const page = button.dataset.mobileNav;
-            if (page === "more") {
-                const menu = root.querySelector<HTMLElement>("[data-mobile-more-menu]");
-                const trigger = button;
-                const open = menu?.hasAttribute("hidden") ?? true;
-                if (menu) menu.toggleAttribute("hidden", !open);
-                trigger.setAttribute("aria-expanded", String(open));
-                return;
-            }
             if (page === "today") this.showToday();
-            else if (page === "history") this.showHistory();
-            else if (page === "summary") this.showSummary();
+            else if (page === "review" || page === "history" || page === "summary") this.showReview();
             else if (page === "insights") this.showInsights();
             else if (page === "archived") this.showArchived();
             else if (page === "occasions") this.showOccasions();
@@ -2269,12 +2372,12 @@ export default class CheckinPlugin extends Plugin {
                 events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
                 context,
             }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
-            if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "summary" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
+            if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
             this.render();
         } catch (error) {
-            if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "summary" && this.summaryRange === range && this.summaryCustomRange === customRange) {
+            if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
                 showMessage(`[小驴打卡] 总结失败：${String(error)}`);
             }
         }
@@ -2296,6 +2399,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindEditor(root: HTMLElement) {
+        this.bindMobileNav(root);
         this.bindDialogClose(root);
         root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
             void this.retrySave();
@@ -3259,20 +3363,16 @@ export default class CheckinPlugin extends Plugin {
         this.todayGroupMode = preferences.groupMode;
         this.todaySortMode = preferences.sortMode;
         this.completedCollapsed = preferences.completedCollapsed;
-        this.density = preferences.density;
         this.appearance = preferences.appearance;
+        this.dialogSizeMode = preferences.dialogSizeMode;
+        this.dialogScale = preferences.dialogScale;
+        this.dialogFixedSize = {...preferences.dialogFixedSize};
         this.reducedMotion = preferences.reducedMotion;
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.insightsItemId = preferences.lastInsightsItemId;
-    }
-
-    private cycleDensity() {
-        this.density = nextDensity(this.density);
-        void this.persistViewPreferences();
-        this.render();
-        showMessage(`界面密度：${densityLabel(this.density)}`);
+        this.weekStripVisible = preferences.showWeekStrip;
     }
 
     private persistViewPreferences(): Promise<void> {
@@ -3283,11 +3383,14 @@ export default class CheckinPlugin extends Plugin {
             completedCollapsed: this.completedCollapsed,
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
             lastInsightsItemId: this.insightsItemId,
-            density: this.density,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
             todayQuery: this.todayQuery,
             pendingOnly: this.pendingOnly,
+            showWeekStrip: this.weekStripVisible,
+            dialogSizeMode: this.dialogSizeMode,
+            dialogScale: this.dialogScale,
+            dialogFixedSize: {...this.dialogFixedSize},
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

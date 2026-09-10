@@ -108,20 +108,20 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         }));
     };
     const openSurface = async (surface, desktopSelector) => {
-        const mobileButton = page.locator(`[data-mobile-nav="${surface}"]`);
-        if (await mobileButton.count()) {
-            if (!await mobileButton.isVisible().catch(() => false)) {
-                const moreButton = page.locator('[data-mobile-nav="more"]');
-                if (await moreButton.isVisible().catch(() => false)) await moreButton.click();
-            }
-            if (await mobileButton.isVisible().catch(() => false)) {
-                await mobileButton.click();
-                return;
-            }
+        const railButton = page.locator(`.lc-checkin__rail [data-mobile-nav="${surface}"]`);
+        const mobileButton = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="${surface}"]`);
+        if (await mobileButton.count() && await mobileButton.isVisible().catch(() => false)) {
+            await mobileButton.click();
+            return;
+        }
+        if (await railButton.count() && await railButton.isVisible().catch(() => false)) {
+            await railButton.click();
+            return;
         }
         await page.locator(desktopSelector).evaluate((button) => button.click());
     };
 
+    const goToday = async () => { const btn = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="today"]`); if (await btn.count() && await btn.isVisible().catch(() => false)) await btn.click(); else await page.locator(`.lc-checkin__rail [data-mobile-nav="today"]`).evaluate((b) => b.click()); };
     const results = {today: await inspect("today")};
     results.todayStructure = await page.evaluate(() => ({
         groupCount: document.querySelectorAll("[data-group-toggle]").length,
@@ -141,7 +141,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     const completedExpanded = await page.locator(".lc-checkin__completed-section [data-item-id]").count();
     await page.click("[data-action='toggle-completed']");
     results.groupModes = {timeGroupCount, priorityGroupCount, completedExpanded};
-    await openSurface("history", "[data-action='history']");
+    await openSurface("review", ".lc-checkin__rail [data-mobile-nav='review']");
     results.history = await inspect("history");
     const currentMonthLabel = await page.locator(".lc-checkin__month-nav strong").textContent();
     const currentCalendarDays = await page.locator("[data-history-date]").count();
@@ -151,22 +151,22 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     await page.click("[data-history-month='1']");
     const restoredMonthLabel = await page.locator(".lc-checkin__month-nav strong").textContent();
     results.calendar = {currentMonthLabel, previousMonthLabel, restoredMonthLabel, currentCalendarDays, nextMonthDisabled};
-    await page.click("[data-action='back']");
-    await openSurface("summary", "[data-action='summary']");
+    await goToday();
+    await openSurface("review", ".lc-checkin__rail [data-mobile-nav='review']");
     results.summary = await inspect("summary");
-    await page.click("[data-action='back']");
+    await goToday();
     await openSurface("occasions", "[data-action='occasions']");
     results.occasions = await inspect("occasions");
-    await page.click("[data-action='back']");
+    await goToday();
     await page.locator("[data-item-id='stretch'] [data-action='insights']").evaluate((button) => button.click());
     results.insights = await inspect("insights");
-    await page.click("[data-action='back']");
+    await goToday();
     await openSurface("archived", "[data-action='archived']");
     results.archived = await inspect("archived");
-    await page.click("[data-action='back']");
+    await goToday();
     await openSurface("settings", "[data-action='settings']");
     results.settings = await inspect("settings");
-    await page.click("[data-action='back']");
+    await goToday();
     await openSurface("add", "[data-action='add']");
     const initialValueFieldsHidden = await page.locator("[data-value-fields]").evaluate((element) => element.hidden);
     const initialWeekdaysHidden = await page.locator("[data-weekdays]").evaluate((element) => element.hidden);
@@ -195,7 +195,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         iconPanel: document.querySelector("[data-icon-panel='health']")?.hidden === false,
         targetStep: document.querySelector("input[name='target']")?.getAttribute("step"),
     }));
-    await page.click("[data-action='back']");
+    await goToday();
     await page.locator("[data-action='open-tab']").evaluate((button) => button.click());
     await page.waitForTimeout(30);
     results.tab = await page.evaluate(() => ({
@@ -235,15 +235,15 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         element.style.height = "660px";
     });
     results.narrow = await inspect("narrow-today");
-    await openSurface("history", "[data-action='history']");
+    await openSurface("review", ".lc-checkin__rail [data-mobile-nav='review']");
     results.narrowHistory = await inspect("narrow-history");
-    await page.click("[data-action='back']");
-    await openSurface("summary", "[data-action='summary']");
+    await goToday();
+    await openSurface("review", ".lc-checkin__rail [data-mobile-nav='review']");
     results.narrowSummary = await inspect("narrow-summary");
-    await page.click("[data-action='back']");
+    await goToday();
     await openSurface("add", "[data-action='add']");
     results.narrowEditor = await inspect("narrow-editor");
-    await page.click("[data-action='back']");
+    await goToday();
     results.mobileMatrix = {};
     for (const width of [320, 360, 390, 430]) {
         await page.setViewportSize({width, height: 700});

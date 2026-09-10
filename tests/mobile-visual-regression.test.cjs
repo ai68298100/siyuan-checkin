@@ -5,6 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 // Empty and filtered states must stay explicit and readable on narrow screens.
 assert.match(source, /data-template-empty[\s\S]*没有匹配的模板/, "template search needs a readable empty state");
@@ -15,7 +16,7 @@ assert.match(styles, /\.lc-checkin__search-empty[\s\S]*max-width|\.lc-checkin__s
     "empty state copy must be allowed to wrap on narrow screens");
 
 // Safe-area and keyboard layout contracts.
-assert.match(styles, /padding:\s*7px 6px calc\(7px \+ env\(safe-area-inset-bottom\)\)/,
+assert.match(v5Components, /padding:\s*6px 8px calc\(6px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile navigation must include the bottom safe area");
 assert.match(styles, /scroll-padding:\s*12px 0 calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "editor scrolling must include bottom safe-area space");

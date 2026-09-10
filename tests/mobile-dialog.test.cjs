@@ -5,6 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(source, /hostClass = this\.isMobileFrontend \? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile"/,
     "mobile dialog styling must be present in the initial Dialog content");
@@ -33,36 +34,25 @@ assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
     "quick dialog must provide keyboard recording shortcuts");
 assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
-assert.match(source, /data-quick-recent/,
-    "quick dialog must expose recently recorded items");
-assert.match(source, /const entries = \[\["today", "今日", "home"\][\s\S]*\["insights", "复盘", "insight"\]/,
-    "quick dialog navigation must expose habit insights with the shared icon system");
+assert.match(source, /const entries = \[\["today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\]\] as const;/,
+    "quick dialog navigation must expose the five v5 destinations");
 assert.match(source, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
     "navigation icons must use the shared vector icon system");
-for (const destination of ["occasions", "history", "summary", "insights", "archived", "settings"]) {
+for (const destination of ["review", "occasions", "archived", "settings"]) {
     assert.match(source, new RegExp(`\\[\\"${destination}\\",`),
         `mobile navigation must include ${destination}`);
 }
 assert.match(source, /data-mobile-nav="add"[\s\S]*新建/, "mobile navigation must include the add action");
-assert.match(source, /data-mobile-more-menu/, "secondary mobile destinations must be grouped behind the more menu");
-for (const destination of ["occasions", "archived", "settings"]) {
-    assert.match(source, new RegExp(`secondary[\\s\\S]*\\[\\"${destination}\\"`), `more menu must retain ${destination}`);
-}
-assert.match(source, /if \(page === "more"\)[\s\S]*toggleAttribute\("hidden"/, "the mobile more menu must open without leaving the current page");
-assert.match(source, /else if \(page === "insights"\) this\.showInsights\(\)/,
-    "insights navigation must reuse the shared insights page");
-assert.match(source, /data-action=\"insights\" aria-label=\"查看复盘\"/,
-    "desktop today surfaces must expose a global insights action");
+assert.match(source, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) this\.showReview\(\)/,
+    "legacy page names must route into the fused review surface");
 assert.match(source, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
-assert.match(source, /private renderQuickRecent\(\): string/,
-    "recent records must be rendered through a dedicated section");
 assert.match(source, /toLocaleTimeString\("zh-CN", \{hour: "2-digit", minute: "2-digit"\}\)/,
-    "recent records should expose the latest record time");
+    "review records should expose the record time");
 assert.match(source, /HISTORY_SOURCE_LABELS\[event\.source\]/,
-    "recent records should expose the latest record source");
+    "review records should expose the record source");
 assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/,
     "record feedback should expose current progress");
 
@@ -72,10 +62,8 @@ assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 
     "mobile dialog must follow the visual viewport when the keyboard opens");
 assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
     "mobile dialog close action must meet a touch-friendly target size");
-assert.match(styles, /\.lc-checkin__quick-recent-list/,
-    "recent records need a responsive layout");
-assert.match(styles, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
-    "mobile navigation must fit the added insights entry");
+assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)\s+auto/,
+    "mobile navigation must fit the five destinations plus the add action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
 assert.match(source, /正在保存…/,
