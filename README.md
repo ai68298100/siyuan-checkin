@@ -138,7 +138,7 @@ await checkin.recordEvent({
 
 ## 开发与构建
 
-4.0 UI 工作台的变更与验收状态见 [`docs/v4.0-ui-change-log.md`](docs/v4.0-ui-change-log.md)，详细迁移计划见 [`docs/superpowers/plans/2026-09-10-today-workbench-4-design.md`](docs/superpowers/plans/2026-09-10-today-workbench-4-design.md)，偏好字段与兼容策略见 [`docs/v2.0-migration-notes.md`](docs/v2.0-migration-notes.md)，生态 API 约定见 [`docs/ecosystem-integration.md`](docs/ecosystem-integration.md)。
+4.0 UI 工作台的变更与验收状态见 [`docs/v4.0-ui-change-log.md`](docs/v4.0-ui-change-log.md)，整体页面、桌面/移动端和智能体路线见 [`docs/ui-product-roadmap.md`](docs/ui-product-roadmap.md)，详细迁移计划见 [`docs/superpowers/plans/2026-09-10-today-workbench-4-design.md`](docs/superpowers/plans/2026-09-10-today-workbench-4-design.md)，偏好字段与兼容策略见 [`docs/v2.0-migration-notes.md`](docs/v2.0-migration-notes.md)，生态 API 约定见 [`docs/ecosystem-integration.md`](docs/ecosystem-integration.md)。
 
 2.0 开发变更记录见 [`docs/v2.0-change-log.md`](docs/v2.0-change-log.md)，UI 重构范围见 [`docs/ui-redesign-roadmap.md`](docs/ui-redesign-roadmap.md)。
 
