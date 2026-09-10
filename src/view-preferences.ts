@@ -1,6 +1,6 @@
 import type {CheckinItemSortMode} from "./types";
 
-export type TodayGroupMode = "group" | "time" | "priority";
+export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
 /** How the quick dialog sizes itself on desktop. "percent" adapts to the host window. */
 export type DialogSizeMode = "percent" | "fullscreen" | "fixed";
@@ -31,7 +31,7 @@ export interface CheckinViewPreferences {
 }
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
-    groupMode: "group",
+    groupMode: "none",
     sortMode: "manual",
     completedCollapsed: true,
     collapsedGroups: [],
@@ -47,7 +47,6 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     dialogFixedSize: {width: 720, height: 560},
 };
 
-const GROUP_MODES = new Set<TodayGroupMode>(["group", "time", "priority"]);
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
@@ -60,7 +59,8 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
 export function normalizeViewPreferences(value: unknown): CheckinViewPreferences {
     if (!value || typeof value !== "object") return {...DEFAULT_VIEW_PREFERENCES};
     const source = value as Record<string, unknown>;
-    const groupMode = GROUP_MODES.has(source.groupMode as TodayGroupMode) ? source.groupMode as TodayGroupMode : DEFAULT_VIEW_PREFERENCES.groupMode;
+    const GROUP_MODES_ALL = new Set<TodayGroupMode>(["none", "group", "time", "priority"]);
+    const groupMode = GROUP_MODES_ALL.has(source.groupMode as TodayGroupMode) ? source.groupMode as TodayGroupMode : DEFAULT_VIEW_PREFERENCES.groupMode;
     const sortMode = SORT_MODES.has(source.sortMode as CheckinItemSortMode) ? source.sortMode as CheckinItemSortMode : DEFAULT_VIEW_PREFERENCES.sortMode;
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
