@@ -33,7 +33,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.0.0";
+const PLUGIN_VERSION = "8.1.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -252,6 +252,7 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerMinutes = 25;
     private bulkMode = false;
     private bulkSelected = new Set<string>();
+    private pendingAttachments = new Map<string, string>();
     private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
@@ -1657,7 +1658,7 @@ export default class CheckinPlugin extends Plugin {
         return `<div class="lc-checkin lc-checkin--today" data-appearance="${this.resolvedAppearance()}" data-reduced-motion="${this.reducedMotion}">
             <header class="lc-checkin__header">
                 <div class="lc-checkin__header-titles">
-                    <h1 class="lc-checkin__title">今天</h1>
+                    <h1 class="lc-checkin__title">${t("today.title")}</h1>
                     <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
                 </div>
                 <div class="lc-checkin__header-actions">
@@ -1671,13 +1672,13 @@ export default class CheckinPlugin extends Plugin {
             ${recentRecord}
             ${saveStatus}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
-                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="筛选打卡项" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>筛选${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
+                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
+                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>${t("today.filter")}${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
                 </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button></div></details>
-                <button class="lc-checkin__filter-toggle ${this.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${this.bulkMode}">多选</button>
+                <button class="lc-checkin__filter-toggle ${this.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${this.bulkMode}">${t("today.bulk")}</button>
             </div>` : ""}
             ${this.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="批量操作">
                 <strong>已选 ${this.bulkSelected.size}</strong>
@@ -1938,7 +1939,8 @@ export default class CheckinPlugin extends Plugin {
                 const icon = item?.icon || "✓";
                 const name = itemNames.get(event.itemId)?.name || "已删除项目";
                 const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
-                return `<div class="lc-checkin__log-row"><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
+                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="打卡照片" loading="lazy" />` : "";
+                return `<div class="lc-checkin__log-row">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
             }).join("");
             return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
         }).join("");
@@ -2084,6 +2086,7 @@ export default class CheckinPlugin extends Plugin {
                 <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>
                 <span>${escapeHtml(unit)}</span>
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="备注（可选）" aria-label="记录备注" />
+                <label class="lc-checkin__attach-button" data-attach-button title="附一张照片"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
                 <button class="lc-checkin__record-button" type="button" data-action="record">记录</button>
             </div>`}
         </article>`;
@@ -2367,6 +2370,21 @@ export default class CheckinPlugin extends Plugin {
                 event.preventDefault();
                 element.querySelector<HTMLButtonElement>("[data-action='record']")?.click();
             });
+            element.querySelector<HTMLInputElement>("[data-attach-file]")?.addEventListener("change", (event) => {
+                const input = event.currentTarget as HTMLInputElement;
+                const file = input.files?.[0];
+                if (!file) return;
+                if (file.size > 500 * 1024) { showMessage("照片超过 500 KB 限制，请压缩后重试"); input.value = ""; return; }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result !== "string") return;
+                    this.pendingAttachments.set(itemId, reader.result);
+                    const button = element.querySelector<HTMLElement>("[data-attach-button]");
+                    if (button) { button.classList.add("has-photo"); button.dataset.photo = "1"; }
+                    showMessage("照片已附上，随下一次记录保存");
+                };
+                reader.readAsDataURL(file);
+            });
             element.querySelector<HTMLElement>("[data-action='record']")?.addEventListener("click", () => {
                 const item = this.store.items.find((candidate) => candidate.id === itemId);
                 const input = element.querySelector<HTMLInputElement>(".lc-checkin__amount");
@@ -2387,7 +2405,11 @@ export default class CheckinPlugin extends Plugin {
                         return;
                     }
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
-                    this.enqueueMutation(() => this.recordEvent(item, amount, moment, expectedRevisionFingerprint, note));
+                    const attachment = this.pendingAttachments.get(itemId);
+                    this.pendingAttachments.delete(itemId);
+                    this.enqueueMutation(() => this.recordEvent(item, amount, moment, expectedRevisionFingerprint, note, attachment));
+                    const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
+                    if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
                 }
             });
         });
@@ -3439,7 +3461,7 @@ export default class CheckinPlugin extends Plugin {
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
     }
 
-    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string): Promise<CheckinEvent | undefined> {
+    private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<CheckinEvent | undefined> {
         const current = this.store.items.find((candidate) => candidate.id === item.id && !candidate.archived);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
@@ -3452,7 +3474,7 @@ export default class CheckinPlugin extends Plugin {
             return undefined;
         }
         const previous = this.store;
-        const event = this.makeEvent(current, value, "manual", revision.unit, note?.trim() || undefined, undefined, moment);
+        const event = this.makeEvent(current, value, "manual", revision.unit, note?.trim() || undefined, undefined, moment, attachment);
         const next = appendEvent(this.store, event);
         if (next === this.store) return undefined;
         this.store = next;
@@ -3597,7 +3619,7 @@ export default class CheckinPlugin extends Plugin {
         return operation;
     }
 
-    private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment()): CheckinEvent {
+    private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string): CheckinEvent {
         const safeValue = Number(value);
         return {
             id: makeId("event"),
@@ -3609,6 +3631,7 @@ export default class CheckinPlugin extends Plugin {
             source,
             note,
             externalRef,
+            attachment: typeof attachment === "string" && attachment.startsWith("data:image/") && attachment.length <= 700000 ? attachment : undefined,
         };
     }
 

@@ -1637,3 +1637,30 @@
 .lc-checkin__log-main small { color: var(--lc-checkin-muted); font-size: 10.5px; }
 .lc-checkin__log-note { color: var(--lc-checkin-text); font-size: 11.5px; line-height: 1.5; }
 .lc-checkin__log-value { color: var(--lc-checkin-accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ============================================================
+   8.1 照片附件
+   ============================================================ */
+.lc-checkin__attach-button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px dashed var(--lc-checkin-border-strong);
+    border-radius: 9px;
+    color: var(--lc-checkin-muted);
+    font-size: 14px;
+    cursor: pointer;
+    transition: color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin__attach-button:hover { color: var(--lc-checkin-accent); border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__attach-button.has-photo { color: var(--lc-checkin-accent); border-style: solid; background: var(--lc-checkin-accent-soft); }
+.lc-checkin__attach-button input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.lc-checkin__log-row { grid-template-columns: auto 30px minmax(0, 1fr) auto; }
+.lc-checkin__log-thumb {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--lc-checkin-radius-sm);
+    border: 1px solid var(--lc-checkin-border);
+    object-fit: cover;
+}

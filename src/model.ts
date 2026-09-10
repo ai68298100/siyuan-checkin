@@ -401,6 +401,7 @@ function normalizeEvent(value: unknown): CheckinEvent | undefined {
         source,
         note: typeof value.note === "string" ? value.note : undefined,
         externalRef: typeof value.externalRef === "string" ? value.externalRef : undefined,
+        attachment: typeof value.attachment === "string" && value.attachment.startsWith("data:image/") && value.attachment.length <= 700000 ? value.attachment : undefined,
     };
     const legacyIdentity = isValidDateKey(value.localDate) ? eventWithoutId : {...eventWithoutId, localDate: undefined};
     return {

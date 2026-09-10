@@ -83,6 +83,8 @@ export interface CheckinEvent {
     unit: string;
     source: "manual" | "tomato" | "import" | "api";
     note?: string;
+    /** Optional photo attachment as a data URL (\u2264 ~500KB binary). */
+    attachment?: string;
     externalRef?: string;
 }
 
