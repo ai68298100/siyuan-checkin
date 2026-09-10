@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const repoRoot = path.join(__dirname, "..");
-const harnessPath = process.env.CHECKIN_QA_HARNESS || "C:/Users/sunku/.codex/visualizations/2026/09/06/01a0746c-a70f-78c0-b369-de9bc71c594e/qa-preview.cjs";
+const harnessPath = process.env.CHECKIN_QA_HARNESS || path.join(repoRoot, "tests", "visual-qa.cjs");
 assert.ok(fs.existsSync(harnessPath), `QA harness not found: ${harnessPath}`);
 const harness = fs.readFileSync(harnessPath, "utf8");
 const projectMatch = harness.match(/const projectRoot = ["']([^"']+)["']/);
@@ -18,4 +18,4 @@ if (projectMatch && path.resolve(projectMatch[1]) !== path.resolve(repoRoot)) {
     process.exit(2);
 }
 
-console.log(`QA harness is configured for ${repoRoot}. Run it with CHECKIN_BROWSER and inspect 320/360/390/430px screenshots.`);
+console.log(`QA harness is configured for ${repoRoot}. Run it with CHECKIN_BROWSER and inspect desktop plus 320/360/390/430px screenshots.`);

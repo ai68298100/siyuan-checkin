@@ -4,7 +4,7 @@ const path = require("node:path");
 const {spawnSync} = require("node:child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
-const defaultHarness = "C:/Users/sunku/.codex/visualizations/2026/09/06/01a0746c-a70f-78c0-b369-de9bc71c594e/qa-preview.cjs";
+const defaultHarness = path.join(repoRoot, "tests", "visual-qa.cjs");
 
 if (process.argv.includes("--help")) {
     console.log("Browser visual entry point: set CHECKIN_BROWSER when the browser is not installed in a standard Windows path.");

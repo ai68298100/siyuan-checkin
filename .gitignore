@@ -4,4 +4,5 @@ index.js
 index.css
 package.zip
 *.log
+.artifacts/
 .DS_Store
