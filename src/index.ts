@@ -25,7 +25,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
-import {renderCheckinLogView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderUpcomingOccasionsView} from "./render/fragments";
+import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderUpcomingOccasionsView} from "./render/fragments";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -2065,58 +2065,15 @@ export default class CheckinPlugin extends Plugin {
         </div>`;
     }
 
+    /* 方法体外置于 render/fragments.ts（T-022）。 */
     private renderItem(item: CheckinItem, date: Date): string {
-        const revision = getItemRevisionForDate(item, date);
-        const progress = getProgress(this.store, item, date);
-        const complete = isComplete(this.store, item, date);
-        const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
-        const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
-        const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
-        const canFocus = revision.kind === "duration";
-        const recordStep = getRecordStep(revision.kind, revision.unit);
-        const rule = evaluateRule(item, this.store.events, date);
-        const inputStep = getEditorStep(revision.kind, revision.unit);
-        const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
-        const meta = (isBinary ? t(KIND_LABELS[revision.kind]) : `${t(KIND_LABELS[revision.kind])} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
-        const priority = item.priority || "medium";
-        const timeSlot = item.timeSlot || "any";
-        const completionSource = item.completionSource || "manual";
-        const unit = revision.unit || "次";
-        const icon = isBinary
-            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
-            : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
-        return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
-            ${icon}
-            <div class="lc-checkin__item-body">
-                <div class="lc-checkin__item-topline">
-                    <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
-                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${this.currentStreaks.get(item.id)}</button>` : ""}
-                    ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
-                    ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
-                    ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
-                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
-                </div>
-                <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
-                ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
-            </div>
-            <div class="lc-checkin__item-action">
-                ${this.bulkMode ? `<button class="lc-checkin__bulk-check${this.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${this.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${this.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
-                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
-                ${isBinary
-                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? t("item.cancel") : t("item.checkin")}</button>`
-                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
-                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
-                ${this.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
-            </div>
-            ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
-                <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
-                <span>${escapeHtml(unit)}</span>
-                <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
-                <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
-                <button class="lc-checkin__record-button" type="button" data-action="record">${t("item.record")}</button>
-            </div>`}
-        </article>`;
+        return renderItemView(item, date, {
+            store: this.store,
+            currentStreaks: this.currentStreaks,
+            bulkMode: this.bulkMode,
+            bulkSelected: this.bulkSelected,
+            todaySortMode: this.todaySortMode,
+        });
     }
 
     private renderEditor(): string {

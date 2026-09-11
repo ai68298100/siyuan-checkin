@@ -4,10 +4,11 @@ const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const fragments = fs.readFileSync(path.join(__dirname, "..", "src", "render", "fragments.ts"), "utf8");
 
-assert.match(source, /class=\"lc-checkin__item-name\"/, "preview cards must expose a dedicated name slot");
-assert.match(source, /class=\"lc-checkin__item-meta\"/, "preview cards must expose a dedicated unit/meta slot");
-assert.match(source, /class=\"lc-checkin__quick-button\"[\s\S]*<span>\$\{escapeHtml\(unit\)\}<\/span>/,
+assert.match(fragments, /class="lc-checkin__item-name"/, "preview cards must expose a dedicated name slot");
+assert.match(fragments, /class="lc-checkin__item-meta"/, "preview cards must expose a dedicated unit/meta slot");
+assert.match(fragments, /class="lc-checkin__quick-button"[\s\S]*<span>\$\{escapeHtml\(unit\)\}<\/span>/,
     "quantity preview actions must keep unit text separate from the action label");
 assert.match(styles, /\.lc-checkin__item-name\s*\{[\s\S]*min-width:\s*0[\s\S]*text-overflow:\s*ellipsis[\s\S]*white-space:\s*nowrap/,
     "long preview names must truncate instead of widening the card");

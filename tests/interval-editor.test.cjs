@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
+const sharedSource = fs.readFileSync(path.join(__dirname, "..", "src", "shared.ts"), "utf8");
+const fragmentsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "fragments.ts"), "utf8");
 
 assert.match(i18nSource, /"schedule\.interval": "每隔 N 天"/);
 assert.match(i18nSource, /"schedule\.quota": "周期配额"/);
@@ -15,8 +17,8 @@ assert.match(source, /scheduleType === "quota"[\s\S]*quota: \{period: requestedQ
 assert.match(source, /name="quotaPeriod"/);
 assert.match(source, /name="quotaCountMode"/);
 assert.match(source, /quotaSchedule\.hidden = scheduleSelect\?\.value !== "quota"/);
-assert.match(source, /formatScheduleLabel\(revision\.schedule\)/);
-assert.match(source, /revision\.kind === "binary" && revision\.schedule\.type !== "quota"/);
+assert.match(fragmentsSource, /formatScheduleLabel\(revision\.schedule\)/);
+assert.match(fragmentsSource, /revision\.kind === "binary" && revision\.schedule\.type !== "quota"/);
 assert.match(source, /isValidLocalDateInput\(requestedAnchor\)/);
 assert.match(source, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
 assert.match(source, /data-editor-preview/);
