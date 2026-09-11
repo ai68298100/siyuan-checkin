@@ -1644,16 +1644,16 @@ export default class CheckinPlugin extends Plugin {
 
     private renderInsights(): string {
         const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
-        if (!item) return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><h1 class="lc-checkin__title">习惯复盘</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">没有可复盘的打卡项</div></div></div>`;
+        if (!item) return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><h1 class="lc-checkin__title">${t("insights.title")}</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${t("insights.empty")}</div></div></div>`;
         const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
         const suggestions = buildCoachingSuggestions(report);
-        const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
-        const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} 天</strong></div>`).join("");
+        const rate = report.aggregates.completionRate === null ? t("review.quotaNone") : `${report.aggregates.completionRate}%`;
+        const weekRows = report.weeklyTrend.slice(-6).map((week) => `<div class="lc-checkin__insight-row"><span>${escapeHtml(week.label)}</span><strong>${week.completedDays}/${week.eligibleScheduledDays || week.scheduledDays} ${t("insights.weekDays", {n: week.eligibleScheduledDays || week.scheduledDays})}</strong></div>`).join("");
         const insightItems = this.store.items.filter((entry) => !entry.archived).sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
-        const itemPicker = insightItems.length > 1 ? `<label class="lc-checkin__insight-picker"><span>复盘项目</span><select data-insight-item aria-label="选择复盘项目">${insightItems.map((entry) => `<option value="${escapeHtml(entry.id)}" ${entry.id === item.id ? "selected" : ""}>${escapeHtml(entry.icon)} ${escapeHtml(entry.name)}</option>`).join("")}</select></label>` : "";
-        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>行动建议</h2><small>根据本地记录生成</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small></div>`).join("")}</div></section>` : "";
-        const insightGrid = report.days.map((day) => { const label = `${day.date}，${day.status === "complete" ? "已完成" : day.status === "partial" ? "部分完成" : day.status === "missed" ? "未完成" : "未安排"}，${day.progress}/${day.target} ${day.unit}`; return `<span class="is-${day.status}" role="listitem" tabindex="0" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></span>`; }).join("");
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || "习惯复盘")}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header>${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>完成率</span></div><div><strong>${report.currentStreak}</strong><span>当前连续</span></div><div><strong>${report.longestStreak}</strong><span>窗口最佳</span></div></div>${coaching}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>近 84 天</h2><small>${report.startDate} 至 ${report.endDate}</small><div class="lc-checkin__insight-legend" role="list" aria-label="完成状态图例"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>已完成</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>部分完成</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>未完成</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>未安排</span></div></div><div class="lc-checkin__insight-grid-scroll"><div class="lc-checkin__insight-grid" role="list" aria-label="近 84 天完成情况">${insightGrid}</div></div><div class="lc-checkin__insight-grid-range"><span>${report.startDate}</span><span>${report.endDate}</span></div></section><section class="lc-checkin__insight-section"><h2>每周趋势</h2>${weekRows || `<div class="lc-checkin__history-empty">暂无足够记录</div>`}</section></div>`;
+        const itemPicker = insightItems.length > 1 ? `<label class="lc-checkin__insight-picker"><span>${t("insights.picker")}</span><select data-insight-item aria-label="${t("insights.picker")}">${insightItems.map((entry) => `<option value="${escapeHtml(entry.id)}" ${entry.id === item.id ? "selected" : ""}>${escapeHtml(entry.icon)} ${escapeHtml(entry.name)}</option>`).join("")}</select></label>` : "";
+        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small></div>`).join("")}</div></section>` : "";
+        const insightGrid = report.days.map((day) => { const label = `${day.date}，${day.status === "complete" ? t("insights.complete") : day.status === "partial" ? t("insights.partial") : day.status === "missed" ? t("insights.missed") : t("insights.off")}，${day.progress}/${day.target} ${day.unit}`; return `<span class="is-${day.status}" role="listitem" tabindex="0" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"></span>`; }).join("");
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || t("insights.title"))}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header>${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>${t("insights.rate")}</span></div><div><strong>${report.currentStreak}</strong><span>${t("insights.currentStreak")}</span></div><div><strong>${report.longestStreak}</strong><span>${t("insights.bestStreak")}</span></div></div>${coaching}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.window")}</h2><small>${report.startDate} 至 ${report.endDate}</small><div class="lc-checkin__insight-legend" role="list" aria-label="${t("insights.legendAria")}"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>${t("insights.complete")}</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>${t("insights.partial")}</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>${t("insights.missed")}</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>${t("insights.off")}</span></div></div><div class="lc-checkin__insight-grid-scroll"><div class="lc-checkin__insight-grid" role="list" aria-label="${t("insights.window")}">${insightGrid}</div></div><div class="lc-checkin__insight-grid-range"><span>${report.startDate}</span><span>${report.endDate}</span></div></section><section class="lc-checkin__insight-section"><h2>${t("insights.weeklyTrend")}</h2>${weekRows || `<div class="lc-checkin__history-empty">${t("insights.notEnough")}</div>`}</section></div>`;
     }
 
     private renderMobileNav(): string {
@@ -1862,8 +1862,8 @@ export default class CheckinPlugin extends Plugin {
             : this.todayGroupMode === "time" ? ["morning", "afternoon", "evening", "any"] : [];
         const entries = [...groups.entries()].sort(([left], [right]) => {
             if (order.length) return order.indexOf(left) - order.indexOf(right);
-            if (left === "未分组") return 1;
-            if (right === "未分组") return -1;
+            if (left === t("review.ungrouped")) return 1;
+            if (right === t("review.ungrouped")) return -1;
             return left.localeCompare(right, "zh-CN");
         });
         return entries.map(([key, groupItems]) => {
@@ -1881,7 +1881,7 @@ export default class CheckinPlugin extends Plugin {
     private getTodayGroupKey(item: CheckinItem): string {
         if (this.todayGroupMode === "priority") return item.priority || "medium";
         if (this.todayGroupMode === "time") return item.timeSlot || "any";
-        return item.group?.trim() || "未分组";
+        return item.group?.trim() || t("review.ungrouped");
     }
 
     private getTodayGroupLabel(key: string): string {
@@ -1932,7 +1932,7 @@ export default class CheckinPlugin extends Plugin {
         const selectedEvents = eventsByDay.get(this.selectedHistoryDate) || [];
         const selectedRecords = selectedEvents.map((event) => ({
             event,
-            itemName: itemNames.get(event.itemId) || "已删除项目",
+            itemName: itemNames.get(event.itemId) || t("review.deletedItem"),
         }));
         const filteredRecords = filterHistoryRecords(selectedRecords, {
             query: this.historyQuery,
@@ -1945,7 +1945,7 @@ export default class CheckinPlugin extends Plugin {
             const key = `${event.itemId}\u0000${event.unit}`;
             const current = totals.get(key);
             totals.set(key, {
-                name: itemNames.get(event.itemId) || "已删除项目",
+                name: itemNames.get(event.itemId) || t("review.deletedItem"),
                 unit: event.unit,
                 value: (current?.value || 0) + event.value,
             });
@@ -1966,20 +1966,20 @@ export default class CheckinPlugin extends Plugin {
         const historySourceOptions = HISTORY_SOURCE_OPTIONS.map((value) => `<option value="${value}" ${this.historySource === value ? "selected" : ""}>${escapeHtml(t(`source.${value}`))}</option>`).join("");
         const historyOrderOptions = [["newest", "最新在前"], ["oldest", "最早在前"]] as const;
         const resultLabel = hasHistoryFilter ? `显示 ${filteredEvents.length} / ${selectedEvents.length} 条记录` : `${selectedEvents.length} 条记录`;
-        const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>搜索与筛选${hasHistoryFilter ? " · 已启用" : ""}</summary><section class="lc-checkin__history-tools" role="search" aria-label="筛选历史记录"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="搜索项目、备注、单位或来源" aria-label="搜索项目、备注、单位或来源" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="清除搜索关键词" title="清除搜索">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>来源</span><select data-history-source aria-label="按来源筛选">${historySourceOptions}</select></label><label><span>时间</span><select data-history-order aria-label="历史记录排序">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></section></details>`;
+        const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>${hasHistoryFilter ? t("review.searchOn") : t("review.searchTitle")}</summary><section class="lc-checkin__history-tools" role="search" aria-label="${t("review.searchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="${t("review.searchAria")}" aria-label="${t("review.searchAria")}" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>${t("review.sourceLabel")}</span><select data-history-source aria-label="${t("review.sourceAria")}">${historySourceOptions}</select></label><label><span>${t("review.orderLabel")}</span><select data-history-order aria-label="${t("review.orderAria")}">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></section></details>`;
 
         const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange) : buildSummaryContext(this.store, this.summaryRange);
         const iconsById = new Map(this.store.items.map((item) => [item.id, item.icon]));
         const projectRows = summary.items.length ? summary.items.map((item) => {
             const quotaMeta = item.quota
-                ? `${item.quota.completedPeriods}/${item.quota.elapsedPeriods} 个周期 · 当前 ${item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : "暂无"}`
-                : `${item.completedDays}/${item.scheduledDays} 天 · ${item.completionRate}%`;
+                ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
+                : t("review.daysRatio", {done: item.completedDays, scheduled: item.scheduledDays, rate: item.completionRate});
             return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
-        }).join("") : `<div class="lc-checkin__empty-description">还没有可总结的打卡项。</div>`;
+        }).join("") : `<div class="lc-checkin__empty-description">${t("review.emptyProjects")}</div>`;
         const groupMap = new Map<string, {name: string; completed: number; scheduled: number}>();
         for (const item of summary.items) {
             const storeItem = this.store.items.find((candidate) => candidate.id === item.itemId);
-            const group = storeItem?.group || "未分组";
+            const group = storeItem?.group || t("review.ungrouped");
             const entry = groupMap.get(group) || {name: group, completed: 0, scheduled: 0};
             entry.completed += item.completedDays;
             entry.scheduled += item.scheduledDays;
@@ -1999,46 +1999,46 @@ export default class CheckinPlugin extends Plugin {
         const achievements = buildAchievements(this.store);
         const earnedCount = achievements.filter((entry) => entry.achieved).length;
         const providerButton = this.summaryProviders.size
-            ? `<div class="lc-checkin__summary-agent"><span>思源智能体已连接</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">生成智能总结</button></div>`
-            : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>本地总结可直接使用；连接支持的思源智能体后可生成自然语言复盘。</span></div>`;
+            ? `<div class="lc-checkin__summary-agent"><span>${t("review.agentConnected")}</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">${t("review.agentGenerate")}</button></div>`
+            : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>${t("review.agentUnavailable")}</span></div>`;
         const generated = this.summaryText ? `<div class="lc-checkin__summary-text">${escapeHtml(this.summaryText)}</div>` : "";
-        const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!this.summaryCustomRange && this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? "今天" : range === "month" ? "本月" : "本周"}</button>`).join("");
-        const custom = `<details class="lc-checkin__custom-range-disclosure" ${this.summaryCustomRange ? "open" : ""}><summary>自定义${this.summaryCustomRange ? " · 已启用" : ""}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
+        const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!this.summaryCustomRange && this.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
+        const custom = `<details class="lc-checkin__custom-range-disclosure" ${this.summaryCustomRange ? "open" : ""}><summary>${this.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(this.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(this.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
         return `<div class="lc-checkin lc-checkin--review" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header">
                 <div><div class="lc-checkin__eyebrow">${t("review.eyebrow")}</div><h1 class="lc-checkin__title">${t("review.title")}</h1></div>
                 <div class="lc-checkin__header-actions">
-                    <div class="lc-checkin__range-tabs" role="tablist" aria-label="统计范围">${tabs}${custom}</div>
-                    <button class="lc-checkin__text-button" type="button" data-action="copy-weekly-report">复制周报</button>
-                    <button class="lc-checkin__text-button" type="button" data-action="archived">归档</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="导出 JSON" title="导出 JSON">${uiIcon("summary")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="导出 CSV" title="导出 CSV">${uiIcon("history")}</button>
+                    <div class="lc-checkin__range-tabs" role="tablist" aria-label="${t("review.rangeAria")}">${tabs}${custom}</div>
+                    <button class="lc-checkin__text-button" type="button" data-action="copy-weekly-report">${t("review.copyReport")}</button>
+                    <button class="lc-checkin__text-button" type="button" data-action="archived">${t("review.archived")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}" title="${t("review.exportJson")}">${uiIcon("summary")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}" title="${t("review.exportCsv")}">${uiIcon("history")}</button>
                 </div>
             </header>
-            <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>条记录</span></div><div><strong>${summary.completedItems}</strong><span>项有完成</span></div><div><strong>${summary.scheduledItems}</strong><span>项有安排</span></div></section>
+            <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div></section>
             <div class="lc-checkin__review-layout">
                 <div class="lc-checkin__review-calendar">
-                    <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="上个月" title="上个月">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="下个月" title="下个月" ${nextDisabled ? "disabled" : ""}>›</button></div>
+                    <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}" title="${t("review.prevMonth")}">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" title="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
                     <div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div>
                     <div class="lc-checkin__calendar">${calendarCells}</div>
                 </div>
                 <div class="lc-checkin__review-detail">
                     ${historyTools}
-                    <div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">清除筛选</button>` : ""}</div>
-                    <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${filteredEvents.length} 条记录</span></div>${details}</section>
+                    <div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button>` : ""}</div>
+                    <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(this.selectedHistoryDate))}</strong><span>${t("review.recordsCount", {n: filteredEvents.length})}</span></div>${details}</section>
                 </div>
             </div>
-            <details class="lc-checkin__year-heatmap" aria-label="年度活跃热力图">
-                <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="上一年">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="下一年"${this.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>年度活跃热力图</summary>
+            <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
+                <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${this.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
-                <small class="lc-checkin__yearheatmap-total">${heatmapYear} 年共 ${heatmap.total} 条记录</small>
+                <small class="lc-checkin__yearheatmap-total">${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small>
             </details>
-            ${this.renderReviewFold("trend", "趋势", `<div class="lc-checkin__trend-grid"><div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div><div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div></div>`)}
-            <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
-            ${this.renderReviewFold("log", "打卡日志 · 最近 14 天", this.renderCheckinLog())}
-            ${groupBars ? `<section class="lc-checkin__balance" aria-label="分类平衡"><h2>分类平衡</h2>${groupBars}</section>` : ""}
-            ${this.renderReviewFold("achievements", `成就 · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-grid">${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? "已达成" : `${entry.progress}/${entry.target}`}</small></div>`).join("")}</div>`)}
-            ${this.renderReviewFold("upcoming", "近期事项 · 60 天", this.renderUpcomingOccasions())}
+            ${this.renderReviewFold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid"><div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div><div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div></div>`)}
+            <section class="lc-checkin__review-projects"><h2>${t("review.foldProjects")}</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
+            ${this.renderReviewFold("log", t("review.foldLog"), this.renderCheckinLog())}
+            ${groupBars ? `<section class="lc-checkin__balance" aria-label="${t("review.balanceTitle")}"><h2>${t("review.balanceTitle")}</h2>${groupBars}</section>` : ""}
+            ${this.renderReviewFold("achievements", `成就 · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-grid">${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? t("review.achieved") : `${entry.progress}/${entry.target}`}</small></div>`).join("")}</div>`)}
+            ${this.renderReviewFold("upcoming", t("review.foldUpcoming"), this.renderUpcomingOccasions())}
             ${generated}
             ${providerButton}
         </div>`;
@@ -2064,7 +2064,7 @@ export default class CheckinPlugin extends Plugin {
         const rows = items.map(({item, next}) => {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
             const days = Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(today).getTime()) / 86400000));
-            return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? "今天" : days + " 天后"}</em></div>`;
+            return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? t("review.today") : t("review.daysLater", {n: days})}</em></div>`;
         }).join("");
         return rows;
     }
@@ -2086,9 +2086,9 @@ export default class CheckinPlugin extends Plugin {
             const rows = events.map((event) => {
                 const item = itemNames.get(event.itemId);
                 const icon = item?.icon || "✓";
-                const name = itemNames.get(event.itemId)?.name || "已删除项目";
+                const name = itemNames.get(event.itemId)?.name || t("review.deletedItem");
                 const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
-                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="打卡照片" loading="lazy" />` : "";
+                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
                 return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
             }).join("");
             return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
@@ -2103,7 +2103,7 @@ export default class CheckinPlugin extends Plugin {
         const rows = items.length ? items.map((item) => {
             const openPeriod = item.archivePeriods.find((period) => !period.endDate);
             const pausedLabel = openPeriod ? `${openPeriod.startDate} 起暂停` : "已暂停";
-            const groupLabel = item.group || "未分组";
+            const groupLabel = item.group || t("review.ungrouped");
             return `<article class="lc-checkin__history-row"><span class="lc-checkin__archived-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span><div class="lc-checkin__archived-main"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(groupLabel)} · ${escapeHtml(pausedLabel)}</small></div><button class="lc-checkin__text-button" type="button" data-restore-id="${escapeHtml(item.id)}" aria-label="恢复${escapeHtml(item.name)}">恢复</button></article>`;
         }).join("") : query ? `<div class="lc-checkin__empty-description">没有匹配“${escapeHtml(this.archivedQuery.trim())}”的归档项目。</div>` : `<div class="lc-checkin__empty-description">没有已归档项目。</div>`;
         const resultLabel = query ? `找到 ${items.length} 个，共 ${archivedItems.length} 个归档项目` : `共 ${archivedItems.length} 个归档项目`;
@@ -2272,7 +2272,7 @@ export default class CheckinPlugin extends Plugin {
         const initialCompletionSource: CompletionSource = item?.completionSource === "tomato" ? "tomato" : "manual";
         const initialTomatoMode: TomatoValueMode = item?.tomatoMode === "sessions" ? "sessions" : "minutes";
         const advancedSummary = [
-            item?.group || "未分组",
+            item?.group || t("review.ungrouped"),
             PRIORITY_LABELS[initialPriority] && t(PRIORITY_LABELS[initialPriority]),
             initialTimeSlot === "any" ? "" : t(TIME_SLOT_LABELS[initialTimeSlot]),
             initialCompletionSource === "tomato" ? "番茄钟联动" : "手动记录",
@@ -3472,7 +3472,7 @@ export default class CheckinPlugin extends Plugin {
             });
         });
         const updateAdvancedSummary = () => {
-            const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || "未分组";
+            const group = root.querySelector<HTMLInputElement>("input[name='group']")?.value.trim() || t("review.ungrouped");
             const priority = normalizePriorityInput(root.querySelector<HTMLSelectElement>("select[name='priority']")?.value || null);
             const timeSlot = normalizeTimeSlotInput(root.querySelector<HTMLSelectElement>("select[name='timeSlot']")?.value || null);
             const linkedToTomato = root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato";
