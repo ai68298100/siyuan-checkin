@@ -26,17 +26,23 @@
     .lc-checkin__rail { display: none; }
 }
 
-/* 完整桌面：左侧导航栏 + 内容列 */
-@container lc5 (min-width: 1000px) {
+/* 完整桌面：左侧导航栏 + 内容列（中宽容器同样启用双列，避免透明粘性导航与滚动内容重叠） */
+@container lc5 (min-width: 720px) {
     .lc-checkin__layout {
         display: grid;
         grid-template-columns: var(--lc-checkin-rail-width) minmax(0, 1fr);
-        column-gap: 22px;
+        column-gap: 18px;
         align-items: start;
-        padding: 26px 30px 40px;
+        padding: 22px 24px 40px;
     }
     .lc-checkin__layout > * { grid-column: 2; min-width: 0; }
-    .lc-checkin__layout > .lc-checkin__rail { grid-column: 1; grid-row: 1 / span 30; }
+    .lc-checkin__layout > .lc-checkin__rail { grid-column: 1; grid-row: 1 / span 60; }
+}
+@container lc5 (min-width: 1000px) {
+    .lc-checkin__layout {
+        column-gap: 22px;
+        padding: 26px 30px 40px;
+    }
 }
 
 /* ---------------- desktop rail ---------------- */
@@ -615,6 +621,32 @@
 .lc-checkin__empty-title { color: var(--lc-checkin-text); font-size: 15px; font-weight: 700; }
 .lc-checkin__empty-description { max-width: 380px; color: var(--lc-checkin-muted); font-size: 12px; }
 .lc-checkin__empty-actions { display: flex; gap: 8px; margin-top: 4px; }
+/* T-014 首次使用三步引导 */
+.lc-checkin__onboard-steps {
+    display: grid;
+    gap: 10px;
+    width: min(100%, 360px);
+    margin: 6px 0 4px;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+.lc-checkin__onboard-steps li { display: flex; align-items: flex-start; gap: 10px; }
+.lc-checkin__onboard-num {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    color: #fff;
+    background: var(--lc-checkin-accent);
+    font-size: 11.5px;
+    font-weight: 720;
+}
+.lc-checkin__onboard-steps li > div { display: grid; gap: 2px; min-width: 0; }
+.lc-checkin__onboard-steps strong { color: var(--lc-checkin-text); font-size: 12.5px; }
+.lc-checkin__onboard-steps small { color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; }
 .lc-checkin__all-done span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 16px; }
 .lc-checkin__all-done strong { color: var(--lc-checkin-text); font-size: 14px; }
 .lc-checkin__today-search-empty span { color: var(--lc-checkin-muted); font-size: 20px; }
@@ -1063,6 +1095,23 @@
 .lc-checkin__settings-inline { display: flex; align-items: center; gap: 6px; color: var(--lc-checkin-muted); }
 .lc-checkin__settings-inline input { width: 76px; }
 .lc-checkin__settings-value { flex: none; color: var(--lc-checkin-muted); font-size: 11.5px; font-weight: 620; }
+.lc-checkin__kbd-group { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.lc-checkin__kbd {
+    display: inline-block;
+    min-width: 20px;
+    padding: 2px 6px;
+    border: 1px solid var(--lc-checkin-border);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: var(--lc-checkin-muted-surface);
+    color: var(--lc-checkin-text);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 680;
+    line-height: 1.4;
+    text-align: center;
+}
+.lc-checkin__kbd-plus { color: var(--lc-checkin-muted); font-size: 10.5px; }
 .lc-checkin__settings-link { flex: none; color: var(--lc-checkin-accent); font-size: 12px; font-weight: 620; text-decoration: none; }
 .lc-checkin__settings-link:hover { text-decoration: underline; }
 .lc-checkin .lc-checkin__switch {
@@ -1657,7 +1706,7 @@
 .lc-checkin__attach-button:hover { color: var(--lc-checkin-accent); border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__attach-button.has-photo { color: var(--lc-checkin-accent); border-style: solid; background: var(--lc-checkin-accent-soft); }
 .lc-checkin__attach-button input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.lc-checkin__log-row { grid-template-columns: auto 30px minmax(0, 1fr) auto; }
+.lc-checkin__log-row.has-thumb { grid-template-columns: auto 30px minmax(0, 1fr) auto; }
 .lc-checkin__log-thumb {
     width: 46px;
     height: 46px;
@@ -1692,6 +1741,35 @@
 .lc-checkin__yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 70%, var(--lc-checkin-surface)); }
 .lc-checkin__yearheatmap .is-level-4 { fill: var(--lc-checkin-accent); }
 .lc-checkin__yearheatmap-total { display: block; margin-top: 8px; color: var(--lc-checkin-muted); font-size: 10.5px; }
+
+/* ============================================================
+   8.2b 回顾页折叠区块（趋势/日志/近期事项/成就）
+   ============================================================ */
+.lc-checkin__review-fold {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-lg);
+    background: var(--lc-checkin-surface);
+}
+.lc-checkin__review-fold > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--lc-checkin-text);
+    font-size: 14px;
+    font-weight: 720;
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+}
+.lc-checkin__review-fold > summary::-webkit-details-marker { display: none; }
+.lc-checkin__review-fold > summary:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 4px; border-radius: 4px; }
+.lc-checkin__fold-chevron { color: var(--lc-checkin-muted); font-size: 13px; transition: transform .18s ease; }
+.lc-checkin__review-fold[open] > summary { margin-bottom: 10px; }
+.lc-checkin__review-fold[open] .lc-checkin__fold-chevron { transform: rotate(180deg); }
+.lc-checkin__review-fold-body { display: grid; gap: 10px; }
 
 /* 8.2 备份提醒横幅 */
 .lc-checkin__backup-reminder {

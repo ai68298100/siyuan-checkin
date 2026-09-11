@@ -249,6 +249,8 @@ export default class CheckinPlugin extends Plugin {
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private collapsedTodayGroups = new Set<string>();
+    /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
+    private reviewFoldSections = new Set<string>();
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -1431,6 +1433,7 @@ export default class CheckinPlugin extends Plugin {
         const storageKb = Math.max(1, Math.round((this.store.events.length * 160 + this.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
         const auditLabel = (type: string) => type === "conflict" ? "发现冲突" : type === "merge" ? "自动合并" : type === "restore" ? "恢复快照" : "数据迁移";
         const auditRows = this.auditEntries.slice(-5).reverse().map((entry) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`).join("");
+        const kbdRow = (label: string, hint: string, keys: string[]) => `<div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${label}</span><small>${hint}</small></span><span class="lc-checkin__kbd-group">${keys.map((key) => `<kbd class="lc-checkin__kbd">${key}</kbd>`).join('<span class="lc-checkin__kbd-plus" aria-hidden="true">+</span>')}</span></div>`;
         const groups: Array<{id: string; label: string; body: string}> = [
             {
                 id: "appearance",
@@ -1457,6 +1460,14 @@ export default class CheckinPlugin extends Plugin {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>快速弹窗大小</span><small>桌面端弹窗的默认尺寸。</small></span><select data-setting-dialog-mode aria-label="弹窗大小模式"><option value="percent" ${this.dialogSizeMode === "percent" ? "selected" : ""}>按屏幕比例</option><option value="fullscreen" ${this.dialogSizeMode === "fullscreen" ? "selected" : ""}>全屏</option><option value="fixed" ${this.dialogSizeMode === "fixed" ? "selected" : ""}>固定大小</option></select></label>
                     <label class="lc-checkin__settings-row" data-dialog-scale-row ${this.dialogSizeMode === "percent" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>屏幕占比</span><small>当前 ${this.dialogScale}%</small></span><input type="range" min="50" max="100" step="5" value="${this.dialogScale}" data-setting-dialog-scale aria-label="屏幕占比" /></label>
                     <div class="lc-checkin__settings-row" data-dialog-fixed-row ${this.dialogSizeMode === "fixed" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>固定宽高</span><small>像素值，适配特定屏幕。</small></span><span class="lc-checkin__settings-inline"><input type="number" min="320" max="2560" step="20" value="${this.dialogFixedSize.width}" data-setting-dialog-width aria-label="弹窗宽度" aria-describedby="lc-checkin-dialog-width-unit" /><span id="lc-checkin-dialog-width-unit">×</span><input type="number" min="240" max="2048" step="20" value="${this.dialogFixedSize.height}" data-setting-dialog-height aria-label="弹窗高度" aria-describedby="lc-checkin-dialog-width-unit" /></span></div>`,
+            },
+            {
+                id: "shortcuts",
+                label: "快捷键",
+                body: `
+                    ${kbdRow("打开打卡页签", "在思源任意界面快速呼出小驴打卡。", ["Alt", "Shift", "C"])}
+                    ${kbdRow("快速打卡", "快速弹窗内按序号切换对应项目的完成状态。", ["Alt", "1-9"])}
+                    ${kbdRow("调整项目顺序", "今日列表聚焦项目后上下移动（手动排序时生效）。", ["Alt", "↑ / ↓"])}`,
             },
             {
                 id: "data",
@@ -1722,11 +1733,16 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__empty-description">已归档的项目不会出现在今天。恢复一个项目，或新建一个新的打卡项。</div>
                 <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">查看已归档</button><button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button></div>
             </div>` : !activeItems.length ? `
-            <div class="lc-checkin__empty">
+            <div class="lc-checkin__empty lc-checkin__empty--onboard">
                 <div class="lc-checkin__empty-mark">✦</div>
                 <div class="lc-checkin__empty-title">从一个小目标开始</div>
-                <div class="lc-checkin__empty-description">从常用模板中选择，或建立自己的第一个打卡项。</div>
-                <button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button>
+                <div class="lc-checkin__empty-description">三步建立你的第一个打卡习惯。</div>
+                <ol class="lc-checkin__onboard-steps">
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">1</span><div><strong>选模板</strong><small>新建时从常用模板挑选，或完全自定义。</small></div></li>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>命名</strong><small>给习惯起个名字，再配一个喜欢的图标。</small></div></li>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>打卡</strong><small>回到今日页点一下图标，连续记录就开始了。</small></div></li>
+                </ol>
+                <button class="lc-checkin__text-button" type="button" data-action="add">新建第一个打卡项</button>
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">◷</div>
@@ -2017,26 +2033,22 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
                 <small class="lc-checkin__yearheatmap-total">${heatmapYear} 年共 ${heatmap.total} 条记录</small>
             </details>
-            <section class="lc-checkin__trend" aria-label="趋势">
-                <h2>趋势</h2>
-                <div class="lc-checkin__trend-grid">
-                    <div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div>
-                    <div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div>
-                </div>
-            </section>
+            ${this.renderReviewFold("trend", "趋势", `<div class="lc-checkin__trend-grid"><div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div><div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div></div>`)}
             <section class="lc-checkin__review-projects"><h2>项目汇总</h2><div class="lc-checkin__review-project-list">${projectRows}</div></section>
-            ${this.renderCheckinLog()}
+            ${this.renderReviewFold("log", "打卡日志 · 最近 14 天", this.renderCheckinLog())}
             ${groupBars ? `<section class="lc-checkin__balance" aria-label="分类平衡"><h2>分类平衡</h2>${groupBars}</section>` : ""}
-            <section class="lc-checkin__achievements" aria-label="成就">
-                <h2>成就 · ${earnedCount}/${achievements.length}</h2>
-                <div class="lc-checkin__achievement-grid">
-                    ${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? "已达成" : `${entry.progress}/${entry.target}`}</small></div>`).join("")}
-                </div>
-            </section>
-            ${this.renderUpcomingOccasions()}
+            ${this.renderReviewFold("achievements", `成就 · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-grid">${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? "已达成" : `${entry.progress}/${entry.target}`}</small></div>`).join("")}</div>`)}
+            ${this.renderReviewFold("upcoming", "近期事项 · 60 天", this.renderUpcomingOccasions())}
             ${generated}
             ${providerButton}
         </div>`;
+    }
+
+    /* T-011 回顾页可折叠区块：趋势/日志/近期事项/成就默认折叠，展开状态存入视图偏好。 */
+    private renderReviewFold(id: string, title: string, body: string): string {
+        if (!body.trim()) return "";
+        const open = this.reviewFoldSections.has(id);
+        return `<details class="lc-checkin__review-fold" data-review-fold="${id}"${open ? " open" : ""}><summary><span>${title}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-fold-body">${body}</div></details>`;
     }
 
     private renderUpcomingOccasions(): string {
@@ -2054,7 +2066,7 @@ export default class CheckinPlugin extends Plugin {
             const days = Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(today).getTime()) / 86400000));
             return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? "今天" : days + " 天后"}</em></div>`;
         }).join("");
-        return `<section class="lc-checkin__upcoming" aria-label="近期事项"><h2>近期事项 · 60 天</h2>${rows}</section>`;
+        return rows;
     }
 
     /* 7.0 打卡日志：最近 14 天有记录的日期时间线（图标 + 名称 + 数值 + 备注）。 */
@@ -2077,11 +2089,11 @@ export default class CheckinPlugin extends Plugin {
                 const name = itemNames.get(event.itemId)?.name || "已删除项目";
                 const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
                 const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="打卡照片" loading="lazy" />` : "";
-                return `<div class="lc-checkin__log-row">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
+                return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
             }).join("");
             return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
         }).join("");
-        return `<section class="lc-checkin__log" aria-label="打卡日志"><h2>打卡日志 · 最近 14 天</h2>${daySections}</section>`;
+        return daySections;
     }
 
     private renderArchived(): string {
@@ -2432,6 +2444,12 @@ export default class CheckinPlugin extends Plugin {
             if (offset === -1) this.heatmapYearOffset -= 1;
             else if (this.heatmapYearOffset < 0) this.heatmapYearOffset += 1;
             this.render();
+        }));
+        root.querySelectorAll<HTMLDetailsElement>("details[data-review-fold]").forEach((details) => details.addEventListener("toggle", () => {
+            const id = details.dataset.reviewFold || "";
+            if (details.open) this.reviewFoldSections.add(id);
+            else this.reviewFoldSections.delete(id);
+            void this.persistViewPreferences();
         }));
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
@@ -3009,6 +3027,10 @@ export default class CheckinPlugin extends Plugin {
             window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
         };
         let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || ICON_GROUPS[0].id;
+        /* T-012 图标弹层关闭后焦点回到"更换图标"按钮，保持键盘/读屏路径连续。 */
+        const iconPopup = root.querySelector<HTMLDetailsElement>("[data-icon-popup]");
+        const iconPopupSummary = iconPopup?.querySelector<HTMLElement>("summary");
+        iconPopup?.addEventListener("toggle", () => { if (!iconPopup.open) iconPopupSummary?.focus(); });
         const selectIcon = (icon: string) => {
             root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
             const input = root.querySelector<HTMLInputElement>("input[name='icon']");
@@ -3016,6 +3038,8 @@ export default class CheckinPlugin extends Plugin {
             root.querySelectorAll<HTMLButtonElement>("[data-icon]").forEach((button) => {
                 if (button.dataset.icon === icon) button.classList.add("is-selected");
             });
+            const current = root.querySelector<HTMLElement>("[data-popup-current-icon]");
+            if (current) current.replaceChildren(renderIconMarkup(icon || "✓"));
         };
         const selectIconGroup = (groupId: string) => {
             activeIconGroup = ICON_GROUPS.some((group) => group.id === groupId) ? groupId : ICON_GROUPS[0].id;
@@ -4329,6 +4353,7 @@ export default class CheckinPlugin extends Plugin {
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
+        this.reviewFoldSections = new Set(preferences.reviewFold);
         this.insightsItemId = preferences.lastInsightsItemId;
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
@@ -4341,6 +4366,7 @@ export default class CheckinPlugin extends Plugin {
             sortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
+            reviewFold: [...this.reviewFoldSections],
             lastInsightsItemId: this.insightsItemId,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,

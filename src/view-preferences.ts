@@ -11,6 +11,8 @@ export interface CheckinViewPreferences {
     sortMode: CheckinItemSortMode;
     completedCollapsed: boolean;
     collapsedGroups: string[];
+    /** Review-page sections currently expanded ("trend" | "log" | "upcoming" | "achievements"). Empty = all folded. */
+    reviewFold: string[];
     lastInsightsItemId?: string;
     appearance: CheckinAppearance;
     reducedMotion: boolean;
@@ -35,6 +37,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sortMode: "manual",
     completedCollapsed: true,
     collapsedGroups: [],
+    reviewFold: [],
     appearance: "system",
     reducedMotion: false,
     todayQuery: "",
@@ -65,6 +68,10 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
         : [];
+    const REVIEW_FOLD_SECTIONS = new Set(["trend", "log", "upcoming", "achievements"]);
+    const reviewFold = Array.isArray(source.reviewFold)
+        ? [...new Set(source.reviewFold.filter((entry): entry is string => typeof entry === "string" && REVIEW_FOLD_SECTIONS.has(entry)))] .slice(0, 8)
+        : [];
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
@@ -78,6 +85,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         sortMode,
         completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true,
         collapsedGroups,
+        reviewFold,
         lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined,
         appearance,
         reducedMotion,
