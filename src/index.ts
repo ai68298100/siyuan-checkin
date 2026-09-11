@@ -5,6 +5,9 @@ import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
+import {uiIcon, type UiIconName} from "./ui/icons";
+import {KIND_LABELS, PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS} from "./ui/labels";
+import {parseLocalDateKey, MAX_CUSTOM_ICON_BYTES, MAX_CUSTOM_LIBRARY_ITEMS, escapeHtml, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary, renderIconMarkup, withTimeout, renderRecordNote, matchesSearch, formatNumber, formatScheduleLabel, getTargetLabel, getRecordStep, getEditorStep, normalizePriorityInput, normalizeTimeSlotInput, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, formatHistoryDate, isSummaryRange, storeNeedsMigration, type ActionMoment} from "./shared";
 import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap} from "./charts";
 import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateGroupLabel, templateName, templateNote, type CheckinTemplate} from "./catalog";
@@ -38,56 +41,12 @@ const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const PLUGIN_VERSION = "9.3.0";
 type OccasionImport = import("./occasions").Occasion;
-function parseLocalDateKey(value: string): Date {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day);
-}
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
-const MAX_CUSTOM_ICON_BYTES = 240_000;
-const MAX_CUSTOM_LIBRARY_ITEMS = 128;
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
-
-const KIND_LABELS: Record<CheckinKind, string> = {
-    binary: "kind.binary",
-    count: "kind.count",
-    duration: "kind.duration",
-    quantity: "kind.quantity",
-    custom: "kind.custom",
-};
-
-const PRIORITY_LABELS: Record<CheckinPriority, string> = {
-    high: "priority.high",
-    medium: "priority.medium",
-    low: "priority.low",
-};
-
-const TIME_SLOT_LABELS: Record<CheckinTimeSlot, string> = {
-    morning: "slot.morning",
-    afternoon: "slot.afternoon",
-    evening: "slot.evening",
-    any: "slot.any",
-};
-
-const SORT_LABELS: Partial<Record<CheckinItemSortMode, string>> = {
-    manual: "sort.manual",
-    priority: "sort.priority",
-    name: "sort.name",
-    createdAt: "sort.createdAt",
-    updatedAt: "sort.updatedAt",
-};
-
-const SCHEDULE_LABELS: Record<ScheduleType, string> = {
-    daily: "schedule.daily",
-    workdays: "schedule.workdays",
-    weekly: "schedule.weekly",
-    custom: "schedule.custom",
-    interval: "schedule.interval",
-    quota: "schedule.quota",
-};
 
 /* 星期名随插件语言：日序（0=日）用于编辑器勾选，一周首序用于月历表头。 */
 const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
@@ -99,34 +58,6 @@ const HISTORY_SOURCE_OPTIONS: readonly HistorySourceFilter[] = [
     "import",
     "api",
 ];
-
-const UI_ICON_PATHS: Record<string, string> = {
-    home: "M3 10.5 12 3l9 7.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5z M9 20v-6h6v6",
-    calendar: "M6 3v3M18 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13H4V6a1 1 0 0 1 1-1z M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01",
-    history: "M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v5l3 2",
-    summary: "M5 19V9M12 19V5M19 19v-7",
-    insight: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z",
-    archive: "M4 7h16v13H4z M3 4h18v3H3z M9 11h6",
-    settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9A7 7 0 0 0 15.5 6L15 3.5h-4L10.5 6a7 7 0 0 0-1.1.8l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 7 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9c.3.3.7.6 1.1.8l.5 2.5h4l.5-2.5c.4-.2.8-.5 1.1-.8l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z",
-    add: "M12 5v14M5 12h14",
-    back: "m15 5-7 7 7 7",
-    forward: "m9 5 7 7-7 7",
-    search: "m11 5a6 6 0 1 0 3.9 10.6L20 20",
-    external: "M14 5h5v5M19 5l-8 8",
-    focus: "M12 6v6l4 2M12 3a9 9 0 1 0 9 9",
-    more: "M5 12h.01M12 12h.01M19 12h.01",
-    edit: "m4 16.5-.8 3.3 3.3-.8L18 7.5 14.5 4zM13 5.5l3.5 3.5",
-    trash: "M5 7h14M10 11v6M14 11v6M9 7V4h6v3m-9 0 1 13h10l1-13",
-    timer: "M12 7v5l3 2M8 3h8M12 3v2M5.6 6.4 4 4.8M18.4 6.4 20 4.8M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16z",
-    expand: "M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5",
-    close: "M6 6l12 12M18 6 6 18",
-    check: "m5 12 4 4L19 6",
-    circle: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
-};
-
-function uiIcon(name: keyof typeof UI_ICON_PATHS, className = ""): string {
-    return `<svg class="lc-checkin__glyph ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${UI_ICON_PATHS[name]}" /></svg>`;
-}
 
 interface CheckinApi {
     name: string;
@@ -158,11 +89,6 @@ interface CheckinApi {
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
     summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
     subscribe: (listener: (event: CheckinIntegrationEvent) => void) => () => void;
-}
-
-interface ActionMoment {
-    occurredAt: string;
-    localDate: string;
 }
 
 interface RecentRecord {
@@ -1420,7 +1346,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { node.innerHTML = uiIcon("calendar"); });
     }
 
-    private iconNode(name: keyof typeof UI_ICON_PATHS): SVGElement {
+    private iconNode(name: UiIconName): SVGElement {
         const template = document.createElement("template");
         template.innerHTML = uiIcon(name);
         return template.content.firstElementChild as SVGElement;
@@ -4490,63 +4416,6 @@ export default class CheckinPlugin extends Plugin {
     }
 }
 
-function escapeHtml(value: string): string {
-    return value.replace(/[&<>'"]/g, (character) => {
-        switch (character) {
-            case "&": return "&amp;";
-            case "<": return "&lt;";
-            case ">": return "&gt;";
-            case "'": return "&#39;";
-            case "\"": return "&quot;";
-            default: return character;
-        }
-    });
-}
-
-function normalizeCustomIcon(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (!trimmed) return undefined;
-    if (/^data:image\/(png|jpeg|jpg|gif|webp|svg\+xml);base64,/i.test(trimmed)) {
-        const compact = trimmed.replace(/\s+/g, "");
-        return /^[\x00-\x7F]*$/.test(compact) && compact.length <= MAX_CUSTOM_ICON_BYTES ? compact : undefined;
-    }
-    if (!/^https:\/\//i.test(trimmed)) return trimmed.slice(0, 24);
-    try {
-        const url = new URL(trimmed);
-        if (url.protocol !== "https:" || url.username || url.password || url.hostname.length < 2) return undefined;
-        return url.toString().slice(0, 500);
-    } catch {
-        return undefined;
-    }
-}
-
-function normalizeCustomIconLibrary(value: unknown): string[] {
-    const entries = Array.isArray(value) ? value : [];
-    const result: string[] = [];
-    for (const entry of entries) {
-        const icon = typeof entry === "string" ? normalizeCustomIcon(entry) : undefined;
-        if (icon && !result.includes(icon)) result.push(icon);
-        if (result.length >= MAX_CUSTOM_LIBRARY_ITEMS) break;
-    }
-    return result;
-}
-
-function parseCustomIconLibrary(text: string): string[] {
-    let entries: unknown = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-    try {
-        const parsed = JSON.parse(text) as unknown;
-        entries = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" && Array.isArray((parsed as {icons?: unknown}).icons) ? (parsed as {icons: unknown[]}).icons : entries;
-    } catch { /* newline-separated format */ }
-    return normalizeCustomIconLibrary(entries);
-}
-
-function renderIconMarkup(value: string): string {
-    if (/^(?:https:\/\/|data:image\/)/i.test(value)) {
-        return `<img src="${escapeHtml(value)}" alt="" loading="lazy" referrerpolicy="no-referrer" />`;
-    }
-    return escapeHtml(value);
-}
-
 type CheckinQuickActionTarget = "desktop" | "sidebar" | "mobile";
 
 interface SpeedSwitchPluginLike {
@@ -4568,117 +4437,4 @@ interface CheckinQuickActionOptions {
     value?: string;
     targets?: CheckinQuickActionTarget[];
     handler: (value: string) => void | Promise<void>;
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-        const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
-        promise.then((value) => {
-            window.clearTimeout(timer);
-            resolve(value);
-        }, (error) => {
-            window.clearTimeout(timer);
-            reject(error);
-        });
-    });
-}
-
-function renderRecordNote(note: string): string {
-    const spans = extractSiyuanBlockLinkSpans(note);
-    if (!spans.length) return escapeHtml(note);
-    let cursor = 0;
-    return spans.map((span) => {
-        const prefix = escapeHtml(note.slice(cursor, span.start));
-        const link = `<a href="${escapeHtml(span.url)}" title="打开思源块" target="_blank" rel="noreferrer">${escapeHtml(span.label)}</a>`;
-        cursor = span.end;
-        return prefix + link;
-    }).join("") + escapeHtml(note.slice(cursor));
-}
-
-function matchesSearch(value: string, query: string): boolean {
-    const searchable = value.normalize("NFKC").toLocaleLowerCase("zh-CN");
-    return query.normalize("NFKC").toLocaleLowerCase("zh-CN").trim().split(/\s+/).every((term) => searchable.includes(term));
-}
-
-function formatNumber(value: number): string {
-    return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
-}
-
-function formatScheduleLabel(schedule: CheckinSchedule): string {
-    if (schedule.type === "interval") return `每隔 ${schedule.intervalDays || 1} 天`;
-    if (schedule.type === "quota" && schedule.quota) return `${schedule.quota.period === "week" ? "每周" : "每月"} ${schedule.quota.amount}${schedule.quota.countMode === "dates" ? "天" : "单位"}`;
-    return t(SCHEDULE_LABELS[schedule.type]);
-}
-
-function getTargetLabel(kind: CheckinKind): string {
-    return kind === "duration" ? t("editor.targetDuration") : kind === "quantity" ? t("editor.targetQuantity") : kind === "count" ? t("editor.targetCount") : t("editor.targetDefault");
-}
-
-function getRecordStep(kind: CheckinKind, unit: string): number {
-    if (kind === "duration") return unit === "小时" ? 0.5 : 5;
-    if (kind === "quantity" && unit === "毫升") return 250;
-    if (kind === "quantity" && unit === "克") return 50;
-    return kind === "custom" ? 0.1 : 1;
-}
-
-function getEditorStep(kind: CheckinKind, unit: string): number {
-    if (kind === "duration") return unit === "小时" ? 0.25 : 1;
-    if (kind === "quantity" && ["升", "千克", "公里"].includes(unit)) return 0.1;
-    return kind === "custom" ? 0.1 : 1;
-}
-
-function normalizePriorityInput(value: FormDataEntryValue | null): CheckinPriority {
-    return value === "high" || value === "low" ? value : "medium";
-}
-
-function normalizeTimeSlotInput(value: FormDataEntryValue | null): CheckinTimeSlot {
-    return value === "morning" || value === "afternoon" || value === "evening" ? value : "any";
-}
-
-function captureActionMoment(): ActionMoment {
-    const now = new Date();
-    return {occurredAt: now.toISOString(), localDate: dateKey(now)};
-}
-
-function nextItemUpdatedAt(current: string | undefined, captured: string): string {
-    const capturedTime = new Date(captured).getTime();
-    const currentTime = current ? new Date(current).getTime() : Number.NaN;
-    const nextTime = Number.isFinite(currentTime) ? Math.max(capturedTime, currentTime + 1) : capturedTime;
-    return new Date(nextTime).toISOString();
-}
-
-function currentCalendarDate(): Date {
-    return calendarDateFromKey(dateKey(new Date()));
-}
-
-function calendarDateFromKey(value: string): Date {
-    const [year, month, day] = value.split("-").map(Number);
-    return new Date(year, month - 1, day, 12);
-}
-
-function isValidLocalDateInput(value: string): boolean {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    return dateKey(calendarDateFromKey(value)) === value;
-}
-
-function formatHistoryDate(value: string): string {
-    const [year, month, day] = value.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    if (!year || !month || !day || Number.isNaN(date.getTime())) {
-        return value;
-    }
-    return date.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "short"});
-}
-
-function isSummaryRange(value: unknown): value is SummaryRange {
-    return value === "day" || value === "week" || value === "month";
-}
-
-function storeNeedsMigration(value: unknown, normalized: CheckinStore): boolean {
-    if (!value || typeof value !== "object") return false;
-    try {
-        return JSON.stringify(value) !== JSON.stringify(normalized);
-    } catch {
-        return true;
-    }
 }

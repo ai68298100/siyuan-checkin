@@ -36,9 +36,9 @@ assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
 assert.match(source, /const entries = \[\["today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\]\] as const;/,
     "quick dialog navigation must expose the five v5 destinations");
-assert.match(source, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
-    "navigation icons must use the shared vector icon system");
-for (const destination of ["review", "occasions", "archived", "settings"]) {
+const iconsSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "icons.ts"), "utf8");
+assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
+    "navigation icons must use the shared vector icon system");for (const destination of ["review", "occasions", "archived", "settings"]) {
     assert.match(source, new RegExp(`\\[\\"${destination}\\",`),
         `mobile navigation must include ${destination}`);
 }

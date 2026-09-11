@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const source = fs.readFileSync("src/index.ts", "utf8");
+const sharedSource = fs.readFileSync("src/shared.ts", "utf8");
 const manifest = JSON.parse(fs.readFileSync("plugin.json", "utf8"));
 const packageManifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
 assert.equal(manifest.version, packageManifest.version, "plugin and package versions must stay aligned");
@@ -19,7 +20,7 @@ assert.match(source, /customRange \? buildCustomSummaryContext/);
 assert.match(source, /getEventsInCustomRange\(this\.store, customRange\)/);
 assert.match(source, /const SUMMARY_TIMEOUT_MS = 30000/);
 assert.match(source, /withTimeout\(provider\.summarize\([\s\S]*SUMMARY_TIMEOUT_MS, "总结适配器响应超时"/);
-assert.match(source, /function withTimeout<T>\(promise: Promise<T>, timeoutMs: number, message: string\)/);
+assert.match(sharedSource, /export function withTimeout<T>\(promise: Promise<T>, timeoutMs: number, message: string\)/);
 assert.match(source, /addAgentCapability\?:/);
 assert.match(source, /checkin-summary-context/);
 assert.match(source, /checkin-list-items/);
