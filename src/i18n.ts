@@ -424,6 +424,16 @@ const zhCN: Dict = {
     "occ.tpl.qixi": "七夕",
     "occ.tpl.midAutumn": "中秋节",
     "occ.tpl.springFestival": "春节",
+    "date.wd0": "日",
+    "date.wd1": "一",
+    "date.wd2": "二",
+    "date.wd3": "三",
+    "date.wd4": "四",
+    "date.wd5": "五",
+    "date.wd6": "六",
+    "date.chipTitle": "{date}：{done}/{total} 项完成",
+    "date.monthYear": "{year}年{month}月",
+    "date.monthN": "{n} 月",
     "review.title": "回顾",
     "review.eyebrow": "数据回顾",
     "occasions.title": "日期事项",
@@ -862,6 +872,16 @@ const enUS: Dict = {
     "occ.tpl.qixi": "Qixi Festival",
     "occ.tpl.midAutumn": "Mid-Autumn Festival",
     "occ.tpl.springFestival": "Spring Festival",
+    "date.wd0": "Sun",
+    "date.wd1": "Mon",
+    "date.wd2": "Tue",
+    "date.wd3": "Wed",
+    "date.wd4": "Thu",
+    "date.wd5": "Fri",
+    "date.wd6": "Sat",
+    "date.chipTitle": "{date}: {done}/{total} done",
+    "date.monthYear": "{month}/{year}",
+    "date.monthN": "{n}",
     "review.title": "Review",
     "review.eyebrow": "Records",
     "occasions.title": "Date Events",
@@ -887,6 +907,11 @@ let current: PluginLanguage = "zh-CN";
 
 export function setPluginLanguage(language: PluginLanguage): void {
     current = DICTS[language] ? language : "zh-CN";
+}
+
+/** 当前插件语言的 BCP-47 标签，供日期/时间格式化使用。 */
+export function getPluginLocale(): string {
+    return current;
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {

@@ -4,7 +4,7 @@ import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
-import {t} from "./i18n";
+import {getPluginLocale, t} from "./i18n";
 import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap} from "./charts";
 import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
@@ -89,8 +89,9 @@ const SCHEDULE_LABELS: Record<ScheduleType, string> = {
     quota: "schedule.quota",
 };
 
-const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
-const CALENDAR_WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
+/* 星期名随插件语言：日序（0=日）用于编辑器勾选，一周首序用于月历表头。 */
+const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
+const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 const HISTORY_SOURCE_OPTIONS: readonly HistorySourceFilter[] = [
     "all",
     "manual",
@@ -1719,13 +1720,13 @@ export default class CheckinPlugin extends Plugin {
             const done = items.filter((item) => isComplete(this.store, item, day)).length;
             const status = !items.length ? "empty" : done === items.length ? "complete" : done ? "partial" : "pending";
             const isToday = dateKey(day) === dateKey(now);
-            return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(`${day.toLocaleDateString("zh-CN", {month: "long", day: "numeric"})}：${done}/${items.length} 项完成`)}"><small>${day.toLocaleDateString("zh-CN", {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
+            return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: items.length}))}"><small>${day.toLocaleDateString(getPluginLocale(), {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
         }).join("");
         const backupNeeded = this.store.events.length >= 30 && (!this.lastExportAt || Date.now() - Date.parse(this.lastExportAt) > 30 * 86400000);
         const emptyProgressTitle = this.pendingOnly
             ? t("today.pendingEmpty")
             : query ? t("today.queryCompleted") : t("today.allDone");
-        const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
+        const date = now.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">▱</div>
@@ -1953,7 +1954,7 @@ export default class CheckinPlugin extends Plugin {
         const aggregateDetails = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : "";
         const hasHistoryFilter = Boolean(this.historyQuery.trim()) || this.historySource !== "all";
         const eventDetails = filteredRecords.length ? `<div class="lc-checkin__history-events">${filteredRecords.map(({event, itemName}) => {
-            const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+            const time = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
             const noteEditor = this.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">保存备注</button>` : "";
             const photoThumb = event.attachment ? `<img class="lc-checkin__history-thumb" src="${event.attachment}" alt="打卡照片" loading="lazy" />` : "";
@@ -2018,8 +2019,8 @@ export default class CheckinPlugin extends Plugin {
             <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div></section>
             <div class="lc-checkin__review-layout">
                 <div class="lc-checkin__review-calendar">
-                    <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}" title="${t("review.prevMonth")}">‹</button><strong>${year}年${month + 1}月</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" title="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
-                    <div class="lc-checkin__calendar-weekdays">${CALENDAR_WEEKDAYS.map((day) => `<span>${day}</span>`).join("")}</div>
+                    <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}" title="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" title="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
+                    <div class="lc-checkin__calendar-weekdays">${calendarWeekdays().map((day) => `<span>${day}</span>`).join("")}</div>
                     <div class="lc-checkin__calendar">${calendarCells}</div>
                 </div>
                 <div class="lc-checkin__review-detail">
@@ -2087,7 +2088,7 @@ export default class CheckinPlugin extends Plugin {
                 const item = itemNames.get(event.itemId);
                 const icon = item?.icon || "✓";
                 const name = itemNames.get(event.itemId)?.name || t("review.deletedItem");
-                const time = new Date(event.occurredAt).toLocaleTimeString("zh-CN", {hour: "2-digit", minute: "2-digit"});
+                const time = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
                 const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
                 return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
             }).join("");
@@ -2133,7 +2134,7 @@ export default class CheckinPlugin extends Plugin {
         const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
         const templateChips = OCCASION_TEMPLATES.map((template, index) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as OccasionImport)}"><span aria-hidden="true">${template.icon}</span>${occasionTemplateName(template)}</button>`).join("");
         const weekdayOptions = [0, 1, 2, 3, 4, 5, 6].map((value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${weekdayName(value)}</option>`).join("");
-        const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${index + 1} 月</option>`).join("");
+        const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
         const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
         return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("common.add")}">+</button></header>
@@ -2365,7 +2366,7 @@ export default class CheckinPlugin extends Plugin {
                                 <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>${t("editor.tomatoHelp")}</p>
                             </div>
                             <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
-                            <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
+                            <div class="lc-checkin__weekdays" data-weekdays>${weekdaysFromSunday().map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>${t("editor.intervalDays")}</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
                                 <label class="lc-checkin__field"><span>${t("editor.anchorDate")}</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">${t("review.tabDay")}</button></label>
@@ -4668,7 +4669,7 @@ function formatHistoryDate(value: string): string {
     if (!year || !month || !day || Number.isNaN(date.getTime())) {
         return value;
     }
-    return date.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "short"});
+    return date.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "short"});
 }
 
 function isSummaryRange(value: unknown): value is SummaryRange {

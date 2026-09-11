@@ -49,7 +49,7 @@ assert.match(source, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
-assert.match(source, /toLocaleTimeString\("zh-CN", \{hour: "2-digit", minute: "2-digit"\}\)/,
+assert.match(source, /toLocaleTimeString\(getPluginLocale\(\), \{hour: "2-digit", minute: "2-digit"\}\)/,
     "review records should expose the record time");
 assert.match(source, /t\(`source\.\$\{event\.source\}`\)/,
     "review records should expose the record source");
