@@ -25,6 +25,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
+import {renderCheckinLogView, renderUpcomingOccasionsView} from "./render/fragments";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -1978,49 +1979,13 @@ export default class CheckinPlugin extends Plugin {
         return `<details class="lc-checkin__review-fold" data-review-fold="${id}"${open ? " open" : ""}><summary><span>${title}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-fold-body">${body}</div></details>`;
     }
 
+    /* 方法体外置于 render/fragments.ts；壳保持类内 API 与测试断言稳定。 */
     private renderUpcomingOccasions(): string {
-        const today = dateKey(currentCalendarDate());
-        const horizonDate = new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() + 60);
-        const horizon = dateKey(horizonDate);
-        const items = this.occasionStore.occasions.filter((item) => item.enabled)
-            .map((item) => ({item, next: getOccurrenceDate(item, today)}))
-            .filter((entry): entry is {item: Occasion; next: string} => typeof entry.next === "string" && entry.next <= horizon)
-            .sort((left, right) => left.next.localeCompare(right.next))
-            .slice(0, 6);
-        if (!items.length) return "";
-        const rows = items.map(({item, next}) => {
-            const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
-            const days = Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(today).getTime()) / 86400000));
-            return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? t("review.today") : t("review.daysLater", {n: days})}</em></div>`;
-        }).join("");
-        return rows;
+        return renderUpcomingOccasionsView(this.occasionStore);
     }
 
-    /* 7.0 打卡日志：最近 14 天有记录的日期时间线（图标 + 名称 + 数值 + 备注）。 */
     private renderCheckinLog(): string {
-        const itemNames = new Map(this.store.items.map((item) => [item.id, item]));
-        const byDay = new Map<string, CheckinEvent[]>();
-        for (const event of this.store.events) {
-            const day = getEventDateKey(event);
-            const list = byDay.get(day);
-            if (list) list.push(event);
-            else byDay.set(day, [event]);
-        }
-        const days = [...byDay.keys()].filter((day) => day <= dateKey(currentCalendarDate())).sort((left, right) => right.localeCompare(left)).slice(0, 14);
-        if (!days.length) return "";
-        const daySections = days.map((day) => {
-            const events = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
-            const rows = events.map((event) => {
-                const item = itemNames.get(event.itemId);
-                const icon = item?.icon || "✓";
-                const name = itemNames.get(event.itemId)?.name || t("review.deletedItem");
-                const time = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
-                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
-                return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
-            }).join("");
-            return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
-        }).join("");
-        return daySections;
+        return renderCheckinLogView(this.store.events, this.store.items);
     }
 
     private renderArchived(): string {
