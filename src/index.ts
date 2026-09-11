@@ -39,6 +39,7 @@ import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, descr
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
+import {createCheckinApi, type CheckinApiHost} from "./api";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -464,131 +465,9 @@ export default class CheckinPlugin extends Plugin {
         this.summaryProviders.clear();
     }
 
+    /* 方法体外置于 api.ts（T-022）；宿主成员经 CheckinApiHost 结构化接口声明。 */
     private createApi(): CheckinApi {
-        const summarizeWithProvider = async (range: SummaryRange, customRange: CustomSummaryRange | undefined, providerId?: string) => {
-            if (!this.acceptingOperations || this.disposed) return undefined;
-            if (customRange) {
-                if (!isValidLocalDateInput(customRange.startDate) || !isValidLocalDateInput(customRange.endDate) || customRange.startDate > customRange.endDate) return undefined;
-            } else if (!isSummaryRange(range)) {
-                return undefined;
-            }
-            const provider = providerId ? this.summaryProviders.get(providerId) : this.summaryProviders.values().next().value;
-            if (!provider) return undefined;
-            const now = currentCalendarDate();
-            const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
-            const summaryItemIds = new Set(context.items.map((item) => item.itemId));
-            const output = await withTimeout(provider.summarize({
-                range,
-                ...(customRange ? {customRange} : {}),
-                items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
-                events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
-                context,
-            }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
-            return this.disposed || this.disposing || this.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
-        };
-        return {
-            name: CHECKIN_API_NAME,
-            protocol: CHECKIN_API_PROTOCOL,
-            version: CHECKIN_API_VERSION,
-            capabilities: CHECKIN_CAPABILITIES,
-            hasCapability: hasCheckinCapability,
-            describe: getCheckinApiDescriptor,
-            getCapabilityInfo: getCheckinCapabilityInfo,
-            isReady: () => this.initializationState === "ready" && this.acceptingOperations && !this.disposed,
-            whenReady: () => this.readyPromise.then((ready) => ready && this.acceptingOperations && !this.disposed),
-            getStore: () => this.cloneStore(),
-            getItems: () => this.store.items.filter((item) => !item.archived).map((item) => this.cloneItem(item)),
-            getEvents: () => this.store.events.map((event) => ({...event})),
-            getOccasions: () => this.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
-            getTodayOccasions: () => getVisibleOccasions(this.occasionStore, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
-            completeOccasion: (id, occurrenceDate, completed) => this.enqueueMutation(() => this.setOccasionCompleted(id, occurrenceDate, completed)),
-            getSummaryContext: (range) => {
-                if (!isSummaryRange(range)) throw new TypeError("range 必须是 day、week 或 month");
-                return buildSummaryContext(this.store, range, currentCalendarDate());
-            },
-            getCustomSummaryContext: (range) => {
-                if (!range || !isValidLocalDateInput(range.startDate) || !isValidLocalDateInput(range.endDate) || range.startDate > range.endDate) throw new TypeError("自定义总结范围无效");
-                return buildCustomSummaryContext(this.store, range, currentCalendarDate());
-            },
-            getArchivedItems: () => this.store.items.filter((item) => item.archived).map((item) => this.cloneItem(item)),
-            setItemArchived: (itemId, archived) => {
-                if (!this.acceptingOperations) return Promise.resolve(false);
-                const moment = captureActionMoment();
-                const expectedItem = this.store.items.find((item) => item.id === itemId);
-                const expectedFingerprint = expectedItem ? this.itemFingerprint(expectedItem) : undefined;
-                return this.enqueueMutation(() => this.setItemArchived(itemId, archived, moment, expectedFingerprint));
-            },
-            exportJson: () => serializeJson(this.cloneStore()),
-            exportCsv: () => serializeCsv(this.cloneStore()),
-            recordEvent: (input) => {
-                if (!this.acceptingOperations) return Promise.resolve(undefined);
-                const moment = captureActionMoment();
-                const snapshot = input && typeof input === "object" ? {...input} : input;
-                const expectedItem = snapshot && typeof snapshot === "object" && typeof snapshot.itemId === "string"
-                    ? this.store.items.find((item) => item.id === snapshot.itemId)
-                    : undefined;
-                const expectedRevisionFingerprint = expectedItem
-                    ? this.revisionFingerprint(expectedItem, calendarDateFromKey(moment.localDate))
-                    : undefined;
-                return this.enqueueMutation(() => this.recordExternalEvent(snapshot, moment, expectedRevisionFingerprint));
-            },
-            startFocus: (itemId) => this.startFocus(itemId),
-            stopFocus: () => this.stopFocus(),
-            registerFocusAdapter: (adapter) => {
-                if (!this.acceptingOperations || this.disposed || !adapter || typeof adapter.id !== "string" || !adapter.id || typeof adapter.canStart !== "function" || typeof adapter.start !== "function" || typeof adapter.stop !== "function") {
-                    return () => undefined;
-                }
-                this.focusAdapters.set(adapter.id, adapter);
-                this.renderBackgroundUpdate();
-                return () => {
-                    if (this.focusAdapters.get(adapter.id) === adapter) {
-                        this.focusAdapters.delete(adapter.id);
-                    }
-                    if (this.activeFocusAdapter === adapter) {
-                        this.activeFocusAdapter = undefined;
-                        if (!this.focusBusy) {
-                            this.focusBusy = true;
-                            const stop = this.stopAdapterSilently(adapter).finally(() => {
-                                this.focusBusy = false;
-                                this.renderBackgroundUpdate();
-                            });
-                            this.focusOperation = stop;
-                        }
-                    }
-                    this.renderBackgroundUpdate();
-                };
-            },
-            registerSummaryProvider: (provider) => {
-                if (!this.acceptingOperations || this.disposed || !provider || typeof provider.id !== "string" || !provider.id || typeof provider.summarize !== "function") {
-                    return () => undefined;
-                }
-                this.invalidateSummary();
-                this.summaryProviders.set(provider.id, provider);
-                this.renderBackgroundUpdate();
-                return () => {
-                    if (this.summaryProviders.get(provider.id) === provider) {
-                        this.summaryProviders.delete(provider.id);
-                        this.invalidateSummary();
-                        this.renderBackgroundUpdate();
-                    }
-                };
-            },
-            summarize: (range, providerId) => summarizeWithProvider(range, undefined, providerId),
-            summarizeCustom: (range, providerId) => summarizeWithProvider("day", range, providerId),
-            subscribe: (listener) => {
-                if (!this.acceptingOperations || this.disposed || typeof listener !== "function") {
-                    return () => undefined;
-                }
-                const wrapped = (event: Event) => listener((event as CustomEvent<CheckinIntegrationEvent>).detail);
-                Object.values(CHECKIN_EVENT_NAMES).forEach((eventName) => window.addEventListener(eventName, wrapped));
-                const dispose = () => {
-                    Object.values(CHECKIN_EVENT_NAMES).forEach((eventName) => window.removeEventListener(eventName, wrapped));
-                    this.apiSubscriptions.delete(dispose);
-                };
-                this.apiSubscriptions.add(dispose);
-                return dispose;
-            },
-        };
+        return createCheckinApi(this as unknown as CheckinApiHost);
     }
 
     private cloneStore(store: CheckinStore = this.store): CheckinStore {
