@@ -11,7 +11,8 @@ assert.match(source, /this\.isMobileFrontend = frontend === "mobile" \|\| fronte
 assert.match(source, /this\.supportsCustomTab = !this\.isMobileFrontend/);
 assert.match(source, /if \(this\.supportsCustomTab\) this\.addCommand/);
 assert.match(source, /if \(!this\.supportsCustomTab\) this\.openQuickDialog\(\)/);
-assert.match(source, /data-action="open-tab"/);
+const fragmentsSource = fs.readFileSync("src/render/fragments.ts", "utf8");
+assert.match(fragmentsSource, /data-action="open-tab"/);
 assert.match(source, /getCustomSummaryContext/);
 assert.match(source, /自定义总结范围无效/);
 assert.match(source, /CHECKIN_API_VERSION/);

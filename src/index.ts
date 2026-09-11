@@ -25,7 +25,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
-import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderUpcomingOccasionsView} from "./render/fragments";
+import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -1626,76 +1626,8 @@ export default class CheckinPlugin extends Plugin {
         return streaks;
     }
 
+    /* 方法体外置于 render/fragments.ts（T-022）；壳内仅保留连续记录状态赋值。 */
     private renderToday(): string {
-        const now = currentCalendarDate();
-        const activeItems = this.store.items.filter((item) => !item.archived);
-        const scheduledItems = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, now) && isScheduledToday(item, now));
-        const query = this.todayQuery.trim().toLocaleLowerCase();
-        const visibleItems = query
-            ? scheduledItems.filter((item) => `${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query))
-            : scheduledItems;
-        const filteredItems = this.pendingOnly ? visibleItems.filter((item) => !isComplete(this.store, item, now)) : visibleItems;
-        const pendingItems = sortCheckinItems(filteredItems.filter((item) => !isComplete(this.store, item, now)), this.todaySortMode);
-        const completedItems = sortCheckinItems(filteredItems.filter((item) => isComplete(this.store, item, now)), this.todaySortMode);
-        const completed = scheduledItems.filter((item) => isComplete(this.store, item, now)).length;
-        const pending = Math.max(0, scheduledItems.length - completed);
-        const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
-        const weekStrip = Array.from({length: 7}, (_, index) => {
-            const day = new Date(now);
-            day.setDate(now.getDate() - (6 - index));
-            const items = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, day) && isScheduledToday(item, day));
-            const done = items.filter((item) => isComplete(this.store, item, day)).length;
-            const status = !items.length ? "empty" : done === items.length ? "complete" : done ? "partial" : "pending";
-            const isToday = dateKey(day) === dateKey(now);
-            return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: items.length}))}"><small>${day.toLocaleDateString(getPluginLocale(), {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
-        }).join("");
-        const backupNeeded = this.store.events.length >= 30 && (!this.lastExportAt || Date.now() - Date.parse(this.lastExportAt) > 30 * 86400000);
-        const emptyProgressTitle = this.pendingOnly
-            ? t("today.pendingEmpty")
-            : query ? t("today.queryCompleted") : t("today.allDone");
-        const date = now.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "long"});
-        const list = !activeItems.length && this.store.items.length ? `
-            <div class="lc-checkin__empty">
-                <div class="lc-checkin__empty-mark">▱</div>
-                <div class="lc-checkin__empty-title">${t("today.emptyActiveTitle")}</div>
-                <div class="lc-checkin__empty-description">${t("today.emptyActiveDesc")}</div>
-                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">${t("today.viewArchived")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
-            </div>` : !activeItems.length ? `
-            <div class="lc-checkin__empty lc-checkin__empty--onboard">
-                <div class="lc-checkin__empty-mark">✦</div>
-                <div class="lc-checkin__empty-title">${t("today.emptyOnboardTitle")}</div>
-                <div class="lc-checkin__empty-description">${t("today.emptyOnboardDesc")}</div>
-                <ol class="lc-checkin__onboard-steps">
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">1</span><div><strong>${t("today.step1Title")}</strong><small>${t("today.step1Desc")}</small></div></li>
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>${t("today.step2Title")}</strong><small>${t("today.step2Desc")}</small></div></li>
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc")}</small></div></li>
-                </ol>
-                <button class="lc-checkin__text-button" type="button" data-action="add">${t("today.addFirst")}</button>
-            </div>` : !scheduledItems.length ? `
-            <div class="lc-checkin__empty">
-                <div class="lc-checkin__empty-mark">◷</div>
-                <div class="lc-checkin__empty-title">${t("today.emptyScheduledTitle")}</div>
-                <div class="lc-checkin__empty-description">${t("today.emptyScheduledDesc")}</div>
-                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="history">${t("today.viewHistory")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
-            </div>` : !visibleItems.length ? `
-            <div class="lc-checkin__today-search-empty">
-                <span>⌕</span><strong>${t("today.searchEmpty")}</strong><small>${t("today.searchEmptyHint")}</small>
-                <button class="lc-checkin__text-button" type="button" data-action="clear-search">${t("common.clearFilter")}</button>
-            </div>` : `${pendingItems.length
-            ? this.renderTodayGroups(pendingItems, now)
-            : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
-            ${completedItems.length ? `<section class="lc-checkin__completed-section">
-                <button class="lc-checkin__section-toggle" type="button" data-action="toggle-completed" aria-expanded="${!this.completedCollapsed}">
-                    <span class="lc-checkin__section-title"><i>✓</i> ${t("today.completed")}</span>
-                    <span class="lc-checkin__section-count">${completedItems.length}</span>
-                    <span class="lc-checkin__chevron">${this.completedCollapsed ? "⌄" : "⌃"}</span>
-                </button>
-                <div class="lc-checkin__group-items" ${this.completedCollapsed ? "hidden" : ""}>${completedItems.map((item) => this.renderItem(item, now)).join("")}</div>
-            </section>` : ""}`;
-        const recentRecord = this.recentRecord ? `<div class="lc-checkin__recent-record" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(this.recentRecord.message)}</strong><small>当前 ${escapeHtml(formatNumber(this.recentRecord.progress))}/${escapeHtml(formatNumber(this.recentRecord.target))} ${escapeHtml(this.recentRecord.unit)}</small></span>
-            <button type="button" data-action="undo-record">撤销</button>
-        </div>` : "";
         this.currentStreaks = this.computeStreaks();
         let bestStreakId = "";
         let bestStreak = 0;
@@ -1704,45 +1636,29 @@ export default class CheckinPlugin extends Plugin {
         }
         this.bestStreakItem = bestStreakId ? this.store.items.find((item) => item.id === bestStreakId) : undefined;
         this.bestStreakValue = bestStreak;
-        const saveStatus = this.renderSaveStatus();
-        const occasionBanner = this.renderOccasionSection(now);
-        return `<div class="lc-checkin lc-checkin--today" data-appearance="${this.resolvedAppearance()}" data-reduced-motion="${this.reducedMotion}">
-            <header class="lc-checkin__header">
-                <div class="lc-checkin__header-titles">
-                    <h1 class="lc-checkin__title">${t("today.title")}</h1>
-                    <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
-                </div>
-                <div class="lc-checkin__header-actions">
-                    ${this.bestStreakValue > 1 && this.bestStreakItem ? `<span class="lc-checkin__header-streak" title="当前最佳连续">🔥 ${escapeHtml(this.bestStreakItem.name)} ${this.bestStreakValue} 天</span>` : ""}
-                    <span class="lc-checkin__count" role="status" aria-label="今日完成进度">${completed}<span>/</span>${scheduledItems.length}</span>
-                    ${this.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
-                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
-                </div>
-            </header>
-            <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
-            ${this.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>` : ""}
-            ${recentRecord}
-            ${saveStatus}
-            ${scheduledItems.length ? `<div class="lc-checkin__organize">
-                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly ? "open" : ""}><summary>${this.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
-                    <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
-                    <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
-                    <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
-                </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
-                <button class="lc-checkin__filter-toggle ${this.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${this.bulkMode}">${t("today.bulk")}</button>
-            </div>` : ""}
-            ${this.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="批量操作">
-                <strong>已选 ${this.bulkSelected.size}</strong>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-all">全选待办</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">全部完成</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">归档</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">退出多选</button>
-            </div>` : ""}
-            ${this.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${this.celebration.message}</strong> 已完成 · ${this.celebration.itemName}</span></div>` : ""}
-            ${backupNeeded ? `<div class="lc-checkin__backup-reminder" role="note"><span>已积累 <strong>${this.store.events.length}</strong> 条记录，建议导出备份。</span><button class="lc-checkin__text-button" type="button" data-action="review">去导出</button></div>` : ""}
-            <main class="lc-checkin__list">${list}${occasionBanner}</main>
-        </div>`;
+        return renderTodayView({
+            store: this.store,
+            occasionStore: this.occasionStore,
+            currentStreaks: this.currentStreaks,
+            bestStreakItem: this.bestStreakItem,
+            bestStreakValue: this.bestStreakValue,
+            bulkMode: this.bulkMode,
+            bulkSelected: this.bulkSelected,
+            todaySortMode: this.todaySortMode,
+            todayGroupMode: this.todayGroupMode,
+            collapsedTodayGroups: this.collapsedTodayGroups,
+            completedCollapsed: this.completedCollapsed,
+            pendingOnly: this.pendingOnly,
+            todayQuery: this.todayQuery,
+            weekStripVisible: this.weekStripVisible,
+            lastExportAt: this.lastExportAt,
+            saveState: this.saveState,
+            recentRecord: this.recentRecord,
+            celebration: this.celebration,
+            supportsCustomTab: this.supportsCustomTab,
+            appearance: this.resolvedAppearance(),
+            reducedMotion: this.reducedMotion,
+        });
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）。 */
