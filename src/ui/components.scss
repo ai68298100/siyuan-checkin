@@ -2272,3 +2272,42 @@
 @container lc5 (min-width: 720px) and (max-width: 879px) {
     .lc-checkin--today .lc-checkin__item-action { width: auto; min-width: 0; }
 }
+
+/* 8.8 专注完成庆祝横幅 */
+.lc-checkin__celebration {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 10px 16px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-gold) 50%, var(--lc-checkin-border));
+    border-radius: var(--lc-checkin-radius);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--lc-checkin-gold) 12%, var(--lc-checkin-surface)), color-mix(in srgb, var(--lc-checkin-gold) 5%, var(--lc-checkin-surface)));
+    color: var(--lc-checkin-text);
+    font-size: 12.5px;
+}
+.lc-checkin__celebration-icon { font-size: 18px; flex: none; }
+.lc-checkin__celebration strong { color: var(--lc-checkin-gold); font-weight: 720; }
+
+/* 8.8 历史明细照片缩略图 */
+.lc-checkin__history-thumb {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--lc-checkin-radius-sm);
+    border: 1px solid var(--lc-checkin-border);
+    object-fit: cover;
+    flex: none;
+}
+
+/* 8.8 日期事项搜索 */
+.lc-checkin__occasion-search { display: block; margin-bottom: 10px; }
+.lc-checkin__occasion-search input {
+    width: 100%;
+    min-height: 32px;
+    padding: 6px 12px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-sm);
+    background: var(--lc-checkin-surface);
+    font: inherit;
+    font-size: 12px;
+}

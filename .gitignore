@@ -6,3 +6,5 @@ package.zip
 *.log
 .artifacts/
 .DS_Store
+.mimosa/
+siyuan-checkin-v*.zip
