@@ -2119,12 +2119,12 @@ export default class CheckinPlugin extends Plugin {
             const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
             const kind = item.kind === "birthday" ? "生日" : item.kind === "anniversary" ? "纪念日" : "定时事项";
             const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
-            const countdown = next ? `${next} · 还有 ${Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))} 天` : "已结束";
+            const countdown = next ? `${next} · ${t("occ.daysAway", {n: Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))})}` : t("occ.ended");
             const recurrence = describeRecurrence(item);
-            return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><button class="lc-checkin__text-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}">转打卡</button><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">编辑</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="切换${escapeHtml(item.name)}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="删除${escapeHtml(item.name)}" title="删除">×</button></article>`;
-        }).join("") : (occasionQuery ? '<div class="lc-checkin__empty-description">没有匹配的日期事项。</div>' : '<div class="lc-checkin__empty-description">还没有日期事项。可以从模板开始，或自行添加。</div>');
+            return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><button class="lc-checkin__text-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}">${t("occ.toItem")}</button><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">${t("occ.editBtn")}</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="${t("occ.toggleAria", {name: item.name})}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="${t("occ.deleteAria", {name: item.name})}" title="${t("common.delete")}">×</button></article>`;
+        }).join("") : (occasionQuery ? `<div class="lc-checkin__empty-description">${t("occ.searchEmpty")}</div>` : `<div class="lc-checkin__empty-description">${t("occ.empty")}</div>`);
         const date = editing?.date || dateKey(currentCalendarDate());
-        const editLabel = editing ? "编辑事项" : "新建事项";
+        const editLabel = editing ? t("occ.edit") : t("occ.create");
         const kind: OccasionKind = editing?.kind || "scheduled";
         const recurrence: OccasionRecurrence = editing?.recurrence || "annual";
         const calendar = editing?.calendar || "solar";
@@ -2136,56 +2136,56 @@ export default class CheckinPlugin extends Plugin {
         const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${index + 1} 月</option>`).join("");
         const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>` + ["第1个", "第2个", "第3个", "第4个", "第5个"][value - 1] + "</option>").join("");
         return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${this.resolvedAppearance()}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="新建日期事项" title="新建">+</button></header>
+            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("common.add")}">+</button></header>
             <div class="lc-checkin__occasion-manager">
                 <section class="lc-checkin__occasion-form-panel">
-                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>按日期提醒</strong></div></div>
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong></div></div>
                     <div class="lc-checkin__occasion-templates" aria-label="常用模板">${templateChips}</div>
                     <form data-occasion-form>
-                        <label class="lc-checkin__field"><span>名称</span><input name="name" required maxlength="120" placeholder="例如：妈妈生日、房贷还款" value="${escapeHtml(editing?.name || "")}" /></label>
+                        <label class="lc-checkin__field"><span>${t("occ.name")}</span><input name="name" required maxlength="120" placeholder="${t("occ.namePlaceholder")}" value="${escapeHtml(editing?.name || "")}" /></label>
                         <div class="lc-checkin__form-row">
-                            <label class="lc-checkin__field"><span>类型</span><select name="kind"><option value="birthday"${sel("birthday", kind)}>生日</option><option value="anniversary"${sel("anniversary", kind)}>纪念日</option><option value="scheduled"${sel("scheduled", kind)}>定时事项</option></select></label>
-                            <label class="lc-checkin__field"><span>日期</span><input name="date" type="date" required value="${escapeHtml(date)}" /></label>
+                            <label class="lc-checkin__field"><span>${t("occ.kind")}</span><select name="kind"><option value="birthday"${sel("birthday", kind)}>${t("occ.kindBirthday")}</option><option value="anniversary"${sel("anniversary", kind)}>${t("occ.kindAnniversary")}</option><option value="scheduled"${sel("scheduled", kind)}>${t("occ.kindScheduled")}</option></select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.date")}</span><input name="date" type="date" required value="${escapeHtml(date)}" /></label>
                         </div>
                         <div class="lc-checkin__form-row">
-                            <label class="lc-checkin__field"><span>重复</span><select name="recurrence" data-occasion-recurrence>
-                                <option value="once"${sel("once", recurrence)}>一次性</option>
-                                <option value="annual"${sel("annual", recurrence)}>每年</option>
-                                <option value="monthly"${sel("monthly", recurrence)}>每月</option>
-                                <option value="weekly"${sel("weekly", recurrence)}>每周</option>
-                                <option value="quarterly"${sel("quarterly", recurrence)}>每季度</option>
-                                <option value="halfyearly"${sel("halfyearly", recurrence)}>每半年</option>
-                                <option value="interval"${sel("interval", recurrence)}>自定义间隔</option>
+                            <label class="lc-checkin__field"><span>${t("occ.recurrence")}</span><select name="recurrence" data-occasion-recurrence>
+                                <option value="once"${sel("once", recurrence)}>${t("occ.once")}</option>
+                                <option value="annual"${sel("annual", recurrence)}>${t("occ.annual")}</option>
+                                <option value="monthly"${sel("monthly", recurrence)}>${t("occ.monthly")}</option>
+                                <option value="weekly"${sel("weekly", recurrence)}>${t("occ.weekly")}</option>
+                                <option value="quarterly"${sel("quarterly", recurrence)}>${t("occ.quarterly")}</option>
+                                <option value="halfyearly"${sel("halfyearly", recurrence)}>${t("occ.halfyearly")}</option>
+                                <option value="interval"${sel("interval", recurrence)}>${t("occ.interval")}</option>
                             </select></label>
-                            <div class="lc-checkin__field" data-occasion-block="annual-calendar"${recurrence === "annual" ? "" : " hidden"}><span class="lc-checkin__field-label">历法</span><select name="calendar" data-occasion-calendar aria-label="历法"><option value="solar"${sel("solar", calendar)}>公历</option><option value="lunar"${sel("lunar", calendar)}>农历</option></select><small class="lc-checkin__field-hint" data-occasion-lunar-hint hidden></small></div>
+                            <div class="lc-checkin__field" data-occasion-block="annual-calendar"${recurrence === "annual" ? "" : " hidden"}><span class="lc-checkin__field-label">${t("occ.calendar")}</span><select name="calendar" data-occasion-calendar aria-label="${t("occ.calendar")}"><option value="solar"${sel("solar", calendar)}>${t("occ.solar")}</option><option value="lunar"${sel("lunar", calendar)}>${t("occ.lunar")}</option></select><small class="lc-checkin__field-hint" data-occasion-lunar-hint hidden></small></div>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>月份</span><select name="annualMonth">${monthOptions}</select></label>
-                            <label class="lc-checkin__field"><span>星期</span><select name="annualNth">${nthOptions}</select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.month")}</span><select name="annualMonth">${monthOptions}</select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="annualNth">${nthOptions}</select></label>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>星期（年度第N个）</span><select name="annualWeekday">${weekdayOptions}</select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.weekdayNth")}</span><select name="annualWeekday">${weekdayOptions}</select></label>
                             <input type="hidden" name="annualSubtype" value="${annualSubtype}" />
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="monthly-sub"${recurrence === "monthly" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>方式</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>每月固定日（取日期）</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>每月第N个星期</option><option value="lastday"${sel("lastday", monthlySubtype)}>每月最后一天</option></select></label>
-                            <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">星期</span><select name="monthlyWeekday" aria-label="每月星期">${weekdayOptions}</select></div>
+                            <label class="lc-checkin__field"><span>${t("occ.monthlyMode")}</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>${t("occ.monthlyByday")}</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>${t("occ.monthlyNthweek")}</option><option value="lastday"${sel("lastday", monthlySubtype)}>${t("occ.monthlyLastday")}</option></select></label>
+                            <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">${t("occ.weekday")}</span><select name="monthlyWeekday" aria-label="${t("occ.weekday")}">${weekdayOptions}</select></div>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="weekly"${recurrence === "weekly" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>星期</span><select name="weeklyWeekday">${weekdayOptions}</select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="weeklyWeekday">${weekdayOptions}</select></label>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="interval"${recurrence === "interval" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>间隔数量</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${editing?.intervalCount ?? 1}" /></label>
-                            <label class="lc-checkin__field"><span>单位</span><select name="intervalUnit"><option value="day"${sel("day", editing?.intervalUnit)}>天</option><option value="month"${sel("month", editing?.intervalUnit || "month")}>个月</option><option value="year"${sel("year", editing?.intervalUnit)}>年</option></select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.intervalCount")}</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${editing?.intervalCount ?? 1}" /></label>
+                            <label class="lc-checkin__field"><span>${t("occ.unit")}</span><select name="intervalUnit"><option value="day"${sel("day", editing?.intervalUnit)}>${t("occ.unitDay")}</option><option value="month"${sel("month", editing?.intervalUnit || "month")}>${t("occ.unitMonth")}</option><option value="year"${sel("year", editing?.intervalUnit)}>${t("occ.unitYear")}</option></select></label>
                         </div>
-                        <label class="lc-checkin__field"><span>提前提醒天数</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
-                        <label class="lc-checkin__field"><span>备注</span><textarea name="note" maxlength="500" rows="2" placeholder="例如：记得准备礼物或确认扣款">${escapeHtml(editing?.note || "")}</textarea></label>
-                        <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? "保存修改" : "添加事项"}</button>${editing ? '<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">取消编辑</button>' : ""}</div>
+                        <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
+                        <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(editing?.note || "")}</textarea></label>
+                        <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>
                 </section>
                 <section class="lc-checkin__occasion-list-panel">
-                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">已设置</span><strong>所有日期事项</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${this.occasionStore.occasions.length}</span></div>
-                    <label class="lc-checkin__occasion-search"><input type="search" data-occasion-search value="${escapeHtml(this.occasionSearchQuery)}" placeholder="搜索事项名称" aria-label="搜索日期事项" /></label>
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${t("occ.listKicker")}</span><strong>${t("occ.listHeading")}</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${this.occasionStore.occasions.length}</span></div>
+                    <label class="lc-checkin__occasion-search"><input type="search" data-occasion-search value="${escapeHtml(this.occasionSearchQuery)}" placeholder="${t("occ.searchPlaceholder")}" aria-label="${t("occ.searchAria")}" /></label>
                     <div class="lc-checkin__occasion-manager-list">${rows}</div>
                 </section>
             </div>
@@ -2217,10 +2217,10 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
-                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="查看复盘">🔥 ${this.currentStreaks.get(item.id)}</button>` : ""}
-                    ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
-                    ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(t(TIME_SLOT_LABELS[timeSlot]))}</span>` : ""}
-                    ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? "番茄钟·次数" : "番茄钟·分钟"}</span>` : ""}
+                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${this.currentStreaks.get(item.id)}</button>` : ""}
+                    ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
+                    ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
+                    ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
                     <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
                 </div>
