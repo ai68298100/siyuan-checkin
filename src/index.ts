@@ -25,7 +25,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
-import {renderCheckinLogView, renderUpcomingOccasionsView} from "./render/fragments";
+import {renderCheckinLogView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderUpcomingOccasionsView} from "./render/fragments";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -1745,36 +1745,17 @@ export default class CheckinPlugin extends Plugin {
         </div>`;
     }
 
+    /* 方法体外置于 render/fragments.ts（T-022）。 */
     private renderOccasionSection(date: Date): string {
-        const items = getVisibleOccasions(this.occasionStore, date).slice(0, 3);
-        const chips = items.map((item) => {
-            const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
-            const timing = item.status === "today" ? "今天" : `${item.daysUntil} 天后`;
-            const completed = isOccasionCompleted(item, item.occurrenceDate);
-            return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="occasions" title="${escapeHtml(item.name)} · ${timing}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${timing}</small></button>`;
-        }).join("");
-        return `<section class="lc-checkin__occasion-banner" aria-label="${t("today.occasionTitle")}">
-            <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
-            <div class="lc-checkin__occasion-banner-body">
-                <strong>${t("today.occasionTitle")}</strong>
-                ${items.length ? `<div class="lc-checkin__occasion-chips">${chips}</div>` : `<small>${t("today.occasionEmpty")}</small>`}
-            </div>
-            <button class="lc-checkin__text-button" type="button" data-action="occasions">管理</button>
-        </section>`;
+        return renderOccasionBannerView(this.occasionStore, date);
     }
 
     private renderSaveStatus(): string {
-        return this.saveState === "saving"
-            ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">正在保存…</div>`
-            : this.saveState === "error"
-                ? `<div class="lc-checkin__save-status is-error" role="alert"><span>保存失败</span><button type="button" data-action="retry-save">重试保存</button></div>`
-                : "";
+        return renderSaveStatusView(this.saveState);
     }
 
     private renderSyncNotice(): string {
-        return this.syncNoticeTimer !== undefined
-            ? `<div class="lc-checkin__sync-notice" role="status" aria-live="polite">已同步其他窗口更新</div>`
-            : "";
+        return renderSyncNoticeView(this.syncNoticeTimer !== undefined);
     }
 
     private renderTodayGroups(items: CheckinItem[], date: Date): string {

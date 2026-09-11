@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
@@ -66,13 +67,14 @@ assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)
     "mobile navigation must fit the five destinations plus the add action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
-assert.match(source, /正在保存…/,
+assert.match(i18nSource, /"msg\.saving": "正在保存…"/,
     "saving state must be visible to users");
-assert.match(source, /data-action=\"retry-save\"/,
+const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
+assert.match(fragmentsSource, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
 assert.match(source, /private renderSaveStatus\(\): string/,
     "save feedback should be shared by today and editor surfaces");
-assert.match(source, /已同步其他窗口更新/,
+assert.match(i18nSource, /"msg\.syncedElsewhere": "已同步其他窗口更新"/,
     "multi-window merges should expose a transient sync notice");
 assert.match(source, /private showSyncNotice\(\)/,
     "sync notices should have an expiring lifecycle");

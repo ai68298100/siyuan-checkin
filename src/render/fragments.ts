@@ -3,9 +3,44 @@
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey} from "../shared";
-import {getOccurrenceDate} from "../occasions";
-import type {CheckinEvent, CheckinItem} from "../types";
+import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
+import {uiIcon} from "../ui/icons";
+import type {CheckinEvent, CheckinItem, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
+
+export type SaveState = "idle" | "saving" | "error";
+
+export function renderOccasionBannerView(occasionStore: OccasionStore, date: Date): string {
+    const items = getVisibleOccasions(occasionStore, date).slice(0, 3);
+    const chips = items.map((item) => {
+        const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
+        const timing = item.status === "today" ? t("review.today") : t("review.daysLater", {n: item.daysUntil});
+        const completed = isOccasionCompleted(item, item.occurrenceDate);
+        return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="occasions" title="${escapeHtml(item.name)} · ${timing}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${timing}</small></button>`;
+    }).join("");
+    return `<section class="lc-checkin__occasion-banner" aria-label="${t("today.occasionTitle")}">
+            <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
+            <div class="lc-checkin__occasion-banner-body">
+                <strong>${t("today.occasionTitle")}</strong>
+                ${items.length ? `<div class="lc-checkin__occasion-chips">${chips}</div>` : `<small>${t("today.occasionEmpty")}</small>`}
+            </div>
+            <button class="lc-checkin__text-button" type="button" data-action="occasions">${t("common.manage")}</button>
+        </section>`;
+}
+
+export function renderSaveStatusView(state: SaveState): string {
+    return state === "saving"
+        ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">${t("msg.saving")}</div>`
+        : state === "error"
+            ? `<div class="lc-checkin__save-status is-error" role="alert"><span>${t("msg.saveFailedShort")}</span><button type="button" data-action="retry-save">${t("msg.retrySave")}</button></div>`
+            : "";
+}
+
+export function renderSyncNoticeView(active: boolean): string {
+    return active
+        ? `<div class="lc-checkin__sync-notice" role="status" aria-live="polite">${t("msg.syncedElsewhere")}</div>`
+        : "";
+}
 
 export function renderUpcomingOccasionsView(occasionStore: OccasionStore): string {
     const today = dateKey(currentCalendarDate());
