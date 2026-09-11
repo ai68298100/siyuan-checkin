@@ -2217,3 +2217,27 @@
     /* 布局底部留少一些 */
     .lc-checkin__layout { padding-bottom: calc(calc(48px + env(safe-area-inset-bottom)) + 8px); }
 }
+
+/* 8.8 连续徽章可点击 + 热力图年份导航 */
+.lc-checkin__streak-badge {
+    border: 0;
+    cursor: pointer;
+    transition: opacity var(--lc-checkin-motion-fast);
+}
+.lc-checkin__streak-badge:hover { opacity: .8; }
+.lc-checkin__heatmap-nav { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+.lc-checkin__heatmap-nav button {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 6px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-surface);
+    font-size: 13px;
+    cursor: pointer;
+}
+.lc-checkin__heatmap-nav button:hover:not(:disabled) { color: var(--lc-checkin-accent); border-color: var(--lc-checkin-accent); }
+.lc-checkin__heatmap-nav button:disabled { opacity: .3; cursor: default; }
+.lc-checkin__heatmap-nav strong { color: var(--lc-checkin-text); font-size: 13px; font-weight: 700; }

@@ -251,6 +251,7 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerInterval?: number;
     private focusTimerRoot?: HTMLElement;
     private focusTimerMinutes = 25;
+    private heatmapYearOffset = 0;
     private renderRafId = 0;
     private bulkMode = false;
     private bulkSelected = new Set<string>();
@@ -1960,7 +1961,7 @@ export default class CheckinPlugin extends Plugin {
                 const rate = Math.round((entry.completed / entry.scheduled) * 100);
                 return `<div class="lc-checkin__balance-row"><strong>${escapeHtml(entry.name)}</strong><span>${entry.completed}/${entry.scheduled}</span><i class="lc-checkin__balance-bar"><span style="width:${Math.min(100, Math.round((entry.completed / Math.max(1, entry.scheduled)) * 100))}%"></span></i><em>${rate}%</em></div>`;
             }).join("");
-        const heatmapYear = new Date().getFullYear();
+        const heatmapYear = new Date().getFullYear() + this.heatmapYearOffset;
         const heatmap = buildYearHeatmap(this.store, heatmapYear);
         const weeklyTrend = buildWeeklyCompletionTrend(this.store, 12);
         const monthlyTrend = buildMonthlyEventTrend(this.store, 6);
@@ -1996,7 +1997,7 @@ export default class CheckinPlugin extends Plugin {
                 </div>
             </div>
             <details class="lc-checkin__year-heatmap" aria-label="年度活跃热力图">
-                <summary>年度活跃热力图 · ${heatmapYear}</summary>
+                <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="上一年">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="下一年"${this.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>年度活跃热力图</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
                 <small class="lc-checkin__yearheatmap-total">${heatmapYear} 年共 ${heatmap.total} 条记录</small>
             </details>
@@ -2184,7 +2185,7 @@ export default class CheckinPlugin extends Plugin {
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
-                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<span class="lc-checkin__streak-badge" title="连续 ${this.currentStreaks.get(item.id)} 天">🔥 ${this.currentStreaks.get(item.id)}</span>` : ""}
+                    ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="查看复盘">🔥 ${this.currentStreaks.get(item.id)}</button>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? "番茄钟·次数" : "番茄钟·分钟"}</span>` : ""}
@@ -2366,6 +2367,10 @@ export default class CheckinPlugin extends Plugin {
         this.bindQuickKeyboard(root);
         this.bindBulkMode(root);
         this.bindFocusTimerPanel(root);
+        root.querySelectorAll<HTMLElement>("[data-streak-insights]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((candidate) => candidate.id === button.dataset.streakInsights && !candidate.archived);
+            if (item) { this.insightsReturnPage = "today"; this.showInsights(item); }
+        }));
         this.bindMobileNav(root);
         const search = root.querySelector<HTMLInputElement>("[data-today-search]");
         let searchTimer: number | undefined;
@@ -2401,6 +2406,13 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => this.showHistory());
         root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => this.showArchived());
+        root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            const offset = Number(button.dataset.heatmapYear);
+            if (offset === -1) this.heatmapYearOffset -= 1;
+            else if (this.heatmapYearOffset < 0) this.heatmapYearOffset += 1;
+            this.render();
+        }));
         root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => this.showSummary());
         root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => this.showInsights());
         root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => this.showOccasions()));
