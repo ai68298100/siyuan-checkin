@@ -5,6 +5,7 @@ import "./ui/components.scss";
 import {buildCustomSummaryContext, buildSummaryContext, getEventsInCustomRange, getEventsInRange} from "./analytics";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
+import {PLUGIN_VERSION} from "./version";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {KIND_LABELS, PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS} from "./ui/labels";
 import {parseLocalDateKey, MAX_CUSTOM_ICON_BYTES, MAX_CUSTOM_LIBRARY_ITEMS, escapeHtml, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary, renderIconMarkup, withTimeout, renderRecordNote, matchesSearch, formatNumber, formatScheduleLabel, getTargetLabel, getRecordStep, getEditorStep, normalizePriorityInput, normalizeTimeSlotInput, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, formatHistoryDate, isSummaryRange, storeNeedsMigration, type ActionMoment} from "./shared";
@@ -28,6 +29,7 @@ import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette,
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {renderReviewView} from "./render/review";
 import {renderOccasionsView} from "./render/occasions";
+import {renderSettingsView} from "./render/settings";
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -42,7 +44,6 @@ const AUDIT_STORAGE_NAME = "checkin-store-audit";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "9.3.0";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
@@ -1355,86 +1356,25 @@ export default class CheckinPlugin extends Plugin {
         return template.content.firstElementChild as SVGElement;
     }
 
+    /* 方法体外置于 render/settings.ts（T-022）。 */
     private renderSettings(): string {
-        const agentStatus = this.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
-        const photoEvents = this.store.events.filter((event) => event.attachment);
-        const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
-        const iconKb = Math.max(0, Math.round(this.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
-        const storageKb = Math.max(1, Math.round((this.store.events.length * 160 + this.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
-        const auditLabel = (type: string) => type === "conflict" ? t("set.auditConflict") : type === "merge" ? t("set.auditMerge") : type === "restore" ? t("set.auditRestore") : t("set.auditMigration");
-        const auditRows = this.auditEntries.slice(-5).reverse().map((entry) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`).join("");
-        const kbdRow = (label: string, hint: string, keys: string[]) => `<div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${label}</span><small>${hint}</small></span><span class="lc-checkin__kbd-group">${keys.map((key) => `<kbd class="lc-checkin__kbd">${key}</kbd>`).join('<span class="lc-checkin__kbd-plus" aria-hidden="true">+</span>')}</span></div>`;
-        const groups: Array<{id: string; label: string; body: string}> = [
-            {
-                id: "appearance",
-                label: t("set.groupAppearance"),
-                body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.theme")}</span><small>${t("set.themeHint")}</small></span><select data-setting-appearance aria-label="${t("set.theme")}"><option value="system" ${this.appearance === "system" ? "selected" : ""}>${t("set.themeSystem")}</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>${t("set.themeLight")}</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>${t("set.themeDark")}</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reduceMotion")}</span><small>${t("set.reduceMotionHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.accent")}</span><small>${t("set.accentHint")}</small></span><select data-setting-palette aria-label="${t("set.accent")}"><option value="lavender"${this.palette === "lavender" ? " selected" : ""}>${t("set.paletteLavender")}</option><option value="ocean"${this.palette === "ocean" ? " selected" : ""}>${t("set.paletteOcean")}</option><option value="forest"${this.palette === "forest" ? " selected" : ""}>${t("set.paletteForest")}</option><option value="sunset"${this.palette === "sunset" ? " selected" : ""}>${t("set.paletteSunset")}</option></select></label>`,
-            },
-            {
-                id: "today",
-                label: t("set.groupToday"),
-                body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.groupModeLabel")}</span><small>${t("set.groupModeHint")}</small></span><select data-setting-group aria-label="${t("set.groupModeLabel")}"><option value="none"${this.todayGroupMode === "none" ? " selected" : ""}>${t("set.groupNone")}</option><option value="group"${this.todayGroupMode === "group" ? " selected" : ""}>${t("set.groupCustom")}</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>${t("set.groupTime")}</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>${t("set.groupPriority")}</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sortModeLabel")}</span><small>${t("set.sortModeHint")}</small></span><select data-setting-sort aria-label="${t("set.sortModeLabel")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.expandCompleted")}</span><small>${t("set.expandCompletedHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.weekStrip")}</span><small>${t("set.weekStripHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${this.weekStripVisible ? "checked" : ""} /></label>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetView")}</span><small>${t("set.resetViewHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">${t("set.reset")}</button></div>`,
-            },
-            {
-                id: "dialog",
-                label: t("set.groupDialog"),
-                body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.dialogSize")}</span><small>${t("set.dialogSizeHint")}</small></span><select data-setting-dialog-mode aria-label="${t("set.dialogSize")}"><option value="percent" ${this.dialogSizeMode === "percent" ? "selected" : ""}>${t("set.dialogPercent")}</option><option value="fullscreen" ${this.dialogSizeMode === "fullscreen" ? "selected" : ""}>${t("set.dialogFullscreen")}</option><option value="fixed" ${this.dialogSizeMode === "fixed" ? "selected" : ""}>${t("set.dialogFixed")}</option></select></label>
-                    <label class="lc-checkin__settings-row" data-dialog-scale-row ${this.dialogSizeMode === "percent" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>${t("set.scaleLabel")}</span><small>${t("set.scaleCurrent", {n: this.dialogScale})}</small></span><input type="range" min="50" max="100" step="5" value="${this.dialogScale}" data-setting-dialog-scale aria-label="${t("set.scaleLabel")}" /></label>
-                    <div class="lc-checkin__settings-row" data-dialog-fixed-row ${this.dialogSizeMode === "fixed" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>${t("set.fixedWH")}</span><small>${t("set.fixedWHHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="320" max="2560" step="20" value="${this.dialogFixedSize.width}" data-setting-dialog-width aria-label="${t("set.dialogWidthAria")}" aria-describedby="lc-checkin-dialog-width-unit" /><span id="lc-checkin-dialog-width-unit">×</span><input type="number" min="240" max="2048" step="20" value="${this.dialogFixedSize.height}" data-setting-dialog-height aria-label="${t("set.dialogHeightAria")}" aria-describedby="lc-checkin-dialog-width-unit" /></span></div>`,
-            },
-            {
-                id: "shortcuts",
-                label: t("set.groupShortcuts"),
-                body: `
-                    ${kbdRow(t("set.shortcutsOpen"), t("set.shortcutsOpenHint"), ["Alt", "Shift", "C"])}
-                    ${kbdRow(t("set.shortcutsQuick"), t("set.shortcutsQuickHint"), ["Alt", "1-9"])}
-                    ${kbdRow(t("set.shortcutsReorder"), t("set.shortcutsReorderHint"), ["Alt", "↑ / ↓"])}`,
-            },
-            {
-                id: "data",
-                label: t("set.groupData"),
-                body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.exportRecords")}</span><small>${t("set.exportHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="review">${t("set.openReview")}</button></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.storageLabel")}</span><small>${t("set.storageDetail", {items: this.store.items.length, events: this.store.events.length})}${photoEvents.length ? ` · ${t("set.photosDetail", {n: photoEvents.length, kb: photoKb})}` : ""}${iconKb ? ` · ${t("set.iconsDetail", {kb: iconKb})}` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.importJson")}</span><small>${t("set.importJsonHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-import-json accept=".json,application/json" />${t("set.chooseFile")}</label></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.restoreSnapshot")}</span><small>${t("set.restoreSnapshotHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="restore-backup">${t("set.restoreSnapshotBtn")}</button></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.audit")}</span><small>${t("set.auditHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="clear-audit">${t("set.clearAudit")}</button></div>
-                    <div class="lc-checkin__audit-list" aria-label="${t("set.audit")}">${auditRows ? `<ul>${auditRows}</ul>` : `<small>${t("set.auditEmpty")}</small>`}</div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.importCsv")}</span><small>${t("set.importCsvHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />${t("set.chooseFile")}</label></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetPrefs")}</span><small>${t("set.resetPrefsHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">${t("set.resetDefaults")}</button></div>`,
-            },
-            {
-                id: "integrations",
-                label: t("set.groupIntegrations"),
-                body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value">${t("set.tomatoPending")}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: this.customIconLibrary.length})}</span></div>`,
-            },
-            {
-                id: "about",
-                label: t("set.groupAbout"),
-                body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.versionLabel")}</span><small>${t("set.versionHint")}</small></span><span class="lc-checkin__settings-value">${PLUGIN_VERSION}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.homepage")}</span><small>${t("set.homepageHint")}</small></span><a class="lc-checkin__settings-link" href="https://github.com/ai68298100/siyuan-checkin" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>`,
-            },
-        ];
-        return `<div class="lc-checkin lc-checkin--settings" data-appearance="${this.resolvedAppearance()}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("set.personal")}</div><h1 class="lc-checkin__title">${t("settings.title")}</h1></div></header>
-            <div class="lc-checkin__settings-layout">
-                <nav class="lc-checkin__settings-nav" aria-label="设置分组">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
-                <div class="lc-checkin__settings-groups">${groups.map((group) => `<section class="lc-checkin__settings-card" data-settings-group="${group.id}"><h2>${group.label}</h2>${group.body}</section>`).join("")}</div>
-            </div>
-        </div>`;
+        return renderSettingsView({
+            store: this.store,
+            auditEntries: this.auditEntries,
+            customIconLibrary: this.customIconLibrary,
+            agentCapabilityRegistered: this.agentCapabilityRegistered,
+            appearance: this.appearance,
+            reducedMotion: this.reducedMotion,
+            palette: this.palette,
+            todayGroupMode: this.todayGroupMode,
+            todaySortMode: this.todaySortMode,
+            completedCollapsed: this.completedCollapsed,
+            weekStripVisible: this.weekStripVisible,
+            dialogSizeMode: this.dialogSizeMode,
+            dialogScale: this.dialogScale,
+            dialogFixedSize: {...this.dialogFixedSize},
+            resolvedAppearanceValue: this.resolvedAppearance(),
+        });
     }
 
     private bindSettings(root: HTMLElement) {

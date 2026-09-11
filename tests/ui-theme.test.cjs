@@ -23,7 +23,8 @@ assert.ok(reviewSource.includes('t("review.eyebrow")'), "review eyebrow uses the
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);
 assert.match(source, /surface\.dataset\.reducedMotion = String\(this\.reducedMotion\)/);
-assert.match(source, /lc-checkin__settings-nav/);
+const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "settings.ts"), "utf8");
+assert.match(settingsSource, /lc-checkin__settings-nav/);
 assert.match(source, /window\.confirm\(t\("msg\.prefsResetConfirm"\)\)/);
 assert.match(i18n, /"msg\.prefsResetConfirm": "确定恢复全部显示偏好吗？打卡数据不会受到影响。"/);
 assert.match(styles, /\.lc-checkin\[data-reduced-motion="true"\]/);

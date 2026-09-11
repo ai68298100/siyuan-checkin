@@ -52,8 +52,16 @@ for (const file of ["package.json", "plugin.json"]) {
 }
 const indexTs = path.join(root, "src", "index.ts");
 let source = fs.readFileSync(indexTs, "utf8");
-source = source.replace(/const PLUGIN_VERSION = "[^"]+";/, `const PLUGIN_VERSION = "${version}";`);
-fs.writeFileSync(indexTs, source, "utf8");
+if (source.includes('const PLUGIN_VERSION = "')) {
+    source = source.replace(/const PLUGIN_VERSION = "[^"]+";/, `const PLUGIN_VERSION = "${version}";`);
+    fs.writeFileSync(indexTs, source, "utf8");
+}
+const versionTs = path.join(root, "src", "version.ts");
+if (fs.existsSync(versionTs)) {
+    let versionSource = fs.readFileSync(versionTs, "utf8");
+    versionSource = versionSource.replace(/export const PLUGIN_VERSION = "[^"]+";/, `export const PLUGIN_VERSION = "${version}";`);
+    fs.writeFileSync(versionTs, versionSource, "utf8");
+}
 
 // 2. 构建 + 全部测试链
 run("pnpm run build");
