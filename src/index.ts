@@ -448,7 +448,7 @@ export default class CheckinPlugin extends Plugin {
             this.storageReady = false;
             this.initializationState = "failed";
             this.settleReady(false);
-            showMessage(`[小驴打卡] 读取或升级数据失败，已停止写入以保护原数据：${String(error)}`);
+            showMessage(t("msg.dataLoadFail", {error: String(error)}));
         }
         if (this.disposed || this.disposing) return;
         this.render();
@@ -468,7 +468,7 @@ export default class CheckinPlugin extends Plugin {
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();
         } catch (error) {
-            if (!this.disposing) showMessage(`[小驴打卡] 刷新界面偏好失败：${String(error)}`);
+            if (!this.disposing) showMessage(t("msg.prefRefreshFail", {error: String(error)}));
         }
     }
 
@@ -805,7 +805,7 @@ export default class CheckinPlugin extends Plugin {
                 this.tabInstance = tab;
             }
         }).catch((error) => {
-            showMessage(`[小驴打卡] 打开页签失败：${String(error)}，已改用快速窗口`);
+            showMessage(t("msg.openTabFail", {error: String(error)}));
             this.openQuickDialog();
         }).finally(() => {
             this.tabOpenPromise = undefined;
@@ -860,7 +860,7 @@ export default class CheckinPlugin extends Plugin {
         const root = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
         if (!root) {
             dialog.destroy();
-            showMessage("[小驴打卡] 快速窗口初始化失败");
+            showMessage(t("msg.quickDialogInitFail"));
             return;
         }
         dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("lc-checkin-dialog");
@@ -1313,7 +1313,7 @@ export default class CheckinPlugin extends Plugin {
             });
             this.agentCapabilityRegistered = true;
         } catch (error) {
-            showMessage(`[小驴打卡] 注册思源智能体能力失败：${String(error)}`);
+            showMessage(t("msg.agentRegisterFail", {error: String(error)}));
         }
     }
 
@@ -1512,7 +1512,7 @@ export default class CheckinPlugin extends Plugin {
         this.bindDialogClose(root);
         this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
-        const savePreference = () => { void this.persistViewPreferences().then(() => showMessage("界面偏好已保存")).catch(() => showMessage("界面偏好保存失败")); };
+        const savePreference = () => { void this.persistViewPreferences().then(() => showMessage(t("msg.prefSaved"))).catch(() => showMessage(t("msg.prefSaveFail"))); };
         root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "none" || value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
         root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
@@ -1523,12 +1523,12 @@ export default class CheckinPlugin extends Plugin {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {
                 this.palette = value;
-                void this.persistViewPreferences().then(() => showMessage("强调色已保存")).catch(() => showMessage("强调色保存失败"));
+                void this.persistViewPreferences().then(() => showMessage(t("msg.accentSaved"))).catch(() => showMessage(t("msg.accentSaveFail")));
                 this.render();
             }
         });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
-        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
         root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.saveData(AUDIT_STORAGE_NAME, []); this.render(); });
@@ -1541,20 +1541,20 @@ export default class CheckinPlugin extends Plugin {
                 const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
                 const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
                 const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
-                    if (!window.confirm(`将用备份文件恢复：${itemCount} 个项目（归档 ${archivedItemCount} 个）、${eventCount} 条记录${rangeLabel}。${warningLabel}\n当前数据将被覆盖，是否继续？`)) { input.value = ""; return; }
+                    if (!window.confirm(t("msg.jsonRestoreConfirm", {items: itemCount, archived: archivedItemCount, events: eventCount, range: rangeLabel, warning: warningLabel}))) { input.value = ""; return; }
                 const previous = this.store;
                 this.store = backup.store;
                 try {
                     await this.persist();
-                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? "（已自动修复兼容字段）" : ""}`);
+                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 } catch {
                     this.store = previous;
-                    showMessage("恢复失败，原数据未变");
+                    showMessage(t("msg.restoreFailed"));
                     return;
                 }
                 this.render();
             } catch (error) {
-                showMessage(`导入失败：${String(error)}`);
+                showMessage(t("msg.importFail", {error: String(error)}));
             }
             input.value = "";
         });
@@ -1565,15 +1565,15 @@ export default class CheckinPlugin extends Plugin {
             try {
                 const parsed = parseCheckinCsv(await file.text());
                 const names = [...new Set(parsed.rows.map((row) => row.name))];
-                if (!parsed.rows.length) { showMessage("没有找到可导入的记录"); return; }
+                if (!parsed.rows.length) { showMessage(t("msg.csvEmpty")); return; }
                 const skip = parsed.invalid;
-                if (!window.confirm(`将导入 ${names.length} 个项目、${parsed.rows.length} 条记录（跳过 ${skip} 行无效数据）。是否继续？`)) { input.value = ""; return; }
+                if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
                 const report = this.importCsvRows(parsed.rows);
                 await this.persist();
-                showMessage(`已导入 ${report.itemsCreated} 个项目、${report.eventsCreated} 条记录，跳过重复 ${report.duplicates} 条`);
+                showMessage(t("msg.csvDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
-                showMessage(`导入失败：${String(error)}`);
+                showMessage(t("msg.importFail", {error: String(error)}));
             }
             input.value = "";
         });
@@ -2546,14 +2546,14 @@ export default class CheckinPlugin extends Plugin {
                 const input = event.currentTarget as HTMLInputElement;
                 const file = input.files?.[0];
                 if (!file) return;
-                if (file.size > 500 * 1024) { showMessage("照片超过 500 KB 限制，请压缩后重试"); input.value = ""; return; }
+                if (file.size > 500 * 1024) { showMessage(t("msg.photoTooLarge")); input.value = ""; return; }
                 const reader = new FileReader();
                 reader.onload = () => {
                     if (typeof reader.result !== "string") return;
                     this.pendingAttachments.set(itemId, reader.result);
                     const button = element.querySelector<HTMLElement>("[data-attach-button]");
                     if (button) { button.classList.add("has-photo"); button.dataset.photo = "1"; }
-                    showMessage("照片已附上，随下一次记录保存");
+                    showMessage(t("msg.photoAttached"));
                 };
                 reader.readAsDataURL(file);
             });
@@ -2572,7 +2572,7 @@ export default class CheckinPlugin extends Plugin {
                         return;
                     }
                     if (!Number.isFinite(amount) || amount <= 0) {
-                        showMessage("请输入大于零的记录值");
+                        showMessage(t("msg.valuePositive"));
                         input?.focus();
                         return;
                     }
@@ -2618,8 +2618,8 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
             const id = button.dataset.occasionDelete || "";
             const item = this.occasionStore.occasions.find((candidate) => candidate.id === id);
-            if (!item || !window.confirm("删除日期事项？")) return;
-            void this.enqueueMutation(async () => { const previous = this.occasionStore; this.occasionStore = deleteOccasion(previous, id); try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项删除失败，请重试"); } if (this.editingOccasionId === id) this.editingOccasionId = undefined; this.render(); });
+            if (!item || !window.confirm(t("msg.occasionDeleteConfirm"))) return;
+            void this.enqueueMutation(async () => { const previous = this.occasionStore; this.occasionStore = deleteOccasion(previous, id); try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); } if (this.editingOccasionId === id) this.editingOccasionId = undefined; this.render(); });
         }));
 
         const syncBlocks = () => {
@@ -2674,7 +2674,7 @@ export default class CheckinPlugin extends Plugin {
             const form = event.currentTarget as HTMLFormElement;
             const data = new FormData(form);
             if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
-                showMessage("请填写有效的事项名称和日期");
+                showMessage(t("msg.occasionInvalid"));
                 return;
             }
             void this.enqueueMutation(() => this.saveOccasionForm(data));
@@ -2781,7 +2781,7 @@ export default class CheckinPlugin extends Plugin {
                 const next = removeEvents(this.store, [event], moment.occurredAt);
                 if (next === this.store) return;
                 this.store = next;
-                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 撤销失败，请重试"); return; }
+                try { await this.persist(); } catch { this.store = previous; showMessage(t("msg.undoFail")); return; }
                 this.invalidateSummary();
                 this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
                 this.renderBackgroundUpdate();
@@ -2803,7 +2803,7 @@ export default class CheckinPlugin extends Plugin {
                 const next = updateEventNote(this.store, event.id, note);
                 if (next === this.store) return;
                 this.store = next;
-                try { await this.persist(); } catch { this.store = previous; showMessage("[小驴打卡] 备注保存失败，请重试"); return; }
+                try { await this.persist(); } catch { this.store = previous; showMessage(t("msg.noteSaveFail")); return; }
                 this.invalidateSummary();
                 this.editingHistoryNoteId = undefined;
                 this.renderBackgroundUpdate();
@@ -2851,9 +2851,9 @@ export default class CheckinPlugin extends Plugin {
             const markdown = buildWeeklyReportMarkdown(summary, `${label}（${summary.startDate} ~ ${summary.endDate}）`);
             try {
                 await navigator.clipboard.writeText(markdown);
-                showMessage("周报已复制到剪贴板");
+                showMessage(t("msg.reportCopied"));
             } catch {
-                showMessage("复制失败：请检查剪贴板权限");
+                showMessage(t("msg.clipboardFail"));
             }
         });
         root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => this.downloadExport("csv"));
@@ -2905,26 +2905,26 @@ export default class CheckinPlugin extends Plugin {
         const expectedFingerprint = expectedItem ? this.itemFingerprint(expectedItem) : undefined;
         let restored = false;
         await this.enqueueMutation(async () => { restored = await this.setItemArchived(itemId, false, moment, expectedFingerprint); });
-        if (restored && expectedItem) showMessage(`[小驴打卡] 已恢复「${expectedItem.name}」`);
+        if (restored && expectedItem) showMessage(t("msg.restoredNamed", {name: expectedItem.name}));
     }
 
     private async restoreLatestBackup() {
         if (!this.storageReady || this.disposed) return;
         const raw = await this.loadData(BACKUP_STORAGE_NAME);
-        if (!raw) { showMessage("[小驴打卡] 暂无可恢复的本地快照"); return; }
+        if (!raw) { showMessage(t("msg.noSnapshot")); return; }
         const backup = normalizeStore(raw);
         const itemCount = backup.items.length;
         const eventCount = backup.events.length;
-        if (!window.confirm(`将恢复上一份本地快照：${itemCount} 个项目、${eventCount} 条记录。当前数据会先自动保留，是否继续？`)) return;
+        if (!window.confirm(t("msg.snapshotConfirm", {items: itemCount, events: eventCount}))) return;
         const current = this.cloneStore(this.store);
         this.store = backup;
         try {
             await this.persist(current);
-            showMessage(`[小驴打卡] 已恢复本地快照：${itemCount} 个项目、${eventCount} 条记录`);
+            showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
             this.render();
         } catch {
             this.store = current;
-            showMessage("[小驴打卡] 快照恢复失败，原数据未变");
+            showMessage(t("msg.snapshotRestoreFail"));
         }
     }
 
@@ -2934,7 +2934,7 @@ export default class CheckinPlugin extends Plugin {
         if (!item) return false;
         if (item.archived === archived) return true;
         if (!expectedFingerprint || this.itemFingerprint(item) !== expectedFingerprint) {
-            showMessage("[小驴打卡] 项目已在其他窗口更新，本次归档操作未执行");
+            showMessage(t("msg.conflictArchive"));
             return false;
         }
         const previous = this.store;
@@ -2962,7 +2962,7 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
         } catch {
             this.store = previous;
-            showMessage("[小驴打卡] 保存失败，请重试");
+            showMessage(t("msg.saveFail"));
             return false;
         }
         this.invalidateSummary();
@@ -2994,8 +2994,7 @@ export default class CheckinPlugin extends Plugin {
             this.render();
         } catch (error) {
             if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
-                showMessage(`[小驴打卡] 总结失败：${String(error)}`);
-            }
+                showMessage(t("msg.summaryFail", {error: String(error)}));            }
         }
     }
 
@@ -3125,7 +3124,7 @@ export default class CheckinPlugin extends Plugin {
             const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
             const customIcon = normalizeCustomIcon(input?.value || "");
             if (!customIcon) {
-                showMessage("请输入 emoji、符号或有效的 HTTPS 图标地址");
+                showMessage(t("msg.iconInvalid"));
                 input?.focus();
                 return;
             }
@@ -3135,11 +3134,11 @@ export default class CheckinPlugin extends Plugin {
         };
         const applyLocalIcon = (icon: string, storageLabel: string) => {
             if (icon.length > MAX_CUSTOM_ICON_BYTES) {
-                showMessage(`[小驴打卡] 图片过大，${storageLabel}后会占用超过 ${Math.round(MAX_CUSTOM_ICON_BYTES / 1024)} KB，请选择更小的图片`);
+                showMessage(t("msg.iconTooLarge", {action: storageLabel, kb: Math.round(MAX_CUSTOM_ICON_BYTES / 1024)}));
                 return;
             }
             const sizeKb = Math.max(1, Math.round(icon.length * 0.75 / 1024));
-            if (!window.confirm(`将图片保存到打卡数据中，预计占用约 ${sizeKb} KB。是否继续？`)) return;
+            if (!window.confirm(t("msg.iconSaveConfirm", {kb: sizeKb}))) return;
             selectIcon(icon);
             const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
             if (input) input.value = icon;
@@ -3162,20 +3161,20 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-custom-icon-file]")?.addEventListener("change", async (event) => {
             const file = (event.currentTarget as HTMLInputElement).files?.[0];
             if (!file) return;
-            try { applyLocalIcon(await readImageBlob(file), "上传"); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
+            try { applyLocalIcon(await readImageBlob(file), t("msg.upload")); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
         });
         root.querySelector<HTMLElement>("[data-action='download-custom-icon']")?.addEventListener("click", async () => {
             const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
             const url = normalizeCustomIcon(input?.value || "");
-            if (!url || !/^https:\/\//i.test(url)) { showMessage("请先输入 HTTPS 图片地址"); input?.focus(); return; }
+            if (!url || !/^https:\/\//i.test(url)) { showMessage(t("msg.iconUrlNeeded")); input?.focus(); return; }
             try {
                 const response = await fetch(url, {credentials: "omit"});
                 if (!response.ok) throw new Error(`下载失败（${response.status}）`);
                 const blob = await response.blob();
                 if (!blob.type.startsWith("image/")) throw new Error("地址返回的不是图片");
-                applyLocalIcon(await readImageBlob(blob), "下载");
+                applyLocalIcon(await readImageBlob(blob), t("msg.download"));
             } catch (error) {
-                showMessage(`[小驴打卡] 无法下载图片，可能是站点禁止跨域访问。你也可以直接上传图片：${String(error instanceof Error ? error.message : error)}`);
+                showMessage(t("msg.iconDownloadFail", {error: String(error instanceof Error ? error.message : error)}));
             }
         });
         root.querySelector<HTMLElement>("[data-action='open-iconfont']")?.addEventListener("click", () => {
@@ -3195,12 +3194,12 @@ export default class CheckinPlugin extends Plugin {
                 const added = merged.length - this.customIconLibrary.length;
                 if (!added) throw new Error("图标库中没有新的图标");
                 const sizeKb = Math.max(1, Math.round(merged.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
-                if (!window.confirm(`将导入 ${added} 个图标，图标库预计占用约 ${sizeKb} KB。是否继续？`)) return;
+                if (!window.confirm(t("msg.iconImportConfirm", {n: added, kb: sizeKb}))) return;
                 this.customIconLibrary = merged;
                 await this.saveData(CUSTOM_ICON_LIBRARY_NAME, this.customIconLibrary);
-                showMessage(`[小驴打卡] 已导入 ${added} 个自定义图标`);
+                showMessage(t("msg.iconImported", {n: added}));
                 this.render();
-            } catch (error) { showMessage(`[小驴打卡] 导入图标库失败：${String(error instanceof Error ? error.message : error)}`); }
+            } catch (error) { showMessage(t("msg.iconImportFail", {error: String(error instanceof Error ? error.message : error)})); }
         });
         let previousKind = getKind();
         const bindUnitOptions = () => {
@@ -3294,7 +3293,7 @@ export default class CheckinPlugin extends Plugin {
             const startDate = String(data.get("customStartDate") || "");
             const endDate = String(data.get("customEndDate") || "");
             if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) {
-                showMessage("请选择有效的日期范围");
+                showMessage(t("msg.invalidDateRange"));
                 return;
             }
             this.summaryCustomRange = {startDate, endDate};
@@ -3425,13 +3424,13 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLButtonElement>("[data-user-template-delete]").forEach((button) => button.addEventListener("click", () => {
             const id = button.dataset.userTemplateDelete;
             const template = this.userTemplates.find((candidate) => candidate.id === id);
-            if (!id || !template || !window.confirm(`删除模板“${template.name}”？`)) return;
+            if (!id || !template || !window.confirm(t("msg.templateDeleteConfirm", {name: template.name}))) return;
             const nextTemplates = deleteUserTemplate(this.userTemplates, id);
             void this.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => {
                 this.userTemplates = nextTemplates;
-                showMessage("[小驴打卡] 模板已删除");
+                showMessage(t("msg.templateDeleted"));
                 this.render();
-            }).catch(() => showMessage("[小驴打卡] 模板删除失败，请稍后重试"));
+            }).catch(() => showMessage(t("msg.templateDeleteFail")));
         }));
         root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
             const form = root.querySelector<HTMLFormElement>("form");
@@ -3444,7 +3443,7 @@ export default class CheckinPlugin extends Plugin {
             const unit = kind === "binary" ? "次" : String(data.get("unit") || "").trim();
             const validation = validateEditorInput({name, kind, target, unit, schedule: scheduleType, weekdays: data.getAll("weekday").map(Number), quotaAmount: Number(data.get("quotaAmount"))});
             if (!validation.valid) {
-                showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || "请检查表单内容"}`);
+                showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
                 return;
             }
             const existing = this.userTemplates.find((template) => template.name === name);
@@ -3467,8 +3466,8 @@ export default class CheckinPlugin extends Plugin {
                 priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), completionSource: data.get("completionSource") === "tomato" ? "tomato" : "manual", tomatoMode: data.get("tomatoMode") === "sessions" ? "sessions" : "minutes", note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
             };
             this.userTemplates = upsertUserTemplate(this.userTemplates, template);
-            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage("[小驴打卡] 已保存到我的模板"); this.render(); }).catch(() => {
-                showMessage("[小驴打卡] 模板保存失败，请稍后重试");
+            void this.saveData(USER_TEMPLATES_NAME, this.userTemplates).then(() => { showMessage(t("msg.templateSaved")); this.render(); }).catch(() => {
+                showMessage(t("msg.templateSaveFail"));
             });
         });
         const updateAdvancedSummary = () => {
@@ -3535,7 +3534,7 @@ export default class CheckinPlugin extends Plugin {
         const quotaAmountValue = Number.isFinite(requestedQuotaAmount) ? Math.max(requestedQuotaMode === "dates" ? 1 : 0.1, requestedQuotaAmount) : 0;
         const validation = validateEditorInput({name, kind, target: kind === "binary" ? 1 : Number(data.get("target")), unit: kind === "binary" ? "次" : String(data.get("unit") || "").trim(), schedule: scheduleType, weekdays: checkedWeekdays, quotaAmount: requestedQuotaAmount});
         if (!validation.valid) {
-            showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || "请检查表单内容"}`);
+            showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
             return;
         }
         const schedule: CheckinSchedule = scheduleType === "interval"
@@ -3545,7 +3544,7 @@ export default class CheckinPlugin extends Plugin {
                 : {type: scheduleType, weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays};
         const existing = editingId ? this.store.items.find((item) => item.id === editingId) : undefined;
         if (editingId && (!existing || !expectedFingerprint || this.itemFingerprint(existing) !== expectedFingerprint)) {
-            showMessage("[小驴打卡] 项目已在其他窗口更新，本次编辑未保存");
+            showMessage(t("msg.conflictEdit"));
             this.showToday();
             return;
         }
@@ -3607,7 +3606,7 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
         } catch {
             this.store = previous;
-            showMessage("[小驴打卡] 保存失败，请重试");
+            showMessage(t("msg.saveFail"));
             this.renderBackgroundUpdate();
             return;
         }
@@ -3638,7 +3637,7 @@ export default class CheckinPlugin extends Plugin {
             return;
         }
         if (!expectedRevisionFingerprint || this.revisionFingerprint(item, actionDate) !== expectedRevisionFingerprint) {
-            showMessage("[小驴打卡] 项目配置已在其他窗口更新，本次打卡未执行");
+            showMessage(t("msg.conflictCheckin"));
             this.renderBackgroundUpdate();
             return;
         }
@@ -3660,7 +3659,7 @@ export default class CheckinPlugin extends Plugin {
                 await this.persist();
             } catch {
                 this.store = previous;
-                showMessage("[小驴打卡] 保存失败，请重试");
+                showMessage(t("msg.saveFail"));
                 this.renderBackgroundUpdate();
                 return;
             }
@@ -3685,7 +3684,7 @@ export default class CheckinPlugin extends Plugin {
             return undefined;
         }
         if (!expectedRevisionFingerprint || this.revisionFingerprint(current, actionDate) !== expectedRevisionFingerprint) {
-            showMessage("[小驴打卡] 项目配置已在其他窗口更新，本次记录未执行");
+            showMessage(t("msg.conflictRecord"));
             this.renderBackgroundUpdate();
             return undefined;
         }
@@ -3698,7 +3697,7 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
         } catch {
             this.store = previous;
-            showMessage("[小驴打卡] 保存失败，请重试");
+            showMessage(t("msg.saveFail"));
             this.renderBackgroundUpdate();
             return undefined;
         }
@@ -3753,7 +3752,7 @@ export default class CheckinPlugin extends Plugin {
                 await this.persist();
             } catch {
                 this.store = previous;
-                showMessage("[小驴打卡] 撤销失败，请重试");
+                showMessage(t("msg.undoFail"));
                 return;
             }
             this.invalidateSummary();
@@ -3786,7 +3785,7 @@ export default class CheckinPlugin extends Plugin {
                 this.activeFocusAdapter = adapter;
                 return true;
             } catch (error) {
-                if (!this.disposed) showMessage(`[小驴打卡] 无法启动专注：${String(error)}`);
+                if (!this.disposed) showMessage(t("msg.focusStartFail", {error: String(error)}));
                 return false;
             } finally {
                 this.focusBusy = false;
@@ -3824,7 +3823,7 @@ export default class CheckinPlugin extends Plugin {
                 if (this.activeFocusAdapter === adapter) this.activeFocusAdapter = undefined;
                 return true;
             } catch (error) {
-                if (!this.disposed) showMessage(`[小驴打卡] 无法停止专注：${String(error)}`);
+                if (!this.disposed) showMessage(t("msg.focusStopFail", {error: String(error)}));
                 return false;
             } finally {
                 this.focusBusy = false;
@@ -3908,7 +3907,7 @@ export default class CheckinPlugin extends Plugin {
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(BACKUP_STORAGE_NAME, previous).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined)));
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
-            showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
+            showMessage(t("msg.saveDataFail", {error: String(error)}));
             this.renderBackgroundUpdate();
         });
         void write.then(() => {
@@ -3922,7 +3921,7 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
         const snapshot: OccasionStore = {version: 1, occasions: store.occasions.map((item) => ({...item, completedDates: [...item.completedDates]}))};
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
-        this.saveQueue = write.catch((error) => showMessage("[小驴打卡] 保存日期事项失败：" + String(error)));
+        this.saveQueue = write.catch((error) => showMessage(t("msg.occasionPersistFail", {error: String(error)})));
         return write;
     }
 
@@ -4108,7 +4107,7 @@ export default class CheckinPlugin extends Plugin {
             return true;
         } catch {
             this.store = previous;
-            showMessage("[小驴打卡] 排序保存失败，请重试");
+            showMessage(t("msg.reorderFail"));
             return false;
         }
     }
@@ -4178,7 +4177,7 @@ export default class CheckinPlugin extends Plugin {
                 window.setTimeout(() => { this.celebration = undefined; this.render(); }, 6000);
             }
         } else if (complete) {
-            showMessage("专注不足 1 分钟，未记录");
+            showMessage(t("msg.focusTooShort"));
         }
         this.render();
     }
@@ -4253,9 +4252,9 @@ export default class CheckinPlugin extends Plugin {
             archivePeriods: [{startDate: "0000-01-01", endDate: occurrence}, {startDate: dayAfter}],
             linkedOccasionId: occasion.id,
         });
-        if (!created) { showMessage("无法生成打卡项"); return false; }
+        if (!created) { showMessage(t("msg.createFail")); return false; }
         if (this.store.items.some((candidate) => candidate.linkedOccasionId === occasion.id && !candidate.archived)) {
-            showMessage("该事项已生成过打卡项");
+            showMessage(t("msg.alreadyGenerated"));
             return false;
         }
         const previous = this.store;
@@ -4264,10 +4263,10 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
         } catch {
             this.store = previous;
-            showMessage("打卡项生成失败，请重试");
+            showMessage(t("msg.createCheckinFail"));
             return false;
         }
-        showMessage(`已在今日页生成打卡项：${occasion.name}`);
+        showMessage(t("msg.checkinCreated", {name: occasion.name}));
         return true;
     }
 
@@ -4295,10 +4294,10 @@ export default class CheckinPlugin extends Plugin {
             remindBeforeDays, note: String(data.get("note") || ""),
             enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString(),
         });
-        if (!normalized) { showMessage("请填写有效的事项名称和日期"); return; }
+        if (!normalized) { showMessage(t("msg.occasionInvalid")); return; }
         const previous = this.occasionStore;
         this.occasionStore = upsertOccasion(previous, normalized);
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项保存失败，请重试"); return; }
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionSaveFail")); return; }
         this.editingOccasionId = undefined;
         this.render();
     }
@@ -4308,7 +4307,7 @@ export default class CheckinPlugin extends Plugin {
         if (!normalized) return;
         const previous = this.occasionStore;
         this.occasionStore = {...previous, occasions: previous.occasions.map((candidate) => candidate.id === normalized.id ? normalized : candidate)};
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项更新失败，请重试"); return; }
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionUpdateFail")); return; }
         this.renderBackgroundUpdate();
     }
 
@@ -4317,7 +4316,7 @@ export default class CheckinPlugin extends Plugin {
         const next = markOccasionCompleted(previous, id, occurrenceDate, completed);
         if (next === previous) return true;
         this.occasionStore = next;
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage("事项状态保存失败，请重试"); return false; }
+        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionToggleFail")); return false; }
         this.renderBackgroundUpdate();
         return true;
     }
@@ -4381,7 +4380,7 @@ export default class CheckinPlugin extends Plugin {
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {
-            showMessage(`[小驴打卡] 保存界面偏好失败：${String(error)}`);
+            showMessage(t("msg.prefPersistFail", {error: String(error)}));
         });
         return write;
     }
@@ -4411,7 +4410,7 @@ export default class CheckinPlugin extends Plugin {
                         this.occasionStore = remoteOccasions;
                     }
                 } catch (error) {
-                    if (!this.disposing) showMessage(`[小驴打卡] 刷新数据失败，本次操作已取消：${String(error)}`);
+                    if (!this.disposing) showMessage(t("msg.refreshFail", {error: String(error)}));
                     return undefined as T;
                 }
             }

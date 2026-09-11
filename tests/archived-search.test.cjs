@@ -13,7 +13,8 @@ assert.match(source, /\[item\.name, item\.group, item\.unit, item\.icon\][\s\S]*
 assert.match(source, /data-action="clear-archived-query"/, "archive search must expose a clear action");
 assert.match(source, /data-restore-id[\s\S]*t\("archived\.restoreAria"/, "restore actions must identify their item");
 assert.match(i18n, /"archived\.restoreAria": "恢复\{name\}"/, "restore aria label must stay in the dictionary");
-assert.match(source, /已恢复「\$\{expectedItem\.name\}」/, "successful restore must give named feedback");
+assert.match(source, /t\("msg\.restoredNamed", \{name: expectedItem\.name\}\)/, "successful restore must give named feedback");
+assert.match(i18n, /"msg\.restoredNamed": "\[小驴打卡\] 已恢复「\{name\}」"/, "restore feedback must stay in the dictionary");
 assert.match(styles, /\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[\s\S]*justify-content:\s*space-between;/, "archive tools must have a stable desktop layout");
 assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[\s\S]*display:\s*grid;/, "archive tools must stack compactly on mobile");
 

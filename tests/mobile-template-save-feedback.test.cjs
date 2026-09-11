@@ -4,12 +4,15 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
-assert.match(source, /class=\"lc-checkin__save-button\" type=\"submit\"/,
+assert.match(source, /class="lc-checkin__save-button" type="submit"/,
     "template save must remain an explicit submit action");
-assert.match(source, /showMessage\("\[小驴打卡\] 保存失败，请重试"\)/,
+assert.match(source, /showMessage\(t\("msg\.saveFail"\)\)/,
     "template save failures must be reported to the user");
+assert.match(i18n, /"msg\.saveFail": "\[小驴打卡\] 保存失败，请重试"/,
+    "save failure message must stay in the dictionary");
 assert.match(source, /form\.dataset\.submitting = \"true\"[\s\S]*submitButton\.disabled = true/,
     "save must disable the submit button while persistence is pending");
 assert.match(source, /const resetSubmitting = \(\) => \{[\s\S]*form\.dataset\.submitting = \"false\"/,
