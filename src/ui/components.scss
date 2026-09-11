@@ -22,7 +22,8 @@
 
 /* 速记形态（侧边栏 / 手机）：一切为快速打卡服务 */
 @container lc5 (max-width: 719px) {
-    .lc-checkin__layout { padding: 10px 12px calc(calc(64px + env(safe-area-inset-bottom)) + 10px); }
+    /* 底部预留需同时避开导航条和其上方的悬浮添加按钮 */
+    .lc-checkin__layout { padding: 10px 12px calc(var(--lc-checkin-nav-height) + 74px + env(safe-area-inset-bottom)); }
     .lc-checkin__rail { display: none; }
 }
 
@@ -365,15 +366,12 @@
 .lc-checkin--today .lc-checkin__group-header em { color: var(--lc-checkin-muted); font-size: 11px; font-style: normal; }
 .lc-checkin--today .lc-checkin__group-header .lc-checkin__small-button { width: 22px; height: 22px; }
 .lc-checkin--today .lc-checkin__group-items { display: grid; gap: 7px; }
-@container lc5 (min-width: 900px) {
-    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 
 .lc-checkin--today .lc-checkin__item {
     --card-accent: var(--lc-checkin-accent);
     position: relative;
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-columns: 40px minmax(0, 1fr) max-content;
     grid-template-areas: "icon body action" "icon exact exact";
     gap: 0 10px;
     align-items: center;
@@ -444,7 +442,7 @@
     align-items: center;
     gap: 6px;
     width: auto;
-    min-width: max-content;
+    min-width: 0;
     margin: 0;
     padding: 0;
     border: 0;
@@ -1233,14 +1231,12 @@
 /* ---------------- occasions v5 additions ---------------- */
 .lc-checkin__occasion-templates {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 10px;
     padding-bottom: 10px;
     border-bottom: 1px solid var(--lc-checkin-border);
-    overflow-x: auto;
-    scrollbar-width: none;
 }
-.lc-checkin__occasion-templates::-webkit-scrollbar { display: none; }
 .lc-checkin__occasion-template {
     display: inline-flex;
     flex: none;
@@ -1470,7 +1466,7 @@
     .lc-checkin--today .lc-checkin__group-items { grid-template-columns: minmax(0, 1fr); }
 
     /* 行式卡片：图标 + 名称/元信息 + 大打卡钮，两行以内 */
-    .lc-checkin--today .lc-checkin__item { grid-template-columns: 40px minmax(0, 1fr) auto; min-height: 64px; }
+    .lc-checkin--today .lc-checkin__item { grid-template-columns: 40px minmax(0, 1fr) max-content; min-height: 64px; }
     .lc-checkin--today .lc-checkin__item-topline { flex-wrap: nowrap; }
     .lc-checkin--today .lc-checkin__item-name { flex: 0 1 auto; }
     /* 次要信息退出首屏：标签只留"重要"，复盘/编辑小钮隐藏（长按或回顾页可达） */
@@ -1489,9 +1485,14 @@
     .lc-checkin--review .lc-checkin__range-tabs button { white-space: nowrap; padding: 0 11px; }
 }
 
-/* 平板/桌面：两列以上货架按最小卡宽自动填充 */
+/* 平板/桌面：货架按最小卡宽自动填充；最小宽度需容纳 图标+名称+完整操作区，
+   避免出现过多空列或名称被压成一两个字 */
 @container lc5 (min-width: 900px) {
-    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(auto-fill, minmax(390px, 1fr)); }
+}
+/* 中窄货架（双列但卡片偏窄）：隐藏拖拽柄，给名称腾出一行空间 */
+@container lc5 (min-width: 900px) and (max-width: 1360px) {
+    .lc-checkin--today .lc-checkin__drag-handle { display: none; }
 }
 
 /* 范围切换与导出在窄容器内允许换行，不被裁切 */
@@ -1882,7 +1883,7 @@
 
 /* --- 卡片本体：统一高度与内距 --- */
 .lc-checkin--today .lc-checkin__item {
-    grid-template-columns: 42px minmax(0, 1fr) 78px;
+    grid-template-columns: 42px minmax(0, 1fr) max-content;
     grid-template-areas: "icon body action" "icon exact exact";
     align-items: center;
     min-height: 64px;
@@ -1919,8 +1920,8 @@
     overflow: hidden;
 }
 .lc-checkin--today .lc-checkin__item-name {
-    flex: 0 1 auto;
-    min-width: 0;
+    flex: 1 1 auto;
+    min-width: 4.5em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

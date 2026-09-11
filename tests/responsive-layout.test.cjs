@@ -27,8 +27,8 @@ assert.match(components, /@container\s+lc5\s*\(max-width:\s*719px\)[\s\S]*\.lc-c
     "shortcut form must hide the desktop rail");
 assert.match(components, /@container\s+lc5\s*\(min-width:\s*720px\)[\s\S]*grid-template-columns:\s*var\(--lc-checkin-rail-width\)\s+minmax\(0,\s*1fr\)/,
     "desktop form must split into rail and content columns from the medium band up");
-assert.match(components, /@container\s+lc5\s*\(min-width:\s*900px\)[\s\S]*\.lc-checkin--today \.lc-checkin__group-items\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "desktop today shelf keeps two columns");
+assert.match(components, /@container\s+lc5\s*\(min-width:\s*900px\)[\s\S]*\.lc-checkin--today \.lc-checkin__group-items\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(390px,\s*1fr\)\)/,
+    "desktop today shelf auto-fills with cards wide enough for name plus actions");
 
 /* Header discipline: compact, never sticky. */
 assert.match(components, /\.lc-checkin__header,\n\.lc-checkin__editor-header \{[^}]*position:\s*static;/,
