@@ -10,14 +10,23 @@
     --lc-checkin-accent: #7B85F4;
     --lc-checkin-accent-strong: #5B65E8;
     --lc-checkin-accent-soft: #E9EAFE;
+    /* 文本专用变体：白底/浅底上 ≥4.5:1，填充与图标仍用 accent。 */
+    --lc-checkin-accent-text: #4F58C9;
+    --lc-checkin-accent-fill: #5B65E8;
+    --lc-checkin-accent-contrast: #FFFFFF;
     --lc-checkin-success: #3BA55D;
     --lc-checkin-success-soft: #E3F4E9;
+    --lc-checkin-success-text: #1E7B40;
     --lc-checkin-warning: #E89A2B;
+    --lc-checkin-warning-text: #8A5800;
     --lc-checkin-danger: #E5484D;
+    --lc-checkin-danger-text: #C0343A;
     --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-text: #4F58C9;
     --lc-checkin-lilac-soft: #E9EAFE;
     --lc-checkin-warm: #F6A94B;
     --lc-checkin-warm-soft: #FDF0DC;
+    --lc-checkin-warm-text: #8A5800;
 
     /* ---- surfaces ---- */
     --lc-checkin-bg: #EEF0FB;
@@ -27,12 +36,13 @@
     --lc-checkin-border: #E4E6F4;
     --lc-checkin-border-strong: #D6D8EC;
     --lc-checkin-text: #2A2B35;
-    --lc-checkin-muted: #85869A;
+    --lc-checkin-muted: #63657A;
 
     /* ---- deep card（参考图的炭黑卡 + 金色开关）---- */
     --lc-checkin-deep: #27272E;
     --lc-checkin-deep-text: #F5F5FA;
     --lc-checkin-gold: #F5C242;
+    --lc-checkin-gold-text: #7A5800;
 
     /* ---- elevation ---- */
     --lc-checkin-shadow-sm: 0 1px 2px rgba(84, 88, 178, 0.05);
@@ -90,14 +100,22 @@
     --lc-checkin-accent: #7B85F4;
     --lc-checkin-accent-strong: #5B65E8;
     --lc-checkin-accent-soft: #E9EAFE;
+    --lc-checkin-accent-text: #4F58C9;
+    --lc-checkin-accent-fill: #5B65E8;
+    --lc-checkin-accent-contrast: #FFFFFF;
     --lc-checkin-success: #3BA55D;
     --lc-checkin-success-soft: #E3F4E9;
+    --lc-checkin-success-text: #1E7B40;
     --lc-checkin-warning: #E89A2B;
+    --lc-checkin-warning-text: #8A5800;
     --lc-checkin-danger: #E5484D;
+    --lc-checkin-danger-text: #C0343A;
     --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-text: #4F58C9;
     --lc-checkin-lilac-soft: #E9EAFE;
     --lc-checkin-warm: #F6A94B;
     --lc-checkin-warm-soft: #FDF0DC;
+    --lc-checkin-warm-text: #8A5800;
 
     --lc-checkin-bg: #EEF0FB;
     --lc-checkin-surface: #FFFFFF;
@@ -106,11 +124,12 @@
     --lc-checkin-border: #E4E6F4;
     --lc-checkin-border-strong: #D6D8EC;
     --lc-checkin-text: #2A2B35;
-    --lc-checkin-muted: #85869A;
+    --lc-checkin-muted: #63657A;
 
     --lc-checkin-deep: #27272E;
     --lc-checkin-deep-text: #F5F5FA;
     --lc-checkin-gold: #F5C242;
+    --lc-checkin-gold-text: #7A5800;
 
     --lc-checkin-shadow-sm: 0 1px 2px rgba(84, 88, 178, 0.05);
     --lc-checkin-shadow: 0 2px 6px rgba(84, 88, 178, 0.07), 0 10px 28px rgba(84, 88, 178, 0.09);
@@ -136,14 +155,22 @@
     --lc-checkin-accent: #8B93F8;
     --lc-checkin-accent-strong: #A5AEF8;
     --lc-checkin-accent-soft: #2B2C44;
+    --lc-checkin-accent-text: #A5AEF8;
+    --lc-checkin-accent-fill: #8B93F8;
+    --lc-checkin-accent-contrast: #141419;
     --lc-checkin-success: #4CBB7F;
     --lc-checkin-success-soft: #1F3329;
+    --lc-checkin-success-text: #6CCB95;
     --lc-checkin-warning: #F0B45C;
+    --lc-checkin-warning-text: #F5C57E;
     --lc-checkin-danger: #F07C7C;
+    --lc-checkin-danger-text: #F59999;
     --lc-checkin-lilac: #8B93F8;
+    --lc-checkin-lilac-text: #A5AEF8;
     --lc-checkin-lilac-soft: #2B2C44;
     --lc-checkin-warm: #F6B04E;
     --lc-checkin-warm-soft: #38301F;
+    --lc-checkin-warm-text: #F5C57E;
 
     --lc-checkin-bg: #141419;
     --lc-checkin-surface: #1D1E24;
@@ -156,6 +183,7 @@
 
     --lc-checkin-deep: #101014;
     --lc-checkin-deep-text: #F5F5FA;
+    --lc-checkin-gold-text: #F5C57E;
 
     --lc-checkin-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --lc-checkin-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
@@ -216,14 +244,19 @@
     --lc-checkin-accent: #3E97E0;
     --lc-checkin-accent-strong: #2C7CC2;
     --lc-checkin-accent-soft: #E3F0FC;
+    --lc-checkin-accent-text: #1D6FA8;
+    --lc-checkin-accent-fill: #2870B0;
     --lc-checkin-lilac: #4FA3E8;
+    --lc-checkin-lilac-text: #1D6FA8;
     --lc-checkin-lilac-soft: #E3F0FC;
 }
 .lc-checkin[data-appearance="dark"][data-palette="ocean"] {
     --lc-checkin-accent: #5CA9EE;
     --lc-checkin-accent-strong: #8CC3F4;
     --lc-checkin-accent-soft: #1E3040;
+    --lc-checkin-accent-text: #8CC3F4;
     --lc-checkin-lilac: #5CA9EE;
+    --lc-checkin-lilac-text: #8CC3F4;
     --lc-checkin-lilac-soft: #1E3040;
 }
 
@@ -232,14 +265,19 @@
     --lc-checkin-accent: #43A878;
     --lc-checkin-accent-strong: #348D63;
     --lc-checkin-accent-soft: #E3F4EB;
+    --lc-checkin-accent-text: #1F7A50;
+    --lc-checkin-accent-fill: #2F7E58;
     --lc-checkin-lilac: #4FBA88;
+    --lc-checkin-lilac-text: #1F7A50;
     --lc-checkin-lilac-soft: #E3F4EB;
 }
 .lc-checkin[data-appearance="dark"][data-palette="forest"] {
     --lc-checkin-accent: #5BBF8C;
     --lc-checkin-accent-strong: #7ED3A6;
     --lc-checkin-accent-soft: #1F3329;
+    --lc-checkin-accent-text: #7ED3A6;
     --lc-checkin-lilac: #5BBF8C;
+    --lc-checkin-lilac-text: #7ED3A6;
     --lc-checkin-lilac-soft: #1F3329;
 }
 
@@ -248,13 +286,18 @@
     --lc-checkin-accent: #EE7F5B;
     --lc-checkin-accent-strong: #D4643F;
     --lc-checkin-accent-soft: #FDEAE3;
+    --lc-checkin-accent-text: #A83E1B;
+    --lc-checkin-accent-fill: #C04F2C;
     --lc-checkin-lilac: #F0926F;
+    --lc-checkin-lilac-text: #A83E1B;
     --lc-checkin-lilac-soft: #FDEAE3;
 }
 .lc-checkin[data-appearance="dark"][data-palette="sunset"] {
     --lc-checkin-accent: #F49B7A;
     --lc-checkin-accent-strong: #F8B79D;
     --lc-checkin-accent-soft: #3A2620;
+    --lc-checkin-accent-text: #F8B79D;
     --lc-checkin-lilac: #F49B7A;
+    --lc-checkin-lilac-text: #F8B79D;
     --lc-checkin-lilac-soft: #3A2620;
 }

@@ -2157,7 +2157,7 @@ export default class CheckinPlugin extends Plugin {
                                 <option value="halfyearly"${sel("halfyearly", recurrence)}>每半年</option>
                                 <option value="interval"${sel("interval", recurrence)}>自定义间隔</option>
                             </select></label>
-                            <div class="lc-checkin__field" data-occasion-block="annual-calendar"${recurrence === "annual" ? "" : " hidden"}><span class="lc-checkin__field-label">历法</span><select name="calendar" data-occasion-calendar><option value="solar"${sel("solar", calendar)}>公历</option><option value="lunar"${sel("lunar", calendar)}>农历</option></select><small class="lc-checkin__field-hint" data-occasion-lunar-hint hidden></small></div>
+                            <div class="lc-checkin__field" data-occasion-block="annual-calendar"${recurrence === "annual" ? "" : " hidden"}><span class="lc-checkin__field-label">历法</span><select name="calendar" data-occasion-calendar aria-label="历法"><option value="solar"${sel("solar", calendar)}>公历</option><option value="lunar"${sel("lunar", calendar)}>农历</option></select><small class="lc-checkin__field-hint" data-occasion-lunar-hint hidden></small></div>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>月份</span><select name="annualMonth">${monthOptions}</select></label>
@@ -2169,7 +2169,7 @@ export default class CheckinPlugin extends Plugin {
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="monthly-sub"${recurrence === "monthly" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>方式</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>每月固定日（取日期）</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>每月第N个星期</option><option value="lastday"${sel("lastday", monthlySubtype)}>每月最后一天</option></select></label>
-                            <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">星期</span><select name="monthlyWeekday">${weekdayOptions}</select></div>
+                            <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">星期</span><select name="monthlyWeekday" aria-label="每月星期">${weekdayOptions}</select></div>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="weekly"${recurrence === "weekly" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>星期</span><select name="weeklyWeekday">${weekdayOptions}</select></label>
@@ -2364,7 +2364,7 @@ export default class CheckinPlugin extends Plugin {
                                 <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>番茄钟计入</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>累计分钟</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>完成番茄钟数量</option></select></label>
                                 <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>安装兼容的番茄钟插件后，它可以通过小驴打卡 API 写入 source=tomato 的记录；未安装时仍可手动记录。</p>
                             </div>
-                            <div class="lc-checkin__field"><span>频率</span><select name="schedule">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${label}</option>`).join("")}</select></div>
+                            <div class="lc-checkin__field"><span>频率</span><select name="schedule" aria-label="频率">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${label}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>

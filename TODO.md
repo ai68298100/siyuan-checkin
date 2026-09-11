@@ -56,10 +56,10 @@
   - 依赖：无
   - 状态：todo
 
-- [ ] T-021 无障碍审计
+- [x] T-021 无障碍审计
   - 验收：所有交互元素有 aria-label；焦点顺序合理；色彩对比度 ≥4.5:1
   - 依赖：无
-  - 状态：todo
+  - 状态：done（tests/accessibility-audit.test.cjs 守门：0 缺名 / 0 正向 tabindex / 0 对比度违规，双主题）
 
 - [ ] T-022 index.ts 拆分
   - 验收：index.ts < 2000 行，渲染方法提取到独立文件

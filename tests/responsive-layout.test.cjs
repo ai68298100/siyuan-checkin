@@ -50,7 +50,7 @@ assert.ok(navEntries, "navigation must expose exactly today/review/occasions/arc
 assert.match(source, /private renderRail\(\): string/, "desktop surfaces need the labelled rail");
 assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)\s+auto;/,
     "bottom navigation keeps five destinations plus the floating add action");
-assert.match(components, /\.lc-checkin__mobile-nav button\.is-selected span \{[^}]*background:\s*var\(--lc-checkin-accent\);/,
+assert.match(components, /\.lc-checkin__mobile-nav button\.is-selected span \{[^}]*background:\s*var\(--lc-checkin-accent-fill\);/,
     "the selected destination uses the solid accent disc");
 
 /* Review fusion: one surface for calendar, day details, stats and projects. */
