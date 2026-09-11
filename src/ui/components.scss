@@ -1912,15 +1912,12 @@
     transition: width 300ms ease;
 }
 
-/* --- 操作区：固定宽度，按钮右对齐、垂直居中 --- */
+/* --- 操作区：自适应宽度，按钮右对齐、垂直居中 --- */
 .lc-checkin--today .lc-checkin__item-action {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
-    width: 78px;
-    min-width: 78px;
-    max-width: 78px;
     margin: 0;
     padding: 0;
 }
@@ -2241,3 +2238,37 @@
 .lc-checkin__heatmap-nav button:hover:not(:disabled) { color: var(--lc-checkin-accent); border-color: var(--lc-checkin-accent); }
 .lc-checkin__heatmap-nav button:disabled { opacity: .3; cursor: default; }
 .lc-checkin__heatmap-nav strong { color: var(--lc-checkin-text); font-size: 13px; font-weight: 700; }
+
+/* ============================================================
+   UI 走查修复（用户实测反馈）：窄容器适配 + 弹窗比例
+   ============================================================ */
+
+/* 窄容器：操作按钮竖排右对齐，隐藏次要按钮 */
+@container lc5 (max-width: 719px) {
+    .lc-checkin--today .lc-checkin__item-action {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+    }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        min-width: 56px;
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 11px;
+    }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button,
+    .lc-checkin--today .lc-checkin__focus-button {
+        width: 24px;
+        height: 24px;
+    }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { display: none; }
+    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none !important; }
+    .lc-checkin__header-streak { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+    .lc-checkin__backup-reminder { padding: 6px 10px; font-size: 11px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 中等容器：操作区自适应 */
+@container lc5 (min-width: 720px) and (max-width: 879px) {
+    .lc-checkin--today .lc-checkin__item-action { width: auto; min-width: 0; }
+}
