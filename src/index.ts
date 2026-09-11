@@ -34,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.6.0";
+const PLUGIN_VERSION = "8.7.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -1757,7 +1757,7 @@ export default class CheckinPlugin extends Plugin {
             ${saveStatus}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly || this.todayGroupMode !== "group" || this.todaySortMode !== "manual" ? "open" : ""}><summary>${t("today.filter")}${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
+                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly ? "open" : ""}><summary>${t("today.filter")}${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>

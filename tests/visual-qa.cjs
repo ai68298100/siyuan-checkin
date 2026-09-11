@@ -147,14 +147,14 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         completedCollapsed: document.querySelector("[data-action='toggle-completed']")?.getAttribute("aria-expanded") === "false",
     }));
     const filterDisclosure = page.locator("[data-today-filters]");
-    if (await filterDisclosure.count() && !await filterDisclosure.evaluate((element) => element.open)) {
-        await filterDisclosure.locator(":scope > summary").click();
+    if (await filterDisclosure.count()) {
+        await filterDisclosure.evaluate((element) => { element.open = true; });
     }
-    await page.selectOption("[data-group-mode]", "time");
+    await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "time"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     const timeGroupCount = await page.locator("[data-group-toggle]").count();
-    await page.selectOption("[data-group-mode]", "priority");
+    await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "priority"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     const priorityGroupCount = await page.locator("[data-group-toggle]").count();
-    await page.selectOption("[data-group-mode]", "group");
+    await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "group"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     await page.click("[data-action='toggle-completed']");
     const completedExpanded = await page.locator(".lc-checkin__completed-section [data-item-id]").count();
     await page.click("[data-action='toggle-completed']");

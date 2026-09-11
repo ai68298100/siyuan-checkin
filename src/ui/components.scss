@@ -2142,3 +2142,78 @@
 .lc-checkin[data-appearance="dark"] .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-icon {
     --icon-canvas: #1F3329;
 }
+
+/* ============================================================
+   8.7 手机端空间极致压缩：<720px 容器
+   原则：打卡内容最大化，一切其他元素最小化
+   ============================================================ */
+@container lc5 (max-width: 719px) {
+
+    /* --- 顶栏压缩为单行 36px --- */
+    .lc-checkin__header,
+    .lc-checkin__editor-header { min-height: 36px; padding-bottom: 6px; margin-bottom: 8px; }
+    .lc-checkin__title,
+    .lc-checkin h1 { font-size: 16px; }
+    .lc-checkin__header-date { font-size: 11px; }
+    .lc-checkin__header-actions .lc-checkin__icon-button { width: 30px; height: 30px; }
+    .lc-checkin--today > .lc-checkin__progress { display: none; }
+
+    /* --- 搜索/筛选行：单行 30px --- */
+    .lc-checkin--today .lc-checkin__organize { margin-bottom: 8px; }
+    .lc-checkin--today .lc-checkin__today-search { min-height: 30px; }
+    .lc-checkin--today .lc-checkin__today-search input { min-height: 28px; font-size: 12px; }
+    .lc-checkin--today .lc-checkin__today-filters > summary { min-height: 28px; font-size: 11px; line-height: 26px; padding: 0 9px; }
+    .lc-checkin--today .lc-checkin__organize [data-action="toggle-bulk"] { min-height: 28px; font-size: 11px; padding: 0 9px; }
+
+    /* --- 卡片压缩：52px 行高 --- */
+    .lc-checkin--today .lc-checkin__item {
+        grid-template-columns: 36px minmax(0, 1fr) auto;
+        min-height: 52px;
+        padding: 7px 10px;
+        gap: 0 10px;
+    }
+    .lc-checkin--today .lc-checkin__item-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        font-size: 17px;
+    }
+    .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
+    .lc-checkin--today .lc-checkin__item-meta { font-size: 10px; margin-top: 1px; }
+    .lc-checkin--today .lc-checkin__item-progress { height: 2px; margin-top: 3px; }
+
+    /* 操作按钮：32px 高 */
+    .lc-checkin--today .lc-checkin__item-action { gap: 4px; }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        min-height: 32px;
+        min-width: 58px;
+        padding: 0 10px;
+        font-size: 11.5px;
+    }
+
+    /* 分组头：细线 + 微字 18px */
+    .lc-checkin--today .lc-checkin__group-header { min-height: 18px; margin-bottom: 4px; gap: 5px; }
+    .lc-checkin--today .lc-checkin__group-header::before { width: 5px; height: 5px; }
+    .lc-checkin--today .lc-checkin__group-header span:first-child { font-size: 11px; }
+    .lc-checkin--today .lc-checkin__group-header em { font-size: 10px; }
+    .lc-checkin--today .lc-checkin__group-items { gap: 5px; }
+
+    /* 日期提醒横幅更窄 */
+    .lc-checkin__occasion-banner { min-height: 36px; padding: 5px 10px; margin-top: 10px; }
+
+    /* 底部导航 4 项 + 44px 高 */
+    .lc-checkin__mobile-nav {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+        padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+    }
+    .lc-checkin__mobile-nav button { min-height: 40px; }
+    .lc-checkin__mobile-fab {
+        width: 40px;
+        height: 40px;
+        bottom: calc(var(--lc-checkin-nav-height) + env(safe-area-inset-bottom) + 10px);
+        right: 10px;
+    }
+
+    /* 布局底部留少一些 */
+    .lc-checkin__layout { padding-bottom: calc(calc(48px + env(safe-area-inset-bottom)) + 8px); }
+}
