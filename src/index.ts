@@ -7,7 +7,7 @@ import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
 import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap} from "./charts";
 import {buildAchievements} from "./features/achievements";
-import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
+import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateGroupLabel, templateName, templateNote, type CheckinTemplate} from "./catalog";
 import {parseCheckinCsv, parseJsonBackup, serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
@@ -2289,12 +2289,12 @@ export default class CheckinPlugin extends Plugin {
             </label>
             <div class="lc-checkin__filter-row" role="group" aria-label="${t("editor.templateGroups")}">
                 <button class="is-selected" type="button" data-template-group="all" aria-pressed="true">${t("editor.groupAll")}</button>
-                ${templateGroups.map((group) => `<button type="button" data-template-group="${escapeHtml(group)}" aria-pressed="false">${escapeHtml(group)}</button>`).join("")}
+                ${templateGroups.map((group) => `<button type="button" data-template-group="${escapeHtml(group)}" aria-pressed="false">${escapeHtml(templateGroupLabel(group))}</button>`).join("")}
             </div>
             <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${t("editor.templateCount", {n: CHECKIN_TEMPLATES.length})}</span><button type="button" data-action="clear-template-filter" hidden>${t("review.clearFilters")}</button></div>
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
-                const searchText = [template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" ");
-                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="${t("item.useTemplate", {name: template.name})}" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button>`;
+                const searchText = [templateName(template), template.note, templateGroupLabel(template.group), template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" ");
+                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(templateNote(template))}" aria-label="${t("item.useTemplate", {name: templateName(template)})}" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(templateName(template))}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button>`;
             }).join("")}</div>${userTemplateMarkup}
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>${t("editor.templateEmpty")}</strong><span>${t("editor.templateEmptyHint")}</span><button type="button" data-action="clear-template-filter">${t("editor.viewAll")}</button></div>
         </section>` : "";
@@ -2319,12 +2319,11 @@ export default class CheckinPlugin extends Plugin {
                             <input type="search" data-icon-query autocomplete="off" placeholder="${t("editor.iconSearchPh")}" />
                             <button type="button" data-action="clear-icon-query" aria-label="${t("editor.clearIconSearch")}" title="${t("editor.clear")}" hidden>×</button>
                         </label>
-                        <div class="lc-checkin__icon-tabs" role="group" aria-label="${t("editor.iconGroups")}">${ICON_GROUPS.map((group) => `<button type="button" data-icon-group="${group.id}" aria-pressed="${selectedIconGroup === group.id ? "true" : "false"}" class="${selectedIconGroup === group.id ? "is-selected" : ""}">${escapeHtml(group.name)}</button>`).join("")}</div>
-                        <div class="lc-checkin__result-line"><span data-icon-count aria-live="polite">${t("editor.iconCount", {name: ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.name || "通用", n: ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.icons.length || 0})}</span></div>
-                        <div class="lc-checkin__icon-results" data-icon-results>${ICON_GROUPS.map((group) => `<section class="lc-checkin__icon-panel" data-icon-panel="${group.id}" data-icon-group-search="${escapeHtml([group.name, ...group.keywords].join(" "))}" ${selectedIconGroup === group.id ? "" : "hidden"}><small class="lc-checkin__icon-panel-heading">${escapeHtml(group.name)}</small><div class="lc-checkin__icon-grid">${group.icons.map((icon) => {
+                        <div class="lc-checkin__icon-tabs" role="group" aria-label="${t("editor.iconGroups")}">${ICON_GROUPS.map((group) => `<button type="button" data-icon-group="${group.id}" aria-pressed="${selectedIconGroup === group.id ? "true" : "false"}" class="${selectedIconGroup === group.id ? "is-selected" : ""}">${t(`iconGroup.${group.id}`)}</button>`).join("")}</div>
+                        <div class="lc-checkin__result-line"><span data-icon-count aria-live="polite">${t("editor.iconCount", {name: t(`iconGroup.${selectedIconGroup}`), n: ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.icons.length || 0})}</span></div>
+                        <div class="lc-checkin__icon-results" data-icon-results>${ICON_GROUPS.map((group) => `<section class="lc-checkin__icon-panel" data-icon-panel="${group.id}" data-icon-group-search="${escapeHtml([group.name, ...group.keywords].join(" "))}" ${selectedIconGroup === group.id ? "" : "hidden"}><small class="lc-checkin__icon-panel-heading">${t(`iconGroup.${group.id}`)}</small><div class="lc-checkin__icon-grid">${group.icons.map((icon) => {
                             const keywords = ICON_SEARCH_KEYWORDS[icon] || "";
-                            const accessibleName = keywords.split(" ").filter(Boolean).slice(0, 2).join("、");
-                            return `<button class="lc-checkin__icon-option ${selectedIcon === icon ? "is-selected" : ""}" type="button" data-icon="${escapeHtml(icon)}" data-icon-search-text="${escapeHtml([icon, group.name, ...group.keywords, keywords].join(" "))}" aria-label="${t("editor.iconSelectAria", {label: accessibleName || group.name, icon})}" title="${escapeHtml(keywords || group.name)}">${escapeHtml(icon)}</button>`;
+                            return `<button class="lc-checkin__icon-option ${selectedIcon === icon ? "is-selected" : ""}" type="button" data-icon="${escapeHtml(icon)}" data-icon-search-text="${escapeHtml([icon, group.name, ...group.keywords, keywords].join(" "))}" aria-label="${t("editor.iconSelectAria", {label: t(`iconGroup.${group.id}`), icon})}" title="${escapeHtml(keywords || group.name)}">${escapeHtml(icon)}</button>`;
                         }).join("")}</div></section>`).join("")}</div>
                         <div class="lc-checkin__search-empty lc-checkin__search-empty--compact" data-icon-empty hidden><strong>${t("editor.iconEmpty")}</strong><button type="button" data-action="clear-icon-query">${t("review.clearFilters")}</button></div>
                         <div class="lc-checkin__custom-icon" data-custom-icon-panel>
@@ -3383,7 +3382,7 @@ export default class CheckinPlugin extends Plugin {
                 const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
                 if (control) control.value = value;
             };
-            setInput("name", template.name);
+            setInput("name", templateName(template));
             setInput("target", String(template.target));
             setInput("unit", template.unit);
             setInput("group", template.group);
@@ -3417,7 +3416,7 @@ export default class CheckinPlugin extends Plugin {
                 const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
                 if (control) control.value = value;
             };
-            setInput("name", template.name); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
+            setInput("name", templateName(template)); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
             const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
             root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
             selectIcon(template.icon); updateConditionalFields(false); root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); updateEditorPreview(); updateAdvancedSummary();

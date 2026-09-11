@@ -1,4 +1,5 @@
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CompletionSource, TomatoValueMode} from "./types";
+import {t} from "./i18n";
 
 /** A themed collection of icons that can be used by the item editor. */
 export interface IconGroup {
@@ -213,4 +214,57 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "情绪记录", icon: "😌", kind: "binary", target: 1, unit: "次", schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "写下一句当下感受和一个触发因素。"},
     {name: "周复盘", icon: "🧭", kind: "duration", target: 30, unit: "分钟", schedule: monday, group: "专注", priority: "low", timeSlot: "morning", note: "回顾上周进展并确定本周重点。"},
 ] as const;
+
+/* 模板显示名/备注的字典键映射：zh 名作为数据锚点，渲染与套用时经 t() 翻译。 */
+const TEMPLATE_NAME_KEYS: Record<string, string> = {
+    "喝水": "tpl.water",
+    "早睡早起": "tpl.earlyRise",
+    "睡眠时长": "tpl.sleep",
+    "运动": "tpl.workout",
+    "步数": "tpl.steps",
+    "拉伸": "tpl.stretch",
+    "阅读": "tpl.reading",
+    "背单词": "tpl.vocab",
+    "写日记": "tpl.journal",
+    "在线课程": "tpl.onlineCourse",
+    "深度工作": "tpl.deepWork",
+    "整理收件箱": "tpl.inbox",
+    "每日计划": "tpl.dailyPlan",
+    "番茄钟": "tpl.pomodoro",
+    "整理房间": "tpl.tidyRoom",
+    "做饭": "tpl.cook",
+    "记账": "tpl.expenseLog",
+    "植物浇水": "tpl.waterPlant",
+    "练习乐器": "tpl.instrument",
+    "绘画练习": "tpl.sketch",
+    "拍照记录": "tpl.photoLog",
+    "冥想": "tpl.meditate",
+    "情绪记录": "tpl.moodLog",
+    "周复盘": "tpl.weeklyReview",
+};
+
+const TEMPLATE_GROUP_KEYS: Record<string, string> = {
+    "健康": "tplGroup.health",
+    "运动": "tplGroup.sport",
+    "学习": "tplGroup.learning",
+    "工作": "tplGroup.work",
+    "生活": "tplGroup.life",
+    "创作": "tplGroup.creative",
+    "专注": "tplGroup.mindfulness",
+};
+
+export function templateName(template: {name: string}): string {
+    const key = TEMPLATE_NAME_KEYS[template.name];
+    return key ? t(key) : template.name;
+}
+
+export function templateNote(template: {name: string; note: string}): string {
+    const key = TEMPLATE_NAME_KEYS[template.name];
+    return key ? t(`tplNote.${key.slice(4)}`) : template.note;
+}
+
+export function templateGroupLabel(group: string): string {
+    const key = TEMPLATE_GROUP_KEYS[group];
+    return key ? t(key) : group;
+}
 
