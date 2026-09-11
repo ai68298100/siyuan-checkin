@@ -1426,80 +1426,80 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderSettings(): string {
-        const agentStatus = this.agentCapabilityRegistered ? "已向思源智能体注册能力" : "未检测到可用的思源智能体入口";
+        const agentStatus = this.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
         const photoEvents = this.store.events.filter((event) => event.attachment);
         const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
         const iconKb = Math.max(0, Math.round(this.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
         const storageKb = Math.max(1, Math.round((this.store.events.length * 160 + this.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
-        const auditLabel = (type: string) => type === "conflict" ? "发现冲突" : type === "merge" ? "自动合并" : type === "restore" ? "恢复快照" : "数据迁移";
+        const auditLabel = (type: string) => type === "conflict" ? t("set.auditConflict") : type === "merge" ? t("set.auditMerge") : type === "restore" ? t("set.auditRestore") : t("set.auditMigration");
         const auditRows = this.auditEntries.slice(-5).reverse().map((entry) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`).join("");
         const kbdRow = (label: string, hint: string, keys: string[]) => `<div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${label}</span><small>${hint}</small></span><span class="lc-checkin__kbd-group">${keys.map((key) => `<kbd class="lc-checkin__kbd">${key}</kbd>`).join('<span class="lc-checkin__kbd-plus" aria-hidden="true">+</span>')}</span></div>`;
         const groups: Array<{id: string; label: string; body: string}> = [
             {
                 id: "appearance",
-                label: "外观",
+                label: t("set.groupAppearance"),
                 body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>主题</span><small>只影响小驴打卡界面，不修改思源全局主题。</small></span><select data-setting-appearance aria-label="主题"><option value="system" ${this.appearance === "system" ? "selected" : ""}>跟随思源</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>浅色</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>深色</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>减少界面动效</span><small>关闭页面过渡和加载动画。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>强调色</span><small>按钮与高亮的主色调，四套可选。</small></span><select data-setting-palette aria-label="强调色"><option value="lavender"${this.palette === "lavender" ? " selected" : ""}>薰衣草紫</option><option value="ocean"${this.palette === "ocean" ? " selected" : ""}>海洋蓝</option><option value="forest"${this.palette === "forest" ? " selected" : ""}>森林绿</option><option value="sunset"${this.palette === "sunset" ? " selected" : ""}>落日橙</option></select></label>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.theme")}</span><small>${t("set.themeHint")}</small></span><select data-setting-appearance aria-label="${t("set.theme")}"><option value="system" ${this.appearance === "system" ? "selected" : ""}>${t("set.themeSystem")}</option><option value="light" ${this.appearance === "light" ? "selected" : ""}>${t("set.themeLight")}</option><option value="dark" ${this.appearance === "dark" ? "selected" : ""}>${t("set.themeDark")}</option></select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reduceMotion")}</span><small>${t("set.reduceMotionHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${this.reducedMotion ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.accent")}</span><small>${t("set.accentHint")}</small></span><select data-setting-palette aria-label="${t("set.accent")}"><option value="lavender"${this.palette === "lavender" ? " selected" : ""}>${t("set.paletteLavender")}</option><option value="ocean"${this.palette === "ocean" ? " selected" : ""}>${t("set.paletteOcean")}</option><option value="forest"${this.palette === "forest" ? " selected" : ""}>${t("set.paletteForest")}</option><option value="sunset"${this.palette === "sunset" ? " selected" : ""}>${t("set.paletteSunset")}</option></select></label>`,
             },
             {
                 id: "today",
-                label: "今日视图",
+                label: t("set.groupToday"),
                 body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>分组方式</span><small>今日列表的默认分组。</small></span><select data-setting-group aria-label="分组方式"><option value="none"${this.todayGroupMode === "none" ? " selected" : ""}>不分组</option><option value="group"${this.todayGroupMode === "group" ? " selected" : ""}>自定义分组</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>排序方式</span><small>今日列表的默认排序。</small></span><select data-setting-sort aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>默认展开已完成打卡项</span><small>关闭时已完成项折叠为一行。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>显示七日概览</span><small>在今日页顶部显示最近七天的打卡状态条。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${this.weekStripVisible ? "checked" : ""} /></label>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复默认视图</span><small>恢复分组、排序与折叠偏好。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">恢复</button></div>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.groupModeLabel")}</span><small>${t("set.groupModeHint")}</small></span><select data-setting-group aria-label="${t("set.groupModeLabel")}"><option value="none"${this.todayGroupMode === "none" ? " selected" : ""}>${t("set.groupNone")}</option><option value="group"${this.todayGroupMode === "group" ? " selected" : ""}>${t("set.groupCustom")}</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>${t("set.groupTime")}</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>${t("set.groupPriority")}</option></select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sortModeLabel")}</span><small>${t("set.sortModeHint")}</small></span><select data-setting-sort aria-label="${t("set.sortModeLabel")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.expandCompleted")}</span><small>${t("set.expandCompletedHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.weekStrip")}</span><small>${t("set.weekStripHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${this.weekStripVisible ? "checked" : ""} /></label>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetView")}</span><small>${t("set.resetViewHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">${t("set.reset")}</button></div>`,
             },
             {
                 id: "dialog",
-                label: "弹窗与页签",
+                label: t("set.groupDialog"),
                 body: `
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>快速弹窗大小</span><small>桌面端弹窗的默认尺寸。</small></span><select data-setting-dialog-mode aria-label="弹窗大小模式"><option value="percent" ${this.dialogSizeMode === "percent" ? "selected" : ""}>按屏幕比例</option><option value="fullscreen" ${this.dialogSizeMode === "fullscreen" ? "selected" : ""}>全屏</option><option value="fixed" ${this.dialogSizeMode === "fixed" ? "selected" : ""}>固定大小</option></select></label>
-                    <label class="lc-checkin__settings-row" data-dialog-scale-row ${this.dialogSizeMode === "percent" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>屏幕占比</span><small>当前 ${this.dialogScale}%</small></span><input type="range" min="50" max="100" step="5" value="${this.dialogScale}" data-setting-dialog-scale aria-label="屏幕占比" /></label>
-                    <div class="lc-checkin__settings-row" data-dialog-fixed-row ${this.dialogSizeMode === "fixed" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>固定宽高</span><small>像素值，适配特定屏幕。</small></span><span class="lc-checkin__settings-inline"><input type="number" min="320" max="2560" step="20" value="${this.dialogFixedSize.width}" data-setting-dialog-width aria-label="弹窗宽度" aria-describedby="lc-checkin-dialog-width-unit" /><span id="lc-checkin-dialog-width-unit">×</span><input type="number" min="240" max="2048" step="20" value="${this.dialogFixedSize.height}" data-setting-dialog-height aria-label="弹窗高度" aria-describedby="lc-checkin-dialog-width-unit" /></span></div>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.dialogSize")}</span><small>${t("set.dialogSizeHint")}</small></span><select data-setting-dialog-mode aria-label="${t("set.dialogSize")}"><option value="percent" ${this.dialogSizeMode === "percent" ? "selected" : ""}>${t("set.dialogPercent")}</option><option value="fullscreen" ${this.dialogSizeMode === "fullscreen" ? "selected" : ""}>${t("set.dialogFullscreen")}</option><option value="fixed" ${this.dialogSizeMode === "fixed" ? "selected" : ""}>${t("set.dialogFixed")}</option></select></label>
+                    <label class="lc-checkin__settings-row" data-dialog-scale-row ${this.dialogSizeMode === "percent" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>${t("set.scaleLabel")}</span><small>${t("set.scaleCurrent", {n: this.dialogScale})}</small></span><input type="range" min="50" max="100" step="5" value="${this.dialogScale}" data-setting-dialog-scale aria-label="${t("set.scaleLabel")}" /></label>
+                    <div class="lc-checkin__settings-row" data-dialog-fixed-row ${this.dialogSizeMode === "fixed" ? "" : "hidden"}><span class="lc-checkin__settings-label"><span>${t("set.fixedWH")}</span><small>${t("set.fixedWHHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="320" max="2560" step="20" value="${this.dialogFixedSize.width}" data-setting-dialog-width aria-label="${t("set.dialogWidthAria")}" aria-describedby="lc-checkin-dialog-width-unit" /><span id="lc-checkin-dialog-width-unit">×</span><input type="number" min="240" max="2048" step="20" value="${this.dialogFixedSize.height}" data-setting-dialog-height aria-label="${t("set.dialogHeightAria")}" aria-describedby="lc-checkin-dialog-width-unit" /></span></div>`,
             },
             {
                 id: "shortcuts",
-                label: "快捷键",
+                label: t("set.groupShortcuts"),
                 body: `
-                    ${kbdRow("打开打卡页签", "在思源任意界面快速呼出小驴打卡。", ["Alt", "Shift", "C"])}
-                    ${kbdRow("快速打卡", "快速弹窗内按序号切换对应项目的完成状态。", ["Alt", "1-9"])}
-                    ${kbdRow("调整项目顺序", "今日列表聚焦项目后上下移动（手动排序时生效）。", ["Alt", "↑ / ↓"])}`,
+                    ${kbdRow(t("set.shortcutsOpen"), t("set.shortcutsOpenHint"), ["Alt", "Shift", "C"])}
+                    ${kbdRow(t("set.shortcutsQuick"), t("set.shortcutsQuickHint"), ["Alt", "1-9"])}
+                    ${kbdRow(t("set.shortcutsReorder"), t("set.shortcutsReorderHint"), ["Alt", "↑ / ↓"])}`,
             },
             {
                 id: "data",
-                label: "数据与导出",
+                label: t("set.groupData"),
                 body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>存储用量</span><small>打卡 ${this.store.items.length} 项 · 记录 ${this.store.events.length} 条${photoEvents.length ? ` · 照片 ${photoEvents.length} 张约 ${photoKb} KB` : ""}${iconKb ? ` · 图标库约 ${iconKb} KB` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 JSON（恢复备份）</span><small>用之前导出的 JSON 文件整体恢复打卡数据，将覆盖当前数据。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-json accept=".json,application/json" />选择文件</label></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复上一份本地快照</span><small>回滚到最近一次保存前的数据，当前数据会先自动保留为快照。</small></span><button class="lc-checkin__text-button" type="button" data-action="restore-backup">恢复快照</button></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>同步审计</span><small>记录最近的跨窗口冲突与自动同步事件（最多保留 50 条）。</small></span><button class="lc-checkin__text-button" type="button" data-action="clear-audit">清空记录</button></div>
-                    <div class="lc-checkin__audit-list" aria-label="最近同步审计记录">${auditRows ? `<ul>${auditRows}</ul>` : "<small>暂无同步审计记录</small>"}</div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 CSV</span><small>表头需含 名称、日期，可选 数值、单位。相同记录自动跳过。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />选择文件</label></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.exportRecords")}</span><small>${t("set.exportHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="review">${t("set.openReview")}</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.storageLabel")}</span><small>${t("set.storageDetail", {items: this.store.items.length, events: this.store.events.length})}${photoEvents.length ? ` · ${t("set.photosDetail", {n: photoEvents.length, kb: photoKb})}` : ""}${iconKb ? ` · ${t("set.iconsDetail", {kb: iconKb})}` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.importJson")}</span><small>${t("set.importJsonHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-import-json accept=".json,application/json" />${t("set.chooseFile")}</label></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.restoreSnapshot")}</span><small>${t("set.restoreSnapshotHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="restore-backup">${t("set.restoreSnapshotBtn")}</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.audit")}</span><small>${t("set.auditHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="clear-audit">${t("set.clearAudit")}</button></div>
+                    <div class="lc-checkin__audit-list" aria-label="${t("set.audit")}">${auditRows ? `<ul>${auditRows}</ul>` : `<small>${t("set.auditEmpty")}</small>`}</div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.importCsv")}</span><small>${t("set.importCsvHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />${t("set.chooseFile")}</label></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetPrefs")}</span><small>${t("set.resetPrefsHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">${t("set.resetDefaults")}</button></div>`,
             },
             {
                 id: "integrations",
-                label: "连接与能力",
+                label: t("set.groupIntegrations"),
                 body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>番茄钟</span><small>项目可按累计分钟或番茄钟次数计入，需兼容插件写入。</small></span><span class="lc-checkin__settings-value">待接入</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>思源智能体</span><small>只读查询可增强；写入需用户明确要求。</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>自定义图标</span><small>图标库存于插件本地数据，上传前会提示空间。</small></span><span class="lc-checkin__settings-value">${this.customIconLibrary.length} 个</span></div>`,
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value">${t("set.tomatoPending")}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: this.customIconLibrary.length})}</span></div>`,
             },
             {
                 id: "about",
-                label: "关于",
+                label: t("set.groupAbout"),
                 body: `
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>版本</span><small>思源 v3.4.2 及以上。</small></span><span class="lc-checkin__settings-value">${PLUGIN_VERSION}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>项目主页</span><small>反馈问题与查看文档。</small></span><a class="lc-checkin__settings-link" href="https://github.com/ai68298100/siyuan-checkin" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>`,
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.versionLabel")}</span><small>${t("set.versionHint")}</small></span><span class="lc-checkin__settings-value">${PLUGIN_VERSION}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.homepage")}</span><small>${t("set.homepageHint")}</small></span><a class="lc-checkin__settings-link" href="https://github.com/ai68298100/siyuan-checkin" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div>`,
             },
         ];
         return `<div class="lc-checkin lc-checkin--settings" data-appearance="${this.resolvedAppearance()}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">个性化体验</div><h1 class="lc-checkin__title">设置</h1></div></header>
+            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("set.personal")}</div><h1 class="lc-checkin__title">${t("settings.title")}</h1></div></header>
             <div class="lc-checkin__settings-layout">
                 <nav class="lc-checkin__settings-nav" aria-label="设置分组">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
                 <div class="lc-checkin__settings-groups">${groups.map((group) => `<section class="lc-checkin__settings-card" data-settings-group="${group.id}"><h2>${group.label}</h2>${group.body}</section>`).join("")}</div>
