@@ -1724,41 +1724,41 @@ export default class CheckinPlugin extends Plugin {
         const backupNeeded = this.store.events.length >= 30 && (!this.lastExportAt || Date.now() - Date.parse(this.lastExportAt) > 30 * 86400000);
         const emptyProgressTitle = this.pendingOnly
             ? "没有待处理的匹配项"
-            : query ? "匹配的项目都已完成" : "今天的计划已完成";
+            : query ? "匹配的项目都已完成" : t("today.allDone");
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">▱</div>
-                <div class="lc-checkin__empty-title">当前没有进行中的打卡项</div>
-                <div class="lc-checkin__empty-description">已归档的项目不会出现在今天。恢复一个项目，或新建一个新的打卡项。</div>
-                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">查看已归档</button><button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button></div>
+                <div class="lc-checkin__empty-title">${t("today.emptyActiveTitle")}</div>
+                <div class="lc-checkin__empty-description">${t("today.emptyActiveDesc")}</div>
+                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">${t("today.viewArchived")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
             </div>` : !activeItems.length ? `
             <div class="lc-checkin__empty lc-checkin__empty--onboard">
                 <div class="lc-checkin__empty-mark">✦</div>
-                <div class="lc-checkin__empty-title">从一个小目标开始</div>
-                <div class="lc-checkin__empty-description">三步建立你的第一个打卡习惯。</div>
+                <div class="lc-checkin__empty-title">${t("today.emptyOnboardTitle")}</div>
+                <div class="lc-checkin__empty-description">${t("today.emptyOnboardDesc")}</div>
                 <ol class="lc-checkin__onboard-steps">
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">1</span><div><strong>选模板</strong><small>新建时从常用模板挑选，或完全自定义。</small></div></li>
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>命名</strong><small>给习惯起个名字，再配一个喜欢的图标。</small></div></li>
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>打卡</strong><small>回到今日页点一下图标，连续记录就开始了。</small></div></li>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">1</span><div><strong>${t("today.step1Title")}</strong><small>${t("today.step1Desc")}</small></div></li>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>${t("today.step2Title")}</strong><small>${t("today.step2Desc")}</small></div></li>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc")}</small></div></li>
                 </ol>
-                <button class="lc-checkin__text-button" type="button" data-action="add">新建第一个打卡项</button>
+                <button class="lc-checkin__text-button" type="button" data-action="add">${t("today.addFirst")}</button>
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">◷</div>
-                <div class="lc-checkin__empty-title">今天没有安排</div>
-                <div class="lc-checkin__empty-description">现有项目都不在今天的计划里。可以查看历史，或添加新的打卡项。</div>
-                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="history">查看历史</button><button class="lc-checkin__text-button" type="button" data-action="add">新建打卡项</button></div>
+                <div class="lc-checkin__empty-title">${t("today.emptyScheduledTitle")}</div>
+                <div class="lc-checkin__empty-description">${t("today.emptyScheduledDesc")}</div>
+                <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="history">${t("today.viewHistory")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
             </div>` : !visibleItems.length ? `
             <div class="lc-checkin__today-search-empty">
-                <span>⌕</span><strong>没有匹配的打卡项</strong><small>试试项目名称或分组关键词</small>
-                <button class="lc-checkin__text-button" type="button" data-action="clear-search">清除筛选</button>
+                <span>⌕</span><strong>${t("today.searchEmpty")}</strong><small>${t("today.searchEmptyHint")}</small>
+                <button class="lc-checkin__text-button" type="button" data-action="clear-search">${t("common.clearFilter")}</button>
             </div>` : `${pendingItems.length
             ? this.renderTodayGroups(pendingItems, now)
             : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
             ${completedItems.length ? `<section class="lc-checkin__completed-section">
                 <button class="lc-checkin__section-toggle" type="button" data-action="toggle-completed" aria-expanded="${!this.completedCollapsed}">
-                    <span class="lc-checkin__section-title"><i>✓</i> 已完成打卡项</span>
+                    <span class="lc-checkin__section-title"><i>✓</i> ${t("today.completed")}</span>
                     <span class="lc-checkin__section-count">${completedItems.length}</span>
                     <span class="lc-checkin__chevron">${this.completedCollapsed ? "⌄" : "⌃"}</span>
                 </button>
@@ -1797,7 +1797,7 @@ export default class CheckinPlugin extends Plugin {
             ${saveStatus}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(this.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="筛选打卡项" />${this.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
-                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly ? "open" : ""}><summary>${t("today.filter")}${this.pendingOnly ? " · 已启用" : ""}</summary><div class="lc-checkin__today-filter-fields"><label><span>分组</span><select data-group-mode aria-label="分组方式">
+                <details class="lc-checkin__today-filters" data-today-filters ${this.pendingOnly ? "open" : ""}><summary>${this.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
@@ -1825,11 +1825,11 @@ export default class CheckinPlugin extends Plugin {
             const completed = isOccasionCompleted(item, item.occurrenceDate);
             return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="occasions" title="${escapeHtml(item.name)} · ${timing}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${timing}</small></button>`;
         }).join("");
-        return `<section class="lc-checkin__occasion-banner" aria-label="日期提醒">
+        return `<section class="lc-checkin__occasion-banner" aria-label="${t("today.occasionTitle")}">
             <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
             <div class="lc-checkin__occasion-banner-body">
-                <strong>日期提醒</strong>
-                ${items.length ? `<div class="lc-checkin__occasion-chips">${chips}</div>` : `<small>未来提醒会在这里出现。</small>`}
+                <strong>${t("today.occasionTitle")}</strong>
+                ${items.length ? `<div class="lc-checkin__occasion-chips">${chips}</div>` : `<small>${t("today.occasionEmpty")}</small>`}
             </div>
             <button class="lc-checkin__text-button" type="button" data-action="occasions">管理</button>
         </section>`;
