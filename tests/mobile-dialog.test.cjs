@@ -51,7 +51,7 @@ assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule
     "date quotas must record one qualifying day at a time");
 assert.match(source, /toLocaleTimeString\("zh-CN", \{hour: "2-digit", minute: "2-digit"\}\)/,
     "review records should expose the record time");
-assert.match(source, /HISTORY_SOURCE_LABELS\[event\.source\]/,
+assert.match(source, /t\(`source\.\$\{event\.source\}`\)/,
     "review records should expose the record source");
 assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/,
     "record feedback should expose current progress");

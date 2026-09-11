@@ -12,7 +12,7 @@ import {parseCheckinCsv, parseJsonBackup, serializeCsv, serializeJson} from "./e
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildWeeklyReportMarkdown} from "./features/report";
-import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-filter";
+import {filterHistoryRecords} from "./features/history-filter";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
@@ -52,51 +52,51 @@ const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
 const KIND_LABELS: Record<CheckinKind, string> = {
-    binary: "完成一次",
-    count: "按次数",
-    duration: "按时长",
-    quantity: "按数量",
-    custom: "自定义",
+    binary: "kind.binary",
+    count: "kind.count",
+    duration: "kind.duration",
+    quantity: "kind.quantity",
+    custom: "kind.custom",
 };
 
 const PRIORITY_LABELS: Record<CheckinPriority, string> = {
-    high: "重要",
-    medium: "普通",
-    low: "低优先级",
+    high: "priority.high",
+    medium: "priority.medium",
+    low: "priority.low",
 };
 
 const TIME_SLOT_LABELS: Record<CheckinTimeSlot, string> = {
-    morning: "晨间",
-    afternoon: "午后",
-    evening: "晚间",
-    any: "全天",
+    morning: "slot.morning",
+    afternoon: "slot.afternoon",
+    evening: "slot.evening",
+    any: "slot.any",
 };
 
 const SORT_LABELS: Partial<Record<CheckinItemSortMode, string>> = {
-    manual: "自定义顺序",
-    priority: "重要性优先",
-    name: "名称",
-    createdAt: "创建时间",
-    updatedAt: "最近修改",
+    manual: "sort.manual",
+    priority: "sort.priority",
+    name: "sort.name",
+    createdAt: "sort.createdAt",
+    updatedAt: "sort.updatedAt",
 };
 
 const SCHEDULE_LABELS: Record<ScheduleType, string> = {
-    daily: "每天",
-    workdays: "工作日",
-    weekly: "每周指定日",
-    custom: "自定义日",
-    interval: "每隔 N 天",
-    quota: "周期配额",
+    daily: "schedule.daily",
+    workdays: "schedule.workdays",
+    weekly: "schedule.weekly",
+    custom: "schedule.custom",
+    interval: "schedule.interval",
+    quota: "schedule.quota",
 };
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 const CALENDAR_WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
-const HISTORY_SOURCE_OPTIONS: readonly [HistorySourceFilter, string][] = [
-    ["all", "全部来源"],
-    ["manual", HISTORY_SOURCE_LABELS.manual],
-    ["tomato", HISTORY_SOURCE_LABELS.tomato],
-    ["import", HISTORY_SOURCE_LABELS.import],
-    ["api", HISTORY_SOURCE_LABELS.api],
+const HISTORY_SOURCE_OPTIONS: readonly HistorySourceFilter[] = [
+    "all",
+    "manual",
+    "tomato",
+    "import",
+    "api",
 ];
 
 const UI_ICON_PATHS: Record<string, string> = {
@@ -1448,7 +1448,7 @@ export default class CheckinPlugin extends Plugin {
                 label: "今日视图",
                 body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>分组方式</span><small>今日列表的默认分组。</small></span><select data-setting-group aria-label="分组方式"><option value="none"${this.todayGroupMode === "none" ? " selected" : ""}>不分组</option><option value="group"${this.todayGroupMode === "group" ? " selected" : ""}>自定义分组</option><option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option><option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>排序方式</span><small>今日列表的默认排序。</small></span><select data-setting-sort aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>排序方式</span><small>今日列表的默认排序。</small></span><select data-setting-sort aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>默认展开已完成打卡项</span><small>关闭时已完成项折叠为一行。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!this.completedCollapsed ? "checked" : ""} /></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>显示七日概览</span><small>在今日页顶部显示最近七天的打卡状态条。</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${this.weekStripVisible ? "checked" : ""} /></label>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复默认视图</span><small>恢复分组、排序与折叠偏好。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">恢复</button></div>`,
@@ -1723,8 +1723,8 @@ export default class CheckinPlugin extends Plugin {
         }).join("");
         const backupNeeded = this.store.events.length >= 30 && (!this.lastExportAt || Date.now() - Date.parse(this.lastExportAt) > 30 * 86400000);
         const emptyProgressTitle = this.pendingOnly
-            ? "没有待处理的匹配项"
-            : query ? "匹配的项目都已完成" : t("today.allDone");
+            ? t("today.pendingEmpty")
+            : query ? t("today.queryCompleted") : t("today.allDone");
         const date = now.toLocaleDateString("zh-CN", {month: "long", day: "numeric", weekday: "long"});
         const list = !activeItems.length && this.store.items.length ? `
             <div class="lc-checkin__empty">
@@ -1801,7 +1801,7 @@ export default class CheckinPlugin extends Plugin {
                     <option value="group" ${this.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${this.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${this.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
-                </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${label}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">仅未完成</button></div></details>
+                </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${this.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${this.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${this.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
                 <button class="lc-checkin__filter-toggle ${this.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${this.bulkMode}">${t("today.bulk")}</button>
             </div>` : ""}
             ${this.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="批量操作">
@@ -1885,8 +1885,8 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private getTodayGroupLabel(key: string): string {
-        if (this.todayGroupMode === "priority") return PRIORITY_LABELS[key as CheckinPriority] || PRIORITY_LABELS.medium;
-        if (this.todayGroupMode === "time") return TIME_SLOT_LABELS[key as CheckinTimeSlot] || TIME_SLOT_LABELS.any;
+        if (this.todayGroupMode === "priority") return t(PRIORITY_LABELS[key as CheckinPriority] || PRIORITY_LABELS.medium);
+        if (this.todayGroupMode === "time") return t(TIME_SLOT_LABELS[key as CheckinTimeSlot] || TIME_SLOT_LABELS.any);
         return key;
     }
 
@@ -1957,16 +1957,16 @@ export default class CheckinPlugin extends Plugin {
             const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
             const noteEditor = this.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">保存备注</button>` : "";
             const photoThumb = event.attachment ? `<img class="lc-checkin__history-thumb" src="${event.attachment}" alt="打卡照片" loading="lazy" />` : "";
-            const sourceLabel = HISTORY_SOURCE_LABELS[event.source] || event.source;
+            const sourceLabel = t(`source.${event.source}`) || event.source;
             return `<div class="lc-checkin__history-event">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}${noteEditor}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${this.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="查看${escapeHtml(itemName)}复盘">复盘</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="编辑${escapeHtml(itemName)} ${escapeHtml(time)} 的备注">备注</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="撤销${escapeHtml(itemName)} ${escapeHtml(time)} 的记录">撤销</button></div></div>`;
         }).join("")}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? "没有符合当前筛选条件的记录" : "当天没有记录"}</div>`;
         const details = aggregateDetails + eventDetails;
         const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         const nextDisabled = this.historyMonth >= currentMonth;
-        const historySourceOptions = HISTORY_SOURCE_OPTIONS.map(([value, label]) => `<option value="${value}" ${this.historySource === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+        const historySourceOptions = HISTORY_SOURCE_OPTIONS.map((value) => `<option value="${value}" ${this.historySource === value ? "selected" : ""}>${escapeHtml(t(`source.${value}`))}</option>`).join("");
         const historyOrderOptions = [["newest", "最新在前"], ["oldest", "最早在前"]] as const;
         const resultLabel = hasHistoryFilter ? `显示 ${filteredEvents.length} / ${selectedEvents.length} 条记录` : `${selectedEvents.length} 条记录`;
-        const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>搜索与筛选${hasHistoryFilter ? " · 已启用" : ""}</summary><section class="lc-checkin__history-tools" role="search" aria-label="筛选历史记录"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="搜索项目、备注、单位或来源" aria-label="搜索项目、备注、单位或来源" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="清除搜索关键词" title="清除搜索">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>来源</span><select data-history-source aria-label="按来源筛选">${historySourceOptions}</select></label><label><span>时间</span><select data-history-order aria-label="历史记录排序">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${label}</option>`).join("")}</select></label></div></section></details>`;
+        const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>搜索与筛选${hasHistoryFilter ? " · 已启用" : ""}</summary><section class="lc-checkin__history-tools" role="search" aria-label="筛选历史记录"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(this.historyQuery)}" placeholder="搜索项目、备注、单位或来源" aria-label="搜索项目、备注、单位或来源" enterkeyhint="search" />${this.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="清除搜索关键词" title="清除搜索">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>来源</span><select data-history-source aria-label="按来源筛选">${historySourceOptions}</select></label><label><span>时间</span><select data-history-order aria-label="历史记录排序">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${this.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></section></details>`;
 
         const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange) : buildSummaryContext(this.store, this.summaryRange);
         const iconsById = new Map(this.store.items.map((item) => [item.id, item.icon]));
@@ -2204,13 +2204,13 @@ export default class CheckinPlugin extends Plugin {
         const rule = evaluateRule(item, this.store.events, date);
         const inputStep = getEditorStep(revision.kind, revision.unit);
         const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
-        const meta = (isBinary ? KIND_LABELS[revision.kind] : `${KIND_LABELS[revision.kind]} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
+        const meta = (isBinary ? t(KIND_LABELS[revision.kind]) : `${t(KIND_LABELS[revision.kind])} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
         const priority = item.priority || "medium";
         const timeSlot = item.timeSlot || "any";
         const completionSource = item.completionSource || "manual";
         const unit = revision.unit || "次";
         const icon = isBinary
-            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? "取消今日完成" : "完成"} ${escapeHtml(item.name)}">${renderIconMarkup(item.icon)}</button>`
+            ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
             : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
         return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
             ${icon}
@@ -2219,29 +2219,29 @@ export default class CheckinPlugin extends Plugin {
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${(this.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="查看复盘">🔥 ${this.currentStreaks.get(item.id)}</button>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">重要</span>` : ""}
-                    ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${TIME_SLOT_LABELS[timeSlot]}</span>` : ""}
+                    ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(t(TIME_SLOT_LABELS[timeSlot]))}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? "番茄钟·次数" : "番茄钟·分钟"}</span>` : ""}
-                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="查看${escapeHtml(item.name)}的复盘" title="复盘">${uiIcon("insight")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="设置 ${escapeHtml(item.name)}" title="设置">${uiIcon("edit")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
+                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
                 </div>
                 <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
-                ${this.bulkMode ? `<button class="lc-checkin__bulk-check${this.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${this.bulkSelected.has(item.id)}" aria-label="选择 ${escapeHtml(item.name)}">${this.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
-                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="开始专注" title="开始专注">${uiIcon("timer")}</button>` : ""}
+                ${this.bulkMode ? `<button class="lc-checkin__bulk-check${this.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${this.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${this.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
+                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
-                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? "取消" : "打卡"}</button>`
-                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="记录 ${formatNumber(recordStep)} ${escapeHtml(unit)}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
-                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="输入精确记录值" title="精确记录" aria-expanded="false">${uiIcon("more")}</button>`}
-                ${this.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="拖动排序 ${escapeHtml(item.name)}" title="拖动排序">${uiIcon("more")}</button>` : ""}
+                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? t("item.cancel") : t("item.checkin")}</button>`
+                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
+                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
+                ${this.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
             </div>
             ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
-                <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="本次${escapeHtml(unit)}" /></label>
+                <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>
-                <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="备注（可选）" aria-label="记录备注" />
-                <label class="lc-checkin__attach-button" data-attach-button title="附一张照片"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
-                <button class="lc-checkin__record-button" type="button" data-action="record">记录</button>
+                <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
+                <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
+                <button class="lc-checkin__record-button" type="button" data-action="record">${t("item.record")}</button>
             </div>`}
         </article>`;
     }
@@ -2266,15 +2266,15 @@ export default class CheckinPlugin extends Plugin {
             ...CHECKIN_TEMPLATES.map((template) => template.group),
         ].filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
         const templateGroups = [...new Set(CHECKIN_TEMPLATES.map((template) => template.group))];
-        const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>我的模板</span><small>${this.userTemplates.length} 个</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" "))}" title="${escapeHtml(template.note)}" aria-label="使用我的模板 ${escapeHtml(template.name)}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="删除模板 ${escapeHtml(template.name)}">删除</button></div>`).join("")}</div>` : "";
+        const userTemplateMarkup = this.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>${t("item.myTemplates")}</span><small>${t("item.templateCount", {n: this.userTemplates.length})}</small></div><div class="lc-checkin__templates" data-user-template-list>${this.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" "))}" title="${escapeHtml(template.note)}" aria-label="${t("item.useMyTemplate", {name: template.name})}"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="${t("item.deleteTemplate", {name: template.name})}">${t("item.delete")}</button></div>`).join("")}</div>` : "";
         const initialPriority = item?.priority || "medium";
         const initialTimeSlot = item?.timeSlot || "any";
         const initialCompletionSource: CompletionSource = item?.completionSource === "tomato" ? "tomato" : "manual";
         const initialTomatoMode: TomatoValueMode = item?.tomatoMode === "sessions" ? "sessions" : "minutes";
         const advancedSummary = [
             item?.group || "未分组",
-            PRIORITY_LABELS[initialPriority],
-            initialTimeSlot === "any" ? "" : TIME_SLOT_LABELS[initialTimeSlot],
+            PRIORITY_LABELS[initialPriority] && t(PRIORITY_LABELS[initialPriority]),
+            initialTimeSlot === "any" ? "" : t(TIME_SLOT_LABELS[initialTimeSlot]),
             initialCompletionSource === "tomato" ? "番茄钟联动" : "手动记录",
             formatScheduleLabel(schedule),
         ].filter(Boolean).join(" · ");
@@ -2292,8 +2292,8 @@ export default class CheckinPlugin extends Plugin {
             </div>
             <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${CHECKIN_TEMPLATES.length} 个模板</span><button type="button" data-action="clear-template-filter" hidden>清除筛选</button></div>
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
-                const searchText = [template.name, template.group, template.note, template.unit, KIND_LABELS[template.kind], SCHEDULE_LABELS[template.schedule.type]].join(" ");
-                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="使用${escapeHtml(template.name)}模板" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? SCHEDULE_LABELS[template.schedule.type] : `${template.target} ${template.unit}`)}</small></button>`;
+                const searchText = [template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" ");
+                return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="${t("item.useTemplate", {name: template.name})}" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button>`;
             }).join("")}</div>${userTemplateMarkup}
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>没有匹配的模板</strong><span>换个关键词，或清除筛选后浏览全部模板。</span><button type="button" data-action="clear-template-filter">查看全部</button></div>
         </section>` : "";
@@ -2349,7 +2349,7 @@ export default class CheckinPlugin extends Plugin {
                         <div class="lc-checkin__field-heading"><span>卡片预览</span><small>随设置实时更新</small></div>
                         <article class="lc-checkin__preview-card" data-editor-preview>
                             <span class="lc-checkin__preview-icon" data-preview-icon>${renderIconMarkup(selectedIcon)}</span>
-                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || "未命名打卡")}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? "完成一次 · " + formatScheduleLabel(schedule) : `${KIND_LABELS[selectedKind]} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
+                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || "未命名打卡")}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? "完成一次 · " + formatScheduleLabel(schedule) : `${t(KIND_LABELS[selectedKind])} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
                             <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
                         </article>
                     </section>
@@ -2358,13 +2358,13 @@ export default class CheckinPlugin extends Plugin {
                         <div class="lc-checkin__advanced-content">
                             <div class="lc-checkin__organization-fields">
                                 <label class="lc-checkin__field"><span>分组</span><input name="group" type="text" maxlength="32" placeholder="例如：健康、学习" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
-                                <label class="lc-checkin__field"><span>重要性</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${PRIORITY_LABELS[priority]}</option>`).join("")}</select></label>
-                                <label class="lc-checkin__field"><span>时间段</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${TIME_SLOT_LABELS[slot]}</option>`).join("")}</select></label>
+                                <label class="lc-checkin__field"><span>重要性</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${t(PRIORITY_LABELS[priority])}</option>`).join("")}</select></label>
+                                <label class="lc-checkin__field"><span>时间段</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${t(TIME_SLOT_LABELS[slot])}</option>`).join("")}</select></label>
                                 <label class="lc-checkin__field"><span>完成来源</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>手动记录</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>番茄钟插件</option></select></label>
                                 <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>番茄钟计入</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>累计分钟</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>完成番茄钟数量</option></select></label>
                                 <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>安装兼容的番茄钟插件后，它可以通过小驴打卡 API 写入 source=tomato 的记录；未安装时仍可手动记录。</p>
                             </div>
-                            <div class="lc-checkin__field"><span>频率</span><select name="schedule" aria-label="频率">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${label}</option>`).join("")}</select></div>
+                            <div class="lc-checkin__field"><span>频率</span><select name="schedule" aria-label="频率">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
                                 <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
@@ -3100,7 +3100,7 @@ export default class CheckinPlugin extends Plugin {
             const unit = unitInput?.value.trim() || option.defaultUnit;
             const target = Number(targetInput?.value || option.step);
             const scheduleType = (scheduleSelect?.value || "daily") as ScheduleType;
-            let scheduleLabel = SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily;
+            let scheduleLabel = t(SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily);
             if (scheduleType === "interval") {
                 const days = Math.max(1, Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1));
                 scheduleLabel = `每隔 ${formatNumber(days)} 天`;
@@ -3117,7 +3117,7 @@ export default class CheckinPlugin extends Plugin {
             const previewProgress = root.querySelector<HTMLElement>("[data-preview-progress]");
             if (previewName) previewName.textContent = name;
             if (previewIcon) previewIcon.innerHTML = renderIconMarkup(icon);
-            if (previewMeta) previewMeta.textContent = kind === "binary" ? `完成一次 · ${scheduleLabel}` : `${KIND_LABELS[kind]} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
+            if (previewMeta) previewMeta.textContent = kind === "binary" ? `${t("kind.binary")} · ${scheduleLabel}` : `${t(KIND_LABELS[kind])} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
             if (previewAction) previewAction.textContent = kind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(kind, unit))} ${unit}`;
             if (previewProgress) previewProgress.hidden = kind === "binary";
         };
@@ -3479,8 +3479,8 @@ export default class CheckinPlugin extends Plugin {
             const completionSource = linkedToTomato ? `番茄钟·${root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.value === "sessions" ? "次数" : "分钟"}` : "手动记录";
             const schedule = root.querySelector<HTMLSelectElement>("select[name='schedule']")?.value as ScheduleType || "daily";
             const interval = Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1);
-            const scheduleLabel = schedule === "interval" ? `每隔 ${Math.max(1, Math.round(interval))} 天` : SCHEDULE_LABELS[schedule];
-            const pieces = [group, PRIORITY_LABELS[priority], timeSlot === "any" ? "" : TIME_SLOT_LABELS[timeSlot], completionSource, scheduleLabel].filter(Boolean);
+            const scheduleLabel = schedule === "interval" ? t("schedule.intervalN", {n: Math.max(1, Math.round(interval))}) : t(SCHEDULE_LABELS[schedule]);
+            const pieces = [group, t(PRIORITY_LABELS[priority]), timeSlot === "any" ? "" : t(TIME_SLOT_LABELS[timeSlot]), completionSource, scheduleLabel].filter(Boolean);
             root.querySelector<HTMLElement>("[data-advanced-summary]")?.replaceChildren(document.createTextNode(pieces.join(" · ")));
         };
         const updateTomatoFields = () => {
@@ -4608,7 +4608,7 @@ function formatNumber(value: number): string {
 function formatScheduleLabel(schedule: CheckinSchedule): string {
     if (schedule.type === "interval") return `每隔 ${schedule.intervalDays || 1} 天`;
     if (schedule.type === "quota" && schedule.quota) return `${schedule.quota.period === "week" ? "每周" : "每月"} ${schedule.quota.amount}${schedule.quota.countMode === "dates" ? "天" : "单位"}`;
-    return SCHEDULE_LABELS[schedule.type];
+    return t(SCHEDULE_LABELS[schedule.type]);
 }
 
 function getTargetLabel(kind: CheckinKind): string {

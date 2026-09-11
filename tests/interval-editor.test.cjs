@@ -3,9 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
 
-assert.match(source, /interval:\s*"每隔 N 天"/);
-assert.match(source, /quota:\s*"周期配额"/);
+assert.match(i18nSource, /"schedule\.interval": "每隔 N 天"/);
+assert.match(i18nSource, /"schedule\.quota": "周期配额"/);
 assert.match(source, /name="intervalDays"[^>]*min="1"[^>]*max="3650"/);
 assert.match(source, /name="anchorDate"[^>]*type="date"/);
 assert.match(source, /intervalSchedule\.hidden = scheduleSelect\?\.value !== "interval"/);
