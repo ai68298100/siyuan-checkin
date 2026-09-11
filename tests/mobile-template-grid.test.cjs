@@ -15,7 +15,8 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc
     "template cards must retain a stable touch height");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/,
     "save and delete actions must remain stacked instead of reflowing into the template grid");
-assert.match(source, /data-action="archive"[\s\S]*t\("editor\.archive"\)/,
+const editorSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "editor.ts"), "utf8");
+assert.match(editorSource, /data-action="archive"[\s\S]*t\("editor\.archive"\)/,
     "delete/archive action must remain present after template application");
 
 for (const width of [320, 360, 390, 430]) assert.ok(width >= 320 && width <= 430);

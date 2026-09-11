@@ -8,7 +8,8 @@ const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
 // Archive is the reversible delete operation and must have a visible, labelled action in the editor.
-assert.match(source, /data-action="archive"[\s\S]*\$\{item\.archived \? t\("editor\.restore"\) : t\("editor\.archive"\)\}/,
+const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
+assert.match(editorSource, /data-action="archive"[\s\S]*\$\{item\.archived \? t\("editor\.restore"\) : t\("editor\.archive"\)\}/,
     "editor must expose a reversible archive/delete action");
 assert.match(i18n, /"editor\.restore": "恢复打卡项"/);
 assert.match(i18n, /"editor\.archive": "暂时归档"/);

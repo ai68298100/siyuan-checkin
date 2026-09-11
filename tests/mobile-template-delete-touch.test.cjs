@@ -5,11 +5,12 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
-assert.match(source, /class="lc-checkin__archive-button" type="button" data-action="archive"/,
+assert.match(editorSource, /class="lc-checkin__archive-button" type="button" data-action="archive"/,
     "editor must expose a dedicated archive/delete button");
-assert.match(source, /data-action="archive"[\s\S]*\$\{item\.archived \? t\("editor\.restore"\) : t\("editor\.archive"\)\}/,
+assert.match(editorSource, /data-action="archive"[\s\S]*\$\{item\.archived \? t\("editor\.restore"\) : t\("editor\.archive"\)\}/,
     "delete action must communicate its reversible archive state");
 assert.match(i18n, /"editor\.restore": "恢复打卡项"/);
 assert.match(i18n, /"editor\.archive": "暂时归档"/);
