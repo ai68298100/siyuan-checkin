@@ -2279,112 +2279,112 @@ export default class CheckinPlugin extends Plugin {
             formatScheduleLabel(schedule),
         ].filter(Boolean).join(" · ");
         const templates = !item ? `<section class="lc-checkin__template-section">
-            <div class="lc-checkin__field-heading"><span>从常用打卡开始</span><small>选择后仍可修改</small></div>
+            <div class="lc-checkin__field-heading"><span>${t("editor.templateHeading")}</span><small>${t("editor.templateHint")}</small></div>
             <label class="lc-checkin__search-field">
-                <span class="lc-checkin__visually-hidden">搜索常用打卡模板</span>
+                <span class="lc-checkin__visually-hidden">${t("editor.templateSearchAria")}</span>
                 <span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span>
-                <input type="search" data-template-query autocomplete="off" placeholder="搜索模板，如：阅读、运动" />
-                <button type="button" data-action="clear-template-query" aria-label="清除模板搜索" title="清除" hidden>×</button>
+                <input type="search" data-template-query autocomplete="off" placeholder="${t("editor.templateSearchPh")}" />
+                <button type="button" data-action="clear-template-query" aria-label="${t("editor.clearTemplateSearch")}" title="${t("editor.clear")}" hidden>×</button>
             </label>
-            <div class="lc-checkin__filter-row" role="group" aria-label="模板分组">
-                <button class="is-selected" type="button" data-template-group="all" aria-pressed="true">全部</button>
+            <div class="lc-checkin__filter-row" role="group" aria-label="${t("editor.templateGroups")}">
+                <button class="is-selected" type="button" data-template-group="all" aria-pressed="true">${t("editor.groupAll")}</button>
                 ${templateGroups.map((group) => `<button type="button" data-template-group="${escapeHtml(group)}" aria-pressed="false">${escapeHtml(group)}</button>`).join("")}
             </div>
-            <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${CHECKIN_TEMPLATES.length} 个模板</span><button type="button" data-action="clear-template-filter" hidden>清除筛选</button></div>
+            <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${t("editor.templateCount", {n: CHECKIN_TEMPLATES.length})}</span><button type="button" data-action="clear-template-filter" hidden>${t("review.clearFilters")}</button></div>
             <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => {
                 const searchText = [template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" ");
                 return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(template.note)}" aria-label="${t("item.useTemplate", {name: template.name})}" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button>`;
             }).join("")}</div>${userTemplateMarkup}
-            <div class="lc-checkin__search-empty" data-template-empty hidden><strong>没有匹配的模板</strong><span>换个关键词，或清除筛选后浏览全部模板。</span><button type="button" data-action="clear-template-filter">查看全部</button></div>
+            <div class="lc-checkin__search-empty" data-template-empty hidden><strong>${t("editor.templateEmpty")}</strong><span>${t("editor.templateEmptyHint")}</span><button type="button" data-action="clear-template-filter">${t("editor.viewAll")}</button></div>
         </section>` : "";
         return `<div class="lc-checkin lc-checkin--editor" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header">
-                <button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button>
+                <button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button>
                 <h1 class="lc-checkin__title">${item ? t("editor.edit") : t("editor.create")}</h1>
             </header>
             <form class="lc-checkin__form">
                 <div class="lc-checkin__editor-columns">
                 <div class="lc-checkin__form-scroll">
                     ${templates}
-                    <label class="lc-checkin__field lc-checkin__field--name"><span>名称</span><input name="name" type="text" required maxlength="40" placeholder="例如：阅读 20 分钟" value="${escapeHtml(item?.name || "")}" /></label>
+                    <label class="lc-checkin__field lc-checkin__field--name"><span>${t("occ.name")}</span><input name="name" type="text" required maxlength="40" placeholder="${t("editor.namePlaceholder")}" value="${escapeHtml(item?.name || "")}" /></label>
                     <div class="lc-checkin__field lc-checkin__field--icons">
-                        <span>图标</span>
+                        <span>${t("editor.icon")}</span>
                         <details class="lc-checkin__icon-popup" data-icon-popup>
-                        <summary type="button"><span class="lc-checkin__popup-current" data-popup-current-icon>${renderIconMarkup(selectedIcon)}</span><span class="lc-checkin__popup-summary-text">更换图标</span><span class="lc-checkin__popup-arrow" aria-hidden="true">⌄</span></summary>
+                        <summary type="button"><span class="lc-checkin__popup-current" data-popup-current-icon>${renderIconMarkup(selectedIcon)}</span><span class="lc-checkin__popup-summary-text">${t("editor.changeIcon")}</span><span class="lc-checkin__popup-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__popup-body">
                         <label class="lc-checkin__search-field lc-checkin__search-field--icon">
-                            <span class="lc-checkin__visually-hidden">搜索图标</span>
+                            <span class="lc-checkin__visually-hidden">${t("editor.iconSearchAria")}</span>
                             <span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span>
-                            <input type="search" data-icon-query autocomplete="off" placeholder="搜索图标，如：跑步、阅读" />
-                            <button type="button" data-action="clear-icon-query" aria-label="清除图标搜索" title="清除" hidden>×</button>
+                            <input type="search" data-icon-query autocomplete="off" placeholder="${t("editor.iconSearchPh")}" />
+                            <button type="button" data-action="clear-icon-query" aria-label="${t("editor.clearIconSearch")}" title="${t("editor.clear")}" hidden>×</button>
                         </label>
-                        <div class="lc-checkin__icon-tabs" role="group" aria-label="图标类别">${ICON_GROUPS.map((group) => `<button type="button" data-icon-group="${group.id}" aria-pressed="${selectedIconGroup === group.id ? "true" : "false"}" class="${selectedIconGroup === group.id ? "is-selected" : ""}">${escapeHtml(group.name)}</button>`).join("")}</div>
-                        <div class="lc-checkin__result-line"><span data-icon-count aria-live="polite">${escapeHtml(ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.name || "通用")} · ${ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.icons.length || 0} 个</span></div>
+                        <div class="lc-checkin__icon-tabs" role="group" aria-label="${t("editor.iconGroups")}">${ICON_GROUPS.map((group) => `<button type="button" data-icon-group="${group.id}" aria-pressed="${selectedIconGroup === group.id ? "true" : "false"}" class="${selectedIconGroup === group.id ? "is-selected" : ""}">${escapeHtml(group.name)}</button>`).join("")}</div>
+                        <div class="lc-checkin__result-line"><span data-icon-count aria-live="polite">${t("editor.iconCount", {name: ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.name || "通用", n: ICON_GROUPS.find((group) => group.id === selectedIconGroup)?.icons.length || 0})}</span></div>
                         <div class="lc-checkin__icon-results" data-icon-results>${ICON_GROUPS.map((group) => `<section class="lc-checkin__icon-panel" data-icon-panel="${group.id}" data-icon-group-search="${escapeHtml([group.name, ...group.keywords].join(" "))}" ${selectedIconGroup === group.id ? "" : "hidden"}><small class="lc-checkin__icon-panel-heading">${escapeHtml(group.name)}</small><div class="lc-checkin__icon-grid">${group.icons.map((icon) => {
                             const keywords = ICON_SEARCH_KEYWORDS[icon] || "";
                             const accessibleName = keywords.split(" ").filter(Boolean).slice(0, 2).join("、");
-                            return `<button class="lc-checkin__icon-option ${selectedIcon === icon ? "is-selected" : ""}" type="button" data-icon="${escapeHtml(icon)}" data-icon-search-text="${escapeHtml([icon, group.name, ...group.keywords, keywords].join(" "))}" aria-label="选择${escapeHtml(accessibleName || group.name)}图标 ${escapeHtml(icon)}" title="${escapeHtml(keywords || group.name)}">${escapeHtml(icon)}</button>`;
+                            return `<button class="lc-checkin__icon-option ${selectedIcon === icon ? "is-selected" : ""}" type="button" data-icon="${escapeHtml(icon)}" data-icon-search-text="${escapeHtml([icon, group.name, ...group.keywords, keywords].join(" "))}" aria-label="${t("editor.iconSelectAria", {label: accessibleName || group.name, icon})}" title="${escapeHtml(keywords || group.name)}">${escapeHtml(icon)}</button>`;
                         }).join("")}</div></section>`).join("")}</div>
-                        <div class="lc-checkin__search-empty lc-checkin__search-empty--compact" data-icon-empty hidden><strong>没有匹配的图标</strong><button type="button" data-action="clear-icon-query">清除搜索</button></div>
+                        <div class="lc-checkin__search-empty lc-checkin__search-empty--compact" data-icon-empty hidden><strong>${t("editor.iconEmpty")}</strong><button type="button" data-action="clear-icon-query">${t("review.clearFilters")}</button></div>
                         <div class="lc-checkin__custom-icon" data-custom-icon-panel>
-                            <div class="lc-checkin__custom-icon-heading"><strong>自定义图标</strong><small>本地图片会占用插件存储空间，单图上限约 234 KB</small></div>
-                            <div class="lc-checkin__custom-icon-row"><input type="text" data-custom-icon-input maxlength="500" value="${escapeHtml(ICON_GROUPS.some((group) => group.icons.includes(selectedIcon)) ? "" : selectedIcon)}" placeholder="例如：🎯 或 https://example.com/icon.png" aria-label="自定义图标" /><button type="button" data-action="apply-custom-icon">应用</button></div>
-                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-file accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" />上传图片</label><button type="button" data-action="download-custom-icon">保存远程图</button><button type="button" data-action="open-iconfont">阿里图标库</button></div>
-                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-library accept=".json,.txt,application/json,text/plain" />导入图标库</label><small>支持图标 URL、data URL 或 emoji，每行一个，也支持 JSON 数组</small></div>
-                            ${this.customIconLibrary.length ? `<div class="lc-checkin__custom-library" data-custom-library><small>我的图标库 · ${this.customIconLibrary.length} 个</small><div class="lc-checkin__icon-grid">${this.customIconLibrary.map((icon) => `<button class="lc-checkin__icon-option" type="button" data-library-icon="${escapeHtml(icon)}" aria-label="使用自定义图标">${renderIconMarkup(icon)}</button>`).join("")}</div></div>` : ""}
+                            <div class="lc-checkin__custom-icon-heading"><strong>${t("editor.customIcon")}</strong><small>${t("editor.customIconHint")}</small></div>
+                            <div class="lc-checkin__custom-icon-row"><input type="text" data-custom-icon-input maxlength="500" value="${escapeHtml(ICON_GROUPS.some((group) => group.icons.includes(selectedIcon)) ? "" : selectedIcon)}" placeholder="${t("editor.customIconPh")}" aria-label="${t("editor.customIcon")}" /><button type="button" data-action="apply-custom-icon">${t("editor.apply")}</button></div>
+                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-file accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" />${t("editor.uploadImage")}</label><button type="button" data-action="download-custom-icon">${t("editor.saveRemote")}</button><button type="button" data-action="open-iconfont">${t("editor.iconfont")}</button></div>
+                            <div class="lc-checkin__custom-icon-tools"><label class="lc-checkin__file-button"><input type="file" data-custom-icon-library accept=".json,.txt,application/json,text/plain" />${t("editor.importLibrary")}</label><small>${t("editor.importLibraryHint")}</small></div>
+                            ${this.customIconLibrary.length ? `<div class="lc-checkin__custom-library" data-custom-library><small>${t("editor.myIcons", {n: this.customIconLibrary.length})}</small><div class="lc-checkin__icon-grid">${this.customIconLibrary.map((icon) => `<button class="lc-checkin__icon-option" type="button" data-library-icon="${escapeHtml(icon)}" aria-label="${t("editor.useCustomIcon")}">${renderIconMarkup(icon)}</button>`).join("")}</div></div>` : ""}
                         </div>
                         </div>
                         </details>
                         <input name="icon" type="hidden" value="${escapeHtml(selectedIcon)}" />
                     </div>
-                    <fieldset class="lc-checkin__kind-field"><legend>类型</legend><div class="lc-checkin__kind-grid">${KIND_OPTIONS.map((option) => `<label class="lc-checkin__kind-option"><input type="radio" name="kind" value="${option.kind}" ${selectedKind === option.kind ? "checked" : ""}/><span><strong>${escapeHtml(option.label)}</strong><small>${escapeHtml(option.description)}</small></span></label>`).join("")}</div></fieldset>
-                    <div class="lc-checkin__kind-help" data-kind-help>${escapeHtml(selectedKindOption.description)}</div>
+                    <fieldset class="lc-checkin__kind-field"><legend>${t("occ.kind")}</legend><div class="lc-checkin__kind-grid">${KIND_OPTIONS.map((option) => `<label class="lc-checkin__kind-option"><input type="radio" name="kind" value="${option.kind}" ${selectedKind === option.kind ? "checked" : ""}/><span><strong>${t(KIND_LABELS[option.kind])}</strong><small>${t(`kindDesc.${option.kind}`)}</small></span></label>`).join("")}</div></fieldset>
+                    <div class="lc-checkin__kind-help" data-kind-help>${t(`kindDesc.${selectedKind}`)}</div>
                     <div class="lc-checkin__form-row" data-value-fields>
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
-                        <label class="lc-checkin__field"><span>单位</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
+                        <label class="lc-checkin__field"><span>${t("occ.unit")}</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
                     </div>
                 </div>
                 <aside class="lc-checkin__editor-side">
-                    <section class="lc-checkin__editor-preview" aria-label="打卡项预览">
-                        <div class="lc-checkin__field-heading"><span>卡片预览</span><small>随设置实时更新</small></div>
+                    <section class="lc-checkin__editor-preview" aria-label="${t("editor.previewLabel")}">
+                        <div class="lc-checkin__field-heading"><span>${t("editor.previewLabel")}</span><small>${t("editor.previewHint")}</small></div>
                         <article class="lc-checkin__preview-card" data-editor-preview>
                             <span class="lc-checkin__preview-icon" data-preview-icon>${renderIconMarkup(selectedIcon)}</span>
-                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || "未命名打卡")}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? "完成一次 · " + formatScheduleLabel(schedule) : `${t(KIND_LABELS[selectedKind])} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
-                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
+                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || t("editor.unnamed"))}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? `${t("kind.binary")} · ` + formatScheduleLabel(schedule) : `${t(KIND_LABELS[selectedKind])} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
+                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? t("item.checkin") : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
                         </article>
                     </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
-                        <summary><span><strong>安排与分类</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
+                        <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__advanced-content">
                             <div class="lc-checkin__organization-fields">
-                                <label class="lc-checkin__field"><span>分组</span><input name="group" type="text" maxlength="32" placeholder="例如：健康、学习" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
-                                <label class="lc-checkin__field"><span>重要性</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${t(PRIORITY_LABELS[priority])}</option>`).join("")}</select></label>
-                                <label class="lc-checkin__field"><span>时间段</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${t(TIME_SLOT_LABELS[slot])}</option>`).join("")}</select></label>
-                                <label class="lc-checkin__field"><span>完成来源</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>手动记录</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>番茄钟插件</option></select></label>
-                                <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>番茄钟计入</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>累计分钟</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>完成番茄钟数量</option></select></label>
-                                <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>安装兼容的番茄钟插件后，它可以通过小驴打卡 API 写入 source=tomato 的记录；未安装时仍可手动记录。</p>
+                                <label class="lc-checkin__field"><span>${t("editor.group")}</span><input name="group" type="text" maxlength="32" placeholder="${t("editor.groupPlaceholder")}" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
+                                <label class="lc-checkin__field"><span>${t("editor.priorityLabel")}</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${t(PRIORITY_LABELS[priority])}</option>`).join("")}</select></label>
+                                <label class="lc-checkin__field"><span>${t("editor.slotLabel")}</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${t(TIME_SLOT_LABELS[slot])}</option>`).join("")}</select></label>
+                                <label class="lc-checkin__field"><span>${t("editor.completionSource")}</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>${t("source.manual")}</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>${t("source.tomato")}</option></select></label>
+                                <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>${t("editor.tomatoModeLabel")}</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>${t("editor.tomatoMinutesOpt")}</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>${t("editor.tomatoSessionsOpt")}</option></select></label>
+                                <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>${t("editor.tomatoHelp")}</p>
                             </div>
-                            <div class="lc-checkin__field"><span>频率</span><select name="schedule" aria-label="频率">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
+                            <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${WEEKDAYS.map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
-                                <label class="lc-checkin__field"><span>间隔天数</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
-                                <label class="lc-checkin__field"><span>起算日</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">今天</button></label>
+                                <label class="lc-checkin__field"><span>${t("editor.intervalDays")}</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
+                                <label class="lc-checkin__field"><span>${t("editor.anchorDate")}</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">${t("review.tabDay")}</button></label>
                             </div>
                             <div class="lc-checkin__quota-schedule" data-quota-schedule hidden>
                                 <div class="lc-checkin__form-row">
-                                    <label class="lc-checkin__field"><span>配额周期</span><select name="quotaPeriod"><option value="week" ${quotaPeriod === "week" ? "selected" : ""}>每周</option><option value="month" ${quotaPeriod === "month" ? "selected" : ""}>每月</option></select></label>
-                                    <label class="lc-checkin__field"><span data-quota-amount-label>周期配额</span><input name="quotaAmount" type="number" min="1" step="1" value="${formatNumber(quotaAmount)}" /></label>
+                                    <label class="lc-checkin__field"><span>${t("editor.quotaPeriodLabel")}</span><select name="quotaPeriod"><option value="week" ${quotaPeriod === "week" ? "selected" : ""}>${t("editor.quotaWeekly")}</option><option value="month" ${quotaPeriod === "month" ? "selected" : ""}>${t("editor.quotaMonthly")}</option></select></label>
+                                    <label class="lc-checkin__field"><span data-quota-amount-label>${t("editor.quotaAmountLabel")}</span><input name="quotaAmount" type="number" min="1" step="1" value="${formatNumber(quotaAmount)}" /></label>
                                 </div>
-                                <label class="lc-checkin__field"><span>计算方式</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>按完成天数</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>按记录数值</option></select></label>
-                                <small class="lc-checkin__quota-help" data-quota-help>同一自然日多次记录只计 1 天，适合“每周运动 3 天”。</small>
+                                <label class="lc-checkin__field"><span>${t("editor.countModeLabel")}</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>${t("editor.countModeDates")}</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>${t("editor.countModeValue")}</option></select></label>
+                                <small class="lc-checkin__quota-help" data-quota-help>${t("editor.quotaHelp")}</small>
                             </div>
                         </div>
                     </details>
                 </aside>
                 <div class="lc-checkin__editor-actions">
-                    <button class="lc-checkin__save-button" type="submit">${item ? "保存修改" : "保存打卡项"}</button>
-                    <button class="lc-checkin__text-button" type="button" data-action="save-template">保存为我的模板</button>
-                    ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? "恢复打卡项" : "暂时归档"}</button>` : ""}
+                    <button class="lc-checkin__save-button" type="submit">${item ? t("editor.save") : t("editor.saveNew")}</button>
+                    <button class="lc-checkin__text-button" type="button" data-action="save-template">${t("editor.saveTemplate")}</button>
+                    ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? t("editor.restore") : t("editor.archive")}</button>` : ""}
             ${this.renderSaveStatus()}
             ${this.renderSyncNotice()}
                 </aside>
@@ -4612,7 +4612,7 @@ function formatScheduleLabel(schedule: CheckinSchedule): string {
 }
 
 function getTargetLabel(kind: CheckinKind): string {
-    return kind === "duration" ? "目标时长" : kind === "quantity" ? "目标数量" : kind === "count" ? "目标次数" : "目标值";
+    return kind === "duration" ? t("editor.targetDuration") : kind === "quantity" ? t("editor.targetQuantity") : kind === "count" ? t("editor.targetCount") : t("editor.targetDefault");
 }
 
 function getRecordStep(kind: CheckinKind, unit: string): number {

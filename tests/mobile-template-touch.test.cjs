@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
 // Built-in templates are applied through real buttons; saving stays a native form submit.
@@ -11,7 +12,8 @@ assert.match(source, /data-template-index=\"\$\{index\}\"/, "each template must 
 assert.match(source, /data-action=\"clear-template-filter\"/, "filtered templates need a visible reset action");
 assert.match(source, /data-action=\"clear-template-query\"/, "template search needs a clear action");
 assert.match(source, /class=\"lc-checkin__save-button\" type=\"submit\"/, "save template/item action must remain a form submit button");
-assert.match(source, /data-action=\"archive\"[\s\S]*暂时归档|暂时归档[\s\S]*data-action=\"archive\"/, "edit view must expose the delete/archive action");
+assert.match(source, /data-action="archive"[\s\S]*t\("editor\.archive"\)|t\("editor\.archive"\)[\s\S]*data-action="archive"/, "edit view must expose the delete/archive action");
+assert.match(i18n, /"editor\.archive": "暂时归档"/, "archive label must stay in the dictionary");
 
 // Mobile widths must give the controls room to be tapped without relying on hover.
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,

@@ -4,12 +4,15 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
-assert.match(source, /class=\"lc-checkin__archive-button\" type=\"button\" data-action=\"archive\"/,
+assert.match(source, /class="lc-checkin__archive-button" type="button" data-action="archive"/,
     "editor must expose a dedicated archive/delete button");
-assert.match(source, /data-action=\"archive\"[\s\S]*\$\{item\.archived \? \"恢复打卡项\" : \"暂时归档\"\}/,
+assert.match(source, /data-action="archive"[\s\S]*\$\{item\.archived \? t\("editor\.restore"\) : t\("editor\.archive"\)\}/,
     "delete action must communicate its reversible archive state");
+assert.match(i18n, /"editor\.restore": "恢复打卡项"/);
+assert.match(i18n, /"editor\.archive": "暂时归档"/);
 assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
     "delete action must use reversible persistence rather than removing the item");
 
