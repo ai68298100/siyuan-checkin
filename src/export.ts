@@ -1,5 +1,66 @@
 import type {CheckinStore} from "./types";
 
+export interface JsonBackupResult {
+    store: CheckinStore;
+    repaired: boolean;
+    summary: JsonBackupSummary;
+    warnings: string[];
+}
+
+export interface JsonBackupSummary {
+    itemCount: number;
+    eventCount: number;
+    tombstoneCount: number;
+    templateCount: number;
+    archivedItemCount: number;
+    dateRange?: {from: string; to: string};
+}
+
+export interface JsonBackupAudit {
+    itemDelta: number;
+    eventDelta: number;
+    tombstoneDelta: number;
+    templateDelta: number;
+    archivedItemDelta: number;
+    dateRangeChanged: boolean;
+}
+
+export function auditJsonBackup(before: JsonBackupSummary, after: JsonBackupSummary): JsonBackupAudit {
+    return {
+        itemDelta: after.itemCount - before.itemCount,
+        eventDelta: after.eventCount - before.eventCount,
+        tombstoneDelta: after.tombstoneCount - before.tombstoneCount,
+        templateDelta: after.templateCount - before.templateCount,
+        archivedItemDelta: after.archivedItemCount - before.archivedItemCount,
+        dateRangeChanged: (before.dateRange?.from || "") !== (after.dateRange?.from || "") || (before.dateRange?.to || "") !== (after.dateRange?.to || ""),
+    };
+}
+
+export function summarizeJsonBackup(store: CheckinStore): JsonBackupSummary {
+    const dates = store.events.map((event) => event.localDate).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort();
+    return {
+        itemCount: store.items.length,
+        eventCount: store.events.length,
+        tombstoneCount: store.eventTombstones.length,
+        templateCount: store.templates?.length || 0,
+        archivedItemCount: store.items.filter((item) => item.archived).length,
+        dateRange: dates.length ? {from: dates[0], to: dates[dates.length - 1]} : undefined,
+    };
+}
+
+/** Parse an exported backup and normalize legacy or partially malformed data safely. */
+export function parseJsonBackup(text: string, normalize: (value: unknown) => CheckinStore = (value) => value as CheckinStore): JsonBackupResult {
+    const parsed: unknown = JSON.parse(text.replace(/^\uFEFF/, ""));
+    const warnings: string[] = [];
+    if (!parsed || typeof parsed !== "object") throw new Error("备份必须是 JSON 对象");
+    const candidate = parsed as Record<string, unknown>;
+    if (!Array.isArray(candidate.items)) warnings.push("缺少项目列表，已按空列表处理");
+    if (!Array.isArray(candidate.events)) warnings.push("缺少记录列表，已按空列表处理");
+    if (candidate.version !== 2) warnings.push(`备份数据版本 ${String(candidate.version ?? "未知")} 将自动迁移到当前版本`);
+    const store = normalize(parsed);
+    return {store, repaired: JSON.stringify(parsed) !== JSON.stringify(store), summary: summarizeJsonBackup(store), warnings};
+}
+
 export function serializeJson(store: CheckinStore): string {
     return JSON.stringify(store, null, 2);
 }

@@ -4,6 +4,47 @@ import {evaluateQuotaSchedule} from "./rules";
 
 export const STORE_VERSION = 2 as const;
 
+export interface StoreConflictReport {
+    conflicted: boolean;
+    baselineFingerprint: string;
+    currentFingerprint: string;
+    changedItemIds: string[];
+    changedEventIds: string[];
+}
+export type StoreConflictStrategy = "local" | "remote" | "merge";
+export interface StoreConflictResolution { strategy: StoreConflictStrategy; store: CheckinStore; report: StoreConflictReport; }
+export interface StoreAuditEntry { type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>; }
+
+export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: StoreAuditEntry, limit = 50): StoreAuditEntry[] {
+    return [...entries, {type: entry.type, at: entry.at, details: {...entry.details}}].slice(-Math.max(1, limit));
+}
+
+function storeFingerprint(store: CheckinStore): string {
+    return JSON.stringify({items: store.items, events: store.events, eventTombstones: store.eventTombstones, templates: store.templates || []});
+}
+
+/** Compare a saved baseline with the latest store to detect another window's write. */
+export function detectStoreConflict(baseline: unknown, current: unknown): StoreConflictReport {
+    const before = normalizeStore(baseline);
+    const after = normalizeStore(current);
+    const beforeItems = new Map(before.items.map((item) => [item.id, JSON.stringify(item)]));
+    const afterItems = new Map(after.items.map((item) => [item.id, JSON.stringify(item)]));
+    const beforeEvents = new Map(before.events.map((event) => [event.id, JSON.stringify(event)]));
+    const afterEvents = new Map(after.events.map((event) => [event.id, JSON.stringify(event)]));
+    const changedItemIds = [...new Set([...beforeItems.keys(), ...afterItems.keys()])].filter((id) => beforeItems.get(id) !== afterItems.get(id)).sort();
+    const changedEventIds = [...new Set([...beforeEvents.keys(), ...afterEvents.keys()])].filter((id) => beforeEvents.get(id) !== afterEvents.get(id)).sort();
+    const baselineFingerprint = storeFingerprint(before);
+    const currentFingerprint = storeFingerprint(after);
+    return {conflicted: baselineFingerprint !== currentFingerprint, baselineFingerprint, currentFingerprint, changedItemIds, changedEventIds};
+}
+export function resolveStoreConflict(baseline: unknown, local: unknown, remote: unknown, strategy: StoreConflictStrategy = "merge"): StoreConflictResolution {
+    const report = detectStoreConflict(baseline, remote);
+    const localStore = normalizeStore(local);
+    const remoteStore = normalizeStore(remote);
+    const store = strategy === "local" ? localStore : strategy === "remote" ? remoteStore : mergeStores(localStore, remoteStore);
+    return {strategy, store, report};
+}
+
 export function createDefaultStore(): CheckinStore {
     return {
         version: STORE_VERSION,

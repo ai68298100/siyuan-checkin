@@ -8,7 +8,7 @@ import {t} from "./i18n";
 import {buildMonthlyEventTrend, buildWeeklyCompletionTrend, buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap} from "./charts";
 import {buildAchievements} from "./features/achievements";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, type CheckinTemplate} from "./catalog";
-import {parseCheckinCsv, serializeCsv, serializeJson} from "./export";
+import {parseCheckinCsv, parseJsonBackup, serializeCsv, serializeJson} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildWeeklyReportMarkdown} from "./features/report";
@@ -16,7 +16,7 @@ import {filterHistoryRecords, HISTORY_SOURCE_LABELS} from "./features/history-fi
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, emitIntegrationEvent} from "./integrations";
-import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
+import {STORE_VERSION, appendEvent, createDefaultStore, dateKey, detectStoreConflict, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents, sortCheckinItems, updateEventNote} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -31,6 +31,8 @@ import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getChec
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 
 const STORAGE_NAME = "checkin-store";
+const BACKUP_STORAGE_NAME = "checkin-store-backup";
+const AUDIT_STORAGE_NAME = "checkin-store-audit";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
@@ -177,6 +179,8 @@ interface LockManagerLike {
 
 export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
+    private lastPersistedStore: CheckinStore = createDefaultStore();
+    private auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>}> = [];
     private occasionStore: OccasionStore = createDefaultOccasionStore();
     private userTemplates: UserTemplate[] = [];
     private customIconLibrary: string[] = [];
@@ -416,6 +420,9 @@ export default class CheckinPlugin extends Plugin {
                 const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
+                this.lastPersistedStore = this.cloneStore(this.store);
+                const audit = await this.loadData(AUDIT_STORAGE_NAME);
+                this.auditEntries = Array.isArray(audit) ? audit.slice(-50) : [];
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
@@ -1420,6 +1427,8 @@ export default class CheckinPlugin extends Plugin {
         const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
         const iconKb = Math.max(0, Math.round(this.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
         const storageKb = Math.max(1, Math.round((this.store.events.length * 160 + this.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
+        const auditLabel = (type: string) => type === "conflict" ? "发现冲突" : type === "merge" ? "自动合并" : type === "restore" ? "恢复快照" : "数据迁移";
+        const auditRows = this.auditEntries.slice(-5).reverse().map((entry) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`).join("");
         const groups: Array<{id: string; label: string; body: string}> = [
             {
                 id: "appearance",
@@ -1454,6 +1463,9 @@ export default class CheckinPlugin extends Plugin {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导出记录</span><small>在回顾页可随时导出 JSON / CSV。</small></span><button class="lc-checkin__text-button" type="button" data-action="review">打开回顾</button></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>存储用量</span><small>打卡 ${this.store.items.length} 项 · 记录 ${this.store.events.length} 条${photoEvents.length ? ` · 照片 ${photoEvents.length} 张约 ${photoKb} KB` : ""}${iconKb ? ` · 图标库约 ${iconKb} KB` : ""}。</small></span><span class="lc-checkin__settings-value">${storageKb} KB</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 JSON（恢复备份）</span><small>用之前导出的 JSON 文件整体恢复打卡数据，将覆盖当前数据。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-json accept=".json,application/json" />选择文件</label></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复上一份本地快照</span><small>回滚到最近一次保存前的数据，当前数据会先自动保留为快照。</small></span><button class="lc-checkin__text-button" type="button" data-action="restore-backup">恢复快照</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>同步审计</span><small>记录最近的跨窗口冲突与自动同步事件（最多保留 50 条）。</small></span><button class="lc-checkin__text-button" type="button" data-action="clear-audit">清空记录</button></div>
+                    <div class="lc-checkin__audit-list" aria-label="最近同步审计记录">${auditRows ? `<ul>${auditRows}</ul>` : "<small>暂无同步审计记录</small>"}</div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>导入 CSV</span><small>表头需含 名称、日期，可选 数值、单位。相同记录自动跳过。</small></span><label class="lc-checkin__file-button"><input type="file" data-import-csv accept=".csv,text/csv" />选择文件</label></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>恢复显示偏好</span><small>只重置显示设置，不删除打卡数据。</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">恢复默认</button></div>`,
             },
@@ -1504,24 +1516,23 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm("确定恢复全部显示偏好吗？打卡数据不会受到影响。")) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage("显示偏好已恢复默认")); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
+        root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
+        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.saveData(AUDIT_STORAGE_NAME, []); this.render(); });
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
             if (!file) return;
             try {
-                const parsed = JSON.parse(await file.text());
-                if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.items) || !Array.isArray(parsed.events)) {
-                    showMessage("JSON 格式不正确，请使用小驴打卡导出的文件");
-                    return;
-                }
-                const eventCount = parsed.events.length;
-                    const itemCount = parsed.items.length;
-                    if (!window.confirm(`将用备份文件恢复：${itemCount} 个项目、${eventCount} 条记录。当前数据将被覆盖，是否继续？`)) { input.value = ""; return; }
+                const backup = parseJsonBackup(await file.text(), normalizeStore);
+                const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
+                const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
+                const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
+                    if (!window.confirm(`将用备份文件恢复：${itemCount} 个项目（归档 ${archivedItemCount} 个）、${eventCount} 条记录${rangeLabel}。${warningLabel}\n当前数据将被覆盖，是否继续？`)) { input.value = ""; return; }
                 const previous = this.store;
-                this.store = normalizeStore(parsed);
+                this.store = backup.store;
                 try {
                     await this.persist();
-                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录`);
+                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? "（已自动修复兼容字段）" : ""}`);
                 } catch {
                     this.store = previous;
                     showMessage("恢复失败，原数据未变");
@@ -2865,6 +2876,26 @@ export default class CheckinPlugin extends Plugin {
         if (restored && expectedItem) showMessage(`[小驴打卡] 已恢复「${expectedItem.name}」`);
     }
 
+    private async restoreLatestBackup() {
+        if (!this.storageReady || this.disposed) return;
+        const raw = await this.loadData(BACKUP_STORAGE_NAME);
+        if (!raw) { showMessage("[小驴打卡] 暂无可恢复的本地快照"); return; }
+        const backup = normalizeStore(raw);
+        const itemCount = backup.items.length;
+        const eventCount = backup.events.length;
+        if (!window.confirm(`将恢复上一份本地快照：${itemCount} 个项目、${eventCount} 条记录。当前数据会先自动保留，是否继续？`)) return;
+        const current = this.cloneStore(this.store);
+        this.store = backup;
+        try {
+            await this.persist(current);
+            showMessage(`[小驴打卡] 已恢复本地快照：${itemCount} 个项目、${eventCount} 条记录`);
+            this.render();
+        } catch {
+            this.store = current;
+            showMessage("[小驴打卡] 快照恢复失败，原数据未变");
+        }
+    }
+
     private async setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean> {
         if (this.disposed || this.initializationState !== "ready" || typeof itemId !== "string" || typeof archived !== "boolean") return false;
         const item = this.store.items.find((candidate) => candidate.id === itemId);
@@ -3835,14 +3866,15 @@ export default class CheckinPlugin extends Plugin {
         const snapshot = this.cloneStore(store);
         this.saveState = "saving";
         this.renderBackgroundUpdate();
-        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined));
+        const previous = this.cloneStore(this.lastPersistedStore);
+        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(BACKUP_STORAGE_NAME, previous).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined)));
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
             showMessage(`[小驴打卡] 保存数据失败：${String(error)}`);
             this.renderBackgroundUpdate();
         });
         void write.then(() => {
-            if (this.saveState === "saving") this.saveState = "idle";
+            if (this.saveState === "saving") { this.saveState = "idle"; this.lastPersistedStore = this.cloneStore(snapshot); }
             this.renderBackgroundUpdate();
         }, () => undefined);
         return write;
@@ -4321,10 +4353,15 @@ export default class CheckinPlugin extends Plugin {
                 try {
                     const stored = await this.loadData(STORAGE_NAME);
                     const remote = normalizeStore(stored);
+                    const conflict = detectStoreConflict(this.lastPersistedStore, remote);
+                    if (conflict.conflicted) {
+                        this.auditEntries = [...this.auditEntries, {type: "conflict" as const, at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}}].slice(-50);
+                        void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+                    }
                     const latest = mergeStores(this.store, remote);
                     refreshed = JSON.stringify(latest) !== JSON.stringify(this.store);
                     this.store = latest;
-                    if (refreshed) this.showSyncNotice();
+                    if (refreshed || conflict.conflicted) this.showSyncNotice();
                     if (JSON.stringify(latest) !== JSON.stringify(remote)) {
                         await this.persist();
                     }

@@ -17,6 +17,30 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 const root = path.resolve(__dirname, "..");
 const run = (command, options = {}) => execSync(command, {cwd: root, stdio: "inherit", ...options});
 
+const parseVersion = (value) => value.split(".").map(Number);
+const compareVersions = (left, right) => {
+    const a = parseVersion(left);
+    const b = parseVersion(right);
+    for (let index = 0; index < 3; index += 1) {
+        if (a[index] !== b[index]) return a[index] - b[index];
+    }
+    return 0;
+};
+const currentPackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+if (compareVersions(version, currentPackage.version) < 0) {
+    console.error(`发布版本 ${version} 低于当前 package.json 版本 ${currentPackage.version}`);
+    process.exit(1);
+}
+try {
+    const existingTag = execSync(`git tag --list v${version}`, {cwd: root, encoding: "utf8"}).trim();
+    if (existingTag) {
+        console.error(`Tag v${version} 已存在，不能重复发布`);
+        process.exit(1);
+    }
+} catch {
+    // git tag 查询失败时让后续发布步骤报告原始错误。
+}
+
 // 1. 版本号
 for (const file of ["package.json", "plugin.json"]) {
     const target = path.join(root, file);

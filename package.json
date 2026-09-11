@@ -16,7 +16,9 @@
         "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
         "test:visual:harness": "node tests/mobile-qa-harness-status.cjs",
         "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/ecosystem-docs.test.cjs && node tests/api-contract.test.cjs && node tests/preferences-docs.test.cjs",
-        "test:perf": "node tests/performance.test.cjs"
+        "test:perf": "node tests/performance.test.cjs",
+        "test:backup": "node tests/backup.test.cjs",
+        "test:conflict": "node tests/conflict.test.cjs"
     },
     "keywords": [
         "siyuan",
