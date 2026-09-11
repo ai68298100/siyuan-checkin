@@ -34,7 +34,7 @@ const STORAGE_NAME = "checkin-store";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
-const PLUGIN_VERSION = "8.7.0";
+const PLUGIN_VERSION = "9.0.0";
 type OccasionImport = import("./occasions").Occasion;
 function parseLocalDateKey(value: string): Date {
     const [year, month, day] = value.split("-").map(Number);
@@ -251,6 +251,7 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerInterval?: number;
     private focusTimerRoot?: HTMLElement;
     private focusTimerMinutes = 25;
+    private renderRafId = 0;
     private bulkMode = false;
     private bulkSelected = new Set<string>();
     private lastExportAt?: string;
@@ -1311,6 +1312,15 @@ export default class CheckinPlugin extends Plugin {
         if (this.currentPage !== "editor") {
             this.render();
         }
+    }
+
+    /* 9.0 渲染合并：同一帧内多次调用只执行一次渲染。 */
+    private scheduleRender() {
+        if (this.renderRafId) return;
+        this.renderRafId = requestAnimationFrame(() => {
+            this.renderRafId = 0;
+            this.render();
+        });
     }
 
     private render() {

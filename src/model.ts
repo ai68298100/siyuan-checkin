@@ -239,15 +239,39 @@ export function getItemRevisionForDate(item: CheckinItem, date = new Date()): Ch
     };
 }
 
-export function getEventsForDay(store: CheckinStore, itemId: string, date = new Date()): CheckinEvent[] {
-    const prefix = dateKey(date);
-    return store.events.filter((event) => {
-        if (event.itemId !== itemId) {
-            return false;
-        }
-        return getEventDateKey(event) === prefix;
-    });
+/* ============================================================
+   9.0 性能优化：WeakMap 事件索引
+   以 store 对象为 key 自动缓存/失效，O(E) 建索引一次，
+   后续所有 getEventsForDay 调用变 O(1)。
+   ============================================================ */
+
+interface StoreEventIndex {
+    byItemDate: Map<string, CheckinEvent[]>;
 }
+
+const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
+
+export function getStoreIndex(store: CheckinStore): StoreEventIndex {
+    let index = storeIndexes.get(store);
+    if (!index) {
+        index = { byItemDate: new Map() };
+        for (const event of store.events) {
+            const key = event.itemId + ":" + event.localDate;
+            const list = index.byItemDate.get(key);
+            if (list) list.push(event);
+            else index.byItemDate.set(key, [event]);
+        }
+        storeIndexes.set(store, index);
+    }
+    return index;
+}
+
+export function getEventsForDay(store: CheckinStore, itemId: string, date = new Date()): CheckinEvent[] {
+    const index = getStoreIndex(store);
+    return index.byItemDate.get(itemId + ":" + dateKey(date)) || EMPTY_EVENTS;
+}
+
+const EMPTY_EVENTS: CheckinEvent[] = [];
 
 export function getProgress(store: CheckinStore, item: CheckinItem, date = new Date()): number {
     const revision = getItemRevisionForDate(item, date);
