@@ -54,7 +54,7 @@
 - [ ] T-020 i18n 全量迁移
   - 验收：所有用户可见文案通过 t() 获取，en-US 字典补全
   - 依赖：无
-  - 状态：doing（已完成：今日页核心+标签体系+回顾/insights+事项表单列表；余：打卡项编辑器（模板区/字段/预览）、设置页、归档页、occasions.ts 引擎串（模板名/describeRecurrence/WEEKDAY_NAMES）、日期 locale 化（toLocaleDateString zh-CN 与 WEEKDAYS/CALENDAR_WEEKDAYS 数组））
+  - 状态：doing（已完成：今日页、标签体系、回顾/insights、事项表单列表、打卡项编辑器、设置页、归档页；余：occasions.ts 引擎串（OCCASION_TEMPLATES 模板名/describeRecurrence/WEEKDAY_NAMES/NTH 标签）、catalog.ts 数据（CHECKIN_TEMPLATES 名称备注/ICON_GROUPS 组名/关键词）、日期 locale 化（toLocaleDateString zh-CN 多处 + WEEKDAYS/CALENDAR_WEEKDAYS/formatHistoryDate）、bindEditor/bindSettings 等 showMessage/confirm 运行时消息）
 
 - [x] T-021 无障碍审计
   - 验收：所有交互元素有 aria-label；焦点顺序合理；色彩对比度 ≥4.5:1
