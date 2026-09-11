@@ -6,6 +6,7 @@ const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), 
 const tokens = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8");
 const components = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
 
 /* Style system wiring: legacy floor loads first, then the v5 token and
    component layers; the v4 patch layers are gone. */
@@ -57,8 +58,8 @@ assert.match(components, /\.lc-checkin__mobile-nav button\.is-selected span \{[^
 assert.match(source, /private renderReview\(\): string/, "review page must exist");
 assert.ok(!source.includes("private renderHistory(): string") && !source.includes("private renderSummary(): string"),
     "history and summary pages must be retired into review");
-assert.match(source, /lc-checkin__review-projects/, "review must include the project summary table");
-assert.match(source, /data-review-insights-id/, "project rows must drill into the item insights view");
+assert.match(reviewSource, /lc-checkin__review-projects/, "review must include the project summary table");
+assert.match(reviewSource, /data-review-insights-id/, "project rows must drill into the item insights view");
 assert.match(components, /@container\s+lc5\s*\(min-width:\s*880px\)[\s\S]*\.lc-checkin__review-layout\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(0,\s*\.85fr\)/,
     "review calendar and day details form two columns on desktop");
 

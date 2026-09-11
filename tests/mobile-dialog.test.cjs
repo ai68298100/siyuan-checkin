@@ -5,6 +5,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
+const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
@@ -50,9 +52,9 @@ assert.match(source, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
-assert.match(source, /toLocaleTimeString\(getPluginLocale\(\), \{hour: "2-digit", minute: "2-digit"\}\)/,
+assert.match(fragmentsSource, /toLocaleTimeString\(getPluginLocale\(\), \{hour: "2-digit", minute: "2-digit"\}\)/,
     "review records should expose the record time");
-assert.match(source, /t\(`source\.\$\{event\.source\}`\)/,
+assert.match(reviewSource, /t\(`source\.\$\{event\.source\}`\)/,
     "review records should expose the record source");
 assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/,
     "record feedback should expose current progress");
@@ -69,7 +71,6 @@ assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
 assert.match(i18nSource, /"msg\.saving": "正在保存…"/,
     "saving state must be visible to users");
-const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 assert.match(fragmentsSource, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
 assert.match(source, /private renderSaveStatus\(\): string/,
