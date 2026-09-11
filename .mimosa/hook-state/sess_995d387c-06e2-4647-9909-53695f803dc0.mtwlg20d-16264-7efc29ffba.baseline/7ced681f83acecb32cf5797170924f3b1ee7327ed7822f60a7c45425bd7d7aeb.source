@@ -43,7 +43,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     showWeekStrip: false,
     dialogSizeMode: "percent",
     palette: "lavender",
-    dialogScale: 80,
+    dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
 };
 

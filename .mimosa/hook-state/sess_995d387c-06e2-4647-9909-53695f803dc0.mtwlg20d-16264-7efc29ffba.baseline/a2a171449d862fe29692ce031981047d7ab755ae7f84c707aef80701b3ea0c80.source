@@ -1633,7 +1633,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-fab" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
     }
 
@@ -1979,6 +1979,7 @@ export default class CheckinPlugin extends Plugin {
                 <div class="lc-checkin__header-actions">
                     <div class="lc-checkin__range-tabs" role="tablist" aria-label="统计范围">${tabs}${custom}</div>
                     <button class="lc-checkin__text-button" type="button" data-action="copy-weekly-report">复制周报</button>
+                    <button class="lc-checkin__text-button" type="button" data-action="archived">归档</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="导出 JSON" title="导出 JSON">${uiIcon("summary")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="导出 CSV" title="导出 CSV">${uiIcon("history")}</button>
                 </div>
