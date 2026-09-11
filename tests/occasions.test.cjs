@@ -15,6 +15,7 @@ const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions}).outputText);
 fs.writeFileSync(path.join(path.dirname(output), "lunar.js"), ts.transpileModule(fs.readFileSync("src/lunar.ts", "utf8"), {compilerOptions}).outputText);
+fs.writeFileSync(path.join(path.dirname(output), "i18n.js"), ts.transpileModule(fs.readFileSync("src/i18n.ts", "utf8"), {compilerOptions}).outputText);
 const occasions = require(output);
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");

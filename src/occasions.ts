@@ -1,4 +1,5 @@
 import {lunarToSolar, solarToLunar} from "./lunar";
+import {t} from "./i18n";
 
 export type OccasionKind = "birthday" | "anniversary" | "scheduled";
 export type OccasionRecurrence = "once" | "annual" | "monthly" | "weekly" | "quarterly" | "halfyearly" | "interval";
@@ -55,7 +56,9 @@ export const OCCASIONS_STORAGE_NAME = "checkin-occasions";
 export const OCCASIONS_STORE_VERSION = 1;
 
 export interface OccasionTemplate {
+    /** 显示名（zh 兜底）；渲染与套用时优先用 nameKey 查字典。 */
     name: string;
+    nameKey: string;
     icon: string;
     kind: OccasionKind;
     recurrence: OccasionRecurrence;
@@ -75,32 +78,40 @@ export interface OccasionTemplate {
 }
 
 export const OCCASION_TEMPLATES: OccasionTemplate[] = [
-    {name: "生日（公历）", icon: "🎂", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
-    {name: "生日（农历）", icon: "🥮", kind: "birthday", recurrence: "annual", calendar: "lunar", remindBeforeDays: 3},
-    {name: "结婚纪念日", icon: "💍", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
-    {name: "房贷还款", icon: "🏠", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "车贷还款", icon: "🚗", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "房租", icon: "🔑", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "物业费", icon: "🏢", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
-    {name: "保险费（年缴）", icon: "🛡️", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 14},
-    {name: "保险费（季缴）", icon: "📄", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
-    {name: "信用卡还款", icon: "💳", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "车辆年检", icon: "🔧", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
-    {name: "定期体检", icon: "🩺", kind: "scheduled", recurrence: "interval", intervalUnit: "month", intervalCount: 12, remindBeforeDays: 14},
-    {name: "订阅续费", icon: "🔄", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
-    {name: "域名续费", icon: "🌐", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
-    {name: "发工资", icon: "💰", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 0},
-    {name: "情人节", icon: "🌹", kind: "scheduled", recurrence: "annual", calendar: "solar", date: "2026-02-14", remindBeforeDays: 7},
-    {name: "母亲节", icon: "🌷", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0, remindBeforeDays: 7},
-    {name: "父亲节", icon: "👔", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 6, nthWeek: 3, weekday: 0, remindBeforeDays: 7},
-    {name: "七夕", icon: "🪶", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-08-19", remindBeforeDays: 7},
-    {name: "中秋节", icon: "🌕", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-09-25", remindBeforeDays: 7},
-    {name: "春节", icon: "🧨", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-02-17", remindBeforeDays: 14},
+    {name: "生日（公历）", nameKey: "occ.tpl.birthdaySolar", icon: "🎂", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
+    {name: "生日（农历）", nameKey: "occ.tpl.birthdayLunar", icon: "🥮", kind: "birthday", recurrence: "annual", calendar: "lunar", remindBeforeDays: 3},
+    {name: "结婚纪念日", nameKey: "occ.tpl.wedding", icon: "💍", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
+    {name: "房贷还款", nameKey: "occ.tpl.mortgage", icon: "🏠", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "车贷还款", nameKey: "occ.tpl.carLoan", icon: "🚗", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "房租", nameKey: "occ.tpl.rent", icon: "🔑", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "物业费", nameKey: "occ.tpl.propertyFee", icon: "🏢", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
+    {name: "保险费（年缴）", nameKey: "occ.tpl.insuranceYear", icon: "🛡️", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 14},
+    {name: "保险费（季缴）", nameKey: "occ.tpl.insuranceQuarter", icon: "📄", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
+    {name: "信用卡还款", nameKey: "occ.tpl.creditCard", icon: "💳", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "车辆年检", nameKey: "occ.tpl.vehicleInspection", icon: "🔧", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
+    {name: "定期体检", nameKey: "occ.tpl.healthCheckup", icon: "🩺", kind: "scheduled", recurrence: "interval", intervalUnit: "month", intervalCount: 12, remindBeforeDays: 14},
+    {name: "订阅续费", nameKey: "occ.tpl.subscription", icon: "🔄", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
+    {name: "域名续费", nameKey: "occ.tpl.domain", icon: "🌐", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
+    {name: "发工资", nameKey: "occ.tpl.payday", icon: "💰", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 0},
+    {name: "情人节", nameKey: "occ.tpl.valentines", icon: "🌹", kind: "scheduled", recurrence: "annual", calendar: "solar", date: "2026-02-14", remindBeforeDays: 7},
+    {name: "母亲节", nameKey: "occ.tpl.mothersDay", icon: "🌷", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0, remindBeforeDays: 7},
+    {name: "父亲节", nameKey: "occ.tpl.fathersDay", icon: "👔", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 6, nthWeek: 3, weekday: 0, remindBeforeDays: 7},
+    {name: "七夕", nameKey: "occ.tpl.qixi", icon: "🪶", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-08-19", remindBeforeDays: 7},
+    {name: "中秋节", nameKey: "occ.tpl.midAutumn", icon: "🌕", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-09-25", remindBeforeDays: 7},
+    {name: "春节", nameKey: "occ.tpl.springFestival", icon: "🧨", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-02-17", remindBeforeDays: 14},
 ];
+
+export function occasionTemplateName(template: OccasionTemplate): string {
+    return t(template.nameKey) || template.name;
+}
+
+export function weekdayName(index: number): string {
+    return t(`occ.wd${clampInteger(index, 0, 6, 0)}`);
+}
 
 export function applyOccasionTemplate(template: OccasionTemplate, anchorDate: string): Partial<Occasion> {
     return {
-        name: template.name,
+        name: occasionTemplateName(template),
         kind: template.kind,
         recurrence: template.recurrence,
         calendar: template.calendar,
@@ -356,29 +367,31 @@ export function isValidOccasionDate(value: string): boolean {
 }
 
 export function describeRecurrence(item: Occasion): string {
+    const nth = (n: number): string => t(`occ.nth${clampInteger(n, 1, 5, 1)}`);
+    const wd = (index: number): string => weekdayName(index);
+    const unit = (u: IntervalUnit): string => u === "day" ? t("occ.unitDay") : u === "year" ? t("occ.unitYear") : t("occ.unitMonth");
     switch (item.recurrence) {
-        case "once": return "一次性";
+        case "once": return t("occ.once");
         case "annual": {
             if (item.annualSubtype === "nthweek") {
-                const week = ["", "第1个", "第2个", "第3个", "第4个", "第5个"][clampInteger(item.nthWeek, 1, 5, 1)];
-                return `每年 · ${item.month}月${week}${WEEKDAY_NAMES[clampInteger(item.weekday, 0, 6, 0)]}`;
+                return t("occ.annualNthweek", {month: item.month ?? 1, week: nth(item.nthWeek ?? 1), weekday: wd(item.weekday ?? 0)});
             }
-            return item.calendar === "lunar" ? `每年 · 农历${item.lunarLeap ? "闰" : ""}${item.date.slice(5, 7).replace(/^0/, "")}月${Number(item.date.slice(8))}日` : "每年";
+            return item.calendar === "lunar"
+                ? t("occ.annualLunar", {leap: item.lunarLeap === true ? t("occ.lunarLeap") : "", month: item.date.slice(5, 7).replace(/^0/, ""), day: Number(item.date.slice(8))})
+                : t("occ.annual");
         }
         case "monthly": {
-            if (item.monthlySubtype === "lastday") return "每月 · 月末";
-            if (item.monthlySubtype === "nthweek") return `每月 · 第${item.nthWeek}个${WEEKDAY_NAMES[clampInteger(item.weekday, 0, 6, 0)]}`;
-            return "每月";
+            if (item.monthlySubtype === "lastday") return t("occ.monthlyLast");
+            if (item.monthlySubtype === "nthweek") return t("occ.monthlyNth", {n: item.nthWeek ?? 1, weekday: wd(item.weekday ?? 0)});
+            return t("occ.monthly");
         }
-        case "weekly": return `每周 · ${WEEKDAY_NAMES[clampInteger(item.weekday, 0, 6, 0)]}`;
-        case "quarterly": return "每季度";
-        case "halfyearly": return "每半年";
-        case "interval": return `每 ${item.intervalCount} ${item.intervalUnit === "day" ? "天" : item.intervalUnit === "year" ? "年" : "个月"}`;
+        case "weekly": return t("occ.weeklyWd", {weekday: wd(item.weekday ?? 0)});
+        case "quarterly": return t("occ.quarterly");
+        case "halfyearly": return t("occ.halfyearly");
+        case "interval": return t("occ.intervalDesc", {n: item.intervalCount ?? 1, unit: unit(item.intervalUnit || "month")});
         default: return "";
     }
 }
-
-export const WEEKDAY_NAMES = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
 
 export function toLocalDateKey(date: Date): string {
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");

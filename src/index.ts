@@ -25,7 +25,7 @@ import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette,
 import {validateEditorInput} from "./editor-validation";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
-import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, upsertOccasion, WEEKDAY_NAMES, type MonthlySubtype} from "./occasions";
+import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
@@ -2131,10 +2131,10 @@ export default class CheckinPlugin extends Plugin {
         const annualSubtype = editing?.annualSubtype || "byday";
         const monthlySubtype: MonthlySubtype = editing?.monthlySubtype || "byday";
         const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
-        const templateChips = OCCASION_TEMPLATES.map((template, index) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as OccasionImport)}"><span aria-hidden="true">${template.icon}</span>${template.name}</button>`).join("");
-        const weekdayOptions = WEEKDAY_NAMES.map((label, value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${label}</option>`).join("");
+        const templateChips = OCCASION_TEMPLATES.map((template, index) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as OccasionImport)}"><span aria-hidden="true">${template.icon}</span>${occasionTemplateName(template)}</button>`).join("");
+        const weekdayOptions = [0, 1, 2, 3, 4, 5, 6].map((value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${weekdayName(value)}</option>`).join("");
         const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${index + 1} 月</option>`).join("");
-        const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>` + ["第1个", "第2个", "第3个", "第4个", "第5个"][value - 1] + "</option>").join("");
+        const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
         return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${this.resolvedAppearance()}">
             <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("common.add")}">+</button></header>
             <div class="lc-checkin__occasion-manager">
