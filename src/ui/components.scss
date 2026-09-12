@@ -8,6 +8,13 @@
 .lc-checkin {
     box-sizing: border-box;
 }
+
+@container lc5 (max-width: 719px) {
+    .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-header,
+    .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-header { position: static !important; top: auto; background: transparent; backdrop-filter: none; }
+    .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
+    .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item { min-height: 46px; padding-block: 5px; }
+}
 .lc-checkin__layout {
     box-sizing: border-box;
     width: 100%;
@@ -25,6 +32,44 @@
     /* 底栏已移出 layout（挂在滚动容器上，sticky 才可靠），这里只需留一点收尾空间 */
     .lc-checkin__layout { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
     .lc-checkin__rail { display: none; }
+}
+
+/* Mobile compact pass: group labels scroll with content, cards stay dense, and Add is the central primary action. */
+@container lc5 (max-width: 719px) {
+    .lc-checkin--today .lc-checkin__group-header {
+        position: static !important;
+        top: auto;
+        z-index: auto;
+        background: transparent;
+        backdrop-filter: none;
+    }
+    .lc-checkin--today .lc-checkin__item {
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+        min-height: 46px;
+        padding: 5px 8px;
+        gap: 0 8px;
+        border-radius: 14px;
+    }
+    .lc-checkin--today .lc-checkin__item-icon { width: 32px; height: 32px; border-radius: 9px; font-size: 15px; }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { min-height: 30px; min-width: 54px; padding: 0 8px; }
+    .lc-checkin__mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; overflow: visible; }
+    .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add {
+        display: grid;
+        place-items: center;
+        align-content: center;
+        width: 50px;
+        height: 50px;
+        min-height: 50px;
+        margin: -12px auto 0;
+        border: 3px solid var(--lc-checkin-bg);
+        border-radius: 50%;
+        color: var(--lc-checkin-accent-contrast);
+        background: var(--lc-checkin-accent-fill);
+        box-shadow: 0 6px 18px color-mix(in srgb, var(--lc-checkin-accent) 38%, transparent);
+    }
+    .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add small { margin-top: 1px; color: inherit; font-size: 8px; }
+    .lc-checkin-dialog-host--mobile > .lc-checkin--editor { min-height: 0; overflow: auto; padding-bottom: 18px; }
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 260px; overflow: auto; }
 }
 
 /* 完整桌面：左侧导航栏 + 内容列（中宽容器同样启用双列，避免透明粘性导航与滚动内容重叠） */

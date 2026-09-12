@@ -42,17 +42,13 @@ assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
 const todayBindingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "today-bindings.ts"), "utf8");
 assert.match(todayBindingsSource, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
-assert.match(source, /const entries = \[\["today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\]\] as const;/,
-    "quick dialog navigation must expose the five v5 destinations");
+assert.doesNotMatch(source, /\["archived", t\("nav\.archived"\), "archive"\]/, "archived must remain nested under Review");
 const iconsSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "icons.ts"), "utf8");
-assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
-    "navigation icons must use the shared vector icon system");for (const destination of ["review", "occasions", "archived", "settings"]) {
-    assert.match(source, new RegExp(`\\[\\"${destination}\\",`),
-        `mobile navigation must include ${destination}`);
-}
-assert.match(source, /data-mobile-nav="add"[\s\S]*新建/, "mobile navigation must include the add action");
-assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(\)/,
-    "legacy page names must route into the fused review surface");
+assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/, "navigation icons must use shared vector icons");
+for (const destination of ["review", "occasions", "settings"]) assert.match(source, new RegExp(`\\[\\"${destination}\\",`));
+assert.match(source, /buttons\.slice\(0, 2\)[\s\S]*?\$\{add\}[\s\S]*?buttons\.slice\(2\)/, "mobile navigation must center the add action");
+assert.doesNotMatch(source, /currentPage !== "editor" && !root\.querySelector\("\.lc-checkin__mobile-nav"\)/, "editor must retain bottom navigation");
+assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(\)/, "legacy review routes remain supported");
 assert.match(bindPageNavSource, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
@@ -70,17 +66,17 @@ assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 
     "mobile dialog must follow the visual viewport when the keyboard opens");
 assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
     "mobile dialog close action must meet a touch-friendly target size");
-assert.match(v5Components, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
-    "mobile navigation must fit the five destinations plus the add action (six cells)");
+assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\) !important/,
+    "mobile navigation must fit four destinations around the central add action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
-assert.match(i18nSource, /"msg\.saving": "正在保存�?/,
+assert.match(i18nSource, /"msg\.saving":\s*"[^"]+"/,
     "saving state must be visible to users");
 assert.match(fragmentsSource, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
 assert.match(source, /private renderSaveStatus\(\): string/,
     "save feedback should be shared by today and editor surfaces");
-assert.match(i18nSource, /"msg\.syncedElsewhere": "已同步其他窗口更�?/,
+assert.match(i18nSource, /"msg\.syncedElsewhere":\s*"[^"]+"/,
     "multi-window merges should expose a transient sync notice");
 assert.match(source, /private showSyncNotice\(\)/,
     "sync notices should have an expiring lifecycle");

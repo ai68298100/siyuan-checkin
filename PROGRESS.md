@@ -61,3 +61,7 @@ Dock Tomato 联动研究完成：公开契约与未来 PR 边界已记录于 docs/docktomato-integra
 T-057 complete: Archived is now a Review sub-entry, reducing primary navigation while preserving direct access.
 
 T-057 verification checkpoint: pnpm run check, pnpm test, and pnpm run test:ui pass after nesting Archived under Review.
+
+T-059~T-062 complete: mobile group labels no longer stick, cards are denser, the editor retains an escape route and bounded scrolling, Add is centered in the bottom navigation, today occasions move above the list, and the default ungrouped preference is guarded. Verification: pnpm run check, pnpm run test:mobile, pnpm test, pnpm run test:ui, and system-Chrome width walkthrough passed.
+
+Next: continue 10.0 data-safety work with migration audit retention/export management; T-023 remains pending real-device feedback.

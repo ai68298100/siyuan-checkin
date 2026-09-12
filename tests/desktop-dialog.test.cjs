@@ -119,7 +119,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-
 // �?侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不�?
 assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host"\)/,
     "the dock panel needs its own host class for narrow-panel layout");
-assert.match(plugin, /if \(this\.currentPage !== "editor" && !root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
+assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
     "the bottom navigation must be rendered on every surface (wide containers hide it in CSS)");
 assert.match(plugin, /size: \{width: 380, height: 0\}/, "the dock default width must fit a readable card column");
 assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/ inline-size;[\s\S]*?display: flex;/,

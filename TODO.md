@@ -176,3 +176,8 @@
 - [x] T-057 archive in Review - removed Archived from top/mobile navigation and added a compact archived entry in Review header.
 
 - [x] T-058 archive navigation test cleanup - updated desktop/mobile/responsive guards for the new Review-owned archive entry.
+
+- [x] T-059 mobile Today density - category headers scroll with content and check-in rows use a compact 46px minimum layout.
+- [x] T-060 mobile editor recovery and primary Add navigation - editor remains scrollable, template area is bounded, and the centered Add action stays available in the bottom bar.
+- [x] T-061 occasion priority ordering - a visible occasion due today renders above the item list; non-triggered future occasions remain after the list.
+- [x] T-062 default grouping regression - first opening remains ungrouped while valid saved group preferences continue to win.

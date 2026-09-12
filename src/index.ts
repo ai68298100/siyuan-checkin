@@ -747,7 +747,7 @@ export default class CheckinPlugin extends Plugin {
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
            窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */
-        if (this.currentPage !== "editor" && !root.querySelector(".lc-checkin__mobile-nav")) {
+        if (!root.querySelector(".lc-checkin__mobile-nav")) {
             root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         }
         if (this.currentPage === "editor") {
@@ -964,7 +964,9 @@ export default class CheckinPlugin extends Plugin {
 
     private renderMobileNav(): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-nav-add" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
+        const buttons = entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
+        const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项"><span>${uiIcon("add")}</span><small>${t("nav.add")}</small></button>`;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
     }
 
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */

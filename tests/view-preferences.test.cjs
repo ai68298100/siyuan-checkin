@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const source = fs.readFileSync("src/view-preferences.ts", "utf8");
+assert.match(source, /groupMode: "none"/, "the first opening must remain ungrouped until the user changes it");
 const plugin = fs.readFileSync("src/index.ts", "utf8");
 assert.match(source, /normalizeViewPreferences/);
 assert.match(source, /dialogSizeMode: DialogSizeMode/);
