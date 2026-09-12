@@ -17,10 +17,12 @@ const i18n = read("src", "i18n.ts");
 assert.match(scss, /\.lc-checkin-dialog-host \{ container: lc-dialog \/ inline-size; \}/,
     "the dialog host must expose its own container so the content ladder measures the dialog, not the window");
 const ladder = scss.slice(scss.indexOf("container: lc-dialog / inline-size"));
-assert.match(ladder, /@container lc-dialog \(min-width: 1000px\)[\s\S]*?lc-checkin__layout \{ max-width: 1040px; \}/,
-    ">=1000px dialogs must widen the layout cap to 1040px");
-assert.match(ladder, /@container lc-dialog \(min-width: 1400px\)[\s\S]*?lc-checkin__layout \{ max-width: 1400px; \}/,
-    ">=1400px dialogs must widen the layout cap to 1400px");
+assert.match(ladder, /@container lc-dialog \(min-width: 900px\)[\s\S]*?lc-checkin__layout \{ max-width: 950px; \}/,
+    ">=900px dialogs must widen the layout cap to 950px (covers the ~950 CSS-px real-device dialog)");
+assert.match(ladder, /@container lc-dialog \(min-width: 1100px\)[\s\S]*?lc-checkin__layout \{ max-width: 1150px; \}/,
+    ">=1100px dialogs must widen the layout cap to 1150px");
+assert.match(ladder, /@container lc-dialog \(min-width: 1300px\)[\s\S]*?lc-checkin__layout \{ max-width: 1400px; \}/,
+    ">=1300px dialogs must widen the layout cap to 1400px");
 assert.match(ladder, /@container lc-dialog \(min-width: 2000px\)[\s\S]*?lc-checkin__layout \{ max-width: 1780px; \}/,
     ">=2000px dialogs must widen the layout cap to 1780px");
 const baseCapIndex = scss.indexOf("width: min(100%, 700px)");
@@ -73,5 +75,28 @@ assert.match(read("src", "render", "review.ts"), /ctx\.reviewFoldSections\.has\(
 assert.match(read("src", "render", "bind-today.ts"), /host\.reviewFoldTouched = true;/, "a manual fold toggle must win over the wide default");
 assert.match(scss, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin:not\(\.lc-checkin--editor\) \.lc-checkin__back-button \{ display: none; \}/,
     "the desktop rail replaces the per-page back button");
+
+// ⑤ 打卡按钮对齐：操作区用固定轨道，缺按钮的类型留空轨道而不是让主按钮左移
+assert.match(components, /\.lc-checkin--today \.lc-checkin__item-action \{[\s\S]*?--lc-action-slot: 34px;[\s\S]*?--lc-action-primary: 92px;[\s\S]*?grid-template-columns: var\(--lc-action-slot\) minmax\(64px, var\(--lc-action-primary\)\) var\(--lc-action-slot\);/,
+    "the action cell must use fixed tracks so every card kind shares one primary-button column");
+assert.match(components, /\.lc-checkin__item-action :is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{ grid-column: 2;/,
+    "the primary check-in button must be pinned to the middle track");
+assert.match(components, /\.lc-checkin__item-action \.lc-checkin__more-button \{ grid-column: 3;/,
+    "the exact-entry toggle must be pinned to the trailing track");
+assert.match(components, /\.lc-checkin__item:has\(\.lc-checkin__drag-handle\) \.lc-checkin__item-action \{/,
+    "the drag handle gets its own track only when present");
+assert.match(components, /grid-template-columns: repeat\(auto-fill, minmax\(min\(380px, 100%\), 1fr\)\)/,
+    "the shelf minimum card width must protect the name column (380px)");
+const fragments = read("src", "render", "fragments.ts");
+assert.match(fragments, /isBinary && complete \? "" : `<button class="lc-checkin__more-button"/,
+    "binary cards must expose the same exact-entry menu (note/photo) as the other kinds");
+assert.match(fragments, /isBinary \? "" : `<label><span>本次记录<\/span><input class="lc-checkin__amount"/,
+    "binary items omit the amount field but keep note and photo in the exact-entry panel");
+
+// ⑥ 弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗的 CSS 宽度可能只有 ~950）
+for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
+    assert.match(scss, new RegExp(`@container lc-dialog \\(min-width: ${threshold}px\\)`),
+        `the dialog ladder must include the ${threshold}px step`);
+}
 
 console.log("Desktop dialog structure checks passed.");

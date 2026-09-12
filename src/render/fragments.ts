@@ -106,16 +106,16 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? t("item.cancel") : t("item.checkin")}</button>`
-                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>
-                    <button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
+                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>`}
+                ${isBinary && complete ? "" : `<button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
                 ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
             </div>
-            ${isBinary ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
-                <label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
-                <span>${escapeHtml(unit)}</span>
+            ${isBinary && complete ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
+                ${isBinary ? "" : `<label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
+                <span>${escapeHtml(unit)}</span>`}
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
                 <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
-                <button class="lc-checkin__record-button" type="button" data-action="record">${t("item.record")}</button>
+                <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? t("item.checkin") : t("item.record")}</button>
             </div>`}
         </article>`;
 }

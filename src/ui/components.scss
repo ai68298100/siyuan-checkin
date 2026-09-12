@@ -436,16 +436,37 @@
 .lc-checkin--today .lc-checkin__item-progress { height: 3px; margin-top: 5px; border-radius: 3px; background: color-mix(in srgb, var(--card-accent) 10%, var(--lc-checkin-muted-surface)); overflow: hidden; }
 .lc-checkin--today .lc-checkin__item-progress span { display: block; height: 100%; border-radius: 3px; background: var(--card-accent); }
 
+/* 操作区用固定轨道：不同类型（完成型/按次/按时长/按数量）的主按钮永远落在同一条竖线，
+   文字列宽也因此一致；缺按钮的类型留空轨道而不是把后面的按钮整体左移。 */
 .lc-checkin--today .lc-checkin__item-action {
+    --lc-action-slot: 34px;
+    --lc-action-primary: 92px;
     grid-area: action;
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: var(--lc-action-slot) minmax(64px, var(--lc-action-primary)) var(--lc-action-slot);
     gap: 6px;
+    align-items: center;
+    justify-content: end;
     width: auto;
     min-width: 0;
     margin: 0;
     padding: 0;
     border: 0;
+}
+
+/* 手动排序多一个拖拽柄轨道（用 :has 只在确有手柄时占位） */
+.lc-checkin--today .lc-checkin__item:has(.lc-checkin__drag-handle) .lc-checkin__item-action {
+    grid-template-columns: var(--lc-action-slot) minmax(64px, var(--lc-action-primary)) var(--lc-action-slot) var(--lc-action-slot);
+}
+
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button { grid-column: 1; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__bulk-check { grid-column: 1; }
+.lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { grid-column: 2; justify-self: stretch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { grid-column: 3; justify-self: center; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle { grid-column: 4; justify-self: center; }
+
+@container lc5 (min-width: 1000px) {
+    .lc-checkin--today .lc-checkin__item-action { --lc-action-primary: 104px; }
 }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button {
     min-width: 64px;
@@ -1429,9 +1450,11 @@
 .lc-checkin--editor .lc-checkin__filter-row { flex-wrap: wrap; }
 .lc-checkin__templates { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
 
-/* 今日：两列货架改为按最小卡宽自动填充，少卡片时不再半空 */
+/* 今日：两列货架改为按最小卡宽自动填充，少卡片时不再半空。
+   最小宽 380 是「图标 + 至少 6 个字的名称 + 完整操作区（固定轨道 ~172px）」的下限，
+   低于它名称会被压成一两个字（320 时实测名称列只剩 65px）。 */
 .lc-checkin--today .lc-checkin__group-items {
-    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
 }
 
 /* 今日：筛选胶囊不被拉伸；卡片名称拥挤时优先生长换行 */
@@ -1487,6 +1510,8 @@
 
     /* 行式卡片：图标 + 名称/元信息 + 大打卡钮，两行以内 */
     .lc-checkin--today .lc-checkin__item { grid-template-columns: 40px minmax(0, 1fr) max-content; min-height: 64px; }
+    /* 手机上的操作区更紧凑：留出图标轨道但收窄，主按钮仍与桌面同一套轨道语义 */
+    .lc-checkin--today .lc-checkin__item-action { --lc-action-slot: 30px; --lc-action-primary: 84px; gap: 4px; }
     .lc-checkin--today .lc-checkin__item-topline { flex-wrap: nowrap; }
     .lc-checkin--today .lc-checkin__item-name { flex: 0 1 auto; }
     /* 次要信息退出首屏：标签只留"重要"，复盘/编辑小钮隐藏（长按或回顾页可达） */

@@ -966,18 +966,37 @@
 
 /* 桌面弹窗内容列宽阶梯：以「弹窗容器宽度」为准，放宽窗口不再只放大空白。
    必须置于上方 700px 基础上限之后，否则同特异性会被覆盖（历史 bug）。
-   列宽与今日货架的 auto-fill 最小卡宽 390px 配合：1040 → 2 列、1440 → 3 列、1820 → 4 列。 */
+   阈值按「弹窗 CSS 像素」取值并逐档收紧：真机上思源窗口有缩放，80% 弹窗的 CSS 宽度
+   可能只有 ~950–1000（不是屏幕物理宽度），旧阶梯首档 1000 会让这类弹窗掉回 700px 单列。
+   与今日货架 auto-fill 的 390px 最小卡宽配合：950 → 2 列、1350 → 3 列、1780 → 4 列。 */
 .lc-checkin-dialog-host { container: lc-dialog / inline-size; }
 
-@container lc-dialog (min-width: 1000px) {
-    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1040px; }
-    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1040px); }
+@container lc-dialog (min-width: 760px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 800px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 800px); }
+}
+
+@container lc-dialog (min-width: 900px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 950px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 950px); }
+    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 880px); }
+}
+
+@container lc-dialog (min-width: 1100px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1150px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1150px); }
     .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 900px); }
 }
 
-@container lc-dialog (min-width: 1400px) {
+@container lc-dialog (min-width: 1300px) {
     .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1400px; }
     .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1400px); }
+    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 940px); }
+}
+
+@container lc-dialog (min-width: 1560px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1560px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1560px); }
     .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 960px); }
 }
 
