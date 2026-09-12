@@ -9,29 +9,30 @@ const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragme
 const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
 const bindEditorSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
 const bindPageNavSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
+const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
-assert.match(source, /hostClass = this\.isMobileFrontend \? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile"/,
+assert.match(quickDialogSource, /hostClass = mobile \? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile"/,
     "mobile dialog styling must be present in the initial Dialog content");
-assert.match(source, /destroyCallback: \(\) => \{\s*if \(dialog\) this\.handleQuickDialogDestroyed\(dialog\);/,
+assert.match(quickDialogSource, /destroyCallback: \(\) => \{\s*if \(dialog\) handleQuickDialogDestroyedFor\(host, dialog\);/,
     "the native dialog close button must use the shared cleanup path");
-assert.match(source, /dialog\.destroy\(\);[\s\S]*this\.handleQuickDialogDestroyed\(dialog\);/,
+assert.match(quickDialogSource, /dialog\.destroy\(\);[\s\S]*handleQuickDialogDestroyedFor\(host, dialog\);/,
     "programmatic close must retain a cleanup fallback");
 
-const cleanup = source.match(/private handleQuickDialogDestroyed\(dialog: Dialog\) \{([\s\S]*?)\n    \}/)?.[1] || "";
-assert.match(cleanup, /if \(this\.quickDialog !== dialog\) return;/, "dialog cleanup must be idempotent");
-assert.match(cleanup, /this\.currentPage = "today";/, "closing the dialog must restore the shared view");
-assert.match(cleanup, /void this\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
+const cleanup = quickDialogSource.match(/export function handleQuickDialogDestroyedFor\(host: QuickDialogHost, dialog: Dialog\): void \{([\s\S]*?)\n\}/)?.[1] || "";
+assert.match(cleanup, /if \(host\.quickDialog !== dialog\) return;/, "dialog cleanup must be idempotent");
+assert.match(cleanup, /host\.currentPage = "today";/, "closing the dialog must restore the shared view");
+assert.match(cleanup, /void host\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
 assert.match(source, /data-action=\\?"close-dialog\\?"/,
     "the dialog content must expose an explicit close action");
 assert.match(source, /private bindDialogClose\(root: HTMLElement\)[\s\S]*this\.closeQuickDialog\(\)/,
     "the explicit close action must use the shared close path");
-assert.match(source, /private bindQuickDialogViewport\(dialog: Dialog\)[\s\S]*visualViewport/,
+assert.match(quickDialogSource, /export function bindQuickDialogViewportFor\(host: QuickDialogHost, dialog: Dialog\): void \{[\s\S]*visualViewport/,
     "mobile dialogs must bind to visual viewport changes");
-assert.match(source, /viewport\.addEventListener\("resize", sync\)[\s\S]*viewport\.addEventListener\("scroll", sync\)/,
+assert.match(quickDialogSource, /viewport\.addEventListener\("resize", sync\)[\s\S]*viewport\.addEventListener\("scroll", sync\)/,
     "keyboard and rotation viewport changes must trigger a size sync");
-assert.match(source, /this\.quickDialogViewportCleanup\?\.\(\);[\s\S]*this\.quickDialogViewportCleanup = undefined;/,
+assert.match(quickDialogSource, /host\.quickDialogViewportCleanup\?\.\(\);[\s\S]*host\.quickDialogViewportCleanup = undefined;/,
     "viewport listeners must be removed when the dialog closes");
 assert.match(bindEditorSource, /scrollIntoView\(\{behavior: "smooth", block: "center"/,
     "editor actions should keep the active control visible on mobile");

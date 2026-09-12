@@ -32,6 +32,7 @@ import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occas
 import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
+import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {renderReviewView} from "./render/review";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -628,94 +629,27 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /* 方法体外置于 render/quick-dialog.ts（T-022）。 */
     private toggleQuickDialog() {
-        if (this.quickDialog) {
-            this.closeQuickDialog();
-            return;
-        }
-        this.openQuickDialog();
+        toggleQuickDialogFor(this as unknown as QuickDialogHost);
     }
 
     /* Desktop quick dialog sizing follows the user preference: a percentage of
        the host window (default 80%), fullscreen, or a fixed pixel size. */
     private quickDialogSize(): {width: string; height: string} {
-        if (this.dialogSizeMode === "fullscreen") return {width: "100vw", height: "100vh"};
-        if (this.dialogSizeMode === "fixed") return {width: `${this.dialogFixedSize.width}px`, height: `${this.dialogFixedSize.height}px`};
-        const scale = Math.min(100, Math.max(50, this.dialogScale)) / 100;
-        const width = Math.round(window.innerWidth * scale);
-        const height = Math.round(window.innerHeight * scale);
-        return {width: `${width}px`, height: `${height}px`};
+        return quickDialogSizeOf(this as unknown as QuickDialogHost);
     }
 
     private openQuickDialog() {
-        if (this.disposed || this.disposing) return;
-        if (this.quickDialog) {
-            this.currentPage = "today";
-            this.editingId = undefined;
-            this.editingFingerprint = undefined;
-            this.render();
-            return;
-        }
-
-        this.currentPage = "today";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        let dialog: Dialog | undefined;
-        const hostClass = this.isMobileFrontend ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
-        const size = this.quickDialogSize();
-        dialog = new Dialog({
-            title: "",
-            content: `<div class="${hostClass}" role="region" aria-label="小驴打卡快速窗口"></div>`,
-            width: this.isMobileFrontend ? "100vw" : size.width,
-            height: this.isMobileFrontend ? "100dvh" : size.height,
-            disableAnimation: this.isMobileFrontend,
-            destroyCallback: () => {
-                if (dialog) this.handleQuickDialogDestroyed(dialog);
-            },
-        });
-        const root = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
-        if (!root) {
-            dialog.destroy();
-            showMessage(t("msg.quickDialogInitFail"));
-            return;
-        }
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("lc-checkin-dialog");
-        dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("lc-checkin-dialog__body");
-        const dialogBody = dialog.element.querySelector<HTMLElement>(".b3-dialog__body");
-        const hostStyle = dialog.element.querySelector<HTMLElement>(".lc-checkin-dialog-host");
-        if (dialogBody && hostStyle) {
-            dialogBody.style.overflow = "hidden";
-            hostStyle.style.height = "100%";
-        }
-        this.quickDialog = dialog;
-        this.quickDialogElement = root;
-        this.quickDialogFullscreen = false;
-        this.bindQuickDialogViewport(dialog);
-        this.renderInto(root);
+        openQuickDialogFor(this as unknown as QuickDialogHost);
     }
 
     private closeQuickDialog() {
-        const dialog = this.quickDialog;
-        if (!dialog) return;
-        dialog.destroy();
-        // SiYuan currently invokes destroyCallback synchronously; retain a
-        // fallback so a future asynchronous implementation cannot leave stale refs.
-        this.handleQuickDialogDestroyed(dialog);
+        closeQuickDialogFor(this as unknown as QuickDialogHost);
     }
 
     private handleQuickDialogDestroyed(dialog: Dialog) {
-        if (this.quickDialog !== dialog) return;
-        this.quickDialogViewportCleanup?.();
-        this.quickDialogViewportCleanup = undefined;
-        this.quickDialog = undefined;
-        this.quickDialogElement = undefined;
-        this.quickDialogFullscreen = false;
-        if (this.disposed || this.disposing) return;
-        this.currentPage = "today";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
-        void this.reconcileStore();
+        handleQuickDialogDestroyedFor(this as unknown as QuickDialogHost, dialog);
     }
 
     /** Runtime adapter used by 小驴速切 and other optional launchers. */
@@ -740,95 +674,18 @@ export default class CheckinPlugin extends Plugin {
         return this.registerQuickAction({id, label: id, handler, targets});
     }
 
+    /* 方法体外置于 render/quick-dialog.ts（T-022）。 */
     private ensureMobileTopBarButton() {
-        if (!this.isMobileFrontend || this.disposed || this.disposing) return;
-        const topBar = document.getElementById("mobileTopBar") || document.getElementById("toolbar");
-        if (!topBar) {
-            if (this.mobileTopBarRetryTimer === undefined) {
-                this.mobileTopBarRetryTimer = window.setTimeout(() => {
-                    this.mobileTopBarRetryTimer = undefined;
-                    this.ensureMobileTopBarButton();
-                }, 800);
-            }
-            return;
-        }
-        if (this.mobileTopBarButton?.isConnected || topBar.querySelector("#lcCheckinMobileTopBarButton")) return;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.id = "lcCheckinMobileTopBarButton";
-        button.className = "toolbar__button";
-        button.setAttribute("aria-label", "打开小驴打卡");
-        button.setAttribute("title", "打开小驴打卡");
-        button.innerHTML = `<svg aria-hidden="true"><use xlink:href="#iconLvCheckin"></use></svg>`;
-        button.addEventListener("click", () => this.toggleQuickDialog());
-        topBar.appendChild(button);
-        this.mobileTopBarButton = button;
+        ensureMobileTopBarButtonFor(this as unknown as QuickDialogHost);
     }
 
     /** Register optional launcher actions when 小驴速切 is installed. */
     private ensureSpeedSwitchQuickActions() {
-        if (this.disposed || this.disposing || this.speedSwitchQuickActionDisposers.length) return;
-        const plugins = (this.app as unknown as {plugins?: unknown} | undefined)?.plugins;
-        const candidates = Array.isArray(plugins)
-            ? plugins
-            : plugins && typeof plugins === "object" ? Object.values(plugins as Record<string, unknown>) : [];
-        const speedSwitch = candidates.find((candidate) => {
-            if (!candidate || typeof candidate !== "object") return false;
-            const plugin = candidate as {name?: unknown; registerQuickAction?: unknown};
-            return typeof plugin.registerQuickAction === "function" && (plugin.name === "siyuan-speed-switch" || plugin.name === "小驴速切" || plugin.name === "siyuanSpeedSwitch");
-        }) as SpeedSwitchPluginLike | undefined;
-        if (!speedSwitch?.registerQuickAction) {
-            if (this.speedSwitchRetryTimer === undefined) {
-                this.speedSwitchRetryTimer = window.setTimeout(() => {
-                    this.speedSwitchRetryTimer = undefined;
-                    this.ensureSpeedSwitchQuickActions();
-                }, 1200);
-            }
-            return;
-        }
-        const actions: Array<{id: string; label: string; value: string; handler: () => void}> = [
-            {id: "xiaolv-checkin-open", label: "打卡", value: "open", handler: () => this.openQuickDialog()},
-        ];
-        actions.forEach((action) => {
-            const dispose = speedSwitch.registerQuickAction({
-                id: action.id,
-                label: action.label,
-                icon: "iconLvCheckin",
-                value: action.value,
-                targets: ["desktop", "sidebar", "mobile"],
-                handler: () => action.handler(),
-            });
-            if (typeof dispose === "function") this.speedSwitchQuickActionDisposers.push(dispose);
-        });
+        ensureSpeedSwitchQuickActionsFor(this as unknown as QuickDialogHost);
     }
 
     private bindQuickDialogViewport(dialog: Dialog) {
-        if (!this.isMobileFrontend) return;
-        const viewport = window.visualViewport;
-        const container = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
-        if (!viewport || !container) return;
-        let frame = 0;
-        const sync = () => {
-            if (frame) return;
-            frame = window.requestAnimationFrame(() => {
-                frame = 0;
-                if (this.quickDialog !== dialog) return;
-                const height = Math.max(280, Math.floor(viewport.height - 16));
-                container.style.height = `${height}px`;
-                container.style.maxHeight = `${height}px`;
-            });
-        };
-        viewport.addEventListener("resize", sync);
-        viewport.addEventListener("scroll", sync);
-        window.addEventListener("resize", sync);
-        sync();
-        this.quickDialogViewportCleanup = () => {
-            viewport.removeEventListener("resize", sync);
-            viewport.removeEventListener("scroll", sync);
-            window.removeEventListener("resize", sync);
-            if (frame) window.cancelAnimationFrame(frame);
-            frame = 0;
-        };
+        bindQuickDialogViewportFor(this as unknown as QuickDialogHost, dialog);
     }
 
     /* 能力定义外置于 agent-capabilities.ts（T-022）；壳内仅保留守卫、Plugin 类型探测与注册完成标记。 */

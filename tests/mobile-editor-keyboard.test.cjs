@@ -7,7 +7,8 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
-assert.match(source, /visualViewport[\s\S]*addEventListener\("resize", sync\)[\s\S]*addEventListener\("scroll", sync\)/,
+const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
+assert.match(quickDialogSource, /visualViewport[\s\S]*addEventListener\("resize", sync\)[\s\S]*addEventListener\("scroll", sync\)/,
     "keyboard and viewport changes must trigger dialog resizing");
 assert.match(editorSource, /<div class="lc-checkin__form-scroll">[\s\S]*<div class="lc-checkin__editor-actions">[\s\S]*data-action="archive"/,
     "editor must separate scrollable fields from bottom actions");

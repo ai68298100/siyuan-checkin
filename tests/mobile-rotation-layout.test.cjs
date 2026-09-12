@@ -4,13 +4,14 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
-assert.match(source, /const sync = \(\) => \{[\s\S]*viewport\.height - 16[\s\S]*container\.style\.height/,
+assert.match(quickDialogSource, /const sync = \(\) => \{[\s\S]*viewport\.height - 16[\s\S]*container\.style\.height/,
     "viewport changes must recalculate the dialog height");
-assert.match(source, /viewport\.addEventListener\("resize", sync\)[\s\S]*window\.addEventListener\("resize", sync\)/,
+assert.match(quickDialogSource, /viewport\.addEventListener\("resize", sync\)[\s\S]*window\.addEventListener\("resize", sync\)/,
     "orientation changes must trigger both visual and layout viewport updates");
-assert.match(source, /viewport\.removeEventListener\("resize", sync\)[\s\S]*window\.removeEventListener\("resize", sync\)/,
+assert.match(quickDialogSource, /viewport\.removeEventListener\("resize", sync\)[\s\S]*window\.removeEventListener\("resize", sync\)/,
     "orientation listeners must be cleaned up when the dialog closes");
 assert.match(styles, /\.lc-checkin-dialog-host\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*overflow:\s*hidden/,
     "dialog host must recover to the current container width after rotation");

@@ -4,6 +4,7 @@ const source = fs.readFileSync("src/index.ts", "utf8");
 const sharedSource = fs.readFileSync("src/shared.ts", "utf8");
 const agentSource = fs.readFileSync("src/agent-capabilities.ts", "utf8");
 const apiSource = fs.readFileSync("src/api.ts", "utf8");
+const quickDialogSource = fs.readFileSync("src/render/quick-dialog.ts", "utf8");
 const manifest = JSON.parse(fs.readFileSync("plugin.json", "utf8"));
 const packageManifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
 assert.equal(manifest.version, packageManifest.version, "plugin and package versions must stay aligned");
@@ -32,9 +33,9 @@ assert.match(agentSource, /checkin-record-event/);
 assert.match(agentSource, /checkin-list-occasions/);
 assert.match(agentSource, /checkin-complete-occasion/);
 assert.match(source, /ensureSpeedSwitchQuickActions/);
-assert.match(source, /\(this\.app as unknown as \{plugins\?: unknown\} \| undefined\)\?\.plugins/,
+assert.match(quickDialogSource, /\(host\.app as unknown as \{plugins\?: unknown\} \| undefined\)\?\.plugins/,
     "optional launcher discovery must tolerate hosts without an app plugin registry");
-assert.match(source, /lcCheckinMobileTopBarButton/);
+assert.match(quickDialogSource, /lcCheckinMobileTopBarButton/);
 assert.match(agentSource, /localRead: true, dataEgress: true, externalCost: false/);
 assert.match(agentSource, /localRead: true, localWrite: true, dataEgress: true, externalCost: false/);
 assert.match(agentSource, /required: \["itemId"\]/);

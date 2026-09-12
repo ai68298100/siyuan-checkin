@@ -75,7 +75,8 @@ assert.ok(!/density-options/.test(components), "density options styling must be 
 /* Dialog sizing preference. */
 assert.match(source, /private quickDialogSize\(\): \{width: string; height: string\}/,
     "quick dialog sizing must follow the stored preference");
-assert.match(source, /dialogSizeMode === "fullscreen"/, "fullscreen dialog mode must be supported");
+const quickDialogSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "quick-dialog.ts"), "utf8");
+assert.match(quickDialogSource, /dialogSizeMode === "fullscreen"/, "fullscreen dialog mode must be supported");
 
 /* Standalone dual themes: fixed palette, no runtime dependency on host --b3-* values. */
 assert.match(tokens, /--lc-checkin-accent:\s*#7B85F4;/, "light palette keeps the periwinkle accent");
