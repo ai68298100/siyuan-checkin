@@ -81,5 +81,5 @@ export function projectCheckinReminders(store: CheckinStore, date: Date): Remind
 }
 
 export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date): ReminderEntry[] {
-    return sortReminderEntries([...projectCheckinReminders(store, date), ...projectOccasionReminders(occasions, date)]);
+    return sortReminderEntries([...projectOverdueOccasionReminders(occasions, date), ...projectCheckinReminders(store, date), ...projectOccasionReminders(occasions, date)]);
 }
