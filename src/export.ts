@@ -15,12 +15,40 @@ export interface JsonMigrationAssessment {
     requiresReview: boolean;
     reasons: string[];
 }
+
+export interface JsonRecoveryPreflight {
+    report: JsonMigrationReport;
+    assessment: JsonMigrationAssessment;
+    validationErrors: string[];
+}
+
+export type JsonRecoverySource = "json-import" | "local-snapshot";
+export type JsonRecoveryStatus = "accepted" | "rejected";
+
+export function buildRecoveryAuditDetails(source: JsonRecoverySource, preflight: JsonRecoveryPreflight, status: JsonRecoveryStatus, errors: readonly string[] = []): Record<string, unknown> {
+    const {report} = preflight;
+    return {
+        status,
+        source,
+        sourceVersion: report.sourceVersion,
+        targetVersion: report.targetVersion,
+        repaired: report.repaired,
+        warnings: report.warnings.length,
+        audit: report.audit,
+        ...(errors.length ? {errors: [...errors]} : {}),
+    };
+}
 export function validateJsonMigrationReport(report: JsonMigrationReport): string[] {
     const errors: string[] = [];
     if (!Number.isFinite(report.targetVersion) || report.targetVersion < 1) errors.push("目标版本无效");
     if (!report.store || report.store.version !== report.targetVersion) errors.push("目标版本与标准化数据不一致");
     if (report.summary.itemCount !== report.store.items.length || report.summary.eventCount !== report.store.events.length) errors.push("备份摘要与数据内容不一致");
     return errors;
+}
+
+export function preflightJsonRecovery(text: string, normalize: (value: unknown) => CheckinStore, before?: JsonBackupSummary): JsonRecoveryPreflight {
+    const report = buildJsonMigrationReport(text, normalize, before);
+    return {report, assessment: assessJsonMigration(report), validationErrors: validateJsonMigrationReport(report)};
 }
 
 export interface JsonBackupSummary {

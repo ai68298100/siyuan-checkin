@@ -43,6 +43,22 @@ assert.deepEqual(JSON.parse(model.serializeStoreAudit(auditInput, "2026-09-12T02
     generatedAt: "2026-09-12T02:00:00.000Z",
     entries: model.normalizeStoreAudit(auditInput),
 });
+const recoveryPreflight = exporter.preflightJsonRecovery(JSON.stringify({version: 1, items: [], events: []}), model.normalizeStore, exporter.summarizeJsonBackup(model.createDefaultStore()));
+assert.equal(recoveryPreflight.report.sourceVersion, 1);
+assert.equal(recoveryPreflight.report.targetVersion, model.STORE_VERSION);
+assert.deepEqual(recoveryPreflight.validationErrors, []);
+assert.equal(recoveryPreflight.assessment.requiresReview, true);
+assert.equal(recoveryPreflight.report.repaired, true);
+assert.deepEqual(exporter.buildRecoveryAuditDetails("local-snapshot", recoveryPreflight, "rejected", ["invalid summary"]), {
+    status: "rejected",
+    source: "local-snapshot",
+    sourceVersion: 1,
+    targetVersion: model.STORE_VERSION,
+    repaired: true,
+    warnings: recoveryPreflight.report.warnings.length,
+    audit: recoveryPreflight.report.audit,
+    errors: ["invalid summary"],
+});
 
 assert.deepEqual(quota.normalizeQuota({period: "week", amount: "3", countMode: "dates"}), {period: "week", amount: 3, countMode: "dates", weekStartsOn: 1});
 assert.equal(quota.normalizeQuota({period: "year", amount: 3, countMode: "dates"}), undefined);

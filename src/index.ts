@@ -8,7 +8,7 @@ import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
-import {assessJsonMigration, buildJsonMigrationReport, parseCheckinCsv, summarizeJsonBackup, validateJsonMigrationReport} from "./export";
+import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
@@ -838,12 +838,11 @@ export default class CheckinPlugin extends Plugin {
             const file = input.files?.[0];
             if (!file) return;
             try {
-                const migration = buildJsonMigrationReport(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
+                const preflight = preflightJsonRecovery(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
+                const {report: migration, assessment, validationErrors} = preflight;
                 const backup = migration;
-                const assessment = assessJsonMigration(migration);
-                const validationErrors = validateJsonMigrationReport(migration);
                 if (validationErrors.length) {
-                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "rejected", sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, errors: validationErrors}});
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", validationErrors)});
                     void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     showMessage(`恢复失败：${validationErrors.join("；")}`);
                     input.value = "";
@@ -858,7 +857,7 @@ export default class CheckinPlugin extends Plugin {
                 this.store = backup.store;
                 try {
                     await this.persist();
-                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, repaired: migration.repaired, warnings: migration.warnings.length, audit: migration.audit}});
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "accepted")});
                     await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 } catch {
@@ -1222,15 +1221,24 @@ export default class CheckinPlugin extends Plugin {
         if (!this.storageReady || this.disposed) return;
         const raw = await this.loadData(BACKUP_STORAGE_NAME);
         if (!raw) { showMessage(t("msg.noSnapshot")); return; }
-        const backup = normalizeStore(raw);
+        const preflight = preflightJsonRecovery(JSON.stringify(raw), normalizeStore, summarizeJsonBackup(this.store));
+        const {report: migration, assessment, validationErrors} = preflight;
+        if (validationErrors.length) {
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", validationErrors)});
+            await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+            showMessage(t("msg.snapshotRestoreFail"));
+            return;
+        }
+        const backup = migration.store;
         const itemCount = backup.items.length;
         const eventCount = backup.events.length;
-        if (!window.confirm(t("msg.snapshotConfirm", {items: itemCount, events: eventCount}))) return;
+        const review = assessment.requiresReview ? `\n\n${assessment.reasons.join("；")}` : "";
+        if (!window.confirm(`${t("msg.snapshotConfirm", {items: itemCount, events: eventCount})}${review}`)) return;
         const current = this.cloneStore(this.store);
         this.store = backup;
         try {
             await this.persist(current);
-            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {source: "local-snapshot", itemCount, eventCount, fromVersion: current.version, toVersion: backup.version}});
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "accepted")});
             await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
             showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
             this.render();

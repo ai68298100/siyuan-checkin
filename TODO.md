@@ -186,3 +186,9 @@
 - [x] T-064 audit log export - Settings can download the normalized audit ledger as a versioned JSON diagnostic file.
 
 - [x] T-065 unified audit write boundary - migration acceptance/rejection, snapshot restore, and conflict paths all use appendStoreAudit.
+
+- [x] T-066 snapshot restore preflight - local snapshots now use migration reporting, validation, risk review, rejected-attempt audit, and detailed success audit.
+
+- [x] T-067 shared recovery preflight - JSON import and local snapshots now consume one report/assessment/validation result.
+
+- [x] T-068 normalized recovery audit payloads - accepted/rejected JSON and snapshot restores share source, status, versions, repair, warning, delta, and error fields.
