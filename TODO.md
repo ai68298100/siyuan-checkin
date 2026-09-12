@@ -200,3 +200,8 @@
 - [x] T-072 versioned snapshot envelope - snapshots carry format version, capture time, and normalized store data.
 - [x] T-073 legacy snapshot compatibility - restore accepts both the new envelope and existing raw-store backups.
 - [x] T-074 snapshot metadata visibility - restore confirmation and audit entries include capture time and legacy status.
+
+- [x] T-075 bounded snapshot history model - versioned history stores normalized snapshot envelopes and reads history/envelope/legacy formats.
+- [x] T-076 rolling three-snapshot persistence - each primary save appends the previous store and retains the latest three snapshots.
+- [x] T-077 latest-snapshot compatibility - the existing restore action selects the newest history entry while old formats remain readable.
+- [x] T-078 snapshot restore target fix - restore now persists the selected backup instead of accidentally writing the pre-restore store.

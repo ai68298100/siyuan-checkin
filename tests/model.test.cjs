@@ -30,6 +30,13 @@ assert.equal(emptySnapshot.format, "siyuan-checkin-snapshot");
 assert.equal(emptySnapshot.capturedAt, "2026-09-11T19:00:00.000Z");
 assert.deepEqual(model.readStoreSnapshot(emptySnapshot), {store: emptySnapshot.store, capturedAt: emptySnapshot.capturedAt, legacy: false});
 assert.deepEqual(model.readStoreSnapshot({version: 1, items: [], events: []}), {store: {version: 1, items: [], events: []}, legacy: true});
+const snapshotHistory = [1, 2, 3, 4].reduce((history, hour) => model.appendStoreSnapshotHistory(history,
+    model.createStoreSnapshotEnvelope(model.createDefaultStore(), `2026-09-12T0${hour}:00:00Z`)), undefined);
+assert.equal(snapshotHistory.snapshots.length, 3);
+assert.deepEqual(model.readStoreSnapshotHistory(snapshotHistory).map((entry) => entry.capturedAt), [
+    "2026-09-12T02:00:00.000Z", "2026-09-12T03:00:00.000Z", "2026-09-12T04:00:00.000Z",
+]);
+assert.equal(model.readStoreSnapshotHistory({version: 1, items: [], events: []})[0].legacy, true);
 
 const auditInput = [
     null,

@@ -5,10 +5,13 @@ assert.match(source, /type:\s*["']migration["']/);
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "rejected", validationErrors\)/);
 assert.match(source, /type:\s*["']restore["']/);
 assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "accepted"\)/);
-assert.match(source, /readStoreSnapshot\(raw\)/);
+assert.match(source, /readStoreSnapshotHistory\(raw\)/);
 assert.match(source, /preflightJsonRecovery\(JSON\.stringify\(snapshot\.store\), normalizeStore, summarizeJsonBackup\(this\.store\)\)/);
-assert.match(source, /createStoreSnapshotEnvelope\(previous\)/);
+assert.match(source, /appendStoreSnapshotHistory\(await this\.loadData\(BACKUP_STORAGE_NAME\), createStoreSnapshotEnvelope\(previous\)\)/);
 assert.match(source, /snapshotCapturedAt: snapshot\.capturedAt, legacySnapshot: snapshot\.legacy/);
+assert.match(source, /this\.store = backup;\s*try \{\s*await this\.persist\(\);/,
+    "snapshot restore must persist the selected backup rather than the pre-restore store");
+assert.doesNotMatch(source, /this\.store = backup;\s*try \{\s*await this\.persist\(current\);/);
 assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "rejected", validationErrors\)/);
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "accepted"\)/);
 assert.match(source, /assessment\.requiresReview/);

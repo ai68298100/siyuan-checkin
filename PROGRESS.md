@@ -95,3 +95,9 @@ Next: continue recovery-platform work with snapshot metadata/history rather than
 T-072~T-074 complete: rolling backups now use a versioned snapshot envelope with capturedAt; legacy raw-store snapshots remain restorable. Confirmation shows capture time and all snapshot audit outcomes retain capture/legacy metadata. Verification: pnpm run check, pnpm run test:backup, and pnpm test passed.
 
 Next: extend the single rolling envelope into a small bounded snapshot history while preserving the current restore-latest behavior.
+
+T-075~T-078 complete: backup storage is now a bounded three-entry snapshot history with compatibility for history, single-envelope, and legacy raw formats. The latest restore flow selects the newest snapshot. Fixed a pre-existing target bug where persist(current) wrote the old store instead of the selected backup. Verification before quality gate: pnpm run check, pnpm run test:backup, and pnpm test passed.
+
+Quality checkpoint: pnpm run test:quality passed after T-075~T-078, including production build. Existing size warnings: index.js 356 KiB, index.css 289 KiB, package.zip 298 KiB.
+
+Next: expose bounded snapshot history in Settings so users can inspect and choose a restore point; keep latest as the quick default.

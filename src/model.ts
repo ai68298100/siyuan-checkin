@@ -4,6 +4,7 @@ import {evaluateQuotaSchedule} from "./rules";
 
 export const STORE_VERSION = 2 as const;
 export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
+export const STORE_SNAPSHOT_HISTORY_FORMAT = "siyuan-checkin-snapshot-history" as const;
 
 export interface StoreSnapshotEnvelope {
     format: typeof STORE_SNAPSHOT_FORMAT;
@@ -16,6 +17,12 @@ export interface ReadStoreSnapshotResult {
     store: unknown;
     capturedAt?: string;
     legacy: boolean;
+}
+
+export interface StoreSnapshotHistory {
+    format: typeof STORE_SNAPSHOT_HISTORY_FORMAT;
+    version: 1;
+    snapshots: StoreSnapshotEnvelope[];
 }
 
 export function createStoreSnapshotEnvelope(store: CheckinStore, capturedAt = new Date().toISOString()): StoreSnapshotEnvelope {
@@ -32,6 +39,26 @@ export function readStoreSnapshot(value: unknown): ReadStoreSnapshotResult {
         }
     }
     return {store: value, legacy: true};
+}
+
+export function readStoreSnapshotHistory(value: unknown): ReadStoreSnapshotResult[] {
+    if (value && typeof value === "object") {
+        const candidate = value as Partial<StoreSnapshotHistory>;
+        if (candidate.format === STORE_SNAPSHOT_HISTORY_FORMAT && candidate.version === 1 && Array.isArray(candidate.snapshots)) {
+            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy);
+        }
+    }
+    return value === undefined || value === null ? [] : [readStoreSnapshot(value)];
+}
+
+export function appendStoreSnapshotHistory(value: unknown, snapshot: StoreSnapshotEnvelope, limit = 3): StoreSnapshotHistory {
+    const existing = readStoreSnapshotHistory(value).flatMap((entry) => entry.capturedAt
+        ? [createStoreSnapshotEnvelope(normalizeStore(entry.store), entry.capturedAt)] : []);
+    return {
+        format: STORE_SNAPSHOT_HISTORY_FORMAT,
+        version: 1,
+        snapshots: [...existing, createStoreSnapshotEnvelope(snapshot.store, snapshot.capturedAt)].slice(-Math.max(1, limit)),
+    };
 }
 
 export interface StoreConflictReport {

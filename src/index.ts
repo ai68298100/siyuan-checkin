@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, createDefaultStore, createStoreSnapshotEnvelope, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, readStoreSnapshot, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createStoreSnapshotEnvelope, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -1223,7 +1223,9 @@ export default class CheckinPlugin extends Plugin {
         if (!this.storageReady || this.disposed) return;
         const raw = await this.loadData(BACKUP_STORAGE_NAME);
         if (!raw) { showMessage(t("msg.noSnapshot")); return; }
-        const snapshot = readStoreSnapshot(raw);
+        const snapshots = readStoreSnapshotHistory(raw);
+        const snapshot = snapshots[snapshots.length - 1];
+        if (!snapshot) { showMessage(t("msg.noSnapshot")); return; }
         const preflight = preflightJsonRecovery(JSON.stringify(snapshot.store), normalizeStore, summarizeJsonBackup(this.store));
         const {report: migration, assessment, validationErrors} = preflight;
         if (validationErrors.length) {
@@ -1241,7 +1243,7 @@ export default class CheckinPlugin extends Plugin {
         const current = this.cloneStore(this.store);
         this.store = backup;
         try {
-            await this.persist(current);
+            await this.persist();
         } catch {
             this.store = current;
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {...buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", ["persist-failed"]), snapshotCapturedAt: snapshot.capturedAt, legacySnapshot: snapshot.legacy}});
@@ -1548,7 +1550,11 @@ export default class CheckinPlugin extends Plugin {
         this.saveState = "saving";
         this.renderBackgroundUpdate();
         const previous = this.cloneStore(this.lastPersistedStore);
-        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(BACKUP_STORAGE_NAME, createStoreSnapshotEnvelope(previous)).then(() => this.saveData(STORAGE_NAME, snapshot).then(() => undefined)));
+        const write = this.saveQueue.catch(() => undefined).then(async () => {
+            const history = appendStoreSnapshotHistory(await this.loadData(BACKUP_STORAGE_NAME), createStoreSnapshotEnvelope(previous));
+            await this.saveData(BACKUP_STORAGE_NAME, history);
+            await this.saveData(STORAGE_NAME, snapshot);
+        });
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
             showMessage(t("msg.saveDataFail", {error: String(error)}));
