@@ -3,7 +3,7 @@ import {dateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "./mo
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
-export type ReminderStatus = "today" | "upcoming" | "completed";
+export type ReminderStatus = "overdue" | "today" | "upcoming" | "completed";
 export type ReminderFilter = "all" | ReminderStatus;
 
 export interface ReminderEntry {
@@ -17,7 +17,7 @@ export interface ReminderEntry {
     note: string;
 }
 
-const STATUS_RANK: Record<ReminderStatus, number> = {today: 0, upcoming: 1, completed: 2};
+const STATUS_RANK: Record<ReminderStatus, number> = {overdue: 0, today: 1, upcoming: 2, completed: 3};
 
 function sortReminderEntries(entries: ReminderEntry[]): ReminderEntry[] {
     return entries.sort((left, right) => STATUS_RANK[left.status] - STATUS_RANK[right.status]
@@ -58,7 +58,7 @@ export function projectOverdueOccasionReminders(store: OccasionStore, date: Date
             title: occasion.name,
             dueDate: occasion.date,
             daysUntil: Math.round((new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${occasion.date}T00:00:00`).getTime()) / 86400000) * -1,
-            status: "upcoming",
+            status: "overdue",
             note: occasion.note,
         }));
     return sortReminderEntries(reminders);

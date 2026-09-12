@@ -143,3 +143,5 @@ Next: design overdue reminder projection separately from current visible occasio
 T-097 complete: added a conservative overdue occasion projection for uncompleted one-off dates; recurring and lunar occurrences remain excluded until a recurrence history contract is specified. Verification: pnpm run check, pnpm test, and occasion tests passed.
 
 Next: add overdue entries to the reminder center behind an explicit filter, with copy that distinguishes overdue from upcoming.
+
+T-098 complete: overdue is now a first-class reminder status ranked ahead of today and upcoming entries; existing filter types remain backward-compatible for all prior states. Verification: pnpm run check and occasion tests passed.

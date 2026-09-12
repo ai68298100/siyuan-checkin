@@ -38,7 +38,7 @@ assert.equal(completedProjection[0].status, "completed");
 const overdue = reminders.projectOverdueOccasionReminders({version: 1, occasions: [annual]}, new Date(2026, 8, 15, 12));
 assert.equal(overdue.length, 0, "recurring occasions stay out of conservative overdue projection");
 const onceOverdue = reminders.projectOverdueOccasionReminders({version: 1, occasions: [{...annual, id: "once-overdue", recurrence: "once", date: "2026-09-10", completedDates: []}]}, new Date(2026, 8, 15, 12));
-assert.equal(onceOverdue[0].status, "upcoming");
+assert.equal(onceOverdue[0].status, "overdue");
 assert.equal(onceOverdue[0].daysUntil, -5);
 const once = occasions.normalizeOccasion({id: "loan", name: "还房贷", kind: "scheduled", date: "2026-09-15", recurrence: "once", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 13, 12))[0].daysUntil, 2);
