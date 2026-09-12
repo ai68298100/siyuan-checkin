@@ -31,6 +31,7 @@ import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
 import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
+import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {renderReviewView} from "./render/review";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -1552,102 +1553,9 @@ export default class CheckinPlugin extends Plugin {
         bindEditorHandlers(root, this as unknown as BindEditorHost);
     }
 
+    /* 方法体外置于 render/save-form.ts（T-022）。 */
     private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string) {
-        const name = String(data.get("name") || "").trim();
-        const requestedKind = String(data.get("kind") || "binary");
-        const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
-        const requestedSchedule = String(data.get("schedule") || "daily");
-        const scheduleType: ScheduleType = ["daily", "workdays", "weekly", "custom", "interval", "quota"].includes(requestedSchedule) ? requestedSchedule as ScheduleType : "daily";
-        const checkedWeekdays = data.getAll("weekday").map((value) => Number(value));
-        const requestedInterval = Number(data.get("intervalDays"));
-        const intervalDaysValue = Number.isFinite(requestedInterval) ? Math.max(1, Math.min(3650, Math.round(requestedInterval))) : 1;
-        const requestedAnchor = String(data.get("anchorDate") || "");
-        const anchorDateValue = isValidLocalDateInput(requestedAnchor) ? requestedAnchor : submittedAt.localDate;
-        const requestedQuotaPeriod = data.get("quotaPeriod") === "month" ? "month" : "week";
-        const requestedQuotaMode = data.get("quotaCountMode") === "value" ? "value" : "dates";
-        const requestedQuotaAmount = Number(data.get("quotaAmount"));
-        const quotaAmountValue = Number.isFinite(requestedQuotaAmount) ? Math.max(requestedQuotaMode === "dates" ? 1 : 0.1, requestedQuotaAmount) : 0;
-        const validation = validateEditorInput({name, kind, target: kind === "binary" ? 1 : Number(data.get("target")), unit: kind === "binary" ? "次" : String(data.get("unit") || "").trim(), schedule: scheduleType, weekdays: checkedWeekdays, quotaAmount: requestedQuotaAmount});
-        if (!validation.valid) {
-            showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
-            return;
-        }
-        const schedule: CheckinSchedule = scheduleType === "interval"
-            ? {type: scheduleType, intervalDays: intervalDaysValue, anchorDate: anchorDateValue}
-            : scheduleType === "quota"
-                ? {type: scheduleType, quota: {period: requestedQuotaPeriod, amount: Math.round(quotaAmountValue * 100) / 100, countMode: requestedQuotaMode, ...(requestedQuotaPeriod === "week" ? {weekStartsOn: 1 as const} : {})}}
-                : {type: scheduleType, weekdays: scheduleType === "daily" || scheduleType === "workdays" ? undefined : checkedWeekdays};
-        const existing = editingId ? this.store.items.find((item) => item.id === editingId) : undefined;
-        if (editingId && (!existing || !expectedFingerprint || this.itemFingerprint(existing) !== expectedFingerprint)) {
-            showMessage(t("msg.conflictEdit"));
-            this.showToday();
-            return;
-        }
-        const createdDate = existing?.createdDate || submittedAt.localDate;
-        const target = kind === "binary" ? 1 : Math.max(0.1, Number(data.get("target")) || 1);
-        const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
-        const unit = kind === "binary" ? "次" : String(data.get("unit") || kindOption.defaultUnit).trim().slice(0, 16) || kindOption.defaultUnit;
-        const group = String(data.get("group") || "").trim().slice(0, 32);
-        const priority = normalizePriorityInput(data.get("priority"));
-        const timeSlot = normalizeTimeSlotInput(data.get("timeSlot"));
-        const completionSource: CompletionSource = data.get("completionSource") === "tomato" ? "tomato" : "manual";
-        const tomatoMode: TomatoValueMode = data.get("tomatoMode") === "sessions" ? "sessions" : "minutes";
-        const sortOrder = existing?.sortOrder ?? this.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
-        const revision: CheckinItemRevision = {
-            effectiveDate: submittedAt.localDate,
-            kind,
-            target,
-            unit,
-            schedule: {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined},
-        };
-        const revisions: CheckinItemRevision[] = existing?.revisions.map((entry) => ({
-            ...entry,
-            schedule: {...entry.schedule, weekdays: entry.schedule.weekdays ? [...entry.schedule.weekdays] : undefined},
-        })) || [];
-        const revisionIndex = revisions.findIndex((entry) => entry.effectiveDate === revision.effectiveDate);
-        if (revisionIndex >= 0) {
-            revisions[revisionIndex] = revision;
-        } else {
-            revisions.push(revision);
-            revisions.sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate));
-        }
-        const item: CheckinItem = {
-            id: existing?.id || makeId("item"),
-            name,
-            icon: String(data.get("icon") || "✓"),
-            kind,
-            target,
-            unit,
-            schedule,
-            createdAt: existing?.createdAt || submittedAt.occurredAt,
-            updatedAt: nextItemUpdatedAt(existing?.updatedAt, submittedAt.occurredAt),
-            createdDate,
-            revisions,
-            archivePeriods: existing?.archivePeriods.map((period) => ({...period})) || [],
-            archived: existing?.archived,
-            group,
-            priority,
-            sortOrder,
-            timeSlot,
-            completionSource,
-            tomatoMode,
-        };
-        const previous = this.store;
-        this.store = {
-            ...this.store,
-            items: existing ? this.store.items.map((candidate) => candidate.id === item.id ? item : candidate) : [...this.store.items, item],
-        };
-        try {
-            await this.persist();
-        } catch {
-            this.store = previous;
-            showMessage(t("msg.saveFail"));
-            this.renderBackgroundUpdate();
-            return;
-        }
-        this.invalidateSummary();
-        this.broadcast({type: existing ? "item-updated" : "item-created", item});
-        this.showToday();
+        await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
     }
 
     private async archiveEditingItem() {
