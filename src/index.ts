@@ -34,6 +34,7 @@ import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
+import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -1562,77 +1563,25 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /* 方法体外置于 render/focus-adapter.ts（T-022）。 */
     private startFocus(itemId: string): Promise<boolean> {
-        if (!this.acceptingOperations || this.disposed || this.initializationState !== "ready" || this.focusBusy || this.activeFocusAdapter) return Promise.resolve(false);
-        const startedAt = currentCalendarDate();
-        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
-        if (!item || !isItemAvailableOnDate(item, startedAt) || getItemRevisionForDate(item, startedAt).kind === "binary") {
-            return Promise.resolve(false);
-        }
-        const adapter = this.findFocusAdapter(item, startedAt);
-        if (!adapter) {
-            return Promise.resolve(false);
-        }
-        const expectedRevisionFingerprint = this.revisionFingerprint(item, startedAt);
-        this.focusBusy = true;
-        const operation = (async () => {
-            try {
-                await adapter.start(this.cloneItemForDate(item, startedAt));
-                const current = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
-                if (this.disposed || this.disposing || !this.acceptingOperations || this.focusAdapters.get(adapter.id) !== adapter || !current || !isItemAvailableOnDate(current, startedAt) || this.revisionFingerprint(current, startedAt) !== expectedRevisionFingerprint || !this.canStartWithAdapter(adapter, current, startedAt)) {
-                    await this.stopAdapterSilently(adapter);
-                    return false;
-                }
-                this.activeFocusAdapter = adapter;
-                return true;
-            } catch (error) {
-                if (!this.disposed) showMessage(t("msg.focusStartFail", {error: String(error)}));
-                return false;
-            } finally {
-                this.focusBusy = false;
-                this.renderBackgroundUpdate();
-            }
-        })();
-        this.focusOperation = operation.then(() => undefined, () => undefined);
-        return operation;
+        return startFocusFor(this as unknown as FocusAdapterHost, itemId);
     }
 
     private findFocusAdapter(item: CheckinItem, date = new Date()): FocusAdapter | undefined {
-        return [...this.focusAdapters.values()].find((candidate) => this.canStartWithAdapter(candidate, item, date));
+        return findFocusAdapterFor(this as unknown as FocusAdapterHost, item, date);
     }
 
     private canStartWithAdapter(adapter: FocusAdapter, item: CheckinItem, date: Date): boolean {
-        if (getItemRevisionForDate(item, date).kind === "binary") return false;
-        try {
-            return adapter.canStart(this.cloneItemForDate(item, date));
-        } catch {
-            return false;
-        }
+        return canStartWithAdapter(this as unknown as FocusAdapterHost, adapter, item, date);
     }
 
     private stopAdapterSilently(adapter: FocusAdapter): Promise<void> {
-        return Promise.resolve().then(() => adapter.stop()).catch(() => undefined);
+        return stopAdapterSilently(adapter);
     }
 
     private stopFocus(): Promise<boolean> {
-        if (!this.acceptingOperations || this.disposed || this.focusBusy || !this.activeFocusAdapter) return Promise.resolve(false);
-        const adapter = this.activeFocusAdapter;
-        this.focusBusy = true;
-        const operation = (async () => {
-            try {
-                await adapter.stop();
-                if (this.activeFocusAdapter === adapter) this.activeFocusAdapter = undefined;
-                return true;
-            } catch (error) {
-                if (!this.disposed) showMessage(t("msg.focusStopFail", {error: String(error)}));
-                return false;
-            } finally {
-                this.focusBusy = false;
-                this.renderBackgroundUpdate();
-            }
-        })();
-        this.focusOperation = operation.then(() => undefined, () => undefined);
-        return operation;
+        return stopFocusFor(this as unknown as FocusAdapterHost);
     }
 
     private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string): CheckinEvent {
