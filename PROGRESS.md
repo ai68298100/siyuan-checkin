@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-031 顶栏合并（导航+全屏/关闭并入一条应用栏，退役悬浮按钮）已完成并推送；真机上发现旧实例残留的悬浮按钮和备份横幅（见 T-033 待办：彻底重载后确认）
+当前任务：T-032 顶栏应用栏式重构 + 归档归入回顾（用户截图反馈 1️⃣2️⃣）完成，已部署待真机确认
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
-已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-100（T-090~T-099 为并行任务成果，已由本任务接手收尾）
+已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：fix(nav): merge window controls into the app bar
+上次提交：feat(nav): app-bar style top navigation, 归档 folded into 回顾
 下一步：手机端/桌面端用 v9.5.1 复测（集市更新或安装本地包）；等待 T-023 真机反馈。自动化侧已完成 T-031~T-035；统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。

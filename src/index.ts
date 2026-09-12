@@ -1018,7 +1018,7 @@ export default class CheckinPlugin extends Plugin {
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
        窄容器由 CSS 隐藏（改用底部导航）。 */
     private renderTopNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const fullscreen = this.quickDialog && this.quickDialogElement && !this.isMobileFrontend
             ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}" title="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}">${uiIcon("expand")}</button>`
             : "";

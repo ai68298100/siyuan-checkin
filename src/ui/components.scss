@@ -73,21 +73,10 @@
 }
 
 /* 完整桌面：左侧导航栏 + 内容列（中宽容器同样启用双列，避免透明粘性导航与滚动内容重叠） */
+/* 完整桌面：导航在顶栏（T-032），布局单列、内容占满整行 */
 @container lc5 (min-width: 720px) {
     .lc-checkin__layout {
-        display: grid;
-        grid-template-columns: var(--lc-checkin-rail-width) minmax(0, 1fr);
-        column-gap: 18px;
-        align-items: start;
-        padding: 22px 24px 40px;
-    }
-    .lc-checkin__layout > * { grid-column: 2; min-width: 0; }
-    .lc-checkin__layout > .lc-checkin__rail { grid-column: 1; grid-row: 1 / span 60; }
-}
-@container lc5 (min-width: 1000px) {
-    .lc-checkin__layout {
-        column-gap: 22px;
-        padding: 26px 30px 40px;
+        padding: 0 24px 40px;
     }
 }
 
@@ -2840,3 +2829,72 @@
 /* 桌面弹窗：旧的悬浮 全屏/关闭 按钮已并入顶栏，彻底隐藏（移动端自己的关闭不受影响） */
 .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-close,
 .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-fullscreen { display: none !important; }
+
+/* ============================================================
+   T-032 桌面顶栏（应用栏式）：导航并入一条通栏顶栏，rail 退役。
+   顶栏结构上固定（flex 列：顶栏 / 滚动区），内容不可能滚到它后面。
+   归档按 D-002 归入回顾页，不再出现在导航里。
+   ============================================================ */
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile),
+.lc-checkin-tab-host {
+    display: flex;
+    flex-direction: column;
+}
+
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin,
+.lc-checkin-tab-host > .lc-checkin {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-top: 0;
+}
+
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav,
+.lc-checkin-tab-host > .lc-checkin__topnav {
+    position: static;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    margin: 0;
+    padding: 6px 20px;
+    border-bottom: 1px solid var(--lc-checkin-border);
+    background: var(--lc-checkin-bg);
+}
+
+.lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; }
+.lc-checkin__topnav-tabs button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 34px;
+    padding: 4px 12px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 12.5px;
+    font-weight: 620;
+    cursor: pointer;
+}
+.lc-checkin__topnav-tabs button span { display: grid; place-items: center; width: 18px; height: 18px; }
+.lc-checkin__topnav-tabs button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__topnav-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__topnav-tabs button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+.lc-checkin__topnav-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.lc-checkin__topnav-action {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 8px;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    cursor: pointer;
+}
+.lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+
+/* 侧边栏不显示顶部导航（它有自己的底栏导航）；rail 已退役 */
+.lc-checkin-dock-host > .lc-checkin__topnav { display: none; }
+.lc-checkin__rail { display: none !important; }

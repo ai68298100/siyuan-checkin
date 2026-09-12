@@ -42,7 +42,7 @@ assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
 const todayBindingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "today-bindings.ts"), "utf8");
 assert.match(todayBindingsSource, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
-assert.match(source, /\["archived", t\("nav\.archived"\), "archive"\]/, "归档 is a first-class navigation destination (T-028, user request)");
+assert.doesNotMatch(source, /\["archived", t\("nav\.archived"\), "archive"\]/, "归档 is reached from 回顾, not the bottom bar (T-032 user feedback)");
 const iconsSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "icons.ts"), "utf8");
 assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/, "navigation icons must use shared vector icons");
 for (const destination of ["review", "occasions", "settings"]) assert.match(source, new RegExp(`\\[\\"${destination}\\",`));

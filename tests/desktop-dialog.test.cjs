@@ -126,7 +126,8 @@ assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/
     "the dock host must be a sized container and a flex column so its bars can be pinned");
 assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
     "narrow dock panels must show the bottom navigation");
-assert.match(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "�鵵 is a first-class navigation destination (T-028, user request)");
+assert.match(read("src", "render", "review.ts"), /data-action="archived"/, "�鵵 entry button stays in the �ع� page header");
+assert.doesNotMatch(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "�鵵 stays out of the top navigation (reached from �ع�, T-032 user feedback)");
 
 // �?事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px�?
 assert.match(read("src", "render", "occasions.ts"), /<details class="lc-checkin__occasion-templates-fold" \$\{ctx\.occasionTemplatesOpen \? "open" : ""\}>/,

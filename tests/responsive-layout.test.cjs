@@ -26,8 +26,8 @@ assert.match(tokens, /container:\s*lc5\s*\/\s*inline-size;/,
 assert.ok(!/ @container lc-checkin /.test(components), "component queries must target the lc5 container");
 assert.match(components, /@container\s+lc5\s*\(max-width:\s*719px\)[\s\S]*\.lc-checkin__rail\s*\{\s*display:\s*none;/,
     "shortcut form must hide the desktop rail");
-assert.match(components, /@container\s+lc5\s*\(min-width:\s*720px\)[\s\S]*grid-template-columns:\s*var\(--lc-checkin-rail-width\)\s+minmax\(0,\s*1fr\)/,
-    "desktop form must split into rail and content columns from the medium band up");
+assert.match(components, /@container\s+lc5\s*\(min-width:\s*720px\)[\s\S]*\.lc-checkin__layout \{\s*padding:\s*0 24px 40px;/,
+    "desktop layout is a single full-width column (navigation lives in the top bar, T-032)");
 assert.match(components, /@container\s+lc5\s*\(min-width:\s*900px\)[\s\S]*\.lc-checkin--today \.lc-checkin__group-items\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(390px,\s*1fr\)\)/,
     "desktop today shelf auto-fills with cards wide enough for name plus actions");
 
