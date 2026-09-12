@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+const bindEditorSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
@@ -31,7 +32,7 @@ assert.match(source, /viewport\.addEventListener\("resize", sync\)[\s\S]*viewpor
     "keyboard and rotation viewport changes must trigger a size sync");
 assert.match(source, /this\.quickDialogViewportCleanup\?\.\(\);[\s\S]*this\.quickDialogViewportCleanup = undefined;/,
     "viewport listeners must be removed when the dialog closes");
-assert.match(source, /scrollIntoView\(\{behavior: "smooth", block: "center"/,
+assert.match(bindEditorSource, /scrollIntoView\(\{behavior: "smooth", block: "center"/,
     "editor actions should keep the active control visible on mobile");
 assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
     "quick dialog must provide keyboard recording shortcuts");

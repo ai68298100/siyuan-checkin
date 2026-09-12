@@ -10,13 +10,16 @@ const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 
 assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
     "template save must remain an explicit submit action");
+const bindEditorSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
+assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
+    "template save must remain an explicit submit action");
 assert.match(source, /showMessage\(t\("msg\.saveFail"\)\)/,
     "template save failures must be reported to the user");
 assert.match(i18n, /"msg\.saveFail": "\[小驴打卡\] 保存失败，请重试"/,
     "save failure message must stay in the dictionary");
-assert.match(source, /form\.dataset\.submitting = \"true\"[\s\S]*submitButton\.disabled = true/,
+assert.match(bindEditorSource, /form\.dataset\.submitting = "true"[\s\S]*submitButton\.disabled = true/,
     "save must disable the submit button while persistence is pending");
-assert.match(source, /const resetSubmitting = \(\) => \{[\s\S]*form\.dataset\.submitting = \"false\"/,
+assert.match(bindEditorSource, /const resetSubmitting = \(\) => \{[\s\S]*form\.dataset\.submitting = "false"/,
     "save completion must release the submitting state");
 assert.match(source, /private showToday\(\)/,
     "save completion must have a normal-view restore path");
