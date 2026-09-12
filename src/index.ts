@@ -33,6 +33,7 @@ import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
+import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {renderReviewView} from "./render/review";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -1925,106 +1926,29 @@ export default class CheckinPlugin extends Plugin {
 
     /* 6.0 P2 built-in focus timer: countdown panel for duration items; external
        focus adapters (tomato plugins) keep priority via startFocus routing. */
+    /* 方法体外置于 render/focus-timer.ts（T-022）。 */
     private openFocusTimer(itemId: string) {
-        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
-        if (!item) return;
-        if (this.focusTimerInterval !== undefined) { window.clearInterval(this.focusTimerInterval); this.focusTimerInterval = undefined; }
-        this.focusTimerState = {itemId, totalSec: this.focusTimerMinutes * 60, remainingSec: this.focusTimerMinutes * 60, running: true};
-        this.focusTimerInterval = window.setInterval(() => this.tickFocusTimer(), 1000);
-        this.render();
+        openFocusTimerFor(this as unknown as FocusTimerHost, itemId);
     }
 
     private tickFocusTimer() {
-        const state = this.focusTimerState;
-        if (!state || !state.running) return;
-        state.remainingSec = Math.max(0, state.remainingSec - 1);
-        const panel = document.querySelector("[data-focus-timer]");
-        if (panel) this.paintFocusTimer(panel as HTMLElement, state);
-        if (state.remainingSec <= 0) void this.finishFocusTimer(true);
+        tickFocusTimerFor(this as unknown as FocusTimerHost);
     }
 
     private paintFocusTimer(panel: HTMLElement, state: {remainingSec: number; totalSec: number; running: boolean}) {
-        const time = panel.querySelector<HTMLElement>("[data-focus-remaining]");
-        if (time) {
-            const minutes = Math.floor(state.remainingSec / 60);
-            const seconds = state.remainingSec % 60;
-            time.textContent = `${minutes}:${String(seconds).padStart(2, "0")}`;
-        }
-        const bar = panel.querySelector<HTMLElement>("[data-focus-progress] span");
-        if (bar) bar.style.width = `${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%`;
-        const toggle = panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']");
-        if (toggle) toggle.textContent = state.running ? "暂停" : "继续";
+        paintFocusTimer(panel, state);
     }
 
     private async finishFocusTimer(complete: boolean) {
-        const state = this.focusTimerState;
-        if (!state) return;
-        if (this.focusTimerInterval !== undefined) { window.clearInterval(this.focusTimerInterval); this.focusTimerInterval = undefined; }
-        this.focusTimerState = undefined;
-        this.focusTimerRoot = undefined;
-        const elapsedMinutes = Math.floor((state.totalSec - state.remainingSec) / 60);
-        if (complete && elapsedMinutes >= 1) {
-            const item = this.store.items.find((candidate) => candidate.id === state.itemId && !candidate.archived);
-            if (item) {
-                const moment = captureActionMoment();
-                const date = calendarDateFromKey(moment.localDate);
-                const fingerprint = this.revisionFingerprint(item, date);
-                let unit = item.unit || "分钟";
-                let value = elapsedMinutes;
-                if (unit === "小时") { value = Math.round(elapsedMinutes / 6) / 10; unit = "小时"; }
-                void this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint, `专注 ${elapsedMinutes} 分钟`));
-                this.celebration = {message: `专注 ${elapsedMinutes} 分钟`, itemName: item.name};
-                window.setTimeout(() => { this.celebration = undefined; this.render(); }, 6000);
-            }
-        } else if (complete) {
-            showMessage(t("msg.focusTooShort"));
-        }
-        this.render();
+        await finishFocusTimerFor(this as unknown as FocusTimerHost, complete);
     }
 
     private renderFocusTimerPanel(): string {
-        const state = this.focusTimerState;
-        if (!state) return "";
-        const item = this.store.items.find((candidate) => candidate.id === state.itemId);
-        const name = item ? item.name : "专注";
-        const icon = item ? item.icon : "⏱";
-        const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
-        const minutes = Math.floor(state.remainingSec / 60);
-        const seconds = state.remainingSec % 60;
-        return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="专注计时">
-            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong>${escapeHtml(name)}</strong></div>
-            <div class="lc-checkin__focus-time" data-focus-remaining>${minutes}:${String(seconds).padStart(2, "0")}</div>
-            <div class="lc-checkin__focus-progress" data-focus-progress><span style="width: ${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%"></span></div>
-            <div class="lc-checkin__focus-presets" role="group" aria-label="专注时长">${presets}</div>
-            <div class="lc-checkin__focus-actions">
-                <button class="lc-checkin__text-button" type="button" data-action="focus-toggle">${state.running ? "暂停" : "继续"}</button>
-                <button class="lc-checkin__text-button" type="button" data-action="focus-finish">完成</button>
-                <button class="lc-checkin__text-button" type="button" data-action="focus-abandon">放弃</button>
-            </div>
-        </div>`;
+        return renderFocusTimerPanelFor(this as unknown as FocusTimerHost);
     }
 
     private bindFocusTimerPanel(root: HTMLElement) {
-        const panel = root.querySelector<HTMLElement>("[data-focus-timer]");
-        if (!panel || panel.dataset.bound === "true") return;
-        panel.dataset.bound = "true";
-        panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']")?.addEventListener("click", () => {
-            if (!this.focusTimerState) return;
-            this.focusTimerState.running = !this.focusTimerState.running;
-            this.paintFocusTimer(panel, this.focusTimerState);
-        });
-        panel.querySelector<HTMLElement>("[data-action='focus-finish']")?.addEventListener("click", () => void this.finishFocusTimer(true));
-        panel.querySelector<HTMLElement>("[data-action='focus-abandon']")?.addEventListener("click", () => void this.finishFocusTimer(false));
-        panel.querySelectorAll<HTMLButtonElement>("[data-focus-timer-minutes]").forEach((button) => button.addEventListener("click", () => {
-            const minutes = Number(button.dataset.focusTimerMinutes);
-            if (!this.focusTimerState || !Number.isFinite(minutes)) return;
-            this.focusTimerMinutes = minutes;
-            this.focusTimerState.totalSec = minutes * 60;
-            this.focusTimerState.remainingSec = minutes * 60;
-            this.focusTimerState.running = true;
-            panel.querySelectorAll("[data-focus-timer-minutes]").forEach((entry) => entry.classList.toggle("is-selected", entry === button));
-            this.paintFocusTimer(panel, this.focusTimerState);
-        }));
+        bindFocusTimerPanelFor(this as unknown as FocusTimerHost, root);
     }
 
     /* 6.0 P3 occasion → checkin linkage: generate a one-shot binary item that is
