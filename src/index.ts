@@ -8,7 +8,7 @@ import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
-import {parseCheckinCsv, parseJsonBackup} from "./export";
+import {assessJsonMigration, buildJsonMigrationReport, parseCheckinCsv, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
@@ -837,15 +837,20 @@ export default class CheckinPlugin extends Plugin {
             const file = input.files?.[0];
             if (!file) return;
             try {
-                const backup = parseJsonBackup(await file.text(), normalizeStore);
+                const migration = buildJsonMigrationReport(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
+                const backup = migration;
+                const assessment = assessJsonMigration(migration);
                 const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
                 const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
                 const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
-                    if (!window.confirm(t("msg.jsonRestoreConfirm", {items: itemCount, archived: archivedItemCount, events: eventCount, range: rangeLabel, warning: warningLabel}))) { input.value = ""; return; }
+                    const reviewLabel = assessment.requiresReview ? `\n\n请复核：${assessment.reasons.join("；")}` : "";
+                    if (!window.confirm(t("msg.jsonRestoreConfirm", {items: itemCount, archived: archivedItemCount, events: eventCount, range: `${rangeLabel}${reviewLabel}`, warning: warningLabel}))) { input.value = ""; return; }
                 const previous = this.store;
                 this.store = backup.store;
                 try {
                     await this.persist();
+                    this.auditEntries = [...this.auditEntries, {type: "migration" as const, at: new Date().toISOString(), details: {sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, repaired: migration.repaired, warnings: migration.warnings.length, audit: migration.audit}}].slice(-50);
+                    await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 } catch {
                     this.store = previous;
@@ -1214,6 +1219,8 @@ export default class CheckinPlugin extends Plugin {
         this.store = backup;
         try {
             await this.persist(current);
+            this.auditEntries = [...this.auditEntries, {type: "restore" as const, at: new Date().toISOString(), details: {source: "local-snapshot", itemCount, eventCount, fromVersion: current.version, toVersion: backup.version}}].slice(-50);
+            await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
             showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
             this.render();
         } catch {

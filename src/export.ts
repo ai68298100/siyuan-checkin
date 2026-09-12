@@ -6,6 +6,15 @@ export interface JsonBackupResult {
     summary: JsonBackupSummary;
     warnings: string[];
 }
+export interface JsonMigrationReport extends JsonBackupResult {
+    sourceVersion: number | string;
+    targetVersion: number;
+    audit?: JsonBackupAudit;
+}
+export interface JsonMigrationAssessment {
+    requiresReview: boolean;
+    reasons: string[];
+}
 
 export interface JsonBackupSummary {
     itemCount: number;
@@ -34,6 +43,25 @@ export function auditJsonBackup(before: JsonBackupSummary, after: JsonBackupSumm
         archivedItemDelta: after.archivedItemCount - before.archivedItemCount,
         dateRangeChanged: (before.dateRange?.from || "") !== (after.dateRange?.from || "") || (before.dateRange?.to || "") !== (after.dateRange?.to || ""),
     };
+}
+
+export function buildJsonMigrationReport(text: string, normalize: (value: unknown) => CheckinStore, before?: JsonBackupSummary): JsonMigrationReport {
+    const result = parseJsonBackup(text, normalize);
+    let sourceVersion: number | string = "unknown";
+    try {
+        const parsed = JSON.parse(text.replace(/^\uFEFF/, "")) as {version?: unknown};
+        sourceVersion = typeof parsed.version === "number" || typeof parsed.version === "string" ? parsed.version : "unknown";
+    } catch {
+        sourceVersion = "invalid";
+    }
+    return { ...result, sourceVersion, targetVersion: result.store.version, audit: before ? auditJsonBackup(before, result.summary) : undefined };
+}
+
+export function assessJsonMigration(report: JsonMigrationReport): JsonMigrationAssessment {
+    const reasons = [...report.warnings];
+    if (report.repaired && !reasons.some((reason) => reason.includes("迁移"))) reasons.push("备份内容已标准化修复");
+    if (report.audit && (report.audit.itemDelta < 0 || report.audit.eventDelta < 0 || report.audit.tombstoneDelta < 0)) reasons.push("恢复后数据数量减少，请确认删除项");
+    return {requiresReview: reasons.length > 0, reasons};
 }
 
 export function summarizeJsonBackup(store: CheckinStore): JsonBackupSummary {

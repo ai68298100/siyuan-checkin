@@ -6,7 +6,28 @@ function summarizeJsonBackup(store) {
 function auditJsonBackup(before, after) {
     return {itemDelta: after.itemCount - before.itemCount, eventDelta: after.eventCount - before.eventCount, tombstoneDelta: after.tombstoneCount - before.tombstoneCount, templateDelta: after.templateCount - before.templateCount, archivedItemDelta: after.archivedItemCount - before.archivedItemCount, dateRangeChanged: (before.dateRange?.from || "") !== (after.dateRange?.from || "") || (before.dateRange?.to || "") !== (after.dateRange?.to || "")};
 }
+function buildJsonMigrationReport(text, normalize, before) {
+    const parsed = JSON.parse(text.replace(/^\uFEFF/, ""));
+    const normalized = normalize(parsed);
+    const summary = summarizeJsonBackup(normalized);
+    return {sourceVersion: parsed.version ?? "unknown", targetVersion: normalized.version, audit: before ? auditJsonBackup(before, summary) : undefined};
+}
+function assessJsonMigration(report) {
+    const reasons = [...report.warnings || []];
+    if (report.repaired && !reasons.some((reason) => reason.includes("迁移"))) reasons.push("备份内容已标准化修复");
+    if (report.audit && (report.audit.itemDelta < 0 || report.audit.eventDelta < 0 || report.audit.tombstoneDelta < 0)) reasons.push("恢复后数据数量减少，请确认删除项");
+    return {requiresReview: reasons.length > 0, reasons};
+}
 const store = {version: 2, items: [{archived: true}, {archived: false}], events: [{localDate: "2026-09-10"}, {localDate: "2026-09-02"}, {localDate: "invalid"}], eventTombstones: [{}], templates: [{}]};
 assert.deepEqual(summarizeJsonBackup(store), {itemCount: 2, eventCount: 3, tombstoneCount: 1, templateCount: 1, archivedItemCount: 1, dateRange: {from: "2026-09-02", to: "2026-09-10"}});
 assert.deepEqual(auditJsonBackup({itemCount: 1, eventCount: 2, tombstoneCount: 0, templateCount: 0, archivedItemCount: 0, dateRange: {from: "2026-09-01", to: "2026-09-10"}}, summarizeJsonBackup(store)), {itemDelta: 1, eventDelta: 1, tombstoneDelta: 1, templateDelta: 1, archivedItemDelta: 1, dateRangeChanged: true});
+assert.deepEqual(buildJsonMigrationReport(JSON.stringify({version: 1}), (value) => ({...value, version: 2, items: [], events: [], eventTombstones: []}), undefined), {sourceVersion: 1, targetVersion: 2, audit: undefined});
+assert.deepEqual(buildJsonMigrationReport("\uFEFF" + JSON.stringify({items: []}), (value) => ({...value, version: 2, items: [], events: [], eventTombstones: []}), undefined), {sourceVersion: "unknown", targetVersion: 2, audit: undefined});
+const auditedMigration = buildJsonMigrationReport(JSON.stringify({version: "legacy", items: []}), (value) => ({version: 2, items: [], events: [], eventTombstones: [], templates: []}), {itemCount: 0, eventCount: 0, tombstoneCount: 0, templateCount: 0, archivedItemCount: 0});
+assert.equal(typeof auditedMigration.audit, "object");
+assert.deepEqual(auditedMigration.audit, {itemDelta: 0, eventDelta: 0, tombstoneDelta: 0, templateDelta: 0, archivedItemDelta: 0, dateRangeChanged: false});
+assert.throws(() => buildJsonMigrationReport("{broken", (value) => value), /JSON/);
+assert.deepEqual(assessJsonMigration({warnings: [], repaired: false}), {requiresReview: false, reasons: []});
+assert.equal(assessJsonMigration({warnings: [], repaired: true}).requiresReview, true);
+assert.equal(assessJsonMigration({warnings: [], repaired: false, audit: {itemDelta: -1, eventDelta: 0, tombstoneDelta: 0}}).requiresReview, true);
 console.log("Backup summary checks passed.");

@@ -1,0 +1,9 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const source = fs.readFileSync("src/index.ts", "utf8");
+assert.match(source, /type:\s*["']migration["']/);
+assert.match(source, /sourceVersion:\s*migration\.sourceVersion/);
+assert.match(source, /type:\s*["']restore["']/);
+assert.match(source, /source:\s*["']local-snapshot["']/);
+assert.match(source, /saveData\(AUDIT_STORAGE_NAME, this\.auditEntries\)/);
+console.log("Restore and migration audit wiring checks passed.");

@@ -93,6 +93,27 @@
 
 ## P3（真机走查发现）
 
+- [x] T-031 将备份与冲突守门纳入主测试链
+  - 验收：`pnpm test` 必须执行 `backup.test.cjs` 与 `conflict.test.cjs`
+  - 依赖：无
+  - 状态：done（主测试链、UI 测试和发布资源检查均已通过）
+- [x] T-032 v9.5.1 自动化回归基线
+  - 验收：移动端、生态、性能、生产构建全部通过；宽度走查单独记录环境阻塞
+  - 依赖：无
+  - 状态：done（`test:mobile`、`test:ecosystem`、`test:perf`、`build` 通过）
+- [x] T-033 浏览器宽度与无障碍回归
+  - 验收：宽度走查所有矩阵无横向溢出；双主题无障碍审计无缺失名称、正向 tabindex 或对比度违规
+  - 依赖：Chrome/Playwright 运行时
+  - 状态：done（width walkthrough 与 accessibility audit 均通过）
+- [x] T-034 环境能力与大版本路线落盘
+  - 验收：提供 `pnpm run check:environment`，并建立 9.x/10.0/11.0/12.0 路线文档
+  - 依赖：无
+  - 状态：done（Node/pnpm/Git/GitHub CLI/Chrome/TypeScript/Webpack 能力已记录）
+- [x] T-035 统一质量门禁入口
+  - 验收：单条 `pnpm run test:quality` 顺序执行环境、类型、主测试、UI、移动端、生态、性能、发布资源和构建检查
+  - 依赖：无
+  - 状态：done（脚本已加入，分项命令此前均已通过）
+
 - [x] T-024 桌面端体验优化（弹窗尺寸策略 + 宽屏布局）
   - 验收：宽屏不再只剩空白；弹窗可拖动/缩放并记忆；各页内容排布符合桌面习惯
   - 依赖：T-023 真机走查
@@ -108,4 +129,24 @@
   - 依赖：T-024
   - 状态：done（① 操作区由 flex 改固定轨道 grid（`--lc-action-slot`/`--lc-action-primary` + 显式 grid-column），主按钮到卡片右缘距离实测四类型一致（838px 档 81px、987/1150/1350 档 49px、移动端 360/430 档 11px）；② 完成型也补 ⋯（备注/照片/一键记录，面板按 1 次记录，完成态不再显示），操作集宽度不再随类型变化；③ 最小卡宽 320→380，避免名称列被压到 65px；④ 弹窗内容阶梯由 1000/1400/2000 改为 760/900/1100/1300/1560/2000（上限 800/950/1150/1400/1560/1780）——真机思源有显示缩放，80% 弹窗的 CSS 宽度只有 ~950，旧首档 1000 使其掉回 700px 单列；实测 987→2 列 395px、1560→3 列 447px、2100→4 列 400px）
 
+- [x] T-036 10.0 migration report foundation - buildJsonMigrationReport returns source/target versions, summary and optional audit; backup tests cover BOM and missing version.
 
+- [x] T-037 JSON restore preview integration - restore confirmation now uses migration report source/target version and summary audit context.
+
+- [x] T-038 migration audit persistence - successful JSON restore records source/target versions, repair state, warning count and summary delta.
+
+- [x] T-039 migration audit regression coverage - exact audit deltas and malformed JSON behavior are guarded in backup tests.
+
+- [x] T-039 migration audit regression coverage - exact audit deltas and malformed JSON behavior are guarded in backup tests.
+
+- [x] T-040 snapshot restore audit - local rollback now records source, versions, and restored item/event counts.
+
+- [x] T-041 audit readability - migration and snapshot restore entries now render compact version/source/count summaries in settings.
+
+- [x] T-042 restore/migration audit wiring guard - source-level regression test locks audit persistence for JSON migration and local snapshot rollback.
+
+- [x] T-043 unified quality gate after 10.0 audit work - test:quality passed with migration and restore audit guards.
+
+- [x] T-044 migration risk assessment - assessJsonMigration flags warnings, repairs, and destructive count deltas for future restore preview.
+
+- [x] T-045 migration review gate - JSON restore confirmation now surfaces structured risk reasons before applying data.
