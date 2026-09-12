@@ -283,7 +283,7 @@ export default class CheckinPlugin extends Plugin {
             id: DOCK_TYPE,
             config: {
                 position: "LeftBottom",
-                size: {width: 320, height: 0},
+                size: {width: 380, height: 0},
                 icon: "iconLvCheckin",
                 title: "小驴打卡",
             },
@@ -291,6 +291,9 @@ export default class CheckinPlugin extends Plugin {
             type: DOCK_TYPE,
             init: function (this: {element: Element}) {
                 plugin.dockElement = this.element as HTMLElement;
+                /* 侧边栏面板需要自己的宿主类名：窄面板靠它拿到底部导航与紧凑布局
+                   （容器查询不能匹配容器自身，rail 在窄容器又是隐藏的）。 */
+                plugin.dockElement.classList.add("lc-checkin-dock-host");
                 plugin.render();
             },
             update: function () {
@@ -739,7 +742,9 @@ export default class CheckinPlugin extends Plugin {
             layout.insertAdjacentHTML("afterbegin", this.renderRail());
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
-        if (this.isMobileFrontend && this.currentPage !== "editor" && !root.querySelector(".lc-checkin__mobile-nav")) {
+        /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
+           窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */
+        if (this.currentPage !== "editor" && !root.querySelector(".lc-checkin__mobile-nav")) {
             root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         }
         if (this.currentPage === "editor") {
@@ -942,7 +947,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-nav-add" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
     }
 

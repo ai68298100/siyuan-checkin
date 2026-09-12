@@ -85,7 +85,7 @@
     bottom: 0;
     left: 0;
     display: none;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
     gap: 2px;
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--lc-checkin-border);
@@ -2436,80 +2436,6 @@
     font-size: 12px;
 }
 
-/* ============================================================
-   手机端固定顶栏/底栏（T-027）：必须放在文件末尾
-   同文件后置的同名基础规则（min-height/padding/position）会覆盖靠前的移动端覆盖，
-   这里统一收口：顶栏与底栏都是 .lc-checkin（滚动容器）的直接子元素，用 sticky 吸附。
-   ============================================================ */
-@container lc5 (max-width: 719px) {
-    /* 滚动容器：顶栏/底栏吸附的边界；底栏在流内占位，不再为它预留 82px */
-    .lc-checkin { padding: env(safe-area-inset-top) 0 0; }
-    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: 0; }
-
-    /* ---- 顶栏：一行，常驻顶部 ---- */
-    .lc-checkin__mobile-topbar {
-        min-height: 42px;
-        padding: 4px 10px;
-        background: color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent);
-        backdrop-filter: blur(10px);
-    }
-    .lc-checkin__mobile-topbar .lc-checkin__topbar-close { width: 30px; height: 30px; font-size: 15px; }
-    .lc-checkin__topbar-title { font-size: 15px; }
-    .lc-checkin__topbar-meta {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 9px;
-        border-radius: 999px;
-        color: var(--lc-checkin-accent-text);
-        background: var(--lc-checkin-accent-soft);
-        font-size: 12px;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* 页内大标题与进度条折叠进顶栏，中间区域留给打卡列表 */
-    .lc-checkin--today .lc-checkin__header,
-    .lc-checkin--today .lc-checkin__progress { display: none; }
-    /* 子页面头部不再吸顶（避免与顶栏叠成两层） */
-    .lc-checkin__editor-header { position: static; padding: 2px 0 6px; }
-    .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
-    .lc-checkin__editor-header .lc-checkin__title { font-size: 17px; }
-
-    /* ---- 底栏：一行五项（4 导航 + 新建），常驻底部 ---- */
-    .lc-checkin__mobile-nav {
-        position: sticky;
-        z-index: var(--lc-checkin-z-nav);
-        right: auto;
-        bottom: 0;
-        left: auto;
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 0;
-        margin: 0;
-        padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
-        border-top: 1px solid var(--lc-checkin-border);
-        background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
-        backdrop-filter: blur(10px);
-    }
-    .lc-checkin__mobile-nav button { min-height: 46px; padding: 4px 2px; }
-    .lc-checkin__mobile-nav button span { width: 26px; height: 22px; }
-    .lc-checkin__mobile-nav button small { font-size: 10px; font-weight: 600; }
-    .lc-checkin__mobile-nav-add {
-        display: grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        margin: 6px auto 0;
-        border: 0;
-        border-radius: 50%;
-        color: var(--lc-checkin-accent-contrast);
-        background: var(--lc-checkin-accent-fill);
-        box-shadow: 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 34%, transparent);
-        cursor: pointer;
-    }
-    .lc-checkin__mobile-nav-add .lc-checkin__glyph { width: 18px; height: 18px; }
-    .lc-checkin__mobile-fab { display: none !important; }
-}
 
 /* 手机端最终形态：宿主自己是弹性列（顶栏 / 滚动区 / 底栏），
    滚动区占据中间剩余空间，两栏在流内 —— 几何上不可能错位，也不需要为栏高凑内边距。 */
@@ -2586,7 +2512,7 @@
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
 .lc-checkin-tab-host > .lc-checkin__mobile-nav {
     display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
     align-items: stretch;
 }
 
@@ -2622,4 +2548,90 @@
 .lc-checkin-tab-host .lc-checkin__mobile-nav {
     animation: none !important;
     transform: none !important;
+}
+
+/* 手机端专属：页内大标题与进度条折叠进顶栏，把中间区域留给打卡列表；
+   子页面头部不再吸顶并压缩标题。
+   必须按「宿主类名」而不是容器宽度来限定 —— 侧边栏（dock）也是窄容器但没有移动顶栏，
+   按宽度限定会让侧边栏丢掉标题/日期/进度/新建（曾发生过）。 */
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__header,
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__progress,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__header,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__progress {
+    display: none;
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__editor-header,
+.lc-checkin-tab-host .lc-checkin__editor-header {
+    position: static;
+    padding: 2px 0 6px;
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__editor-header .lc-checkin__eyebrow,
+.lc-checkin-tab-host .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
+
+.lc-checkin-dialog-host--mobile .lc-checkin__editor-header .lc-checkin__title,
+.lc-checkin-tab-host .lc-checkin__editor-header .lc-checkin__title { font-size: 17px; }
+
+/* ============================================================
+   桌面侧边栏面板（dock）：窄面板此前既没有 rail 也没有底部导航，
+   进去就出不来。这里给它和手机同样的结构：宿主 flex 列 + 常驻底部导航。
+   ============================================================ */
+.lc-checkin-dock-host {
+    container: lc-dock / inline-size;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 0 !important;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 侧边栏里的滚动容器与手机同款：flex:1 + 内部滚动，导航不随滚动移动 */
+.lc-checkin-dock-host > .lc-checkin {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: auto;
+    animation: none !important;
+}
+
+.lc-checkin-dock-host .lc-checkin__layout { padding: 8px 10px 12px; }
+
+/* 底部导航：窄面板显示；面板拉宽后交给 rail，避免两套导航同时出现 */
+.lc-checkin-dock-host > .lc-checkin__mobile-nav {
+    display: none;
+    position: static;
+    flex: none;
+    order: 2;
+    margin: 0;
+    border-top: 1px solid var(--lc-checkin-border);
+    background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
+}
+
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0;
+        padding: 2px 2px calc(2px + env(safe-area-inset-bottom));
+    }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button { min-height: 44px; padding: 2px 1px; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { font-size: 10px; }
+    .lc-checkin-dock-host .lc-checkin__mobile-nav-add {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        margin: 6px auto 0;
+        border: 0;
+        border-radius: 50%;
+        color: var(--lc-checkin-accent-contrast);
+        background: var(--lc-checkin-accent-fill);
+        cursor: pointer;
+    }
+    /* 侧边栏空间宝贵：备份提醒常驻会占掉一整行，收进提示气泡 */
+    .lc-checkin-dock-host .lc-checkin__backup-reminder { display: none; }
 }

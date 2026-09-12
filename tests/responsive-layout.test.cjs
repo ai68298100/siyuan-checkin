@@ -49,12 +49,12 @@ assert.match(components, /\.lc-checkin--today \.lc-checkin__section-toggle/,
 const navEntries = source.match(/const entries = \[\[("today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\])\] as const;/);
 assert.ok(navEntries, "navigation must expose exactly today/review/occasions/archived/settings in that order");
 assert.match(source, /private renderRail\(\): string/, "desktop surfaces need the labelled rail");
-assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/,
-    "bottom navigation keeps five equal cells (four destinations plus the add action)");
+assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
+    "bottom navigation keeps five destinations plus the add action (six equal cells)");
 assert.match(components, /\.lc-checkin__mobile-nav-add \{/,
     "the add action lives inside the bottom bar instead of floating over the list");
-assert.match(components, /\.lc-checkin__mobile-fab \{ display: none !important; \}/,
-    "the legacy floating add button is retired on mobile");
+assert.ok(!source.includes("lc-checkin__mobile-fab"),
+    "the legacy floating add button markup is gone (the add action lives in the bottom bar)");
 assert.match(components, /\.lc-checkin__mobile-nav button\.is-selected span \{[^}]*background:\s*var\(--lc-checkin-accent-fill\);/,
     "the selected destination uses the solid accent disc");
 

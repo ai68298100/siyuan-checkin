@@ -116,4 +116,17 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobil
 assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-nav,[\s\S]*?animation: none !important;[\s\S]*?transform: none !important;/,
     "the entrance animation must be cancelled: its fill-mode left the bars translated by 6-8px and replayed on every render");
 
+// ⑧ 侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不来
+assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host"\)/,
+    "the dock panel needs its own host class for narrow-panel layout");
+assert.match(plugin, /if \(this\.currentPage !== "editor" && !root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
+    "the bottom navigation must be rendered on every surface (wide containers hide it in CSS)");
+assert.match(plugin, /size: \{width: 380, height: 0\}/, "the dock default width must fit a readable card column");
+assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/ inline-size;[\s\S]*?display: flex;/,
+    "the dock host must be a sized container and a flex column so its bars can be pinned");
+assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
+    "narrow dock panels must show the bottom navigation");
+assert.match(plugin, /const entries = \[\["today", t\("nav\.today"\), "home"\], \["review", t\("nav\.review"\), "summary"\], \["occasions", t\("nav\.occasions"\), "calendar"\], \["archived", t\("nav\.archived"\), "archive"\], \["settings", t\("nav\.settings"\), "settings"\]\] as const;/,
+    "归档 must be a first-class destination in the bottom navigation, next to the desktop rail");
+
 console.log("Desktop dialog structure checks passed.");

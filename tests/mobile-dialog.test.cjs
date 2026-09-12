@@ -70,8 +70,8 @@ assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 
     "mobile dialog must follow the visual viewport when the keyboard opens");
 assert.match(styles, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
     "mobile dialog close action must meet a touch-friendly target size");
-assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)\s+auto/,
-    "mobile navigation must fit the five destinations plus the add action");
+assert.match(v5Components, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/,
+    "mobile navigation must fit the five destinations plus the add action (six cells)");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
 assert.match(i18nSource, /"msg\.saving": "正在保存…"/,
