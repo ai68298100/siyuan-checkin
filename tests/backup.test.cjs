@@ -39,4 +39,5 @@ assert.equal(assessJsonMigration({warnings: [], repaired: true}).requiresReview,
 assert.equal(assessJsonMigration({warnings: [], repaired: false, audit: {itemDelta: -1, eventDelta: 0, tombstoneDelta: 0}}).requiresReview, true);
 assert.deepEqual(validateJsonMigrationReport({targetVersion: 2, store: {version: 2, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}), []);
 assert.equal(validateJsonMigrationReport({targetVersion: 0, store: {version: 0, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}).length, 1);
+assert.match(JSON.stringify({sourceVersion: 1, targetVersion: 2, repaired: true, warnings: ["legacy"]}), /sourceVersion/);
 console.log("Backup summary checks passed.");
