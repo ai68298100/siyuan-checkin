@@ -7,14 +7,12 @@ import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
-import {getRecordStep} from "./shared";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
 import {parseCheckinCsv, parseJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
-import {evaluateRule} from "./rules";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
-import {appendEvent, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents} from "./model";
+import {appendEvent, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -30,6 +28,7 @@ import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksVa
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
+import {bindBulkModeFor, bindItemDragFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
@@ -904,24 +903,9 @@ export default class CheckinPlugin extends Plugin {
         }));
     }
 
+    /* 方法体外置于 render/today-bindings.ts（T-022 可选收尾）。 */
     private bindQuickKeyboard(root: HTMLElement) {
-        if (root.dataset.quickKeyboardBound === "true") return;
-        root.dataset.quickKeyboardBound = "true";
-        root.addEventListener("keydown", (event) => {
-            if (this.currentPage !== "today") return;
-            if (event.defaultPrevented || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-            const target = event.target as HTMLElement | null;
-            if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
-            const index = Number(event.key) - 1;
-            if (!Number.isInteger(index) || index < 0 || index > 8) return;
-            const items = this.getQuickTodayItems();
-            const item = items[index];
-            if (!item) return;
-            event.preventDefault();
-            const date = calendarDateFromKey(dateKey(currentCalendarDate()));
-            const revision = getItemRevisionForDate(item, date);
-            this.enqueueMutation(() => this.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), this.revisionFingerprint(item, date)));
-        });
+        bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root);
     }
 
     private getQuickTodayItems(): CheckinItem[] {
@@ -1512,62 +1496,10 @@ export default class CheckinPlugin extends Plugin {
         return write;
     }
 
-    /* 6.0 P1 bulk operations: multi-select pending rows, then complete/archive in one pass. */
+    /* 6.0 P1 bulk operations: multi-select pending rows, then complete/archive in one pass.
+       方法体外置于 render/today-bindings.ts（T-022 可选收尾）。 */
     private bindBulkMode(root: HTMLElement) {
-        root.querySelector<HTMLElement>("[data-action='toggle-bulk']")?.addEventListener("click", () => {
-            this.bulkMode = !this.bulkMode;
-            this.bulkSelected.clear();
-            this.render();
-        });
-        root.querySelector<HTMLElement>("[data-action='bulk-exit']")?.addEventListener("click", () => {
-            this.bulkMode = false;
-            this.bulkSelected.clear();
-            this.render();
-        });
-        root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((button) => button.addEventListener("click", () => {
-            const id = button.dataset.bulkCheck || "";
-            if (!id) return;
-            if (this.bulkSelected.has(id)) this.bulkSelected.delete(id);
-            else this.bulkSelected.add(id);
-            this.render();
-        }));
-        root.querySelector<HTMLElement>("[data-action='bulk-all']")?.addEventListener("click", () => {
-            const date = currentCalendarDate();
-            for (const item of this.store.items) {
-                if (item.archived || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date) || isComplete(this.store, item, date)) continue;
-                this.bulkSelected.add(item.id);
-            }
-            this.render();
-        });
-        root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", () => {
-            const ids = [...this.bulkSelected];
-            if (!ids.length) return;
-            const date = currentCalendarDate();
-            for (const id of ids) {
-                const item = this.store.items.find((candidate) => candidate.id === id && !candidate.archived);
-                if (!item || isComplete(this.store, item, date)) continue;
-                const moment = captureActionMoment();
-                const revision = getItemRevisionForDate(item, date);
-                const fingerprint = this.revisionFingerprint(item, date);
-                const remaining = evaluateRule(item, this.store.events, date).remaining ?? 0;
-                const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
-                if (value <= 0) continue;
-                void this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint));
-            }
-            this.bulkMode = false;
-            this.bulkSelected.clear();
-        });
-        root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", () => {
-            const ids = [...this.bulkSelected];
-            if (!ids.length) return;
-            for (const id of ids) {
-                const item = this.store.items.find((candidate) => candidate.id === id && !candidate.archived);
-                if (!item) continue;
-                void this.enqueueMutation(() => this.setItemArchived(id, true, captureActionMoment(), this.itemFingerprint(item)));
-            }
-            this.bulkMode = false;
-            this.bulkSelected.clear();
-        });
+        bindBulkModeFor(this as unknown as TodayBindingsHost, root);
     }
 
     /* 7.0 P3 CSV import: group rows by name, create missing items (binary when
@@ -1580,54 +1512,10 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;
-       drop persists group-local sortOrder 1..N (manual sort mode only). */
+       drop persists group-local sortOrder 1..N (manual sort mode only).
+       方法体外置于 render/today-bindings.ts（T-022 可选收尾）。 */
     private bindItemDrag(root: HTMLElement) {
-        root.querySelectorAll<HTMLElement>("[data-drag-handle]").forEach((handle) => {
-            handle.addEventListener("pointerdown", (event) => {
-                if (this.todaySortMode !== "manual") return;
-                const item = handle.closest<HTMLElement>(".lc-checkin__item");
-                const container = item?.parentElement;
-                if (!item || !container || item.closest(".lc-checkin__completed-section")) return;
-                event.preventDefault();
-                try { handle.setPointerCapture(event.pointerId); } catch { /* pointer may be released already */ }
-                item.classList.add("is-dragging");
-                const onMove = (moveEvent: PointerEvent) => {
-                    const siblings = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].filter((el) => el !== item);
-                    const target = siblings.find((sibling) => {
-                        const box = sibling.getBoundingClientRect();
-                        return moveEvent.clientY < box.top + box.height / 2;
-                    });
-                    if (target) container.insertBefore(item, target);
-                    else container.appendChild(item);
-                };
-                const finish = () => {
-                    item.classList.remove("is-dragging");
-                    window.removeEventListener("pointermove", onMove);
-                    window.removeEventListener("pointerup", finish);
-                    window.removeEventListener("pointercancel", finish);
-                    const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")]
-                        .map((el) => el.dataset.itemId || "")
-                        .filter(Boolean);
-                    if (orderedIds.length) void this.enqueueMutation(() => this.reorderItems(orderedIds));
-                };
-                window.addEventListener("pointermove", onMove);
-                window.addEventListener("pointerup", finish);
-                window.addEventListener("pointercancel", finish);
-            });
-        });
-        root.addEventListener("keydown", (event) => {
-            if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
-            const target = event.target as HTMLElement | null;
-            const item = target?.closest?.(".lc-checkin__item");
-            if (!item || item.closest(".lc-checkin__completed-section") || this.todaySortMode !== "manual") return;
-            const container = item.parentElement;
-            if (!container) return;
-            event.preventDefault();
-            if (event.key === "ArrowUp" && item.previousElementSibling) container.insertBefore(item, item.previousElementSibling);
-            if (event.key === "ArrowDown" && item.nextElementSibling) container.insertBefore(item.nextElementSibling, item);
-            const orderedIds = [...container.querySelectorAll<HTMLElement>(".lc-checkin__item")].map((el) => el.dataset.itemId || "").filter(Boolean);
-            if (orderedIds.length) void this.enqueueMutation(() => this.reorderItems(orderedIds));
-        });
+        bindItemDragFor(this as unknown as TodayBindingsHost, root);
     }
 
     private async reorderItems(orderedIds: string[]): Promise<boolean> {

@@ -64,7 +64,7 @@
 - [x] T-022 index.ts 拆分
   - 验收：index.ts < 2000 行，渲染方法提取到独立文件
   - 依赖：功能稳定后
-  - 状态：done（index.ts 4684→1971 行；外置 20 个模块：render/ 13 个页面视图与绑定 + api/agent-capabilities/navigation/plugin-ops/model-helpers/shared/ui-icons/ui-labels/version；Host 接口 + 薄壳模式，测试断言同步 17 个文件）
+  - 状态：done（index.ts 4684→1853 行；外置 21 个模块：render/ 14 个页面视图与绑定（含 today-bindings.ts 快捷键/批量/拖拽）+ api/agent-capabilities/navigation/plugin-ops/model-helpers/shared/ui-icons/ui-labels/version；Host 接口 + 薄壳模式，测试断言同步）
 
 - [ ] T-023 真实设备验证修复
   - 验收：用户反馈的所有问题修复

@@ -39,7 +39,8 @@ assert.match(bindEditorSource, /scrollIntoView\(\{behavior: "smooth", block: "ce
     "editor actions should keep the active control visible on mobile");
 assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/,
     "quick dialog must provide keyboard recording shortcuts");
-assert.match(source, /root\.dataset\.quickKeyboardBound === "true"/,
+const todayBindingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "today-bindings.ts"), "utf8");
+assert.match(todayBindingsSource, /root\.dataset\.quickKeyboardBound === "true"/,
     "quick dialog keyboard binding must remain idempotent across rerenders");
 assert.match(source, /const entries = \[\["today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\]\] as const;/,
     "quick dialog navigation must expose the five v5 destinations");
