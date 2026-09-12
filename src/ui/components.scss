@@ -2901,6 +2901,9 @@
     .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
     .lc-checkin--today .lc-checkin__item-tag { padding: 1px 6px; font-size: 9px; }
     .lc-checkin--today .lc-checkin__item-meta { margin-top: 1px; font-size: 10px; }
+    /* 完成态/缺席态次行颜色（原 index.scss 视口 600px 块迁移，T-104） */
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-success) 78%, var(--lc-checkin-text)); }
+    .lc-checkin--today .lc-checkin__item.is-missed .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, var(--lc-checkin-text)); }
     .lc-checkin--today .lc-checkin__item-progress { height: 2px; margin-top: 3px; }
     .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none !important; }
 

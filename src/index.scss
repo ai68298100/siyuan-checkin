@@ -101,12 +101,8 @@
     outline-offset: 2px;
 }
 
-@media (max-width: 600px) {
-    .lc-checkin--today .lc-checkin__item-meta,
-    .lc-checkin--today .lc-checkin__item-tag { font-size: 11px; }
-    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-success) 78%, var(--b3-theme-on-background)); }
-    .lc-checkin--today .lc-checkin__item.is-missed .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, var(--b3-theme-on-background)); }
-}
+/* 原 600px 块（meta/tag 字号 + 完成/缺席次行颜色）已迁入 components.scss 末尾
+   容器层（lc5 ≤719）；视口触发改为容器触发，桌面窄弹窗也获得一致的紧凑排版。 */
 
 @media (min-width: 900px) {
     .lc-checkin--editor .lc-checkin__form-scroll {
