@@ -129,4 +129,20 @@ assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc
 assert.match(plugin, /const entries = \[\["today", t\("nav\.today"\), "home"\], \["review", t\("nav\.review"\), "summary"\], \["occasions", t\("nav\.occasions"\), "calendar"\], \["archived", t\("nav\.archived"\), "archive"\], \["settings", t\("nav\.settings"\), "settings"\]\] as const;/,
     "归档 must be a first-class destination in the bottom navigation, next to the desktop rail");
 
+// ⑨ 事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px）
+assert.match(read("src", "render", "occasions.ts"), /<details class="lc-checkin__occasion-templates-fold" \$\{ctx\.occasionTemplatesOpen \? "open" : ""\}>/,
+    "the 21 template chips must live behind a fold");
+assert.match(read("src", "render", "occasions.ts"), /class="lc-checkin__occasion-row-actions"><button class="lc-checkin__small-button" type="button" data-occasion-toitem=/,
+    "occasion rows must use icon buttons in a fixed action column instead of wrapping text buttons");
+assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-manager-row \{\s*grid-template-columns: 34px minmax\(0, 1fr\) 128px;/,
+    "occasion rows must reserve a fixed action column so the row height stays stable");
+assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-row-actions \{\s*display: grid;\s*grid-template-columns: repeat\(4, 30px\);/,
+    "the four occasion actions must sit in one 30px icon row");
+assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-form-panel \.lc-checkin__form-row \{\s*grid-template-columns: repeat\(auto-fit, minmax\(150px, 1fr\)\);/,
+    "form rows must collapse to one column when the form panel is narrow");
+assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(260px, 320px\) minmax\(0, 1fr\);/,
+    "the occasion form must own the remaining width (it is the work area)");
+assert.match(read("src", "render", "bind-occasions.ts"), /host\.occasionTemplatesOpen = \(event\.currentTarget as HTMLDetailsElement\)\.open;/,
+    "the template fold state must survive re-renders");
+
 console.log("Desktop dialog structure checks passed.");

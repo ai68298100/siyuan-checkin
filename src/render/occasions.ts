@@ -2,6 +2,7 @@
 import {t} from "../i18n";
 import {dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
+import {uiIcon} from "../ui/icons";
 import {describeRecurrence, getOccurrenceDate, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore} from "../occasions";
 
@@ -10,6 +11,8 @@ export interface OccasionsViewContext {
     editingOccasionId?: string;
     occasionSearchQuery: string;
     appearance: "light" | "dark";
+    /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
+    occasionTemplatesOpen: boolean;
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext): string {
@@ -23,7 +26,9 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
         const countdown = next ? `${next} · ${t("occ.daysAway", {n: Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))})}` : t("occ.ended");
         const recurrence = describeRecurrence(item);
-        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><div class="lc-checkin__occasion-row-actions"><button class="lc-checkin__text-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}">${t("occ.toItem")}</button><button class="lc-checkin__text-button" type="button" data-occasion-edit="${escapeHtml(item.id)}">${t("occ.editBtn")}</button><button class="lc-checkin__small-button" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="${t("occ.toggleAria", {name: item.name})}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="${t("occ.deleteAria", {name: item.name})}" title="${t("common.delete")}">×</button></div></article>`;
+        /* 卡片式行（与今日打卡卡同一套语言）：图标 | 名称与元信息 | 固定宽度的操作列。
+           操作列定宽 + 图标按钮，行高才不会随按钮数量折行把卡片撑到 200px 以上。 */
+        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(kind)} · ${escapeHtml(recurrence)} · ${escapeHtml(countdown)}</small>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><div class="lc-checkin__occasion-row-actions"><button class="lc-checkin__small-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}" aria-label="${t("occ.toItemAria", {name: item.name})}" title="${t("occ.toItem")}">${uiIcon("add")}</button><button class="lc-checkin__small-button" type="button" data-occasion-edit="${escapeHtml(item.id)}" aria-label="${t("occ.editAria", {name: item.name})}" title="${t("occ.editBtn")}">${uiIcon("edit")}</button><button class="lc-checkin__small-button ${item.enabled ? "is-on" : ""}" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="${t("occ.toggleAria", {name: item.name})}" title="${item.enabled ? t("occ.disable") : t("occ.enable")}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="${t("occ.deleteAria", {name: item.name})}" title="${t("common.delete")}">×</button></div></article>`;
     }).join("") : (occasionQuery ? `<div class="lc-checkin__empty-description">${t("occ.searchEmpty")}</div>` : `<div class="lc-checkin__empty-description">${t("occ.empty")}</div>`);
     const date = editing?.date || dateKey(currentCalendarDate());
     const editLabel = editing ? t("occ.edit") : t("occ.create");
@@ -42,7 +47,10 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
             <div class="lc-checkin__occasion-manager">
                 <section class="lc-checkin__occasion-form-panel">
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong></div></div>
-                    <div class="lc-checkin__occasion-templates" aria-label="常用模板">${templateChips}</div>
+                    <details class="lc-checkin__occasion-templates-fold" ${ctx.occasionTemplatesOpen ? "open" : ""}>
+                        <summary data-occasion-templates-toggle><span>${t("occ.templatesFold")}</span><em>${OCCASION_TEMPLATES.length}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
+                        <div class="lc-checkin__occasion-templates" aria-label="${t("occ.templatesFold")}">${templateChips}</div>
+                    </details>
                     <form data-occasion-form>
                         <label class="lc-checkin__field"><span>${t("occ.name")}</span><input name="name" required maxlength="120" placeholder="${t("occ.namePlaceholder")}" value="${escapeHtml(editing?.name || "")}" /></label>
                         <div class="lc-checkin__form-row">

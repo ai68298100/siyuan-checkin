@@ -203,6 +203,7 @@ export default class CheckinPlugin extends Plugin {
     private bulkMode = false;
     private bulkSelected = new Set<string>();
     private occasionSearchQuery = "";
+    private occasionTemplatesOpen = false;
     private celebration?: {message: string; itemName: string};
     private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();
@@ -1119,6 +1120,7 @@ export default class CheckinPlugin extends Plugin {
             occasionStore: this.occasionStore,
             editingOccasionId: this.editingOccasionId,
             occasionSearchQuery: this.occasionSearchQuery,
+            occasionTemplatesOpen: this.occasionTemplatesOpen,
             appearance: this.resolvedAppearance(),
         });
     }

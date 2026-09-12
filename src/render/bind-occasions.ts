@@ -12,6 +12,7 @@ export interface BindOccasionsHost {
     occasionStore: OccasionStore;
     editingOccasionId?: string;
     occasionSearchQuery: string;
+    occasionTemplatesOpen: boolean;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showToday(): void;
@@ -73,6 +74,11 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     root.querySelector<HTMLInputElement>("[name='date']")?.addEventListener("change", () => host.syncOccasionLunarHint(root.querySelector<HTMLFormElement>("[data-occasion-form]")));
     root.querySelector<HTMLSelectElement>("[data-occasion-calendar]")?.addEventListener("change", () => host.syncOccasionLunarHint(root.querySelector<HTMLFormElement>("[data-occasion-form]")));
     syncBlocks();
+
+    /* 常用模板折叠态要跨重渲染保留：原生 details 会在每次 render 时回到默认收起。 */
+    root.querySelector<HTMLElement>("[data-occasion-templates-toggle]")?.parentElement?.addEventListener("toggle", (event) => {
+        host.occasionTemplatesOpen = (event.currentTarget as HTMLDetailsElement).open;
+    });
 
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template]").forEach((button) => button.addEventListener("click", () => {
         const template = OCCASION_TEMPLATES[Number(button.dataset.occasionTemplate)];

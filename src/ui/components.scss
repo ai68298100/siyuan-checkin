@@ -922,14 +922,7 @@
 .lc-checkin__occasion-form-panel,
 .lc-checkin__occasion-list-panel { padding: 14px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
 .lc-checkin__occasion-row-actions { display: flex; gap: 4px; align-items: center; justify-self: end; }
-/* 窄列表列：操作钮换到第二行，名称/元信息不再被挤成两三个字 */
-@container lc5 (min-width: 900px) and (max-width: 1399px) {
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row {
-        grid-template-columns: 30px minmax(0, 1fr);
-        row-gap: 6px;
-    }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__occasion-row-actions { grid-row: 2; grid-column: 1 / -1; }
-}
+/* （旧版此处把操作钮换到第二行；卡片式行改为固定 126px 操作列，见文件末尾 T-029 区块） */
 .lc-checkin__section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .lc-checkin__section-heading > div { display: grid; gap: 2px; min-width: 0; }
 .lc-checkin__section-kicker { color: var(--lc-checkin-muted); font-size: 10px; font-weight: 620; letter-spacing: .04em; text-transform: uppercase; }
@@ -2634,4 +2627,97 @@
     }
     /* 侧边栏空间宝贵：备份提醒常驻会占掉一整行，收进提示气泡 */
     .lc-checkin-dock-host .lc-checkin__backup-reminder { display: none; }
+}
+
+/* ============================================================
+   事项页（T-029）：
+   ① 列表行改成"卡片式"——固定宽度的操作列 + 图标按钮，行高不再被按钮折行撑到 200px+；
+   ② 21 个模板胶囊折叠收起（窄表单里摊开要占 8 行）；
+   ③ 主从比例回调：表单是工作区，列表只需够扫读；
+   ④ 表单字段行自适应列数，窄表单不再把日期/下拉挤成两行。
+   ============================================================ */
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold { margin: 0 0 10px; }
+
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    padding: 4px 10px;
+    border: 1px dashed var(--lc-checkin-border-strong);
+    border-radius: var(--lc-checkin-radius-sm);
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 12px;
+    font-weight: 620;
+    cursor: pointer;
+    list-style: none;
+}
+
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold > summary::-webkit-details-marker { display: none; }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold > summary em {
+    padding: 1px 7px;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 11px;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold > summary .lc-checkin__fold-chevron { margin-left: auto; }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-templates { margin-top: 8px; }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold:not([open]) > .lc-checkin__occasion-templates { display: none; }
+
+/* 列表行 = 卡片：图标 | 名称与元信息 | 操作列（4 个 30px 图标按钮，定宽不折行） */
+.lc-checkin--occasions .lc-checkin__occasion-manager-row {
+    grid-template-columns: 34px minmax(0, 1fr) 128px;
+    gap: 8px;
+    align-items: center;
+    min-height: 60px;
+    padding: 8px 10px;
+}
+
+.lc-checkin--occasions .lc-checkin__occasion-row-body { min-width: 0; }
+.lc-checkin--occasions .lc-checkin__occasion-row-body strong,
+.lc-checkin--occasions .lc-checkin__occasion-row-body small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.lc-checkin--occasions .lc-checkin__occasion-row-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 30px);
+    gap: 2px;
+    align-items: center;
+    justify-content: end;
+}
+
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 14px;
+}
+
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button.is-on { color: var(--lc-checkin-success-text); }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled { opacity: .62; }
+
+/* 表单字段行：宽则两列、窄则一列（不再把日期/下拉挤成两行文字） */
+.lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* 主从比例：表单优先，列表够扫读即可 */
+@container lc5 (min-width: 900px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    }
+}
+
+@container lc5 (min-width: 1400px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    }
 }
