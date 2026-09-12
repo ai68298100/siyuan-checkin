@@ -110,3 +110,33 @@
 @media (prefers-reduced-motion: reduce) {
     .lc-checkin--summary * { transition-duration: 0ms; }
 }
+/* 11.0 reminder projection: compact, read-only overview before deeper review sections. */
+.lc-checkin__reminder-center {
+  padding: 16px;
+  border: 1px solid var(--summary-border);
+  border-radius: 18px;
+  background: var(--summary-muted-bg);
+}
+
+.lc-checkin__reminder-center h2 { margin: 0 0 12px; font-size: 16px; }
+.lc-checkin__reminder-list { display: grid; gap: 8px; }
+.lc-checkin__reminder-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--b3-theme-surface);
+}
+.lc-checkin__reminder-row small { grid-column: 2 / -1; color: var(--b3-theme-on-surface-light); }
+.lc-checkin__reminder-row.is-completed { opacity: .62; }
+.lc-checkin__reminder-source { font-size: 12px; color: var(--lc-checkin-accent); }
+.lc-checkin__reminder-timing { font-size: 12px; color: var(--b3-theme-on-surface-light); white-space: nowrap; }
+
+@container lc5 (max-width: 560px) {
+  .lc-checkin__reminder-center { padding: 12px; border-radius: 14px; }
+  .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr); min-height: 36px; padding: 7px 8px; }
+  .lc-checkin__reminder-timing { grid-column: 2; }
+}

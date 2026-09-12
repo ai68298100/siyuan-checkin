@@ -16,13 +16,25 @@ const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.C
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions}).outputText);
 fs.writeFileSync(path.join(path.dirname(output), "lunar.js"), ts.transpileModule(fs.readFileSync("src/lunar.ts", "utf8"), {compilerOptions}).outputText);
 fs.writeFileSync(path.join(path.dirname(output), "i18n.js"), ts.transpileModule(fs.readFileSync("src/i18n.ts", "utf8"), {compilerOptions}).outputText);
+for (const filename of ["model.ts", "quota.ts", "rules.ts", "types.ts"]) {
+    fs.writeFileSync(
+        path.join(path.dirname(output), filename.replace(/\.ts$/, ".js")),
+        ts.transpileModule(fs.readFileSync(`src/${filename}`, "utf8"), {compilerOptions}).outputText
+    );
+}
+fs.writeFileSync(path.join(path.dirname(output), "reminders.js"), ts.transpileModule(fs.readFileSync("src/reminders.ts", "utf8"), {compilerOptions}).outputText);
 const occasions = require(output);
+const reminders = require(path.join(path.dirname(output), "reminders.js"));
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [annual]}, new Date(2026, 8, 9, 12))[0].daysUntil, 3);
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [annual]}, new Date(2026, 8, 12, 12))[0].status, "today");
 const completed = occasions.markOccasionCompleted({version: 1, occasions: [annual]}, "birthday", "2026-09-12", true);
 assert.equal(occasions.isOccasionCompleted(completed.occasions[0], "2026-09-12"), true);
+const reminderProjection = reminders.projectOccasionReminders({version: 1, occasions: [annual]}, new Date(2026, 8, 12, 12));
+assert.deepEqual(reminderProjection[0], {id: "occasion:birthday:2026-09-12", source: "occasion", sourceId: "birthday", title: annual.name, dueDate: "2026-09-12", daysUntil: 0, status: "today", note: ""});
+const completedProjection = reminders.projectOccasionReminders(completed, new Date(2026, 8, 12, 12));
+assert.equal(completedProjection[0].status, "completed");
 const once = occasions.normalizeOccasion({id: "loan", name: "还房贷", kind: "scheduled", date: "2026-09-15", recurrence: "once", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 13, 12))[0].daysUntil, 2);
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [once]}, new Date(2026, 8, 16, 12)).length, 0);

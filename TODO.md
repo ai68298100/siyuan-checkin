@@ -221,3 +221,9 @@
 - [x] T-088 stored-history read bound - corrupted or oversized local histories expose at most the latest three entries.
 - [x] T-089 strict snapshot store shape - portable imports require version plus items/events/tombstones arrays before normalization.
 - [x] T-090 snapshot timestamp validation - explicit invalid capture times are rejected at envelope creation.
+
+- [x] T-091 reminder projection foundation - unify visible occasions and scheduled check-ins into a pure, stable, read-only reminder model.
+- [x] T-092 reminder status and ordering - expose today/upcoming/completed states with deterministic urgency sorting and stable identities.
+- [x] T-093 Review reminder center - render the unified reminder projection in Review with compact responsive rows; no storage mutation or new reminder semantics yet.
+
+- [x] T-094 reminder filtering model - add a non-mutating all/today/upcoming/completed filter over stable reminder entries.

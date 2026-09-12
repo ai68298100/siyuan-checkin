@@ -9,7 +9,7 @@ process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-core-"));
 
-for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts"]) {
+for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts", "i18n.ts", "lunar.ts", "occasions.ts", "reminders.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {
@@ -24,6 +24,7 @@ const model = require(path.join(outputRoot, "model.js"));
 const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
 const quota = require(path.join(outputRoot, "quota.js"));
+const reminders = require(path.join(outputRoot, "reminders.js"));
 
 const emptySnapshot = model.createStoreSnapshotEnvelope(model.createDefaultStore(), "2026-09-12T03:00:00+08:00");
 assert.equal(emptySnapshot.format, "siyuan-checkin-snapshot");
@@ -120,6 +121,14 @@ const event = {
     note: "读完第一章, 写了笔记",
 };
 const store = {version: 2, items: [item], events: [event], eventTombstones: []};
+const checkinReminders = reminders.projectCheckinReminders(store, localDay);
+assert.equal(checkinReminders[0].id, "checkin:reading:2026-09-06");
+assert.equal(checkinReminders[0].status, "completed");
+const pendingReminders = reminders.projectCheckinReminders({...store, events: []}, localDay);
+assert.equal(pendingReminders[0].status, "today");
+assert.deepEqual(reminders.projectReminderCenter({...store, events: []}, {version: 1, occasions: []}, localDay), pendingReminders);
+assert.equal(reminders.filterReminderEntries(checkinReminders, "completed").length, 1);
+assert.equal(reminders.filterReminderEntries(checkinReminders, "today").length, 0);
 
 assert.equal(event.occurredAt.startsWith("2026-09-05"), true, "test must cross the UTC date boundary");
 assert.equal(model.dateKey(localDay), "2026-09-06");

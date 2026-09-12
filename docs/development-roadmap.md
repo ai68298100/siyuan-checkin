@@ -44,3 +44,9 @@
 - `pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:perf` 和生产构建通过。
 - 浏览器自动化使用显式可用的 Chrome；真实客户端验证单独记录，不用自动化结果替代。
 - 不 push，不在未确认版本策略前修改远程 Release。
+
+## Current checkpoint
+
+- The automated 10.0 recovery foundation is complete; see `docs/v10-recovery-acceptance.md`.
+- T-023 real-device verification remains independent and blocked on a real SiYuan client.
+- The next automated milestone is the 11.0 reminder projection model; see `docs/v11-planning-reminders.md`.
