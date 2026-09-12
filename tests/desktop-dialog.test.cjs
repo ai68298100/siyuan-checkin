@@ -99,4 +99,19 @@ for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
         `the dialog ladder must include the ${threshold}px step`);
 }
 
+// ⑦ 手机端固定顶栏/底栏：结构在滚动容器之外 + 几何用 !important 收口
+const plugin = read("src", "index.ts");
+assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin",\s*`<div class="lc-checkin__mobile-topbar">/,
+    "the mobile top bar must be attached to the host, not inside the scrolling container");
+assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
+    "the mobile bottom bar must be attached to the host as well");
+assert.match(plugin, /private todayProgressLabel\(\): string \{/,
+    "the mobile top bar shows today progress from the same rule set as the page");
+assert.match(components, /\.lc-checkin-dialog-host--mobile,[\s\S]*?display: flex !important;[\s\S]*?flex-direction: column !important;/,
+    "the mobile host must be a flex column so the bars can never move with scrolling");
+assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin,[\s\S]*?flex: 1 1 auto !important;[\s\S]*?overflow: auto !important;/,
+    "the scrolling area must be the middle flex item only");
+assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobile-nav,[\s\S]*?position: static !important;/,
+    "the bottom bar must sit in the flex flow (never 'fixed' relative to an unknown ancestor)");
+
 console.log("Desktop dialog structure checks passed.");

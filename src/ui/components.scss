@@ -22,8 +22,8 @@
 
 /* 速记形态（侧边栏 / 手机）：一切为快速打卡服务 */
 @container lc5 (max-width: 719px) {
-    /* 底部预留需同时避开导航条和其上方的悬浮添加按钮 */
-    .lc-checkin__layout { padding: 10px 12px calc(var(--lc-checkin-nav-height) + 74px + env(safe-area-inset-bottom)); }
+    /* 底栏已移出 layout（挂在滚动容器上，sticky 才可靠），这里只需留一点收尾空间 */
+    .lc-checkin__layout { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
     .lc-checkin__rail { display: none; }
 }
 
@@ -2434,4 +2434,293 @@
     background: var(--lc-checkin-surface);
     font: inherit;
     font-size: 12px;
+}
+
+/* ============================================================
+   手机端固定顶栏/底栏（T-027）：必须放在文件末尾
+   同文件后置的同名基础规则（min-height/padding/position）会覆盖靠前的移动端覆盖，
+   这里统一收口：顶栏与底栏都是 .lc-checkin（滚动容器）的直接子元素，用 sticky 吸附。
+   ============================================================ */
+@container lc5 (max-width: 719px) {
+    /* 滚动容器：顶栏/底栏吸附的边界；底栏在流内占位，不再为它预留 82px */
+    .lc-checkin { padding: env(safe-area-inset-top) 0 0; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: 0; }
+
+    /* ---- 顶栏：一行，常驻顶部 ---- */
+    .lc-checkin__mobile-topbar {
+        min-height: 42px;
+        padding: 4px 10px;
+        background: color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent);
+        backdrop-filter: blur(10px);
+    }
+    .lc-checkin__mobile-topbar .lc-checkin__topbar-close { width: 30px; height: 30px; font-size: 15px; }
+    .lc-checkin__topbar-title { font-size: 15px; }
+    .lc-checkin__topbar-meta {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 9px;
+        border-radius: 999px;
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+        font-size: 12px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* 页内大标题与进度条折叠进顶栏，中间区域留给打卡列表 */
+    .lc-checkin--today .lc-checkin__header,
+    .lc-checkin--today .lc-checkin__progress { display: none; }
+    /* 子页面头部不再吸顶（避免与顶栏叠成两层） */
+    .lc-checkin__editor-header { position: static; padding: 2px 0 6px; }
+    .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
+    .lc-checkin__editor-header .lc-checkin__title { font-size: 17px; }
+
+    /* ---- 底栏：一行五项（4 导航 + 新建），常驻底部 ---- */
+    .lc-checkin__mobile-nav {
+        position: sticky;
+        z-index: var(--lc-checkin-z-nav);
+        right: auto;
+        bottom: 0;
+        left: auto;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0;
+        margin: 0;
+        padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--lc-checkin-border);
+        background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
+        backdrop-filter: blur(10px);
+    }
+    .lc-checkin__mobile-nav button { min-height: 46px; padding: 4px 2px; }
+    .lc-checkin__mobile-nav button span { width: 26px; height: 22px; }
+    .lc-checkin__mobile-nav button small { font-size: 10px; font-weight: 600; }
+    .lc-checkin__mobile-nav-add {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        margin: 6px auto 0;
+        border: 0;
+        border-radius: 50%;
+        color: var(--lc-checkin-accent-contrast);
+        background: var(--lc-checkin-accent-fill);
+        box-shadow: 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 34%, transparent);
+        cursor: pointer;
+    }
+    .lc-checkin__mobile-nav-add .lc-checkin__glyph { width: 18px; height: 18px; }
+    .lc-checkin__mobile-fab { display: none !important; }
+}
+
+/* 滚动容器自身的 padding 不能用 @container lc5 改写（容器查询只匹配后代，不匹配容器元素本身），
+   否则会被 index.scss 里各页的 88/82/68px 底栏预留覆盖。这里用视口媒体查询收口。 */
+@media (max-width: 719px) {
+    .lc-checkin { padding: env(safe-area-inset-top) 0 0; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: 0; }
+}
+
+@media (max-width: 719px) {
+    /* 内容不足一屏时：layout 不再拉伸，底栏用 margin-top:auto 贴住容器底部；
+       内容超出一屏时交给 sticky bottom:0 吸附。两者配合才能"永远在最下面"。 */
+    .lc-checkin__layout { flex: 0 0 auto; }
+    .lc-checkin__mobile-nav { margin-top: auto; }
+}
+
+/* ============================================================
+   手机端：把"固定顶栏/底栏"做成结构保证，而不是 sticky 技巧
+   根容器不滚动（overflow:hidden），滚动交给内容区（.lc-checkin__layout），
+   顶栏与底栏是根容器的 flex 兄弟 → 天然固定在上下，任何滚动都不影响。
+   ============================================================ */
+@media (max-width: 719px) {
+    .lc-checkin {
+        padding: 0;
+        overflow: hidden;
+    }
+    .lc-checkin__layout {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-x: clip;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
+    }
+    .lc-checkin__mobile-topbar {
+        position: static;
+        flex: none;
+        padding-top: calc(env(safe-area-inset-top) + 4px);
+    }
+    .lc-checkin__mobile-nav {
+        position: static;
+        flex: none;
+        margin: 0;
+    }
+}
+
+/* ============================================================
+   手机端「固定顶栏 + 固定底栏」最终收口（T-027）
+   顶栏/底栏由 JS 挂在宿主元素上（滚动容器之外），所以：
+   · 滚动在结构上不可能影响它们；
+   · 它们不再是 lc5 容器的后代，用宿主类名做选择器而不是容器查询；
+   · 不用内联样式（宿主内容会被重新渲染），纯 CSS 才稳定。
+   ============================================================ */
+.lc-checkin-dialog-host--mobile,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
+    position: relative;
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin {
+    height: 100%;
+    overflow: auto;
+    padding: calc(46px + env(safe-area-inset-top)) 0 calc(58px + env(safe-area-inset-bottom));
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-topbar,
+.lc-checkin-tab-host .lc-checkin__mobile-topbar {
+    position: absolute;
+    z-index: 6;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: calc(env(safe-area-inset-top) + 4px) 10px 4px;
+    border-bottom: 1px solid var(--lc-checkin-border);
+    background: color-mix(in srgb, var(--lc-checkin-bg) 92%, transparent);
+    backdrop-filter: blur(10px);
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
+.lc-checkin-tab-host .lc-checkin__mobile-topbar .lc-checkin__topbar-close {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 50%;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.lc-checkin__topbar-title { overflow: hidden; color: var(--lc-checkin-text); font-size: 15px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+
+.lc-checkin__topbar-meta {
+    display: inline-flex;
+    align-items: center;
+    margin-left: auto;
+    padding: 2px 9px;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav,
+.lc-checkin-tab-host .lc-checkin__mobile-nav {
+    position: absolute;
+    z-index: 7;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    min-height: 58px;
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--lc-checkin-border);
+    background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
+    backdrop-filter: blur(10px);
+}
+
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav button { min-height: 46px; padding: 4px 2px; }
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav button small { font-size: 10px; font-weight: 600; }
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav-add {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin: 6px auto 0;
+    border: 0;
+    border-radius: 50%;
+    color: var(--lc-checkin-accent-contrast);
+    background: var(--lc-checkin-accent-fill);
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 34%, transparent);
+    cursor: pointer;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin__mobile-fab { display: none !important; }
+
+/* 手机端最终形态：宿主自己是弹性列（顶栏 / 滚动区 / 底栏），
+   滚动区占据中间剩余空间，两栏在流内 —— 几何上不可能错位，也不需要为栏高凑内边距。 */
+.lc-checkin-dialog-host--mobile,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-height: 0;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar {
+    position: static;
+    flex: none;
+    order: 0;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    order: 1;
+    overflow: auto;
+    padding: 0;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-tab-host > .lc-checkin__mobile-nav {
+    position: static;
+    flex: none;
+    order: 2;
+    margin: 0;
+}
+
+/* 手机端几何最终收口：这几条必须 !important。
+   滚动容器/两条栏会被 index.scss、modern-v4 里多处 .lc-checkin* 的 padding/margin/position
+   反复覆盖（同或更高特异性），而这些是"结构正确性"依赖的属性，宁可显式压住。
+   只压结构属性（display/flex/position/margin/padding/overflow），不压颜色与字号。 */
+.lc-checkin-dialog-host--mobile,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar {
+    position: static !important;
+    flex: none !important;
+    margin: 0 !important;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: auto !important;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-tab-host > .lc-checkin__mobile-nav {
+    position: static !important;
+    flex: none !important;
+    margin: 0 !important;
 }

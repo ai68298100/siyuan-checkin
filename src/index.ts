@@ -12,7 +12,7 @@ import {parseCheckinCsv, parseJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
-import {appendEvent, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents} from "./model";
+import {appendEvent, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -730,14 +730,17 @@ export default class CheckinPlugin extends Plugin {
             root.prepend(button);
         }
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
-            root.querySelector(".lc-checkin")?.insertAdjacentHTML("afterbegin",
-                `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><span class="lc-checkin__topbar-spacer"></span></div>`);
+            const progressLabel = this.currentPage === "today" ? this.todayProgressLabel() : "";
+            root.insertAdjacentHTML("afterbegin",
+                `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>${progressLabel ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progressLabel}</span>` : ""}</div>`);
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             layout.insertAdjacentHTML("afterbegin", this.renderRail());
-            if (this.currentPage !== "editor") layout.insertAdjacentHTML("beforeend", this.renderMobileNav());
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
+        }
+        if (this.isMobileFrontend && this.currentPage !== "editor" && !root.querySelector(".lc-checkin__mobile-nav")) {
+            root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         }
         if (this.currentPage === "editor") {
             this.bindEditor(root);
@@ -940,7 +943,16 @@ export default class CheckinPlugin extends Plugin {
 
     private renderMobileNav(): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-fab" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-nav-add" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
+    }
+
+    /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
+    private todayProgressLabel(): string {
+        const date = currentCalendarDate();
+        const items = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date));
+        if (!items.length) return "";
+        const done = items.filter((item) => isComplete(this.store, item, date)).length;
+        return `${done}/${items.length}`;
     }
 
     /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
