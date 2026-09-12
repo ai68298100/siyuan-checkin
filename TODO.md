@@ -86,6 +86,16 @@
   - 依赖：用户建议
   - 状态：done（① renderTopNav 替代 renderRail，桌面弹窗/页签顶部常驻 44px 导航条（sticky，5 项含归档）；② 布局取消 [rail|内容] 双列网格，内容占满整行 —— 实测 987 档 2 列 442px、1481 档 3 列 442px；③ rail 代码退役；④ 测试与走查脚本的导航选择器改为 topnav 优先；⑤ 窄容器 <720 仍用底部导航）
 
+- [x] T-100 逾期历史模型（接手并行任务的规划：recurring overdue history）
+  - 验收：能枚举每个事项在过去发生且从未补记的发生日；补记过的不算；今天不计入；周/月/区间等重复类型都能正确展开
+  - 依赖：T-097/T-098（并行任务的逾期投影）
+  - 状态：done（reminders.ts 新增 projectOverdueOccurrenceHistory(store, date)：沿 getOccurrenceDate 从锚点日走到昨天，逐日核对 completedDates，返回按发生日倒序的逾期条目（含 overdueDays），guard=1000 防循环；补记后自动移出历史；纯只读投影，不改存储。tests/occasions.test.cjs 新增 9 组断言全部通过）
+
+- [ ] T-101 逾期历史 UI（回顾页提醒中心展示逾期历史，支持一键补记）
+  - 验收：提醒中心能看到逾期历史条目并可一键补记（markOccasionCompleted）
+  - 依赖：T-100
+  - 状态：todo
+
 - [ ] T-023 真实设备验证修复
   - 验收：用户反馈的所有问题修复
   - 依赖：用户测试

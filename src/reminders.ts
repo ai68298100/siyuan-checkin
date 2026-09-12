@@ -1,4 +1,4 @@
-import {getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
+import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
 import {dateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
 import type {CheckinStore} from "./types";
 
@@ -14,6 +14,17 @@ export interface ReminderEntry {
     dueDate: string;
     daysUntil: number;
     status: ReminderStatus;
+    note: string;
+}
+
+export interface OverdueOccurrenceEntry {
+    id: string;
+    occasionId: string;
+    name: string;
+    kind: string;
+    recurrence: string;
+    occurrenceDate: string;
+    overdueDays: number;
     note: string;
 }
 
@@ -78,6 +89,50 @@ export function projectCheckinReminders(store: CheckinStore, date: Date): Remind
             note: "",
         }));
     return sortReminderEntries(reminders);
+}
+
+/** T-100 逾期历史：枚举每个启用事项在过去发生、且从未补记的发生日（纯投影，只读）。
+    补记走 markOccasionCompleted；跳过今天与未来，按发生日倒序返回。
+    注意：本模块被 tests/occasions.test.cjs 以固定模块集转译加载，尽量不引入新依赖。 */
+function localDateFromKey(key: string): Date {
+    const [year, month, day] = key.split("-").map(Number);
+    return new Date(year, month - 1, day);
+}
+
+export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date): OverdueOccurrenceEntry[] {
+    const today = dateKey(date);
+    const entries: OverdueOccurrenceEntry[] = [];
+    for (const occasion of store.occasions) {
+        if (occasion.enabled === false) continue;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(occasion.date) || occasion.date >= today) continue;
+        const kind = occasion.kind === "birthday" ? "birthday" : occasion.kind === "anniversary" ? "anniversary" : "scheduled";
+        let cursor = occasion.date;
+        let guard = 0;
+        while (cursor < today && guard < 1000) {
+            guard += 1;
+            if (!isOccasionCompleted(occasion, cursor)) {
+                const overdueDays = Math.round((localDateFromKey(today).getTime() - localDateFromKey(cursor).getTime()) / 86400000);
+                entries.push({
+                    id: `overdue:${occasion.id}:${cursor}`,
+                    occasionId: occasion.id,
+                    name: occasion.name,
+                    kind,
+                    recurrence: occasion.recurrence,
+                    occurrenceDate: cursor,
+                    overdueDays,
+                    note: occasion.note,
+                });
+            }
+            const nextDay = localDateFromKey(cursor);
+            nextDay.setDate(nextDay.getDate() + 1);
+            const nextDate = getOccurrenceDate(occasion, dateKey(nextDay));
+            if (!nextDate || nextDate <= cursor) break;
+            cursor = nextDate;
+        }
+    }
+    return entries.sort((left, right) => right.occurrenceDate.localeCompare(left.occurrenceDate)
+        || left.name.localeCompare(right.name, "zh-CN")
+        || left.id.localeCompare(right.id));
 }
 
 export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date): ReminderEntry[] {

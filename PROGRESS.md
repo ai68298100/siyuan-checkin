@@ -1,7 +1,7 @@
 # 进度
-当前任务：**v9.5.1 已正式发布到 GitHub**（2026-09-12，含 T-024~T-030：桌面弹窗尺寸/宽屏布局/按钮对齐、手机端固定双栏、侧边栏导航、归档一等入口、事项页卡片化、桌面顶栏导航）。仅剩 T-023 真机反馈修复
+当前任务：接手并行任务的后续开发。T-100 逾期历史模型完成；下一步 T-101 逾期历史 UI。v9.5.1 已发布，22+3 个提交待推送
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
-已完成：T-001~T-004、T-010~T-014、T-020、T-021、T-022、T-024、T-025、T-026、T-027、T-028、T-029、T-030
+已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-100（T-090~T-099 为并行任务成果，已由本任务接手收尾）
 未提交变更：无
 上次提交：docs: v9.5.1 release checkpoint
 下一步：手机端/桌面端用 v9.5.1 复测（集市更新或安装本地包）；等待 T-023 真机反馈。自动化侧已完成 T-031~T-035；统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
@@ -56,7 +56,7 @@ T-055 complete: review JSON export now responds to click; backup recommendation 
 
 T-056 complete: desktop topnav no longer sticks over content; default auto dialog shows more content with expanded width/height ratios.
 
-Dock Tomato �����о���ɣ�������Լ��δ�� PR �߽��Ѽ�¼�� docs/docktomato-integration-plan.md����ǰ������������������ PR��
+Dock Tomato �����о���ɣ�������Լ��δ�� PR �߽��Ѽ�¼�� docs/docktomato-integration-plan.md����ǰ������������������ PR��
 
 T-057 complete: Archived is now a Review sub-entry, reducing primary navigation while preserving direct access.
 

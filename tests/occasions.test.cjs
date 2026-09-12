@@ -73,4 +73,29 @@ assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [nthWeek]}, n
 const lastDay = occasions.normalizeOccasion({id: "last", name: "月末", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", monthlySubtype: "lastday", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [lastDay]}, new Date(2026, 3, 28, 12))[0].occurrenceDate, "2026-04-30");
 assert.ok(occasions.OCCASION_TEMPLATES.length >= 15, "occasion template library ships with the common fixtures");
+
+/* T-100 逾期历史：过去发生、从未补记的次数按发生日倒序返回；补记过的不算；今天不计入。 */
+const historyToday = new Date(2026, 8, 20, 12);
+const missed = occasions.normalizeOccasion({id: "card", name: "信用卡还款", kind: "scheduled", date: "2026-07-15", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 2, enabled: true});
+const missedHistory = reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [missed]}, historyToday);
+assert.equal(missedHistory.length, 3, "july/august/september occurrences are all missed before the 20th");
+assert.deepEqual(missedHistory.map((entry) => entry.occurrenceDate), ["2026-09-15", "2026-08-15", "2026-07-15"], "history is sorted newest first");
+assert.equal(missedHistory[0].overdueDays, 5, "overdue days count from the occurrence date");
+assert.equal(missedHistory[0].occasionId, "card");
+const missedCompleted = occasions.markOccasionCompleted({version: 1, occasions: [missed]}, "card", "2026-08-15", true);
+const missedCompletedHistory = reminders.projectOverdueOccurrenceHistory(missedCompleted, historyToday);
+assert.equal(missedCompletedHistory.length, 2, "completed occurrences leave the overdue history");
+assert.ok(!missedCompletedHistory.some((entry) => entry.occurrenceDate === "2026-08-15"), "the completed date must not appear in history");
+const onceMissed = occasions.normalizeOccasion({id: "once-missed", name: "一次性缴款", kind: "scheduled", date: "2026-09-01", recurrence: "once", remindBeforeDays: 2, enabled: true});
+assert.equal(reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [onceMissed]}, historyToday).length, 1, "a missed one-off occasion is part of history");
+assert.equal(reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [{...onceMissed, date: "2026-09-25"}]}, historyToday).length, 0, "future one-off occasions have no history");
+assert.equal(reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [occasions.markOccasionCompleted({version: 1, occasions: [onceMissed]}, "once-missed", "2026-09-01", true)]}, historyToday).length, 0, "a completed one-off occasion has no history");
+const disabledMissed = occasions.normalizeOccasion({...missed, id: "disabled", enabled: false});
+assert.equal(reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [disabledMissed]}, historyToday).length, 0, "disabled occasions are out of the history");
+const todayAnchored = occasions.normalizeOccasion({id: "today-anchor", name: "今天到期", kind: "scheduled", date: "2026-09-20", recurrence: "monthly", remindBeforeDays: 0, enabled: true});
+assert.equal(reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [todayAnchored]}, historyToday).length, 0, "today's own occurrence is not history");
+const weeklyMissed = occasions.normalizeOccasion({id: "weekly", name: "周报", kind: "scheduled", date: "2026-09-06", recurrence: "weekly", weekday: 0, remindBeforeDays: 0, enabled: true});
+const weeklyHistory = reminders.projectOverdueOccurrenceHistory({version: 1, occasions: [weeklyMissed]}, new Date(2026, 8, 21, 12));
+assert.deepEqual(weeklyHistory.map((entry) => entry.occurrenceDate), ["2026-09-20", "2026-09-13", "2026-09-06"], "weekly history walks every missed week");
+console.log("Overdue occurrence history checks passed.");
 console.log("Occasion model structure checks passed.");
