@@ -85,3 +85,9 @@ Uncommitted checkpoint: T-066~T-067 are complete and verified. Accumulate one mo
 T-068 complete: buildRecoveryAuditDetails provides one audit payload contract for accepted/rejected JSON imports and local snapshots. Verification: pnpm run test:backup and pnpm test passed.
 
 Milestone ready: T-066~T-068 form the shared recovery preflight/audit slice and may be committed together.
+
+T-069~T-071 complete: recovery data persistence and diagnostic persistence now have separate transaction boundaries. Failed data writes roll back and attempt a persist-failed audit; failed audit writes never roll back successful data or leak an unhandled rejection. Verification before quality gate: pnpm run check, pnpm run test:backup, and pnpm test passed.
+
+Quality checkpoint: pnpm run test:quality passed after T-069~T-071, including production build. Existing size warnings remain: index.js 355 KiB, index.css 289 KiB, package.zip 297 KiB.
+
+Next: continue recovery-platform work with snapshot metadata/history rather than a single opaque rolling backup.

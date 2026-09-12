@@ -831,7 +831,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
-        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.saveData(AUDIT_STORAGE_NAME, []); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.persistAuditBestEffort(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
@@ -843,7 +843,7 @@ export default class CheckinPlugin extends Plugin {
                 const backup = migration;
                 if (validationErrors.length) {
                     this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", validationErrors)});
-                    void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+                    void this.persistAuditBestEffort();
                     showMessage(`恢复失败：${validationErrors.join("；")}`);
                     input.value = "";
                     return;
@@ -857,14 +857,16 @@ export default class CheckinPlugin extends Plugin {
                 this.store = backup.store;
                 try {
                     await this.persist();
-                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "accepted")});
-                    await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
-                    showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 } catch {
                     this.store = previous;
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", ["persist-failed"])});
+                    await this.persistAuditBestEffort();
                     showMessage(t("msg.restoreFailed"));
                     return;
                 }
+                this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "accepted")});
+                await this.persistAuditBestEffort();
+                showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 this.render();
             } catch (error) {
                 showMessage(t("msg.importFail", {error: String(error)}));
@@ -1225,7 +1227,7 @@ export default class CheckinPlugin extends Plugin {
         const {report: migration, assessment, validationErrors} = preflight;
         if (validationErrors.length) {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", validationErrors)});
-            await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+            await this.persistAuditBestEffort();
             showMessage(t("msg.snapshotRestoreFail"));
             return;
         }
@@ -1238,14 +1240,17 @@ export default class CheckinPlugin extends Plugin {
         this.store = backup;
         try {
             await this.persist(current);
-            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "accepted")});
-            await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
-            showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
-            this.render();
         } catch {
             this.store = current;
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", ["persist-failed"])});
+            await this.persistAuditBestEffort();
             showMessage(t("msg.snapshotRestoreFail"));
+            return;
         }
+        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: buildRecoveryAuditDetails("local-snapshot", preflight, "accepted")});
+        await this.persistAuditBestEffort();
+        showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
+        this.render();
     }
 
     private async setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean> {
@@ -1801,6 +1806,14 @@ export default class CheckinPlugin extends Plugin {
         return write;
     }
 
+    private async persistAuditBestEffort(): Promise<void> {
+        try {
+            await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+        } catch {
+            // Audit diagnostics must never interrupt or roll back the user operation they describe.
+        }
+    }
+
     private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
         if (!this.acceptingOperations) return Promise.resolve(undefined as T);
         const execute = () => this.withStorageLock(async () => {
@@ -1812,7 +1825,7 @@ export default class CheckinPlugin extends Plugin {
                     const conflict = detectStoreConflict(this.lastPersistedStore, remote);
                     if (conflict.conflicted) {
                         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "conflict", at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}});
-                        void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+                        void this.persistAuditBestEffort();
                     }
                     const latest = mergeStores(this.store, remote);
                     refreshed = JSON.stringify(latest) !== JSON.stringify(this.store);

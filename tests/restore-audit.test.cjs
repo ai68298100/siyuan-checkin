@@ -10,12 +10,18 @@ assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "r
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "accepted"\)/);
 assert.match(source, /assessment\.requiresReview/);
 assert.match(source, /saveData\(AUDIT_STORAGE_NAME, this\.auditEntries\)/);
+assert.match(source, /private async persistAuditBestEffort\(\): Promise<void>/);
+assert.doesNotMatch(source, /void this\.saveData\(AUDIT_STORAGE_NAME/);
 assert.ok((source.match(/appendStoreAudit\(this\.auditEntries/g) || []).length >= 4,
     "every audit write path must use the normalized append helper");
 const exporter = fs.readFileSync("src/export.ts", "utf8");
 assert.match(exporter, /status,\s*source,\s*sourceVersion:/);
 assert.match(exporter, /errors\.length \? \{errors: \[\.\.\.errors\]\}/);
 assert.match(source, /this\.store = previous/);
+assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "rejected", \["persist-failed"\]\)/);
+assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "rejected", \["persist-failed"\]\)/);
+assert.match(source, /Audit diagnostics must never interrupt or roll back/,
+    "audit persistence failure must not roll back successfully restored data");
 assert.match(source, /msg\.restoreFailed/);
 const ops = fs.readFileSync("src/plugin-ops.ts", "utf8");
 assert.match(ops, /downloadMigrationReportFor/);
