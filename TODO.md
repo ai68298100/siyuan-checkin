@@ -166,3 +166,5 @@
 - [x] T-052 migration report download operation - added reusable browser download helper for serialized migration diagnostics.
 
 - [x] T-053 migration download regression guard - audit tests lock serialized report download helper and diagnostic filename.
+
+- [x] T-054 migration diagnostic serialization checkpoint - serializeJsonMigrationReport and export coverage committed.
