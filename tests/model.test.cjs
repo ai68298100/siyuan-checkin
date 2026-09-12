@@ -37,6 +37,10 @@ assert.deepEqual(model.readStoreSnapshotHistory(snapshotHistory).map((entry) => 
     "2026-09-12T02:00:00.000Z", "2026-09-12T03:00:00.000Z", "2026-09-12T04:00:00.000Z",
 ]);
 assert.equal(model.readStoreSnapshotHistory({version: 1, items: [], events: []})[0].legacy, true);
+const snapshotExport = JSON.parse(model.serializeStoreSnapshotHistory(snapshotHistory, "2026-09-12T05:00:00.000Z"));
+assert.equal(snapshotExport.format, "siyuan-checkin-snapshot-export");
+assert.equal(snapshotExport.snapshots.length, 3);
+assert.deepEqual(model.createEmptyStoreSnapshotHistory(), {format: "siyuan-checkin-snapshot-history", version: 1, snapshots: []});
 
 const auditInput = [
     null,

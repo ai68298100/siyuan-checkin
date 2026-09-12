@@ -1,7 +1,7 @@
 /* 插件零散操作：从 index.ts 外置（T-022）。
    含后台渲染、今日快捷项、导航绑定、月份切换、项目恢复、导出、搜索聚焦、同步提示与就绪结算。 */
 import {t} from "./i18n";
-import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, sortCheckinItems, type StoreAuditEntry} from "./model";
+import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -126,6 +126,16 @@ export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void
     const link = document.createElement("a");
     link.href = url;
     link.download = `siyuan-checkin-audit-${dateKey(new Date())}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+export function downloadSnapshotHistoryFor(history: unknown): void {
+    const blob = new Blob([serializeStoreSnapshotHistory(history)], {type: "application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `siyuan-checkin-snapshots-${dateKey(new Date())}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }

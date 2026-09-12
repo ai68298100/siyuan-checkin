@@ -61,6 +61,16 @@ export function appendStoreSnapshotHistory(value: unknown, snapshot: StoreSnapsh
     };
 }
 
+export function createEmptyStoreSnapshotHistory(): StoreSnapshotHistory {
+    return {format: STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: []};
+}
+
+export function serializeStoreSnapshotHistory(value: unknown, generatedAt = new Date().toISOString()): string {
+    const snapshots = readStoreSnapshotHistory(value).flatMap((entry) => entry.capturedAt
+        ? [createStoreSnapshotEnvelope(normalizeStore(entry.store), entry.capturedAt)] : []);
+    return JSON.stringify({format: "siyuan-checkin-snapshot-export", version: 1, generatedAt, snapshots}, null, 2);
+}
+
 export interface StoreConflictReport {
     conflicted: boolean;
     baselineFingerprint: string;

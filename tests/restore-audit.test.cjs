@@ -11,6 +11,8 @@ assert.match(source, /appendStoreSnapshotHistory\(await this\.loadData\(BACKUP_S
 assert.match(source, /snapshotCapturedAt: snapshot\.capturedAt, legacySnapshot: snapshot\.legacy/);
 assert.match(source, /data-restore-snapshot/);
 assert.match(source, /restoreLatestBackup\(index\)/);
+assert.match(source, /historyIndex === undefined \? snapshots\[snapshots\.length - 1\] : snapshots\[historyIndex\]/);
+assert.match(source, /if \(!snapshot\) \{ showMessage\(t\("msg\.noSnapshot"\)\); return; \}/);
 assert.match(source, /this\.store = backup;\s*try \{\s*await this\.persist\(\);/,
     "snapshot restore must persist the selected backup rather than the pre-restore store");
 assert.doesNotMatch(source, /this\.store = backup;\s*try \{\s*await this\.persist\(current\);/);
@@ -37,7 +39,10 @@ assert.match(ops, /siyuan-checkin-migration-/);
 assert.match(ops, /serializeJsonMigrationReport/);
 assert.match(ops, /downloadStoreAuditFor/);
 assert.match(ops, /siyuan-checkin-audit-/);
+assert.match(ops, /siyuan-checkin-snapshots-/);
 const settings = fs.readFileSync("src/render/settings.ts", "utf8");
 assert.match(settings, /data-action="export-audit"/);
 assert.match(settings, /data-restore-snapshot=/);
+assert.match(settings, /data-action="export-snapshots"/);
+assert.match(settings, /data-action="clear-snapshots"/);
 console.log("Restore and migration audit wiring checks passed.");

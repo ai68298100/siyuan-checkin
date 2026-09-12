@@ -209,3 +209,7 @@
 - [x] T-079 snapshot history settings view - list up to three restore points with time and item/event counts.
 - [x] T-080 selectable snapshot restore - each listed restore point invokes the same validated recovery flow by stable history index.
 - [x] T-081 responsive snapshot list - shared audit-list styling keeps metadata readable and restore actions stable on narrow screens.
+
+- [x] T-082 snapshot history export - download retained restore points as a versioned JSON diagnostic bundle.
+- [x] T-083 snapshot history clearing - Settings confirms and clears restore points without touching current check-in data.
+- [x] T-084 snapshot selection bounds - stale or invalid history indices safely follow the no-snapshot path.
