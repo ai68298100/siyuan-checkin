@@ -217,3 +217,7 @@
 - [x] T-085 snapshot bundle parser - validate export marker/version, reject empty or malformed bundles, normalize envelopes, and cap imports at three.
 - [x] T-086 safe snapshot bundle import - import replaces only the restore-point list after confirmation and never mutates the primary store.
 - [x] T-087 snapshot portability guards - model and wiring tests cover export/import formats, failure cases, persistence target, and Settings entry.
+
+- [x] T-088 stored-history read bound - corrupted or oversized local histories expose at most the latest three entries.
+- [x] T-089 strict snapshot store shape - portable imports require version plus items/events/tombstones arrays before normalization.
+- [x] T-090 snapshot timestamp validation - explicit invalid capture times are rejected at envelope creation.

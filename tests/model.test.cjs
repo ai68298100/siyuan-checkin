@@ -37,6 +37,8 @@ assert.deepEqual(model.readStoreSnapshotHistory(snapshotHistory).map((entry) => 
     "2026-09-12T02:00:00.000Z", "2026-09-12T03:00:00.000Z", "2026-09-12T04:00:00.000Z",
 ]);
 assert.equal(model.readStoreSnapshotHistory({version: 1, items: [], events: []})[0].legacy, true);
+assert.equal(model.readStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: Array.from({length: 20}, (_, index) => model.createStoreSnapshotEnvelope(model.createDefaultStore(), new Date(index * 1000).toISOString()))}).length, 3);
+assert.throws(() => model.createStoreSnapshotEnvelope(model.createDefaultStore(), "invalid"), /invalid-snapshot-time/);
 const snapshotExport = JSON.parse(model.serializeStoreSnapshotHistory(snapshotHistory, "2026-09-12T05:00:00.000Z"));
 assert.equal(snapshotExport.format, "siyuan-checkin-snapshot-export");
 assert.equal(snapshotExport.snapshots.length, 3);
@@ -44,6 +46,7 @@ assert.deepEqual(model.createEmptyStoreSnapshotHistory(), {format: "siyuan-check
 assert.equal(model.parseStoreSnapshotHistoryExport(JSON.stringify(snapshotExport)).snapshots.length, 3);
 assert.throws(() => model.parseStoreSnapshotHistoryExport("{}"), /invalid-snapshot-export/);
 assert.throws(() => model.parseStoreSnapshotHistoryExport(JSON.stringify({format: "siyuan-checkin-snapshot-export", version: 1, snapshots: []})), /empty-snapshot-export/);
+assert.throws(() => model.parseStoreSnapshotHistoryExport(JSON.stringify({format: "siyuan-checkin-snapshot-export", version: 1, snapshots: [{format: model.STORE_SNAPSHOT_FORMAT, version: 1, capturedAt: new Date().toISOString(), store: {}}]})), /empty-snapshot-export/);
 
 const auditInput = [
     null,

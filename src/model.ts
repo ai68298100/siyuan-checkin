@@ -26,6 +26,7 @@ export interface StoreSnapshotHistory {
 }
 
 export function createStoreSnapshotEnvelope(store: CheckinStore, capturedAt = new Date().toISOString()): StoreSnapshotEnvelope {
+    if (!Number.isFinite(Date.parse(capturedAt))) throw new Error("invalid-snapshot-time");
     return {format: STORE_SNAPSHOT_FORMAT, version: 1, capturedAt: new Date(capturedAt).toISOString(), store: normalizeStore(store)};
 }
 
@@ -41,11 +42,12 @@ export function readStoreSnapshot(value: unknown): ReadStoreSnapshotResult {
     return {store: value, legacy: true};
 }
 
-export function readStoreSnapshotHistory(value: unknown): ReadStoreSnapshotResult[] {
+export function readStoreSnapshotHistory(value: unknown, limit = 3): ReadStoreSnapshotResult[] {
+    const boundedLimit = Math.max(1, limit);
     if (value && typeof value === "object") {
         const candidate = value as Partial<StoreSnapshotHistory>;
         if (candidate.format === STORE_SNAPSHOT_HISTORY_FORMAT && candidate.version === 1 && Array.isArray(candidate.snapshots)) {
-            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy);
+            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy).slice(-boundedLimit);
         }
     }
     return value === undefined || value === null ? [] : [readStoreSnapshot(value)];
@@ -78,7 +80,10 @@ export function parseStoreSnapshotHistoryExport(text: string, limit = 3): StoreS
     }
     const snapshots = parsed.snapshots.flatMap((value): StoreSnapshotEnvelope[] => {
         const entry = readStoreSnapshot(value);
-        return !entry.legacy && entry.capturedAt
+        const store = entry.store as Partial<CheckinStore> | undefined;
+        const validStoreShape = Boolean(store && typeof store === "object" && Number.isFinite(store.version)
+            && Array.isArray(store.items) && Array.isArray(store.events) && Array.isArray(store.eventTombstones));
+        return !entry.legacy && entry.capturedAt && validStoreShape
             ? [createStoreSnapshotEnvelope(normalizeStore(entry.store), entry.capturedAt)] : [];
     });
     if (!snapshots.length) throw new Error("empty-snapshot-export");

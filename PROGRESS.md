@@ -117,3 +117,7 @@ T-085~T-087 complete: exported snapshot bundles can be imported through strict f
 Quality checkpoint: pnpm run test:quality passed after T-085~T-087, including production build. Existing size warnings: index.js 362 KiB, index.css 289 KiB, package.zip 299 KiB.
 
 Next: review 10.0 migration/recovery acceptance criteria and identify remaining automated work; T-023 remains the only real-device blocker.
+
+T-088~T-090 complete: snapshot history read paths enforce the three-entry bound, imported snapshot stores require the complete persisted shape, and invalid capture times are rejected. Verification: pnpm run check, pnpm test, and pnpm run test:backup passed.
+
+Next: close the 10.0 automated acceptance checklist and move remaining non-device work to the 11.0 planning/reminder platform.
