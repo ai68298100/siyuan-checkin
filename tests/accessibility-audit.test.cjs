@@ -189,6 +189,17 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || "D:/AI/Codex/siyuan-c
             await page.waitForTimeout(160);
             await auditDom(target);
         }
+        /* 归档（从回顾页头部进入，T-032）与复盘（从今日卡片复盘按钮进入）纳入审计（T-111）。 */
+        await clickNav("review");
+        await page.waitForTimeout(120);
+        await clickNav("archived");
+        await page.waitForTimeout(160);
+        await auditDom("archived");
+        await clickNav("today");
+        await page.waitForTimeout(120);
+        await page.locator("[data-action='insights']").first().evaluate((b) => b.click());
+        await page.waitForTimeout(160);
+        await auditDom("insights");
         /* 编辑器（新建） */
         await clickNav("today");
         await page.locator("[data-action='add']").first().evaluate((b) => b.click());
