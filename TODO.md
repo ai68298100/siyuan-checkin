@@ -231,3 +231,5 @@
 - [x] T-095 Review reminder filtering UI - connect the reminder status filter to Review with stable re-render behavior.
 
 - [x] T-096 migration error boundary - malformed JSON reports a stable parse error before normalization and remains rejected by recovery preflight.
+
+- [x] T-097 conservative overdue projection - expose uncompleted past one-off occasions without changing recurring visibility semantics.

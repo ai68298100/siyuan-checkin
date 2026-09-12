@@ -47,6 +47,23 @@ export function projectOccasionReminders(store: OccasionStore, date: Date): Remi
     return sortReminderEntries(reminders);
 }
 
+/** Project only uncompleted, unambiguous one-off occasions that have already passed. */
+export function projectOverdueOccasionReminders(store: OccasionStore, date: Date): ReminderEntry[] {
+    const dueDate = dateKey(date);
+    const reminders = store.occasions.filter((occasion) => occasion.enabled !== false && occasion.recurrence === "once" && occasion.date < dueDate && !isOccasionCompleted(occasion, occasion.date))
+        .map((occasion): ReminderEntry => ({
+            id: `occasion:${occasion.id}:${occasion.date}`,
+            source: "occasion",
+            sourceId: occasion.id,
+            title: occasion.name,
+            dueDate: occasion.date,
+            daysUntil: Math.round((new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${occasion.date}T00:00:00`).getTime()) / 86400000) * -1,
+            status: "upcoming",
+            note: occasion.note,
+        }));
+    return sortReminderEntries(reminders);
+}
+
 export function projectCheckinReminders(store: CheckinStore, date: Date): ReminderEntry[] {
     const dueDate = dateKey(date);
     const reminders = store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date))

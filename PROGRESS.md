@@ -139,3 +139,7 @@ Next: model overdue reminders as a separate date projection, then add focused bo
 T-096 complete: migration report parsing now emits a stable JSON parse error before normalization, preserving explicit rejection for malformed imports. Verification: pnpm run check and pnpm run test:backup passed.
 
 Next: design overdue reminder projection separately from current visible occasion semantics; document date and recurrence edge cases before implementation.
+
+T-097 complete: added a conservative overdue occasion projection for uncompleted one-off dates; recurring and lunar occurrences remain excluded until a recurrence history contract is specified. Verification: pnpm run check, pnpm test, and occasion tests passed.
+
+Next: add overdue entries to the reminder center behind an explicit filter, with copy that distinguishes overdue from upcoming.
