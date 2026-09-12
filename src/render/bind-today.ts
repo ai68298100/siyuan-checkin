@@ -47,6 +47,8 @@ export interface BindTodayHost {
     openTabPage(): void;
     showEditor(item?: CheckinItem): void;
     revisionFingerprint(item: CheckinItem, date: Date): string;
+    /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
+    pulseHaptic(): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     toggleItem(itemId: string, moment: {occurredAt: string; localDate: string}, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo?: CheckinEvent[]): Promise<unknown>;
@@ -92,6 +94,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!item) return;
         const date = currentCalendarDate();
         const revision = getItemRevisionForDate(item, date);
+        host.pulseHaptic();
         host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
     root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
@@ -190,6 +193,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const date = calendarDateFromKey(moment.localDate);
             const revision = getItemRevisionForDate(item, date);
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
+            host.pulseHaptic();
             host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit), moment, expectedRevisionFingerprint));
         });
         element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
@@ -232,6 +236,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 if (revision.kind === "binary") {
                     const desiredComplete = !element.classList.contains("is-complete");
                     const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
+                    host.pulseHaptic();
                     host.enqueueMutation(() => host.toggleItem(item.id, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
                     return;
                 }
@@ -243,6 +248,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
                 const attachment = host.pendingAttachments.get(itemId);
                 host.pendingAttachments.delete(itemId);
+                host.pulseHaptic();
                 host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint, note, attachment));
                 const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
                 if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }

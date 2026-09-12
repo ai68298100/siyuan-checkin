@@ -22,4 +22,7 @@ const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
 for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {
     assert.match(builtCss, new RegExp(`\\.lc-checkin--${surface}`), `built CSS missing 4.0 ${surface} surface`);
 }
-console.log(`Release assets: v${plugin.version} checks passed.`);
+/* CSS 体积预算（T-109）：死容器查询清除后基线 262270 字节，上限留 8% 余量，防样式膨胀回潮 */
+const builtCssBytes = fs.statSync(path.join(root, "dist", "index.css")).size;
+assert.ok(builtCssBytes <= 283_000, `built CSS exceeds the 283000-byte budget: ${builtCssBytes} bytes`);
+console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes).`);

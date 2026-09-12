@@ -18,6 +18,8 @@ export interface CheckinViewPreferences {
     lastInsightsItemId?: string;
     appearance: CheckinAppearance;
     reducedMotion: boolean;
+    /** Short vibration on successful check-ins (mobile only; no-op where Vibration API is missing). */
+    hapticFeedback: boolean;
     todayQuery: string;
     pendingOnly: boolean;
     /** Optional today-page extras (week strip). Off by default: the checklist is the first screen. */
@@ -47,6 +49,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     reviewFoldTouched: false,
     appearance: "system",
     reducedMotion: false,
+    hapticFeedback: true,
     todayQuery: "",
     pendingOnly: false,
     lastExportAt: undefined,
@@ -81,6 +84,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         : [];
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
+    const hapticFeedback = typeof source.hapticFeedback === "boolean" ? source.hapticFeedback : DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
@@ -117,6 +121,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         lastInsightsItemId: typeof source.lastInsightsItemId === "string" && source.lastInsightsItemId.trim() ? source.lastInsightsItemId.trim() : undefined,
         appearance,
         reducedMotion,
+        hapticFeedback,
         todayQuery,
         pendingOnly,
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,

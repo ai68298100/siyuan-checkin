@@ -190,6 +190,7 @@ export default class CheckinPlugin extends Plugin {
         this.hostThemeObserver = undefined;
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
+    private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     private collapsedTodayGroups = new Set<string>();
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
@@ -794,6 +795,7 @@ export default class CheckinPlugin extends Plugin {
             agentCapabilityRegistered: this.agentCapabilityRegistered,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
+            hapticFeedback: this.hapticFeedback,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
@@ -818,6 +820,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {
@@ -1818,6 +1821,7 @@ export default class CheckinPlugin extends Plugin {
         this.palette = preferences.palette;
         this.dialogFixedSize = {...preferences.dialogFixedSize};
         this.reducedMotion = preferences.reducedMotion;
+        this.hapticFeedback = preferences.hapticFeedback;
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
@@ -1826,6 +1830,13 @@ export default class CheckinPlugin extends Plugin {
         this.insightsItemId = preferences.lastInsightsItemId;
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
+    }
+
+    /* 手机端打卡成功的短振动（仅移动前端 + 用户未关闭；无振动能力的环境静默跳过）。 */
+    pulseHaptic(): void {
+        if (!this.isMobileFrontend || !this.hapticFeedback) return;
+        if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return;
+        try { navigator.vibrate(10); } catch { /* 个别 WebView 限制非手势振动，忽略 */ }
     }
 
     private persistViewPreferences(): Promise<void> {
@@ -1840,6 +1851,7 @@ export default class CheckinPlugin extends Plugin {
             lastInsightsItemId: this.insightsItemId,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
+            hapticFeedback: this.hapticFeedback,
             todayQuery: this.todayQuery,
             pendingOnly: this.pendingOnly,
             showWeekStrip: this.weekStripVisible,
