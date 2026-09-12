@@ -10,6 +10,7 @@ const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts
 const bindEditorSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
 const bindPageNavSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
+const pluginOpsSource = fs.readFileSync(path.join(root, "src", "plugin-ops.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
@@ -26,7 +27,7 @@ assert.match(cleanup, /host\.currentPage = "today";/, "closing the dialog must r
 assert.match(cleanup, /void host\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
 assert.match(source, /data-action=\\?"close-dialog\\?"/,
     "the dialog content must expose an explicit close action");
-assert.match(source, /private bindDialogClose\(root: HTMLElement\)[\s\S]*this\.closeQuickDialog\(\)/,
+assert.match(pluginOpsSource, /export function bindDialogCloseFor\(host: PluginOpsHost, root: HTMLElement\): void \{[\s\S]*host\.closeQuickDialog\(\)/,
     "the explicit close action must use the shared close path");
 assert.match(quickDialogSource, /export function bindQuickDialogViewportFor\(host: QuickDialogHost, dialog: Dialog\): void \{[\s\S]*visualViewport/,
     "mobile dialogs must bind to visual viewport changes");
@@ -49,7 +50,7 @@ assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
         `mobile navigation must include ${destination}`);
 }
 assert.match(source, /data-mobile-nav="add"[\s\S]*新建/, "mobile navigation must include the add action");
-assert.match(source, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) this\.showReview\(\)/,
+assert.match(pluginOpsSource, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) host\.showReview\(\)/,
     "legacy page names must route into the fused review surface");
 assert.match(bindPageNavSource, /data-history-insights-id/,
     "history records should link directly to item insights");

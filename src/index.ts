@@ -33,6 +33,8 @@ import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
@@ -535,18 +537,11 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showToday() {
-        this.summaryRequestId += 1;
-        this.currentPage = "today";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showTodayFor(this as unknown as NavigationHost);
     }
 
     private showReview() {
-        this.currentPage = "review";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showReviewFor(this as unknown as NavigationHost);
     }
 
     private showHistory() {
@@ -558,73 +553,27 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showInsights(item?: CheckinItem) {
-        const candidate = item || this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived) || this.store.items.find((entry) => !entry.archived);
-        if (!candidate) return;
-        this.insightsReturnPage = this.currentPage === "review" ? "review" : "today";
-        this.currentPage = "insights";
-        this.insightsItemId = candidate.id;
-        void this.persistViewPreferences();
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showInsightsFor(this as unknown as NavigationHost, item);
     }
 
     private showArchived() {
-        this.currentPage = "archived";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showArchivedFor(this as unknown as NavigationHost);
     }
 
     private showOccasions() {
-        this.currentPage = "occasions";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showOccasionsFor(this as unknown as NavigationHost);
     }
 
     private showSettings() {
-        this.currentPage = "settings";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.render();
+        showSettingsFor(this as unknown as NavigationHost);
     }
 
     private showEditor(item?: CheckinItem) {
-        this.currentPage = "editor";
-        this.editingId = item?.id;
-        this.editingFingerprint = item ? this.itemFingerprint(item) : undefined;
-        this.render();
+        showEditorFor(this as unknown as NavigationHost, item);
     }
 
     private openTabPage() {
-        if (!this.supportsCustomTab || this.disposed || this.disposing || this.tabOpenPromise) {
-            if (!this.supportsCustomTab) this.openQuickDialog();
-            return;
-        }
-        this.currentPage = "today";
-        this.editingId = undefined;
-        this.editingFingerprint = undefined;
-        this.tabOpenPromise = openTab({
-            app: this.app,
-            custom: {
-                id: this.getTabId(),
-                icon: "iconLvCheckin",
-                title: "小驴打卡",
-                data: {page: "today"},
-            },
-        }).then((tab) => {
-            if (this.disposed || this.disposing) {
-                tab.close();
-            } else {
-                this.tabInstance = tab;
-            }
-        }).catch((error) => {
-            showMessage(t("msg.openTabFail", {error: String(error)}));
-            this.openQuickDialog();
-        }).finally(() => {
-            this.tabOpenPromise = undefined;
-        });
+        openTabPageFor(this as unknown as NavigationHost);
     }
 
     /* 方法体外置于 render/quick-dialog.ts（T-022）。 */
@@ -728,9 +677,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderBackgroundUpdate() {
-        if (this.currentPage !== "editor") {
-            this.render();
-        }
+        renderBackgroundUpdateFor(this as unknown as PluginOpsHost);
     }
 
     /* 9.0 渲染合并：同一帧内多次调用只执行一次渲染。 */
@@ -984,8 +931,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private getQuickTodayItems(): CheckinItem[] {
-        const date = currentCalendarDate();
-        return sortCheckinItems(this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date)), "priority");
+        return getQuickTodayItems(this.store);
     }
 
     private renderInsights(): string {
@@ -1223,52 +1169,19 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindDialogClose(root: HTMLElement) {
-        root.querySelector<HTMLElement>("[data-action='close-dialog']")?.addEventListener("click", () => this.closeQuickDialog());
-        root.querySelector<HTMLElement>("[data-action='toggle-fullscreen']")?.addEventListener("click", () => {
-            const container = this.quickDialog?.element.querySelector<HTMLElement>(".b3-dialog__container");
-            if (!container) return;
-            this.quickDialogFullscreen = !this.quickDialogFullscreen;
-            container.classList.toggle("lc-checkin-dialog--fullscreen", this.quickDialogFullscreen);
-            this.renderInto(root);
-        });
+        bindDialogCloseFor(this as unknown as PluginOpsHost, root);
     }
 
     private bindMobileNav(root: HTMLElement) {
-        root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
-            const page = button.dataset.mobileNav;
-            if (page === "today") this.showToday();
-            else if (page === "review" || page === "history" || page === "summary") this.showReview();
-            else if (page === "insights") this.showInsights();
-            else if (page === "archived") this.showArchived();
-            else if (page === "occasions") this.showOccasions();
-            else if (page === "settings") this.showSettings();
-            else if (page === "add") this.showEditor();
-        }));
+        bindMobileNavFor(this as unknown as PluginOpsHost, root);
     }
 
     private changeHistoryMonth(offset: number) {
-        if (!Number.isInteger(offset) || !offset) {
-            return;
-        }
-        const candidate = new Date(this.historyMonth.getFullYear(), this.historyMonth.getMonth() + offset, 1);
-        const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        if (candidate > currentMonth) {
-            return;
-        }
-        this.historyMonth = candidate;
-        const prefix = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-`;
-        const latestRecordedDay = this.store.events.map(getEventDateKey).filter((key) => key.startsWith(prefix)).sort().reverse()[0];
-        this.selectedHistoryDate = candidate.getTime() === currentMonth.getTime() ? dateKey(new Date()) : latestRecordedDay || dateKey(candidate);
-        this.render();
+        changeHistoryMonthFor(this as unknown as PluginOpsHost, offset);
     }
 
     private async restoreItem(itemId: string) {
-        const moment = captureActionMoment();
-        const expectedItem = this.store.items.find((item) => item.id === itemId);
-        const expectedFingerprint = expectedItem ? this.itemFingerprint(expectedItem) : undefined;
-        let restored = false;
-        await this.enqueueMutation(async () => { restored = await this.setItemArchived(itemId, false, moment, expectedFingerprint); });
-        if (restored && expectedItem) showMessage(t("msg.restoredNamed", {name: expectedItem.name}));
+        await restoreItemFor(this as unknown as PluginOpsHost, itemId);
     }
 
     private async restoreLatestBackup() {
@@ -1362,16 +1275,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private downloadExport(format: "json" | "csv") {
-        this.lastExportAt = new Date().toISOString();
-        void this.persistViewPreferences();
-        const content = format === "json" ? serializeJson(this.cloneStore()) : serializeCsv(this.cloneStore());
-        const blob = new Blob([content], {type: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `siyuan-checkin-${dateKey(new Date())}.${format}`;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
+        downloadExportFor(this as unknown as PluginOpsHost, format);
     }
 
     private getSummaryEvents(range: SummaryRange, date = new Date()): CheckinEvent[] {
@@ -1676,56 +1580,9 @@ export default class CheckinPlugin extends Plugin {
        every value is 1), append events with source "import"; identical
        item+date+value+unit rows are skipped as duplicates. */
     private importCsvRows(rows: Array<{name: string; date: string; value: number; unit: string; binary: boolean}>): {itemsCreated: number; eventsCreated: number; duplicates: number} {
-        const byName = new Map<string, CheckinItem>();
-        let itemsCreated = 0;
-        const now = new Date().toISOString();
-        const today = dateKey(new Date());
-        const resolveItem = (name: string, unit: string, binary: boolean): CheckinItem => {
-            const existing = byName.get(name) || this.store.items.find((candidate) => !candidate.archived && candidate.name === name);
-            if (existing) return existing;
-            const created = normalizeCheckinItem({
-                id: makeId("item"),
-                name,
-                icon: "✓",
-                kind: binary ? "binary" : "count",
-                target: 1,
-                unit: binary ? "次" : unit,
-                schedule: {type: "daily"},
-                createdDate: today,
-                createdAt: now,
-                updatedAt: now,
-            })!;
-            byName.set(name, created);
-            itemsCreated += 1;
-            return created;
-        };
-        const resolved: CheckinItem[] = [];
-        const events: CheckinEvent[] = [];
-        let eventsCreated = 0;
-        let duplicates = 0;
-        for (const row of rows) {
-            const item = resolveItem(row.name, row.unit, row.binary);
-            resolved.push(item);
-            const date = row.date;
-            const duplicate = this.store.events.some((event) => event.itemId === item.id && event.localDate === date && event.value === row.value && event.unit === row.unit)
-                || events.some((event) => event.itemId === item.id && event.localDate === date && event.value === row.value && event.unit === row.unit);
-            if (duplicate) { duplicates += 1; continue; }
-            events.push({
-                id: makeId("event"),
-                itemId: item.id,
-                occurredAt: new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), 12, 0).toISOString(),
-                localDate: date,
-                value: row.value,
-                unit: row.unit || item.unit,
-                source: "import",
-            });
-            eventsCreated += 1;
-        }
-        const knownIds = new Set([...this.store.items, ...resolved].map((item) => item.id));
-        const items = [...this.store.items, ...resolved.filter((item) => !this.store.items.some((existing) => existing.id === item.id))];
-        void knownIds;
-        this.store = {...this.store, items, events: [...this.store.events, ...events]};
-        return {itemsCreated, eventsCreated, duplicates};
+        const result = importCsvRowsInto(this.store, rows);
+        this.store = result.store;
+        return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates};
     }
 
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;
@@ -1943,12 +1800,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private focusTodaySearch(selection?: number) {
-        window.setTimeout(() => {
-            const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
-            const input = roots.map((element) => element.querySelector<HTMLInputElement>("[data-today-search]")).find((candidate): candidate is HTMLInputElement => Boolean(candidate));
-            input?.focus();
-            if (selection !== undefined) input?.setSelectionRange(selection, selection);
-        }, 0);
+        focusTodaySearchFor(this as unknown as PluginOpsHost, selection);
     }
 
     private applyViewPreferences(preferences: CheckinViewPreferences) {
@@ -2054,22 +1906,15 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showSyncNotice() {
-        if (this.disposed || this.disposing) return;
-        if (this.syncNoticeTimer !== undefined) window.clearTimeout(this.syncNoticeTimer);
-        this.syncNoticeTimer = window.setTimeout(() => {
-            this.syncNoticeTimer = undefined;
-            if (!this.disposed && !this.disposing) this.renderBackgroundUpdate();
-        }, 4200);
+        showSyncNoticeFor(this as unknown as PluginOpsHost);
     }
 
     private settleReady(ready: boolean) {
-        this.readyResolver?.(ready);
-        this.readyResolver = undefined;
+        settleReadyFor(this as unknown as PluginOpsHost, ready);
     }
 
     private invalidateSummary() {
-        this.summaryRequestId += 1;
-        this.summaryText = undefined;
+        invalidateSummaryFor(this as unknown as PluginOpsHost);
     }
 
     private refreshDateBoundary() {
