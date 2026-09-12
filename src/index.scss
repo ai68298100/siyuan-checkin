@@ -4842,12 +4842,8 @@
     font-size: 12px;
 }
 
-.lc-checkin__occasion-manager {
-    display: grid;
-    grid-template-columns: minmax(260px, .9fr) minmax(280px, 1.1fr);
-    gap: 18px;
-    min-width: 0;
-}
+/* 事项页主从两列模板已移交 components.scss（基础单列 + @container lc5 ≥900 两列）。
+   此处旧的无保护两列声明曾在手机宽度强制 minmax(260px)+minmax(280px) 造成横向溢出，已删。 */
 
 .lc-checkin__occasion-form-panel,
 .lc-checkin__occasion-list-panel {

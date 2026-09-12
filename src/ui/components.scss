@@ -2921,3 +2921,46 @@
     .lc-checkin__header-streak { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
     .lc-checkin__backup-reminder { padding: 6px 10px; font-size: 11px; }
 }
+
+/* ============================================================
+   T-035 手机端逐页梳理（≤719 容器；899 用于终结 legacy 两列）：
+   事项/回顾/设置/编辑器 —— 内容优先、必要元素就位、纵向压缩。
+   ============================================================ */
+
+/* 事项页：legacy index.scss 的无保护两列模板（260px+280px，手机横向溢出的根因）
+   在此终结；≥900 的主从两列由 components.scss 的同名高优先级规则接管。 */
+@container lc5 (max-width: 899px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr); }
+}
+@container lc5 (max-width: 719px) {
+    /* 事项页：列表在前（户口本优先扫读），新建表单让位到后面；行高再压一档 */
+    .lc-checkin--occasions .lc-checkin__occasion-manager { display: flex; flex-direction: column; gap: 10px; }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
+    .lc-checkin__occasion-manager-list { max-height: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) 124px; min-height: 52px; padding: 6px 8px; }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions { grid-template-columns: repeat(4, 28px); }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button { width: 28px; height: 28px; }
+
+    /* 回顾页：头部三行化 —— 标题行 / 范围 tabs 横滚一行 / 复制周报+归档+导出 紧凑行；
+       统计卡从 ~90px 压到 ~56px */
+    .lc-checkin--review .lc-checkin__editor-header { flex-wrap: wrap; row-gap: 6px; margin-bottom: 10px; }
+    .lc-checkin--review .lc-checkin__header-actions { display: contents; }
+    .lc-checkin--review .lc-checkin__editor-header > div:first-child { order: 0; flex: 1 1 100%; }
+    .lc-checkin--review .lc-checkin__range-tabs { order: 1; flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
+    .lc-checkin--review .lc-checkin__header-actions .lc-checkin__text-button { order: 2; min-height: 30px; padding: 0 10px; font-size: 11.5px; }
+    .lc-checkin--review .lc-checkin__header-actions .lc-checkin__small-button { order: 3; width: 30px; height: 30px; }
+    .lc-checkin--review .lc-checkin__summary-stats { gap: 6px; margin-bottom: 10px; }
+    .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 0; padding: 7px 9px; }
+    .lc-checkin--review .lc-checkin__summary-stats strong { font-size: 18px; }
+    .lc-checkin--review .lc-checkin__summary-stats span { margin-top: 2px; font-size: 9.5px; }
+
+    /* 设置页：行高压掉说明文字（桌面保留），分区卡收紧 */
+    .lc-checkin--settings .lc-checkin__settings-card { padding: 12px 14px; }
+    .lc-checkin--settings .lc-checkin__settings-row { gap: 10px; padding: 7px 0; }
+    .lc-checkin--settings .lc-checkin__settings-label small { display: none; }
+
+    /* 编辑器：常用模板预览区限高、类型卡压扁 */
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 210px; }
+    .lc-checkin--editor .lc-checkin__kind-option span { min-height: 44px; padding: 6px; }
+}
