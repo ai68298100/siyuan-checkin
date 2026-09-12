@@ -113,5 +113,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin,[\s\S]
     "the scrolling area must be the middle flex item only");
 assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobile-nav,[\s\S]*?position: static !important;/,
     "the bottom bar must sit in the flex flow (never 'fixed' relative to an unknown ancestor)");
+assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-nav,[\s\S]*?animation: none !important;[\s\S]*?transform: none !important;/,
+    "the entrance animation must be cancelled: its fill-mode left the bars translated by 6-8px and replayed on every render");
 
 console.log("Desktop dialog structure checks passed.");
