@@ -6,4 +6,8 @@ assert.match(source, /sourceVersion:\s*migration\.sourceVersion/);
 assert.match(source, /type:\s*["']restore["']/);
 assert.match(source, /source:\s*["']local-snapshot["']/);
 assert.match(source, /saveData\(AUDIT_STORAGE_NAME, this\.auditEntries\)/);
+assert.match(source, /status: "rejected"/);
+assert.match(source, /errors: validationErrors/);
+assert.match(source, /this\.store = previous/);
+assert.match(source, /msg\.restoreFailed/);
 console.log("Restore and migration audit wiring checks passed.");

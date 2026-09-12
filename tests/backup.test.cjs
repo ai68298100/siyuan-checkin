@@ -18,6 +18,13 @@ function assessJsonMigration(report) {
     if (report.audit && (report.audit.itemDelta < 0 || report.audit.eventDelta < 0 || report.audit.tombstoneDelta < 0)) reasons.push("恢复后数据数量减少，请确认删除项");
     return {requiresReview: reasons.length > 0, reasons};
 }
+function validateJsonMigrationReport(report) {
+    const errors = [];
+    if (!Number.isFinite(report.targetVersion) || report.targetVersion < 1) errors.push("invalid target");
+    if (!report.store || report.store.version !== report.targetVersion) errors.push("version mismatch");
+    if (report.summary && report.store && report.summary.itemCount !== report.store.items.length) errors.push("summary mismatch");
+    return errors;
+}
 const store = {version: 2, items: [{archived: true}, {archived: false}], events: [{localDate: "2026-09-10"}, {localDate: "2026-09-02"}, {localDate: "invalid"}], eventTombstones: [{}], templates: [{}]};
 assert.deepEqual(summarizeJsonBackup(store), {itemCount: 2, eventCount: 3, tombstoneCount: 1, templateCount: 1, archivedItemCount: 1, dateRange: {from: "2026-09-02", to: "2026-09-10"}});
 assert.deepEqual(auditJsonBackup({itemCount: 1, eventCount: 2, tombstoneCount: 0, templateCount: 0, archivedItemCount: 0, dateRange: {from: "2026-09-01", to: "2026-09-10"}}, summarizeJsonBackup(store)), {itemDelta: 1, eventDelta: 1, tombstoneDelta: 1, templateDelta: 1, archivedItemDelta: 1, dateRangeChanged: true});
@@ -30,4 +37,6 @@ assert.throws(() => buildJsonMigrationReport("{broken", (value) => value), /JSON
 assert.deepEqual(assessJsonMigration({warnings: [], repaired: false}), {requiresReview: false, reasons: []});
 assert.equal(assessJsonMigration({warnings: [], repaired: true}).requiresReview, true);
 assert.equal(assessJsonMigration({warnings: [], repaired: false, audit: {itemDelta: -1, eventDelta: 0, tombstoneDelta: 0}}).requiresReview, true);
+assert.deepEqual(validateJsonMigrationReport({targetVersion: 2, store: {version: 2, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}), []);
+assert.equal(validateJsonMigrationReport({targetVersion: 0, store: {version: 0, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}).length, 1);
 console.log("Backup summary checks passed.");

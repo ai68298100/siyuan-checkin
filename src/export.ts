@@ -15,6 +15,13 @@ export interface JsonMigrationAssessment {
     requiresReview: boolean;
     reasons: string[];
 }
+export function validateJsonMigrationReport(report: JsonMigrationReport): string[] {
+    const errors: string[] = [];
+    if (!Number.isFinite(report.targetVersion) || report.targetVersion < 1) errors.push("目标版本无效");
+    if (!report.store || report.store.version !== report.targetVersion) errors.push("目标版本与标准化数据不一致");
+    if (report.summary.itemCount !== report.store.items.length || report.summary.eventCount !== report.store.events.length) errors.push("备份摘要与数据内容不一致");
+    return errors;
+}
 
 export interface JsonBackupSummary {
     itemCount: number;

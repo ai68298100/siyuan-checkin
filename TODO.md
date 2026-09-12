@@ -150,3 +150,11 @@
 - [x] T-044 migration risk assessment - assessJsonMigration flags warnings, repairs, and destructive count deltas for future restore preview.
 
 - [x] T-045 migration review gate - JSON restore confirmation now surfaces structured risk reasons before applying data.
+
+- [x] T-046 migration report validation - validate target version, normalized store consistency, and summary counts before restore.
+
+- [x] T-047 restore validation gate - JSON restore now rejects inconsistent migration reports before mutating the store.
+
+- [x] T-048 rejected migration audit - invalid JSON restore reports now persist rejected status, versions, and validation errors without mutating data.
+
+- [x] T-049 restore failure guard - regression checks lock store rollback and restore-failed messaging when persistence fails.

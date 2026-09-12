@@ -33,3 +33,11 @@ Quality checkpoint: pnpm run test:quality passed after T-042, including environm
 T-044 complete: added assessJsonMigration with review reasons for warnings, normalization repairs, and negative restore deltas.
 
 T-045 complete: assessJsonMigration is connected to JSON restore confirmation; warnings, repairs, and destructive deltas are shown for review.
+
+T-046 complete: validateJsonMigrationReport added with version/store/summary consistency checks and backup coverage.
+
+T-047 complete: restore flow validates migration report consistency and aborts safely on invalid target/store/summary data.
+
+T-048 complete: validation failures are recorded as rejected migration audit entries before restore aborts.
+
+T-049 complete: restore audit guard now verifies persistence failure rollback path remains intact.

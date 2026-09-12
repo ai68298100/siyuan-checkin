@@ -8,7 +8,7 @@ import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
-import {assessJsonMigration, buildJsonMigrationReport, parseCheckinCsv, summarizeJsonBackup} from "./export";
+import {assessJsonMigration, buildJsonMigrationReport, parseCheckinCsv, summarizeJsonBackup, validateJsonMigrationReport} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
@@ -840,6 +840,14 @@ export default class CheckinPlugin extends Plugin {
                 const migration = buildJsonMigrationReport(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
                 const backup = migration;
                 const assessment = assessJsonMigration(migration);
+                const validationErrors = validateJsonMigrationReport(migration);
+                if (validationErrors.length) {
+                    this.auditEntries = [...this.auditEntries, {type: "migration" as const, at: new Date().toISOString(), details: {status: "rejected", sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, errors: validationErrors}}].slice(-50);
+                    void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
+                    showMessage(`恢复失败：${validationErrors.join("；")}`);
+                    input.value = "";
+                    return;
+                }
                 const {itemCount, eventCount, archivedItemCount, dateRange} = backup.summary;
                 const rangeLabel = dateRange ? `，日期 ${dateRange.from} 至 ${dateRange.to}` : "";
                 const warningLabel = backup.warnings.length ? `\n\n兼容性提示：${backup.warnings.join("；")}` : "";
