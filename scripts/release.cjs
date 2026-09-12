@@ -69,9 +69,13 @@ for (const chain of ["check", "test", "test:ui", "test:mobile", "test:ecosystem"
     run(`pnpm run ${chain}`);
 }
 
-// 3. 提交 + 推送 + tag
+// 3. 提交 + 推送 + tag（版本号已一致时无变更可提交，跳过空提交）
 run("git add -A");
-run(`git commit -m "release: v${version}"`);
+try {
+    run(`git commit -m "release: v${version}"`);
+} catch {
+    console.log("工作区无待提交变更，跳过 release 提交");
+}
 run("git push origin main");
 run(`git tag -a v${version} -m "Release v${version}"`);
 run(`git push origin v${version}`);
