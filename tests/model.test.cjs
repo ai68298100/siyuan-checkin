@@ -41,6 +41,9 @@ const snapshotExport = JSON.parse(model.serializeStoreSnapshotHistory(snapshotHi
 assert.equal(snapshotExport.format, "siyuan-checkin-snapshot-export");
 assert.equal(snapshotExport.snapshots.length, 3);
 assert.deepEqual(model.createEmptyStoreSnapshotHistory(), {format: "siyuan-checkin-snapshot-history", version: 1, snapshots: []});
+assert.equal(model.parseStoreSnapshotHistoryExport(JSON.stringify(snapshotExport)).snapshots.length, 3);
+assert.throws(() => model.parseStoreSnapshotHistoryExport("{}"), /invalid-snapshot-export/);
+assert.throws(() => model.parseStoreSnapshotHistoryExport(JSON.stringify({format: "siyuan-checkin-snapshot-export", version: 1, snapshots: []})), /empty-snapshot-export/);
 
 const auditInput = [
     null,

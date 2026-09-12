@@ -71,6 +71,20 @@ export function serializeStoreSnapshotHistory(value: unknown, generatedAt = new 
     return JSON.stringify({format: "siyuan-checkin-snapshot-export", version: 1, generatedAt, snapshots}, null, 2);
 }
 
+export function parseStoreSnapshotHistoryExport(text: string, limit = 3): StoreSnapshotHistory {
+    const parsed = JSON.parse(text) as {format?: unknown; version?: unknown; snapshots?: unknown};
+    if (!parsed || parsed.format !== "siyuan-checkin-snapshot-export" || parsed.version !== 1 || !Array.isArray(parsed.snapshots)) {
+        throw new Error("invalid-snapshot-export");
+    }
+    const snapshots = parsed.snapshots.flatMap((value): StoreSnapshotEnvelope[] => {
+        const entry = readStoreSnapshot(value);
+        return !entry.legacy && entry.capturedAt
+            ? [createStoreSnapshotEnvelope(normalizeStore(entry.store), entry.capturedAt)] : [];
+    });
+    if (!snapshots.length) throw new Error("empty-snapshot-export");
+    return {format: STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: snapshots.slice(-Math.max(1, limit))};
+}
+
 export interface StoreConflictReport {
     conflicted: boolean;
     baselineFingerprint: string;

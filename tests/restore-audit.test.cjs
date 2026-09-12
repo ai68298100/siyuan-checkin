@@ -45,4 +45,7 @@ assert.match(settings, /data-action="export-audit"/);
 assert.match(settings, /data-restore-snapshot=/);
 assert.match(settings, /data-action="export-snapshots"/);
 assert.match(settings, /data-action="clear-snapshots"/);
+assert.match(settings, /data-import-snapshots/);
+assert.match(source, /parseStoreSnapshotHistoryExport\(await file\.text\(\)\)/);
+assert.match(source, /saveData\(BACKUP_STORAGE_NAME, history\)/);
 console.log("Restore and migration audit wiring checks passed.");

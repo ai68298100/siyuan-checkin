@@ -213,3 +213,7 @@
 - [x] T-082 snapshot history export - download retained restore points as a versioned JSON diagnostic bundle.
 - [x] T-083 snapshot history clearing - Settings confirms and clears restore points without touching current check-in data.
 - [x] T-084 snapshot selection bounds - stale or invalid history indices safely follow the no-snapshot path.
+
+- [x] T-085 snapshot bundle parser - validate export marker/version, reject empty or malformed bundles, normalize envelopes, and cap imports at three.
+- [x] T-086 safe snapshot bundle import - import replaces only the restore-point list after confirmation and never mutates the primary store.
+- [x] T-087 snapshot portability guards - model and wiring tests cover export/import formats, failure cases, persistence target, and Settings entry.
