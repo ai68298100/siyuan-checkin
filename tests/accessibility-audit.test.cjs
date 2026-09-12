@@ -177,7 +177,7 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || "D:/AI/Codex/siyuan-c
         };
 
         const clickNav = async (target) => {
-            const rail = page.locator(`.lc-checkin__rail [data-mobile-nav="${target}"]`);
+            const rail = page.locator(`.lc-checkin__topnav [data-mobile-nav="${target}"]`);
             if (await rail.count() && await rail.isVisible().catch(() => false)) { await rail.click(); return; }
             const mobile = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="${target}"]`);
             if (await mobile.count() && await mobile.isVisible().catch(() => false)) { await mobile.click(); return; }

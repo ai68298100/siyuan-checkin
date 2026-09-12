@@ -101,7 +101,7 @@ const THEME_TOKENS = (dark) => (dark
 
         const nav = async (target) => {
             await page.evaluate((target) => {
-                const btn = document.querySelector(`.lc-checkin__rail [data-mobile-nav="${target}"]`)
+                const btn = document.querySelector(`.lc-checkin__topnav [data-mobile-nav="${target}"]`)
                     || document.querySelector(`.lc-checkin__mobile-nav [data-mobile-nav="${target}"]`);
                 if (btn) btn.click();
                 else {
@@ -172,7 +172,7 @@ const THEME_TOKENS = (dark) => (dark
         await shot("settings-shortcuts");
 
         await page.evaluate(() => {
-            const archived = document.querySelector(".lc-checkin__rail [data-mobile-nav='archived'], [data-action='archived']");
+            const archived = document.querySelector(".lc-checkin__topnav [data-mobile-nav='archived'], [data-action='archived']");
             if (archived) archived.click();
         });
         await page.waitForTimeout(150);

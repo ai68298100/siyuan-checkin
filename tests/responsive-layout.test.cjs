@@ -45,10 +45,10 @@ assert.match(components, /\.lc-checkin--today \.lc-checkin__item::before\s*\{\s*
 assert.match(components, /\.lc-checkin--today \.lc-checkin__section-toggle/,
     "completed items must collapse behind one toggle row");
 
-/* Navigation: five destinations, shared by rail and bottom bar, plus the FAB. */
-const navEntries = source.match(/const entries = \[\[("today", "今日", "home"\], \["review", "回顾", "summary"\], \["occasions", "事项", "calendar"\], \["archived", "归档", "archive"\], \["settings", "设置", "settings"\])\] as const;/);
+/* Navigation: five destinations, shared by top nav and bottom bar, plus the add action. */
+const navEntries = source.match(/const entries = \[\["today", t\("nav\.today"\), "home"\], \["review", t\("nav\.review"\), "summary"\], \["occasions", t\("nav\.occasions"\), "calendar"\], \["archived", t\("nav\.archived"\), "archive"\], \["settings", t\("nav\.settings"\), "settings"\]\] as const;/);
 assert.ok(navEntries, "navigation must expose exactly today/review/occasions/archived/settings in that order");
-assert.match(source, /private renderRail\(\): string/, "desktop surfaces need the labelled rail");
+assert.match(source, /private renderTopNav\(\): string/, "desktop surfaces need the labelled top navigation");
 assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
     "bottom navigation keeps five destinations plus the add action (six equal cells)");
 assert.match(components, /\.lc-checkin__mobile-nav-add \{/,

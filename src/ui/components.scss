@@ -2721,3 +2721,48 @@
         grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
     }
 }
+
+/* ============================================================
+   T-030 桌面顶部导航：左侧 rail 退役，导航并入顶栏，整行宽度让给内容。
+   （窄容器仍用底部导航；本块只在 ≥720 容器生效。）
+   ============================================================ */
+.lc-checkin__topnav { display: none; }
+
+@container lc5 (min-width: 720px) {
+    .lc-checkin__layout { display: block; }
+    .lc-checkin__layout > * { grid-column: auto; }
+    .lc-checkin__rail { display: none !important; }
+
+    .lc-checkin__topnav {
+        position: sticky;
+        z-index: 4;
+        top: 0;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin: 0 0 12px;
+        padding: 4px 6px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--lc-checkin-surface) 92%, transparent);
+        backdrop-filter: blur(10px);
+    }
+    .lc-checkin__topnav button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 4px 12px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--lc-checkin-muted);
+        background: transparent;
+        font-size: 12px;
+        font-weight: 620;
+        cursor: pointer;
+    }
+    .lc-checkin__topnav button span { display: grid; place-items: center; width: 18px; height: 18px; }
+    .lc-checkin__topnav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__topnav button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__topnav button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+}

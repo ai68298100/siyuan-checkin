@@ -740,7 +740,9 @@ export default class CheckinPlugin extends Plugin {
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
-            layout.insertAdjacentHTML("afterbegin", this.renderRail());
+            /* 顶部导航（桌面宽容器显示，替代左侧 rail，把整行宽度让给内容）；
+               窄容器（手机弹窗/侧边栏）由 CSS 隐藏，改用底部导航。 */
+            layout.insertAdjacentHTML("afterbegin", this.renderTopNav());
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
@@ -966,6 +968,12 @@ export default class CheckinPlugin extends Plugin {
     private renderRail(): string {
         const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
         return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+    }
+
+    /* 桌面顶部导航：替代左侧 rail（T-030）。窄容器由 CSS 隐藏（改用底部导航）。 */
+    private renderTopNav(): string {
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        return `<nav class="lc-checkin__topnav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
