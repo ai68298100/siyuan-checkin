@@ -25,6 +25,25 @@ const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
 const quota = require(path.join(outputRoot, "quota.js"));
 
+const auditInput = [
+    null,
+    {type: "unknown", at: "2026-09-12T00:00:00Z", details: {}},
+    {type: "migration", at: "invalid", details: {}},
+    {type: "restore", at: "2026-09-12T00:00:00+08:00", details: {source: "snapshot"}},
+    {type: "conflict", at: "2026-09-12T01:00:00Z", details: ["invalid"]},
+];
+assert.deepEqual(model.normalizeStoreAudit(auditInput), [
+    {type: "restore", at: "2026-09-11T16:00:00.000Z", details: {source: "snapshot"}},
+    {type: "conflict", at: "2026-09-12T01:00:00.000Z", details: {}},
+]);
+assert.equal(model.normalizeStoreAudit(Array.from({length: 60}, (_, index) => ({type: "merge", at: new Date(index * 1000).toISOString(), details: {index}}))).length, 50);
+assert.deepEqual(JSON.parse(model.serializeStoreAudit(auditInput, "2026-09-12T02:00:00.000Z")), {
+    format: "siyuan-checkin-audit",
+    version: 1,
+    generatedAt: "2026-09-12T02:00:00.000Z",
+    entries: model.normalizeStoreAudit(auditInput),
+});
+
 assert.deepEqual(quota.normalizeQuota({period: "week", amount: "3", countMode: "dates"}), {period: "week", amount: 3, countMode: "dates", weekStartsOn: 1});
 assert.equal(quota.normalizeQuota({period: "year", amount: 3, countMode: "dates"}), undefined);
 const item = {

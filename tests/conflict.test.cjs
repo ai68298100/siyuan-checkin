@@ -6,4 +6,7 @@ assert.match(source, /detectStoreConflict/);
 assert.match(source, /StoreConflictReport/);
 assert.match(source, /resolveStoreConflict/);
 assert.match(source, /appendStoreAudit/);
+assert.match(source, /normalizeStoreAudit/);
+assert.match(source, /STORE_AUDIT_TYPES/);
+assert.match(source, /Number\.isFinite\(Date\.parse\(entry\.at\)\)/);
 console.log("Store conflict detection contract checks passed.");

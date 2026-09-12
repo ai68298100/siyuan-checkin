@@ -15,8 +15,28 @@ export type StoreConflictStrategy = "local" | "remote" | "merge";
 export interface StoreConflictResolution { strategy: StoreConflictStrategy; store: CheckinStore; report: StoreConflictReport; }
 export interface StoreAuditEntry { type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>; }
 
+const STORE_AUDIT_TYPES = new Set<StoreAuditEntry["type"]>(["conflict", "merge", "restore", "migration"]);
+
+export function normalizeStoreAudit(value: unknown, limit = 50): StoreAuditEntry[] {
+    if (!Array.isArray(value)) return [];
+    const normalized = value.flatMap((candidate): StoreAuditEntry[] => {
+        if (!candidate || typeof candidate !== "object") return [];
+        const entry = candidate as Partial<StoreAuditEntry>;
+        if (!STORE_AUDIT_TYPES.has(entry.type as StoreAuditEntry["type"])) return [];
+        if (typeof entry.at !== "string" || !Number.isFinite(Date.parse(entry.at))) return [];
+        const details = entry.details && typeof entry.details === "object" && !Array.isArray(entry.details)
+            ? {...entry.details} : {};
+        return [{type: entry.type as StoreAuditEntry["type"], at: new Date(entry.at).toISOString(), details}];
+    });
+    return normalized.slice(-Math.max(1, limit));
+}
+
+export function serializeStoreAudit(entries: readonly StoreAuditEntry[], generatedAt = new Date().toISOString()): string {
+    return JSON.stringify({format: "siyuan-checkin-audit", version: 1, generatedAt, entries: normalizeStoreAudit(entries)}, null, 2);
+}
+
 export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: StoreAuditEntry, limit = 50): StoreAuditEntry[] {
-    return [...entries, {type: entry.type, at: entry.at, details: {...entry.details}}].slice(-Math.max(1, limit));
+    return normalizeStoreAudit([...entries, entry], limit);
 }
 
 function storeFingerprint(store: CheckinStore): string {

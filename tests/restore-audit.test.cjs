@@ -6,6 +6,8 @@ assert.match(source, /sourceVersion:\s*migration\.sourceVersion/);
 assert.match(source, /type:\s*["']restore["']/);
 assert.match(source, /source:\s*["']local-snapshot["']/);
 assert.match(source, /saveData\(AUDIT_STORAGE_NAME, this\.auditEntries\)/);
+assert.ok((source.match(/appendStoreAudit\(this\.auditEntries/g) || []).length >= 4,
+    "every audit write path must use the normalized append helper");
 assert.match(source, /status: "rejected"/);
 assert.match(source, /errors: validationErrors/);
 assert.match(source, /this\.store = previous/);
@@ -14,4 +16,8 @@ const ops = fs.readFileSync("src/plugin-ops.ts", "utf8");
 assert.match(ops, /downloadMigrationReportFor/);
 assert.match(ops, /siyuan-checkin-migration-/);
 assert.match(ops, /serializeJsonMigrationReport/);
+assert.match(ops, /downloadStoreAuditFor/);
+assert.match(ops, /siyuan-checkin-audit-/);
+const settings = fs.readFileSync("src/render/settings.ts", "utf8");
+assert.match(settings, /data-action="export-audit"/);
 console.log("Restore and migration audit wiring checks passed.");

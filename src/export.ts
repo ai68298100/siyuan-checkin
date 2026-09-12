@@ -104,6 +104,7 @@ export function serializeJsonMigrationReport(report: JsonMigrationReport): strin
     return JSON.stringify({sourceVersion: report.sourceVersion, targetVersion: report.targetVersion, repaired: report.repaired, warnings: report.warnings, summary: report.summary, audit: report.audit}, null, 2);
 }
 
+
 export function serializeCsv(store: CheckinStore): string {
     const rows = [["eventId", "itemId", "itemName", "occurredAt", "localDate", "value", "unit", "source", "note", "externalRef"]];
     const names = new Map(store.items.map((item) => [item.id, item.name]));

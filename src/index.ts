@@ -12,7 +12,7 @@ import {assessJsonMigration, buildJsonMigrationReport, parseCheckinCsv, summariz
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
-import {appendEvent, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, createDefaultStore, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -25,7 +25,7 @@ import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemDragFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -371,7 +371,7 @@ export default class CheckinPlugin extends Plugin {
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
-                this.auditEntries = Array.isArray(audit) ? audit.slice(-50) : [];
+                this.auditEntries = normalizeStoreAudit(audit);
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
@@ -832,6 +832,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
         root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.saveData(AUDIT_STORAGE_NAME, []); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
@@ -842,7 +843,7 @@ export default class CheckinPlugin extends Plugin {
                 const assessment = assessJsonMigration(migration);
                 const validationErrors = validateJsonMigrationReport(migration);
                 if (validationErrors.length) {
-                    this.auditEntries = [...this.auditEntries, {type: "migration" as const, at: new Date().toISOString(), details: {status: "rejected", sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, errors: validationErrors}}].slice(-50);
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "rejected", sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, errors: validationErrors}});
                     void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     showMessage(`恢复失败：${validationErrors.join("；")}`);
                     input.value = "";
@@ -857,7 +858,7 @@ export default class CheckinPlugin extends Plugin {
                 this.store = backup.store;
                 try {
                     await this.persist();
-                    this.auditEntries = [...this.auditEntries, {type: "migration" as const, at: new Date().toISOString(), details: {sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, repaired: migration.repaired, warnings: migration.warnings.length, audit: migration.audit}}].slice(-50);
+                    this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {sourceVersion: migration.sourceVersion, targetVersion: migration.targetVersion, repaired: migration.repaired, warnings: migration.warnings.length, audit: migration.audit}});
                     await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
                 } catch {
@@ -1229,7 +1230,7 @@ export default class CheckinPlugin extends Plugin {
         this.store = backup;
         try {
             await this.persist(current);
-            this.auditEntries = [...this.auditEntries, {type: "restore" as const, at: new Date().toISOString(), details: {source: "local-snapshot", itemCount, eventCount, fromVersion: current.version, toVersion: backup.version}}].slice(-50);
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {source: "local-snapshot", itemCount, eventCount, fromVersion: current.version, toVersion: backup.version}});
             await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
             showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
             this.render();
@@ -1802,7 +1803,7 @@ export default class CheckinPlugin extends Plugin {
                     const remote = normalizeStore(stored);
                     const conflict = detectStoreConflict(this.lastPersistedStore, remote);
                     if (conflict.conflicted) {
-                        this.auditEntries = [...this.auditEntries, {type: "conflict" as const, at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}}].slice(-50);
+                        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "conflict", at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}});
                         void this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
                     }
                     const latest = mergeStores(this.store, remote);

@@ -181,3 +181,8 @@
 - [x] T-060 mobile editor recovery and primary Add navigation - editor remains scrollable, template area is bounded, and the centered Add action stays available in the bottom bar.
 - [x] T-061 occasion priority ordering - a visible occasion due today renders above the item list; non-triggered future occasions remain after the list.
 - [x] T-062 default grouping regression - first opening remains ungrouped while valid saved group preferences continue to win.
+
+- [x] T-063 audit storage normalization - validate entry type/time/details at load and append boundaries, canonicalize timestamps, and retain the latest 50 valid entries.
+- [x] T-064 audit log export - Settings can download the normalized audit ledger as a versioned JSON diagnostic file.
+
+- [x] T-065 unified audit write boundary - migration acceptance/rejection, snapshot restore, and conflict paths all use appendStoreAudit.
