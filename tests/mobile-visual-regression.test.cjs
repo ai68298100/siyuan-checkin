@@ -26,7 +26,8 @@ assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin inpu
 // Touch interactions must not create a second horizontal scroller.
 assert.match(styles, /\.lc-checkin-dialog-host--mobile\s*\{[\s\S]*touch-action:\s*pan-y/,
     "mobile dialog must reserve horizontal gestures for the page shell");
-assert.match(styles, /\.lc-checkin__item-action\s*\{[\s\S]*max-width:\s*100%|@container lc-checkin \(max-width:\s*560px\)[\s\S]*\.lc-checkin__item-action\s*\{[\s\S]*max-width:\s*100%/,
+/* 曾锁定 index.scss 的 @container lc-checkin 死块；现锁 components.scss 的现行固定轨道（轨道有界=动作区不溢出） */
+assert.match(v5Components, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-checkin--today \.lc-checkin__item-action \{\s*--lc-action-slot: 26px;[\s\S]*grid-template-columns: var\(--lc-action-slot\) minmax\(56px, var\(--lc-action-primary\)\) var\(--lc-action-slot\);/,
     "card actions must remain within the card width");
 
 // Snapshot contract: each supported viewport keeps the same semantic card hooks.

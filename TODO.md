@@ -248,3 +248,30 @@
 
 - [x] T-099 overdue reminder center UI - expose overdue filter and dedicated overdue label in Review.
 - [ ] T-033 真机残留验证：重载后确认 (a) 悬浮 全屏/关闭 按钮不再出现 (b) 备份横幅消失（源码已移除渲染） (c) 顶部导航条形态是否需要进一步打磨
+
+## P1 下一阶段（2026-09-13 规划）
+
+- [x] T-102 GitHub Actions CI
+  - 验收：push/PR 自动跑 check → build → test → test:mobile → check:release，全绿
+  - 状态：done（.github/workflows/ci.yml；浏览器类走查暂不入 CI，Playwright 环境不稳定）
+- [x] T-103 legacy index.scss 退役 Phase 1：死容器查询清除
+  - 验收：删除全部 @container lc-checkin 死块（容器名被 tokens.scss 的 lc5 后置覆盖，21 块 927 行从未生效）；
+    删除 .lc-checkin 上被覆盖的 container-name: lc-checkin 死声明；重建后 dist/index.css 301555→262270 字节（-13%）；
+    check/test/test:mobile/check:release 全绿；走查截图逐页比对无渲染变化；4 个测试文件里锁定死块的断言迁到现行活规则
+  - 状态：done（84c6d37 后续）
+- [ ] T-104 legacy index.scss 退役 Phase 2：视口 @media 残余清理
+  - 验收：@media 视口规则与 lc5 容器规则的职责边界收敛；迁移或删除前先走查比对（@media 按 viewport 触发，≠容器宽度，需运行时验证）
+  - 依赖：无
+- [ ] T-105 legacy index.scss 退役 Phase 3：无条件存量规则迁移 + 文件退役
+  - 验收：剩余无条件规则逐条判定（迁移到 components/tokens 或删除），index.scss 缩到可删或删空；每迁一批跑全链路+走查比对
+  - 依赖：T-104
+
+## P2 想法池（UI/体验/性能，随时认领）
+
+- [ ] T-106 手机打卡振动反馈：打卡成功 navigator.vibrate(10)，设置页加开关（i18n 双语）
+- [ ] T-107 今日页键盘流（桌面）：j/k 在卡片间移动焦点、空格打卡、e 进编辑
+- [ ] T-108 打卡局部重渲染：打卡后只更新该卡片 DOM 而非整页重渲染（滚动位置/焦点保持，性能）
+- [ ] T-109 CSS 体积预算：check:release 增加 dist/index.css 字节上限断言，防样式膨胀回潮
+- [ ] T-110 逾期补记可撤销：补记成功后 toast 5 秒内可撤销（复用 eventTombstones）
+- [ ] T-111 深色主题对比度审计：脚本化扫描 tokens 色对，≥4.5:1 守门
+- [ ] T-112 弹窗每页滚动位置记忆：切页返回恢复原滚动位置（view-preferences 扩展）
