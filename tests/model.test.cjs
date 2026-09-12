@@ -25,6 +25,12 @@ const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
 const quota = require(path.join(outputRoot, "quota.js"));
 
+const emptySnapshot = model.createStoreSnapshotEnvelope(model.createDefaultStore(), "2026-09-12T03:00:00+08:00");
+assert.equal(emptySnapshot.format, "siyuan-checkin-snapshot");
+assert.equal(emptySnapshot.capturedAt, "2026-09-11T19:00:00.000Z");
+assert.deepEqual(model.readStoreSnapshot(emptySnapshot), {store: emptySnapshot.store, capturedAt: emptySnapshot.capturedAt, legacy: false});
+assert.deepEqual(model.readStoreSnapshot({version: 1, items: [], events: []}), {store: {version: 1, items: [], events: []}, legacy: true});
+
 const auditInput = [
     null,
     {type: "unknown", at: "2026-09-12T00:00:00Z", details: {}},

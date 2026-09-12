@@ -196,3 +196,7 @@
 - [x] T-069 recovery persistence-failure audit - failed JSON/snapshot data writes roll back and record persist-failed without hiding the original error.
 - [x] T-070 recovery transaction boundary - an audit-save failure after successful data persistence no longer rolls memory back to stale data.
 - [x] T-071 best-effort audit persistence - all audit saves use one rejection-safe helper, including validation, conflict, clear, failure, and success paths.
+
+- [x] T-072 versioned snapshot envelope - snapshots carry format version, capture time, and normalized store data.
+- [x] T-073 legacy snapshot compatibility - restore accepts both the new envelope and existing raw-store backups.
+- [x] T-074 snapshot metadata visibility - restore confirmation and audit entries include capture time and legacy status.

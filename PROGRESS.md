@@ -91,3 +91,7 @@ T-069~T-071 complete: recovery data persistence and diagnostic persistence now h
 Quality checkpoint: pnpm run test:quality passed after T-069~T-071, including production build. Existing size warnings remain: index.js 355 KiB, index.css 289 KiB, package.zip 297 KiB.
 
 Next: continue recovery-platform work with snapshot metadata/history rather than a single opaque rolling backup.
+
+T-072~T-074 complete: rolling backups now use a versioned snapshot envelope with capturedAt; legacy raw-store snapshots remain restorable. Confirmation shows capture time and all snapshot audit outcomes retain capture/legacy metadata. Verification: pnpm run check, pnpm run test:backup, and pnpm test passed.
+
+Next: extend the single rolling envelope into a small bounded snapshot history while preserving the current restore-latest behavior.

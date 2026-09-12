@@ -3,6 +3,36 @@ import {normalizeQuota} from "./quota";
 import {evaluateQuotaSchedule} from "./rules";
 
 export const STORE_VERSION = 2 as const;
+export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
+
+export interface StoreSnapshotEnvelope {
+    format: typeof STORE_SNAPSHOT_FORMAT;
+    version: 1;
+    capturedAt: string;
+    store: CheckinStore;
+}
+
+export interface ReadStoreSnapshotResult {
+    store: unknown;
+    capturedAt?: string;
+    legacy: boolean;
+}
+
+export function createStoreSnapshotEnvelope(store: CheckinStore, capturedAt = new Date().toISOString()): StoreSnapshotEnvelope {
+    return {format: STORE_SNAPSHOT_FORMAT, version: 1, capturedAt: new Date(capturedAt).toISOString(), store: normalizeStore(store)};
+}
+
+export function readStoreSnapshot(value: unknown): ReadStoreSnapshotResult {
+    if (value && typeof value === "object") {
+        const candidate = value as Partial<StoreSnapshotEnvelope>;
+        if (candidate.format === STORE_SNAPSHOT_FORMAT && candidate.version === 1 && candidate.store && typeof candidate.store === "object") {
+            const capturedAt = typeof candidate.capturedAt === "string" && Number.isFinite(Date.parse(candidate.capturedAt))
+                ? new Date(candidate.capturedAt).toISOString() : undefined;
+            return {store: candidate.store, capturedAt, legacy: false};
+        }
+    }
+    return {store: value, legacy: true};
+}
 
 export interface StoreConflictReport {
     conflicted: boolean;
