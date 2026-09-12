@@ -2776,32 +2776,34 @@
     }
 }
 
-/* ============================================================
-   T-030 桌面顶部导航：左侧 rail 退役，导航并入顶栏，整行宽度让给内容。
-   （窄容器仍用底部导航；本块只在 ≥720 容器生效。）
-   ============================================================ */
-.lc-checkin__topnav { display: none; }
 
+/* ============================================================
+   T-031 桌面顶栏（应用标题栏式）：
+   一条通栏、常驻顶部的应用栏 —— 左侧五个导航项，右侧 全屏/关闭。
+   替代此前「悬浮胶囊导航 + 角落悬浮按钮 + 大片留白」的粗糙形态。
+   只在 ≥720 容器显示（窄容器用底部导航）；本块必须在文件末尾以覆盖前面的布局规则。
+   ============================================================ */
 @container lc5 (min-width: 720px) {
-    .lc-checkin__layout { display: block; }
+    .lc-checkin__layout { display: block; padding-top: 0; }
     .lc-checkin__layout > * { grid-column: auto; }
     .lc-checkin__rail { display: none !important; }
 
     .lc-checkin__topnav {
         position: sticky;
-        z-index: 4;
+        z-index: 6;
         top: 0;
         display: flex;
         align-items: center;
-        gap: 2px;
+        gap: 10px;
         margin: 0 0 12px;
-        padding: 4px 6px;
-        border: 1px solid var(--lc-checkin-border);
-        border-radius: 10px;
-        background: color-mix(in srgb, var(--lc-checkin-surface) 92%, transparent);
-        backdrop-filter: none;
+        padding: 6px 12px;
+        border-bottom: 1px solid var(--lc-checkin-border);
+        background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
+        backdrop-filter: blur(10px);
+        min-height: 48px;
     }
-    .lc-checkin__topnav button {
+    .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; }
+    .lc-checkin__topnav button[data-mobile-nav] {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -2811,34 +2813,30 @@
         border-radius: 8px;
         color: var(--lc-checkin-muted);
         background: transparent;
-        font-size: 12px;
+        font-size: 12.5px;
         font-weight: 620;
         cursor: pointer;
     }
-    .lc-checkin__topnav button span { display: grid; place-items: center; width: 18px; height: 18px; }
-    .lc-checkin__topnav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-    .lc-checkin__topnav button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-    .lc-checkin__topnav button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+    .lc-checkin__topnav button[data-mobile-nav] span { display: grid; place-items: center; width: 18px; height: 18px; }
+    .lc-checkin__topnav button[data-mobile-nav]:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__topnav button[data-mobile-nav].is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__topnav button[data-mobile-nav].is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+
+    .lc-checkin__topnav-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+    .lc-checkin__topnav-action {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--lc-checkin-muted);
+        background: transparent;
+        cursor: pointer;
+    }
+    .lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
 
-/* 逾期历史小节（回顾页提醒中心内）：标题 + 卡片行，行内带「补记」按钮 */
-.lc-checkin__overdue-history { margin-top: 14px; }
-.lc-checkin__overdue-history h3 {
-    margin: 0 0 8px;
-    color: var(--lc-checkin-muted);
-    font-size: 12px;
-    font-weight: 620;
-    letter-spacing: .04em;
-}
-.lc-checkin__overdue-history .lc-checkin__reminder-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; }
-.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button {
-    display: inline-grid;
-    place-items: center;
-    min-height: 30px;
-    padding: 2px 10px;
-    border-radius: 999px;
-    color: var(--lc-checkin-accent-text);
-    background: var(--lc-checkin-accent-soft);
-}
-.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button:hover { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
-.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button[disabled] { opacity: .55; }
+/* 桌面弹窗：旧的悬浮 全屏/关闭 按钮已并入顶栏，彻底隐藏（移动端自己的关闭不受影响） */
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-close,
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-fullscreen { display: none !important; }

@@ -727,16 +727,10 @@ export default class CheckinPlugin extends Plugin {
             while (surface.firstChild) layout.appendChild(surface.firstChild);
             surface.appendChild(layout);
         }
-        root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
-        if (this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend) {
-            const button = document.createElement("button");
-            button.className = "lc-checkin__dialog-fullscreen";
-            button.type = "button";
-            button.dataset.action = "toggle-fullscreen";
-            button.setAttribute("aria-label", this.quickDialogFullscreen ? "退出全屏" : "全屏显示");
-            button.title = this.quickDialogFullscreen ? "退出全屏" : "全屏显示";
-            button.innerHTML = uiIcon("expand");
-            root.prepend(button);
+        /* 桌面弹窗的 全屏/关闭 并入顶栏（renderTopNav），不再悬浮在角落 */
+        const isDesktopDialog = this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend;
+        if (!isDesktopDialog) {
+            root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
         }
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
             const progressLabel = this.currentPage === "today" ? this.todayProgressLabel() : "";
@@ -1021,10 +1015,14 @@ export default class CheckinPlugin extends Plugin {
         return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
-    /* 桌面顶部导航：替代左侧 rail（T-030）。窄容器由 CSS 隐藏（改用底部导航）。 */
+    /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
+       窄容器由 CSS 隐藏（改用底部导航）。 */
     private renderTopNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        return `<nav class="lc-checkin__topnav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        const fullscreen = this.quickDialog && this.quickDialogElement && !this.isMobileFrontend
+            ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}" title="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}">${uiIcon("expand")}</button>`
+            : "";
+        return `<nav class="lc-checkin__topnav" aria-label="打卡导航"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div><div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button></div></nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */

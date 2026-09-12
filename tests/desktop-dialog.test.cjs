@@ -126,7 +126,7 @@ assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/
     "the dock host must be a sized container and a flex column so its bars can be pinned");
 assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
     "narrow dock panels must show the bottom navigation");
-assert.ok(!plugin.includes(`["archived", t("nav.archived"), "archive"]`), "archived is nested under Review rather than primary navigation");
+assert.match(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "�鵵 is a first-class navigation destination (T-028, user request)");
 
 // �?事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px�?
 assert.match(read("src", "render", "occasions.ts"), /<details class="lc-checkin__occasion-templates-fold" \$\{ctx\.occasionTemplatesOpen \? "open" : ""\}>/,
