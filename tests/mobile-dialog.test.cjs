@@ -8,6 +8,7 @@ const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
 const bindEditorSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
+const bindPageNavSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
@@ -49,7 +50,7 @@ assert.match(iconsSource, /const UI_ICON_PATHS[\s\S]*home:[\s\S]*insight:/,
 assert.match(source, /data-mobile-nav="add"[\s\S]*新建/, "mobile navigation must include the add action");
 assert.match(source, /else if \(page === "review" \|\| page === "history" \|\| page === "summary"\) this\.showReview\(\)/,
     "legacy page names must route into the fused review surface");
-assert.match(source, /data-history-insights-id/,
+assert.match(bindPageNavSource, /data-history-insights-id/,
     "history records should link directly to item insights");
 assert.match(source, /revision\.schedule\.type === "quota" && revision\.schedule\.quota\?\.countMode === "dates"/,
     "date quotas must record one qualifying day at a time");
