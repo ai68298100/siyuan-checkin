@@ -101,3 +101,9 @@ T-075~T-078 complete: backup storage is now a bounded three-entry snapshot histo
 Quality checkpoint: pnpm run test:quality passed after T-075~T-078, including production build. Existing size warnings: index.js 356 KiB, index.css 289 KiB, package.zip 298 KiB.
 
 Next: expose bounded snapshot history in Settings so users can inspect and choose a restore point; keep latest as the quick default.
+
+T-079~T-081 complete: Settings loads and renders bounded snapshot history, shows capture time plus item/event counts, and lets users restore a selected entry through the shared preflight flow. Responsive list styling covers narrow surfaces. Verification before quality gate: pnpm run check, pnpm test, pnpm run test:ui, and pnpm run test:mobile passed.
+
+Quality checkpoint: pnpm run test:quality passed after T-079~T-081, including production build. Existing size warnings: index.js 358 KiB, index.css 289 KiB, package.zip 298 KiB.
+
+Next: add snapshot-history export/clear management and test restore-point index bounds.

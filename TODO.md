@@ -205,3 +205,7 @@
 - [x] T-076 rolling three-snapshot persistence - each primary save appends the previous store and retains the latest three snapshots.
 - [x] T-077 latest-snapshot compatibility - the existing restore action selects the newest history entry while old formats remain readable.
 - [x] T-078 snapshot restore target fix - restore now persists the selected backup instead of accidentally writing the pre-restore store.
+
+- [x] T-079 snapshot history settings view - list up to three restore points with time and item/event counts.
+- [x] T-080 selectable snapshot restore - each listed restore point invokes the same validated recovery flow by stable history index.
+- [x] T-081 responsive snapshot list - shared audit-list styling keeps metadata readable and restore actions stable on narrow screens.

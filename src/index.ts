@@ -119,6 +119,7 @@ export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private lastPersistedStore: CheckinStore = createDefaultStore();
     private auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>}> = [];
+    private snapshotHistory: ReturnType<typeof readStoreSnapshotHistory> = [];
     private occasionStore: OccasionStore = createDefaultOccasionStore();
     private userTemplates: UserTemplate[] = [];
     private customIconLibrary: string[] = [];
@@ -367,11 +368,13 @@ export default class CheckinPlugin extends Plugin {
                 const occasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
                 const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
                 const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
+                const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
                 this.auditEntries = normalizeStoreAudit(audit);
+                this.snapshotHistory = readStoreSnapshotHistory(storedSnapshots);
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
@@ -791,6 +794,8 @@ export default class CheckinPlugin extends Plugin {
         return renderSettingsView({
             store: this.store,
             auditEntries: this.auditEntries,
+            snapshots: this.snapshotHistory.map((snapshot, index) => ({index, capturedAt: snapshot.capturedAt, legacy: snapshot.legacy,
+                itemCount: normalizeStore(snapshot.store).items.length, eventCount: normalizeStore(snapshot.store).events.length})),
             customIconLibrary: this.customIconLibrary,
             agentCapabilityRegistered: this.agentCapabilityRegistered,
             appearance: this.appearance,
@@ -831,6 +836,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
+        root.querySelectorAll<HTMLElement>("[data-restore-snapshot]").forEach((button) => button.addEventListener("click", () => {
+            const index = Number(button.dataset.restoreSnapshot);
+            if (Number.isInteger(index)) void this.restoreLatestBackup(index);
+        }));
         root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.persistAuditBestEffort(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
@@ -1219,12 +1228,12 @@ export default class CheckinPlugin extends Plugin {
         await restoreItemFor(this as unknown as PluginOpsHost, itemId);
     }
 
-    private async restoreLatestBackup() {
+    private async restoreLatestBackup(historyIndex?: number) {
         if (!this.storageReady || this.disposed) return;
         const raw = await this.loadData(BACKUP_STORAGE_NAME);
         if (!raw) { showMessage(t("msg.noSnapshot")); return; }
         const snapshots = readStoreSnapshotHistory(raw);
-        const snapshot = snapshots[snapshots.length - 1];
+        const snapshot = historyIndex === undefined ? snapshots[snapshots.length - 1] : snapshots[historyIndex];
         if (!snapshot) { showMessage(t("msg.noSnapshot")); return; }
         const preflight = preflightJsonRecovery(JSON.stringify(snapshot.store), normalizeStore, summarizeJsonBackup(this.store));
         const {report: migration, assessment, validationErrors} = preflight;
@@ -1553,6 +1562,7 @@ export default class CheckinPlugin extends Plugin {
         const write = this.saveQueue.catch(() => undefined).then(async () => {
             const history = appendStoreSnapshotHistory(await this.loadData(BACKUP_STORAGE_NAME), createStoreSnapshotEnvelope(previous));
             await this.saveData(BACKUP_STORAGE_NAME, history);
+            this.snapshotHistory = readStoreSnapshotHistory(history);
             await this.saveData(STORAGE_NAME, snapshot);
         });
         this.saveQueue = write.catch((error) => {

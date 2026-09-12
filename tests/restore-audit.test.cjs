@@ -9,6 +9,8 @@ assert.match(source, /readStoreSnapshotHistory\(raw\)/);
 assert.match(source, /preflightJsonRecovery\(JSON\.stringify\(snapshot\.store\), normalizeStore, summarizeJsonBackup\(this\.store\)\)/);
 assert.match(source, /appendStoreSnapshotHistory\(await this\.loadData\(BACKUP_STORAGE_NAME\), createStoreSnapshotEnvelope\(previous\)\)/);
 assert.match(source, /snapshotCapturedAt: snapshot\.capturedAt, legacySnapshot: snapshot\.legacy/);
+assert.match(source, /data-restore-snapshot/);
+assert.match(source, /restoreLatestBackup\(index\)/);
 assert.match(source, /this\.store = backup;\s*try \{\s*await this\.persist\(\);/,
     "snapshot restore must persist the selected backup rather than the pre-restore store");
 assert.doesNotMatch(source, /this\.store = backup;\s*try \{\s*await this\.persist\(current\);/);
@@ -37,4 +39,5 @@ assert.match(ops, /downloadStoreAuditFor/);
 assert.match(ops, /siyuan-checkin-audit-/);
 const settings = fs.readFileSync("src/render/settings.ts", "utf8");
 assert.match(settings, /data-action="export-audit"/);
+assert.match(settings, /data-restore-snapshot=/);
 console.log("Restore and migration audit wiring checks passed.");
