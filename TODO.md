@@ -247,3 +247,4 @@
 - [x] T-098 explicit overdue status - distinguish overdue from upcoming in reminder ranking and filtering types.
 
 - [x] T-099 overdue reminder center UI - expose overdue filter and dedicated overdue label in Review.
+- [ ] T-033 真机残留验证：重载后确认 (a) 悬浮 全屏/关闭 按钮不再出现 (b) 备份横幅消失（源码已移除渲染） (c) 顶部导航条形态是否需要进一步打磨
