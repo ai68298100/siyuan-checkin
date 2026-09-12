@@ -34,9 +34,9 @@ export interface QuickDialogHost {
 
 /** Content-driven default: a fixed reading width beats scaling blank margins with the window. */
 export const AUTO_DIALOG_MIN_WIDTH = 760;
-export const AUTO_DIALOG_MAX_WIDTH = 1440;
-export const AUTO_DIALOG_WIDTH_RATIO = 0.62;
-export const AUTO_DIALOG_HEIGHT_RATIO = 0.88;
+export const AUTO_DIALOG_MAX_WIDTH = 1600;
+export const AUTO_DIALOG_WIDTH_RATIO = 0.72;
+export const AUTO_DIALOG_HEIGHT_RATIO = 0.92;
 
 export function autoDialogWidth(viewportWidth: number): number {
     return Math.round(Math.min(AUTO_DIALOG_MAX_WIDTH, Math.max(AUTO_DIALOG_MIN_WIDTH, viewportWidth * AUTO_DIALOG_WIDTH_RATIO)));

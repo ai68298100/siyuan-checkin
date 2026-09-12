@@ -74,13 +74,13 @@ assert.match(v5Components, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)
     "mobile navigation must fit the five destinations plus the add action (six cells)");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
-assert.match(i18nSource, /"msg\.saving": "正在保存…"/,
+assert.match(i18nSource, /"msg\.saving": "正在保存�?/,
     "saving state must be visible to users");
 assert.match(fragmentsSource, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
 assert.match(source, /private renderSaveStatus\(\): string/,
     "save feedback should be shared by today and editor surfaces");
-assert.match(i18nSource, /"msg\.syncedElsewhere": "已同步其他窗口更新"/,
+assert.match(i18nSource, /"msg\.syncedElsewhere": "已同步其他窗口更�?/,
     "multi-window merges should expose a transient sync notice");
 assert.match(source, /private showSyncNotice\(\)/,
     "sync notices should have an expiring lifecycle");
@@ -88,3 +88,4 @@ assert.match(styles, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*en
     "mobile editor actions must clear the device safe area");
 
 console.log("mobile dialog lifecycle checks passed");
+

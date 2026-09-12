@@ -233,7 +233,6 @@ export function renderTodayView(ctx: TodayViewContext): string {
         const isToday = dateKey(day) === dateKey(now);
         return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length}))}"><small>${day.toLocaleDateString(getPluginLocale(), {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
     }).join("");
-    const backupNeeded = ctx.store.events.length >= 30 && (!ctx.lastExportAt || Date.now() - Date.parse(ctx.lastExportAt) > 30 * 86400000);
     const emptyProgressTitle = ctx.pendingOnly
         ? t("today.pendingEmpty")
         : query ? t("today.queryCompleted") : t("today.allDone");
@@ -316,7 +315,6 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">退出多选</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}
-            ${backupNeeded ? `<div class="lc-checkin__backup-reminder" role="note"><span>已积累 <strong>${ctx.store.events.length}</strong> 条记录，建议导出备份。</span><button class="lc-checkin__text-button" type="button" data-action="review">去导出</button></div>` : ""}
             <main class="lc-checkin__list">${list}${occasionBanner}</main>
         </div>`;
 }

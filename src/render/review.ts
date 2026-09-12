@@ -163,6 +163,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                     <button class="lc-checkin__text-button" type="button" data-action="archived">${t("review.archived")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}" title="${t("review.exportJson")}">${uiIcon("summary")}</button>
                     <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}" title="${t("review.exportCsv")}">${uiIcon("history")}</button>
+                    <button class="lc-checkin__text-button" type="button" data-action="archived">${t("nav.archived")}</button>
                 </div>
             </header>
             <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div></section>

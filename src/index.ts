@@ -963,7 +963,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderMobileNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}<button class="lc-checkin__mobile-nav-add" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button></nav>`;
     }
 
@@ -979,13 +979,13 @@ export default class CheckinPlugin extends Plugin {
     /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
        Both use data-mobile-nav so one binding covers them. */
     private renderRail(): string {
-        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["archived", "归档", "archive"], ["settings", "设置", "settings"]] as const;
+        const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["settings", "设置", "settings"]] as const;
         return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 桌面顶部导航：替代左侧 rail（T-030）。窄容器由 CSS 隐藏（改用底部导航）。 */
     private renderTopNav(): string {
-        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["archived", t("nav.archived"), "archive"], ["settings", t("nav.settings"), "settings"]] as const;
+        const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         return `<nav class="lc-checkin__topnav" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 

@@ -46,8 +46,8 @@ assert.match(components, /\.lc-checkin--today \.lc-checkin__section-toggle/,
     "completed items must collapse behind one toggle row");
 
 /* Navigation: five destinations, shared by top nav and bottom bar, plus the add action. */
-const navEntries = source.match(/const entries = \[\["today", t\("nav\.today"\), "home"\], \["review", t\("nav\.review"\), "summary"\], \["occasions", t\("nav\.occasions"\), "calendar"\], \["archived", t\("nav\.archived"\), "archive"\], \["settings", t\("nav\.settings"\), "settings"\]\] as const;/);
-assert.ok(navEntries, "navigation must expose exactly today/review/occasions/archived/settings in that order");
+const navEntries = source.includes(`const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;`);
+assert.ok(navEntries, "navigation must expose exactly today/review/occasions/settings in that order");
 assert.match(source, /private renderTopNav\(\): string/, "desktop surfaces need the labelled top navigation");
 assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
     "bottom navigation keeps five destinations plus the add action (six equal cells)");
@@ -94,9 +94,10 @@ assert.ok(!components.includes("--b3-"), "component layer must not reference hos
 
 /* Kept behaviours from the 4.0 line. */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
-assert.match(i18nSource, /"today\.pendingEmpty": "没有待处理的匹配项"/, "pending-only empty state must explain when nothing matches");
-assert.match(i18nSource, /"today\.queryCompleted": "匹配的项目都已完成"/, "search state must distinguish completed matches");
+assert.match(i18nSource, /"today\.pendingEmpty": "没有待处理的匹配�?/, "pending-only empty state must explain when nothing matches");
+assert.match(i18nSource, /"today\.queryCompleted": "匹配的项目都已完�?/, "search state must distinguish completed matches");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[^}]*max-width:\s*32%;/,
     "legacy floor still guards metadata tag width");
 
 console.log("Responsive surface layout checks passed.");
+

@@ -51,3 +51,13 @@ T-052 complete: plugin operations now expose downloadMigrationReportFor for futu
 T-053 complete: restore-audit guard now covers migration report download operation.
 
 T-054 complete: migration diagnostic serialization is now committed and verified.
+
+T-055 complete: review JSON export now responds to click; backup recommendation removed from Today and remains a Review concern.
+
+T-056 complete: desktop topnav no longer sticks over content; default auto dialog shows more content with expanded width/height ratios.
+
+Dock Tomato 联动研究完成：公开契约与未来 PR 边界已记录于 docs/docktomato-integration-plan.md；当前不启用联动、不创建 PR。
+
+T-057 complete: Archived is now a Review sub-entry, reducing primary navigation while preserving direct access.
+
+T-057 verification checkpoint: pnpm run check, pnpm test, and pnpm run test:ui pass after nesting Archived under Review.

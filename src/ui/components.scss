@@ -1333,7 +1333,7 @@
 @container lc5 (min-width: 900px) {
     .lc-checkin__editor-columns { grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr); align-items: start; }
     .lc-checkin__editor-side {
-        position: sticky;
+        position: static;
         top: 12px;
         display: grid;
         gap: 10px;
@@ -2745,7 +2745,7 @@
         border: 1px solid var(--lc-checkin-border);
         border-radius: 10px;
         background: color-mix(in srgb, var(--lc-checkin-surface) 92%, transparent);
-        backdrop-filter: blur(10px);
+        backdrop-filter: none;
     }
     .lc-checkin__topnav button {
         display: flex;

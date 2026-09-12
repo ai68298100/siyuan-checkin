@@ -25,3 +25,5 @@
 - D-024 ç¯å¢ƒè¯Šæ–­å…¼å®¹ pnpm shim | Windows ä¸‹ `pnpm.ps1`/`pnpm.cmd` å¯èƒ½å¯¼è‡´å­è¿›ç¨‹æ¢æµ‹å·®å¼‚ | è¯Šæ–­ä¼˜å…ˆæ‰§è¡Œ pnpm.cmdï¼Œå¹¶åœ¨ pnpm è¿è¡Œä¸Šä¸‹æ–‡ç”¨ `npm_config_user_agent` å…œåº•
 
 - D-025 migration report uses sourceVersion and targetVersion together so restore preview can explain both data origin and normalized model.
+
+- D-026 Dock Tomato Áª¶¯²ÉÓÃ¿ÉÑ¡Ö»¶ÁÃÅÃæ£ºÊ¹ÓÃ¹«¿ª stats facade¡¢availability event¡¢sessionKey È¥ÖØºÍÓÃ»§ÈÎÎñÓ³Éä£¬²»¶ÁÈ¡ÄÚ²¿ÎÄ¼şÂ·¾¶¡£

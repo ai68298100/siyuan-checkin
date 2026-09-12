@@ -208,4 +208,5 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     });
     root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => host.downloadExport("csv"));
+    root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => host.downloadExport("json"));
 }

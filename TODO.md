@@ -168,3 +168,11 @@
 - [x] T-053 migration download regression guard - audit tests lock serialized report download helper and diagnostic filename.
 
 - [x] T-054 migration diagnostic serialization checkpoint - serializeJsonMigrationReport and export coverage committed.
+
+- [x] T-055 desktop navigation/export polish - JSON export click binding fixed and homepage backup reminder removed for Review-only placement.
+
+- [x] T-056 desktop topbar and dialog sizing - desktop top navigation is document-fixed (non-floating on scroll); auto dialog uses 72vw/92vh up to 1600px.
+
+- [x] T-057 archive in Review - removed Archived from top/mobile navigation and added a compact archived entry in Review header.
+
+- [x] T-058 archive navigation test cleanup - updated desktop/mobile/responsive guards for the new Review-owned archive entry.
