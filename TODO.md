@@ -61,10 +61,10 @@
   - 依赖：无
   - 状态：done（tests/accessibility-audit.test.cjs 守门：0 缺名 / 0 正向 tabindex / 0 对比度违规，双主题）
 
-- [ ] T-022 index.ts 拆分
+- [x] T-022 index.ts 拆分
   - 验收：index.ts < 2000 行，渲染方法提取到独立文件
   - 依赖：功能稳定后
-  - 状态：doing（Phase1 完成：shared.ts/ui/icons.ts/ui/labels.ts，4684→4405；Phase2 试点完成：render/fragments.ts 模式=类留薄壳+外置函数收显式参数；剩余路线见 PROGRESS.md）
+  - 状态：done（index.ts 4684→1971 行；外置 20 个模块：render/ 13 个页面视图与绑定 + api/agent-capabilities/navigation/plugin-ops/model-helpers/shared/ui-icons/ui-labels/version；Host 接口 + 薄壳模式，测试断言同步 17 个文件）
 
 - [ ] T-023 真实设备验证修复
   - 验收：用户反馈的所有问题修复
