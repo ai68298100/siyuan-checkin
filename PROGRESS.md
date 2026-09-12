@@ -41,3 +41,11 @@ T-047 complete: restore flow validates migration report consistency and aborts s
 T-048 complete: validation failures are recorded as rejected migration audit entries before restore aborts.
 
 T-049 complete: restore audit guard now verifies persistence failure rollback path remains intact.
+
+T-050 quality checkpoint: test:quality passed after migration validation and rejected-restore audit changes.
+
+T-051 complete: serializeJsonMigrationReport added for portable migration diagnostics and future support bundles.
+
+T-052 complete: plugin operations now expose downloadMigrationReportFor for future restore/support UI integration.
+
+T-053 complete: restore-audit guard now covers migration report download operation.

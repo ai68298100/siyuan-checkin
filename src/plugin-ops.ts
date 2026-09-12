@@ -2,7 +2,7 @@
    含后台渲染、今日快捷项、导航绑定、月份切换、项目恢复、导出、搜索聚焦、同步提示与就绪结算。 */
 import {t} from "./i18n";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, sortCheckinItems} from "./model";
-import {serializeCsv, serializeJson} from "./export";
+import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
@@ -106,6 +106,16 @@ export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv"): 
     const link = document.createElement("a");
     link.href = url;
     link.download = `siyuan-checkin-${dateKey(new Date())}.${format}`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+export function downloadMigrationReportFor(report: JsonMigrationReport): void {
+    const blob = new Blob([serializeJsonMigrationReport(report)], {type: "application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `siyuan-checkin-migration-${dateKey(new Date())}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }

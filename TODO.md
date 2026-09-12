@@ -158,3 +158,11 @@
 - [x] T-048 rejected migration audit - invalid JSON restore reports now persist rejected status, versions, and validation errors without mutating data.
 
 - [x] T-049 restore failure guard - regression checks lock store rollback and restore-failed messaging when persistence fails.
+
+- [x] T-050 quality gate after migration hardening - full environment, test, release, and build pipeline passed.
+
+- [x] T-051 migration report serialization - export structured source/target versions, warnings, summary, repair state, and audit deltas as JSON.
+
+- [x] T-052 migration report download operation - added reusable browser download helper for serialized migration diagnostics.
+
+- [x] T-053 migration download regression guard - audit tests lock serialized report download helper and diagnostic filename.

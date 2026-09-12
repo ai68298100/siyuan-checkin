@@ -10,4 +10,8 @@ assert.match(source, /status: "rejected"/);
 assert.match(source, /errors: validationErrors/);
 assert.match(source, /this\.store = previous/);
 assert.match(source, /msg\.restoreFailed/);
+const ops = fs.readFileSync("src/plugin-ops.ts", "utf8");
+assert.match(ops, /downloadMigrationReportFor/);
+assert.match(ops, /siyuan-checkin-migration-/);
+assert.match(ops, /serializeJsonMigrationReport/);
 console.log("Restore and migration audit wiring checks passed.");
