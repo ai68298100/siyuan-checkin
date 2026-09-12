@@ -32,6 +32,7 @@ import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occas
 import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
+import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
@@ -479,12 +480,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private cloneStore(store: CheckinStore = this.store): CheckinStore {
-        return {
-            version: STORE_VERSION,
-            items: store.items.map((item) => this.cloneItem(item)),
-            events: store.events.map((event) => ({...event})),
-            eventTombstones: store.eventTombstones.map((tombstone) => ({...tombstone})),
-        };
+        return cloneStoreValue(store);
     }
 
     private async recordExternalEvent(input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}, moment: ActionMoment, expectedRevisionFingerprint?: string): Promise<CheckinEvent | undefined> {
@@ -1020,32 +1016,7 @@ export default class CheckinPlugin extends Plugin {
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
     private computeStreaks(): Map<string, number> {
-        const streaks = new Map<string, number>();
-        const itemDays = new Map<string, Set<string>>();
-        for (const event of this.store.events) {
-            if (!itemDays.has(event.itemId)) itemDays.set(event.itemId, new Set());
-            itemDays.get(event.itemId)!.add(event.localDate);
-        }
-        const today = dateKey(currentCalendarDate());
-        const yesterdayDate = new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() - 1);
-        const yesterday = dateKey(yesterdayDate);
-        for (const item of this.store.items) {
-            if (item.archived) { streaks.set(item.id, 0); continue; }
-            const days = itemDays.get(item.id);
-            if (!days || !days.size) { streaks.set(item.id, 0); continue; }
-            // 从今天或昨天开始往回数（今天没打卡但昨天打了也不断）
-            let startKey = today;
-            if (!days.has(startKey)) startKey = yesterday;
-            if (!days.has(startKey)) { streaks.set(item.id, 0); continue; }
-            let streak = 0;
-            const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)));
-            while (days.has(dateKey(check))) {
-                streak += 1;
-                check.setDate(check.getDate() - 1);
-            }
-            streaks.set(item.id, streak);
-        }
-        return streaks;
+        return computeStreaksValue(this.store);
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）；壳内仅保留连续记录状态赋值。 */
@@ -1404,7 +1375,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private getSummaryEvents(range: SummaryRange, date = new Date()): CheckinEvent[] {
-        return getEventsInRange(this.store, range, date).map((event) => ({...event}));
+        return getSummaryEventsValue(this.store, range, date);
     }
 
     /* 方法体外置于 render/bind-editor.ts（T-022）；宿主成员经 BindEditorHost 接口声明。 */
@@ -1585,55 +1556,23 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private makeEvent(item: CheckinItem, value: number, source: CheckinEvent["source"], unit: string, note?: string, externalRef?: string, moment = captureActionMoment(), attachment?: string): CheckinEvent {
-        const safeValue = Number(value);
-        return {
-            id: makeId("event"),
-            itemId: item.id,
-            occurredAt: moment.occurredAt,
-            localDate: moment.localDate,
-            value: Number.isFinite(safeValue) ? Math.max(0, safeValue) : 0,
-            unit,
-            source,
-            note,
-            externalRef,
-            attachment: typeof attachment === "string" && attachment.startsWith("data:image/") && attachment.length <= 700000 ? attachment : undefined,
-        };
+        return makeEventValue(item, value, source, unit, note, externalRef, moment, attachment);
     }
 
     private cloneItem(item: CheckinItem): CheckinItem {
-        return {
-            ...item,
-            schedule: {...item.schedule, weekdays: item.schedule.weekdays ? [...item.schedule.weekdays] : undefined},
-            revisions: item.revisions.map((revision) => ({
-                ...revision,
-                schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
-            })),
-            archivePeriods: item.archivePeriods.map((period) => ({...period})),
-        };
+        return cloneItemValue(item);
     }
 
     private itemFingerprint(item: CheckinItem): string {
-        return JSON.stringify(this.cloneItem(item));
+        return itemFingerprintValue(item);
     }
 
     private revisionFingerprint(item: CheckinItem, date: Date): string {
-        const revision = getItemRevisionForDate(item, date);
-        return JSON.stringify({
-            ...revision,
-            schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
-        });
+        return revisionFingerprintValue(item, date);
     }
 
     private cloneItemForDate(item: CheckinItem, date: Date): CheckinItem {
-        const clone = this.cloneItem(item);
-        const revision = getItemRevisionForDate(item, date);
-        return {
-            ...clone,
-            kind: revision.kind,
-            target: revision.target,
-            unit: revision.unit,
-            schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
-        };
+        return cloneItemForDateValue(item, date);
     }
 
     private broadcast(event: CheckinIntegrationEvent) {
