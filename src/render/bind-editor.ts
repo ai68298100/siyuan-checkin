@@ -50,10 +50,29 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (!element) return;
         window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
     };
-    let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || ICON_GROUPS[0].id;
+    let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || "all";
+    const ICON_SIZE_STEPS = [16, 20, 28, 40];
+    const allIconCount = ICON_GROUPS.reduce((sum, group) => sum + group.icons.length, 0);
     const iconPopup = root.querySelector<HTMLDetailsElement>("[data-icon-popup]");
     const iconPopupSummary = iconPopup?.querySelector<HTMLElement>("summary");
     iconPopup?.addEventListener("toggle", () => { if (!iconPopup.open) iconPopupSummary?.focus(); });
+    /* 尺寸预览条（T-116）：把选中图标按列表/标签/卡片/大图四档真实尺寸同时呈现。 */
+    const renderIconSizeStrip = (icon: string) => {
+        const strip = root.querySelector<HTMLElement>("[data-icon-size-strip]");
+        if (!strip) return;
+        strip.replaceChildren(...ICON_SIZE_STEPS.map((size) => {
+            const cell = document.createElement("span");
+            cell.className = "lc-checkin__size-cell";
+            cell.style.setProperty("--size-preview-px", `${size}px`);
+            const glyph = document.createElement("i");
+            glyph.className = "lc-checkin__size-icon";
+            glyph.innerHTML = renderIconMarkup(icon || "✓");
+            const label = document.createElement("small");
+            label.textContent = String(size);
+            cell.append(glyph, label);
+            return cell;
+        }));
+    };
     const selectIcon = (icon: string) => {
         root.querySelectorAll("[data-icon].is-selected").forEach((selected) => selected.classList.remove("is-selected"));
         const input = root.querySelector<HTMLInputElement>("input[name='icon']");
@@ -63,9 +82,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         });
         const current = root.querySelector<HTMLElement>("[data-popup-current-icon]");
         if (current) current.replaceChildren(renderIconMarkup(icon || "✓"));
+        renderIconSizeStrip(icon || "✓");
     };
     const selectIconGroup = (groupId: string) => {
-        activeIconGroup = ICON_GROUPS.some((group) => group.id === groupId) ? groupId : ICON_GROUPS[0].id;
+        activeIconGroup = groupId === "all" || groupId === "mine" || ICON_GROUPS.some((group) => group.id === groupId) ? groupId : "all";
         const query = root.querySelector<HTMLInputElement>("[data-icon-query]");
         if (query) query.value = "";
         root.querySelectorAll<HTMLElement>("[data-icon-group]").forEach((button) => {
@@ -88,15 +108,26 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 if (matches) panelMatchCount += 1;
             });
             matchCount += panelMatchCount;
-            panel.hidden = hasQuery ? panelMatchCount === 0 : panel.dataset.iconPanel !== activeIconGroup;
+            panel.hidden = hasQuery ? panelMatchCount === 0
+                : activeIconGroup === "all" ? false
+                    : panel.dataset.iconPanel !== activeIconGroup;
         });
         const activeGroup = ICON_GROUPS.find((group) => group.id === activeIconGroup) || ICON_GROUPS[0];
         const count = root.querySelector<HTMLElement>("[data-icon-count]");
-        if (count) count.textContent = hasQuery ? `${matchCount} 个匹配图标` : `${activeGroup.name} · ${activeGroup.icons.length} 个`;
+        if (count) {
+            const mineCount = root.querySelectorAll("[data-icon-panel='mine'] [data-icon]:not([hidden])").length;
+            count.textContent = hasQuery ? `${matchCount} 个匹配图标`
+                : activeIconGroup === "all" ? `全部 · ${allIconCount} 个`
+                : activeIconGroup === "mine" ? `我的图标 · ${mineCount} 个`
+                : `${activeGroup.name} · ${activeGroup.icons.length} 个`;
+        }
         const empty = root.querySelector<HTMLElement>("[data-icon-empty]");
         if (empty) empty.hidden = matchCount > 0;
         root.querySelector<HTMLElement>("[data-icon-results]")?.classList.toggle("is-searching", hasQuery);
         root.querySelector<HTMLButtonElement>("[data-action='clear-icon-query']")?.toggleAttribute("hidden", !hasQuery);
+        /* 「我的」管理工具（上传/导入）只在我的页签展示；搜索时聚焦图标本身 */
+        const customPanel = root.querySelector<HTMLElement>("[data-custom-icon-panel]");
+        if (customPanel) customPanel.hidden = activeIconGroup !== "mine";
     };
     root.querySelectorAll<HTMLButtonElement>("[data-icon]").forEach((button) => button.addEventListener("click", () => selectIcon(button.dataset.icon || "✓")));
     root.querySelectorAll<HTMLButtonElement>("[data-icon-group]").forEach((button) => button.addEventListener("click", () => selectIconGroup(button.dataset.iconGroup || ICON_GROUPS[0].id)));
