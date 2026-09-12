@@ -32,6 +32,7 @@ import {bindBulkModeFor, bindItemDragFor, bindQuickKeyboardFor, type TodayBindin
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
+import type {ReminderFilter} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
 import {renderEditorView} from "./render/editor";
@@ -193,6 +194,7 @@ export default class CheckinPlugin extends Plugin {
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
+    private reminderFilter: ReminderFilter = "all";
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -1138,6 +1140,7 @@ export default class CheckinPlugin extends Plugin {
             summaryText: this.summaryText,
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
+            reminderFilter: this.reminderFilter,
         });
     }
 

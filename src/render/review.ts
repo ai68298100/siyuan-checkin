@@ -10,7 +10,7 @@ import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
 import {uiIcon} from "../ui/icons";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
-import {projectReminderCenter} from "../reminders";
+import {filterReminderEntries, projectReminderCenter, type ReminderFilter} from "../reminders";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -31,6 +31,7 @@ export interface ReviewViewContext {
     summaryText?: string;
     summaryProvidersCount: number;
     editingHistoryNoteId?: string;
+    reminderFilter: ReminderFilter;
 }
 
 export function renderReviewView(ctx: ReviewViewContext): string {
@@ -140,7 +141,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const weeklyTrend = buildWeeklyCompletionTrend(ctx.store, 12);
     const monthlyTrend = buildMonthlyEventTrend(ctx.store, 6);
     const achievements = buildAchievements(ctx.store);
-    const reminders = projectReminderCenter(ctx.store, ctx.occasionStore, new Date());
+    const reminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date()), ctx.reminderFilter);
     const reminderRows = reminders.length ? reminders.map((entry) => {
         const timing = entry.status === "completed" ? t("review.remindersCompleted")
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
@@ -188,7 +189,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 </div>
             </div>
             <div class="lc-checkin__review-sections">
-            <section class="lc-checkin__reminder-center" aria-labelledby="lc-reminder-center-title"><h2 id="lc-reminder-center-title">${t("review.remindersTitle")}</h2><div class="lc-checkin__reminder-list">${reminderRows}</div></section>
+            <section class="lc-checkin__reminder-center" aria-labelledby="lc-reminder-center-title"><div class="lc-checkin__reminder-heading"><h2 id="lc-reminder-center-title">${t("review.remindersTitle")}</h2><select data-reminder-filter aria-label="${t("review.remindersTitle")}"><option value="all" ${ctx.reminderFilter === "all" ? "selected" : ""}>${t("review.remindersTitle")}</option><option value="today" ${ctx.reminderFilter === "today" ? "selected" : ""}>${t("review.remindersToday")}</option><option value="upcoming" ${ctx.reminderFilter === "upcoming" ? "selected" : ""}>${t("review.remindersUpcoming", {n: 1})}</option><option value="completed" ${ctx.reminderFilter === "completed" ? "selected" : ""}>${t("review.remindersCompleted")}</option></select></div><div class="lc-checkin__reminder-list">${reminderRows}</div></section>
             <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
                 <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>

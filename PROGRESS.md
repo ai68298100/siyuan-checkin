@@ -131,3 +131,7 @@ Next: add reminder-center filtering and explicit overdue representation in the 1
 T-094 complete: reminder entries now support a non-mutating status filter while preserving deterministic ordering and stable identities. Verification: pnpm run check, pnpm test, and pnpm run test:quality passed before this filter addition; targeted type/test verification follows.
 
 Next: connect the filter to Review controls and define overdue semantics without changing persisted data. T-023 remains pending real-device feedback.
+
+T-095 complete: Review now exposes an all/today/upcoming/completed reminder filter backed by the non-mutating projection. Verification: pnpm run check and pnpm run test:ui passed.
+
+Next: model overdue reminders as a separate date projection, then add focused boundary tests before changing visible occasion semantics.

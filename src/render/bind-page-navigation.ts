@@ -42,6 +42,7 @@ export interface BindPageNavigationHost {
     restoreItem(itemId: string): Promise<void>;
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
+    reminderFilter: import("../reminders").ReminderFilter;
 }
 
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
@@ -53,6 +54,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.insightsItemId = itemId;
         void host.persistViewPreferences();
         host.render();
+    });
+    root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
+        const value = (event.currentTarget as HTMLSelectElement).value;
+        if (value === "all" || value === "today" || value === "upcoming" || value === "completed") {
+            host.reminderFilter = value;
+            host.render();
+        }
     });
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
         if (host.currentPage === "insights" && host.insightsReturnPage === "review") host.showReview();

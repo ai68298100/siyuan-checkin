@@ -227,3 +227,5 @@
 - [x] T-093 Review reminder center - render the unified reminder projection in Review with compact responsive rows; no storage mutation or new reminder semantics yet.
 
 - [x] T-094 reminder filtering model - add a non-mutating all/today/upcoming/completed filter over stable reminder entries.
+
+- [x] T-095 Review reminder filtering UI - connect the reminder status filter to Review with stable re-render behavior.

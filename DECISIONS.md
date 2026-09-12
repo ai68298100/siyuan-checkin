@@ -60,3 +60,5 @@
 - D-043 The first reminder center keeps completed entries queryable but visually secondary. Overdue, snooze, and skip states require an explicit persisted contract and are deferred to a later 11.0 slice.
 
 - D-044 Reminder filtering is a projection concern. Filtering clones entries and never changes source stores or the canonical sorted projection.
+
+- D-045 Review reminder filter is session-local and defaults to all; it is intentionally not persisted until reminder preferences have a stable schema.
