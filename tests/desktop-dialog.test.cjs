@@ -101,8 +101,17 @@ for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
 
 // 锟?鎵嬫満绔浐瀹氶《锟?搴曟爮锛氱粨鏋勫湪婊氬姩瀹瑰櫒涔嬪 + 鍑犱綍锟?!important 鏀跺彛
 const plugin = read("src", "index.ts");
-assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin",\s*`<div class="lc-checkin__mobile-topbar">/,
+assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobileTopbar\(\)\)/,
     "the mobile top bar must be attached to the host, not inside the scrolling container");
+/* T-034 融合顶栏：关闭 + 四页导航 tabs + 进度/标题 单行；移动前端不再渲染裸 topnav */
+assert.match(plugin, /private renderMobileTopbar\(\): string \{[\s\S]*?lc-checkin__topbar-tabs[\s\S]*?data-mobile-nav="\$\{page\}"/,
+    "the mobile top bar must fuse the four navigation tabs into one row");
+assert.match(plugin, /renderTopNav\(\)\);/,
+    "the desktop top nav keeps its render path");
+assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+    "the top nav must not render unconditionally (mobile now owns its fused top bar)");
+assert.match(plugin, /if \(!this\.isMobileFrontend\) layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+    "the top nav must be skipped on the mobile frontend");
 assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
     "the mobile bottom bar must be attached to the host as well");
 assert.match(plugin, /private todayProgressLabel\(\): string \{/,
@@ -151,6 +160,16 @@ assert.equal((reviewSource.match(/data-action="archived"/g) || []).length, 1,
     "the review header must render exactly one archive entry");
 assert.match(reviewSource, /t\("review\.catchUpAria", \{name: entry\.name, date: entry\.occurrenceDate\}\)/,
     "the catch-up aria label must interpolate both {name} and {date}");
+
+// T-034 手机端紧凑终稿：窄容器隐藏 topnav、操作轨道保持横排、终稿层存在
+assert.doesNotMatch(components, /@container lc5 \(max-width: 719px\)[^@]*?flex-direction: column;\s*\}\s*\.lc-checkin--today \.lc-checkin__item-action/s,
+    "the narrow-container action column must never stack buttons vertically again");
+assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin__topnav \{ display: none !important; \}/,
+    "narrow containers must hide the desktop top nav (mobile fused top bar owns navigation)");
+assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin--today \.lc-checkin__item-action \{\s*--lc-action-slot: 26px;[\s\S]*?display: grid;/,
+    "the mobile final layer must keep the horizontal fixed-track action grid");
+assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin__topbar-tabs \{ display: flex;/,
+    "the fused top bar tabs must have their compact row styles");
 
 console.log("Desktop dialog structure checks passed.");
 

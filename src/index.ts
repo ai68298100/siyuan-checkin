@@ -733,15 +733,13 @@ export default class CheckinPlugin extends Plugin {
             root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
         }
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
-            const progressLabel = this.currentPage === "today" ? this.todayProgressLabel() : "";
-            root.insertAdjacentHTML("afterbegin",
-                `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>${progressLabel ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progressLabel}</span>` : ""}</div>`);
+            root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar());
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
-            /* 顶部导航（桌面宽容器显示，替代左侧 rail，把整行宽度让给内容）；
-               窄容器（手机弹窗/侧边栏）由 CSS 隐藏，改用底部导航。 */
-            layout.insertAdjacentHTML("afterbegin", this.renderTopNav());
+            /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
+               窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。 */
+            if (!this.isMobileFrontend) layout.insertAdjacentHTML("afterbegin", this.renderTopNav());
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
@@ -992,13 +990,25 @@ export default class CheckinPlugin extends Plugin {
         return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${escapeHtml(item.icon)} ${escapeHtml(item.group || t("insights.title"))}</div><h1 class="lc-checkin__title">${escapeHtml(item.name)}</h1></div></header>${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>${t("insights.rate")}</span></div><div><strong>${report.currentStreak}</strong><span>${t("insights.currentStreak")}</span></div><div><strong>${report.longestStreak}</strong><span>${t("insights.bestStreak")}</span></div></div>${coaching}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.window")}</h2><small>${report.startDate} 至 ${report.endDate}</small><div class="lc-checkin__insight-legend" role="list" aria-label="${t("insights.legendAria")}"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>${t("insights.complete")}</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>${t("insights.partial")}</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>${t("insights.missed")}</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>${t("insights.off")}</span></div></div><div class="lc-checkin__insight-grid-scroll"><div class="lc-checkin__insight-grid" role="list" aria-label="${t("insights.window")}">${insightGrid}</div></div><div class="lc-checkin__insight-grid-range"><span>${report.startDate}</span><span>${report.endDate}</span></div></section><section class="lc-checkin__insight-section"><h2>${t("insights.weeklyTrend")}</h2>${weekRows || `<div class="lc-checkin__history-empty">${t("insights.notEnough")}</div>`}</section></div>`;
     }
 
+    /* 手机端单行顶栏（用户反馈：关闭/导航/进度 融合成一行，砍掉独立导航行）。
+       今日页右侧显示进度，非 tab 页（编辑/归档）退回页标题，其余用占位保持居中。 */
+    private renderMobileTopbar(): string {
+        const entries = [["today", t("nav.today")], ["review", t("nav.review")], ["occasions", t("nav.occasions")], ["settings", t("nav.settings")]] as const;
+        const tabs = entries.map(([page, label]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}">${label}</button>`).join("");
+        const right = this.currentPage === "today"
+            ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${this.todayProgressLabel()}</span>`
+            : this.currentPage === "editor" || this.currentPage === "archived"
+                ? `<strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>`
+                : `<span class="lc-checkin__topbar-spacer"></span>`;
+        return `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><nav class="lc-checkin__topbar-tabs" aria-label="打卡导航">${tabs}</nav>${right}</div>`;
+    }
+
     private renderMobileNav(): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const buttons = entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
         const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项"><span>${uiIcon("add")}</span><small>${t("nav.add")}</small></button>`;
         return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
     }
-
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
     private todayProgressLabel(): string {
         const date = currentCalendarDate();

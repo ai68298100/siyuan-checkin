@@ -2072,16 +2072,6 @@
     transition: width 300ms ease;
 }
 
-/* --- 操作区：自适应宽度，按钮右对齐、垂直居中 --- */
-.lc-checkin--today .lc-checkin__item-action {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-}
-
 /* 打卡按钮（二值项）：实心主色胶囊 */
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button {
     flex: none;
@@ -2402,31 +2392,6 @@
 /* ============================================================
    UI 走查修复（用户实测反馈）：窄容器适配 + 弹窗比例
    ============================================================ */
-
-/* 窄容器：操作按钮竖排右对齐，隐藏次要按钮 */
-@container lc5 (max-width: 719px) {
-    .lc-checkin--today .lc-checkin__item-action {
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 3px;
-    }
-    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
-        min-width: 56px;
-        min-height: 30px;
-        padding: 0 10px;
-        font-size: 11px;
-    }
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button,
-    .lc-checkin--today .lc-checkin__focus-button {
-        width: 24px;
-        height: 24px;
-    }
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { display: none; }
-    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none !important; }
-    .lc-checkin__header-streak { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-    .lc-checkin__backup-reminder { padding: 6px 10px; font-size: 11px; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr); }
-}
 
 /* 中等容器：操作区自适应 */
 @container lc5 (min-width: 720px) and (max-width: 879px) {
@@ -2898,3 +2863,61 @@
 /* 侧边栏不显示顶部导航（它有自己的底栏导航）；rail 已退役 */
 .lc-checkin-dock-host > .lc-checkin__topnav { display: none; }
 .lc-checkin__rail { display: none !important; }
+
+/* ============================================================
+   T-034 手机端紧凑终稿（≤719 容器，文件末尾最终层）
+   背景：8.7 压缩层与 v8 走查遗留的「窄容器操作按钮竖排」叠加，
+   把打卡卡片撑到 ~110px，且 v9.5.1 在窄容器裸渲染出独立导航行。
+   这里一次性给出最终胜出值：单行融合顶栏 + 单行卡片 +
+   横排固定操作轨道 + 最小分组间距 —— 打卡内容最大化。
+   ============================================================ */
+@container lc5 (max-width: 719px) {
+    /* 顶栏：关闭 + 四页 tabs + 进度/标题 融合成一行 */
+    .lc-checkin__mobile-topbar { gap: 6px; min-height: 44px; padding-block: 4px; }
+    .lc-checkin__topbar-tabs { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 2px; min-width: 0; }
+    .lc-checkin__topbar-tabs button {
+        min-height: 30px;
+        padding: 0 9px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--lc-checkin-muted);
+        background: transparent;
+        font-size: 12.5px;
+        font-weight: 620;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    .lc-checkin__topbar-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+
+    /* 窄表面一律不显示桌面顶部导航（手机顶栏自带 tabs，dock 用底部导航） */
+    .lc-checkin__topnav { display: none !important; }
+
+    /* 卡片：单行三段 —— 图标 / 文字 / 横排操作轨道 */
+    .lc-checkin--today .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr) auto; min-height: 44px; padding: 4px 8px; gap: 0 8px; }
+    .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; border-radius: 10px; border-width: 2px; font-size: 16px; }
+    .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
+    .lc-checkin--today .lc-checkin__item-tag { padding: 1px 6px; font-size: 9px; }
+    .lc-checkin--today .lc-checkin__item-meta { margin-top: 1px; font-size: 10px; }
+    .lc-checkin--today .lc-checkin__item-progress { height: 2px; margin-top: 3px; }
+    .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none !important; }
+
+    /* 操作轨道：横向 [计时 | 主按钮 | 更多]，固定轨道让各卡片按钮落在同一条竖线 */
+    .lc-checkin--today .lc-checkin__item-action {
+        --lc-action-slot: 26px;
+        --lc-action-primary: 88px;
+        display: grid;
+        grid-template-columns: var(--lc-action-slot) minmax(56px, var(--lc-action-primary)) var(--lc-action-slot);
+        gap: 3px;
+    }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { min-height: 30px; padding: 0 8px; font-size: 11.5px; }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 26px; height: 26px; }
+
+    /* 分组标题与卡片、卡片与卡片：间距压到最小 */
+    .lc-checkin--today .lc-checkin__group-header { min-height: 18px; margin-bottom: 2px; gap: 5px; }
+    .lc-checkin--today .lc-checkin__group-items { gap: 4px; }
+    .lc-checkin--today .lc-checkin__list { gap: 10px; }
+
+    /* v8 走查遗留块已删，其中仍有效的两行窄屏微调移到这里 */
+    .lc-checkin__header-streak { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+    .lc-checkin__backup-reminder { padding: 6px 10px; font-size: 11px; }
+}
