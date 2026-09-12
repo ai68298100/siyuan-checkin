@@ -186,5 +186,20 @@ assert.match(read("src", "render", "today-bindings.ts"), /export function bindPa
 assert.match(pluginSource, /if \(!this\.isMobileFrontend\) bindPageKeyboardFor\(this as unknown as TodayBindingsHost, root\)/,
     "the keyboard flow must not bind on the mobile frontend");
 
+// T-113 Esc 关弹窗：仅弹窗表面 + 防重入
+const pluginOps = read("src", "plugin-ops.ts");
+assert.match(pluginOps, /root !== host\.quickDialogElement \|\| root\.dataset\.escCloseBound === "true"\) return;/,
+    "the Esc close handler must bind once on the quick dialog surface only");
+
+// T-114 打卡后焦点归位
+assert.match(pluginSource, /const focusItemId = this\.pendingFocusItemId;/,
+    "the pending focus item must be consumed after render");
+assert.match(read("src", "render", "bind-today.ts"), /host\.pendingFocusItemId = item\.id;/,
+    "record tap sites must queue the card for focus restore");
+
+// T-110 补记撤销
+assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false\)/,
+    "the catch-up toast must offer an undo that rolls back the mark");
+
 console.log("Desktop dialog structure checks passed.");
 

@@ -282,3 +282,12 @@
 - [x] T-112 弹窗每页滚动位置记忆
   - 验收：切页返回恢复上次滚动位置；同页重渲染（打卡/筛选）不再跳回顶部；按表面隔离（WeakMap 随表面销毁释放）
   - 状态：done（renderInto 捕获/恢复 + scrollCapturePage 页键）
+- [ ] T-113 Esc 关闭快速弹窗：桌面弹窗监听 Esc（焦点在弹窗内时）关闭窗口，与主流软件一致（真机发现 Esc 目前无效，需点关闭按钮）
+- [ ] T-114 打卡后焦点归位：打卡触发重渲染后，把焦点还原到原卡片的主按钮（当前回到容器，需再按 j/k）；与 T-108 局部重渲染协同
+
+- [x] T-110 逾期补记可撤销：补记成功后底部提示条 6 秒内可撤销（回滚该次标记）
+  - 状态：done（bind-page-navigation 自定义提示条 + review.catchUpDone/review.undo 双语）
+- [x] T-113 Esc 关闭快速弹窗：焦点在弹窗内时 Esc 即关闭；仅弹窗表面绑定且防重入
+  - 状态：done（plugin-ops bindDialogCloseFor）
+- [x] T-114 打卡后焦点归位：重渲染后焦点还原到刚操作卡片的主按钮，键盘流无缝继续
+  - 状态：done（BindTodayHost.pendingFocusItemId + renderInto 消费还原）

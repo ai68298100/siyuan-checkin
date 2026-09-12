@@ -195,6 +195,7 @@ export default class CheckinPlugin extends Plugin {
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
+    private pendingFocusItemId?: string;
     private collapsedTodayGroups = new Set<string>();
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
@@ -780,6 +781,15 @@ export default class CheckinPlugin extends Plugin {
                 surfaceEl.tabIndex = -1;
                 if (!root.contains(document.activeElement)) surfaceEl.focus();
             }
+        }
+        /* 打卡后焦点归位（T-114）：重渲染后把焦点还原到刚操作卡片的主按钮，键盘流无缝继续；
+           该卡已被过滤/消失时保持容器焦点。 */
+        const focusItemId = this.pendingFocusItemId;
+        this.pendingFocusItemId = undefined;
+        if (focusItemId && this.currentPage === "today") {
+            const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id='${focusItemId}']`);
+            const focusTarget = card?.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
+            if (focusTarget) focusTarget.focus();
         }
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
         if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;

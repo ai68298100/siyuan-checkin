@@ -57,6 +57,17 @@ export function getQuickTodayItems(store: CheckinStore): CheckinItem[] {
 export function bindDialogCloseFor(host: PluginOpsHost, root: HTMLElement): void {
     root.querySelector<HTMLElement>("[data-action='close-dialog']")?.addEventListener("click", () => host.closeQuickDialog());
     root.querySelector<HTMLElement>("[data-action='toggle-fullscreen']")?.addEventListener("click", () => toggleQuickDialogFullscreenFor(host as unknown as QuickDialogHost, root));
+    /* Esc 关闭快速弹窗（T-113）：只在弹窗表面绑定（dock/页签是常驻面板，Esc 不该关它们）；
+       焦点在弹窗内时生效——焦点被弹窗打开逻辑收进容器后（T-107），打开即可用 Esc 关闭。
+       root 级监听会随每次重渲染叠加，必须防重入。 */
+    if (root !== host.quickDialogElement || root.dataset.escCloseBound === "true") return;
+    root.dataset.escCloseBound = "true";
+    root.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        event.preventDefault();
+        event.stopPropagation();
+        host.closeQuickDialog();
+    });
 }
 
 export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {

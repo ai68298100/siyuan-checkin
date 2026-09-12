@@ -2967,3 +2967,24 @@
     .lc-checkin--editor .lc-checkin__template-section { max-height: 210px; }
     .lc-checkin--editor .lc-checkin__kind-option span { min-height: 44px; padding: 6px; }
 }
+
+/* 补记撤销提示条（T-110）：固定在底部导航上方，6 秒自动消失，点撤销回滚该次补记 */
+.lc-checkin__catchup-toast {
+    position: fixed;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: calc(var(--lc-checkin-z-header) + 10);
+    max-width: min(92vw, 480px);
+    padding: 9px 14px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 999px;
+    background: var(--lc-checkin-surface);
+    box-shadow: var(--lc-checkin-shadow);
+    font-size: 12px;
+}
+.lc-checkin__catchup-toast span { overflow: hidden; color: var(--lc-checkin-text); text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__catchup-toast .lc-checkin__small-button { flex: none; min-height: 26px; padding: 0 10px; border-radius: 999px; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-weight: 700; }

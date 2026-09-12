@@ -49,13 +49,34 @@ export interface BindPageNavigationHost {
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
-    /* 逾期历史一键补记（T-101）：把该次逾期标记为已完成，历史随之消掉。 */
+    /* 逾期历史一键补记（T-101）：把该次逾期标记为已完成，历史随之消掉。
+       补记成功弹 6 秒可撤销提示条（T-110），撤销即回滚该次标记。 */
+    const showCatchUpToast = (name: string, occasionId: string, date: string) => {
+        const surface = root.querySelector<HTMLElement>(".lc-checkin");
+        if (!surface) return;
+        surface.querySelector(".lc-checkin__catchup-toast")?.remove();
+        const toast = document.createElement("div");
+        toast.className = "lc-checkin__catchup-toast";
+        const label = document.createElement("span");
+        label.textContent = t("review.catchUpDone", {name, date});
+        const undoButton = document.createElement("button");
+        undoButton.type = "button";
+        undoButton.className = "lc-checkin__small-button";
+        undoButton.textContent = t("review.undo");
+        undoButton.addEventListener("click", () => { toast.remove(); void host.setOccasionCompleted(occasionId, date, false); });
+        toast.append(label, undoButton);
+        surface.appendChild(toast);
+        window.setTimeout(() => toast.remove(), 6000);
+    };
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-complete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionId || "";
         const occurrenceDate = button.dataset.occasionDate || "";
         if (!id || !occurrenceDate) return;
         button.disabled = true;
-        void host.setOccasionCompleted(id, occurrenceDate, true).finally(() => { button.disabled = false; });
+        const name = button.closest<HTMLElement>("[data-overdue-occasion]")?.querySelector("strong")?.textContent || "";
+        void host.setOccasionCompleted(id, occurrenceDate, true).then((ok) => {
+            if (ok) showCatchUpToast(name, id, occurrenceDate);
+        }).finally(() => { button.disabled = false; });
     }));
     root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
         const itemId = (event.currentTarget as HTMLSelectElement).value;
