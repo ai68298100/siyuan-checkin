@@ -145,5 +145,12 @@ assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin-
 assert.match(read("src", "render", "bind-occasions.ts"), /host\.occasionTemplatesOpen = \(event\.currentTarget as HTMLDetailsElement\)\.open;/,
     "the template fold state must survive re-renders");
 
+// 回顾页归档入口唯一（T-032）：按钮只渲染一次，补记 aria 的 {date} 占位符必须传值
+const reviewSource = read("src", "render", "review.ts");
+assert.equal((reviewSource.match(/data-action="archived"/g) || []).length, 1,
+    "the review header must render exactly one archive entry");
+assert.match(reviewSource, /t\("review\.catchUpAria", \{name: entry\.name, date: entry\.occurrenceDate\}\)/,
+    "the catch-up aria label must interpolate both {name} and {date}");
+
 console.log("Desktop dialog structure checks passed.");
 
