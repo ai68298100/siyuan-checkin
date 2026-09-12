@@ -57,7 +57,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     });
     root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        if (value === "all" || value === "today" || value === "upcoming" || value === "completed") {
+        if (value === "all" || value === "overdue" || value === "today" || value === "upcoming" || value === "completed") {
             host.reminderFilter = value;
             host.render();
         }

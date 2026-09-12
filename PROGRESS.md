@@ -145,3 +145,7 @@ T-097 complete: added a conservative overdue occasion projection for uncompleted
 Next: add overdue entries to the reminder center behind an explicit filter, with copy that distinguishes overdue from upcoming.
 
 T-098 complete: overdue is now a first-class reminder status ranked ahead of today and upcoming entries; existing filter types remain backward-compatible for all prior states. Verification: pnpm run check and occasion tests passed.
+
+T-099 complete: Review reminder center now exposes overdue filtering and dedicated overdue copy, while preserving compact responsive rendering. Verification: pnpm run check, pnpm run test:ui, and occasion tests passed.
+
+Next: run full quality gate, then design recurring overdue history as a separate model task.

@@ -235,3 +235,5 @@
 - [x] T-097 conservative overdue projection - expose uncompleted past one-off occasions without changing recurring visibility semantics.
 
 - [x] T-098 explicit overdue status - distinguish overdue from upcoming in reminder ranking and filtering types.
+
+- [x] T-099 overdue reminder center UI - expose overdue filter and dedicated overdue label in Review.
