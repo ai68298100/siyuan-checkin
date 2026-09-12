@@ -28,7 +28,7 @@ import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksVa
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
-import {bindBulkModeFor, bindItemDragFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
+import {bindBulkModeFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
@@ -129,6 +129,10 @@ export default class CheckinPlugin extends Plugin {
     private quickDialog?: Dialog;
     private quickDialogElement?: HTMLElement;
     private quickDialogViewportCleanup?: () => void;
+    /* 每个表面（dock/tab/弹窗）一份「页面→滚动位置」表（T-112）；scrollCapturePage 记录当前 DOM 属于哪一页。
+       初始值须与 currentPage 的默认页一致（字段初始化按声明顺序执行）。 */
+    private pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>();
+    private scrollCapturePage = "today";
     private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
@@ -709,6 +713,14 @@ export default class CheckinPlugin extends Plugin {
             root.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
             return;
         }
+        /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
+           同页重渲染（打卡/筛选）不跳动，切页回到上次离开的位置。WeakMap 随表面销毁自动释放。 */
+        const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
+        if (previousScroller) {
+            const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
+            tops.set(this.scrollCapturePage, previousScroller.scrollTop);
+            this.pageScrollTops.set(root, tops);
+        }
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
             : this.currentPage === "review" ? this.renderReview()
                 : this.currentPage === "insights" ? this.renderInsights()
@@ -760,6 +772,18 @@ export default class CheckinPlugin extends Plugin {
             this.bindPageNavigation(root);
         }
         if (this.quickDialog && this.quickDialogElement === root) this.bindQuickKeyboard(root);
+        /* 桌面弹窗打开/重渲染后把焦点收进弹窗容器：键盘流（j/k/e）立即生效，
+           且按键不会再漏进背后的文档编辑器；用户已在弹窗内（搜索框等）时不打断。 */
+        if (root === this.quickDialogElement && !this.isMobileFrontend) {
+            const surfaceEl = root.querySelector<HTMLElement>(".lc-checkin");
+            if (surfaceEl) {
+                surfaceEl.tabIndex = -1;
+                if (!root.contains(document.activeElement)) surfaceEl.focus();
+            }
+        }
+        const scroller = root.querySelector<HTMLElement>(".lc-checkin");
+        if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;
+        this.scrollCapturePage = this.currentPage;
     }
 
     private normalizeUiIcons(root: HTMLElement) {
@@ -1225,6 +1249,8 @@ export default class CheckinPlugin extends Plugin {
     /* 方法体外置于 render/bind-today.ts（T-022）；宿主成员经 BindTodayHost 接口声明。 */
     private bindToday(root: HTMLElement) {
         bindTodayHandlers(root, this as unknown as BindTodayHost);
+        /* 桌面键盘流 j/k/e（T-107）：手机端不绑定，避免与输入法/滚动手势冲突。 */
+        if (!this.isMobileFrontend) bindPageKeyboardFor(this as unknown as TodayBindingsHost, root);
     }
 
     /* 方法体外置于 render/bind-occasions.ts（T-022）。 */

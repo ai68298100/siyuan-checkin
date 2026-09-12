@@ -21,6 +21,7 @@ export interface TodayBindingsHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(): void;
+    showEditor(item?: CheckinItem): void;
 }
 
 /* Alt+1~9 直达今日页前九项打卡。 */
@@ -40,6 +41,35 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
         const date = calendarDateFromKey(dateKey(currentCalendarDate()));
         const revision = getItemRevisionForDate(item, date);
         void host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), host.revisionFingerprint(item, date)));
+    });
+}
+
+/* 桌面键盘流（T-107）：j/k 或方向键在可见卡片间移动焦点（聚焦各卡主操作按钮，
+   空格/回车原生触发打卡），e 进编辑。仅在今日页且未在输入框时生效。 */
+export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement): void {
+    if (root.dataset.pageKeyboardBound === "true") return;
+    root.dataset.pageKeyboardBound = "true";
+    root.addEventListener("keydown", (event) => {
+        if (host.currentPage !== "today") return;
+        if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+        const target = event.target as HTMLElement | null;
+        if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
+        const key = event.key === "ArrowDown" ? "j" : event.key === "ArrowUp" ? "k" : event.key.toLowerCase();
+        if (key !== "j" && key !== "k" && key !== "e") return;
+        const cards = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")].filter((card) => card.offsetParent !== null);
+        if (!cards.length) return;
+        const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".lc-checkin__item[data-item-id]");
+        if (key === "e") {
+            const item = host.store.items.find((candidate) => candidate.id === activeCard?.dataset.itemId);
+            if (!item) return;
+            event.preventDefault();
+            host.showEditor(item);
+            return;
+        }
+        const index = activeCard ? cards.indexOf(activeCard) : -1;
+        const next = index < 0 ? (key === "j" ? 0 : cards.length - 1) : (index + (key === "j" ? 1 : -1) + cards.length) % cards.length;
+        event.preventDefault();
+        (cards[next].querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']") ?? cards[next]).focus();
     });
 }
 

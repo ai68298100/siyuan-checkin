@@ -171,5 +171,20 @@ assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-che
 assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin__topbar-tabs \{ display: flex;/,
     "the fused top bar tabs must have their compact row styles");
 
+// T-112 页面滚动位置记忆：渲染前按旧页捕获、渲染后按新页恢复
+const pluginSource = read("src", "index.ts");
+assert.match(pluginSource, /pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>\(\)/,
+    "scroll memory must be per-surface and garbage-collected with it");
+assert.match(pluginSource, /tops\.set\(this\.scrollCapturePage, previousScroller\.scrollTop\)/,
+    "the pre-render scroll position must be captured under the old page key");
+assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(this\.currentPage\) \?\? 0/,
+    "the post-render scroll position must be restored for the new page");
+
+// T-107 桌面键盘流：j/k/e 仅桌面绑定
+assert.match(read("src", "render", "today-bindings.ts"), /export function bindPageKeyboardFor\(host: TodayBindingsHost, root: HTMLElement\): void/,
+    "the page keyboard flow must live in today-bindings");
+assert.match(pluginSource, /if \(!this\.isMobileFrontend\) bindPageKeyboardFor\(this as unknown as TodayBindingsHost, root\)/,
+    "the keyboard flow must not bind on the mobile frontend");
+
 console.log("Desktop dialog structure checks passed.");
 

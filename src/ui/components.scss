@@ -26,6 +26,9 @@
 .lc-checkin *,
 .lc-checkin *::before,
 .lc-checkin *::after { box-sizing: border-box; }
+/* 键盘流容器聚焦（T-107）：程序化 focus() 不画整页外框 */
+.lc-checkin:focus,
+.lc-checkin:focus-visible { outline: none; }
 
 /* 速记形态（侧边栏 / 手机）：一切为快速打卡服务 */
 @container lc5 (max-width: 719px) {
