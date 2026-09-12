@@ -62,3 +62,5 @@
 - D-044 Reminder filtering is a projection concern. Filtering clones entries and never changes source stores or the canonical sorted projection.
 
 - D-045 Review reminder filter is session-local and defaults to all; it is intentionally not persisted until reminder preferences have a stable schema.
+
+- D-046 Malformed migration JSON remains rejected, but through a stable user-facing parse error before normalization; no synthetic empty store is produced.

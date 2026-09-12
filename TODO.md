@@ -229,3 +229,5 @@
 - [x] T-094 reminder filtering model - add a non-mutating all/today/upcoming/completed filter over stable reminder entries.
 
 - [x] T-095 Review reminder filtering UI - connect the reminder status filter to Review with stable re-render behavior.
+
+- [x] T-096 migration error boundary - malformed JSON reports a stable parse error before normalization and remains rejected by recovery preflight.

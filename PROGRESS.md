@@ -135,3 +135,7 @@ Next: connect the filter to Review controls and define overdue semantics without
 T-095 complete: Review now exposes an all/today/upcoming/completed reminder filter backed by the non-mutating projection. Verification: pnpm run check and pnpm run test:ui passed.
 
 Next: model overdue reminders as a separate date projection, then add focused boundary tests before changing visible occasion semantics.
+
+T-096 complete: migration report parsing now emits a stable JSON parse error before normalization, preserving explicit rejection for malformed imports. Verification: pnpm run check and pnpm run test:backup passed.
+
+Next: design overdue reminder projection separately from current visible occasion semantics; document date and recurrence edge cases before implementation.

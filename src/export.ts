@@ -10,6 +10,7 @@ export interface JsonMigrationReport extends JsonBackupResult {
     sourceVersion: number | string;
     targetVersion: number;
     audit?: JsonBackupAudit;
+    error?: string;
 }
 export interface JsonMigrationAssessment {
     requiresReview: boolean;
@@ -81,14 +82,15 @@ export function auditJsonBackup(before: JsonBackupSummary, after: JsonBackupSumm
 }
 
 export function buildJsonMigrationReport(text: string, normalize: (value: unknown) => CheckinStore, before?: JsonBackupSummary): JsonMigrationReport {
-    const result = parseJsonBackup(text, normalize);
     let sourceVersion: number | string = "unknown";
     try {
         const parsed = JSON.parse(text.replace(/^\uFEFF/, "")) as {version?: unknown};
         sourceVersion = typeof parsed.version === "number" || typeof parsed.version === "string" ? parsed.version : "unknown";
     } catch {
         sourceVersion = "invalid";
+        throw new Error("备份 JSON 无法解析");
     }
+    const result = parseJsonBackup(text, normalize);
     return { ...result, sourceVersion, targetVersion: result.store.version, audit: before ? auditJsonBackup(before, result.summary) : undefined };
 }
 
