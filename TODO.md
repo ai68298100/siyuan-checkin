@@ -91,10 +91,10 @@
   - 依赖：T-097/T-098（并行任务的逾期投影）
   - 状态：done（reminders.ts 新增 projectOverdueOccurrenceHistory(store, date)：沿 getOccurrenceDate 从锚点日走到昨天，逐日核对 completedDates，返回按发生日倒序的逾期条目（含 overdueDays），guard=1000 防循环；补记后自动移出历史；纯只读投影，不改存储。tests/occasions.test.cjs 新增 9 组断言全部通过）
 
-- [ ] T-101 逾期历史 UI（回顾页提醒中心展示逾期历史，支持一键补记）
+- [x] T-101 逾期历史 UI（回顾页提醒中心展示逾期历史，支持一键补记）
   - 验收：提醒中心能看到逾期历史条目并可一键补记（markOccasionCompleted）
   - 依赖：T-100
-  - 状态：todo
+  - 状态：done（回顾页提醒中心新增「逾期历史」小节：每行 事项名 + 发生日 + 逾期天数 + 「补记」按钮（data-occasion-complete 走 setOccasionCompleted），最多显示 12 条；i18n 中英补齐；按钮补记后重渲染自动从历史消失）
 
 - [ ] T-023 真实设备验证修复
   - 验收：用户反馈的所有问题修复

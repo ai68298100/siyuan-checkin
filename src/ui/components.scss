@@ -2820,3 +2820,25 @@
     .lc-checkin__topnav button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
     .lc-checkin__topnav button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
 }
+
+/* 逾期历史小节（回顾页提醒中心内）：标题 + 卡片行，行内带「补记」按钮 */
+.lc-checkin__overdue-history { margin-top: 14px; }
+.lc-checkin__overdue-history h3 {
+    margin: 0 0 8px;
+    color: var(--lc-checkin-muted);
+    font-size: 12px;
+    font-weight: 620;
+    letter-spacing: .04em;
+}
+.lc-checkin__overdue-history .lc-checkin__reminder-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; }
+.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button {
+    display: inline-grid;
+    place-items: center;
+    min-height: 30px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button:hover { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+.lc-checkin__overdue-history .lc-checkin__reminder-row .lc-checkin__small-button[disabled] { opacity: .55; }

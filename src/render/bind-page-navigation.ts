@@ -43,11 +43,20 @@ export interface BindPageNavigationHost {
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
     reminderFilter: import("../reminders").ReminderFilter;
+    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
 
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
+    /* 逾期历史一键补记（T-101）：把该次逾期标记为已完成，历史随之消掉。 */
+    root.querySelectorAll<HTMLButtonElement>("[data-occasion-complete]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionId || "";
+        const occurrenceDate = button.dataset.occasionDate || "";
+        if (!id || !occurrenceDate) return;
+        button.disabled = true;
+        void host.setOccasionCompleted(id, occurrenceDate, true).finally(() => { button.disabled = false; });
+    }));
     root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
         const itemId = (event.currentTarget as HTMLSelectElement).value;
         if (!host.store.items.some((item) => item.id === itemId && !item.archived)) return;

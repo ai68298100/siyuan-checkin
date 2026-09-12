@@ -10,7 +10,7 @@ import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
 import {uiIcon} from "../ui/icons";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
-import {filterReminderEntries, projectReminderCenter, type ReminderFilter} from "../reminders";
+import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter} from "../reminders";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -149,6 +149,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
         return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
+    /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */
+    const overdueHistory = projectOverdueOccurrenceHistory(ctx.occasionStore, new Date()).slice(0, 12);
+    const overdueHistoryRows = overdueHistory.map((entry) => `<article class="lc-checkin__reminder-row is-overdue" data-overdue-occasion="${escapeHtml(entry.occasionId)}" data-overdue-date="${escapeHtml(entry.occurrenceDate)}"><span class="lc-checkin__reminder-source">${escapeHtml(t("review.remindersOccasion"))}</span><strong>${escapeHtml(entry.name)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(entry.occurrenceDate)} · ${t("review.overdueDays", {n: entry.overdueDays})}</span><button class="lc-checkin__small-button" type="button" data-occasion-complete data-occasion-id="${escapeHtml(entry.occasionId)}" data-occasion-date="${escapeHtml(entry.occurrenceDate)}" aria-label="${t("review.catchUpAria", {name: entry.name})}">${t("review.catchUp")}</button></article>`).join("");
+    const overdueHistorySection = overdueHistoryRows ? `<div class="lc-checkin__overdue-history"><h3>${t("review.overdueHistory")}</h3>${overdueHistoryRows}</div>` : "";
     const earnedCount = achievements.filter((entry) => entry.achieved).length;
     const providerButton = ctx.summaryProvidersCount
         ? `<div class="lc-checkin__summary-agent"><span>${t("review.agentConnected")}</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">${t("review.agentGenerate")}</button></div>`
@@ -190,7 +194,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 </div>
             </div>
             <div class="lc-checkin__review-sections">
-            <section class="lc-checkin__reminder-center" aria-labelledby="lc-reminder-center-title"><div class="lc-checkin__reminder-heading"><h2 id="lc-reminder-center-title">${t("review.remindersTitle")}</h2><select data-reminder-filter aria-label="${t("review.remindersTitle")}"><option value="all" ${ctx.reminderFilter === "all" ? "selected" : ""}>${t("review.remindersTitle")}</option><option value="overdue" ${ctx.reminderFilter === "overdue" ? "selected" : ""}>${t("review.remindersOverdue")}</option><option value="today" ${ctx.reminderFilter === "today" ? "selected" : ""}>${t("review.remindersToday")}</option><option value="upcoming" ${ctx.reminderFilter === "upcoming" ? "selected" : ""}>${t("review.remindersUpcoming", {n: 1})}</option><option value="completed" ${ctx.reminderFilter === "completed" ? "selected" : ""}>${t("review.remindersCompleted")}</option></select></div><div class="lc-checkin__reminder-list">${reminderRows}</div></section>
+            <section class="lc-checkin__reminder-center" aria-labelledby="lc-reminder-center-title"><div class="lc-checkin__reminder-heading"><h2 id="lc-reminder-center-title">${t("review.remindersTitle")}</h2><select data-reminder-filter aria-label="${t("review.remindersTitle")}"><option value="all" ${ctx.reminderFilter === "all" ? "selected" : ""}>${t("review.remindersTitle")}</option><option value="overdue" ${ctx.reminderFilter === "overdue" ? "selected" : ""}>${t("review.remindersOverdue")}</option><option value="today" ${ctx.reminderFilter === "today" ? "selected" : ""}>${t("review.remindersToday")}</option><option value="upcoming" ${ctx.reminderFilter === "upcoming" ? "selected" : ""}>${t("review.remindersUpcoming", {n: 1})}</option><option value="completed" ${ctx.reminderFilter === "completed" ? "selected" : ""}>${t("review.remindersCompleted")}</option></select></div><div class="lc-checkin__reminder-list">${reminderRows}</div>${overdueHistorySection}</section>
             <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
                 <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
