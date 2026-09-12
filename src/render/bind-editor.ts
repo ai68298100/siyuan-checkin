@@ -525,6 +525,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
         event.preventDefault();
         const form = event.currentTarget as HTMLFormElement;
+        form.dataset.submitBound = "true";
         if (form.dataset.submitting === "true") return;
         form.dataset.submitting = "true";
         const data = new FormData(form);

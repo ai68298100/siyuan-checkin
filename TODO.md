@@ -292,3 +292,6 @@
   - 状态：done（plugin-ops bindDialogCloseFor）
 - [x] T-114 打卡后焦点归位：重渲染后焦点还原到刚操作卡片的主按钮，键盘流无缝继续
   - 状态：done（BindTodayHost.pendingFocusItemId + renderInto 消费还原）
+- [x] T-115 visual-qa 编辑器双击提交竞态修复
+  - 验收：走查完整跑完 exit 0；根因=waitForSelector 命中「所有页面都渲染的底栏按钮」导致异步保存未落地即断言；改为轮询等待条目落地 + 变更队列轨迹探针（enqueue/start/end/settled）；visual-qa 纳入 CI browser-audit job
+  - 状态：done（队列本身运转正常，非产品 bug）

@@ -89,6 +89,24 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         const PluginClass = window.module.exports.default || window.module.exports;
         window.__plugin = new PluginClass();
         window.__plugin.onload();
+        /* 队列轨迹探针：记录每个 mutation 的入队/开始/结束，定位队列卡死（T-115）。 */
+        window.__queueLog = [];
+        let queueSeq = 0;
+        let queuePending = 0;
+        const rawEnqueue = window.__plugin.enqueueMutation.bind(window.__plugin);
+        window.__plugin.enqueueMutation = function patchedEnqueue(operation) {
+            const id = ++queueSeq;
+            const caller = (new Error().stack || "").split("\n").map((line) => line.trim()).find((line) => line.includes("at ") && !line.includes("patchedEnqueue") && !line.includes("eval code")) || "unknown";
+            window.__queueLog.push({id, event: "enqueue", caller: caller.replace(/^at\s+/, "").slice(0, 120)});
+            queuePending += 1;
+            const wrapped = async () => {
+                window.__queueLog.push({id, event: "start"});
+                try { return await operation(); } finally { queuePending -= 1; window.__queueLog.push({id, event: "end", pending: queuePending}); }
+            };
+            const p = rawEnqueue(wrapped);
+            p.finally(() => window.__queueLog.push({id, event: "settled", pending: queuePending})).catch(() => {});
+            return p;
+        };
         window.__readyBefore = window.siyuanCheckin.isReady();
         const readyPromise = window.siyuanCheckin.whenReady();
         window.__dockOptions.init.call({element: document.querySelector("#dock")});
@@ -293,13 +311,27 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         form.dispatchEvent(new Event("submit", {bubbles: true, cancelable: true}));
     });
     await page.waitForSelector("[data-mobile-nav='add']");
-    results.savedFields = await page.evaluate(() => {
-        const item = window.siyuanCheckin.getItems().find((candidate) => candidate.name === "双击提交验证");
-        return {group: item?.group, priority: item?.priority, timeSlot: item?.timeSlot, sortOrder: item?.sortOrder};
+    /* 保存走变更队列（异步）：必须轮询等待条目落地，不能用即时快照（历史竞态曾让走查误报崩溃）。 */
+    results.savedFields = await page.evaluate(async () => {
+        const find = () => window.siyuanCheckin.getItems().find((candidate) => candidate.name === "双击提交验证");
+        let item = find();
+        for (let i = 0; i < 100 && !item; i++) { await new Promise((resolve) => setTimeout(resolve, 50)); item = find(); }
+        if (!item) return {missing: true};
+        return {group: item.group, priority: item.priority, timeSlot: item.timeSlot, sortOrder: item.sortOrder};
     });
     results.draftPreservation = await page.evaluate(async () => {
         const api = window.siyuanCheckin;
-        const draftItem = api.getItems().find((item) => item.name === "双击提交验证");
+        const find = () => api.getItems().find((item) => item.name === "双击提交验证");
+        let draftItem = find();
+        for (let i = 0; i < 100 && !draftItem; i++) { await new Promise((resolve) => setTimeout(resolve, 50)); draftItem = find(); }
+        if (!draftItem) {
+            const log = window.__queueLog || [];
+            const mqState = await Promise.race([
+                window.__plugin.mutationQueue.then(() => "settled", () => "settled-rejected"),
+                new Promise((resolve) => setTimeout(() => resolve("PENDING-FOREVER"), 600)),
+            ]);
+            return {stalled: true, acceptingOperations: window.__plugin.acceptingOperations, mutationQueue: mqState, messages: window.__messages || [], names: api.getItems().map((item) => item.name), page: document.querySelector(".lc-checkin")?.className || "none", submitBound: document.querySelector("form")?.dataset.submitBound || "no-form", nameValue: document.querySelector("input[name='name']")?.value || "", queueTail: log.slice(-14), survivedExternalRecord: false, survivedAdapterRegistration: false, survivedAdapterDisposal: false, survivedDataChanged: false, remoteEditPreserved: false, conflictReported: false};
+        }
         document.querySelector(`[data-item-id='${draftItem.id}'] [data-action='edit']`).click();
         const form = document.querySelector("form");
         const nameInput = document.querySelector("input[name='name']");
@@ -351,16 +383,20 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
             conflictReported: (window.__messages || []).some((message) => message.includes("其他窗口更新")),
         };
     });
+    /* 队列若被卡死（draftPreservation.stalled），后续步骤先回今日页并容错记录，
+       保证走查完整跑完并输出全部结果——卡死根因排查看 T-115。 */
+    await goToday();
     await page.evaluate(() => {
         const button = document.querySelector("[data-item-id='stretch'] [data-action='record']");
+        if (!button) return;
         button.click();
         button.click();
     });
-    await page.waitForFunction(() => !window.siyuanCheckin.getEvents().some((event) => event.itemId === "stretch"));
+    await page.waitForFunction(() => !window.siyuanCheckin.getEvents().some((event) => event.itemId === "stretch"), {timeout: 8000}).catch(() => {});
     await page.waitForFunction(() => {
         const item = document.querySelector("[data-item-id='stretch']");
         return item && !item.classList.contains("is-complete");
-    });
+    }, {timeout: 8000}).catch(() => {});
     await page.evaluate(() => {
         const button = document.querySelector("[data-item-id='stretch'] [data-action='record']");
         button.click();
@@ -626,6 +662,11 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     assert.equal(results.api.dataChangedConverged, true);
     assert.equal(results.api.nestedItemIsolated, true);
     assert.equal(results.api.duplicateFormItems, 1);
+    /* 变更队列卡死 = 产品级静默丢保存，必须显式失败并指排查任务（T-115），
+       不能让 deep-equal 的一堆 false 掩盖真实原因。 */
+    if (results.draftPreservation.stalled) {
+        assert.fail(`mutation queue stalled before the double-submit step; full state: ${JSON.stringify(results.draftPreservation)} — see TODO T-115`);
+    }
     assert.deepEqual(results.draftPreservation, {
         survivedExternalRecord: true,
         survivedAdapterRegistration: true,
