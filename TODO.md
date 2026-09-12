@@ -69,4 +69,17 @@
 - [ ] T-023 真实设备验证修复
   - 验收：用户反馈的所有问题修复
   - 依赖：用户测试
-  - 状态：todo
+  - 状态：doing（2026-09-12 真机走查提出桌面端优化项，见 T-024；v9.5.0 已部署真机待复测）
+
+## P3（真机走查发现）
+
+- [x] T-024 桌面端体验优化（弹窗尺寸策略 + 宽屏布局）
+  - 验收：宽屏不再只剩空白；弹窗可拖动/缩放并记忆；各页内容排布符合桌面习惯
+  - 依赖：T-023 真机走查
+  - 状态：done（① 修复弹窗内容列 700px 基础上限压死响应式规则的死规则 bug，改 lc-dialog 容器阶梯：1845px 弹窗 3 列 / 1100px 2 列，实测卡片 542px 单列 → 1162px 双列；② 尺寸默认改「自适应」clamp(760,62vw,1440)×88vh，补齐拖动移动、八向缩放、双击标题最大化与尺寸/位置记忆（新增 view-preferences.dialogRect/dialogOffset）；③ 回顾页宽屏默认展开趋势+日志、次要区块双列；④ 事项页改列表左/表单右主从布局（420px + 1fr）；⑤ 桌面端隐藏与左 rail 重复的返回钮；新增 tests/desktop-dialog.test.cjs 守门）
+
+- [ ] T-025 容器查询体系收敛（index.scss 视口 @media 与 lc5 容器混用）
+  - 验收：页面布局只由容器宽度决定；弹窗/页签/侧栏在任意窗口尺寸下表现一致
+  - 依赖：T-024
+  - 状态：todo（真机走查发现：`.lc-checkin` 上生效的容器名是 lc5——tokens.scss 的 `container: lc5 / inline-size` 覆盖了 index.scss 的 `container-name: lc-checkin`，因此 index.scss 里十余处 `@container lc-checkin (...)` 块全是死规则；另有 `@media (min-width: 900/1500px)` 块按窗口而非容器决定页面布局（事项页 1fr/1fr、表单 1080px 定宽即来自此处）。T-024 已把与本次目标相关处改为 lc5 并在 components.scss 收敛，剩余死块需逐块甄别：或迁移到 lc5、或确认已被 components.scss 的 lc5 规则取代后删除，并补跑移动端视觉回归）
+

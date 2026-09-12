@@ -674,16 +674,9 @@
     .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 14px; background: color-mix(in srgb, var(--b3-border-color) 56%, transparent); }
 }
 
-@media (min-width: 1100px) {
-    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1040px); }
-    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 900px); }
-    .lc-checkin-dialog-host .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(300px, 1fr)); }
-}
-
-@media (min-width: 1450px) {
-    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1180px); }
-    .lc-checkin-dialog-host .lc-checkin__group-items { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
-}
+/* 弹窗内容列宽改由「弹窗自身宽度」的容器查询决定（见文件后部 lc-dialog 阶梯）。
+   旧版写成 @media (min-width) 且置于 700px 基础上限之前，同特异性被后置规则覆盖成死规则，
+   实测 1845px 弹窗内容列只有 542px、恒为单列。 */
 
 @container lc-checkin (min-width: 1180px) {
     .lc-checkin--today {
@@ -912,6 +905,34 @@
     }
 }
 
+/* 桌面弹窗窗口化：标题区拖动移动、八向手柄缩放（P0 桌面端体验）。
+   手柄只在桌面绑定（mobile 不生成），全屏时由 JS 交还宿主尺寸控制。 */
+.lc-checkin-dialog--framed {
+    position: relative;
+}
+
+.lc-checkin-dialog--framed .lc-checkin__header,
+.lc-checkin-dialog--framed .lc-checkin__editor-header { cursor: grab; }
+
+.lc-checkin-dialog--framed .lc-checkin__header:active,
+.lc-checkin-dialog--framed .lc-checkin__editor-header:active { cursor: grabbing; }
+
+.lc-checkin-dialog__resize-handle { position: absolute; z-index: 14; }
+
+.lc-checkin-dialog__resize-handle.is-n { top: -3px; right: 14px; left: 14px; height: 8px; cursor: ns-resize; }
+.lc-checkin-dialog__resize-handle.is-s { right: 14px; bottom: -3px; left: 14px; height: 8px; cursor: ns-resize; }
+.lc-checkin-dialog__resize-handle.is-e { top: 14px; right: -3px; bottom: 14px; width: 8px; cursor: ew-resize; }
+.lc-checkin-dialog__resize-handle.is-w { top: 14px; bottom: 14px; left: -3px; width: 8px; cursor: ew-resize; }
+.lc-checkin-dialog__resize-handle.is-ne { top: -3px; right: -3px; width: 16px; height: 16px; cursor: nesw-resize; }
+.lc-checkin-dialog__resize-handle.is-nw { top: -3px; left: -3px; width: 16px; height: 16px; cursor: nwse-resize; }
+.lc-checkin-dialog__resize-handle.is-se { right: -3px; bottom: -3px; width: 16px; height: 16px; cursor: nwse-resize; }
+.lc-checkin-dialog__resize-handle.is-sw { bottom: -3px; left: -3px; width: 16px; height: 16px; cursor: nesw-resize; }
+
+/* 全屏态不提供窗体手柄 */
+.lc-checkin-dialog--fullscreen .lc-checkin-dialog__resize-handle { display: none; }
+.lc-checkin-dialog--fullscreen .lc-checkin__header,
+.lc-checkin-dialog--fullscreen .lc-checkin__editor-header { cursor: default; }
+
 .lc-checkin-dialog-host {
     width: 100%;
     height: 100%;
@@ -941,6 +962,36 @@
     [data-action="open-tab"] {
         display: inline-flex;
     }
+}
+
+/* 桌面弹窗内容列宽阶梯：以「弹窗容器宽度」为准，放宽窗口不再只放大空白。
+   必须置于上方 700px 基础上限之后，否则同特异性会被覆盖（历史 bug）。
+   列宽与今日货架的 auto-fill 最小卡宽 390px 配合：1040 → 2 列、1440 → 3 列、1820 → 4 列。 */
+.lc-checkin-dialog-host { container: lc-dialog / inline-size; }
+
+@container lc-dialog (min-width: 1000px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1040px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1040px); }
+    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 900px); }
+}
+
+@container lc-dialog (min-width: 1400px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1400px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1400px); }
+    .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 960px); }
+}
+
+@container lc-dialog (min-width: 2000px) {
+    .lc-checkin-dialog-host .lc-checkin__layout { max-width: 1780px; }
+    .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 1780px); }
+}
+
+/* 桌面端左 rail 已经承担导航，非编辑器页面的「‹ 返回」是手机逻辑残留：容器够宽时隐藏。
+   窄容器（侧栏 dock / 手机）保持原样，编辑器保留返回（它是从今日页进入的子流程）。
+   注意：.lc-checkin 上生效的容器名是 lc5（tokens.scss 的 container 简写覆盖了 container-name），
+   写 @container lc-checkin 会是死规则。 */
+@container lc5 (min-width: 900px) {
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__back-button { display: none; }
 }
 
 .lc-checkin-dialog-host--mobile {

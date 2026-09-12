@@ -4,6 +4,7 @@ import {t} from "./i18n";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, sortCheckinItems} from "./model";
 import {serializeCsv, serializeJson} from "./export";
 import {currentCalendarDate, captureActionMoment} from "./shared";
+import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 
@@ -55,13 +56,7 @@ export function getQuickTodayItems(store: CheckinStore): CheckinItem[] {
 
 export function bindDialogCloseFor(host: PluginOpsHost, root: HTMLElement): void {
     root.querySelector<HTMLElement>("[data-action='close-dialog']")?.addEventListener("click", () => host.closeQuickDialog());
-    root.querySelector<HTMLElement>("[data-action='toggle-fullscreen']")?.addEventListener("click", () => {
-        const container = host.quickDialog?.element.querySelector<HTMLElement>(".b3-dialog__container");
-        if (!container) return;
-        host.quickDialogFullscreen = !host.quickDialogFullscreen;
-        container.classList.toggle("lc-checkin-dialog--fullscreen", host.quickDialogFullscreen);
-        host.renderInto(root);
-    });
+    root.querySelector<HTMLElement>("[data-action='toggle-fullscreen']")?.addEventListener("click", () => toggleQuickDialogFullscreenFor(host as unknown as QuickDialogHost, root));
 }
 
 export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {

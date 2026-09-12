@@ -142,6 +142,8 @@ export default class CheckinPlugin extends Plugin {
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
     private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
     private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
+    private dialogRect?: {width: number; height: number} = DEFAULT_VIEW_PREFERENCES.dialogRect;
+    private dialogOffset?: {x: number; y: number} = DEFAULT_VIEW_PREFERENCES.dialogOffset;
 
     /* "跟随思源" must resolve against the host theme, otherwise the dark
        appearance overrides never activate (the attribute would stay "system"). */
@@ -189,6 +191,7 @@ export default class CheckinPlugin extends Plugin {
     private collapsedTodayGroups = new Set<string>();
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
+    private reviewFoldTouched = false;
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -789,6 +792,7 @@ export default class CheckinPlugin extends Plugin {
             dialogSizeMode: this.dialogSizeMode,
             dialogScale: this.dialogScale,
             dialogFixedSize: {...this.dialogFixedSize},
+            dialogHasCustomFrame: Boolean(this.dialogRect || this.dialogOffset),
             resolvedAppearanceValue: this.resolvedAppearance(),
         });
     }
@@ -812,7 +816,7 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             }
         });
-        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}}); void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
@@ -866,18 +870,26 @@ export default class CheckinPlugin extends Plugin {
         const modeSelect = root.querySelector<HTMLSelectElement>("[data-setting-dialog-mode]");
         const scaleRow = root.querySelector<HTMLElement>("[data-dialog-scale-row]");
         const fixedRow = root.querySelector<HTMLElement>("[data-dialog-fixed-row]");
+        const resetRow = root.querySelector<HTMLElement>("[data-dialog-reset-row]");
         const syncDialogRows = () => {
             if (scaleRow) scaleRow.hidden = this.dialogSizeMode !== "percent";
             if (fixedRow) fixedRow.hidden = this.dialogSizeMode !== "fixed";
+            if (resetRow) resetRow.hidden = this.dialogSizeMode !== "auto" || (!this.dialogRect && !this.dialogOffset);
         };
         modeSelect?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
-            if (value === "percent" || value === "fullscreen" || value === "fixed") {
+            if (value === "auto" || value === "percent" || value === "fullscreen" || value === "fixed") {
                 this.dialogSizeMode = value;
                 syncDialogRows();
                 savePreference();
                 this.render();
             }
+        });
+        root.querySelector<HTMLElement>("[data-action='reset-dialog-frame']")?.addEventListener("click", () => {
+            this.dialogRect = undefined;
+            this.dialogOffset = undefined;
+            savePreference();
+            this.render();
         });
         root.querySelector<HTMLInputElement>("[data-setting-dialog-scale]")?.addEventListener("change", (event) => {
             const value = Number((event.currentTarget as HTMLInputElement).value);
@@ -1045,6 +1057,7 @@ export default class CheckinPlugin extends Plugin {
             historyOrder: this.historyOrder,
             heatmapYearOffset: this.heatmapYearOffset,
             reviewFoldSections: this.reviewFoldSections,
+            reviewFoldTouched: this.reviewFoldTouched,
             summaryRange: this.summaryRange,
             summaryCustomRange: this.summaryCustomRange,
             summaryText: this.summaryText,
@@ -1699,6 +1712,7 @@ export default class CheckinPlugin extends Plugin {
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
         this.reviewFoldSections = new Set(preferences.reviewFold);
+        this.reviewFoldTouched = preferences.reviewFoldTouched;
         this.insightsItemId = preferences.lastInsightsItemId;
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
@@ -1712,6 +1726,7 @@ export default class CheckinPlugin extends Plugin {
             completedCollapsed: this.completedCollapsed,
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
             reviewFold: [...this.reviewFoldSections],
+            reviewFoldTouched: this.reviewFoldTouched,
             lastInsightsItemId: this.insightsItemId,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
@@ -1723,6 +1738,8 @@ export default class CheckinPlugin extends Plugin {
             dialogScale: this.dialogScale,
             palette: this.palette,
             dialogFixedSize: {...this.dialogFixedSize},
+            dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
+            dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

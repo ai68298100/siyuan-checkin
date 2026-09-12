@@ -708,6 +708,13 @@
 @container lc5 (min-width: 880px) {
     .lc-checkin__review-layout { grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); align-items: start; }
 }
+/* 宽窗口把次要区块排成两列：折叠时也不再是一条条堆叠，首屏信息密度接近桌面仪表盘 */
+.lc-checkin__review-sections { display: grid; gap: 14px; }
+@container lc5 (min-width: 1180px) {
+    .lc-checkin__review-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    .lc-checkin__review-sections > .lc-checkin__year-heatmap,
+    .lc-checkin__review-sections > [data-review-fold="trend"] { grid-column: 1 / -1; }
+}
 .lc-checkin__review-calendar,
 .lc-checkin__review-detail { display: grid; gap: 10px; min-width: 0; }
 
@@ -880,11 +887,28 @@
 
 /* ---------------- occasions page ---------------- */
 .lc-checkin--occasions .lc-checkin__occasion-manager { display: grid; gap: 14px; }
-@container lc5 (min-width: 880px) {
-    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+/* 桌面主从布局：列表在左（可扫读、定宽），表单在右（工作区、吃满剩余）。
+   窄容器保持单列堆叠（表单在前，列表在后），不做等宽双栏——等宽会把列表行压成竖条。
+   阈值按容器内容盒（.lc-checkin 有 24px 横内边距）取 900，覆盖 948px 以上的宿主。 */
+@container lc5 (min-width: 900px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+        align-items: start;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel { grid-row: 1; grid-column: 1; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { grid-row: 1; grid-column: 2; }
 }
 .lc-checkin__occasion-form-panel,
 .lc-checkin__occasion-list-panel { padding: 14px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
+.lc-checkin__occasion-row-actions { display: flex; gap: 4px; align-items: center; justify-self: end; }
+/* 窄列表列：操作钮换到第二行，名称/元信息不再被挤成两三个字 */
+@container lc5 (min-width: 900px) and (max-width: 1399px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 30px minmax(0, 1fr);
+        row-gap: 6px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__occasion-row-actions { grid-row: 2; grid-column: 1 / -1; }
+}
 .lc-checkin__section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .lc-checkin__section-heading > div { display: grid; gap: 2px; min-width: 0; }
 .lc-checkin__section-kicker { color: var(--lc-checkin-muted); font-size: 10px; font-weight: 620; letter-spacing: .04em; text-transform: uppercase; }
@@ -1446,12 +1470,8 @@
     box-shadow: var(--lc-checkin-shadow-lg);
 }
 
-/* 日期事项：宽容器下表单栏定宽、列表吃满剩余空间 */
-@container lc5 (min-width: 880px) {
-    .lc-checkin--occasions .lc-checkin__occasion-manager {
-        grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
-    }
-}
+/* 日期事项：宽容器下的主从列宽由上方 occasions 阶梯统一负责（旧版此处另有一条 880px
+   等宽/460px 定宽规则，与阶梯重复且靠后覆盖，已合并删除）。 */
 
 /* 设置：宽容器下分类栏稍宽，卡片吃满 */
 @container lc5 (min-width: 820px) {

@@ -24,6 +24,7 @@ export interface BindTodayHost {
     heatmapYearOffset: number;
     collapsedTodayGroups: Set<string>;
     reviewFoldSections: Set<string>;
+    reviewFoldTouched: boolean;
     focusTimerRoot?: HTMLElement;
     pendingAttachments: Map<string, string>;
     bindDialogClose(root: HTMLElement): void;
@@ -111,6 +112,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const id = details.dataset.reviewFold || "";
         if (details.open) host.reviewFoldSections.add(id);
         else host.reviewFoldSections.delete(id);
+        host.reviewFoldTouched = true;
         void host.persistViewPreferences();
     }));
     root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => host.showSummary());

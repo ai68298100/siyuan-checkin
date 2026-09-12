@@ -11,6 +11,8 @@ export interface QuickDialogHost {
     dialogSizeMode: DialogSizeMode;
     dialogScale: number;
     dialogFixedSize: {width: number; height: number};
+    dialogRect?: {width: number; height: number};
+    dialogOffset?: {x: number; y: number};
     currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     editingId?: string;
     editingFingerprint?: string;
@@ -18,6 +20,7 @@ export interface QuickDialogHost {
     quickDialogElement?: HTMLElement;
     quickDialogFullscreen: boolean;
     quickDialogViewportCleanup?: () => void;
+    quickDialogFrameCleanup?: () => void;
     mobileTopBarButton?: HTMLElement;
     mobileTopBarRetryTimer?: number;
     speedSwitchQuickActionDisposers: Array<() => void>;
@@ -26,11 +29,27 @@ export interface QuickDialogHost {
     render(): void;
     renderInto(root: HTMLElement): void;
     reconcileStore(): Promise<void>;
+    persistViewPreferences(): Promise<void>;
+}
+
+/** Content-driven default: a fixed reading width beats scaling blank margins with the window. */
+export const AUTO_DIALOG_MIN_WIDTH = 760;
+export const AUTO_DIALOG_MAX_WIDTH = 1440;
+export const AUTO_DIALOG_WIDTH_RATIO = 0.62;
+export const AUTO_DIALOG_HEIGHT_RATIO = 0.88;
+
+export function autoDialogWidth(viewportWidth: number): number {
+    return Math.round(Math.min(AUTO_DIALOG_MAX_WIDTH, Math.max(AUTO_DIALOG_MIN_WIDTH, viewportWidth * AUTO_DIALOG_WIDTH_RATIO)));
 }
 
 export function quickDialogSizeOf(host: QuickDialogHost): {width: string; height: string} {
     if (host.dialogSizeMode === "fullscreen") return {width: "100vw", height: "100vh"};
     if (host.dialogSizeMode === "fixed") return {width: `${host.dialogFixedSize.width}px`, height: `${host.dialogFixedSize.height}px`};
+    if (host.dialogSizeMode === "auto") {
+        const width = host.dialogRect?.width ?? autoDialogWidth(window.innerWidth);
+        const height = host.dialogRect?.height ?? Math.round(window.innerHeight * AUTO_DIALOG_HEIGHT_RATIO);
+        return {width: `${width}px`, height: `${height}px`};
+    }
     const scale = Math.min(100, Math.max(50, host.dialogScale)) / 100;
     const width = Math.round(window.innerWidth * scale);
     const height = Math.round(window.innerHeight * scale);
@@ -90,7 +109,149 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     host.quickDialogElement = root;
     host.quickDialogFullscreen = false;
     bindQuickDialogViewportFor(host, dialog);
+    bindQuickDialogFrameFor(host, dialog);
     host.renderInto(root);
+}
+
+const FRAME_MIN_WIDTH = 520;
+const FRAME_MIN_HEIGHT = 400;
+const RESIZE_EDGES = ["n", "s", "e", "w", "ne", "nw", "se", "sw"] as const;
+type ResizeEdge = typeof RESIZE_EDGES[number];
+
+/* 桌面端把弹窗当窗口对待：标题区拖动、八向手柄缩放、双击标题最大化。
+   任意一次拖动/缩放都会切到 "auto" 模式并记住尺寸与位置，符合"调过一次就保持"的桌面直觉。 */
+export function bindQuickDialogFrameFor(host: QuickDialogHost, dialog: Dialog): void {
+    if (host.isMobileFrontend) return;
+    const container = dialog.element.querySelector<HTMLElement>(".b3-dialog__container");
+    if (!container) return;
+    container.classList.add("lc-checkin-dialog--framed");
+    let width = Math.round(container.getBoundingClientRect().width) || autoDialogWidth(window.innerWidth);
+    let height = Math.round(container.getBoundingClientRect().height) || Math.round(window.innerHeight * AUTO_DIALOG_HEIGHT_RATIO);
+    let offsetX = host.dialogOffset?.x ?? 0;
+    let offsetY = host.dialogOffset?.y ?? 0;
+
+    const apply = () => {
+        if (host.quickDialog !== dialog) return;
+        if (host.quickDialogFullscreen) {
+            container.style.width = "";
+            container.style.height = "";
+            container.style.transform = "";
+            return;
+        }
+        container.style.width = `${width}px`;
+        container.style.height = `${height}px`;
+        container.style.transform = offsetX || offsetY ? `translate(${offsetX}px, ${offsetY}px)` : "";
+    };
+    const persist = () => {
+        host.dialogRect = {width: Math.round(width), height: Math.round(height)};
+        host.dialogOffset = offsetX || offsetY ? {x: Math.round(offsetX), y: Math.round(offsetY)} : undefined;
+        host.dialogSizeMode = "auto";
+        void host.persistViewPreferences();
+    };
+    const maxWidth = () => Math.max(FRAME_MIN_WIDTH, window.innerWidth - 24);
+    const maxHeight = () => Math.max(FRAME_MIN_HEIGHT, window.innerHeight - 24);
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+    apply();
+
+    let drag: {pointerX: number; pointerY: number; startX: number; startY: number} | undefined;
+    const onDragMove = (event: PointerEvent) => {
+        if (!drag) return;
+        offsetX = Math.round(drag.startX + event.clientX - drag.pointerX);
+        offsetY = Math.round(drag.startY + event.clientY - drag.pointerY);
+        apply();
+    };
+    const onDragEnd = () => {
+        if (!drag) return;
+        drag = undefined;
+        window.removeEventListener("pointermove", onDragMove);
+        window.removeEventListener("pointerup", onDragEnd);
+        window.removeEventListener("pointercancel", onDragEnd);
+        persist();
+    };
+    const header = container.querySelector<HTMLElement>(".lc-checkin__header, .lc-checkin__editor-header, .lc-checkin__settings-header");
+    const isInteractive = (target: EventTarget | null) => Boolean((target as HTMLElement | null)?.closest?.("button, input, select, textarea, a, label, [role='button'], [contenteditable='true']"));
+    const onHeaderDown = (event: PointerEvent) => {
+        if (host.quickDialogFullscreen || event.button !== 0 || isInteractive(event.target)) return;
+        drag = {pointerX: event.clientX, pointerY: event.clientY, startX: offsetX, startY: offsetY};
+        window.addEventListener("pointermove", onDragMove);
+        window.addEventListener("pointerup", onDragEnd);
+        window.addEventListener("pointercancel", onDragEnd);
+        event.preventDefault();
+    };
+    const onHeaderDoubleClick = (event: MouseEvent) => {
+        if (isInteractive(event.target)) return;
+        toggleQuickDialogFullscreenFor(host);
+    };
+    header?.addEventListener("pointerdown", onHeaderDown);
+    header?.addEventListener("dblclick", onHeaderDoubleClick);
+
+    const handles: HTMLElement[] = [];
+    const onResizeDown = (edge: ResizeEdge) => (event: PointerEvent) => {
+        if (host.quickDialogFullscreen || event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const start = {pointerX: event.clientX, pointerY: event.clientY, width, height, offsetX, offsetY};
+        const onMove = (move: PointerEvent) => {
+            const dx = move.clientX - start.pointerX;
+            const dy = move.clientY - start.pointerY;
+            if (edge.includes("e")) width = clamp(start.width + dx, FRAME_MIN_WIDTH, maxWidth());
+            if (edge.includes("s")) height = clamp(start.height + dy, FRAME_MIN_HEIGHT, maxHeight());
+            if (edge.includes("w")) {
+                const next = clamp(start.width - dx, FRAME_MIN_WIDTH, maxWidth());
+                offsetX = start.offsetX + (start.width - next);
+                width = next;
+            }
+            if (edge.includes("n")) {
+                const next = clamp(start.height - dy, FRAME_MIN_HEIGHT, maxHeight());
+                offsetY = start.offsetY + (start.height - next);
+                height = next;
+            }
+            apply();
+        };
+        const onEnd = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onEnd);
+            window.removeEventListener("pointercancel", onEnd);
+            persist();
+        };
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onEnd);
+        window.addEventListener("pointercancel", onEnd);
+    };
+    RESIZE_EDGES.forEach((edge) => {
+        const handle = document.createElement("div");
+        handle.className = `lc-checkin-dialog__resize-handle is-${edge}`;
+        handle.dataset.resizeEdge = edge;
+        handle.setAttribute("aria-hidden", "true");
+        handle.addEventListener("pointerdown", onResizeDown(edge));
+        container.appendChild(handle);
+        handles.push(handle);
+    });
+
+    /* 全屏切换由其他入口改写 class，这里跟随同步（全屏时交还宿主尺寸控制）。 */
+    const observer = new MutationObserver(() => apply());
+    observer.observe(container, {attributes: true, attributeFilter: ["class"]});
+
+    host.quickDialogFrameCleanup = () => {
+        observer.disconnect();
+        header?.removeEventListener("pointerdown", onHeaderDown);
+        header?.removeEventListener("dblclick", onHeaderDoubleClick);
+        handles.forEach((handle) => handle.remove());
+        window.removeEventListener("pointermove", onDragMove);
+        window.removeEventListener("pointerup", onDragEnd);
+        window.removeEventListener("pointercancel", onDragEnd);
+        container.style.transform = "";
+    };
+}
+
+/** 全屏/还原的唯一实现：按钮与双击标题共用，保证两边尺寸与手柄状态一致。 */
+export function toggleQuickDialogFullscreenFor(host: QuickDialogHost, root?: HTMLElement): void {
+    const container = host.quickDialog?.element.querySelector<HTMLElement>(".b3-dialog__container");
+    if (!container) return;
+    host.quickDialogFullscreen = !host.quickDialogFullscreen;
+    container.classList.toggle("lc-checkin-dialog--fullscreen", host.quickDialogFullscreen);
+    if (root) host.renderInto(root);
 }
 
 export function closeQuickDialogFor(host: QuickDialogHost): void {
@@ -106,6 +267,8 @@ export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dia
     if (host.quickDialog !== dialog) return;
     host.quickDialogViewportCleanup?.();
     host.quickDialogViewportCleanup = undefined;
+    host.quickDialogFrameCleanup?.();
+    host.quickDialogFrameCleanup = undefined;
     host.quickDialog = undefined;
     host.quickDialogElement = undefined;
     host.quickDialogFullscreen = false;

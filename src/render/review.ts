@@ -24,6 +24,7 @@ export interface ReviewViewContext {
     historyOrder: HistorySortOrder;
     heatmapYearOffset: number;
     reviewFoldSections: Set<string>;
+    reviewFoldTouched: boolean;
     summaryRange: SummaryRange;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
@@ -145,9 +146,12 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const generated = ctx.summaryText ? `<div class="lc-checkin__summary-text">${escapeHtml(ctx.summaryText)}</div>` : "";
     const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!ctx.summaryCustomRange && ctx.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
     const custom = `<details class="lc-checkin__custom-range-disclosure" ${ctx.summaryCustomRange ? "open" : ""}><summary>${ctx.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(ctx.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(ctx.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
+    /* 宽窗口首屏给出信息：趋势与打卡日志默认展开；用户一旦手动折叠过就完全尊重其选择（T-011 的
+       手机端"默认全折叠"在窄窗下保持不变，见 scss 里 review-sections 的单列规则）。 */
+    const wideDefaultOpen = typeof window !== "undefined" && window.innerWidth >= 1200 && !ctx.reviewFoldTouched;
     const fold = (id: string, title: string, body: string): string => {
         if (!body.trim()) return "";
-        const open = ctx.reviewFoldSections.has(id);
+        const open = ctx.reviewFoldSections.has(id) || (wideDefaultOpen && (id === "trend" || id === "log"));
         return `<details class="lc-checkin__review-fold" data-review-fold="${id}"${open ? " open" : ""}><summary><span>${title}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-fold-body">${body}</div></details>`;
     };
     return `<div class="lc-checkin lc-checkin--review" data-appearance="${ctx.appearance}">
@@ -174,6 +178,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                     <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${escapeHtml(formatHistoryDate(ctx.selectedHistoryDate))}</strong><span>${t("review.recordsCount", {n: filteredEvents.length})}</span></div>${details}</section>
                 </div>
             </div>
+            <div class="lc-checkin__review-sections">
             <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
                 <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
@@ -187,5 +192,6 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${fold("upcoming", t("review.foldUpcoming"), renderUpcomingOccasionsView(ctx.occasionStore))}
             ${generated}
             ${providerButton}
+            </div>
         </div>`;
 }
