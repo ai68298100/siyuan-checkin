@@ -2864,6 +2864,10 @@
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 12px; }
     .lc-checkin-dock-host .lc-checkin__group-items { gap: 8px; }
     .lc-checkin-dock-host .lc-checkin__item { min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__item-action { display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 6px; min-width: 150px; }
+    .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__item-body { min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
