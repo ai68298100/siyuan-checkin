@@ -33,6 +33,7 @@ export type AgentAnalysisMeta = {
 export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
 export const AGENT_ANALYSIS_CACHE_KEY = "agent-analysis-history.json";
 export const AGENT_ANALYSIS_MAX_TEXT_LENGTH = 200_000;
+export const AGENT_ANALYSIS_MAX_SNAPSHOTS = 20;
 
 /**
  * Produces a deterministic, line-oriented diff for read-only analysis comparison.
@@ -97,7 +98,7 @@ export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapsho
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
-    }).slice(-20);
+    }).slice(-AGENT_ANALYSIS_MAX_SNAPSHOTS);
 }
 
 export async function saveAnalysisSnapshot(saver: (key: string, value: unknown) => Promise<unknown>, key: string, history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot): Promise<AgentAnalysisSnapshot[]> {

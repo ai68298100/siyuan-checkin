@@ -24,6 +24,7 @@ assert.match(source, /loadAnalysisSnapshots/);
 assert.match(source, /normalizeAnalysisSnapshots/);
 assert.match(source, /return normalizeAnalysisSnapshots\(value\)/);
 assert.match(source, /AGENT_ANALYSIS_MAX_TEXT_LENGTH/);
+assert.match(source, /AGENT_ANALYSIS_MAX_SNAPSHOTS/);
 assert.match(source, /Date\.parse\(candidate\.generatedAt\)/);
 assert.match(source, /const seen = new Set<string>\(\)/);
 assert.match(source, /saveAnalysisSnapshot/);
