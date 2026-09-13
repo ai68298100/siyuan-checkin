@@ -3,6 +3,7 @@ const source = fs.readFileSync('src/features/reminder-projection.ts','utf8');
 assert.match(source,/reminderId/); assert.match(source,/sortReminders/); assert.match(source,/transitionReminder/); assert.match(source,/canTransitionReminder\(item\.status, status\)/);
 assert.match(source,/canTransitionReminder/); assert.match(source,/from === "completed"/); assert.match(source,/createReminderTransition/);
 assert.match(source,/normalizeReminderTransitions/); assert.match(source,/Math\.min\(500/);
+assert.match(source,/serializeReminderTransitions/); assert.match(source,/deserializeReminderTransitions/);
 assert.match(source,/projectOccasionReminder/); assert.match(source,/projectScheduleReminder/);
 assert.match(source,/filterReminders/); assert.match(source,/options\.from/); assert.match(source,/options\.to/);
 assert.match(source,/summarizeReminders/); assert.match(source,/pending: 0/);
