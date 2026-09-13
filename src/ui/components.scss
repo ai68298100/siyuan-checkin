@@ -2824,6 +2824,13 @@
     /* 侧边栏空间宝贵：备份提醒常驻会占掉一整行，收进提示气泡 */
     .lc-checkin-dock-host .lc-checkin__backup-reminder { display: none; }
 }
+@container lc-dock (max-width: 320px) {
+    .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
+    .lc-checkin-dock-host .lc-checkin__item { grid-template-columns: 30px minmax(0, 1fr); gap: 5px; padding: 6px; }
+    .lc-checkin-dock-host .lc-checkin__item-icon { width: 30px; height: 30px; font-size: 16px; }
+    .lc-checkin-dock-host .lc-checkin__item-action button { font-size: 11px; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { font-size: 9px; }
+}
 
 /* ============================================================
    事项页（T-029）：
