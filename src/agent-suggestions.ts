@@ -83,12 +83,19 @@ export async function loadAnalysisSnapshots(loader: (key: string) => Promise<unk
 
 export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapshot[] {
     if (!Array.isArray(value)) return [];
-    return value.filter((entry): entry is AgentAnalysisSnapshot => {
+    const valid = value.filter((entry): entry is AgentAnalysisSnapshot => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<AgentAnalysisSnapshot>;
         return typeof candidate.text === "string" && candidate.text.length <= 200_000 && typeof candidate.asOf === "string" &&
             /^(day|week|month|custom)$/.test(String(candidate.range)) && /^(local|agent)$/.test(String(candidate.source)) &&
             typeof candidate.generatedAt === "string" && !Number.isNaN(Date.parse(candidate.generatedAt));
+    });
+    const seen = new Set<string>();
+    return valid.filter((entry) => {
+        const key = `${entry.asOf}|${entry.range}|${entry.source}|${entry.generatedAt}|${entry.text}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
     }).slice(-20);
 }
 

@@ -25,6 +25,7 @@ assert.match(source, /normalizeAnalysisSnapshots/);
 assert.match(source, /return normalizeAnalysisSnapshots\(value\)/);
 assert.match(source, /200_000/);
 assert.match(source, /Date\.parse\(candidate\.generatedAt\)/);
+assert.match(source, /const seen = new Set<string>\(\)/);
 assert.match(source, /saveAnalysisSnapshot/);
 assert.match(source, /AGENT_ANALYSIS_CACHE_KEY/);
 assert.match(source, /source: "local" \| "agent"/);
