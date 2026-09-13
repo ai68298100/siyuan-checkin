@@ -12,4 +12,6 @@ assert.match(source, /error\.slice\(0, 160\)/);
 assert.match(source, /ALLOWED_CHANGE_FIELDS/);
 assert.match(source, /slice\(0, 50\)/);
 assert.match(source, /formatSuggestionChange/);
+assert.match(source, /renderSuggestionChanges/);
+assert.match(source, /escapeSuggestionHtml/);
 console.log('Agent suggestion safety structure checks passed.');

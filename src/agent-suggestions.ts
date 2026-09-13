@@ -60,3 +60,12 @@ export function formatSuggestionChange(change: AgentSuggestionChange): string {
     const after = change.after === undefined || change.after === null ? "未设置" : String(change.after);
     return `${change.field}: ${before} → ${after}`;
 }
+
+function escapeSuggestionHtml(value: string): string {
+    return value.replace(/[&<>"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char] || char));
+}
+
+export function renderSuggestionChanges(changes: readonly AgentSuggestionChange[]): string {
+    if (!changes.length) return "<p class=\"lc-agent-suggestion-empty\">暂无可执行变更</p>";
+    return `<ul class=\"lc-agent-suggestion-changes\">${changes.map((change) => `<li><code>${escapeSuggestionHtml(String(change.field))}</code><span>${escapeSuggestionHtml(formatSuggestionChange(change))}</span></li>`).join("")}</ul>`;
+}
