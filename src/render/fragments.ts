@@ -7,6 +7,8 @@ import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseL
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
 import {uiIcon} from "../ui/icons";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
+import {selectPriorityReminders} from "../features/priority-reminder";
+import {projectReminderCenter, type ReminderUserAction} from "../reminders";
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinEvent, CheckinItem, CheckinItemSortMode, CheckinPriority, CheckinStore, CheckinTimeSlot} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -36,6 +38,7 @@ export interface TodayViewContext extends TodayItemContext {
     reducedMotion: boolean;
     bestStreakItem?: CheckinItem;
     bestStreakValue: number;
+    reminderUserActions?: ReminderUserAction[];
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -71,6 +74,16 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
             </div>
             <button class="lc-checkin__text-button" type="button" data-action="occasions">${t("common.manage")}</button>
         </section>`;
+}
+
+export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): string {
+    const entry = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions))[0];
+    if (!entry) return "";
+    const overdue = entry.status === "overdue";
+    const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
+    const timing = overdue ? t("today.priorityOverdue") : t("today.priorityToday");
+    const action = entry.source === "checkin" ? t("today.priorityOpen") : t("today.priorityOccasion");
+    return `<section class="lc-checkin__priority-reminder is-${entry.status}" data-priority-reminder data-priority-source="${entry.source}" data-priority-id="${escapeHtml(entry.sourceId)}" role="status" aria-live="polite"><span class="lc-checkin__priority-reminder-mark" aria-hidden="true">${overdue ? "!" : "→"}</span><div><small>${escapeHtml(t("today.priorityTitle"))} · ${escapeHtml(source)}</small><strong>${escapeHtml(entry.title)}</strong><span>${escapeHtml(timing)}</span></div><button type="button" class="lc-checkin__text-button" data-priority-reminder-action aria-label="${escapeHtml(t("today.priorityActionAria", {name: entry.title}))}">${escapeHtml(action)}</button></section>`;
 }
 
 export function renderSaveStatusView(state: SaveState): string {
@@ -293,6 +306,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.reducedMotion);
     const saveStatus = renderSaveStatusView(ctx.saveState);
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
+    const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || []);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
     return `<div class="lc-checkin lc-checkin--today" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">
@@ -310,6 +324,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
             ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="${t("today.weekStripAria")}">${weekStrip}</section>` : ""}
             ${saveStatus}
+            ${priorityReminder}
             ${occasionIsToday ? occasionBanner : ""}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>

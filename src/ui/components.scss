@@ -1064,6 +1064,15 @@
 .lc-checkin__summary-text { margin-top: 12px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 28%, var(--lc-checkin-border)); border-radius: var(--lc-checkin-radius-lg); background: linear-gradient(135deg,var(--lc-checkin-lilac-soft),var(--lc-checkin-surface)); color: var(--lc-checkin-text); font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; }
 .lc-checkin__summary-text small { display:block; margin-bottom:6px; color:var(--lc-checkin-accent-text); font-size:10px; font-weight:700; letter-spacing:.02em; }
 .lc-checkin__summary-text.is-local { border-style: dashed; background: var(--lc-checkin-muted-surface); }
+.lc-checkin__priority-reminder { display:flex; align-items:center; gap:10px; margin:10px 0 12px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--lc-checkin-accent) 26%,var(--lc-checkin-border)); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-lilac-soft); }
+.lc-checkin__priority-reminder-mark { display:grid; place-items:center; flex:0 0 24px; width:24px; height:24px; border-radius:50%; color:var(--lc-checkin-accent-contrast); background:var(--lc-checkin-accent); font-weight:800; }
+.lc-checkin__priority-reminder.is-overdue { border-color:color-mix(in srgb,var(--lc-checkin-danger) 38%,var(--lc-checkin-border)); background:color-mix(in srgb,var(--lc-checkin-danger) 7%,var(--lc-checkin-surface)); }
+.lc-checkin__priority-reminder.is-overdue .lc-checkin__priority-reminder-mark { background:var(--lc-checkin-danger); }
+.lc-checkin__priority-reminder > div { display:grid; min-width:0; flex:1; gap:1px; }
+.lc-checkin__priority-reminder small { color:var(--lc-checkin-muted); font-size:10px; }
+.lc-checkin__priority-reminder strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+.lc-checkin__priority-reminder span:not(.lc-checkin__priority-reminder-mark) { color:var(--lc-checkin-muted); font-size:11px; }
+@container lc5 (max-width: 520px) { .lc-checkin__priority-reminder { margin-inline:0; } .lc-checkin__priority-reminder .lc-checkin__text-button { flex:0 0 auto; } }
 
 /* ---------------- occasions page ---------------- */
 .lc-checkin--occasions .lc-checkin__occasion-manager { display: grid; gap: 14px; }

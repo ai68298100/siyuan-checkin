@@ -1236,6 +1236,7 @@ export default class CheckinPlugin extends Plugin {
             supportsCustomTab: this.supportsCustomTab,
             appearance: this.resolvedAppearance(),
             reducedMotion: this.reducedMotion,
+            reminderUserActions: this.reminderUserActions,
         });
     }
 
