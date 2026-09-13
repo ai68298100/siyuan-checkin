@@ -2897,6 +2897,11 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__quick-recent { max-height: 34vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-items { gap: 6px; }
 }
+@container lc-dock (min-width: 901px) {
+    .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 16px; }
+    .lc-checkin-dock-host .lc-checkin__group-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .lc-checkin-dock-host .lc-checkin__item { min-width: 0; }
+}
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
     .lc-checkin-dock-host .lc-checkin__item { grid-template-columns: 30px minmax(0, 1fr); gap: 5px; padding: 6px; }
