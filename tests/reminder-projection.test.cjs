@@ -44,6 +44,7 @@ assert.match(source,/parseReminderMigrationConfirmationToken/); assert.match(sou
 assert.match(source,/summarizeReminderMigrationToken/); assert.match(source,/无效迁移确认令牌/);
 assert.match(source,/ReminderTokenAudit/); assert.match(source,/createReminderTokenAudit/);
 assert.match(source,/normalizeReminderTokenAudits/); assert.match(source,/Math\.min\(500/);
+assert.match(source,/serializeReminderTokenAudits/); assert.match(source,/deserializeReminderTokenAudits/);
 assert.match(source,/serializeReminderMigrationDiagnostic/); assert.match(source,/reason: reminderMigrationRiskReason/);
 assert.match(source,/deserializeReminderMigrationDiagnostic/); assert.match(source,/slice\(0, 300\)/);
 assert.match(source,/parsed\.risk !== risk/); assert.match(source,/parsed\.reason !== reason/);
