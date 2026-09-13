@@ -27,6 +27,7 @@ assert.match(source,/formatReminderMigrationDiagnostic/); assert.match(source,/�
 assert.match(source,/reminderMigrationDelta/); assert.match(source,/Math\.floor\(beforeCount\)/);
 assert.match(source,/formatReminderMigrationDelta/); assert.match(source,/提醒数量未变化/);
 assert.match(source,/formatReminderMigrationImpact/); assert.match(source,/无风险/);
+assert.match(source,/ReminderMigrationImpact/); assert.match(source,/summarizeReminderMigrationImpact/);
 assert.match(source,/serializeReminderMigrationDiagnostic/); assert.match(source,/reason: reminderMigrationRiskReason/);
 assert.match(source,/deserializeReminderMigrationDiagnostic/); assert.match(source,/slice\(0, 300\)/);
 assert.match(source,/parsed\.risk !== risk/); assert.match(source,/parsed\.reason !== reason/);
