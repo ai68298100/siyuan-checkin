@@ -2830,6 +2830,10 @@
     .lc-checkin-dock-host .lc-checkin__item-icon { width: 30px; height: 30px; font-size: 16px; }
     .lc-checkin-dock-host .lc-checkin__item-action button { font-size: 11px; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { font-size: 9px; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
+    .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: 1fr; gap: 5px; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { padding-inline: 6px; font-size: 11px; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { gap: 3px; }
 }
 
 /* ============================================================
