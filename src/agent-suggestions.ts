@@ -25,6 +25,7 @@ export type AgentAnalysisMeta = {
 };
 
 export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
+export const AGENT_ANALYSIS_CACHE_KEY = "agent-analysis-history.json";
 
 export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot, limit = 5): AgentAnalysisSnapshot[] {
     const safeLimit = Math.max(1, Math.min(20, Math.floor(limit)));
