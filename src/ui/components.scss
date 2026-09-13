@@ -2913,6 +2913,9 @@
     .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr) minmax(160px, 45%); gap: 12px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-list { gap: 9px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; max-height: 220px; overflow: auto; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__advanced-content { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
