@@ -872,6 +872,18 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* 桌面回顾月历采用紧凑行高，避免 6 周网格占满首屏；移动端仍使用
+   原有触控尺寸规则。 */
+@container lc5 (min-width: 900px) {
+    .lc-checkin--history .lc-checkin__calendar-day {
+        min-height: 34px;
+        padding: 3px 2px;
+        border-radius: 8px;
+        font-size: 11px;
+    }
+    .lc-checkin--history .lc-checkin__calendar-day b { right: 3px; bottom: 2px; font-size: 9px; }
+}
 .lc-checkin__calendar-day:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--lc-checkin-shadow-sm); }
 .lc-checkin__calendar-day:disabled { opacity: .38; cursor: default; }
 .lc-checkin__calendar-day.is-level-1 { background: var(--lc-checkin-warm-soft); }
