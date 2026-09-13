@@ -2714,6 +2714,12 @@
 }
 
 @container lc-dock (max-width: 719px) {
+    .lc-checkin--today .lc-checkin__header { min-height: 44px; margin-bottom: 6px; padding: 4px 36px 4px 0; align-items: center; }
+    .lc-checkin--today .lc-checkin__item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; min-width: 0; padding: 8px; }
+    .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; flex-basis: 34px; }
+    .lc-checkin--today .lc-checkin__item-body { min-width: 0; padding-left: 4px; }
+    .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; min-width: 0; width: 100%; margin-top: 4px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; flex: 1 1 auto; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav {
         display: grid;
         grid-template-columns: repeat(6, minmax(0, 1fr));
