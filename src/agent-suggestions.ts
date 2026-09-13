@@ -54,3 +54,9 @@ export function normalizeSuggestionChanges(value: unknown, items: readonly Check
         return validIds.has(candidate.itemId) && ALLOWED_CHANGE_FIELDS.has(candidate.field) && !Object.is(candidate.before, candidate.after);
     }).slice(0, 50);
 }
+
+export function formatSuggestionChange(change: AgentSuggestionChange): string {
+    const before = change.before === undefined || change.before === null ? "未设置" : String(change.before);
+    const after = change.after === undefined || change.after === null ? "未设置" : String(change.after);
+    return `${change.field}: ${before} → ${after}`;
+}
