@@ -19,3 +19,9 @@ export function projectScheduleReminder(id: string, title: string, dueDate: stri
 export function filterReminders(items: readonly ReminderProjection[], options: {status?: ReminderStatus; source?: ReminderSource; from?: string; to?: string} = {}): ReminderProjection[] {
     return sortReminders(items.filter((item) => (!options.status || item.status === options.status) && (!options.source || item.source === options.source) && (!options.from || item.dueDate >= options.from) && (!options.to || item.dueDate <= options.to)));
 }
+
+export function summarizeReminders(items: readonly ReminderProjection[]): Record<ReminderStatus, number> {
+    const summary: Record<ReminderStatus, number> = {pending: 0, completed: 0, skipped: 0, snoozed: 0, overdue: 0};
+    items.forEach((item) => { summary[item.status] += 1; });
+    return summary;
+}
