@@ -2860,6 +2860,11 @@
     /* 侧边栏空间宝贵：备份提醒常驻会占掉一整行，收进提示气泡 */
     .lc-checkin-dock-host .lc-checkin__backup-reminder { display: none; }
 }
+@container lc-dock (min-width: 720px) and (max-width: 900px) {
+    .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 12px; }
+    .lc-checkin-dock-host .lc-checkin__group-items { gap: 8px; }
+    .lc-checkin-dock-host .lc-checkin__item { min-width: 0; }
+}
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
     .lc-checkin-dock-host .lc-checkin__item { grid-template-columns: 30px minmax(0, 1fr); gap: 5px; padding: 6px; }
