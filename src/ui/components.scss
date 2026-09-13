@@ -2722,6 +2722,9 @@
     .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__search-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin__item-action button { min-width: 0; padding-inline: 6px; font-size: 12px; }
+    .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin--today .lc-checkin__header { min-height: 44px; margin-bottom: 6px; padding: 4px 36px 4px 0; align-items: center; }
     .lc-checkin--today .lc-checkin__item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; min-width: 0; padding: 8px; }
     .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; flex-basis: 34px; }
