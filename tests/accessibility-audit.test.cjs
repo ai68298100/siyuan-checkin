@@ -19,7 +19,7 @@ function loadPlaywright() {
     throw new Error("Playwright is unavailable. Set CHECKIN_PLAYWRIGHT_MODULE to its module path.");
 }
 const {chromium} = loadPlaywright();
-const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || "D:/AI/Codex/siyuan-checkin";
+const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirname, "..");
 
 (async () => {
     const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});

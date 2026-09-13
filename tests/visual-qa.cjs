@@ -15,7 +15,7 @@ function loadPlaywright() {
 }
 const {chromium} = loadPlaywright();
 
-const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || "D:/AI/Codex/siyuan-checkin";
+const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirname, "..");
 const outputRoot = path.resolve(process.env.CHECKIN_QA_OUTPUT_ROOT || path.join(projectRoot, ".artifacts", "visual-qa"));
 fs.mkdirSync(outputRoot, {recursive: true});
 const initialWidth = Number(process.env.CHECKIN_QA_INITIAL_WIDTH || 420);

@@ -2,7 +2,7 @@
    full-screen, 80% dialog, medium, narrow-dock widths. */
 const fs = require("node:fs");
 const path = require("node:path");
-const {chromium} = require("C:/Users/sunku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+const {chromium} = require("playwright");
 
 const projectRoot = path.resolve(__dirname, "..");
 const outputRoot = path.join(projectRoot, ".artifacts", "width-walkthrough");
