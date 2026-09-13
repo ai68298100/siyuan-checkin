@@ -893,6 +893,7 @@
 .lc-agent-compare-diff li.is-added { color:var(--lc-checkin-success-text); background:color-mix(in srgb, var(--lc-checkin-success) 12%, transparent); }
 .lc-agent-compare-diff li.is-removed { color:var(--lc-checkin-danger-text); background:color-mix(in srgb, var(--lc-checkin-danger) 10%, transparent); }
 .lc-agent-compare-empty { margin:10px 0; color:var(--lc-checkin-muted); font-size:11px; }
+.lc-agent-compare-summary { margin:8px 0 4px; color:var(--lc-checkin-muted); font-size:11px; font-weight:650; }
 @container lc5 (max-width: 520px) { .lc-agent-compare-diff { max-height:180px; margin-inline:0; font-size:10px; } }
 .lc-agent-suggestion-impact { margin:10px 0 6px; padding:7px 9px; border-radius:8px; color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); font-size:11px; font-weight:650; }
 .lc-agent-compare-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }

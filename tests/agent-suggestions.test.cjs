@@ -39,4 +39,8 @@ assert.match(styles, /\.lc-agent-suggestion-changes/);
 assert.match(styles, /\.lc-agent-suggestion-empty/);
 assert.match(styles, /\.lc-agent-compare-diff/);
 assert.match(styles, /max-height:220px/);
+const diffPanel = fs.readFileSync('src/render/analysis-diff.ts', 'utf8');
+assert.match(diffPanel, /renderAnalysisDiffPanel/);
+assert.match(diffPanel, /新增/);
+assert.match(diffPanel, /aria-label="分析差异"/);
 console.log('Agent suggestion safety structure checks passed.');
