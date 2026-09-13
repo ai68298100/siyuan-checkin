@@ -70,8 +70,8 @@ assert.match(components, /@container lc5 \(min-width: 1180px\) \{\s*\.lc-checkin
     "wide review pages must lay their secondary sections out in two columns");
 assert.match(read("src", "render", "review.ts"), /const wideDefaultOpen = typeof window !== "undefined" && window\.innerWidth >= 1200 && !ctx\.reviewFoldTouched;/,
     "wide windows must open the two informative review sections by default");
-assert.match(read("src", "render", "review.ts"), /ctx\.reviewFoldSections\.has\(id\) \|\| \(wideDefaultOpen && \(id === "trend" \|\| id === "log"\)\)/,
-    "only trend and log are opened by the wide default");
+assert.match(read("src", "render", "review.ts"), /ctx\.reviewFoldSections\.has\(id\) \|\| \(wideDefaultOpen && \(id === "trend" \|\| id === "log" \|\| id === "projects" \|\| id === "reminders"\)\)/,
+    "wide windows open trend/log/projects/reminders by default");
 assert.match(read("src", "render", "bind-today.ts"), /host\.reviewFoldTouched = true;/, "a manual fold toggle must win over the wide default");
 assert.match(scss, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin:not\(\.lc-checkin--editor\) \.lc-checkin__back-button \{ display: none; \}/,
     "the desktop rail replaces the per-page back button");
