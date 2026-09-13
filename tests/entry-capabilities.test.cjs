@@ -30,6 +30,7 @@ assert.match(source, /addAgentCapability\?:/);
 assert.match(agentSource, /checkin-summary-context/);
 assert.match(agentSource, /checkin-action-suggestions/);
 assert.match(agentSource, /requiresConfirmation: true/);
+assert.match(agentSource, /changes: \[\]/);
 assert.match(agentSource, /checkin-list-items/);
 assert.match(agentSource, /checkin-item-insights/);
 assert.match(agentSource, /checkin-record-event/);

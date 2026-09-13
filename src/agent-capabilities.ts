@@ -50,7 +50,7 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             if (!context) return {error: "打卡数据尚未准备好。"};
             const weakest = [...context.items].sort((a, b) => a.completionRate - b.completionRate)[0];
             const suggestions = weakest ? [{type: "review", item: weakest.name, reason: `完成率 ${weakest.completionRate}%`, requiresConfirmation: true}] : [];
-            return {result: suggestions.length ? `建议优先复盘：${weakest!.name}。` : "当前没有明显需要优先处理的项目。", structuredContent: {range, suggestions, requiresConfirmation: true}};
+            return {result: suggestions.length ? `建议优先复盘：${weakest!.name}。` : "当前没有明显需要优先处理的项目。", structuredContent: {range, suggestions, changes: [], requiresConfirmation: true}};
         },
     });
     deps.addCapability({
