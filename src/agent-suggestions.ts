@@ -24,6 +24,13 @@ export type AgentAnalysisMeta = {
     generatedAt: string;
 };
 
+export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
+
+export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot, limit = 5): AgentAnalysisSnapshot[] {
+    const safeLimit = Math.max(1, Math.min(20, Math.floor(limit)));
+    return [...history, snapshot].slice(-safeLimit);
+}
+
 export function createAnalysisMeta(range: AgentAnalysisMeta["range"], source: AgentAnalysisMeta["source"], asOf: string, generatedAt = new Date().toISOString()): AgentAnalysisMeta {
     return {range, source, asOf, generatedAt};
 }
