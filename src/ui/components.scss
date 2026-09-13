@@ -2920,6 +2920,12 @@
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button { min-height: 46px; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { font-size: 10px; }
     .lc-checkin-dock-host > .lc-checkin { padding-bottom: 18px; }
+    .lc-checkin-dock-host .lc-checkin__history-list,
+    .lc-checkin-dock-host .lc-checkin__reminder-list { gap: 10px; }
+    .lc-checkin-dock-host .lc-checkin__history-row,
+    .lc-checkin-dock-host .lc-checkin__reminder-row { min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__history-row strong,
+    .lc-checkin-dock-host .lc-checkin__reminder-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
