@@ -6,4 +6,5 @@ assert.match(source,/filterReminders/); assert.match(source,/options\.from/); as
 assert.match(source,/summarizeReminders/); assert.match(source,/pending: 0/);
 assert.match(source,/normalizeReminderStatus/); assert.match(source,/item\.dueDate < today/);
 assert.match(source,/prepareReminders/); assert.match(source,/items\.map/);
+assert.match(source,/getReminderPriority/); assert.match(source,/count: pending\.length/);
 console.log('Reminder projection structure checks passed.');

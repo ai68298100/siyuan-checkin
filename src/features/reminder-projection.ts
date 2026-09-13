@@ -34,3 +34,8 @@ export function normalizeReminderStatus(item: ReminderProjection, today: string)
 export function prepareReminders(items: readonly ReminderProjection[], today: string): ReminderProjection[] {
     return sortReminders(items.map((item) => normalizeReminderStatus(item, today)));
 }
+
+export function getReminderPriority(items: readonly ReminderProjection[]): {count: number; first?: ReminderProjection} {
+    const pending = sortReminders(items.filter((item) => item.status === "overdue" || item.status === "pending"));
+    return {count: pending.length, first: pending[0]};
+}
