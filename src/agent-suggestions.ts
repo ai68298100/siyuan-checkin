@@ -100,7 +100,7 @@ export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapsho
 }
 
 export async function saveAnalysisSnapshot(saver: (key: string, value: unknown) => Promise<unknown>, key: string, history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot): Promise<AgentAnalysisSnapshot[]> {
-    const next = appendAnalysisSnapshot(history, snapshot);
+    const next = normalizeAnalysisSnapshots(appendAnalysisSnapshot(normalizeAnalysisSnapshots(history), snapshot));
     await saver(key, next);
     return next;
 }
