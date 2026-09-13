@@ -2728,6 +2728,8 @@
     .lc-checkin-dock-host .lc-checkin__item:focus-within { outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 58%, transparent); outline-offset: 2px; }
     .lc-checkin-dock-host .lc-checkin__item button:focus-visible,
     .lc-checkin-dock-host .lc-checkin__mobile-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 1px; }
+    .lc-checkin-dock-host .lc-checkin__group-header { min-height: 32px; padding: 4px 2px; border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
+    .lc-checkin-dock-host .lc-checkin__group-header button { min-width: 32px; min-height: 30px; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
