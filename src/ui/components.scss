@@ -2735,6 +2735,9 @@
     .lc-checkin-dock-host .lc-checkin__error { margin: 10px 0; padding: 12px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; text-align: center; }
     .lc-checkin-dock-host .lc-checkin__empty p,
     .lc-checkin-dock-host .lc-checkin__error p { overflow-wrap: anywhere; }
+    .lc-checkin-dock-host .lc-checkin__field-label,
+    .lc-checkin-dock-host .lc-checkin__field-help { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host label > small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
