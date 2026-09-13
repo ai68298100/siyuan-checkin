@@ -165,10 +165,12 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<span class="lc-checkin__reminder-actions"><button class="lc-checkin__reminder-action" type="button" data-reminder-action="snooze" data-reminder-id="${id}" aria-label="${escapeHtml(t("review.reminderSnoozeAria", {name: entry.title}))}">${t("review.reminderSnooze")}</button><button class="lc-checkin__reminder-action" type="button" data-reminder-action="skip" data-reminder-id="${id}" aria-label="${escapeHtml(t("review.reminderSkipAria", {name: entry.title}))}">${t("review.reminderSkip")}</button></span>`;
     };
     const reminderRows = reminders.length ? reminders.map((entry) => {
+        /* 延期/跳过是"对该次实例"的动作，补上原日期才说得清指的是哪天。 */
+        const dueLabel = formatHistoryDate(entry.dueDate);
         const timing = entry.status === "completed" ? t("review.remindersCompleted")
             : entry.status === "overdue" ? t("review.remindersOverdue")
-            : entry.status === "snoozed" ? t("review.remindersSnoozed")
-            : entry.status === "skipped" ? t("review.remindersSkipped")
+            : entry.status === "snoozed" ? `${t("review.remindersSnoozed")} · ${dueLabel}`
+            : entry.status === "skipped" ? `${t("review.remindersSkipped")} · ${dueLabel}`
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
         return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;

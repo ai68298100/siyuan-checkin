@@ -290,11 +290,14 @@
 
 /* 11.0-C 提醒行文字动作（延期/跳过/恢复）：small-button 是圆形图标钮，装不下文字，用胶囊变体。 */
 .lc-checkin__reminder-actions { display: inline-flex; gap: 6px; justify-content: flex-end; min-width: 0; grid-column: 1 / -1; }
+.lc-checkin__reminder-row.is-completed,
+.lc-checkin__reminder-row.is-snoozed,
+.lc-checkin__reminder-row.is-skipped { opacity: .68; }
 .lc-checkin__reminder-action {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-height: 26px;
+    min-height: 28px;
     padding: 2px 10px;
     border: 1px solid var(--lc-checkin-border);
     border-radius: 999px;
@@ -1339,7 +1342,12 @@
 .lc-checkin__settings-help { color: var(--lc-checkin-muted); font-size: 10.5px; }
 
 /* ---------------- archive ---------------- */
-.lc-checkin--archived .lc-checkin__archived-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+/* 工具行桌面态搜索左、计数右；窄容器按 lc5 堆叠（布局只认容器宽度，D-016/D-050）。 */
+.lc-checkin--archived .lc-checkin__archived-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 12px; }
+@container lc5 (max-width: 560px) {
+    .lc-checkin--archived .lc-checkin__archived-tools { display: grid; gap: 6px; }
+    .lc-checkin--archived .lc-checkin__archived-result { justify-self: start; }
+}
 .lc-checkin__archived-search { display: flex; flex: 1 1 220px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; background: var(--lc-checkin-surface); }
 .lc-checkin__archived-search span { color: var(--lc-checkin-muted); }
 .lc-checkin__archived-search input { flex: 1; min-width: 0; min-height: 34px; border: 0; background: transparent; }
