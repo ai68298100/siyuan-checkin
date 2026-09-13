@@ -6,7 +6,7 @@ export function reminderId(source: ReminderSource, ref: string, dueDate: string)
 export function sortReminders(items: readonly ReminderProjection[]): ReminderProjection[] {
     return [...items].sort((a, b) => (a.status === "completed" ? 1 : 0) - (b.status === "completed" ? 1 : 0) || a.urgency - b.urgency || a.dueDate.localeCompare(b.dueDate) || a.source.localeCompare(b.source) || a.id.localeCompare(b.id));
 }
-export function transitionReminder(item: ReminderProjection, status: ReminderStatus): ReminderProjection { return item.status === "completed" ? item : {...item, status}; }
+export function transitionReminder(item: ReminderProjection, status: ReminderStatus): ReminderProjection { return canTransitionReminder(item.status, status) ? (item.status === status ? item : {...item, status}) : item; }
 export function canTransitionReminder(from: ReminderStatus, to: ReminderStatus): boolean { if (from === "completed" && to !== "completed") return false; if (from === to) return true; return !(from === "skipped" && to === "overdue"); }
 
 export function projectOccasionReminder(id: string, title: string, dueDate: string, status: ReminderStatus = "pending"): ReminderProjection {
