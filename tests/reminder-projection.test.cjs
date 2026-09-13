@@ -21,4 +21,5 @@ assert.match(source,/ReminderMigrationReport/); assert.match(source,/assessRemin
 assert.match(source,/formatReminderMigrationReport/); assert.match(source,/需要更新/);
 assert.match(source,/serializeReminderMigrationReport/); assert.match(source,/deserializeReminderMigrationReport/);
 assert.match(source,/validateReminderMigrationReport/); assert.match(source,/Number\.isInteger\(report\.reminderCount\)/);
+assert.match(source,/assessReminderMigrationRisk/); assert.match(source,/return "review"/);
 console.log('Reminder projection structure checks passed.');
