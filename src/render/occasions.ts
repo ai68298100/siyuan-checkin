@@ -22,7 +22,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const filteredOccasions = occasionQuery ? allOccasions.filter((item) => item.name.toLocaleLowerCase().includes(occasionQuery)) : allOccasions;
     const rows = filteredOccasions.length ? filteredOccasions.map((item) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
-        const kind = item.kind === "birthday" ? "生日" : item.kind === "anniversary" ? "纪念日" : "定时事项";
+        const kind = item.kind === "birthday" ? t("occ.kindBirthday") : item.kind === "anniversary" ? t("occ.kindAnniversary") : t("occ.kindScheduled");
         const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
         const countdown = next ? `${next} · ${t("occ.daysAway", {n: Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000))})}` : t("occ.ended");
         const recurrence = describeRecurrence(item);

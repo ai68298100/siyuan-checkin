@@ -116,10 +116,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const count = root.querySelector<HTMLElement>("[data-icon-count]");
         if (count) {
             const mineCount = root.querySelectorAll("[data-icon-panel='mine'] [data-icon]:not([hidden])").length;
-            count.textContent = hasQuery ? `${matchCount} 个匹配图标`
-                : activeIconGroup === "all" ? `全部 · ${allIconCount} 个`
-                : activeIconGroup === "mine" ? `我的图标 · ${mineCount} 个`
-                : `${activeGroup.name} · ${activeGroup.icons.length} 个`;
+            count.textContent = hasQuery ? t("editor.iconMatched", {n: matchCount})
+                : activeIconGroup === "all" ? t("editor.iconCount", {name: t("editor.iconAll"), n: allIconCount})
+                : activeIconGroup === "mine" ? t("editor.iconCount", {name: t("editor.iconMine"), n: mineCount})
+                : t("editor.iconCount", {name: activeGroup.name, n: activeGroup.icons.length});
         }
         const empty = root.querySelector<HTMLElement>("[data-icon-empty]");
         if (empty) empty.hidden = matchCount > 0;
@@ -149,7 +149,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     const updateEditorPreview = () => {
         const kind = getKind();
         const option = KIND_OPTIONS.find((candidate) => candidate.kind === kind) || KIND_OPTIONS[0];
-        const name = root.querySelector<HTMLInputElement>("input[name='name']")?.value.trim() || "未命名打卡";
+        const name = root.querySelector<HTMLInputElement>("input[name='name']")?.value.trim() || t("editor.unnamed");
         const icon = root.querySelector<HTMLInputElement>("input[name='icon']")?.value || "✓";
         const unit = unitInput?.value.trim() || option.defaultUnit;
         const target = Number(targetInput?.value || option.step);
@@ -157,11 +157,11 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         let scheduleLabel = t(SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily);
         if (scheduleType === "interval") {
             const days = Math.max(1, Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1));
-            scheduleLabel = `每隔 ${formatNumber(days)} 天`;
+            scheduleLabel = t("schedule.intervalN", {n: formatNumber(days)});
         } else if (scheduleType === "quota") {
-            const period = root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.value === "month" ? "每月" : "每周";
+            const period = root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.value === "month" ? t("editor.quotaMonthly") : t("editor.quotaWeekly");
             const amount = Number(root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.value || 1);
-            const mode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value === "value" ? unit : "天";
+            const mode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value === "value" ? unit : t("editor.quotaDayUnit");
             scheduleLabel = `${period} ${formatNumber(amount)} ${mode}`;
         }
         const previewName = root.querySelector<HTMLElement>("[data-preview-name]");
@@ -172,7 +172,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (previewName) previewName.textContent = name;
         if (previewIcon) previewIcon.innerHTML = renderIconMarkup(icon);
         if (previewMeta) previewMeta.textContent = kind === "binary" ? `${t("kind.binary")} · ${scheduleLabel}` : `${t(KIND_LABELS[kind])} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
-        if (previewAction) previewAction.textContent = kind === "binary" ? "打卡" : `+${formatNumber(getRecordStep(kind, unit))} ${unit}`;
+        if (previewAction) previewAction.textContent = kind === "binary" ? t("editor.recordBinary") : t("editor.recordStep", {n: formatNumber(getRecordStep(kind, unit)), unit});
         if (previewProgress) previewProgress.hidden = kind === "binary";
     };
     const applyCustomIcon = () => {
@@ -200,12 +200,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         updateEditorPreview();
     };
     const readImageBlob = async (file: Blob): Promise<string> => {
-        if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
-        if (file.size > MAX_CUSTOM_ICON_BYTES) throw new Error(`图片超过 ${Math.round(MAX_CUSTOM_ICON_BYTES / 1024)} KB 限制`);
+        if (!file.type.startsWith("image/")) throw new Error(t("editor.errPickImage"));
+        if (file.size > MAX_CUSTOM_ICON_BYTES) throw new Error(t("editor.errImageTooLarge", {n: Math.round(MAX_CUSTOM_ICON_BYTES / 1024)}));
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("图片读取失败"));
-            reader.onerror = () => reject(new Error("图片读取失败"));
+            reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error(t("editor.errImageRead")));
+            reader.onerror = () => reject(new Error(t("editor.errImageRead")));
             reader.readAsDataURL(file);
         });
     };

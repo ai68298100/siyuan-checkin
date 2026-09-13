@@ -83,7 +83,7 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     const size = quickDialogSizeOf(host);
     dialog = new Dialog({
         title: "",
-        content: `<div class="${hostClass}" role="region" aria-label="小驴打卡快速窗口"></div>`,
+        content: `<div class="${hostClass}" role="region" aria-label="${t("app.quickDialogAria")}"></div>`,
         width: mobile ? "100vw" : size.width,
         height: mobile ? "100dvh" : size.height,
         disableAnimation: mobile,

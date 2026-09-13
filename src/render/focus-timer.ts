@@ -91,11 +91,11 @@ export function renderFocusTimerPanelFor(host: FocusTimerHost): string {
     const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
     const minutes = Math.floor(state.remainingSec / 60);
     const seconds = state.remainingSec % 60;
-    return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="专注计时">
+    return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="${t("focus.timerAria")}">
             <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong>${escapeHtml(name)}</strong></div>
             <div class="lc-checkin__focus-time" data-focus-remaining>${minutes}:${String(seconds).padStart(2, "0")}</div>
             <div class="lc-checkin__focus-progress" data-focus-progress><span style="width: ${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%"></span></div>
-            <div class="lc-checkin__focus-presets" role="group" aria-label="专注时长">${presets}</div>
+            <div class="lc-checkin__focus-presets" role="group" aria-label="${t("focus.presetsAria")}">${presets}</div>
             <div class="lc-checkin__focus-actions">
                 <button class="lc-checkin__text-button" type="button" data-action="focus-toggle">${state.running ? "暂停" : "继续"}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="focus-finish">完成</button>

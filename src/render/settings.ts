@@ -110,7 +110,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     return `<div class="lc-checkin lc-checkin--settings" data-appearance="${ctx.resolvedAppearanceValue}">
             <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("set.personal")}</div><h1 class="lc-checkin__title">${t("settings.title")}</h1></div></header>
             <div class="lc-checkin__settings-layout">
-                <nav class="lc-checkin__settings-nav" aria-label="设置分组">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
+                <nav class="lc-checkin__settings-nav" aria-label="${t("set.groupsAria")}">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
                 <div class="lc-checkin__settings-groups">${groups.map((group) => `<section class="lc-checkin__settings-card" data-settings-group="${group.id}"><h2>${group.label}</h2>${group.body}</section>`).join("")}</div>
             </div>
         </div>`;

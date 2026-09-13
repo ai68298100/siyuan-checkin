@@ -50,8 +50,8 @@ export interface RecentRecordView {
 export function renderRecentRecordView(record: RecentRecordView | undefined, reducedMotion: boolean): string {
     if (!record) return "";
     return `<div class="lc-checkin__recent-record" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong><small>当前 ${escapeHtml(formatNumber(record.progress))}/${escapeHtml(formatNumber(record.target))} ${escapeHtml(record.unit)}</small></span>
-            <button type="button" data-action="undo-record">撤销</button>
+            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong><small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
+            <button type="button" data-action="undo-record">${t("today.undoRecord")}</button>
         </div>`;
 }
 
@@ -97,7 +97,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const priority = item.priority || "medium";
     const timeSlot = item.timeSlot || "any";
     const completionSource = item.completionSource || "manual";
-    const unit = revision.unit || "次";
+    const unit = revision.unit || t("today.unitDefault");
     const icon = isBinary
         ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
         : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
@@ -182,7 +182,7 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
         }).join("");
         return `<div class="lc-checkin__log-day"${index >= 2 ? ' data-log-extra hidden' : ''}><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
     }).join("");
-    return `${daySections}${days.length > 2 ? `<button class="lc-checkin__text-button" type="button" data-log-expand>展开其余 ${days.length - 2} 天</button>` : ""}`;
+    return `${daySections}${days.length > 2 ? `<button class="lc-checkin__text-button" type="button" data-log-expand>${t("review.logExpandDays", {n: days.length - 2})}</button>` : ""}`;
 }
 
 function todayGroupKeyOf(groupMode: TodayGroupMode, item: CheckinItem): string {
@@ -314,18 +314,18 @@ export function renderTodayView(ctx: TodayViewContext): string {
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
                 <details class="lc-checkin__today-filters" data-today-filters ${ctx.pendingOnly ? "open" : ""}><summary>${ctx.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
-                    <option value="group" ${ctx.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
-                    <option value="time" ${ctx.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
-                    <option value="priority" ${ctx.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
+                    <option value="group" ${ctx.todayGroupMode === "group" ? "selected" : ""}>${t("today.groupCustom")}</option>
+                    <option value="time" ${ctx.todayGroupMode === "time" ? "selected" : ""}>${t("today.groupTime")}</option>
+                    <option value="priority" ${ctx.todayGroupMode === "priority" ? "selected" : ""}>${t("today.groupPriority")}</option>
                 </select></label><label><span>${t("today.sortLabel")}</span><select data-sort-mode aria-label="${t("today.sortAria")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${ctx.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${ctx.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${ctx.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
                 <button class="lc-checkin__filter-toggle ${ctx.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${ctx.bulkMode}">${t("today.bulk")}</button>
             </div>` : ""}
             ${ctx.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="${t("today.bulkAria")}">
-                <strong>已选 ${ctx.bulkSelected.size}</strong>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-all">全选待办</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">全部完成</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">归档</button>
-                <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">退出多选</button>
+                <strong>${t("today.bulkSelectedCount", {n: ctx.bulkSelected.size})}</strong>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-all">${t("today.bulkAll")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">${t("today.bulkComplete")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">${t("today.bulkArchive")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}
             <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}</main>
