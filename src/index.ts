@@ -38,7 +38,7 @@ import {renderSettingsView} from "./render/settings";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
-import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, type AgentAnalysisSnapshot} from "./agent-suggestions";
+import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, type AgentAnalysisSnapshot} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
@@ -1521,6 +1521,8 @@ export default class CheckinPlugin extends Plugin {
             if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
+            const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
+            void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: summaryText}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
             this.render();
         } catch (error) {
             if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
