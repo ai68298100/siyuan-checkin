@@ -3,8 +3,8 @@ import {dateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "./mo
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
-export type ReminderStatus = "overdue" | "today" | "upcoming" | "completed";
-export type ReminderFilter = "all" | ReminderStatus;
+export type ReminderStatus = "overdue" | "today" | "upcoming" | "completed" | "snoozed" | "skipped";
+export type ReminderFilter = "all" | "overdue" | "today" | "upcoming" | "completed";
 
 export interface ReminderEntry {
     id: string;
@@ -28,7 +28,7 @@ export interface OverdueOccurrenceEntry {
     note: string;
 }
 
-const STATUS_RANK: Record<ReminderStatus, number> = {overdue: 0, today: 1, upcoming: 2, completed: 3};
+const STATUS_RANK: Record<ReminderStatus, number> = {overdue: 0, today: 1, upcoming: 2, snoozed: 3, skipped: 4, completed: 5};
 
 function sortReminderEntries(entries: ReminderEntry[]): ReminderEntry[] {
     return entries.sort((left, right) => STATUS_RANK[left.status] - STATUS_RANK[right.status]
@@ -135,6 +135,51 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
         || left.id.localeCompare(right.id));
 }
 
-export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date): ReminderEntry[] {
-    return sortReminderEntries([...projectOverdueOccasionReminders(occasions, date), ...projectCheckinReminders(store, date), ...projectOccasionReminders(occasions, date)]);
+export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): ReminderEntry[] {
+    return applyReminderActions(sortReminderEntries([...projectOverdueOccasionReminders(occasions, date), ...projectCheckinReminders(store, date), ...projectOccasionReminders(occasions, date)]), userActions, dateKey(date));
+}
+
+/* 11.0-C 延期与跳过：用户动作按稳定实例 ID 记录在独立存储里，投影只读地应用，
+   绝不改动打卡或事项数据。snooze 仅在记录当日的本地日期内生效，跨日自动过期
+   回到计算状态；skip 对该次实例持续生效；已完成是终态，任何动作都不能改写。 */
+export type ReminderUserActionType = "snooze" | "skip";
+export interface ReminderUserAction { id: string; action: ReminderUserActionType; at: string; }
+
+export function normalizeReminderUserActions(value: unknown, limit = 200): ReminderUserAction[] {
+    if (!Array.isArray(value)) return [];
+    const max = Math.max(1, Math.min(500, Math.floor(limit)));
+    return value.filter((entry): entry is ReminderUserAction => {
+        if (!entry || typeof entry !== "object") return false;
+        const candidate = entry as Partial<ReminderUserAction>;
+        return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
+            && (candidate.action === "snooze" || candidate.action === "skip")
+            && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
+    }).slice(-max).map((entry) => ({id: entry.id, action: entry.action, at: entry.at}));
+}
+
+export function serializeReminderUserActions(actions: readonly ReminderUserAction[]): string {
+    return JSON.stringify({version: 1, actions: normalizeReminderUserActions(actions)});
+}
+
+export function deserializeReminderUserActions(value: string): ReminderUserAction[] {
+    try {
+        const parsed = JSON.parse(value);
+        return parsed?.version === 1 ? normalizeReminderUserActions(parsed.actions) : [];
+    } catch { return []; }
+}
+
+/** 恢复 = 清除该实例的全部用户动作，条目回到计算状态。 */
+export function clearReminderUserActions(actions: readonly ReminderUserAction[], id: string): ReminderUserAction[] {
+    return actions.filter((entry) => entry.id !== id);
+}
+
+export function applyReminderActions(entries: readonly ReminderEntry[], actions: readonly ReminderUserAction[], today: string): ReminderEntry[] {
+    const latest = new Map<string, ReminderUserAction>();
+    for (const action of actions) latest.set(action.id, action);
+    return entries.map((entry) => {
+        const action = latest.get(entry.id);
+        if (!action || entry.status === "completed") return entry;
+        if (action.action === "skip") return {...entry, status: "skipped"};
+        return action.at.slice(0, 10) === today ? {...entry, status: "snoozed"} : entry;
+    });
 }

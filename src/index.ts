@@ -32,7 +32,7 @@ import {bindBulkModeFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboard
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
-import type {ReminderFilter} from "./reminders";
+import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
 import {renderEditorView} from "./render/editor";
@@ -53,6 +53,7 @@ const AUDIT_STORAGE_NAME = "checkin-store-audit";
 const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
+const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
@@ -218,6 +219,7 @@ export default class CheckinPlugin extends Plugin {
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
     private reminderFilter: ReminderFilter = "all";
+    private reminderUserActions: ReminderUserAction[] = [];
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -394,6 +396,8 @@ export default class CheckinPlugin extends Plugin {
                 const occasions = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
                 const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
                 const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
+                const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
+                this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
@@ -438,6 +442,8 @@ export default class CheckinPlugin extends Plugin {
             this.occasionStore = normalizeOccasionStore(await this.loadData(OCCASIONS_STORAGE_NAME));
             const storedTemplates = await this.loadData(USER_TEMPLATES_NAME);
             const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
+            const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
+            this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
             this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
             this.applyViewPreferences(preferences);
@@ -1309,6 +1315,7 @@ export default class CheckinPlugin extends Plugin {
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
+            reminderUserActions: this.reminderUserActions,
         });
     }
 
@@ -1950,6 +1957,18 @@ export default class CheckinPlugin extends Plugin {
         this.occasionStore = {...previous, occasions: previous.occasions.map((candidate) => candidate.id === normalized.id ? normalized : candidate)};
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionUpdateFail")); return; }
         this.renderBackgroundUpdate();
+    }
+
+    /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
+    reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void {
+        if (!id) return;
+        this.reminderUserActions = action === "restore"
+            ? clearReminderUserActions(this.reminderUserActions, id)
+            : normalizeReminderUserActions([...this.reminderUserActions, {id, action, at: new Date().toISOString()}]);
+        void this.saveData(REMINDER_ACTIONS_NAME, serializeReminderUserActions(this.reminderUserActions)).catch(() => showMessage(t("msg.saveFailedShort")));
+        const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions).find((entry) => entry.id === id)?.title;
+        if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
+        this.render();
     }
 
     private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {

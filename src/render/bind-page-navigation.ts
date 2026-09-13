@@ -45,6 +45,7 @@ export interface BindPageNavigationHost {
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
     reminderFilter: import("../reminders").ReminderFilter;
+    reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
 
@@ -107,6 +108,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.render();
         }
     });
+    /* 11.0-C 提醒延期/跳过/恢复：动作交回宿主（持久化 + 重渲染），按钮本身无状态。 */
+    root.querySelectorAll<HTMLButtonElement>("[data-reminder-action]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.reminderId || "";
+        const action = button.dataset.reminderAction;
+        if (!id || (action !== "snooze" && action !== "skip" && action !== "restore")) return;
+        host.reminderUserAction(id, action);
+    }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
         if (host.currentPage === "insights" && host.insightsReturnPage === "review") host.showReview();
         else host.showToday();

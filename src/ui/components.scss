@@ -288,6 +288,25 @@
 }
 .lc-checkin__small-button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 
+/* 11.0-C 提醒行文字动作（延期/跳过/恢复）：small-button 是圆形图标钮，装不下文字，用胶囊变体。 */
+.lc-checkin__reminder-actions { display: inline-flex; gap: 6px; justify-content: flex-end; min-width: 0; grid-column: 1 / -1; }
+.lc-checkin__reminder-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 2px 10px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 999px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-surface);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: color var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
+}
+.lc-checkin__reminder-action:hover { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-accent-soft); }
+
 /* ---------------- inputs ---------------- */
 .lc-checkin :is(input, select, textarea) {
     border: 1px solid var(--lc-checkin-border-strong);

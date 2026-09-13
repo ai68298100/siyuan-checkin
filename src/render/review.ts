@@ -10,7 +10,7 @@ import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
 import {uiIcon} from "../ui/icons";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
-import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter} from "../reminders";
+import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter, type ReminderUserAction} from "../reminders";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -35,6 +35,7 @@ export interface ReviewViewContext {
     analysisHistory?: Array<{asOf: string; range: string; source: string; generatedAt: string}>;
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
+    reminderUserActions: ReminderUserAction[];
 }
 
 export function renderReviewView(ctx: ReviewViewContext): string {
@@ -152,13 +153,25 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const weeklyTrend = buildWeeklyCompletionTrend(ctx.store, 12);
     const monthlyTrend = buildMonthlyEventTrend(ctx.store, 6);
     const achievements = buildAchievements(ctx.store);
-    const reminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date()), ctx.reminderFilter);
+    const reminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date(), ctx.reminderUserActions), ctx.reminderFilter);
+    /* 11.0-C 延期/跳过：未完成条目给入口，已延期/已跳过条目只留恢复，已完成是终态不给动作。 */
+    const reminderActionButtons = (entry: (typeof reminders)[number]): string => {
+        const id = escapeHtml(entry.id);
+        const name = escapeHtml(entry.title);
+        if (entry.status === "snoozed" || entry.status === "skipped") {
+            return `<span class="lc-checkin__reminder-actions"><button class="lc-checkin__reminder-action" type="button" data-reminder-action="restore" data-reminder-id="${id}" aria-label="${escapeHtml(t("review.reminderRestoreAria", {name: entry.title}))}">${t("review.reminderRestore")}</button></span>`;
+        }
+        if (entry.status === "completed") return "";
+        return `<span class="lc-checkin__reminder-actions"><button class="lc-checkin__reminder-action" type="button" data-reminder-action="snooze" data-reminder-id="${id}" aria-label="${escapeHtml(t("review.reminderSnoozeAria", {name: entry.title}))}">${t("review.reminderSnooze")}</button><button class="lc-checkin__reminder-action" type="button" data-reminder-action="skip" data-reminder-id="${id}" aria-label="${escapeHtml(t("review.reminderSkipAria", {name: entry.title}))}">${t("review.reminderSkip")}</button></span>`;
+    };
     const reminderRows = reminders.length ? reminders.map((entry) => {
         const timing = entry.status === "completed" ? t("review.remindersCompleted")
             : entry.status === "overdue" ? t("review.remindersOverdue")
+            : entry.status === "snoozed" ? t("review.remindersSnoozed")
+            : entry.status === "skipped" ? t("review.remindersSkipped")
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
-        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}</article>`;
+        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
     /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */
     const overdueHistory = projectOverdueOccurrenceHistory(ctx.occasionStore, new Date()).slice(0, 12);
