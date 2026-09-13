@@ -38,6 +38,22 @@ type AgentArgs = Record<string, unknown>;
 
 export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
     deps.addCapability({
+        name: "checkin-action-suggestions",
+        title: "生成小驴打卡行动建议",
+        description: "基于指定范围的完成率和项目表现生成可供用户确认的行动建议。该能力只读数据，不会自动修改项目或记录。",
+        inputSchema: {type: "object", properties: {range: {type: "string", enum: ["day", "week", "month"], description: "分析范围，默认为 week"}}, additionalProperties: false},
+        outputSchema: {type: "object"},
+        effects: {localRead: true, dataEgress: true, externalCost: false},
+        handler: async (args) => {
+            const range: SummaryRange = args.range === "day" || args.range === "month" ? args.range : "week";
+            const context = deps.getSummaryContext(range);
+            if (!context) return {error: "打卡数据尚未准备好。"};
+            const weakest = [...context.items].sort((a, b) => a.completionRate - b.completionRate)[0];
+            const suggestions = weakest ? [{type: "review", item: weakest.name, reason: `完成率 ${weakest.completionRate}%`, requiresConfirmation: true}] : [];
+            return {result: suggestions.length ? `建议优先复盘：${weakest!.name}。` : "当前没有明显需要优先处理的项目。", structuredContent: {range, suggestions, requiresConfirmation: true}};
+        },
+    });
+    deps.addCapability({
         name: "checkin-summary-context",
         title: "读取小驴打卡复盘上下文",
         description: "读取小驴打卡的日、周、月或自定义日期范围数据，用于生成复盘、趋势和完成率分析。该能力只读本插件数据，不会写入记录，也不会自行访问外部网络。",
