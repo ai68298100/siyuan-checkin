@@ -11,6 +11,8 @@
 
 `window.siyuanCheckin.version` 当前为 4。版本 2 新增 `getCustomSummaryContext`，版本 3 新增 `summarizeCustom`，版本 4 新增日期事项读取与处理接口（`getOccasions`、`getTodayOccasions`、`completeOccasion`）；调用方应先检查版本，再使用这些能力。
 
+智能体行动建议 `checkin-action-suggestions` 仅返回只读建议与结构化 `changes`，所有变更均标记为需要用户确认；建议状态可追踪，插件不会静默修改项目或记录。
+
 发布前检查：
 
 - 桌面端验证侧边栏、页签和快速弹窗三种入口。
