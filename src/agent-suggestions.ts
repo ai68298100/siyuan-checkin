@@ -19,6 +19,9 @@ export type AgentSuggestionStatus = "pending" | "confirmed" | "cancelled" | "fai
 export function suggestionStatusLabel(status: AgentSuggestionStatus): string {
     return ({pending: "待确认", confirmed: "已确认", cancelled: "已取消", failed: "执行失败"} as Record<AgentSuggestionStatus, string>)[status];
 }
+export function summarizeSuggestion(envelope: AgentSuggestionEnvelope): string {
+    return `${suggestionStatusLabel(envelope.status)} · ${envelope.id} · ${summarizeSuggestionImpact(envelope.changes)} · 创建于 ${envelope.createdAt}`;
+}
 
 export type AgentAnalysisMeta = {
     asOf: string;
