@@ -4,4 +4,7 @@ const source = fs.readFileSync('src/agent-suggestions.ts', 'utf8');
 assert.match(source, /requiresConfirmation: true/);
 assert.match(source, /Object\.is\(item\[field\], after\)/);
 assert.match(source, /summarizeSuggestionImpact/);
+assert.match(source, /createSuggestionEnvelope/);
+assert.match(source, /status: "pending"/);
+assert.match(source, /if \(envelope.status !== "pending"\) return envelope/);
 console.log('Agent suggestion safety structure checks passed.');
