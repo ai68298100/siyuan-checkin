@@ -33,6 +33,28 @@ export type AgentAnalysisMeta = {
 export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
 export const AGENT_ANALYSIS_CACHE_KEY = "agent-analysis-history.json";
 
+/**
+ * Produces a deterministic, line-oriented diff for read-only analysis comparison.
+ * The function never mutates its inputs and intentionally keeps unchanged lines
+ * so the result remains understandable on narrow screens and in exported logs.
+ */
+export function diffAnalysisText(before: string, after: string): Array<{kind: "same" | "removed" | "added"; text: string}> {
+    const left = String(before ?? "").split(/\r?\n/);
+    const right = String(after ?? "").split(/\r?\n/);
+    const rows: Array<{kind: "same" | "removed" | "added"; text: string}> = [];
+    const max = Math.max(left.length, right.length);
+    for (let index = 0; index < max; index += 1) {
+        const a = left[index];
+        const b = right[index];
+        if (a !== undefined && b !== undefined && a === b) rows.push({kind: "same", text: a});
+        else {
+            if (a !== undefined) rows.push({kind: "removed", text: a});
+            if (b !== undefined) rows.push({kind: "added", text: b});
+        }
+    }
+    return rows;
+}
+
 export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot, limit = 5): AgentAnalysisSnapshot[] {
     const safeLimit = Math.max(1, Math.min(20, Math.floor(limit)));
     return [...history, snapshot].slice(-safeLimit);
