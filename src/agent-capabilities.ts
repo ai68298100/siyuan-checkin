@@ -42,7 +42,7 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
         title: "生成小驴打卡行动建议",
         description: "基于指定范围的完成率和项目表现生成可供用户确认的行动建议。该能力只读数据，不会自动修改项目或记录。",
         inputSchema: {type: "object", properties: {range: {type: "string", enum: ["day", "week", "month"], description: "分析范围，默认为 week"}}, additionalProperties: false},
-        outputSchema: {type: "object"},
+        outputSchema: {type: "object", properties: {range: {type: "string"}, suggestions: {type: "array"}, changes: {type: "array", description: "规范化后的项目设置变更；当前只读建议默认为空，执行前必须用户确认"}, requiresConfirmation: {type: "boolean"}}},
         effects: {localRead: true, dataEgress: true, externalCost: false},
         handler: async (args) => {
             const range: SummaryRange = args.range === "day" || args.range === "month" ? args.range : "week";
