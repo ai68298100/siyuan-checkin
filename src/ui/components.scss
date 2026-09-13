@@ -1018,6 +1018,7 @@
 }
 .lc-checkin__occasion-form-panel,
 .lc-checkin__occasion-list-panel { padding: 14px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
+.lc-checkin--occasions .lc-checkin__occasion-form-panel { padding-bottom: 28px; }
 .lc-checkin__occasion-row-actions { display: flex; gap: 4px; align-items: center; justify-self: end; }
 /* （旧版此处把操作钮换到第二行；卡片式行改为固定 126px 操作列，见文件末尾 T-029 区块） */
 .lc-checkin__section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
