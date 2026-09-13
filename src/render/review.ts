@@ -30,6 +30,7 @@ export interface ReviewViewContext {
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
     summaryProvidersCount: number;
+    analysisLastGeneratedAt?: string;
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
 }
@@ -167,7 +168,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const overdueHistorySection = overdueHistory.length ? `<div class="lc-checkin__overdue-history"><h3>${t("review.overdueHistory")} · ${overdueHistory.length}</h3>${overdueVisibleRows}${overdueMoreRows ? `<div data-overdue-more hidden>${overdueMoreRows}</div><button class="lc-checkin__text-button" type="button" data-overdue-expand>${t("review.expandAll", {n: overdueHistory.length})}</button>` : ""}</div>` : "";
     const earnedCount = achievements.filter((entry) => entry.achieved).length;
     const providerButton = ctx.summaryProvidersCount
-        ? `<div class="lc-checkin__summary-agent"><span>${t("review.agentConnected")} · 截止 ${escapeHtml(summary.endDate)}</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">更新当前分析</button></div>`
+        ? `<div class="lc-checkin__summary-agent"><span>${t("review.agentConnected")} · 截止 ${escapeHtml(summary.endDate)}${ctx.analysisLastGeneratedAt ? ` · 上次更新 ${escapeHtml(ctx.analysisLastGeneratedAt)}` : ""}</span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">更新当前分析</button></div>`
         : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>${t("review.agentUnavailable")}</span></div>`;
     const generated = ctx.summaryText ? `<div class="lc-checkin__summary-text"><small>智能体分析 · 截止 ${escapeHtml(summary.endDate)}</small><div>${escapeHtml(ctx.summaryText)}</div></div>` : "";
     const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!ctx.summaryCustomRange && ctx.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
