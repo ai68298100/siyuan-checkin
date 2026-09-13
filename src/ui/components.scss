@@ -2714,6 +2714,9 @@
 }
 
 @container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group { margin-top: 12px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items { gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { min-height: 0; }
     .lc-checkin-dock-host .lc-checkin__header,
     .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 38px 4px 0; align-items: center; }
     .lc-checkin-dock-host .lc-checkin__dialog-close { position: absolute; top: 2px; right: 0; width: 34px; height: 34px; }
