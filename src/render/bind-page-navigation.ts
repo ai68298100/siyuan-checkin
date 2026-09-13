@@ -266,6 +266,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     }));
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => host.generateSummary());
+    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", () => showMessage("建议仅供预览，任何设置变更都需要你确认后执行。"));
     root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", async () => {
         const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
         const label = host.summaryRange === "day" ? "今日报告" : host.summaryRange === "month" ? "本月报告" : "本周报告";
