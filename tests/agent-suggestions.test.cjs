@@ -1,0 +1,7 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const source = fs.readFileSync('src/agent-suggestions.ts', 'utf8');
+assert.match(source, /requiresConfirmation: true/);
+assert.match(source, /Object\.is\(item\[field\], after\)/);
+assert.match(source, /summarizeSuggestionImpact/);
+console.log('Agent suggestion safety structure checks passed.');
