@@ -11,6 +11,7 @@ import {uiIcon} from "../ui/icons";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter, type ReminderUserAction} from "../reminders";
+import {buildLocalSummaryText} from "../features/local-summary";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -187,7 +188,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const providerButton = ctx.summaryProvidersCount
         ? `<div class="lc-checkin__summary-agent"><span>${t("review.agentConnected")} · 截止 ${escapeHtml(summary.endDate)}${ctx.analysisLastGeneratedAt ? ` · 上次更新 ${escapeHtml(ctx.analysisLastGeneratedAt)}` : ""}${ctx.analysisHistoryCount ? ` · 已保存 ${ctx.analysisHistoryCount} 版` : ""}</span><span><button class="lc-checkin__text-button" type="button" data-action="generate-summary">更新当前分析</button>${ctx.analysisHistoryCount && ctx.analysisHistoryCount > 1 ? `<button class="lc-checkin__text-button" type="button" data-action="view-analysis-history">查看历史</button>` : ""}</span></div>`
         : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>${t("review.agentUnavailable")}</span></div>`;
-    const generated = ctx.summaryText ? `<div class="lc-checkin__summary-text"><small>${t("review.agentMeta", {date: escapeHtml(summary.endDate)})}</small><div>${escapeHtml(ctx.summaryText)}</div></div>` : "";
+    const localSummaryText = ctx.summaryText ? "" : buildLocalSummaryText(summary);
+    const generated = ctx.summaryText
+        ? `<div class="lc-checkin__summary-text" data-summary-source="agent"><small>${t("review.agentMeta", {date: escapeHtml(summary.endDate)})}</small><div>${escapeHtml(ctx.summaryText)}</div></div>`
+        : `<div class="lc-checkin__summary-text is-local" data-summary-source="local"><small>${t("review.localMeta")}</small><div>${escapeHtml(localSummaryText)}</div></div>`;
     const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!ctx.summaryCustomRange && ctx.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
     const custom = `<details class="lc-checkin__custom-range-disclosure" ${ctx.summaryCustomRange ? "open" : ""}><summary>${ctx.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>开始</span><input type="date" name="customStartDate" value="${escapeHtml(ctx.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">至</span><label><span>结束</span><input type="date" name="customEndDate" value="${escapeHtml(ctx.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">应用</button></form></details>`;
     /* 宽窗口首屏给出信息：趋势/日志/项目/提醒默认展开；用户一旦手动折叠过就完全尊重其选择（T-011 的
