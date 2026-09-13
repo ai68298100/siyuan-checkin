@@ -117,8 +117,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const summary = ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange) : buildSummaryContext(ctx.store, ctx.summaryRange);
     const iconsById = new Map(ctx.store.items.map((item) => [item.id, item.icon]));
     const summaryRate = summary.scheduledItems ? Math.round(summary.completedItems / summary.scheduledItems * 100) : 0;
-    const topSummaryItem = [...summary.items].sort((a, b) => b.completionRate - a.completionRate)[0];
-    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="回顾摘要"><div><small>截至 ${escapeHtml(summary.endDate)}</small><h2>${summaryRate >= 80 ? "保持得很好" : summaryRate >= 50 ? "正在稳步推进" : "从今天开始"}</h2><p>本周期完成 ${summary.completedItems}/${summary.scheduledItems || 0} 项，记录 ${summary.totalEvents} 条${topSummaryItem ? ` · 最佳项目：${escapeHtml(topSummaryItem.name)}` : ""}</p></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
+    const rankedSummaryItems = [...summary.items].sort((a, b) => b.completionRate - a.completionRate);
+    const topSummaryItem = rankedSummaryItems[0];
+    const attentionSummaryItem = rankedSummaryItems.length > 1 ? rankedSummaryItems[rankedSummaryItems.length - 1] : undefined;
+    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="回顾摘要"><div><small>截至 ${escapeHtml(summary.endDate)}</small><h2>${summaryRate >= 80 ? "保持得很好" : summaryRate >= 50 ? "正在稳步推进" : "从今天开始"}</h2><p>本周期完成 ${summary.completedItems}/${summary.scheduledItems || 0} 项，记录 ${summary.totalEvents} 条${topSummaryItem ? ` · 最佳项目：${escapeHtml(topSummaryItem.name)}` : ""}</p>${attentionSummaryItem ? `<small class="lc-checkin__review-attention">建议关注：${escapeHtml(attentionSummaryItem.name)}（完成率 ${attentionSummaryItem.completionRate}%）</small>` : ""}</div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
     const projectRows = summary.items.length ? summary.items.map((item) => {
         const quotaMeta = item.quota
             ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})

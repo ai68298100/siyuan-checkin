@@ -876,6 +876,7 @@
 .lc-checkin__review-hero small,.lc-checkin__review-hero p { color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__review-hero h2 { margin:4px 0; font-size:20px; }
 .lc-checkin__review-hero-rate { color:var(--lc-checkin-accent-text); font-size:30px; font-weight:800; }
+.lc-checkin__review-attention { display:block; margin-top:6px; color:var(--lc-checkin-warning-text, var(--lc-checkin-accent-text)); font-size:10px; font-weight:650; }
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
 .lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
 .lc-checkin__log-day[data-log-extra] { display:none; }
