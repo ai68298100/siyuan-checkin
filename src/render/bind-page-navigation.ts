@@ -258,6 +258,14 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.render();
         root.querySelector<HTMLInputElement>("[data-archived-search]")?.focus();
     });
+    /* 归档搜索框内按 Esc = 清除筛选并回到列表（与清除按钮同一条路径）。 */
+    archivedSearch?.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !archivedSearch.value) return;
+        if (archivedSearchTimer !== undefined) window.clearTimeout(archivedSearchTimer);
+        host.archivedQuery = "";
+        host.render();
+        root.querySelector<HTMLInputElement>("[data-archived-search]")?.focus();
+    });
     root.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => {
         button.disabled = true;
         button.setAttribute("aria-busy", "true");

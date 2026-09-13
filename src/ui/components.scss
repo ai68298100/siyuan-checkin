@@ -289,6 +289,31 @@
 .lc-checkin__small-button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 
 /* 11.0-C 提醒行文字动作（延期/跳过/恢复）：small-button 是圆形图标钮，装不下文字，用胶囊变体。 */
+/* 提醒中心基础布局：v4 补丁层退役后一直缺席，此为重建（来源/时间标签、行网格、标题行排版）。 */
+.lc-checkin__reminder-center { display: grid; gap: 10px; }
+.lc-checkin__reminder-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.lc-checkin__reminder-heading h2 { margin: 0; font-size: 15px; }
+.lc-checkin__reminder-heading select { min-height: 30px; font-size: 12px; }
+.lc-checkin__reminder-list { display: grid; gap: 8px; }
+.lc-checkin__reminder-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 12px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-surface);
+    transition: background-color var(--lc-checkin-motion-fast), opacity var(--lc-checkin-motion-fast);
+}
+.lc-checkin__reminder-row:hover { background: var(--lc-checkin-muted-surface); }
+.lc-checkin__reminder-row small { grid-column: 2 / -1; color: var(--lc-checkin-muted); }
+.lc-checkin__reminder-source { font-size: 12px; color: var(--lc-checkin-accent); }
+.lc-checkin__reminder-timing { font-size: 12px; color: var(--lc-checkin-muted); white-space: nowrap; }
+@container lc5 (max-width: 560px) {
+    .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr); min-height: 36px; padding: 7px 8px; }
+    .lc-checkin__reminder-timing { grid-column: 2; }
+}
 .lc-checkin__reminder-actions { display: inline-flex; gap: 6px; justify-content: flex-end; min-width: 0; grid-column: 1 / -1; }
 .lc-checkin__reminder-row.is-completed,
 .lc-checkin__reminder-row.is-snoozed,
@@ -2602,7 +2627,7 @@
 }
 
 /* 手机端几何最终收口：这几条必须 !important。
-   滚动容器/两条栏会被 index.scss、modern-v4 里多处 .lc-checkin* 的 padding/margin/position
+   滚动容器/两条栏会被 index.scss 里多处 .lc-checkin* 的 padding/margin/position
    反复覆盖（同或更高特异性），而这些是"结构正确性"依赖的属性，宁可显式压住。
    只压结构属性（display/flex/position/margin/padding/overflow），不压颜色与字号。 */
 .lc-checkin-dialog-host--mobile,

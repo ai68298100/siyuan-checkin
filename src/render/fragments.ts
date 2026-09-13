@@ -301,26 +301,26 @@ export function renderTodayView(ctx: TodayViewContext): string {
                     <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
                 </div>
                 <div class="lc-checkin__header-actions">
-                    ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<span class="lc-checkin__header-streak" title="当前最佳连续">🔥 ${escapeHtml(ctx.bestStreakItem.name)} ${ctx.bestStreakValue} 天</span>` : ""}
-                    <span class="lc-checkin__count" role="status" aria-label="今日完成进度">${completed}<span>/</span>${scheduledItems.length}</span>
-                    ${ctx.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="在页签打开" title="在页签打开">${uiIcon("external")}</button>` : ""}
-                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="新建打卡项" title="新建打卡项">${uiIcon("add")}</button>
+                    ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<span class="lc-checkin__header-streak" title="${t("today.bestStreakTitle")}">🔥 ${escapeHtml(ctx.bestStreakItem.name)} ${ctx.bestStreakValue} 天</span>` : ""}
+                    <span class="lc-checkin__count" role="status" aria-label="${t("today.progressAria")}">${completed}<span>/</span>${scheduledItems.length}</span>
+                    ${ctx.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="${t("today.openTab")}" title="${t("today.openTab")}">${uiIcon("external")}</button>` : ""}
+                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="${t("editor.create")}" title="${t("editor.create")}">${uiIcon("add")}</button>
                 </div>
             </header>
             <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
-            ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>` : ""}
+            ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="${t("today.weekStripAria")}">${weekStrip}</section>` : ""}
             ${saveStatus}
             ${occasionIsToday ? occasionBanner : ""}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
-                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="筛选打卡项" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
+                <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="清除筛选" title="清除筛选">×</button>` : ""}</label>
                 <details class="lc-checkin__today-filters" data-today-filters ${ctx.pendingOnly ? "open" : ""}><summary>${ctx.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
                     <option value="group" ${ctx.todayGroupMode === "group" ? "selected" : ""}>自定义分组</option>
                     <option value="time" ${ctx.todayGroupMode === "time" ? "selected" : ""}>时间段</option>
                     <option value="priority" ${ctx.todayGroupMode === "priority" ? "selected" : ""}>重要性</option>
-                </select></label><label><span>排序</span><select data-sort-mode aria-label="排序方式">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${ctx.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${ctx.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${ctx.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
+                </select></label><label><span>${t("today.sortLabel")}</span><select data-sort-mode aria-label="${t("today.sortAria")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${ctx.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${ctx.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${ctx.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
                 <button class="lc-checkin__filter-toggle ${ctx.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${ctx.bulkMode}">${t("today.bulk")}</button>
             </div>` : ""}
-            ${ctx.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="批量操作">
+            ${ctx.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="${t("today.bulkAria")}">
                 <strong>已选 ${ctx.bulkSelected.size}</strong>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-all">全选待办</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">全部完成</button>

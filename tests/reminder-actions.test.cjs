@@ -60,6 +60,17 @@ const center = reminders.projectReminderCenter(
 );
 assert.equal(center.find((entry) => entry.id === "occasion:bill:2026-09-10").status, "snoozed", "reminder center applies the persisted action");
 
+/* —— 投影性能基准：2000 个一次事项 + 200 条用户动作，投影须在 500ms 内完成且状态正确 —— */
+const bulkOccasions = Array.from({length: 2000}, (_, index) => ({...onceOccasion, id: `o${index}`}));
+const bulkActions = Array.from({length: 200}, (_, index) => ({id: `occasion:o${index}:2026-09-10`, action: index % 2 ? "snooze" : "skip", at: "2026-09-14T01:00:00.000Z"}));
+const perfStart = process.hrtime.bigint();
+const bulkCenter = reminders.projectReminderCenter({version: 1, items: [], events: []}, {version: 1, occasions: bulkOccasions}, new Date(2026, 8, 14, 12), bulkActions);
+const perfMs = Number(process.hrtime.bigint() - perfStart) / 1e6;
+assert.ok(perfMs < 500, `reminder center projection must stay under 500ms for 2000 occasions (took ${perfMs.toFixed(1)}ms)`);
+assert.equal(bulkCenter.filter((entry) => entry.status === "snoozed").length, 100, "snooze actions apply at scale");
+assert.equal(bulkCenter.filter((entry) => entry.status === "skipped").length, 100, "skip actions apply at scale");
+console.log(`reminder projection benchmark: ${bulkOccasions.length} occasions + ${bulkActions.length} actions in ${perfMs.toFixed(1)}ms`);
+
 /* —— 界面接线守门 —— */
 const review = fs.readFileSync("src/render/review.ts", "utf8");
 for (const marker of ['data-reminder-action="snooze"', 'data-reminder-action="skip"', 'data-reminder-action="restore"', "review.reminderSnoozeAria", "review.reminderSkipAria", "review.reminderRestoreAria", "review.remindersSnoozed", "review.remindersSkipped"]) {
@@ -73,6 +84,11 @@ assert.match(plugin, /REMINDER_ACTIONS_NAME = "checkin-reminder-actions"/, "acti
 assert.match(plugin, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore"\)/, "host must implement the action handler");
 const styles = fs.readFileSync("src/ui/components.scss", "utf8");
 assert.match(styles, /\.lc-checkin__reminder-action\b/, "text action buttons need their own pill style");
+/* v4 层退役后提醒中心基础布局曾整体缺席（D-051 教训）：活层必须保留行网格与标签样式。 */
+assert.match(styles, /\.lc-checkin__reminder-row\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto;/, "reminder rows must keep their grid layout");
+assert.match(styles, /\.lc-checkin__reminder-source\s*\{/, "reminder source labels must stay styled");
+assert.match(styles, /\.lc-checkin__reminder-heading\s*\{[^}]*justify-content:\s*space-between;/, "reminder heading must align title and filter");
+assert.ok(!styles.split(".lc-checkin__reminder-row {")[1]?.split("}")[0]?.includes("--b3-"), "reminder base styles must use lc tokens, not host vars");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 for (const key of ["review.remindersSnoozed", "review.remindersSkipped", "review.reminderSnooze", "review.reminderSkip", "review.reminderRestore", "review.reminderActionToast"]) {
     assert.match(i18n, new RegExp(`"${key}"`), `missing i18n key ${key}`);

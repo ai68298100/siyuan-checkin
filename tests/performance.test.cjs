@@ -24,9 +24,10 @@ if (!browserPath) {
 
 let chromium;
 try {
-    chromium = require("C:/Users/sunku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright").chromium;
+    chromium = require("playwright").chromium;
 } catch {
-    try { chromium = require("playwright").chromium; } catch { console.log("8.0 performance benchmark skipped: playwright unavailable."); process.exit(0); }
+    console.log("8.0 performance benchmark skipped: playwright unavailable.");
+    process.exit(0);
 }
 
 const distCss = path.join(projectRoot, "dist", "index.css");

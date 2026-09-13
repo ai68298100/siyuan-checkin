@@ -6,6 +6,7 @@ const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), 
 const liveStyles = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
+const archivedSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "archived.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
@@ -24,7 +25,9 @@ assert.match(styles, /backdrop-filter:\s*blur\(12px\)/);
 assert.match(styles, /\.lc-checkin__summary-stats[\s\S]*grid-template-columns:\s*repeat\(3/);
 assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-checkin__text-button[\s\S]*min-width:\s*36px/);
 assert.match(reviewSource, /lc-checkin--review[\s\S]*lc-checkin__summary-stats/);
-assert.match(source, /lc-checkin--archived[\s\S]*暂不参与今日计划/);
+/* 归档视图外置到 render/archived.ts（15.0-A）：结构断言跟文件走，文案断言跟 i18n 走。 */
+assert.match(archivedSource, /lc-checkin--archived[\s\S]*t\("archived\.eyebrow"\)/);
+assert.match(i18n, /"archived\.eyebrow": "暂不参与今日计划"/);
 assert.ok(reviewSource.includes('t("review.eyebrow")'), "review eyebrow uses the i18n dictionary");
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);
 assert.match(source, /surface\.dataset\.appearance = this\.resolvedAppearance\(\)/);

@@ -55,7 +55,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
         item?.group || t("review.ungrouped"),
         PRIORITY_LABELS[initialPriority] && t(PRIORITY_LABELS[initialPriority]),
         initialTimeSlot === "any" ? "" : t(TIME_SLOT_LABELS[initialTimeSlot]),
-        initialCompletionSource === "tomato" ? "番茄钟联动" : "手动记录",
+        initialCompletionSource === "tomato" ? t("source.tomato") : t("source.manual"),
         formatScheduleLabel(schedule),
     ].filter(Boolean).join(" · ");
     const templates = !item ? `<section class="lc-checkin__template-section">

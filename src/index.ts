@@ -32,6 +32,7 @@ import {bindBulkModeFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboard
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
+import {renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -1335,18 +1336,9 @@ export default class CheckinPlugin extends Plugin {
         return renderCheckinLogView(this.store.events, this.store.items);
     }
 
+    /* 方法体外置于 render/archived.ts（15.0-A 模块化）；壳保持类内 API 与存储字段稳定。 */
     private renderArchived(): string {
-        const archivedItems = this.store.items.filter((item) => item.archived);
-        const query = this.archivedQuery.trim().toLocaleLowerCase();
-        const items = query ? archivedItems.filter((item) => [item.name, item.group, item.unit, item.icon].some((value) => value?.toLocaleLowerCase().includes(query))) : archivedItems;
-        const rows = items.length ? items.map((item) => {
-            const openPeriod = item.archivePeriods.find((period) => !period.endDate);
-            const pausedLabel = openPeriod ? t("archived.pausedSince", {date: openPeriod.startDate}) : t("archived.paused");
-            const groupLabel = item.group || t("review.ungrouped");
-            return `<article class="lc-checkin__history-row"><span class="lc-checkin__archived-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span><div class="lc-checkin__archived-main"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(groupLabel)} · ${escapeHtml(pausedLabel)}</small></div><button class="lc-checkin__text-button" type="button" data-restore-id="${escapeHtml(item.id)}" aria-label="${t("archived.restoreAria", {name: item.name})}">${t("archived.restore")}</button></article>`;
-        }).join("") : query ? `<div class="lc-checkin__empty-description">${t("archived.searchEmpty", {q: this.archivedQuery.trim()})}</div>` : `<div class="lc-checkin__empty-description">${t("archived.empty")}</div>`;
-        const resultLabel = query ? `找到 ${items.length} 个，共 ${archivedItems.length} 个归档项目` : `共 ${archivedItems.length} 个归档项目`;
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--archived" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="返回">‹</button><div><div class="lc-checkin__eyebrow">暂不参与今日计划</div><h1 class="lc-checkin__title">已归档</h1></div></header><section class="lc-checkin__archived-tools" role="search" aria-label="搜索归档项目"><label class="lc-checkin__archived-search"><span aria-hidden="true">⌕</span><input data-archived-search type="search" value="${escapeHtml(this.archivedQuery)}" placeholder="搜索名称、分组或单位" aria-label="搜索归档项目" enterkeyhint="search" />${this.archivedQuery ? `<button type="button" data-action="clear-archived-query" aria-label="清除归档搜索" title="清除搜索">×</button>` : ""}</label><span class="lc-checkin__archived-result" role="status" aria-live="polite">${resultLabel}</span></section><main class="lc-checkin__history-list">${rows}</main></div>`;
+        return renderArchivedView({items: this.store.items, query: this.archivedQuery, appearance: this.resolvedAppearance()});
     }
 
     /* 方法体外置于 render/occasions.ts（T-022）。 */
