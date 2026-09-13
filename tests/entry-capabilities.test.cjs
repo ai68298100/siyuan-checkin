@@ -28,6 +28,7 @@ assert.match(source, /withTimeout\(provider\.summarize\([\s\S]*SUMMARY_TIMEOUT_M
 assert.match(sharedSource, /export function withTimeout<T>\(promise: Promise<T>, timeoutMs: number, message: string\)/);
 assert.match(source, /addAgentCapability\?:/);
 assert.match(agentSource, /checkin-summary-context/);
+assert.match(agentSource, /checkin-action-suggestions/);
 assert.match(agentSource, /checkin-list-items/);
 assert.match(agentSource, /checkin-item-insights/);
 assert.match(agentSource, /checkin-record-event/);
