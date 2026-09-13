@@ -32,6 +32,7 @@
 | --- | --- |
 | `render/fragments.ts` | 今日页碎片：事项横幅、项目卡、打卡日志、近期记录 |
 | `render/review.ts` | 回顾页（历史+总结+复盘+提醒中心+逾期历史） |
+| `render/archived.ts` | 归档页视图（15.0-A 外置：搜索、结果计数、恢复行） |
 | `render/editor.ts` / `save-form.ts` / `bind-editor.ts` | 新建/编辑表单的视图、校验保存与事件绑定 |
 | `render/occasions.ts` / `bind-occasions.ts` | 日期事项页 |
 | `render/settings.ts` | 设置页 |
