@@ -2883,6 +2883,10 @@
     .lc-checkin-dock-host .lc-checkin__agent-preview,
     .lc-checkin-dock-host .lc-checkin__insight-section { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-agent-compare-diff { max-height: 220px; }
+    .lc-checkin-dock-host .lc-checkin__header,
+    .lc-checkin-dock-host .lc-checkin__editor-header { gap: 10px; padding-right: 42px; }
+    .lc-checkin-dock-host .lc-checkin__header-actions { min-width: 0; max-width: 44%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin__header-actions > * { min-width: 0; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
