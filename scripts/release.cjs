@@ -82,7 +82,7 @@ run(`git push origin v${version}`);
 
 // 4. Release（notes 文件须提前放在 /tmp 或传入）
 const sha = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, "package.zip"))).digest("hex");
-const notesFile = process.argv[4] || `/tmp/release-notes-${version}.md`;
+const notesFile = process.argv[4] || `release-notes-${version}.md`;
 let notes = fs.readFileSync(notesFile, "utf8");
 notes = notes.replace(/SHA-256\*\*: `[a-f0-9]+`/, `SHA-256**: \`${sha}\``);
 const tmpNotes = path.join(root, ".artifacts", `notes-${version}.md`);
