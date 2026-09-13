@@ -17,6 +17,7 @@ assert.match(source, /escapeSuggestionHtml/);
 const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');
 assert.match(preview, /renderAgentPreviewContent/);
 assert.match(preview, /renderSuggestionChanges/);
+assert.match(preview, /summarizeSuggestionImpact/);
 const styles = fs.readFileSync('src/ui/components.scss', 'utf8');
 assert.match(styles, /\.lc-agent-suggestion-changes/);
 assert.match(styles, /\.lc-agent-suggestion-empty/);
