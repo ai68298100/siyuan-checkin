@@ -571,12 +571,15 @@
     }
 
     .lc-checkin-dialog-host--mobile .lc-checkin {
-        padding-top: calc(18px + env(safe-area-inset-top));
+        padding-top: calc(4px + env(safe-area-inset-top));
     }
 
     .lc-checkin-dialog-host--mobile .lc-checkin__header,
     .lc-checkin-dialog-host--mobile .lc-checkin__editor-header {
-        padding-right: 42px;
+        min-height: 48px;
+        padding: 6px 42px 6px 0;
+        margin: 0 0 8px;
+        align-items: center;
     }
 
     .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close {
@@ -2881,7 +2884,7 @@
     .lc-checkin--today .lc-checkin__item-topline { min-height: 20px; }
     .lc-checkin--today .lc-checkin__item-meta { margin-top: 2px; font-size: 10px; }
     .lc-checkin--today .lc-checkin__item-progress { margin-top: 5px; }
-    .lc-checkin--today .lc-checkin__item-action { grid-column: 2; width: 100%; margin-top: 4px; }
+    .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; width: 100%; margin-top: 6px; min-width: 0; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { flex: 1 1 auto; min-height: 34px; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { flex: 0 0 30px; }
     .lc-checkin--today .lc-checkin__group-items { display: flex; flex-direction: column; gap: 8px; }
