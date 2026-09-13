@@ -403,6 +403,18 @@
     }
 }
 
+/* 桌面快速窗口：让打卡画布填满弹窗 body，避免内容结束后下方出现一块
+   空白区域；滚动仍由画布自身承载。 */
+.lc-checkin-dialog-host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+.lc-checkin-dialog-host > .lc-checkin {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .lc-checkin-dialog--fullscreen {
     width: 100vw !important;
     height: 100vh !important;
