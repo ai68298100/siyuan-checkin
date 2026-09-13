@@ -32,6 +32,7 @@ export type AgentAnalysisMeta = {
 
 export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
 export const AGENT_ANALYSIS_CACHE_KEY = "agent-analysis-history.json";
+export const AGENT_ANALYSIS_MAX_TEXT_LENGTH = 200_000;
 
 /**
  * Produces a deterministic, line-oriented diff for read-only analysis comparison.
@@ -86,7 +87,7 @@ export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapsho
     const valid = value.filter((entry): entry is AgentAnalysisSnapshot => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<AgentAnalysisSnapshot>;
-        return typeof candidate.text === "string" && candidate.text.length <= 200_000 && typeof candidate.asOf === "string" &&
+        return typeof candidate.text === "string" && candidate.text.length <= AGENT_ANALYSIS_MAX_TEXT_LENGTH && typeof candidate.asOf === "string" &&
             /^(day|week|month|custom)$/.test(String(candidate.range)) && /^(local|agent)$/.test(String(candidate.source)) &&
             typeof candidate.generatedAt === "string" && !Number.isNaN(Date.parse(candidate.generatedAt));
     });
