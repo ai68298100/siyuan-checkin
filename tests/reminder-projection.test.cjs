@@ -11,4 +11,5 @@ assert.match(source,/reminderStatusLabel/); assert.match(source,/reminderPriorit
 assert.match(source,/reminderPriorityLabel/); assert.match(source,/status === "overdue"/);
 assert.match(source,/mergeReminders/); assert.match(source,/byId = new Map/);
 assert.match(source,/serializeReminders/); assert.match(source,/deserializeReminders/);
+assert.match(source,/mergeReminders\(valid\)/); assert.match(source,/title\.length <= 200/);
 console.log('Reminder projection structure checks passed.');
