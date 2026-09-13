@@ -54,5 +54,13 @@ assert.match(styles, /@container lc5 \(max-width: 380px\)/,
     "sub-380px content layout should respond to the surface container width");
 assert.match(styles, /@container lc5 \(max-width: 360px\)/,
     "sub-360px content density should respond to the surface container width");
+assert.match(components, /@container lc-dock \(max-width: 719px\)/,
+    "dock must have a dedicated narrow-container layout tier");
+assert.match(components, /@container lc-dock \(max-width: 320px\)/,
+    "dock must guard ultra-narrow widths");
+assert.match(components, /grid-column: 1 \/ -1/,
+    "dock card actions must occupy a dedicated row");
+assert.match(components, /scroll-padding-bottom: 16px/,
+    "dock content must preserve bottom scroll safety space");
 
 console.log("Mobile release quality checks passed.");
