@@ -81,6 +81,17 @@ export async function loadAnalysisSnapshots(loader: (key: string) => Promise<unk
     } catch { return []; }
 }
 
+export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapshot[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((entry): entry is AgentAnalysisSnapshot => {
+        if (!entry || typeof entry !== "object") return false;
+        const candidate = entry as Partial<AgentAnalysisSnapshot>;
+        return typeof candidate.text === "string" && candidate.text.length <= 200_000 && typeof candidate.asOf === "string" &&
+            /^(day|week|month|custom)$/.test(String(candidate.range)) && /^(local|agent)$/.test(String(candidate.source)) &&
+            typeof candidate.generatedAt === "string";
+    }).slice(-20);
+}
+
 export async function saveAnalysisSnapshot(saver: (key: string, value: unknown) => Promise<unknown>, key: string, history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot): Promise<AgentAnalysisSnapshot[]> {
     const next = appendAnalysisSnapshot(history, snapshot);
     await saver(key, next);

@@ -21,6 +21,8 @@ assert.match(source, /appendAnalysisSnapshot/);
 assert.match(source, /Math\.max\(1, Math\.min\(20/);
 assert.match(source, /slice\(-safeLimit\)/);
 assert.match(source, /loadAnalysisSnapshots/);
+assert.match(source, /normalizeAnalysisSnapshots/);
+assert.match(source, /200_000/);
 assert.match(source, /saveAnalysisSnapshot/);
 assert.match(source, /AGENT_ANALYSIS_CACHE_KEY/);
 assert.match(source, /source: "local" \| "agent"/);
