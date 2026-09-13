@@ -2412,6 +2412,8 @@
 }
 
 @container lc5 (max-width: 600px) {
+    .lc-checkin--history .lc-checkin__history-selected { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin--history .lc-checkin__history-event { padding: 7px; }
     .lc-checkin {
         overscroll-behavior-y: contain;
         -webkit-tap-highlight-color: transparent;
