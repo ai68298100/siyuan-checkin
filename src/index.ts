@@ -38,6 +38,7 @@ import {renderSettingsView} from "./render/settings";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
+import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, type AgentAnalysisSnapshot} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
@@ -248,6 +249,7 @@ export default class CheckinPlugin extends Plugin {
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
+    private analysisHistory: AgentAnalysisSnapshot[] = [];
     private storageReady = false;
     private activeFocusAdapter?: FocusAdapter;
     private focusBusy = false;
@@ -397,6 +399,7 @@ export default class CheckinPlugin extends Plugin {
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
+                this.analysisHistory = await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY);
                 this.auditEntries = normalizeStoreAudit(audit);
                 this.snapshotHistory = readStoreSnapshotHistory(storedSnapshots);
                 this.occasionStore = occasions;
