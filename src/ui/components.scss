@@ -2695,7 +2695,7 @@
     flex: 1 1 auto;
     min-height: 0;
     margin: 0;
-    padding: 0;
+    padding: 0 0 12px;
     overflow: auto;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, transparent) transparent;
@@ -2720,6 +2720,7 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items { gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { min-height: 0; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav { min-height: 48px; }
+    .lc-checkin-dock-host > .lc-checkin { padding-bottom: 16px; scroll-padding-bottom: 16px; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
