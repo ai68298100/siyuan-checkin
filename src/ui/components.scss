@@ -2838,6 +2838,10 @@
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { grid-column: 2; justify-self: stretch; display: flex; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action button { flex: 1 1 0; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: 1fr; gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { max-height: 160px; gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-card { min-height: 64px; padding: 6px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-option span { min-height: 42px; padding: 6px; }
 }
 
 /* ============================================================
