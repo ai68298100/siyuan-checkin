@@ -116,6 +116,9 @@ export function renderReviewView(ctx: ReviewViewContext): string {
 
     const summary = ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange) : buildSummaryContext(ctx.store, ctx.summaryRange);
     const iconsById = new Map(ctx.store.items.map((item) => [item.id, item.icon]));
+    const summaryRate = summary.scheduledItems ? Math.round(summary.completedItems / summary.scheduledItems * 100) : 0;
+    const topSummaryItem = [...summary.items].sort((a, b) => b.completionRate - a.completionRate)[0];
+    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="回顾摘要"><div><small>截至 ${escapeHtml(summary.endDate)}</small><h2>${summaryRate >= 80 ? "保持得很好" : summaryRate >= 50 ? "正在稳步推进" : "从今天开始"}</h2><p>本周期完成 ${summary.completedItems}/${summary.scheduledItems || 0} 项，记录 ${summary.totalEvents} 条${topSummaryItem ? ` · 最佳项目：${escapeHtml(topSummaryItem.name)}` : ""}</p></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
     const projectRows = summary.items.length ? summary.items.map((item) => {
         const quotaMeta = item.quota
             ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
@@ -187,6 +190,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 </div>
             </header>
             <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div></section>
+            ${summaryHero}
             <div class="lc-checkin__review-layout">
                 <div class="lc-checkin__review-calendar">
                     <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}" title="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" title="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
