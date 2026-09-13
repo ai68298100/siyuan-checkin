@@ -2699,6 +2699,9 @@
     overflow: auto;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, transparent) transparent;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    contain: layout paint style;
     animation: none !important;
 }
 
