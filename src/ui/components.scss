@@ -1466,6 +1466,11 @@
 .lc-checkin--editor .lc-checkin__editor-actions { pointer-events: none; }
 .lc-checkin--editor .lc-checkin__editor-actions > * { pointer-events: auto; }
 
+/* 新建/编辑页的外层不能吞掉滚动：在部分思源窗口中表单高度会被内容
+   撑开，内部 form-scroll 没有可分配的 flex 高度。允许外层兜底滚动，
+   同时保留窄屏已有的内部滚动行为。 */
+.lc-checkin--editor { overflow: auto; }
+
 /* Kind option: the invisible radio stretches across the whole tile so the
    entire card is one hit target (and remains clickable in narrow docks). */
 .lc-checkin--editor .lc-checkin__kind-option { position: relative; }
