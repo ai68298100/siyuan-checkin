@@ -2905,6 +2905,11 @@
     .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-body { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin--summary > *,
+    .lc-checkin-dock-host .lc-checkin--history > * { width: 100%; max-width: 100%; }
+    .lc-checkin-dock-host .lc-checkin__summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .lc-checkin-dock-host .lc-checkin__agent-preview,
+    .lc-checkin-dock-host .lc-checkin__insight-section { max-width: 100%; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
