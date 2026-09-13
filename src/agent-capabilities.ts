@@ -62,7 +62,15 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
                 return context ? {result: `小驴打卡自定义范围 ${startDate} 至 ${endDate}，共 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
             }
             const context = deps.getSummaryContext(range);
-            return context ? {result: `小驴打卡${range === "day" ? "今日" : range === "month" ? "本月" : "本周"}共有 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
+            if (!context) return {error: "打卡数据尚未准备好。"};
+            const ranked = [...context.items].sort((a, b) => b.completionRate - a.completionRate);
+            const enriched = {
+                ...context,
+                asOf: new Date().toISOString().slice(0, 10),
+                highlights: {bestItem: ranked[0]?.name || null, needsAttention: ranked.length > 1 ? ranked[ranked.length - 1]?.name || null : null},
+                guidance: "仅供复盘参考；如需调整项目或记录，必须由用户明确确认。",
+            };
+            return {result: `小驴打卡${range === "day" ? "今日" : range === "month" ? "本月" : "本周"}共有 ${context.totalEvents} 条记录。`, structuredContent: enriched};
         },
     });
     deps.addCapability({
@@ -306,4 +314,3 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
         },
     });
 }
-
