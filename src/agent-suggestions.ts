@@ -16,6 +16,9 @@ export type AgentSuggestion = {
 };
 
 export type AgentSuggestionStatus = "pending" | "confirmed" | "cancelled" | "failed";
+export function suggestionStatusLabel(status: AgentSuggestionStatus): string {
+    return ({pending: "待确认", confirmed: "已确认", cancelled: "已取消", failed: "执行失败"} as Record<AgentSuggestionStatus, string>)[status];
+}
 
 export type AgentAnalysisMeta = {
     asOf: string;

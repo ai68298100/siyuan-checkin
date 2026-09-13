@@ -14,6 +14,7 @@ assert.match(source, /slice\(0, 50\)/);
 assert.match(source, /formatSuggestionChange/);
 assert.match(source, /renderSuggestionChanges/);
 assert.match(source, /summarizeSuggestionChanges/);
+assert.match(source, /suggestionStatusLabel/);
 assert.match(source, /createAnalysisMeta/);
 assert.match(source, /appendAnalysisSnapshot/);
 assert.match(source, /Math\.max\(1, Math\.min\(20/);
