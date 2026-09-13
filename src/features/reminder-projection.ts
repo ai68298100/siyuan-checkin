@@ -30,3 +30,7 @@ export function normalizeReminderStatus(item: ReminderProjection, today: string)
     if (item.status === "pending" && item.dueDate < today) return {...item, status: "overdue", urgency: 0};
     return item;
 }
+
+export function prepareReminders(items: readonly ReminderProjection[], today: string): ReminderProjection[] {
+    return sortReminders(items.map((item) => normalizeReminderStatus(item, today)));
+}

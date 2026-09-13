@@ -5,4 +5,5 @@ assert.match(source,/projectOccasionReminder/); assert.match(source,/projectSche
 assert.match(source,/filterReminders/); assert.match(source,/options\.from/); assert.match(source,/options\.to/);
 assert.match(source,/summarizeReminders/); assert.match(source,/pending: 0/);
 assert.match(source,/normalizeReminderStatus/); assert.match(source,/item\.dueDate < today/);
+assert.match(source,/prepareReminders/); assert.match(source,/items\.map/);
 console.log('Reminder projection structure checks passed.');
