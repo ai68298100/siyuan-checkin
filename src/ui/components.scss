@@ -872,6 +872,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
+.lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
 
 /* 桌面回顾月历采用紧凑行高，避免 6 周网格占满首屏；移动端仍使用
    原有触控尺寸规则。 */

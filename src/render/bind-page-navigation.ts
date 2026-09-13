@@ -117,6 +117,12 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const item = host.store.items.find((candidate) => candidate.id === button.dataset.reviewInsightsId && !candidate.archived);
         if (item) host.showInsights(item);
     }));
+    root.querySelectorAll<HTMLElement>("[data-review-jump]").forEach((button) => button.addEventListener("click", () => {
+        const sections = root.querySelectorAll<HTMLElement>(".lc-checkin__review-sections > details");
+        const target = sections[Number(button.dataset.reviewJump)];
+        target?.scrollIntoView({behavior: "smooth", block: "start"});
+        if (target instanceof HTMLDetailsElement) target.open = true;
+    }));
     root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
         const item = host.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
         if (item) host.showInsights(item);
