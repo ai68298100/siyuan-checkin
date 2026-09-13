@@ -878,6 +878,11 @@
 .lc-checkin__review-hero-rate { color:var(--lc-checkin-accent-text); font-size:30px; font-weight:800; }
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
 .lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
+@container lc5 (min-width: 900px) {
+  .lc-checkin--review .lc-checkin__review-subnav { top: 0; margin: 0 0 8px; padding: 4px 0; }
+  .lc-checkin--review .lc-checkin__calendar-day { min-height: 28px; padding: 2px; border-radius: 7px; font-size: 10px; }
+  .lc-checkin--review .lc-checkin__calendar-day b { font-size: 8px; }
+}
 
 /* 桌面回顾月历采用紧凑行高，避免 6 周网格占满首屏；移动端仍使用
    原有触控尺寸规则。 */
