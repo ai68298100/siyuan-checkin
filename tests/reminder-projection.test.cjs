@@ -31,6 +31,7 @@ assert.match(source,/ReminderMigrationImpact/); assert.match(source,/summarizeRe
 assert.match(source,/serializeReminderMigrationImpact/); assert.match(source,/deserializeReminderMigrationImpact/);
 assert.match(source,/deserializeReminderMigrationImpactCompatible/); assert.match(source,/parsed\.version > 1/);
 assert.match(source,/migrateReminderMigrationImpact/); assert.match(source,/迁移影响摘要无效/);
+assert.match(source,/canAutoApplyReminderMigration/); assert.match(source,/impact\.delta >= 0/);
 assert.match(source,/serializeReminderMigrationDiagnostic/); assert.match(source,/reason: reminderMigrationRiskReason/);
 assert.match(source,/deserializeReminderMigrationDiagnostic/); assert.match(source,/slice\(0, 300\)/);
 assert.match(source,/parsed\.risk !== risk/); assert.match(source,/parsed\.reason !== reason/);
