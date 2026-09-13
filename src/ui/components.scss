@@ -2872,6 +2872,9 @@
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .lc-checkin-dock-host .lc-checkin__calendar { gap: 3px; }
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-height: 30px; padding: 4px 3px; }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 7px; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { display: flex; gap: 4px; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
