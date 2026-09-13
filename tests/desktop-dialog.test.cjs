@@ -44,8 +44,8 @@ assert.match(preferences, /dialogRect: readRect\(source\.dialogRect/, "the dragg
 assert.match(preferences, /dialogOffset: readOffset\(source\.dialogOffset\)/, "the dragged dialog position must persist");
 assert.match(quickDialog, /host\.dialogSizeMode === "auto"[\s\S]*?host\.dialogRect\?\.width \?\? autoDialogWidth/,
     "auto mode must use the remembered size before falling back to the content-driven width");
-assert.match(quickDialog, /AUTO_DIALOG_MIN_WIDTH = 760[\s\S]*?AUTO_DIALOG_MAX_WIDTH = 1600/,
-    "the adaptive width must stay inside a readable 760�?600px band");
+assert.match(quickDialog, /AUTO_DIALOG_MIN_WIDTH = 760[\s\S]*?AUTO_DIALOG_MAX_WIDTH = 1780/,
+    "the adaptive width must stay inside a readable 760–1780px band");
 assert.match(quickDialog, /export function bindQuickDialogFrameFor/, "the dialog must be framed on desktop");
 assert.match(quickDialog, /container\.style\.transform = offsetX \|\| offsetY \? `translate/, "dragging must offset the dialog");
 assert.match(quickDialog, /RESIZE_EDGES = \["n", "s", "e", "w", "ne", "nw", "se", "sw"\] as const/,
