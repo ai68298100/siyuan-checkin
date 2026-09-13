@@ -2834,6 +2834,10 @@
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: 1fr; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { padding-inline: 6px; font-size: 11px; }
     .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { gap: 3px; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 26px minmax(0, 1fr); }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { grid-column: 2; justify-self: stretch; display: flex; gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action button { flex: 1 1 0; min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: 1fr; gap: 4px; }
 }
 
 /* ============================================================
