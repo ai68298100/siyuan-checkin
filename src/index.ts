@@ -18,7 +18,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
-import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
+import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
 import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
@@ -59,6 +59,20 @@ const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
+
+/* 顶栏/底栏位于 .lc-checkin 滚动面板之外，无法直接继承独立主题 token。
+   渲染后从已应用主题的 surface 复制自定义属性到宿主，保证窗口级 UI 与内容
+   使用同一套浅色/暗色及调色板，而不污染思源全局变量。 */
+const HOST_THEME_TOKEN_NAMES = [
+    "--lc-checkin-accent", "--lc-checkin-accent-strong", "--lc-checkin-accent-soft", "--lc-checkin-accent-text", "--lc-checkin-accent-fill", "--lc-checkin-accent-contrast",
+    "--lc-checkin-success", "--lc-checkin-success-soft", "--lc-checkin-success-text", "--lc-checkin-warning", "--lc-checkin-warning-text", "--lc-checkin-danger", "--lc-checkin-danger-text",
+    "--lc-checkin-lilac", "--lc-checkin-lilac-text", "--lc-checkin-lilac-soft", "--lc-checkin-warm", "--lc-checkin-warm-soft", "--lc-checkin-warm-text",
+    "--lc-checkin-bg", "--lc-checkin-surface", "--lc-checkin-surface-raised", "--lc-checkin-muted-surface", "--lc-checkin-border", "--lc-checkin-border-strong", "--lc-checkin-text", "--lc-checkin-muted",
+    "--lc-checkin-deep", "--lc-checkin-deep-text", "--lc-checkin-gold", "--lc-checkin-gold-text", "--lc-checkin-shadow-sm", "--lc-checkin-shadow", "--lc-checkin-shadow-md", "--lc-checkin-shadow-lg", "--lc-checkin-focus",
+    "--lc-checkin-radius-sm", "--lc-checkin-radius", "--lc-checkin-radius-lg", "--lc-checkin-motion-fast", "--lc-checkin-motion", "--lc-checkin-nav-height",
+    "--lc-checkin-z-banner", "--lc-checkin-z-header", "--lc-checkin-z-nav", "--lc-checkin-z-fab", "--lc-checkin-z-popup",
+    "--b3-theme-background", "--b3-theme-surface", "--b3-theme-surface-light", "--b3-border-color", "--b3-theme-on-background", "--b3-theme-on-surface-light", "--b3-theme-primary", "--b3-theme-success", "--b3-theme-warning", "--b3-theme-error",
+] as const;
 
 /* 星期名随插件语言：日序（0=日）用于编辑器勾选，一周首序用于月历表头。 */
 const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
@@ -132,6 +146,7 @@ export default class CheckinPlugin extends Plugin {
     /* 每个表面（dock/tab/弹窗）一份「页面→滚动位置」表（T-112）；scrollCapturePage 记录当前 DOM 属于哪一页。
        初始值须与 currentPage 的默认页一致（字段初始化按声明顺序执行）。 */
     private pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>();
+    private hostThemeSignatures = new WeakMap<HTMLElement, string>();
     private scrollCapturePage = "today";
     private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
@@ -196,6 +211,7 @@ export default class CheckinPlugin extends Plugin {
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     private pendingFocusItemId?: string;
+    private pendingLocalItemId?: string;
     private collapsedTodayGroups = new Set<string>();
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
@@ -543,6 +559,7 @@ export default class CheckinPlugin extends Plugin {
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item, event});
+        this.pendingLocalItemId = item.id;
         this.renderBackgroundUpdate();
         return {...event};
     }
@@ -688,7 +705,91 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderBackgroundUpdate() {
+        const localItemId = this.pendingLocalItemId;
+        this.pendingLocalItemId = undefined;
+        if (localItemId && this.currentPage === "today" && this.renderTodayItemLocally(localItemId)) {
+            /* The original control stays connected, so no focus restoration is needed;
+               clear the deferred full-render target to avoid stealing focus later. */
+            this.pendingFocusItemId = undefined;
+            return;
+        }
         renderBackgroundUpdateFor(this as unknown as PluginOpsHost);
+    }
+
+    /* 数值记录未改变卡片所属分组/完成态时，只更新该卡片的派生文本与进度，
+       避免一次打卡重建整个 Today 页面。若卡片因筛选、完成态或连续天数
+       结构变化而需要移动，则返回 false 让调用方走完整渲染。 */
+    private renderTodayItemLocally(itemId: string): boolean {
+        if (typeof document === "undefined") return false;
+        const date = currentCalendarDate();
+        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        if (!item || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) return false;
+        const complete = isComplete(this.store, item, date);
+        const query = this.todayQuery.trim().toLocaleLowerCase();
+        if (query && !`${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query)) return false;
+        if (this.pendingOnly && complete) return false;
+        if (this.weekStripVisible) return false;
+        const roots = [this.dockElement, this.tabElement, this.quickDialogElement]
+            .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+        if (!roots.length) return false;
+        const currentStreaks = this.computeStreaks();
+        const ctx = {
+            store: this.store,
+            currentStreaks,
+            bulkMode: this.bulkMode,
+            bulkSelected: this.bulkSelected,
+            todaySortMode: this.todaySortMode,
+        };
+        const replacements: Array<{card: HTMLElement; next: HTMLElement}> = [];
+        for (const root of roots) {
+            const surface = root.querySelector<HTMLElement>(".lc-checkin--today");
+            const card = [...(surface?.querySelectorAll<HTMLElement>("[data-item-id]") || [])]
+                .find((candidate) => candidate.dataset.itemId === itemId);
+            if (!surface || !card || card.classList.contains("is-complete") !== complete) return false;
+            const template = document.createElement("template");
+            template.innerHTML = renderItemView(item, date, ctx).trim();
+            const next = template.content.firstElementChild;
+            if (!(next instanceof HTMLElement)) return false;
+            if (Boolean(card.querySelector(".lc-checkin__streak-badge")) !== Boolean(next.querySelector(".lc-checkin__streak-badge"))) return false;
+            replacements.push({card, next});
+        }
+        for (const {card, next} of replacements) {
+            card.className = next.className;
+            const style = next.getAttribute("style");
+            if (style) card.setAttribute("style", style);
+            else card.removeAttribute("style");
+            const currentMeta = card.querySelector<HTMLElement>(".lc-checkin__item-meta");
+            const nextMeta = next.querySelector<HTMLElement>(".lc-checkin__item-meta");
+            if (currentMeta && nextMeta) currentMeta.textContent = nextMeta.textContent;
+            const currentProgress = card.querySelector<HTMLElement>(".lc-checkin__item-progress > span");
+            const nextProgress = next.querySelector<HTMLElement>(".lc-checkin__item-progress > span");
+            if (currentProgress && nextProgress) currentProgress.setAttribute("style", nextProgress.getAttribute("style") || "");
+            const currentStreak = card.querySelector<HTMLElement>(".lc-checkin__streak-badge");
+            const nextStreak = next.querySelector<HTMLElement>(".lc-checkin__streak-badge");
+            if (currentStreak && nextStreak) currentStreak.textContent = nextStreak.textContent;
+        }
+        this.syncRecentRecordToast();
+        return true;
+    }
+
+    private syncRecentRecordToast() {
+        const markup = renderRecentRecordView(this.recentRecord, this.reducedMotion);
+        const roots = [this.dockElement, this.tabElement, this.quickDialogElement]
+            .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+        for (const root of roots) {
+            const current = [...root.children].find((child): child is HTMLElement => child.classList.contains("lc-checkin__recent-record"));
+            if (!markup) {
+                current?.remove();
+                continue;
+            }
+            const template = document.createElement("template");
+            template.innerHTML = markup.trim();
+            const next = template.content.firstElementChild;
+            if (!(next instanceof HTMLElement)) continue;
+            current?.replaceWith(next);
+            if (!current) root.appendChild(next);
+            next.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
+        }
     }
 
     /* 9.0 渲染合并：同一帧内多次调用只执行一次渲染。 */
@@ -732,8 +833,12 @@ export default class CheckinPlugin extends Plugin {
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
             surface.dataset.appearance = this.resolvedAppearance();
+            const appearance = surface.dataset.appearance as "light" | "dark";
             surface.dataset.palette = this.palette;
             surface.dataset.reducedMotion = String(this.reducedMotion);
+            root.dataset.appearance = appearance;
+            root.dataset.palette = this.palette;
+            this.syncHostThemeTokens(root, surface);
             /* container queries cannot style their own container, so all page
                content lives in one layout wrapper inside the container. */
             const layout = document.createElement("div");
@@ -761,6 +866,11 @@ export default class CheckinPlugin extends Plugin {
         if (!root.querySelector(".lc-checkin__mobile-nav")) {
             root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         }
+        /* Transient check-in feedback belongs to the plugin window, not the
+           scrolling Today document. Hoist it so absolute positioning is
+           bounded by the dialog, tab, or dock host on every frontend. */
+        const recentRecordToast = surface?.querySelector<HTMLElement>(".lc-checkin__recent-record");
+        if (recentRecordToast) root.appendChild(recentRecordToast);
         if (this.currentPage === "editor") {
             this.bindEditor(root);
         } else if (this.currentPage === "today") {
@@ -794,6 +904,18 @@ export default class CheckinPlugin extends Plugin {
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
         if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;
         this.scrollCapturePage = this.currentPage;
+    }
+
+    private syncHostThemeTokens(root: HTMLElement, surface: HTMLElement) {
+        if (typeof getComputedStyle !== "function") return;
+        const signature = `${surface.dataset.appearance ?? ""}:${surface.dataset.palette ?? ""}`;
+        if (this.hostThemeSignatures.get(root) === signature) return;
+        const computed = getComputedStyle(surface);
+        for (const name of HOST_THEME_TOKEN_NAMES) {
+            const value = computed.getPropertyValue(name).trim();
+            if (value) root.style.setProperty(name, value);
+        }
+        this.hostThemeSignatures.set(root, signature);
     }
 
     private normalizeUiIcons(root: HTMLElement) {
@@ -1031,7 +1153,7 @@ export default class CheckinPlugin extends Plugin {
        顶栏只保留 关闭 + 页面标题 + 今日进度，单行尽量矮。 */
     private renderMobileTopbar(): string {
         const progress = this.currentPage === "today" ? this.todayProgressLabel() : "";
-        return `<div class="lc-checkin__mobile-topbar"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}</div>`;
+        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}</div>`;
     }
 
     private renderMobileNav(): string {
@@ -1471,6 +1593,7 @@ export default class CheckinPlugin extends Plugin {
             }
             this.invalidateSummary();
             this.broadcast({type: "event-deleted", item, deletedEvents});
+            this.pendingLocalItemId = item.id;
             this.renderBackgroundUpdate();
             return;
         }
@@ -1521,6 +1644,7 @@ export default class CheckinPlugin extends Plugin {
             target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
             unit: revision.unit || "次",
         });
+        this.pendingLocalItemId = current.id;
         this.renderBackgroundUpdate();
         return {...event};
     }
@@ -1531,8 +1655,8 @@ export default class CheckinPlugin extends Plugin {
         this.recentRecordTimer = window.setTimeout(() => {
             this.recentRecord = undefined;
             this.recentRecordTimer = undefined;
-            this.renderBackgroundUpdate();
-        }, 5000);
+            this.syncRecentRecordToast();
+        }, 2600);
     }
 
     private async undoRecentRecord() {
@@ -1563,6 +1687,7 @@ export default class CheckinPlugin extends Plugin {
             }
             this.invalidateSummary();
             this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+            this.pendingLocalItemId = event.itemId;
             this.renderBackgroundUpdate();
         });
     }

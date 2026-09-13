@@ -605,22 +605,57 @@
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .78; }
 .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:hover { opacity: 1; }
 
-/* transient toasts on today */
-.lc-checkin--today .lc-checkin__recent-record {
+/* 完成打卡后的轻量反馈：脱离滚动正文，避免手机顶部被提示条挤占。 */
+.lc-checkin-dialog-host,
+.lc-checkin-tab-host,
+.lc-checkin-dock-host { position: relative; }
+
+.lc-checkin__recent-record {
+    position: absolute;
+    right: auto;
+    bottom: 18px;
+    left: 50%;
+    z-index: var(--lc-checkin-z-popup);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    margin: 0 0 10px;
-    padding: 8px 12px;
+    gap: 8px;
+    width: min(360px, calc(100% - 24px));
+    min-height: 0;
+    margin: 0;
+    padding: 6px 9px;
     border: 1px solid color-mix(in srgb, var(--lc-checkin-success) 30%, var(--lc-checkin-border));
-    border-radius: var(--lc-checkin-radius);
+    border-radius: 10px;
     background: color-mix(in srgb, var(--lc-checkin-success) 7%, var(--lc-checkin-surface));
+    box-shadow: var(--lc-checkin-shadow);
+    transform: translate(-50%, 2px);
+    animation: lc-checkin-toast-in 120ms ease-out both;
 }
-.lc-checkin--today .lc-checkin__recent-record span { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; }
-.lc-checkin--today .lc-checkin__recent-record i { display: grid; place-items: center; flex: none; width: 18px; height: 18px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 10px; font-style: normal; }
-.lc-checkin--today .lc-checkin__recent-record small { color: var(--lc-checkin-muted); }
-.lc-checkin--today .lc-checkin__recent-record button { flex: none; }
+.lc-checkin__recent-record span { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
+.lc-checkin__recent-record i { display: grid; place-items: center; flex: none; width: 17px; height: 17px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 9px; font-style: normal; }
+.lc-checkin__recent-record small { color: var(--lc-checkin-muted); }
+.lc-checkin__recent-record button { flex: none; }
+
+@keyframes lc-checkin-toast-in {
+    from { opacity: 0; transform: translate(-50%, 4px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* 手机/窄面板给底部导航让出空间，toast 仍保持在窗口内而非顶部。 */
+.lc-checkin-dialog-host--mobile > .lc-checkin__recent-record,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__recent-record,
+.lc-checkin-dock-host > .lc-checkin__recent-record {
+    bottom: calc(var(--lc-checkin-nav-height) + env(safe-area-inset-bottom) + 10px);
+}
+
+.lc-checkin__recent-record[data-reduced-motion="true"] {
+    animation: none;
+    transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin__recent-record { animation: none; transform: translateX(-50%); }
+}
 .lc-checkin__save-status { margin: 0 0 10px; padding: 7px 12px; border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); color: var(--lc-checkin-muted); font-size: 12px; }
 .lc-checkin__save-status.is-error { color: var(--lc-checkin-danger-text); background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--lc-checkin-surface)); }
 
@@ -3090,3 +3125,82 @@
 .lc-checkin__review-fold[data-review-fold="projects"] .lc-checkin__review-fold-body { max-height: 480px; overflow: auto; }
 /* 逾期历史「展开全部」按钮 */
 .lc-checkin__overdue-history [data-overdue-expand] { margin-top: 6px; }
+
+/* 手机顶栏最终收口：作为画布的一部分，而不是一块突出的独立色带。
+   顶栏位于滚动区外，使用 border-box 把安全区计入总高度；普通设备仅占
+   38px，刘海屏只额外增加 safe-area inset，避免原先 min-height+padding
+   叠加造成 60px 以上的空白。 */
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar {
+    display: grid !important;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: calc(38px + env(safe-area-inset-top));
+    min-height: calc(38px + env(safe-area-inset-top)) !important;
+    max-height: none;
+    box-sizing: border-box;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+    background: var(--lc-checkin-bg);
+    border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 72%, transparent);
+    box-shadow: none;
+}
+
+/* 顶栏/底栏已提升到 surface 外层，宿主承接 surface 的独立主题 token（由
+   renderInto 同步），并提供无闪烁的浅色回退。这样窗口背景、顶栏和底栏
+   始终属于同一画布，不会因思源全局主题变量而出现突兀色带。 */
+.lc-checkin-dialog-host--mobile,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
+    color: var(--lc-checkin-text, #2A2B35);
+    background: var(--lc-checkin-bg, #EEF0FB);
+    color-scheme: light;
+}
+.lc-checkin-dialog-host--mobile[data-appearance="dark"],
+.lc-checkin-tab-host[data-appearance="dark"]:has(.lc-checkin__mobile-topbar) {
+    color-scheme: dark;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-close {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-border) 78%, transparent);
+    border-radius: 8px;
+    color: var(--lc-checkin-muted);
+    background: color-mix(in srgb, var(--lc-checkin-surface) 58%, transparent);
+    font-size: 14px;
+    line-height: 1;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-title,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-title {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--lc-checkin-text);
+    font-size: 14px;
+    font-weight: 680;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-meta,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-meta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 24px;
+    box-sizing: border-box;
+    padding: 0 7px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 24%, var(--lc-checkin-border));
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-text);
+    background: color-mix(in srgb, var(--lc-checkin-accent-soft) 72%, var(--lc-checkin-bg));
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}

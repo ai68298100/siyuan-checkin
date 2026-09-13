@@ -40,6 +40,21 @@ export interface TodayViewContext extends TodayItemContext {
 
 export type SaveState = "idle" | "saving" | "error";
 
+export interface RecentRecordView {
+    message: string;
+    progress: number;
+    target: number;
+    unit: string;
+}
+
+export function renderRecentRecordView(record: RecentRecordView | undefined, reducedMotion: boolean): string {
+    if (!record) return "";
+    return `<div class="lc-checkin__recent-record" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
+            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong><small>当前 ${escapeHtml(formatNumber(record.progress))}/${escapeHtml(formatNumber(record.target))} ${escapeHtml(record.unit)}</small></span>
+            <button type="button" data-action="undo-record">撤销</button>
+        </div>`;
+}
+
 export function renderOccasionBannerView(occasionStore: OccasionStore, date: Date): string {
     const items = getVisibleOccasions(occasionStore, date).slice(0, 3);
     const chips = items.map((item) => {
@@ -275,10 +290,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 </button>
                 <div class="lc-checkin__group-items" ${ctx.completedCollapsed ? "hidden" : ""}>${completedItems.map((item) => renderItemView(item, now, ctx)).join("")}</div>
             </section>` : ""}`;
-    const recentRecord = ctx.recentRecord ? `<div class="lc-checkin__recent-record" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(ctx.recentRecord.message)}</strong><small>当前 ${escapeHtml(formatNumber(ctx.recentRecord.progress))}/${escapeHtml(formatNumber(ctx.recentRecord.target))} ${escapeHtml(ctx.recentRecord.unit)}</small></span>
-            <button type="button" data-action="undo-record">撤销</button>
-        </div>` : "";
+    const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.reducedMotion);
     const saveStatus = renderSaveStatusView(ctx.saveState);
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
@@ -297,7 +309,6 @@ export function renderTodayView(ctx: TodayViewContext): string {
             </header>
             <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
             ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="最近七天打卡状态">${weekStrip}</section>` : ""}
-            ${recentRecord}
             ${saveStatus}
             ${occasionIsToday ? occasionBanner : ""}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
@@ -318,5 +329,6 @@ export function renderTodayView(ctx: TodayViewContext): string {
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}
             <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}</main>
+            ${recentRecord}
         </div>`;
 }

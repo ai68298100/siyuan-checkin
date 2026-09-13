@@ -31,6 +31,10 @@ assert.ok(baseCapIndex >= 0 && ladderIndex > baseCapIndex,
     "the ladder must be declared after the 700px base cap, otherwise equal specificity makes it a dead rule");
 assert.ok(!/@media \(min-width: 1[0-9]{3}px\) \{\s*\.lc-checkin-dialog-host/.test(scss),
     "viewport media queries must not size the dialog content (they measured the window, not the dialog)");
+assert.match(scss, /@container lc-dialog \(min-width: 900px\)[\s\S]*?\.lc-checkin-dialog-host \.lc-checkin \{ padding-top: 26px; \}/,
+    "desktop dialog content spacing must follow the dialog host container width");
+assert.match(scss, /@container lc5 \(min-width: 900px\)[\s\S]*?\.lc-checkin-tab-host \.lc-checkin \{ padding-top: 28px; \}/,
+    "desktop tab content spacing must follow the surface container width");
 
 // �?尺寸策略 + 窗体操作
 assert.match(preferences, /DialogSizeMode = "auto" \| "percent" \| "fullscreen" \| "fixed"/,
