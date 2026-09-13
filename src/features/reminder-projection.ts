@@ -25,3 +25,8 @@ export function summarizeReminders(items: readonly ReminderProjection[]): Record
     items.forEach((item) => { summary[item.status] += 1; });
     return summary;
 }
+
+export function normalizeReminderStatus(item: ReminderProjection, today: string): ReminderProjection {
+    if (item.status === "pending" && item.dueDate < today) return {...item, status: "overdue", urgency: 0};
+    return item;
+}
