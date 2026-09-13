@@ -39,3 +39,6 @@ export function getReminderPriority(items: readonly ReminderProjection[]): {coun
     const pending = sortReminders(items.filter((item) => item.status === "overdue" || item.status === "pending"));
     return {count: pending.length, first: pending[0]};
 }
+
+export function reminderStatusLabel(status: ReminderStatus): string { return ({pending: "待处理", completed: "已完成", skipped: "已跳过", snoozed: "已延期", overdue: "已逾期"} as Record<ReminderStatus, string>)[status]; }
+export function reminderPriorityText(summary: {count: number; first?: ReminderProjection}): string { return summary.count ? (summary.first?.status === "overdue" ? `有 ${summary.count} 项逾期提醒` : `有 ${summary.count} 项待处理提醒`) : "暂无待处理提醒"; }
