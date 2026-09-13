@@ -13,6 +13,8 @@ assert.match(source, /ALLOWED_CHANGE_FIELDS/);
 assert.match(source, /slice\(0, 50\)/);
 assert.match(source, /formatSuggestionChange/);
 assert.match(source, /renderSuggestionChanges/);
+assert.match(source, /createAnalysisMeta/);
+assert.match(source, /source: "local" \| "agent"/);
 assert.match(source, /escapeSuggestionHtml/);
 const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');
 assert.match(preview, /renderAgentPreviewContent/);

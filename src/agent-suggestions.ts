@@ -17,6 +17,17 @@ export type AgentSuggestion = {
 
 export type AgentSuggestionStatus = "pending" | "confirmed" | "cancelled" | "failed";
 
+export type AgentAnalysisMeta = {
+    asOf: string;
+    range: "day" | "week" | "month" | "custom";
+    source: "local" | "agent";
+    generatedAt: string;
+};
+
+export function createAnalysisMeta(range: AgentAnalysisMeta["range"], source: AgentAnalysisMeta["source"], asOf: string, generatedAt = new Date().toISOString()): AgentAnalysisMeta {
+    return {range, source, asOf, generatedAt};
+}
+
 export type AgentSuggestionEnvelope = AgentSuggestion & {
     status: AgentSuggestionStatus;
     createdAt: string;
