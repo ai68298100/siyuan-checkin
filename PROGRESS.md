@@ -14,6 +14,8 @@ T-135 complete: `tests/agent-suggestions.test.cjs` is now part of the main `pnpm
 
 T-136 complete: added deterministic line diff and escaped HTML renderer for saved analysis comparison, with compact scrollable styles and regression assertions. Verification: `pnpm run check` and agent-suggestions safety checks passed.
 
+T-131 status corrected to complete: review secondary navigation is implemented with jump targets, auto-expansion, sticky navigation, and persisted fold state; covered by UI/mobile regression checks.
+
 10.0 checkpoint: T-036 migration report foundation implemented and backup tests expanded. Next: connect report to JSON restore preview; T-023 real-device validation remains blocked.
 
 T-037 complete: JSON restore flow now builds migration report against current store and includes source-to-target version in confirmation preview.
