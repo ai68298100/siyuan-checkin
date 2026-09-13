@@ -101,3 +101,7 @@ export function renderSuggestionChanges(changes: readonly AgentSuggestionChange[
     if (!changes.length) return "<p class=\"lc-agent-suggestion-empty\">暂无可执行变更</p>";
     return `<ul class=\"lc-agent-suggestion-changes\">${changes.map((change) => `<li><code>${escapeSuggestionHtml(String(change.field))}</code><span>${escapeSuggestionHtml(formatSuggestionChange(change))}</span></li>`).join("")}</ul>`;
 }
+
+export function summarizeSuggestionChanges(changes: readonly AgentSuggestionChange[]): Array<{itemId: string; field: string; before: string; after: string}> {
+    return changes.map((change) => ({itemId: change.itemId, field: String(change.field), before: change.before == null ? "未设置" : String(change.before), after: change.after == null ? "未设置" : String(change.after)}));
+}
