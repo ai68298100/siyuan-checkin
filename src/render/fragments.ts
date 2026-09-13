@@ -170,7 +170,7 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
     }
     const days = [...byDay.keys()].filter((day) => day <= dateKey(currentCalendarDate())).sort((left, right) => right.localeCompare(left)).slice(0, 14);
     if (!days.length) return "";
-    const daySections = days.map((day) => {
+    const daySections = days.map((day, index) => {
         const dayEvents = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
         const rows = dayEvents.map((event) => {
             const item = itemNames.get(event.itemId);
@@ -180,9 +180,9 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
             const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
             return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
         }).join("");
-        return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
+        return `<div class="lc-checkin__log-day"${index >= 2 ? ' data-log-extra hidden' : ''}><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
     }).join("");
-    return daySections;
+    return `${daySections}${days.length > 2 ? `<button class="lc-checkin__text-button" type="button" data-log-expand>展开其余 ${days.length - 2} 天</button>` : ""}`;
 }
 
 function todayGroupKeyOf(groupMode: TodayGroupMode, item: CheckinItem): string {
