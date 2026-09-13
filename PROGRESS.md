@@ -72,7 +72,7 @@ T-055 complete: review JSON export now responds to click; backup recommendation 
 
 T-056 complete: desktop topnav no longer sticks over content; default auto dialog shows more content with expanded width/height ratios.
 
-Dock Tomato �����о���ɣ�������Լ��δ�� PR �߽��Ѽ�¼�� docs/docktomato-integration-plan.md����ǰ������������������ PR��
+Dock Tomato 联动研究完成：公开契约与未来 PR 边界已记录于 docs/docktomato-integration-plan.md；当前不启用联动、不创建 PR。
 
 T-057 complete: Archived is now a Review sub-entry, reducing primary navigation while preserving direct access.
 

@@ -94,8 +94,8 @@ assert.ok(!components.includes("--b3-"), "component layer must not reference hos
 
 /* Kept behaviours from the 4.0 line. */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
-assert.match(i18nSource, /"today\.pendingEmpty": "没有待处理的匹配�?/, "pending-only empty state must explain when nothing matches");
-assert.match(i18nSource, /"today\.queryCompleted": "匹配的项目都已完�?/, "search state must distinguish completed matches");
+assert.match(i18nSource, /"today\.pendingEmpty": "没有待处理的匹配项"/, "pending-only empty state must explain when nothing matches");
+assert.match(i18nSource, /"today\.queryCompleted": "匹配的项目都已完成"/, "search state must distinguish completed matches");
 assert.match(styles, /\.lc-checkin__item-tag\s*\{[^}]*max-width:\s*32%;/,
     "legacy floor still guards metadata tag width");
 

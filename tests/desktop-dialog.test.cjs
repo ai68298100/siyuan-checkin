@@ -1,7 +1,7 @@
 /* 桌面端弹窗结构守门：
-   �?内容列宽必须走「弹窗自身宽度」的容器查询阶梯，而不是被 700px 基础上限压死
+   * 内容列宽必须走「弹窗自身宽度」的容器查询阶梯，而不是被 700px 基础上限压死
       （历史上 @media 版本写在该上限之前，同特异性被覆盖成死规则，宽弹窗恒为单列）；
-   �?尺寸策略含自适应默认值，且拖�?缩放/双击最大化与记忆链路完整�?*/
+   * 尺寸策略含自适应默认值，且拖拽缩放/双击最大化与记忆链路完整。*/
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -13,7 +13,7 @@ const preferences = read("src", "view-preferences.ts");
 const settings = read("src", "render", "settings.ts");
 const i18n = read("src", "i18n.ts");
 
-// �?弹窗容器查询阶梯
+// 守门：弹窗容器查询阶梯
 assert.match(scss, /\.lc-checkin-dialog-host \{ container: lc-dialog \/ inline-size; \}/,
     "the dialog host must expose its own container so the content ladder measures the dialog, not the window");
 const ladder = scss.slice(scss.indexOf("container: lc-dialog / inline-size"));
@@ -36,7 +36,7 @@ assert.match(scss, /@container lc-dialog \(min-width: 900px\)[\s\S]*?\.lc-checki
 assert.match(scss, /@container lc5 \(min-width: 900px\)[\s\S]*?\.lc-checkin-tab-host \.lc-checkin \{ padding-top: 28px; \}/,
     "desktop tab content spacing must follow the surface container width");
 
-// �?尺寸策略 + 窗体操作
+// 守门：尺寸策略 + 窗体操作
 assert.match(preferences, /DialogSizeMode = "auto" \| "percent" \| "fullscreen" \| "fixed"/,
     "auto must be a dialog size mode");
 assert.match(preferences, /dialogSizeMode: "auto",/, "auto must be the default dialog size mode");
@@ -57,14 +57,14 @@ assert.match(scss, /\.lc-checkin-dialog__resize-handle\.is-se \{/, "resize handl
 assert.match(scss, /\.lc-checkin-dialog--fullscreen \.lc-checkin-dialog__resize-handle \{ display: none; \}/,
     "fullscreen must not expose resize handles");
 
-// �?设置面板入口
+// 守门：设置面板入口
 assert.match(settings, /<option value="auto" \$\{ctx\.dialogSizeMode === "auto" \? "selected" : ""\}>/,
     "settings must offer the adaptive size mode");
 assert.match(settings, /data-action="reset-dialog-frame"/, "settings must offer resetting a remembered size");
 assert.match(i18n, /"set\.dialogAuto": "自适应（推荐）"/, "zh copy for the adaptive mode");
 assert.match(i18n, /"set\.dialogAuto": "Adaptive \(recommended\)"/, "en copy for the adaptive mode");
 
-// �?宽容器下的页面级桌面布局
+// 守门：宽容器下的页面级桌面布局
 const components = read("src", "ui", "components.scss");
 assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(300px, 420px\) minmax\(0, 1fr\)/,
     "the occasions page must become a list-left / form-right master-detail layout");
@@ -80,7 +80,7 @@ assert.match(read("src", "render", "bind-today.ts"), /host\.reviewFoldTouched = 
 assert.match(scss, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin:not\(\.lc-checkin--editor\) \.lc-checkin__back-button \{ display: none; \}/,
     "the desktop rail replaces the per-page back button");
 
-// �?打卡按钮对齐：操作区用固定轨道，缺按钮的类型留空轨道而不是让主按钮左�?
+// 守门：打卡按钮对齐：操作区用固定轨道，缺按钮的类型留空轨道而不是让主按钮左移
 assert.match(components, /\.lc-checkin--today \.lc-checkin__item-action \{[\s\S]*?--lc-action-slot: 34px;[\s\S]*?--lc-action-primary: 92px;[\s\S]*?grid-template-columns: var\(--lc-action-slot\) minmax\(64px, var\(--lc-action-primary\)\) var\(--lc-action-slot\);/,
     "the action cell must use fixed tracks so every card kind shares one primary-button column");
 assert.match(components, /\.lc-checkin__item-action :is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{ grid-column: 2;/,
@@ -97,17 +97,17 @@ assert.match(fragments, /isBinary && complete \? "" : `<button class="lc-checkin
 assert.match(fragments, /isBinary \? "" : `<label><span>本次记录<\/span><input class="lc-checkin__amount"/,
     "binary items omit the amount field but keep note and photo in the exact-entry panel");
 
-// �?弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗�?CSS 宽度可能只有 ~950�?
+// 守门：弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗下 CSS 宽度可能只有 ~950px）
 for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
     assert.match(scss, new RegExp(`@container lc-dialog \\(min-width: ${threshold}px\\)`),
         `the dialog ladder must include the ${threshold}px step`);
 }
 
-// �?手机端固定顶�?底栏：结构在滚动容器之外 + 几何�?!important 收口
+// 守门：手机端固定顶/底栏：结构在滚动容器之外 + 几何 + !important 收口
 const plugin = read("src", "index.ts");
 assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobileTopbar\(\)\)/,
     "the mobile top bar must be attached to the host, not inside the scrolling container");
-/* T-118 �����ټ򻯣��û���������ҳǩ������ظ�������ֻ�� �ر�+����+���ȣ������κε��� */
+/* T-118 移动端顶栏再简化：导航只留在底部页签，顶栏不再重复出现，只保留 关闭+标题+进度，不做任何按钮 */
 {
     const topbarFn = plugin.match(/private renderMobileTopbar\(\): string \{[\s\S]*?\n    \}/)[0];
     assert.ok(!topbarFn.includes("data-mobile-nav"),
@@ -133,7 +133,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobil
 assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-nav,[\s\S]*?animation: none !important;[\s\S]*?transform: none !important;/,
     "the entrance animation must be cancelled: its fill-mode left the bars translated by 6-8px and replayed on every render");
 
-// �?侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不�?
+// 守门：侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不来
 assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host"\)/,
     "the dock panel needs its own host class for narrow-panel layout");
 assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
@@ -143,10 +143,10 @@ assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/
     "the dock host must be a sized container and a flex column so its bars can be pinned");
 assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
     "narrow dock panels must show the bottom navigation");
-assert.match(read("src", "render", "review.ts"), /data-action="archived"/, "�鵵 entry button stays in the �ع� page header");
-assert.doesNotMatch(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "�鵵 stays out of the top navigation (reached from �ع�, T-032 user feedback)");
+assert.match(read("src", "render", "review.ts"), /data-action="archived"/, "archived entry button stays in the review page header");
+assert.doesNotMatch(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "archived stays out of the top navigation (reached from review, T-032 user feedback)");
 
-// �?事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px�?
+// 守门：事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px）
 assert.match(read("src", "render", "occasions.ts"), /<details class="lc-checkin__occasion-templates-fold" \$\{ctx\.occasionTemplatesOpen \? "open" : ""\}>/,
     "the 21 template chips must live behind a fold");
 assert.match(read("src", "render", "occasions.ts"), /class="lc-checkin__occasion-row-actions"><button class="lc-checkin__small-button" type="button" data-occasion-toitem=/,
@@ -162,14 +162,14 @@ assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin-
 assert.match(read("src", "render", "bind-occasions.ts"), /host\.occasionTemplatesOpen = \(event\.currentTarget as HTMLDetailsElement\)\.open;/,
     "the template fold state must survive re-renders");
 
-// �ع�ҳ�鵵���Ψһ��T-032������ťֻ��Ⱦһ�Σ����� aria �� {date} ռλ�����봫ֵ
+// 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
 assert.equal((reviewSource.match(/data-action="archived"/g) || []).length, 1,
     "the review header must render exactly one archive entry");
 assert.match(reviewSource, /t\("review\.catchUpAria", \{name: entry\.name, date: entry\.occurrenceDate\}\)/,
     "the catch-up aria label must interpolate both {name} and {date}");
 
-// T-034 �ֻ��˽����ո壺խ�������� topnav������������ֺ��š��ո�����
+// T-034 手机端窄容器：隐藏 topnav，操作列禁止纵向堆叠，按钮不再折行
 assert.doesNotMatch(components, /@container lc5 \(max-width: 719px\)[^@]*?flex-direction: column;\s*\}\s*\.lc-checkin--today \.lc-checkin__item-action/s,
     "the narrow-container action column must never stack buttons vertically again");
 assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin__topnav \{ display: none !important; \}/,
@@ -179,7 +179,7 @@ assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-che
 assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin--today \.lc-checkin__item-action :is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{ order: 3;/,
     "the check-in primary button must be the rightmost action");
 
-// T-112 ҳ�����λ�ü��䣺��Ⱦǰ����ҳ������Ⱦ����ҳ�ָ�
+// T-112 页面滚动位置记忆：渲染前记录页面，重渲染后页面恢复
 const pluginSource = read("src", "index.ts");
 assert.match(pluginSource, /pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>\(\)/,
     "scroll memory must be per-surface and garbage-collected with it");
@@ -188,24 +188,24 @@ assert.match(pluginSource, /tops\.set\(this\.scrollCapturePage, previousScroller
 assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(this\.currentPage\) \?\? 0/,
     "the post-render scroll position must be restored for the new page");
 
-// T-107 �����������j/k/e �������
+// T-107 页面键盘流：j/k/e 导航（仅桌面端绑定）
 assert.match(read("src", "render", "today-bindings.ts"), /export function bindPageKeyboardFor\(host: TodayBindingsHost, root: HTMLElement\): void/,
     "the page keyboard flow must live in today-bindings");
 assert.match(pluginSource, /if \(!this\.isMobileFrontend\) bindPageKeyboardFor\(this as unknown as TodayBindingsHost, root\)/,
     "the keyboard flow must not bind on the mobile frontend");
 
-// T-113 Esc �ص��������������� + ������
+// T-113 Esc 关闭弹窗：同一宿主只绑定一次，防重复触发
 const pluginOps = read("src", "plugin-ops.ts");
 assert.match(pluginOps, /root !== host\.quickDialogElement \|\| root\.dataset\.escCloseBound === "true"\) return;/,
     "the Esc close handler must bind once on the quick dialog surface only");
 
-// T-114 �򿨺󽹵��λ
+// T-114 打卡后焦点复位：渲染后消费 pendingFocusItemId
 assert.match(pluginSource, /const focusItemId = this\.pendingFocusItemId;/,
     "the pending focus item must be consumed after render");
 assert.match(read("src", "render", "bind-today.ts"), /host\.pendingFocusItemId = item\.id;/,
     "record tap sites must queue the card for focus restore");
 
-// T-110 ���ǳ���
+// T-110 补记撤销条：撤销回滚已完成标记
 assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false\)/,
     "the catch-up toast must offer an undo that rolls back the mark");
 
