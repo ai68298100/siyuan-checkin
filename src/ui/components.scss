@@ -2896,16 +2896,24 @@
     .lc-checkin--today .lc-checkin__item-progress { height: 2px; margin-top: 3px; }
     .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { display: none !important; }
 
-    /* 操作轨道：横向 [计时 | 主按钮 | 更多]，固定轨道让各卡片按钮落在同一条竖线 */
+    /* 操作轨道（T-118b 用户反馈）：打卡主按钮永远最右，右边不放任何东西。
+       左侧依次 [拖拽(手动排序) | 计时 | 更多]，全部右对齐。 */
     .lc-checkin--today .lc-checkin__item-action {
-        --lc-action-slot: 26px;
-        --lc-action-primary: 88px;
-        display: grid;
-        grid-template-columns: var(--lc-action-slot) minmax(56px, var(--lc-action-primary)) var(--lc-action-slot);
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        align-items: center;
         gap: 3px;
     }
-    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { min-height: 30px; padding: 0 8px; font-size: 11.5px; }
-    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 26px; height: 26px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle { order: 0; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button { order: 1; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { order: 2; }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { order: 3; min-height: 30px; padding: 0 8px; font-size: 11.5px; }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 26px; height: 26px; flex: none; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle { order: 0; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button { order: 1; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { order: 2; }
+
 
     /* 分组标题与卡片、卡片与卡片：间距压到最小 */
     .lc-checkin--today .lc-checkin__group-header { min-height: 18px; margin-bottom: 2px; gap: 5px; }

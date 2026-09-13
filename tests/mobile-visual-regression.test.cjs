@@ -26,9 +26,12 @@ assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin inpu
 // Touch interactions must not create a second horizontal scroller.
 assert.match(styles, /\.lc-checkin-dialog-host--mobile\s*\{[\s\S]*touch-action:\s*pan-y/,
     "mobile dialog must reserve horizontal gestures for the page shell");
-/* 曾锁定 index.scss 的 @container lc-checkin 死块；现锁 components.scss 的现行固定轨道（轨道有界=动作区不溢出） */
-assert.match(v5Components, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-checkin--today \.lc-checkin__item-action \{\s*--lc-action-slot: 26px;[\s\S]*grid-template-columns: var\(--lc-action-slot\) minmax\(56px, var\(--lc-action-primary\)\) var\(--lc-action-slot\);/,
-    "card actions must remain within the card width");
+/* 曾锁定 index.scss 的 @container lc-checkin 死块；现锁 components.scss 的现行布局：
+   打卡主按钮 order 最大（永远最右），其余按钮靠左，右侧不放任何东西（T-118b） */
+assert.match(v5Components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin--today \.lc-checkin__item-action \{\s*display: flex;[\s\S]*?justify-content: flex-end;/,
+    "card actions must stay right-aligned inside the card");
+assert.match(v5Components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin--today \.lc-checkin__item-action :is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{ order: 3;/,
+    "the check-in primary button must be the rightmost action");
 
 // Snapshot contract: each supported viewport keeps the same semantic card hooks.
 for (const width of [320, 360, 390, 430]) {
