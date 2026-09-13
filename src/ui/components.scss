@@ -2877,6 +2877,9 @@
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { display: flex; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 180px; overflow: auto; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin__reminder-list,
+    .lc-checkin-dock-host .lc-checkin__occasion-manager-list { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin-dock-host .lc-checkin__history-events { max-height: 48vh; overflow: auto; overscroll-behavior: contain; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
