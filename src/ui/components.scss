@@ -2846,6 +2846,11 @@
     .lc-checkin-dock-host .lc-checkin__history-event-value { grid-column: 1; grid-row: auto; text-align: left; }
     .lc-checkin-dock-host .lc-checkin__history-event-actions { grid-column: 1; flex-wrap: wrap; }
     .lc-checkin-dock-host .lc-checkin__history-date { gap: 4px; flex-wrap: wrap; }
+    .lc-checkin-dock-host .lc-checkin__agent-preview,
+    .lc-checkin-dock-host .lc-checkin__insight-section { min-width: 0; max-width: 100%; overflow: hidden; }
+    .lc-checkin-dock-host .lc-checkin__agent-preview p,
+    .lc-checkin-dock-host .lc-checkin__insight-section p { overflow-wrap: anywhere; }
+    .lc-checkin-dock-host .lc-agent-compare-diff { max-height: 140px; font-size: 10px; }
 }
 
 /* ============================================================
