@@ -2890,6 +2890,9 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters > * { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__multi-select { min-width: 48px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__group-header button { flex: 0 0 auto; min-width: 30px; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
