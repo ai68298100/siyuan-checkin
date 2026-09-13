@@ -2893,6 +2893,9 @@
     .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 6px; }
     .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__group-header button { flex: 0 0 auto; min-width: 30px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section,
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__quick-recent { max-height: 34vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-items { gap: 6px; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
