@@ -882,6 +882,11 @@
 .lc-checkin__agent-preview strong { color: var(--lc-checkin-accent-text); }
 .lc-checkin__agent-preview p { margin: 8px 0 0; color: var(--lc-checkin-muted); font-size: 12px; }
 .lc-checkin__agent-preview-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+.lc-agent-suggestion-changes { display:grid; gap:6px; margin:12px 0; padding:0; list-style:none; }
+.lc-agent-suggestion-changes li { display:flex; align-items:baseline; gap:8px; padding:7px 9px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); font-size:11px; }
+.lc-agent-suggestion-changes code { color:var(--lc-checkin-accent-text); font-size:10px; font-weight:700; }
+.lc-agent-suggestion-changes span { color:var(--lc-checkin-text); }
+.lc-agent-suggestion-empty { margin:12px 0; color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
 .lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
 .lc-checkin__log-day[data-log-extra] { display:none; }
