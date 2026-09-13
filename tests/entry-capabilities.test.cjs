@@ -31,6 +31,7 @@ assert.match(agentSource, /checkin-summary-context/);
 assert.match(agentSource, /checkin-action-suggestions/);
 assert.match(agentSource, /requiresConfirmation: true/);
 assert.match(agentSource, /changes: \[\]/);
+assert.match(agentSource, /description: "规范化后的项目设置变更/);
 assert.match(agentSource, /checkin-list-items/);
 assert.match(agentSource, /checkin-item-insights/);
 assert.match(agentSource, /checkin-record-event/);
