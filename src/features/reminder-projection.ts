@@ -7,6 +7,9 @@ export function sortReminders(items: readonly ReminderProjection[]): ReminderPro
     return [...items].sort((a, b) => (a.status === "completed" ? 1 : 0) - (b.status === "completed" ? 1 : 0) || a.urgency - b.urgency || a.dueDate.localeCompare(b.dueDate) || a.source.localeCompare(b.source) || a.id.localeCompare(b.id));
 }
 export function transitionReminder(item: ReminderProjection, status: ReminderStatus): ReminderProjection { return canTransitionReminder(item.status, status) ? (item.status === status ? item : {...item, status}) : item; }
+export type ReminderTransitionReason = "user" | "date" | "sync";
+export interface ReminderTransition { from: ReminderStatus; to: ReminderStatus; reason: ReminderTransitionReason; at: string; }
+export function createReminderTransition(item: ReminderProjection, to: ReminderStatus, reason: ReminderTransitionReason, at = new Date().toISOString()): ReminderTransition | null { return canTransitionReminder(item.status, to) ? {from: item.status, to, reason, at} : null; }
 export function canTransitionReminder(from: ReminderStatus, to: ReminderStatus): boolean { if (from === "completed" && to !== "completed") return false; if (from === to) return true; return !(from === "skipped" && to === "overdue"); }
 
 export function projectOccasionReminder(id: string, title: string, dueDate: string, status: ReminderStatus = "pending"): ReminderProjection {
