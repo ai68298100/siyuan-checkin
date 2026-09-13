@@ -170,5 +170,5 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
         const y = gap + dayIndex * (cell + gap);
         return `<rect class="${levelClass(day.level)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${day.date}：${day.count} 条记录</title></rect>`;
     }).join("")).join("");
-    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年活跃热力图，共 ${heatmap.total} 条记录">${cells}</svg>`;
+    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年打卡热力图：颜色越深表示完成记录越多，共 ${heatmap.total} 条记录">${cells}</svg>`;
 }

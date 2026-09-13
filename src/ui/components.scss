@@ -1883,10 +1883,10 @@
 .lc-checkin__year-heatmap > summary::-webkit-details-marker { display: none; }
 .lc-checkin__yearheatmap-scroll { overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
 .lc-checkin__yearheatmap { min-width: 640px; display: block; }
-.lc-checkin__yearheatmap .is-empty { fill: var(--lc-checkin-muted-surface); }
-.lc-checkin__yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 25%, var(--lc-checkin-surface)); }
-.lc-checkin__yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--lc-checkin-surface)); }
-.lc-checkin__yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 70%, var(--lc-checkin-surface)); }
+.lc-checkin__yearheatmap .is-empty { fill: #fff; stroke: var(--lc-checkin-border); stroke-width: .5; }
+.lc-checkin__yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 16%, #fff); }
+.lc-checkin__yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 34%, #fff); }
+.lc-checkin__yearheatmap .is-level-3 { fill: color-mix(in srgb, var(--lc-checkin-accent) 58%, #fff); }
 .lc-checkin__yearheatmap .is-level-4 { fill: var(--lc-checkin-accent); }
 .lc-checkin__yearheatmap-total { display: block; margin-top: 8px; color: var(--lc-checkin-muted); font-size: 10.5px; }
 
