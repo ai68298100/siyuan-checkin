@@ -1303,6 +1303,7 @@ export default class CheckinPlugin extends Plugin {
             summaryCustomRange: this.summaryCustomRange,
             summaryText: this.summaryText,
             analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
+            analysisHistoryCount: this.analysisHistory.length,
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
