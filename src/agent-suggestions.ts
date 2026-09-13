@@ -31,6 +31,19 @@ export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[]
     return [...history, snapshot].slice(-safeLimit);
 }
 
+export async function loadAnalysisSnapshots(loader: (key: string) => Promise<unknown>, key: string): Promise<AgentAnalysisSnapshot[]> {
+    try {
+        const value = await loader(key);
+        return Array.isArray(value) ? value.filter((entry): entry is AgentAnalysisSnapshot => Boolean(entry && typeof entry === "object" && typeof (entry as any).text === "string" && typeof (entry as any).asOf === "string")).slice(-20) : [];
+    } catch { return []; }
+}
+
+export async function saveAnalysisSnapshot(saver: (key: string, value: unknown) => Promise<unknown>, key: string, history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot): Promise<AgentAnalysisSnapshot[]> {
+    const next = appendAnalysisSnapshot(history, snapshot);
+    await saver(key, next);
+    return next;
+}
+
 export function createAnalysisMeta(range: AgentAnalysisMeta["range"], source: AgentAnalysisMeta["source"], asOf: string, generatedAt = new Date().toISOString()): AgentAnalysisMeta {
     return {range, source, asOf, generatedAt};
 }

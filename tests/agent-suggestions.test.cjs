@@ -17,6 +17,8 @@ assert.match(source, /createAnalysisMeta/);
 assert.match(source, /appendAnalysisSnapshot/);
 assert.match(source, /Math\.max\(1, Math\.min\(20/);
 assert.match(source, /slice\(-safeLimit\)/);
+assert.match(source, /loadAnalysisSnapshots/);
+assert.match(source, /saveAnalysisSnapshot/);
 assert.match(source, /source: "local" \| "agent"/);
 assert.match(source, /escapeSuggestionHtml/);
 const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');
