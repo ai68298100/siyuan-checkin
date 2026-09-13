@@ -1305,6 +1305,7 @@ export default class CheckinPlugin extends Plugin {
             summaryText: this.summaryText,
             analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
             analysisHistoryCount: this.analysisHistory.length,
+            analysisHistory: this.analysisHistory.map(({asOf, range, source, generatedAt}) => ({asOf, range, source, generatedAt})),
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
