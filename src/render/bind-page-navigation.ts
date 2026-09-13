@@ -6,7 +6,6 @@ import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
 import {Dialog, showMessage} from "siyuan";
-import {renderAgentPreviewContent} from "./agent-preview";
 
 export interface BindPageNavigationHost {
     store: import("../types").CheckinStore;
