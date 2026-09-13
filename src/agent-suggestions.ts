@@ -88,7 +88,7 @@ export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapsho
         const candidate = entry as Partial<AgentAnalysisSnapshot>;
         return typeof candidate.text === "string" && candidate.text.length <= 200_000 && typeof candidate.asOf === "string" &&
             /^(day|week|month|custom)$/.test(String(candidate.range)) && /^(local|agent)$/.test(String(candidate.source)) &&
-            typeof candidate.generatedAt === "string";
+            typeof candidate.generatedAt === "string" && !Number.isNaN(Date.parse(candidate.generatedAt));
     }).slice(-20);
 }
 
