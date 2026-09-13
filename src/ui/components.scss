@@ -2702,6 +2702,7 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     contain: layout paint style;
+    scroll-padding-top: 8px;
     animation: none !important;
 }
 
@@ -2733,6 +2734,8 @@
     .lc-checkin-dock-host .lc-checkin__mobile-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 1px; }
     .lc-checkin-dock-host .lc-checkin__group-header { min-height: 32px; padding: 4px 2px; border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
     .lc-checkin-dock-host .lc-checkin__group-header button { min-width: 32px; min-height: 30px; }
+    .lc-checkin-dock-host .lc-checkin__item:focus-within,
+    .lc-checkin-dock-host .lc-checkin__group-header:focus-within { scroll-margin-block: 8px; }
     .lc-checkin-dock-host .lc-checkin__empty,
     .lc-checkin-dock-host .lc-checkin__loading,
     .lc-checkin-dock-host .lc-checkin__error { margin: 10px 0; padding: 12px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; text-align: center; }
