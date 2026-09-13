@@ -77,7 +77,7 @@ export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[]
 export async function loadAnalysisSnapshots(loader: (key: string) => Promise<unknown>, key: string): Promise<AgentAnalysisSnapshot[]> {
     try {
         const value = await loader(key);
-        return Array.isArray(value) ? value.filter((entry): entry is AgentAnalysisSnapshot => Boolean(entry && typeof entry === "object" && typeof (entry as any).text === "string" && typeof (entry as any).asOf === "string")).slice(-20) : [];
+        return normalizeAnalysisSnapshots(value);
     } catch { return []; }
 }
 
