@@ -2738,6 +2738,12 @@
     .lc-checkin-dock-host .lc-checkin__field-label,
     .lc-checkin-dock-host .lc-checkin__field-help { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host label > small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__layout,
+    .lc-checkin-dock-host .lc-checkin__layout > * { min-width: 0; max-width: 100%; }
+    .lc-checkin-dock-host img,
+    .lc-checkin-dock-host video,
+    .lc-checkin-dock-host iframe { max-width: 100%; height: auto; }
+    .lc-checkin-dock-host a { overflow-wrap: anywhere; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
