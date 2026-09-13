@@ -148,25 +148,6 @@
 .lc-checkin__mobile-nav button small { display: block; overflow: hidden; font-size: 9px; font-weight: 600; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .lc-checkin__mobile-nav button.is-selected { color: var(--lc-checkin-accent-text); background: transparent; }
 .lc-checkin__mobile-nav button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); box-shadow: 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent); }
-.lc-checkin__mobile-fab {
-    position: fixed;
-    z-index: var(--lc-checkin-z-fab);
-    right: 14px;
-    bottom: calc(var(--lc-checkin-nav-height) + env(safe-area-inset-bottom) + 14px);
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border: 0;
-    border-radius: 50%;
-    color: var(--lc-checkin-accent-contrast);
-    background: var(--lc-checkin-accent-fill);
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--lc-checkin-accent) 38%, transparent);
-    cursor: pointer;
-    transition: transform var(--lc-checkin-motion-fast), filter var(--lc-checkin-motion-fast);
-}
-.lc-checkin__mobile-fab:hover { color: #fff; transform: translateY(-1px); filter: brightness(.96); }
-.lc-checkin__mobile-fab .lc-checkin__glyph { width: 21px; height: 21px; }
 
 /* ---------------- headers ---------------- */
 .lc-checkin__header,
@@ -1622,11 +1603,6 @@
     bottom: 0;
     margin-top: 12px;
 }
-.lc-checkin__mobile-fab {
-    position: absolute;
-    right: 12px;
-    bottom: calc(100% + 12px);
-}
 
 /* 任何宿主都禁止横向溢出 */
 .lc-checkin__layout { overflow-x: clip; }
@@ -2507,13 +2483,7 @@
         padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
     }
     .lc-checkin__mobile-nav button { min-height: 40px; }
-    .lc-checkin__mobile-fab {
-        width: 40px;
-        height: 40px;
-        bottom: calc(var(--lc-checkin-nav-height) + env(safe-area-inset-bottom) + 10px);
-        right: 10px;
-    }
-
+    
     /* 布局底部留少一些 */
     .lc-checkin__layout { padding-bottom: calc(calc(48px + env(safe-area-inset-bottom)) + 8px); }
 }
@@ -3555,4 +3525,72 @@
     font-weight: 700;
     line-height: 1;
     font-variant-numeric: tabular-nums;
+}
+
+/* ================= 窄容器修正层(2026-09-14 真机截图核对) =================
+   A) 今日操作轨道在 390px 向左溢出压到正文(flex-end 溢出规则)——主按钮可收缩省略,图标钮固定 26px;
+   B) 连续徽章把标题行撑到 40px——压回行内高度;
+   C) 移动端顶栏已显示页名,页内 editor-header 的眉题+大标题重复——窄档隐藏文字保留按钮;
+   D) 编辑器模板分类 chip 文字不可见、模板卡被裁切——恢复可见与自适应;
+   E) 自定义范围 chip 未激活时降为普通观感;列表底部为思源悬浮钮留避让空间。 */
+.lc-checkin--today .lc-checkin__item-action { min-width: 0; max-width: 100%; }
+.lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) {
+    width: 26px;
+    height: 26px;
+    min-height: 0;
+    flex: none;
+    align-self: center;
+}
+.lc-checkin--today .lc-checkin__item-topline .lc-checkin__streak-badge {
+    height: 22px;
+    min-height: 0;
+    align-self: center;
+    line-height: 22px;
+}
+@container lc5 (max-width: 719px) {
+    .lc-checkin--review .lc-checkin__editor-header .lc-checkin__title,
+    .lc-checkin--editor .lc-checkin__editor-header .lc-checkin__title,
+    .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
+    .lc-checkin--archived .lc-checkin__editor-header .lc-checkin__title,
+    .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
+    .lc-checkin__editor-header { min-height: 40px; }
+    .lc-checkin--review .lc-checkin__header-actions { flex-wrap: wrap; row-gap: 6px; }
+    .lc-checkin--editor .lc-checkin__filter-row {
+        height: auto;
+        overflow: visible;
+        flex-wrap: wrap;
+    }
+    .lc-checkin--editor .lc-checkin__filter-row button {
+        min-width: 0;
+        height: auto;
+        min-height: 28px;
+        padding: 4px 12px;
+        font-size: 12px;
+        line-height: 20px;
+        color: var(--lc-checkin-text);
+        overflow: visible;
+    }
+    .lc-checkin--editor .lc-checkin__filter-row button.is-selected { color: var(--lc-checkin-accent-text); }
+    .lc-checkin--editor .lc-checkin__templates { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+    /* chips 占行变多后,预览限高同步放宽,保证至少露出一整行模板卡(内部可滚) */
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 380px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__template { min-height: 66px; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__list { padding-bottom: 64px; }
+    .lc-checkin--review .lc-checkin__custom-range-disclosure > summary {
+        color: var(--lc-checkin-muted);
+        border-color: transparent;
+        background: transparent;
+        box-shadow: none;
+    }
+    .lc-checkin--review .lc-checkin__custom-range-disclosure[open] > summary {
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+    }
 }

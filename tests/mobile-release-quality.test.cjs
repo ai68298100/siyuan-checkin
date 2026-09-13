@@ -63,4 +63,36 @@ assert.match(components, /grid-column: 1 \/ -1/,
 assert.match(components, /scroll-padding-bottom: 16px/,
     "dock content must preserve bottom scroll safety space");
 
+/* ---- 真机截图核对修复守门(B-006,2026-09-14) ---- */
+const review = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+/* 今日操作轨道:窄档 flex-end 溢出向左压正文——主按钮必须可收缩省略,图标钮 26px */
+assert.match(components, /\.lc-checkin--today \.lc-checkin__item-action \{ min-width: 0; max-width: 100%; \}/,
+    "today action rail must be allowed to shrink instead of overflowing onto text");
+assert.match(components, /:is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{\s*flex: 0 1 auto;\s*min-width: 0;/,
+    "record/quick buttons must shrink with ellipsis on narrow cards");
+assert.match(components, /:is\(\.lc-checkin__focus-button, \.lc-checkin__more-button, \.lc-checkin__drag-handle\) \{\s*width: 26px;\s*height: 26px;/,
+    "rail icon buttons must stay 26px inline");
+/* 连续徽章不再撑高标题行 */
+assert.match(components, /\.lc-checkin__item-topline \.lc-checkin__streak-badge \{\s*height: 22px;/,
+    "streak badge must stay inline height");
+/* 移动端页内标题与顶栏重复:窄档隐藏文字保留按钮 */
+assert.match(components, /\.lc-checkin--review \.lc-checkin__editor-header \.lc-checkin__title,[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__eyebrow \{ display: none; \}/,
+    "duplicate in-page titles must hide at narrow widths");
+/* hero 零记录门控 */
+assert.match(review, /hasPeriodRecords = summary\.totalEvents > 0/, "hero extras must gate on actual records");
+assert.match(review, /topSummaryItem && hasPeriodRecords/, "best item must hide at zero records");
+/* 思源移动端悬浮钮避让 */
+assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__list \{ padding-bottom: 64px; \}/,
+    "mobile list must reserve bottom space for the host floating button");
+/* 编辑器模板 chips 可见 + 预览限高放宽 */
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__filter-row \{\s*height: auto;\s*overflow: visible;/,
+    "template group chips must not be clipped by the row");
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__template-section \{ max-height: 380px; overflow: auto; \}/,
+    "template preview must show a full card row at narrow widths");
+/* 自定义范围 chip 未激活降权 */
+assert.match(components, /\.lc-checkin__custom-range-disclosure > summary \{\s*color: var\(--lc-checkin-muted\);/,
+    "custom range chip must look neutral when inactive");
+/* 死 FAB 样式不得回潮 */
+assert.ok(!components.includes("lc-checkin__mobile-fab"), "dead mobile-fab styles must stay removed");
+
 console.log("Mobile release quality checks passed.");
