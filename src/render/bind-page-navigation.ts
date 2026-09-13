@@ -266,7 +266,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     }));
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => host.generateSummary());
-    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", () => new Dialog({title: "智能体建议预览", content: `<div class="lc-checkin__agent-preview"><strong>当前建议仅供参考</strong><p>建议不会自动修改项目或打卡记录。</p><p>如需执行调整，后续将先展示变更前后差异、影响范围和撤销方式，再由你明确确认。</p></div>`}));
+    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => { const button = event.currentTarget as HTMLElement; const item = button.dataset.suggestionItem; const rate = button.dataset.suggestionRate; new Dialog({title: "智能体建议预览", content: `<div class="lc-checkin__agent-preview"><strong>当前建议仅供参考</strong>${item ? `<p>关注项目：<b>${item}</b> · 当前完成率 ${rate}%</p><p>建议先复盘该项目的目标或频率，再决定是否调整。</p>` : `<p>当前没有明显薄弱项目。</p>`}<p>建议不会自动修改项目或打卡记录。任何变更都需要你确认后执行。</p></div>`}); });
     root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", async () => {
         const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
         const label = host.summaryRange === "day" ? "今日报告" : host.summaryRange === "month" ? "本月报告" : "本周报告";
