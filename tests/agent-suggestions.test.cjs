@@ -9,4 +9,6 @@ assert.match(source, /status: "pending"/);
 assert.match(source, /if \(envelope.status !== "pending"\) return envelope/);
 assert.match(source, /status === "confirmed" \? \{confirmedAt: now\}/);
 assert.match(source, /error\.slice\(0, 160\)/);
+assert.match(source, /ALLOWED_CHANGE_FIELDS/);
+assert.match(source, /slice\(0, 50\)/);
 console.log('Agent suggestion safety structure checks passed.');

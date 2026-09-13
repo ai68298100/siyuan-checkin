@@ -42,3 +42,15 @@ export function summarizeSuggestionImpact(changes: readonly AgentSuggestionChang
     const items = new Set(changes.map((change) => change.itemId));
     return `将影响 ${items.size} 个项目，变更 ${changes.length} 项设置；需要用户确认后执行。`;
 }
+
+const ALLOWED_CHANGE_FIELDS: ReadonlySet<keyof CheckinItem> = new Set(["name", "target", "unit", "group", "priority", "timeSlot", "tomatoMode"]);
+
+export function normalizeSuggestionChanges(value: unknown, items: readonly CheckinItem[]): AgentSuggestionChange[] {
+    if (!Array.isArray(value)) return [];
+    const validIds = new Set(items.map((item) => item.id));
+    return value.filter((entry): entry is AgentSuggestionChange => {
+        if (!entry || typeof entry !== "object") return false;
+        const candidate = entry as AgentSuggestionChange;
+        return validIds.has(candidate.itemId) && ALLOWED_CHANGE_FIELDS.has(candidate.field) && !Object.is(candidate.before, candidate.after);
+    }).slice(0, 50);
+}
