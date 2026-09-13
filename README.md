@@ -112,6 +112,7 @@ corepack pnpm run build     # 生产构建，产物在 dist/，安装包为 pack
 
 ## 文档索引
 
+- [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap.md)
 - [4.0 UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 产品路线](docs/ui-product-roadmap.md)
 - [生态集成与 API](docs/ecosystem-integration.md) · [AI 集成计划](docs/ai-integration-plan.md)
 - [2.0 迁移说明](docs/v2.0-migration-notes.md) · [2.0 变更记录](docs/v2.0-change-log.md) · [UI 重构范围](docs/ui-redesign-roadmap.md)
