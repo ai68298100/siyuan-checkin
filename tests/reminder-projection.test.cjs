@@ -9,4 +9,5 @@ assert.match(source,/prepareReminders/); assert.match(source,/items\.map/);
 assert.match(source,/getReminderPriority/); assert.match(source,/count: pending\.length/);
 assert.match(source,/reminderStatusLabel/); assert.match(source,/reminderPriorityText/);
 assert.match(source,/reminderPriorityLabel/); assert.match(source,/status === "overdue"/);
+assert.match(source,/mergeReminders/); assert.match(source,/byId = new Map/);
 console.log('Reminder projection structure checks passed.');

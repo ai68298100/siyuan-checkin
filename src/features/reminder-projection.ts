@@ -45,3 +45,8 @@ export function reminderPriorityText(summary: {count: number; first?: ReminderPr
 export type ReminderPriority = "urgent" | "today" | "upcoming";
 export function reminderPriority(item: ReminderProjection, today: string): ReminderPriority { if (item.status === "overdue" || item.dueDate < today) return "urgent"; if (item.dueDate === today) return "today"; return "upcoming"; }
 export function reminderPriorityLabel(priority: ReminderPriority): string { return ({urgent: "紧急", today: "今天", upcoming: "即将到期"} as Record<ReminderPriority, string>)[priority]; }
+export function mergeReminders(...lists: ReadonlyArray<readonly ReminderProjection[]>): ReminderProjection[] {
+    const byId = new Map<string, ReminderProjection>();
+    lists.flat().forEach((item) => { const existing = byId.get(item.id); byId.set(item.id, existing?.status === "completed" ? existing : item); });
+    return sortReminders([...byId.values()]);
+}
