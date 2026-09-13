@@ -14,4 +14,5 @@ assert.match(source,/serializeReminders/); assert.match(source,/deserializeRemin
 assert.match(source,/mergeReminders\(valid\)/); assert.match(source,/title\.length <= 200/);
 assert.match(source,/REMINDER_SNAPSHOT_VERSION/); assert.match(source,/serializeReminderSnapshot/); assert.match(source,/deserializeReminderSnapshot/);
 assert.match(source,/reminderSnapshotSummary/); assert.match(source,/overdue: items\.filter/);
+assert.match(source,/formatReminderSnapshotSummary/); assert.match(source,/今日/);
 console.log('Reminder projection structure checks passed.');
