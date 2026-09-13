@@ -2775,6 +2775,10 @@
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates-fold { margin-bottom: 6px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates { max-height: 150px; overflow: auto; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-list { gap: 5px; }
+    .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+    .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-list { gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-row { grid-template-columns: minmax(0, 1fr) auto; min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__calendar { gap: 2px; }
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-width: 0; min-height: 28px; padding: 3px 2px; font-size: 10px; }
     .lc-checkin-dock-host .lc-checkin__calendar-day span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
