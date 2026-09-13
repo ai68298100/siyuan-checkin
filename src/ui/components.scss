@@ -892,6 +892,9 @@
 .lc-agent-compare-grid article { padding:9px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); }
 .lc-agent-compare-grid h4 { margin:0 0 5px; color:var(--lc-checkin-accent-text); font-size:11px; }
 .lc-agent-compare-grid p { margin:0; white-space:pre-wrap; font-size:11px; }
+@container lc5 (max-width: 560px) {
+  .lc-agent-compare-grid { grid-template-columns:1fr; }
+}
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
 .lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
 .lc-checkin__log-day[data-log-extra] { display:none; }
