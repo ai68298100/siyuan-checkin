@@ -55,6 +55,13 @@ export function diffAnalysisText(before: string, after: string): Array<{kind: "s
     return rows;
 }
 
+export function renderAnalysisDiff(before: string, after: string): string {
+    const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char] || char));
+    const rows = diffAnalysisText(before, after);
+    if (!rows.length) return "<p class=\"lc-agent-compare-empty\">暂无差异</p>";
+    return `<ul class=\"lc-agent-compare-diff\">${rows.map((row) => `<li class=\"is-${row.kind}\"><span aria-hidden=\"true\">${row.kind === "added" ? "+" : row.kind === "removed" ? "−" : "·"}</span>${escape(row.text || " ")}</li>`).join("")}</ul>`;
+}
+
 export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot, limit = 5): AgentAnalysisSnapshot[] {
     const safeLimit = Math.max(1, Math.min(20, Math.floor(limit)));
     return [...history, snapshot].slice(-safeLimit);
