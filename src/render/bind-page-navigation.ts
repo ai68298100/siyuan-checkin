@@ -191,6 +191,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.renderBackgroundUpdate();
         });
     }));
+    root.querySelector<HTMLElement>("[data-history-expand]")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        const extra = root.querySelector<HTMLElement>("[data-history-extra]");
+        if (!extra) return;
+        extra.hidden = false;
+        button.remove();
+    });
     root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
         const event = host.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
         if (!event) return;
