@@ -2856,6 +2856,12 @@
     .lc-checkin-dock-host .lc-checkin__reminder-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
     .lc-checkin-dock-host .lc-checkin__reminder-row strong,
     .lc-checkin-dock-host .lc-checkin__reminder-row small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__history-event-actions,
+    .lc-checkin-dock-host .lc-checkin__occasion-action,
+    .lc-checkin-dock-host .lc-checkin__reminder-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin__history-event-actions button,
+    .lc-checkin-dock-host .lc-checkin__occasion-action button,
+    .lc-checkin-dock-host .lc-checkin__reminder-actions button { min-width: 44px; min-height: 30px; }
 }
 
 /* ============================================================
