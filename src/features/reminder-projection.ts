@@ -50,3 +50,5 @@ export function mergeReminders(...lists: ReadonlyArray<readonly ReminderProjecti
     lists.flat().forEach((item) => { const existing = byId.get(item.id); byId.set(item.id, existing?.status === "completed" ? existing : item); });
     return sortReminders([...byId.values()]);
 }
+export function serializeReminders(items: readonly ReminderProjection[]): string { return JSON.stringify(sortReminders(items).map(({id, source, dueDate, title, status, urgency}) => ({id, source, dueDate, title, status, urgency}))); }
+export function deserializeReminders(value: string): ReminderProjection[] { try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.filter((item): item is ReminderProjection => Boolean(item && typeof item.id === "string" && typeof item.source === "string" && typeof item.dueDate === "string" && typeof item.title === "string" && typeof item.status === "string" && typeof item.urgency === "number")) : []; } catch { return []; } }
