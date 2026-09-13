@@ -5,6 +5,7 @@ import {buildWeeklyReportMarkdown} from "../features/report";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
+import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {Dialog, showMessage} from "siyuan";
 
 export interface BindPageNavigationHost {
@@ -20,6 +21,7 @@ export interface BindPageNavigationHost {
     summaryRange: "day" | "week" | "month";
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
     editingHistoryNoteId?: string;
     disposed: boolean;
@@ -282,7 +284,47 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     }));
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => host.generateSummary());
-    root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", (event) => { const button = event.currentTarget as HTMLElement; let rows: Array<any> = []; try { rows = JSON.parse(button.dataset.analysisHistory || "[]"); } catch { rows = []; } const safe = (value: unknown) => String(value ?? "").replace(/[&<>\"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c] || c)); const list = rows.map((row, index) => `<li><strong>#${index + 1} · ${safe(row.asOf)}</strong><span>${safe(row.range)} · ${safe(row.source)} · ${safe(row.generatedAt)}</span></li>`).join(""); const options = rows.map((_, index) => `<option value="${index}">版本 #${index + 1}</option>`).join(""); const dialog = new Dialog({title: "历史分析", content: `<div class="lc-checkin__agent-preview"><div class="lc-agent-compare-select"><label>基准版本<select data-analysis-base>${options}</select></label><label>对比版本<select data-analysis-target>${options}</select></label><button class="b3-button" type="button" data-analysis-swap>交换</button><button class="b3-button" type="button" data-analysis-compare>准备对比</button></div><ul class="lc-agent-suggestion-changes">${list || "<li>暂无历史分析</li>"}</ul><p data-analysis-compare-status>历史版本当前为只读浏览，选择两个版本后可查看差异。</p><div data-analysis-compare-result hidden></div></div>`}); dialog.element.querySelector<HTMLElement>("[data-analysis-swap]")?.addEventListener("click", () => { const base = dialog.element.querySelector<HTMLSelectElement>("[data-analysis-base]"); const target = dialog.element.querySelector<HTMLSelectElement>("[data-analysis-target]"); if (base && target) [base.value, target.value] = [target.value, base.value]; }); dialog.element.querySelector<HTMLElement>("[data-analysis-compare]")?.addEventListener("click", () => { const base = Number(dialog.element.querySelector<HTMLSelectElement>("[data-analysis-base]")?.value); const target = Number(dialog.element.querySelector<HTMLSelectElement>("[data-analysis-target]")?.value); const status = dialog.element.querySelector<HTMLElement>("[data-analysis-compare-status]"); const result = dialog.element.querySelector<HTMLElement>("[data-analysis-compare-result]"); if (!status || !result) return; if (base === target) { status.textContent = "请选择两个不同的分析版本。"; result.hidden = true; return; } const left = rows[base] || {}; const right = rows[target] || {}; result.innerHTML = `<p class="lc-agent-compare-direction">基准版本 #${base + 1} → 对比版本 #${target + 1}</p><div class="lc-agent-compare-grid"><article><h4>版本 #${base + 1}</h4><p>${safe(left.text || "暂无正文")}</p></article><article><h4>版本 #${target + 1}</h4><p>${safe(right.text || "暂无正文")}</p></article></div>`; result.hidden = false; status.textContent = "已生成只读对比。"; }); });
+    root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", () => {
+        type HistoryRow = import("../agent-suggestions").AgentAnalysisSnapshot;
+        const rows: HistoryRow[] = host.analysisHistory.filter((row) => row && typeof row.text === "string");
+        const safe = (value: unknown) => String(value ?? "").replace(/[&<>\"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c] || c));
+        const sourceLabel = (source: HistoryRow["source"]) => t(source === "agent" ? "agent.historyAgent" : "agent.historyLocal");
+        const rangeLabel = (range: HistoryRow["range"]) => range === "custom" ? t("review.custom") : t(`review.tab${range === "day" ? "Day" : range === "month" ? "Month" : "Week"}`);
+        const list = rows.map((row, index) => `<li><strong>${t("agent.historyVersion", {n: index + 1})} · ${safe(row.asOf)}</strong><span>${safe(t("agent.historyMeta", {asOf: row.asOf, range: rangeLabel(row.range), source: sourceLabel(row.source), generatedAt: row.generatedAt}))}</span></li>`).join("");
+        const baseIndex = Math.max(0, rows.length - 2);
+        const targetIndex = Math.max(0, rows.length - 1);
+        const options = rows.map((_, index) => `<option value="${index}" ${index === baseIndex ? "selected" : ""}>${t("agent.historyVersion", {n: index + 1})}</option>`).join("");
+        const targetOptions = rows.map((_, index) => `<option value="${index}" ${index === targetIndex ? "selected" : ""}>${t("agent.historyVersion", {n: index + 1})}</option>`).join("");
+        const canCompare = rows.length > 1;
+        const dialog = new Dialog({title: t("agent.historyTitle"), content: `<div class="lc-checkin__agent-preview"><div class="lc-agent-compare-select"><label>${t("agent.historyBase")}<select data-analysis-base aria-label="${t("agent.historyBase")}" ${canCompare ? "" : "disabled"}>${options}</select></label><label>${t("agent.historyTarget")}<select data-analysis-target aria-label="${t("agent.historyTarget")}" ${canCompare ? "" : "disabled"}>${targetOptions}</select></label><button class="b3-button" type="button" data-analysis-swap aria-label="${t("agent.historySwap")}" ${canCompare ? "" : "disabled"}>${t("agent.historySwap")}</button><button class="b3-button" type="button" data-analysis-compare ${canCompare ? "" : "disabled"}>${t("agent.historyCompare")}</button></div><ul class="lc-agent-suggestion-changes">${list || `<li>${t("agent.historyEmpty")}</li>`}</ul><p data-analysis-compare-status aria-live="polite">${t("agent.historyReadOnly")}</p><div data-analysis-compare-result hidden></div></div>`});
+        const base = dialog.element.querySelector<HTMLSelectElement>("[data-analysis-base]");
+        const target = dialog.element.querySelector<HTMLSelectElement>("[data-analysis-target]");
+        const status = dialog.element.querySelector<HTMLElement>("[data-analysis-compare-status]");
+        const result = dialog.element.querySelector<HTMLElement>("[data-analysis-compare-result]");
+        dialog.element.querySelector<HTMLElement>("[data-analysis-swap]")?.addEventListener("click", () => {
+            if (base && target) [base.value, target.value] = [target.value, base.value];
+        });
+        dialog.element.querySelector<HTMLElement>("[data-analysis-compare]")?.addEventListener("click", () => {
+            const baseIndex = Number(base?.value);
+            const targetIndex = Number(target?.value);
+            if (!status || !result) return;
+            if (!Number.isInteger(baseIndex) || !Number.isInteger(targetIndex) || !rows[baseIndex] || !rows[targetIndex]) {
+                status.textContent = t("agent.historyInvalid");
+                result.hidden = true;
+                return;
+            }
+            if (baseIndex === targetIndex) {
+                status.textContent = t("agent.historySameVersion");
+                result.hidden = true;
+                return;
+            }
+            const left = rows[baseIndex];
+            const right = rows[targetIndex];
+            result.innerHTML = `<p class="lc-agent-compare-direction">${t("agent.historyDirection", {base: baseIndex + 1, target: targetIndex + 1})}</p><p class="lc-agent-compare-meta">${safe(t("agent.historyMeta", {asOf: left.asOf, range: rangeLabel(left.range), source: sourceLabel(left.source), generatedAt: left.generatedAt}))}<br />${safe(t("agent.historyMeta", {asOf: right.asOf, range: rangeLabel(right.range), source: sourceLabel(right.source), generatedAt: right.generatedAt}))}</p>${renderAnalysisDiffPanel(left.text || t("agent.historyNoText"), right.text || t("agent.historyNoText"))}`;
+            result.hidden = false;
+            status.textContent = t("agent.historyReady");
+        });
+    });
     root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => { const button = event.currentTarget as HTMLElement; const item = button.dataset.suggestionItem; const rate = button.dataset.suggestionRate; const preview = new Dialog({title: t("agent.previewTitle"), content: `<div class="lc-checkin__agent-preview"><strong>${t("agent.previewDisclaimer")}</strong>${item ? `<p>${t("agent.previewFocus", {name: item || "", rate: rate || "0"})}</p><p>${t("agent.previewAdvice")}</p>` : `<p>${t("agent.previewNone")}</p>`}<p>${t("agent.previewSafety")}</p><div class="lc-checkin__agent-preview-actions"><button class="b3-button" type="button" data-agent-preview-close>${t("agent.previewDefer")}</button><button class="b3-button" type="button" disabled title="${t("agent.previewPendingTitle")}">${t("agent.previewPendingButton")}</button></div></div>`}); preview.element.querySelector<HTMLElement>("[data-agent-preview-close]")?.addEventListener("click", () => preview.destroy()); });
     root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", async () => {
         const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
