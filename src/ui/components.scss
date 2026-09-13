@@ -2862,6 +2862,10 @@
     .lc-checkin-dock-host .lc-checkin__history-event-actions button,
     .lc-checkin-dock-host .lc-checkin__occasion-action button,
     .lc-checkin-dock-host .lc-checkin__reminder-actions button { min-width: 44px; min-height: 30px; }
+    .lc-checkin-dock-host .lc-checkin__item,
+    .lc-checkin-dock-host .lc-checkin__history-event,
+    .lc-checkin-dock-host .lc-checkin__reminder-row { box-shadow: 0 1px 4px color-mix(in srgb, var(--lc-checkin-accent) 7%, transparent); }
+    .lc-checkin-dock-host .lc-checkin__item.is-complete { box-shadow: 0 1px 4px color-mix(in srgb, var(--lc-checkin-success) 10%, transparent); }
 }
 
 /* ============================================================
