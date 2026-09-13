@@ -2730,6 +2730,11 @@
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host input, .lc-checkin-dock-host select, .lc-checkin-dock-host textarea { max-width: 100%; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr) minmax(110px, 42%); gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
+    .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
+    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { flex: 0 0 auto; min-height: 32px; padding-inline: 8px; }
+    .lc-checkin-dock-host .lc-checkin--history .lc-checkin__month-nav { grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 4px; }
     .lc-checkin--today .lc-checkin__header { min-height: 44px; margin-bottom: 6px; padding: 4px 36px 4px 0; align-items: center; }
     .lc-checkin--today .lc-checkin__item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; min-width: 0; padding: 8px; }
     .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; flex-basis: 34px; }
