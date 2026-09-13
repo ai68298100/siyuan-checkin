@@ -2770,6 +2770,9 @@
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__item-tag { max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-progress { min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__history-date strong,
+    .lc-checkin-dock-host .lc-checkin__history-event-main > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host time { white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__header,
     .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 38px 4px 0; align-items: center; }
     .lc-checkin-dock-host .lc-checkin__dialog-close { position: absolute; top: 2px; right: 0; width: 34px; height: 34px; }
