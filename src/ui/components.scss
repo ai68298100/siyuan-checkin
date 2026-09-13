@@ -2730,6 +2730,11 @@
     .lc-checkin-dock-host .lc-checkin__mobile-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 1px; }
     .lc-checkin-dock-host .lc-checkin__group-header { min-height: 32px; padding: 4px 2px; border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
     .lc-checkin-dock-host .lc-checkin__group-header button { min-width: 32px; min-height: 30px; }
+    .lc-checkin-dock-host .lc-checkin__empty,
+    .lc-checkin-dock-host .lc-checkin__loading,
+    .lc-checkin-dock-host .lc-checkin__error { margin: 10px 0; padding: 12px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; text-align: center; }
+    .lc-checkin-dock-host .lc-checkin__empty p,
+    .lc-checkin-dock-host .lc-checkin__error p { overflow-wrap: anywhere; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
