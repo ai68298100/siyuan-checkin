@@ -38,6 +38,7 @@ assert.match(source,/serializeReminderMigrationDecision/); assert.match(source,/
 assert.match(source,/validateReminderMigrationDecision/); assert.match(source,/decision\.message\.length <= 300/);
 assert.match(source,/refreshReminderMigrationDecision/); assert.match(source,/return evaluateReminderMigration\(impact\)/);
 assert.match(source,/formatReminderMigrationDecision/); assert.match(source,/可自动应用/);
+assert.match(source,/createReminderMigrationConfirmationToken/); assert.match(source,/verifyReminderMigrationConfirmationToken/);
 assert.match(source,/serializeReminderMigrationDiagnostic/); assert.match(source,/reason: reminderMigrationRiskReason/);
 assert.match(source,/deserializeReminderMigrationDiagnostic/); assert.match(source,/slice\(0, 300\)/);
 assert.match(source,/parsed\.risk !== risk/); assert.match(source,/parsed\.reason !== reason/);
