@@ -2926,6 +2926,10 @@
     .lc-checkin-dock-host .lc-checkin__reminder-row { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__history-row strong,
     .lc-checkin-dock-host .lc-checkin__reminder-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__history-events,
+    .lc-checkin-dock-host .lc-checkin__reminder-list { max-height: 58vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin-dock-host .lc-checkin__history-events::-webkit-scrollbar,
+    .lc-checkin-dock-host .lc-checkin__reminder-list::-webkit-scrollbar { width: 4px; }
 }
 @container lc-dock (max-width: 320px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
