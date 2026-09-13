@@ -14,6 +14,7 @@ export function normalizeReminderTransitions(value: unknown, limit = 100): Remin
 export function serializeReminderTransitions(items: readonly ReminderTransition[]): string { return JSON.stringify({version: 1, transitions: normalizeReminderTransitions(items)}); }
 export function deserializeReminderTransitions(value: string): ReminderTransition[] { try { const parsed = JSON.parse(value); return parsed?.version === 1 ? normalizeReminderTransitions(parsed.transitions) : []; } catch { return []; } }
 export function summarizeReminderTransitions(items: readonly ReminderTransition[]): Record<ReminderTransitionReason, number> { const summary: Record<ReminderTransitionReason, number> = {user: 0, date: 0, sync: 0}; items.forEach((item) => { summary[item.reason] += 1; }); return summary; }
+export function filterReminderTransitions(items: readonly ReminderTransition[], from?: string, to?: string): ReminderTransition[] { return items.filter((item) => (!from || item.at >= from) && (!to || item.at <= to)); }
 export function canTransitionReminder(from: ReminderStatus, to: ReminderStatus): boolean { if (from === "completed" && to !== "completed") return false; if (from === to) return true; return !(from === "skipped" && to === "overdue"); }
 
 export function projectOccasionReminder(id: string, title: string, dueDate: string, status: ReminderStatus = "pending"): ReminderProjection {
