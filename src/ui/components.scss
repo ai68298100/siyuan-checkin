@@ -2747,6 +2747,10 @@
     .lc-checkin-dock-host video,
     .lc-checkin-dock-host iframe { max-width: 100%; height: auto; }
     .lc-checkin-dock-host a { overflow-wrap: anywhere; }
+    .lc-checkin-dock-host .lc-checkin__group,
+    .lc-checkin-dock-host .lc-checkin__group-items { min-width: 0; max-width: 100%; overflow-x: clip; }
+    .lc-checkin-dock-host .lc-checkin__badge,
+    .lc-checkin-dock-host .lc-checkin__count { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
