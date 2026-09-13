@@ -2721,6 +2721,10 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { min-height: 0; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav { min-height: 48px; }
     .lc-checkin-dock-host > .lc-checkin { padding-bottom: 16px; scroll-padding-bottom: 16px; }
+    .lc-checkin-dock-host .lc-checkin__item { transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }
+    .lc-checkin-dock-host .lc-checkin__item:hover { transform: none; }
+    .lc-checkin-dock-host .lc-checkin__item:active { transform: none; box-shadow: 0 1px 5px color-mix(in srgb, var(--lc-checkin-accent) 12%, transparent); }
+    [data-reduced-motion="true"] .lc-checkin-dock-host .lc-checkin__item { transition: none; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
