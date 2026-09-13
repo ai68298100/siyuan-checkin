@@ -2800,6 +2800,8 @@
     .lc-checkin-dock-host .lc-checkin__header,
     .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 38px 4px 0; align-items: center; }
     .lc-checkin-dock-host .lc-checkin__dialog-close { position: absolute; top: 2px; right: 0; width: 34px; height: 34px; }
+    .lc-checkin-dock-host .lc-checkin__dialog-close { border: 0; box-shadow: none; background: transparent; color: var(--lc-checkin-muted); }
+    .lc-checkin-dock-host .lc-checkin__dialog-close:hover { color: var(--lc-checkin-text); background: var(--lc-checkin-accent-soft); }
     .lc-checkin-dock-host .lc-checkin__layout { padding: 6px 8px 10px; }
     .lc-checkin-dock-host .lc-checkin__header > div:first-child,
     .lc-checkin-dock-host .lc-checkin__header-actions { min-width: 0; }
