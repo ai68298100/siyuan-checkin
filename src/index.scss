@@ -349,6 +349,7 @@
 @container lc-dialog (min-width: 900px) {
     .lc-checkin-dialog-host .lc-checkin__layout { max-width: 950px; }
     .lc-checkin-dialog-host .lc-checkin > * { width: min(100%, 950px); }
+    .lc-checkin-dialog-host .lc-checkin--today > * { width: min(100%, 1280px); }
     .lc-checkin-dialog-host .lc-checkin--editor > * { width: min(100%, 880px); }
 }
 
@@ -466,6 +467,8 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(280px, 1fr));
     }
+
+    .lc-checkin--today > * { width: min(100%, 1280px); }
 
     .lc-checkin--editor > * {
         width: min(100%, 880px);
