@@ -400,6 +400,7 @@ export default class CheckinPlugin extends Plugin {
                 this.lastPersistedStore = this.cloneStore(this.store);
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
                 this.analysisHistory = await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY);
+                this.summaryText = this.analysisHistory[this.analysisHistory.length - 1]?.text;
                 this.auditEntries = normalizeStoreAudit(audit);
                 this.snapshotHistory = readStoreSnapshotHistory(storedSnapshots);
                 this.occasionStore = occasions;
