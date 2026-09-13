@@ -34,6 +34,7 @@ assert.match(source,/migrateReminderMigrationImpact/); assert.match(source,/迁�
 assert.match(source,/canAutoApplyReminderMigration/); assert.match(source,/impact\.delta >= 0/);
 assert.match(source,/reminderMigrationDecisionText/); assert.match(source,/可安全自动应用/);
 assert.match(source,/ReminderMigrationDecision/); assert.match(source,/evaluateReminderMigration/);
+assert.match(source,/serializeReminderMigrationDecision/); assert.match(source,/deserializeReminderMigrationDecision/);
 assert.match(source,/serializeReminderMigrationDiagnostic/); assert.match(source,/reason: reminderMigrationRiskReason/);
 assert.match(source,/deserializeReminderMigrationDiagnostic/); assert.match(source,/slice\(0, 300\)/);
 assert.match(source,/parsed\.risk !== risk/); assert.match(source,/parsed\.reason !== reason/);
