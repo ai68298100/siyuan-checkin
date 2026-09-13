@@ -27,6 +27,7 @@ assert.match(source, /source: "local" \| "agent"/);
 assert.match(source, /escapeSuggestionHtml/);
 assert.match(source, /diffAnalysisText/);
 assert.match(source, /renderAnalysisDiff/);
+assert.match(source, /summarizeAnalysisDiff/);
 assert.match(source, /kind: "removed"/);
 assert.match(source, /kind: "added"/);
 const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');

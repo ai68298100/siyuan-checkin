@@ -62,6 +62,13 @@ export function renderAnalysisDiff(before: string, after: string): string {
     return `<ul class=\"lc-agent-compare-diff\">${rows.map((row) => `<li class=\"is-${row.kind}\"><span aria-hidden=\"true\">${row.kind === "added" ? "+" : row.kind === "removed" ? "−" : "·"}</span>${escape(row.text || " ")}</li>`).join("")}</ul>`;
 }
 
+export function summarizeAnalysisDiff(before: string, after: string): {added: number; removed: number; unchanged: number} {
+    return diffAnalysisText(before, after).reduce((summary, row) => {
+        summary[row.kind === "same" ? "unchanged" : row.kind] += 1;
+        return summary;
+    }, {added: 0, removed: 0, unchanged: 0});
+}
+
 export function appendAnalysisSnapshot(history: readonly AgentAnalysisSnapshot[], snapshot: AgentAnalysisSnapshot, limit = 5): AgentAnalysisSnapshot[] {
     const safeLimit = Math.max(1, Math.min(20, Math.floor(limit)));
     return [...history, snapshot].slice(-safeLimit);
