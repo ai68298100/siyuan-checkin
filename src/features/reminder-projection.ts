@@ -42,3 +42,6 @@ export function getReminderPriority(items: readonly ReminderProjection[]): {coun
 
 export function reminderStatusLabel(status: ReminderStatus): string { return ({pending: "待处理", completed: "已完成", skipped: "已跳过", snoozed: "已延期", overdue: "已逾期"} as Record<ReminderStatus, string>)[status]; }
 export function reminderPriorityText(summary: {count: number; first?: ReminderProjection}): string { return summary.count ? (summary.first?.status === "overdue" ? `有 ${summary.count} 项逾期提醒` : `有 ${summary.count} 项待处理提醒`) : "暂无待处理提醒"; }
+export type ReminderPriority = "urgent" | "today" | "upcoming";
+export function reminderPriority(item: ReminderProjection, today: string): ReminderPriority { if (item.status === "overdue" || item.dueDate < today) return "urgent"; if (item.dueDate === today) return "today"; return "upcoming"; }
+export function reminderPriorityLabel(priority: ReminderPriority): string { return ({urgent: "紧急", today: "今天", upcoming: "即将到期"} as Record<ReminderPriority, string>)[priority]; }
