@@ -2875,24 +2875,13 @@
    横排固定操作轨道 + 最小分组间距 —— 打卡内容最大化。
    ============================================================ */
 @container lc5 (max-width: 719px) {
-    /* 顶栏：关闭 + 四页 tabs + 进度/标题 融合成一行 */
-    .lc-checkin__mobile-topbar { gap: 6px; min-height: 44px; padding-block: 4px; }
-    .lc-checkin__topbar-tabs { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 2px; min-width: 0; }
-    .lc-checkin__topbar-tabs button {
-        min-height: 30px;
-        padding: 0 9px;
-        border: 0;
-        border-radius: 8px;
-        color: var(--lc-checkin-muted);
-        background: transparent;
-        font-size: 12.5px;
-        font-weight: 620;
-        white-space: nowrap;
-        cursor: pointer;
-    }
-    .lc-checkin__topbar-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    /* 顶栏（T-118）：导航归底栏，顶栏只留 关闭 + 标题 + 进度，尽量矮 */
+    .lc-checkin__mobile-topbar { gap: 10px; min-height: 40px; padding-top: calc(env(safe-area-inset-top) + 4px); padding-bottom: 4px; justify-content: flex-start; }
+    .lc-checkin__mobile-topbar .lc-checkin__topbar-close { width: 30px; height: 30px; }
+    .lc-checkin__topbar-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .lc-checkin__topbar-meta { flex: none; margin-left: auto; }
 
-    /* 窄表面一律不显示桌面顶部导航（手机顶栏自带 tabs，dock 用底部导航） */
+    /* 窄表面一律不显示桌面顶部导航（dock 用底部导航） */
     .lc-checkin__topnav { display: none !important; }
 
     /* 卡片：单行三段 —— 图标 / 文字 / 横排操作轨道 */
@@ -3072,3 +3061,24 @@
 .lc-checkin__custom-library-empty { color: var(--lc-checkin-muted); font-size: 11px; }
 /* 页签数量角标 */
 .lc-checkin--editor .lc-checkin__icon-tabs button small { margin-left: 4px; opacity: .62; font-size: 9px; }
+
+/* ============================================================
+   T-117 回顾页区域化：折叠计数徽章、长内容内部滚动、逾期展开
+   ============================================================ */
+.lc-checkin__fold-count {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 700;
+    vertical-align: 1px;
+}
+/* 打卡日志/项目汇总展开后可能很长：限制区域高度内部滚动，页面节奏不被撑爆 */
+.lc-checkin__review-fold[data-review-fold="log"] .lc-checkin__review-fold-body,
+.lc-checkin__review-fold[data-review-fold="projects"] .lc-checkin__review-fold-body { max-height: 480px; overflow: auto; }
+/* 逾期历史「展开全部」按钮 */
+.lc-checkin__overdue-history [data-overdue-expand] { margin-top: 6px; }

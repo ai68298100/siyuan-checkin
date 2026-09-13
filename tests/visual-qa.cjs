@@ -643,7 +643,8 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     assert.deepEqual(results.groupModes, {timeGroupCount: 2, priorityGroupCount: 2, completedExpanded: 1});
     assert.ok(results.editorCatalog.templateCount >= 20);
     assert.ok(results.editorCatalog.iconCount >= 100);
-    assert.equal(results.editorCatalog.iconGroupCount, 9);
+    /* T-116 组件商店：全部 + 9 个内置分组 + 我的图标 = 11 个页签 */
+    assert.equal(results.editorCatalog.iconGroupCount, 11);
     assert.deepEqual(results.templateApplied, {name: "阅读", kind: "duration", unit: "小时", group: "学习", iconPanel: true, targetStep: "0.25"});
     assert.equal(results.tab.opened && results.tab.registered && results.tab.title, "小驴打卡");
     assert.match(results.tab.stableId, /checkin$/);

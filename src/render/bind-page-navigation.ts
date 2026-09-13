@@ -33,6 +33,8 @@ export interface BindPageNavigationHost {
     showInsights(item?: import("../types").CheckinItem): void;
     render(): void;
     persistViewPreferences(): Promise<void>;
+    reviewFoldSections: Set<string>;
+    reviewFoldTouched: boolean;
     changeHistoryMonth(offset: number): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     persist(): Promise<void>;
@@ -49,6 +51,19 @@ export interface BindPageNavigationHost {
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
+    /* 回顾页折叠状态持久化（T-117）：与今日页 data-review-fold 绑定一致。 */
+    root.querySelectorAll<HTMLDetailsElement>("details[data-review-fold]").forEach((details) => details.addEventListener("toggle", () => {
+        const id = details.dataset.reviewFold || "";
+        if (details.open) host.reviewFoldSections.add(id);
+        else host.reviewFoldSections.delete(id);
+        host.reviewFoldTouched = true;
+        void host.persistViewPreferences();
+    }));
+    /* 逾期历史「展开全部」（T-117）：解除折叠容器的 hidden 并移除按钮。 */
+    root.querySelector<HTMLElement>("[data-overdue-expand]")?.addEventListener("click", (event) => {
+        (event.currentTarget as HTMLElement).remove();
+        root.querySelector<HTMLElement>("[data-overdue-more]")?.removeAttribute("hidden");
+    });
     /* 逾期历史一键补记（T-101）：把该次逾期标记为已完成，历史随之消掉。
        补记成功弹 6 秒可撤销提示条（T-110），撤销即回滚该次标记。 */
     const showCatchUpToast = (name: string, occasionId: string, date: string) => {

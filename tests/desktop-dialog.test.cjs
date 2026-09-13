@@ -103,13 +103,15 @@ for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
 const plugin = read("src", "index.ts");
 assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobileTopbar\(\)\)/,
     "the mobile top bar must be attached to the host, not inside the scrolling container");
-/* T-034 融合顶栏：关闭 + 四页导航 tabs + 进度/标题 单行；移动前端不再渲染裸 topnav */
-assert.match(plugin, /private renderMobileTopbar\(\): string \{[\s\S]*?lc-checkin__topbar-tabs[\s\S]*?data-mobile-nav="\$\{page\}"/,
-    "the mobile top bar must fuse the four navigation tabs into one row");
+/* T-118 顶栏再简化（用户反馈）：页签与底栏重复，顶栏只留 关闭+标题+进度，不含任何导航 */
+assert.match(plugin, /private renderMobileTopbar\(\): string \{[^}]*getPageTitle\(\)/,
+    "the mobile top bar must render the page title as context");
+assert.doesNotMatch(plugin, /renderMobileTopbar\(\): string \{[\s\S]*?data-mobile-nav=/,
+    "the mobile top bar must not embed navigation tabs (navigation lives in the bottom bar)");
 assert.match(plugin, /renderTopNav\(\)\);/,
     "the desktop top nav keeps its render path");
 assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
-    "the top nav must not render unconditionally (mobile now owns its fused top bar)");
+    "the top nav must not render unconditionally (mobile now owns its own top bar)");
 assert.match(plugin, /if \(!this\.isMobileFrontend\) layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
     "the top nav must be skipped on the mobile frontend");
 assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
