@@ -2842,6 +2842,10 @@
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-card { min-height: 64px; padding: 6px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-option span { min-height: 42px; padding: 6px; }
+    .lc-checkin-dock-host .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .lc-checkin-dock-host .lc-checkin__history-event-value { grid-column: 1; grid-row: auto; text-align: left; }
+    .lc-checkin-dock-host .lc-checkin__history-event-actions { grid-column: 1; flex-wrap: wrap; }
+    .lc-checkin-dock-host .lc-checkin__history-date { gap: 4px; flex-wrap: wrap; }
 }
 
 /* ============================================================
