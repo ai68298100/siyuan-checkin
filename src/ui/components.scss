@@ -2758,6 +2758,10 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__count { font-size: 11px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters > * { min-width: 0; }
+    .lc-checkin-dock-host .lc-checkin__item-name { font-size: 13px; line-height: 1.3; }
+    .lc-checkin-dock-host .lc-checkin__item-meta { font-size: 10px; line-height: 1.25; }
+    .lc-checkin-dock-host .lc-checkin__item-icon { font-size: 18px; }
+    .lc-checkin-dock-host .lc-checkin__text-button { min-height: 30px; padding-inline: 6px; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
