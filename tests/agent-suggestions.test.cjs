@@ -14,4 +14,7 @@ assert.match(source, /slice\(0, 50\)/);
 assert.match(source, /formatSuggestionChange/);
 assert.match(source, /renderSuggestionChanges/);
 assert.match(source, /escapeSuggestionHtml/);
+const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');
+assert.match(preview, /renderAgentPreviewContent/);
+assert.match(preview, /renderSuggestionChanges/);
 console.log('Agent suggestion safety structure checks passed.');
