@@ -8,5 +8,5 @@ assert.match(source,/normalizeReminderStatus/); assert.match(source,/item\.dueDa
 assert.match(source,/prepareReminders/); assert.match(source,/items\.map/);
 assert.match(source,/getReminderPriority/); assert.match(source,/count: pending\.length/);
 assert.match(source,/reminderStatusLabel/); assert.match(source,/reminderPriorityText/);
-assert.match(source,/reminderPriorityLabel/); assert.match(source,/priority === "urgent"/);
+assert.match(source,/reminderPriorityLabel/); assert.match(source,/status === "overdue"/);
 console.log('Reminder projection structure checks passed.');
