@@ -2754,6 +2754,10 @@
     .lc-checkin-dock-host > .lc-checkin__mobile-nav { padding-bottom: max(2px, env(safe-area-inset-bottom)); }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button { min-width: 0; width: 100%; overflow: hidden; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 48%; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__count { font-size: 11px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters > * { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
