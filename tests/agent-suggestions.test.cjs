@@ -15,6 +15,8 @@ assert.match(source, /formatSuggestionChange/);
 assert.match(source, /renderSuggestionChanges/);
 assert.match(source, /createAnalysisMeta/);
 assert.match(source, /appendAnalysisSnapshot/);
+assert.match(source, /Math\.max\(1, Math\.min\(20/);
+assert.match(source, /slice\(-safeLimit\)/);
 assert.match(source, /source: "local" \| "agent"/);
 assert.match(source, /escapeSuggestionHtml/);
 const preview = fs.readFileSync('src/render/agent-preview.ts', 'utf8');
