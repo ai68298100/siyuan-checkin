@@ -2751,6 +2751,9 @@
     .lc-checkin-dock-host .lc-checkin__group-items { min-width: 0; max-width: 100%; overflow-x: clip; }
     .lc-checkin-dock-host .lc-checkin__badge,
     .lc-checkin-dock-host .lc-checkin__count { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav { padding-bottom: max(2px, env(safe-area-inset-bottom)); }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button { min-width: 0; width: 100%; overflow: hidden; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-name,
     .lc-checkin-dock-host .lc-checkin__item-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-topline { min-width: 0; }
