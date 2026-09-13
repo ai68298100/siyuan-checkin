@@ -10,6 +10,7 @@ export function transitionReminder(item: ReminderProjection, status: ReminderSta
 export type ReminderTransitionReason = "user" | "date" | "sync";
 export interface ReminderTransition { from: ReminderStatus; to: ReminderStatus; reason: ReminderTransitionReason; at: string; }
 export function createReminderTransition(item: ReminderProjection, to: ReminderStatus, reason: ReminderTransitionReason, at = new Date().toISOString()): ReminderTransition | null { return canTransitionReminder(item.status, to) ? {from: item.status, to, reason, at} : null; }
+export function normalizeReminderTransitions(value: unknown, limit = 100): ReminderTransition[] { if (!Array.isArray(value)) return []; const max = Math.max(1, Math.min(500, Math.floor(limit))); return value.filter((entry): entry is ReminderTransition => Boolean(entry && typeof entry === "object" && ["pending", "completed", "skipped", "snoozed", "overdue"].includes((entry as any).from) && ["pending", "completed", "skipped", "snoozed", "overdue"].includes((entry as any).to) && ["user", "date", "sync"].includes((entry as any).reason) && typeof (entry as any).at === "string" && !Number.isNaN(Date.parse((entry as any).at)))).slice(-max); }
 export function canTransitionReminder(from: ReminderStatus, to: ReminderStatus): boolean { if (from === "completed" && to !== "completed") return false; if (from === to) return true; return !(from === "skipped" && to === "overdue"); }
 
 export function projectOccasionReminder(id: string, title: string, dueDate: string, status: ReminderStatus = "pending"): ReminderProjection {
