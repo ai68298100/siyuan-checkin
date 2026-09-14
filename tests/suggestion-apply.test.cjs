@@ -1,0 +1,28 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-suggestion-"));
+fs.writeFileSync(path.join(root, "i18n.js"), "exports.t=(key, vars={})=>key.replace(/\\{(\\w+)\\}/g, (_, name)=>String(vars[name] ?? ''));", "utf8");
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "agent-suggestions.ts"), "utf8");
+fs.writeFileSync(path.join(root, "agent-suggestions.js"), ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText, "utf8");
+const model = require(path.join(root, "agent-suggestions.js"));
+const item = {id: "a", name: "阅读", target: 1, unit: "次", kind: "count", priority: "medium", timeSlot: "any", tomatoMode: "off", createdAt: "2026-01-01", updatedAt: "2026-01-01", archived: false, archivePeriods: [], schedule: {type: "daily"}};
+const store = {version: 1, items: [item], events: [], eventTombstones: []};
+const suggestion = {id: "s1", title: "调整", reason: "", changes: [{itemId: "a", field: "target", before: 1, after: 2}], requiresConfirmation: true};
+const pending = model.createSuggestionEnvelope(suggestion, "2026-09-14T00:00:00.000Z");
+assert.equal(model.canConfirmSuggestion(pending), true);
+assert.equal(model.applyConfirmedSuggestion(store, pending).applied, 0);
+const confirmed = model.transitionSuggestionStatus(pending, "confirmed", "2026-09-14T00:01:00.000Z");
+const applied = model.applyConfirmedSuggestion(store, confirmed);
+assert.equal(applied.applied, 1);
+assert.equal(applied.store.items[0].target, 2);
+const stale = {...confirmed, changes: [{...confirmed.changes[0], before: 99}]};
+const conflict = model.applyConfirmedSuggestion(store, stale);
+assert.equal(conflict.applied, 0);
+assert.deepEqual(conflict.conflicts, ["a:target"]);
+assert.equal(conflict.store, store);
+fs.rmSync(root, {recursive: true, force: true});
+console.log("Suggestion confirmation and conflict guards passed.");

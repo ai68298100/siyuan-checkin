@@ -18,7 +18,7 @@ export type AgentSuggestion = {
 
 export type AgentSuggestionStatus = "pending" | "confirmed" | "cancelled" | "failed";
 export function suggestionStatusLabel(status: AgentSuggestionStatus): string {
-    return ({pending: "待确认", confirmed: "已确认", cancelled: "已取消", failed: "执行失败"} as Record<AgentSuggestionStatus, string>)[status];
+    return t(`agent.status${status === "pending" ? "Pending" : status === "confirmed" ? "Confirmed" : status === "cancelled" ? "Cancelled" : "Failed"}`);
 }
 export function summarizeSuggestion(envelope: AgentSuggestionEnvelope): string {
     return `${suggestionStatusLabel(envelope.status)} · ${envelope.id} · ${summarizeSuggestionImpact(envelope.changes)} · 创建于 ${envelope.createdAt}`;
@@ -135,7 +135,7 @@ export function buildSuggestionChange(item: CheckinItem, field: keyof CheckinIte
 
 export function summarizeSuggestionImpact(changes: readonly AgentSuggestionChange[]): string {
     const items = new Set(changes.map((change) => change.itemId));
-    return `将影响 ${items.size} 个项目，变更 ${changes.length} 项设置；需要用户确认后执行。`;
+    return t("agent.impactSummary", {items: items.size, changes: changes.length});
 }
 
 const ALLOWED_CHANGE_FIELDS: ReadonlySet<keyof CheckinItem> = new Set(["name", "target", "unit", "group", "priority", "timeSlot", "tomatoMode"]);
@@ -153,7 +153,42 @@ export function normalizeSuggestionChanges(value: unknown, items: readonly Check
 export function formatSuggestionChange(change: AgentSuggestionChange): string {
     const before = change.before === undefined || change.before === null ? "未设置" : String(change.before);
     const after = change.after === undefined || change.after === null ? "未设置" : String(change.after);
-    return `${change.field}: ${before} → ${after}`;
+    return t("agent.changeSummary", {field: String(change.field), before, after});
+}
+
+export function canConfirmSuggestion(envelope: AgentSuggestionEnvelope): boolean {
+    return envelope.status === "pending" && envelope.requiresConfirmation === true && envelope.changes.length > 0;
+}
+
+export interface SuggestionApplyResult {
+    store: import("./types").CheckinStore;
+    applied: number;
+    skipped: number;
+    conflicts: string[];
+}
+
+/** Applies only an already-confirmed suggestion and skips stale/conflicting fields. */
+export function applyConfirmedSuggestion(store: import("./types").CheckinStore, envelope: AgentSuggestionEnvelope): SuggestionApplyResult {
+    if (envelope.status !== "confirmed") return {store, applied: 0, skipped: envelope.changes.length, conflicts: []};
+    let applied = 0;
+    let skipped = 0;
+    const conflicts: string[] = [];
+    const items = store.items.map((item) => {
+        const changes = envelope.changes.filter((change) => change.itemId === item.id);
+        if (!changes.length) return item;
+        let next = item;
+        for (const change of changes) {
+            if (!Object.is(next[change.field], change.before)) {
+                skipped += 1;
+                conflicts.push(`${change.itemId}:${String(change.field)}`);
+                continue;
+            }
+            next = {...next, [change.field]: change.after} as typeof item;
+            applied += 1;
+        }
+        return next;
+    });
+    return {store: applied ? {...store, items} : store, applied, skipped, conflicts};
 }
 
 function escapeSuggestionHtml(value: string): string {
