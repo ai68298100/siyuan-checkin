@@ -32,7 +32,7 @@ assert.match(styles, /env\(safe-area-inset-bottom\)/,
     "release must include bottom safe-area handling");
 assert.match(styles, /:focus-visible/,
     "release must include keyboard-visible focus styling");
-assert.match(styles, /overflow-x:\s*hidden|touch-action:\s*pan-y/,
+assert.match(components, /overflow-x:\s*hidden|touch-action:\s*pan-y/,
     "release must guard against horizontal touch overflow");
 assert.match(components, /height:\s*calc\(38px \+ env\(safe-area-inset-top\)\)/,
     "mobile top bar must stay compact while accounting for the safe-area inset");

@@ -42,6 +42,9 @@ assert.match(liveStyles, /History calendar, filtering and supporting editor util
 assert.ok(!styles.includes("max-height: 238px"), "the first narrow-surface pass must not return to legacy index.scss");
 assert.match(liveStyles, /First narrow-surface pass: scrolling, shell safety and compact controls[\s\S]*max-height: 238px/,
     "narrow history, today, editor and settings controls belong to the component layer");
+assert.ok(!styles.includes("top: 56px; background: color-mix"), "the second narrow-surface pass must not return to legacy index.scss");
+assert.match(liveStyles, /Second narrow-surface pass: calendar states, grouping and safe-area layout[\s\S]*\.lc-checkin--settings \.lc-checkin__settings-card select/,
+    "calendar states, grouping and safe-area layout belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */

@@ -474,6 +474,14 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 更新 UI 主题守门：基础搜索签名不得回流 legacy，响应式 `today-search` 补充允许继续留待后续迁移；组件层锁定完整的组织与分组基础块。
 - `index.scss` 再减少 267 行；构建 CSS 304208→304123 bytes。完整 `pnpm run test:quality` 通过，10k 记录完整渲染 37ms。
 - 真实 Chrome `width-walkthrough` 全档无横向溢出；浅色/深色 visual QA 全页面无 page error，桌面 1140/1140、移动 320/360/390/430 档均宽度一致。
+
+### 第十八批（51 项）
+
+- 一次性迁移 51 个展开选择器职责到 `ui/components.scss`：移动标题与导航 5 项、日历/洞察状态及进度 10 项、Today 分组与完成态 9 项、通用间距/按钮/焦点 9 项、移动宿主安全区与视口 9 项、日历/事项/洞察/设置紧凑规则 9 项。
+- 按 D-088 将日历状态、分组吸顶背景和计数表面的 6 处宿主变量替换为插件 `surface/bg/muted-surface` 语义 token；组件层继续保持零 `--b3-*` 引用。
+- 更新 UI 主题与移动发版守门：第二段窄屏职责不得回流 legacy，横向触控溢出断言改锁现行组件层；`index.scss` 再减少 64 行，构建 CSS 303837→303872 bytes（语义 token 名展开增加 35 bytes）。
+- 完整 `pnpm run test:quality` 通过，10k 记录完整渲染 33ms；release-assets v9.7.1 通过。
+- 真实 Chrome `width-walkthrough` 全档无横向溢出；浅色/深色 visual QA 全页面无 page error，桌面 1140/1140、移动 320/360/390/430 档均宽度一致。
 # 2026-09-14 侧边栏安全宽度
 
 - Dock 默认宽度由 380px 调整为 420px，作为名称、辅助动作和主按钮均可读的推荐宽度。

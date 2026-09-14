@@ -1033,6 +1033,63 @@
     .lc-checkin--settings .lc-checkin__text-button { width: 100%; min-height: 38px; margin-top: 8px; border-radius: 8px; }
 }
 
+/* Second narrow-surface pass: calendar states, grouping and safe-area layout. */
+@container lc5 (max-width: 600px) {
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__header,
+    .lc-checkin:not(.lc-checkin--editor) .lc-checkin__editor-header { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 8px; }
+    .lc-checkin--today .lc-checkin__header { margin-bottom: 6px; }
+    .lc-checkin--history .lc-checkin__editor-header { margin-bottom: 10px; }
+    .lc-checkin__mobile-nav button.is-selected { box-shadow: inset 0 2px 0 var(--lc-checkin-accent); }
+    .lc-checkin__calendar-day.is-complete,
+    .lc-checkin__insight-grid span.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 72%, var(--lc-checkin-surface)); }
+    .lc-checkin__calendar-day.is-partial,
+    .lc-checkin__insight-grid span.is-partial { background: color-mix(in srgb, var(--lc-checkin-warning) 72%, var(--lc-checkin-surface)); }
+    .lc-checkin__calendar-day.is-missed,
+    .lc-checkin__insight-grid span.is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 62%, var(--lc-checkin-surface)); }
+    .lc-checkin__calendar-day.is-off,
+    .lc-checkin__insight-grid span.is-off { background: var(--lc-checkin-muted-surface); }
+    .lc-checkin__item-progress span { background: var(--lc-checkin-accent); }
+    .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
+    .lc-checkin--today .lc-checkin__group { min-width: 0; }
+    .lc-checkin--today .lc-checkin__group-header { position: sticky; z-index: 2; top: 56px; background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent); backdrop-filter: blur(6px); }
+    .lc-checkin--today .lc-checkin__group-items[hidden] { display: none; }
+    .lc-checkin--today .lc-checkin__group-items:not([hidden]) { margin-top: 2px; }
+    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-header { position: static; background: transparent; backdrop-filter: none; }
+    .lc-checkin--today .lc-checkin__completed-section { padding-bottom: 4px; }
+    .lc-checkin--today .lc-checkin__completed-section[aria-expanded="false"] { margin-bottom: 0; }
+    .lc-checkin--today .lc-checkin__all-done { padding: 12px; border-radius: 10px; font-size: 11px; }
+    .lc-checkin--today .lc-checkin__section-count { min-width: 22px; padding: 2px 6px; border-radius: 99px; background: var(--lc-checkin-muted-surface); font-size: 9px; text-align: center; }
+    .lc-checkin > * + * { margin-top: 10px; }
+    .lc-checkin__section-heading { min-height: 30px; }
+    .lc-checkin__section-heading strong { line-height: 1.3; }
+    .lc-checkin__primary-button,
+    .lc-checkin__save-button { min-height: 42px; border-radius: 9px; }
+    .lc-checkin__text-button { min-height: 34px; border-radius: 8px; }
+    .lc-checkin__item:focus-within,
+    .lc-checkin__history-event:focus-within,
+    .lc-checkin__settings-card:focus-within { border-color: var(--lc-checkin-accent-text); }
+    html:has(.lc-checkin-dialog-host--mobile),
+    body:has(.lc-checkin-dialog-host--mobile) { overflow-x: hidden; }
+    .lc-checkin-dialog-host--mobile,
+    .lc-checkin-dialog-host--mobile .lc-checkin { width: 100%; max-width: 100vw; min-width: 0; overflow-x: hidden; }
+    .lc-checkin-dialog-host--mobile .lc-checkin { min-height: 100%; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+    .lc-checkin--editor .lc-checkin__form-scroll { min-height: 0; overscroll-behavior-x: none; }
+    .lc-checkin__mobile-nav { padding-bottom: max(5px, calc(5px + env(safe-area-inset-bottom))); }
+    @supports (height: 100svh) {
+        .lc-checkin-dialog { height: 100svh !important; max-height: 100svh; }
+    }
+    .lc-checkin__calendar-day { min-height: 44px; min-width: 0; padding: 5px 3px; }
+    .lc-checkin__calendar-day button,
+    .lc-checkin__calendar-day[data-date] { min-height: 38px; }
+    .lc-checkin__calendar-day.is-selected { border-color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__text-button { min-width: 38px; min-height: 34px; padding: 3px 6px; }
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-width: 0; overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__insight-stats span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--insights .lc-checkin__insight-stats strong { line-height: 1.1; }
+    .lc-checkin--settings .lc-checkin__settings-card select { box-sizing: border-box; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
