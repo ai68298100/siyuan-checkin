@@ -6,6 +6,7 @@ export const CHECKIN_INTEGRATION_EVENTS = [
     "checkin:item-updated",
     "checkin:event-recorded",
     "checkin:event-deleted",
+    "checkin:suggestion-workflow-updated",
 ] as const;
 
 export const CHECKIN_CAPABILITIES = [

@@ -1552,6 +1552,7 @@ export default class CheckinPlugin extends Plugin {
             if (!normalized) throw new Error("总结适配器返回格式无效");
             this.summaryText = normalized.text;
             this.suggestionWorkflow = normalized.suggestions[0] ? createSuggestionWorkflow(createSuggestionEnvelope(normalized.suggestions[0])) : undefined;
+            if (this.suggestionWorkflow) this.broadcast({type: "suggestion-workflow-updated", suggestionId: this.suggestionWorkflow.envelope.id, suggestionStatus: this.suggestionWorkflow.envelope.status});
             void this.persistSuggestionWorkflow().catch(() => undefined);
             this.summaryRefreshing = false;
             const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
@@ -1583,6 +1584,7 @@ export default class CheckinPlugin extends Plugin {
         if (decision === "cancel") {
             this.suggestionWorkflow = outcome.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
+            this.broadcast({type: "suggestion-workflow-updated", suggestionId: current.envelope.id, suggestionStatus: outcome.state.envelope.status});
             this.render();
             showMessage(t("agent.cancelledNotice", {title: current.envelope.title}));
             return;
@@ -1591,6 +1593,7 @@ export default class CheckinPlugin extends Plugin {
         if (!applied.result.applied) {
             this.suggestionWorkflow = applied.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
+            this.broadcast({type: "suggestion-workflow-updated", suggestionId: current.envelope.id, suggestionStatus: applied.state.envelope.status});
             this.render();
             showMessage(t("agent.confirmedNotice", {title: current.envelope.title}));
             showMessage(t("agent.applyRejected"));
@@ -1602,6 +1605,7 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
             this.suggestionWorkflow = applied.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
+            this.broadcast({type: "suggestion-workflow-updated", suggestionId: current.envelope.id, suggestionStatus: applied.state.envelope.status});
             this.render();
         } catch (error) {
             this.store = previousStore;
@@ -1617,6 +1621,7 @@ export default class CheckinPlugin extends Plugin {
         if (!undone.result.reverted) {
             this.suggestionWorkflow = undone.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
+            this.broadcast({type: "suggestion-workflow-updated", suggestionId: current.envelope.id, suggestionStatus: undone.state.envelope.status});
             this.render();
             showMessage(t("agent.undoAccepted", {title: current.envelope.title}));
             showMessage(t("agent.undoRejected"));
@@ -1628,6 +1633,7 @@ export default class CheckinPlugin extends Plugin {
             await this.persist();
             this.suggestionWorkflow = undone.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
+            this.broadcast({type: "suggestion-workflow-updated", suggestionId: current.envelope.id, suggestionStatus: undone.state.envelope.status});
             this.render();
         } catch (error) {
             this.store = previousStore;

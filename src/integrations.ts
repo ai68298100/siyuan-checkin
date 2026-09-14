@@ -8,6 +8,7 @@ export const CHECKIN_EVENT_NAMES = {
     itemUpdated: "checkin:item-updated",
     eventRecorded: "checkin:event-recorded",
     eventDeleted: "checkin:event-deleted",
+    suggestionWorkflowUpdated: "checkin:suggestion-workflow-updated",
 } as const;
 
 // Keep the runtime map aligned with the public protocol snapshot.
@@ -56,5 +57,7 @@ export function toExternalEventName(event: CheckinIntegrationEvent): string {
             return CHECKIN_EVENT_NAMES.eventRecorded;
         case "event-deleted":
             return CHECKIN_EVENT_NAMES.eventDeleted;
+        case "suggestion-workflow-updated":
+            return CHECKIN_EVENT_NAMES.suggestionWorkflowUpdated;
     }
 }

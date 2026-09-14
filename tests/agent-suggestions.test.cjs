@@ -129,6 +129,7 @@ assert.match(index, /agent\.cancelledNotice/);
 assert.match(index, /agent\.undoAccepted/);
 assert.match(index, /title: current\.envelope\.title/);
 assert.match(index, /getSuggestionWorkflowSummary/);
+assert.match(index, /suggestion-workflow-updated/);
 assert.match(i18n, /"agent\.auditDetails"/);
 assert.match(i18n, /"agent\.audit\.reverted"/);
 console.log('Agent suggestion safety structure checks passed.');
