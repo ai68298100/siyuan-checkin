@@ -21,6 +21,15 @@ assert.equal(model.isSuggestionDecisionValid(pending, decisionToken, new Date("2
 assert.equal(model.isSuggestionDecisionValid(pending, decisionToken.replace("s1|s1", "s1|other"), new Date("2026-09-14T00:05:00.000Z")), false);
 assert.equal(model.parseSuggestionDecisionToken("broken"), undefined);
 assert.equal(model.createSuggestionDecisionToken(pending, "confirm", "bad", "n"), "");
+const consumedOnce = model.consumeSuggestionDecision([], pending, decisionToken, "confirm", new Date("2026-09-14T00:05:00.000Z"));
+assert.equal(consumedOnce.accepted, true);
+const replayed = model.consumeSuggestionDecision(consumedOnce.consumed, pending, decisionToken, "confirm", new Date("2026-09-14T00:05:00.000Z"));
+assert.equal(replayed.reason, "replayed");
+assert.equal(model.consumeSuggestionDecision([], pending, decisionToken, "cancel", new Date("2026-09-14T00:05:00.000Z")).reason, "wrong-decision");
+assert.equal(model.confirmSuggestionWithToken(pending, decisionToken, new Date("2026-09-14T00:05:00.000Z")).status, "confirmed");
+const cancelToken = model.createSuggestionDecisionToken(pending, "cancel", "2026-09-14T00:02:00.000Z", "nonce-2");
+assert.equal(model.cancelSuggestionWithToken(pending, cancelToken, new Date("2026-09-14T00:05:00.000Z")).status, "cancelled");
+assert.equal(model.confirmSuggestionWithToken(pending, cancelToken, new Date("2026-09-14T00:05:00.000Z")), undefined);
 const normalized = model.normalizeSuggestionEnvelope({...pending, title: "调整", reason: "建议"}, [item]);
 assert.equal(normalized.changes.length, 1);
 assert.equal(model.normalizeSuggestionEnvelope({...pending, requiresConfirmation: false}, [item]), undefined);
@@ -33,6 +42,9 @@ const confirmed = model.transitionSuggestionStatus(pending, "confirmed", "2026-0
 const applied = model.applyConfirmedSuggestion(store, confirmed);
 assert.equal(applied.applied, 1);
 assert.equal(applied.store.items[0].target, 2);
+const applyAudit = model.suggestionApplyAudit(confirmed, applied, "2026-09-14T00:06:00.000Z");
+assert.equal(applyAudit.action, "applied");
+assert.equal(applyAudit.applied, 1);
 const reverted = model.revertSuggestionApplication(applied.store, confirmed);
 assert.equal(reverted.reverted, 1);
 assert.equal(reverted.store.items[0].target, 1);
@@ -41,6 +53,10 @@ const revertConflict = model.revertSuggestionApplication(changedAfterApply, conf
 assert.equal(revertConflict.reverted, 0);
 assert.deepEqual(revertConflict.conflicts, ["a:target"]);
 assert.equal(revertConflict.store.items[0].target, 3);
+const revertAudit = model.suggestionRevertAudit(confirmed, reverted, "2026-09-14T00:07:00.000Z");
+assert.equal(revertAudit.reason, "revert");
+assert.equal(model.suggestionDecisionAudit(confirmed, "confirm").action, "confirmed");
+assert.equal(model.suggestionDecisionAudit(confirmed, "cancel").action, "cancelled");
 const stale = {...confirmed, changes: [{...confirmed.changes[0], before: 99}]};
 const conflict = model.applyConfirmedSuggestion(store, stale);
 assert.equal(conflict.applied, 0);

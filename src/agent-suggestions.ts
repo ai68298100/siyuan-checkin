@@ -159,6 +159,31 @@ export function isSuggestionDecisionValid(envelope: AgentSuggestionEnvelope, tok
     return age >= 0 && age <= AGENT_SUGGESTION_DECISION_TTL_MS;
 }
 
+export interface ConsumeSuggestionDecisionResult {
+    accepted: boolean;
+    consumed: string[];
+    reason: "accepted" | "invalid" | "replayed" | "wrong-decision";
+}
+
+export function consumeSuggestionDecision(consumed: readonly string[], envelope: AgentSuggestionEnvelope, token: string, expected: AgentSuggestionDecision, now = new Date()): ConsumeSuggestionDecisionResult {
+    const current = [...consumed].filter((entry) => typeof entry === "string").slice(-99);
+    if (current.includes(token)) return {accepted: false, consumed: current, reason: "replayed"};
+    const parsed = parseSuggestionDecisionToken(token);
+    if (!parsed || !isSuggestionDecisionValid(envelope, token, now)) return {accepted: false, consumed: current, reason: "invalid"};
+    if (parsed.decision !== expected) return {accepted: false, consumed: current, reason: "wrong-decision"};
+    return {accepted: true, consumed: [...current, token].slice(-100), reason: "accepted"};
+}
+
+export function confirmSuggestionWithToken(envelope: AgentSuggestionEnvelope, token: string, now = new Date()): AgentSuggestionEnvelope | undefined {
+    return isSuggestionDecisionValid(envelope, token, now) && parseSuggestionDecisionToken(token)?.decision === "confirm"
+        ? transitionSuggestionStatus(envelope, "confirmed", now.toISOString()) : undefined;
+}
+
+export function cancelSuggestionWithToken(envelope: AgentSuggestionEnvelope, token: string, now = new Date()): AgentSuggestionEnvelope | undefined {
+    return isSuggestionDecisionValid(envelope, token, now) && parseSuggestionDecisionToken(token)?.decision === "cancel"
+        ? transitionSuggestionStatus(envelope, "cancelled", now.toISOString()) : undefined;
+}
+
 export type AgentSuggestionAuditAction = "created" | "confirmed" | "cancelled" | "applied" | "rejected";
 export interface AgentSuggestionAudit {
     suggestionId: string;
@@ -346,6 +371,18 @@ export function revertSuggestionApplication(store: import("./types").CheckinStor
         return next;
     });
     return {store: reverted ? {...store, items} : store, reverted, skipped, conflicts};
+}
+
+export function suggestionApplyAudit(envelope: AgentSuggestionEnvelope, result: SuggestionApplyResult, at = new Date().toISOString()): AgentSuggestionAudit {
+    return {suggestionId: envelope.id, action: result.applied ? "applied" : "rejected", at, applied: result.applied, skipped: result.skipped, ...(result.conflicts.length ? {conflicts: result.conflicts} : {})};
+}
+
+export function suggestionRevertAudit(envelope: AgentSuggestionEnvelope, result: SuggestionRevertResult, at = new Date().toISOString()): AgentSuggestionAudit {
+    return {suggestionId: envelope.id, action: result.reverted ? "applied" : "rejected", at, applied: result.reverted, skipped: result.skipped, ...(result.conflicts.length ? {conflicts: result.conflicts} : {}), reason: "revert"};
+}
+
+export function suggestionDecisionAudit(envelope: AgentSuggestionEnvelope, decision: AgentSuggestionDecision, at = new Date().toISOString()): AgentSuggestionAudit {
+    return {suggestionId: envelope.id, action: decision === "confirm" ? "confirmed" : "cancelled", at};
 }
 
 function escapeSuggestionHtml(value: string): string {

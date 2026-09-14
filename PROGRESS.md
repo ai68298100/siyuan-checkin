@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-339~T-358 建议确认令牌与可撤销应用完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-359~T-378 建议决策令牌消费与撤销审计完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(agent): add expiring decision tokens and undo（本地里程碑）
+上次提交：feat(agent): bind decision tokens to state transitions（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；自动化侧继续推进 T-133 建议确认写入闭环与 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -23,6 +23,8 @@
 2026-09-14 建议审计轨迹批次（T-319~T-338）：新增建议审计动作/记录模型、版本化序列化与安全解析，统一校验建议 ID、动作、时间、应用计数、冲突字段和拒绝原因；追加函数复用 50 条保留上限，统计摘要按动作返回稳定计数，未知版本或 malformed JSON 安全回退为空。扩展 `tests/suggestion-apply.test.cjs` 与 agent-suggestions 结构守门。验证：类型检查与定向测试通过，随后执行完整 `pnpm run test:quality`。
 
 2026-09-14 建议确认令牌批次（T-339~T-358）：新增版本化确认/取消决策令牌，绑定建议 ID、动作、时间和 nonce，默认 10 分钟 TTL 并拒绝错误版本、过期、未来时间及跨建议令牌；新增可撤销应用纯函数，仅回滚仍保持建议值的字段，用户后续修改保留并返回冲突结果。扩展建议运行时和结构守门测试。验证：类型检查与定向测试通过，随后执行完整 `pnpm run test:quality`。
+
+2026-09-14 建议令牌消费批次（T-359~T-378）：新增令牌消费结果模型与最近 100 条重放防护，区分 invalid/replayed/wrong-decision 原因；新增带令牌的确认/取消状态迁移入口，并提供应用、撤销及决策审计转换函数，保持纯函数和显式持久化边界。扩展建议运行时与结构守门测试。验证：类型检查与定向测试通过，随后执行完整 `pnpm run test:quality`。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 
