@@ -15,6 +15,11 @@ assert.match(liveStyles, /Semantic state tokens[\s\S]*data-status="missed"[\s\S]
     "semantic completion states belong to the live component layer");
 assert.match(liveStyles, /@container lc5 \(min-width: 900px\) \{[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll \{[\s\S]*grid-template-columns: minmax\(260px, \.8fr\) minmax\(0, 1\.4fr\)/,
     "desktop editor enhancement remains in the live component layer");
+assert.ok(!styles.includes(".lc-checkin { --lc-checkin-border: var(--b3-theme-on-surface-light); }"),
+    "the migrated contrast enhancement must not return to legacy index.scss");
+assert.match(liveStyles, /@media \(prefers-contrast: more\) \{\s*\.lc-checkin \{ --lc-checkin-border: var\(--lc-checkin-muted\); \}[\s\S]*@media \(forced-colors: active\)/,
+    "contrast and forced-color accessibility rules belong to the component layer");
+assert.ok(!styles.includes("lc-checkin-dialog__resize-handle"), "dialog frame controls must not return to legacy index.scss");
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
 assert.match(styles, /--lc-checkin-shadow:/);

@@ -8,6 +8,7 @@ const path = require("node:path");
 
 const read = (...segments) => fs.readFileSync(path.join(__dirname, "..", ...segments), "utf8");
 const scss = read("src", "index.scss");
+const components = read("src", "ui", "components.scss");
 const quickDialog = read("src", "render", "quick-dialog.ts");
 const preferences = read("src", "view-preferences.ts");
 const settings = read("src", "render", "settings.ts");
@@ -31,9 +32,9 @@ assert.ok(baseCapIndex >= 0 && ladderIndex > baseCapIndex,
     "the ladder must be declared after the 700px base cap, otherwise equal specificity makes it a dead rule");
 assert.ok(!/@media \(min-width: 1[0-9]{3}px\) \{\s*\.lc-checkin-dialog-host/.test(scss),
     "viewport media queries must not size the dialog content (they measured the window, not the dialog)");
-assert.match(scss, /@container lc-dialog \(min-width: 900px\)[\s\S]*?\.lc-checkin-dialog-host \.lc-checkin \{ padding-top: 26px; \}/,
+assert.match(components, /@container lc-dialog \(min-width: 900px\)[\s\S]*?\.lc-checkin-dialog-host \.lc-checkin \{ padding-top: 26px; \}/,
     "desktop dialog content spacing must follow the dialog host container width");
-assert.match(scss, /@container lc5 \(min-width: 900px\)[\s\S]*?\.lc-checkin-tab-host \.lc-checkin \{ padding-top: 28px; \}/,
+assert.match(components, /@container lc5 \(min-width: 900px\)[\s\S]*?\.lc-checkin-tab-host \.lc-checkin \{ padding-top: 28px; \}/,
     "desktop tab content spacing must follow the surface container width");
 
 // 守门：尺寸策略 + 窗体操作
@@ -53,8 +54,8 @@ assert.match(quickDialog, /RESIZE_EDGES = \["n", "s", "e", "w", "ne", "nw", "se"
 assert.match(quickDialog, /addEventListener\("dblclick", onHeaderDoubleClick\)/, "double-clicking the header must toggle fullscreen");
 assert.match(quickDialog, /export function toggleQuickDialogFullscreenFor/, "fullscreen must have a single shared implementation");
 assert.match(quickDialog, /host\.quickDialogFrameCleanup\?\.\(\)/, "frame listeners must be released when the dialog closes");
-assert.match(scss, /\.lc-checkin-dialog__resize-handle\.is-se \{/, "resize handles need corner hit areas");
-assert.match(scss, /\.lc-checkin-dialog--fullscreen \.lc-checkin-dialog__resize-handle \{ display: none; \}/,
+assert.match(components, /\.lc-checkin-dialog__resize-handle\.is-se \{/, "resize handles need corner hit areas");
+assert.match(components, /\.lc-checkin-dialog--fullscreen \.lc-checkin-dialog__resize-handle \{ display: none; \}/,
     "fullscreen must not expose resize handles");
 
 // 守门：设置面板入口
@@ -65,7 +66,6 @@ assert.match(i18n, /"set\.dialogAuto": "自适应（推荐）"/, "zh copy for th
 assert.match(i18n, /"set\.dialogAuto": "Adaptive \(recommended\)"/, "en copy for the adaptive mode");
 
 // 守门：宽容器下的页面级桌面布局
-const components = read("src", "ui", "components.scss");
 assert.match(components, /\.lc-checkin-tab-host > \.lc-checkin__topnav \{[\s\S]*?box-sizing: border-box;/, "tab top navigation must include its horizontal padding inside the host width");
 assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(300px, 420px\) minmax\(0, 1fr\)/,
     "the occasions page must become a list-left / form-right master-detail layout");
