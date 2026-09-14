@@ -8,6 +8,8 @@
 上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
+2026-09-15 T-105 legacy 样式退役第二十五批（32 项）：迁移第九组窄屏规则，包括空态/同步提示、编辑器与事项头部控件、事项字段触控尺寸、模板/图标/类型网格、洞察教练与图例布局；颜色依赖全部替换为插件语义 token。更新 UI 主题守门锁定第九段组件层归属。legacy SCSS 净减少 32 行，生产 CSS 303982B（构建后 303982B）。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 31ms、overflow 0px；专项移动测试、宽度走查和 Chrome 浅/深主题 visual QA 均通过，pageErrors 为空；`git diff --check` 与 release-assets 通过。
+
 2026-09-15 T-105 legacy 样式退役第二十四批（38 项）：迁移第八组窄屏规则，包括移动底栏高度与选中态、浮动新建按钮、安全区定位、移动圆角层级、完成态边框、Today/历史卡片 hover 反馈及移动字号层级；颜色全部映射为插件语义 token。新增第八段窄容器唯一归属守门。legacy SCSS 净减少 38 行，生产 CSS 从 303953B 变为 303982B。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 28ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 与 release-assets 通过。
 
 2026-09-15 T-105 legacy 样式退役第二十三批（70 项）：迁移第六组 600px 核心布局，包括 Today 卡片两行网格与分组间距、移动页头和操作按钮、组织筛选双列布局、历史日历/筛选/事件、洞察统计与教练卡、编辑器滚动区/面板/固定操作区、事项表单单列布局，以及设置卡片与深色说明文字；编辑器操作区和深色说明颜色全部映射为插件语义 token。新增第七段窄容器唯一归属守门。legacy SCSS 净减少 76 行，生产 CSS 从 303938B 变为 303953B（语义 token 名展开增加 15B）。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 48ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 与 release-assets 通过。

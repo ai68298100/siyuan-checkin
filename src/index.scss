@@ -96,37 +96,7 @@
 }
 
 @container lc5 (max-width: 600px) {
-    .lc-checkin__empty,
-    .lc-checkin__history-empty,
-    .lc-checkin__empty-description { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 88px; padding: 16px 12px; border-radius: 10px; }
-    .lc-checkin__empty-title { font-size: 15px; }
-    .lc-checkin__empty-description { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.5; }
-    .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin__history-event-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-    .lc-checkin__back-button { flex: 0 0 40px; width: 40px; height: 40px; min-height: 40px; border-radius: 50%; }
-    .lc-checkin__editor-header > div { min-width: 0; }
-    .lc-checkin__editor-header .lc-checkin__icon-button { flex: 0 0 40px; width: 40px; height: 40px; }
-    .lc-checkin__header-actions { align-items: center; }
-    .lc-checkin__header-actions .lc-checkin__small-button { min-width: 30px; min-height: 30px; }
-    .lc-checkin__header-actions .lc-checkin__icon-button { flex: 0 0 40px; }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
-
-    .lc-checkin--occasions .lc-checkin__field { gap: 5px; font-size: 11px; }
-    .lc-checkin--occasions .lc-checkin__field input,
-    .lc-checkin--occasions .lc-checkin__field select { width: 100%; min-height: 40px; box-sizing: border-box; }
-    .lc-checkin--occasions .lc-checkin__field textarea { width: 100%; min-height: 100px; box-sizing: border-box; resize: vertical; }
-    .lc-checkin--occasions .lc-checkin__editor-actions { display: flex; gap: 8px; }
-    .lc-checkin--occasions .lc-checkin__editor-actions button { flex: 1 1 0; min-height: 42px; }
-    .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 16px; }
-
-    .lc-checkin__templates { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; max-height: 260px; }
-    .lc-checkin__templates button { min-width: 0; min-height: 46px; padding: 7px; border-radius: 8px; }
-    .lc-checkin__template-section .lc-checkin__search-field { width: 100%; }
-    .lc-checkin__icon-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-    .lc-checkin__icon-option { min-width: 0; min-height: 38px; height: 38px; border-radius: 8px; font-size: 18px; }
-    .lc-checkin__kind-grid { grid-template-columns: minmax(0, 1fr); gap: 7px; }
-    .lc-checkin__kind-option span { min-height: 54px; padding: 8px 10px; border-radius: 8px; }
 
     .lc-checkin__coaching-item { border-left-width: 3px; background: color-mix(in srgb, var(--b3-theme-surface) 92%, var(--lc-checkin-accent-soft)); }
     .lc-checkin__coaching-item:first-child { background: var(--lc-checkin-accent-soft); }
