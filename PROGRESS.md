@@ -8,6 +8,8 @@
 上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
+2026-09-15 T-105 legacy 样式退役第二十七批（52 项）：迁移第十一组窄屏规则，包括洞察教练/图例、历史事件栅格与归档行、移动弹窗入场动画及减弱动态、编辑器滚动留白与输入焦点、Today 进度/计数/操作区、底栏文字和选中态。同步将稳定性测试的安全区断言迁移到组件层。宿主颜色全部映射为插件语义 token。legacy SCSS 减少 52 行，生产 CSS 304008B。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 27ms、overflow 0px；专项移动测试通过；后续 Chrome 宽度走查和双主题 visual QA 待下一批复核。
+
 2026-09-15 T-105 legacy 样式退役第二十六批（52 项）：迁移第十组窄屏规则，包括移动弹窗吸顶层级、Today 分组分隔与完成态、事项日期状态、日历标记、触控目标与焦点反馈、深色边框/文字和减弱动态；宿主颜色全部映射为插件语义 token。新增第十段窄容器唯一归属守门。legacy SCSS 净减少 52 行，生产 CSS 304008B。验证：类型检查、UI/移动专项、release-assets 与 diff 检查通过；此前完整质量链在该批前置迁移状态通过，需下一轮重新执行完整链确认。
 
 2026-09-15 T-105 legacy 样式退役第二十五批（32 项）：迁移第九组窄屏规则，包括空态/同步提示、编辑器与事项头部控件、事项字段触控尺寸、模板/图标/类型网格、洞察教练与图例布局；颜色依赖全部替换为插件语义 token。更新 UI 主题守门锁定第九段组件层归属。legacy SCSS 净减少 32 行，生产 CSS 303982B（构建后 303982B）。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 31ms、overflow 0px；专项移动测试、宽度走查和 Chrome 浅/深主题 visual QA 均通过，pageErrors 为空；`git diff --check` 与 release-assets 通过。

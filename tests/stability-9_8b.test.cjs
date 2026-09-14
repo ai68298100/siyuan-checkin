@@ -42,7 +42,7 @@ const checks = [
     [components, /var\(--lc-checkin-nav-height\)/, "floating notices avoid the bottom navigation"],
     [components, /env\(safe-area-inset-bottom\)/, "component spacing respects mobile safe area"],
     [components, /data-reduced-motion|reducedMotion/, "reduced motion styling hooks remain present"],
-    [indexScss, /env\(safe-area-inset-top\)/, "host top spacing respects safe area"],
+    [components, /env\(safe-area-inset-top\)/, "component top spacing respects safe area"],
     [indexScss, /scroll-padding-bottom/, "mobile scrolling reserves bottom controls"],
     [checklist, /局部刷新/, "manual checklist covers local refresh"],
     [checklist, /双窗口/, "manual checklist covers dual-window tomato flow"],
