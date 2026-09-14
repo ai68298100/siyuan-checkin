@@ -104,6 +104,11 @@ export function workflowAuditSummary(state: SuggestionWorkflowState): Record<Age
     return counts;
 }
 
+export function latestWorkflowAudit(state: SuggestionWorkflowState): AgentSuggestionAudit | undefined {
+    const audit = state.audits[state.audits.length - 1];
+    return audit ? {...audit, conflicts: audit.conflicts ? [...audit.conflicts] : undefined} : undefined;
+}
+
 export function canUndoSuggestion(state: SuggestionWorkflowState): boolean {
     const latestApplied = [...state.audits].reverse().find((audit) => audit.action === "applied");
     return state.envelope.status === "confirmed" && Boolean(latestApplied && (latestApplied.applied || 0) > 0 && latestApplied.reason !== "revert");
