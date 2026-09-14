@@ -25,7 +25,7 @@ assert.match(bindEditorSource, /const resetSubmitting = \(\) => \{[\s\S]*form\.d
 assert.match(source, /private showToday\(\)/,
     "save completion must have a normal-view restore path");
 
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto[\s\S]*box-shadow:/,
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto[^}]*box-shadow:/,
     "save feedback must have a stable action bar outside the scroll region");
 assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "keyboard scrolling must keep the bottom save area visible");

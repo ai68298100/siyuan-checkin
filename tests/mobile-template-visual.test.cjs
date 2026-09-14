@@ -28,7 +28,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__f
     "mobile editor scroll must account for the bottom safe area");
 assert.match(styles, /\.lc-checkin:not\(\.lc-checkin--editor\)\s*\{\s*padding-bottom:\s*calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile pages must reserve space for bottom navigation and safe area");
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*position:\s*sticky|\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto/,
+assert.match(components, /\.lc-checkin__editor-actions\s*\{[^}]*position:\s*sticky|Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto/,
     "editor actions must remain visible while the form scrolls");
 assert.match(components, /\.lc-checkin--editor \.lc-checkin__form-scroll\s*\{[\s\S]*overscroll-behavior-y:\s*auto;[\s\S]*touch-action:\s*pan-y;/,
     "mobile editor form must allow vertical scroll chaining");

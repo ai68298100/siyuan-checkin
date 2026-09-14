@@ -18,7 +18,7 @@ assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
 
 assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "mobile form scroll must reserve the safe area");
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto[\s\S]*background:\s*var\(--b3-theme-background\)/,
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "save bar must stay visible above the keyboard");
 assert.match(components, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)[\s\S]*max-height:\s*calc\(100dvh - 16px\)/,
     "dynamic viewport height must be used when the keyboard changes the visual viewport");

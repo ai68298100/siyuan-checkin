@@ -8,6 +8,8 @@
 上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
+2026-09-14 T-105 legacy 样式退役第十四批（62 项）：将编辑器第一屏的专注入口、通用空状态、表单滚动区/固定操作区、模板标题与三列网格、模板/图标搜索筛选、结果与无结果状态、无障碍隐藏文本、模板卡、图标结果面板、通用字段、双列表单以及类型选择器整体迁入 `src/ui/components.scss`；颜色依赖全部按 D-088 改为插件语义 token，并为窄屏空状态补充 `overflow-wrap:anywhere`。同步修正 10 个移动端结构测试的样式归属，以及已拆分到 `render/editor.ts` / `render/fragments.ts` 的 DOM 结构归属。legacy SCSS 净减少 497 行，生产 CSS 从 304039B 降至 303943B。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 33ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 通过。
+
 2026-09-14 T-105 legacy 样式退役第十三批（55 项）：将 Today 卡片本体/完成态、图标、保存与同步反馈、名称/标签/元信息、焦点与校验状态、进度条、数量输入、记录/快捷/更多按钮及精确录入区域从 `src/index.scss` 迁入 `src/ui/components.scss`；迁移过程按 D-088 将全部宿主颜色映射为插件语义 token，并把 6 处移动端/响应式测试的样式归属断言同步到组件层。legacy SCSS 净减少 329 行，生产 CSS 由 304123B 降至 304039B。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 32ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 均无溢出；浅色与深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 通过。
 
 2026-09-14 分析历史对比批次（T-199~T-218）：历史弹窗不再把快照元数据塞入 DOM dataset，而是直接读取已通过 `normalizeAnalysisSnapshots` 的独立缓存；新增相邻版本默认选择、交换、单版本禁用、非法索引/同版本保护、方向与元信息展示；实际正文对比接入逐行差异模型与安全 HTML 渲染。差异摘要、空态、历史标题/控件/状态/错误全部补齐中英文 i18n，状态区加入 `aria-live`，新增 `tests/analysis-history.test.cjs` 并接入 `test`/`test:ui`。验证：`pnpm run check`、`pnpm run test:ui`、生产构建通过；CSS 298042B，处于 318000 发布预算内。

@@ -19,8 +19,8 @@ assert.match(editorSource, /data-advanced[\s\S]*data-advanced-summary/, "advance
 assert.match(editorSource, /lc-checkin__editor-actions[\s\S]*data-action="archive"/, "editor actions must stay in a dedicated action bar");
 
 // The editor has a form scroll region and a fixed action bar that can be checked at all mobile widths.
-assert.match(styles, /\.lc-checkin__form-scroll\s*\{[\s\S]*overflow-y:\s*auto;/, "editor fields must scroll independently");
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto;/, "editor actions must remain visible while fields scroll");
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__form-scroll\s*\{[^}]*overflow-y:\s*auto;/, "editor fields must scroll independently");
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto;/, "editor actions must remain visible while fields scroll");
 assert.match(components, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin-dialog\s*\{[\s\S]*height:\s*88vh/, "mobile dialog needs a bounded viewport layout");
 assert.match(components, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)/, "mobile dialog must follow dynamic viewport height");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px/, "template cards must remain touch-friendly");

@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const liveStyles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+const components = liveStyles;
 
 assert.match(quickDialogSource, /const sync = \(\) => \{[\s\S]*viewport\.height - 16[\s\S]*container\.style\.height/,
     "viewport changes must recalculate the dialog height");
@@ -18,7 +19,7 @@ assert.match(liveStyles, /\.lc-checkin-dialog-host\s*\{[\s\S]*width:\s*100%[\s\S
     "dialog host must recover to the current container width after rotation");
 assert.match(liveStyles, /\.lc-checkin\s*\{[\s\S]*width:\s*100%[\s\S]*min-height:\s*280px[\s\S]*overflow:\s*auto/,
     "check-in surface must remain scrollable after orientation changes");
-assert.match(styles, /\.lc-checkin__form-scroll\s*\{[\s\S]*min-height:\s*0[\s\S]*flex:\s*1[\s\S]*overflow-y:\s*auto/,
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__form-scroll\s*\{[^}]*min-height:\s*0[^}]*flex:\s*1[^}]*overflow-y:\s*auto/,
     "editor scroll position must remain in the dedicated form scroller");
 /* 曾锁定 index.scss 的 @container lc-checkin 死块；现锁 components.scss 的现行活规则 */
 assert.match(liveStyles, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-checkin--today \.lc-checkin__item \{ grid-template-columns: 34px minmax\(0, 1fr\) auto;/,

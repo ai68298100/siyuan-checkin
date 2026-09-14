@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(editorSource, /class="lc-checkin__archive-button" type="button" data-action="archive"/,
     "editor must expose a dedicated archive/delete button");
@@ -19,7 +20,7 @@ assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived
 
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__archive-button\s*\{[\s\S]*min-height:\s*40px/,
     "archive/delete action must be touch-sized on mobile");
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*background:\s*var\(--b3-theme-background\)/,
+assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "delete action must stay on a solid action surface above the keyboard");
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
     "narrow editor must collapse fields before the delete action");

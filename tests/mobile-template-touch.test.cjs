@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const liveStyles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 // Built-in templates are applied through real buttons; saving stays a native form submit.
 assert.match(editorSource, /data-template-index="\$\{index\}"/, "each template must expose an apply target");
@@ -27,7 +28,7 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc
     "mobile form controls must meet the touch target");
 assert.match(styles, /\.lc-checkin__save-button\s*\{[\s\S]*height:\s*36px/,
     "save action must have a stable mobile-friendly height");
-assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*background:\s*var\(--b3-theme-background\)/,
+assert.match(liveStyles, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "save and archive actions need a solid mobile surface");
 
 for (const width of [320, 360, 390, 430]) {
