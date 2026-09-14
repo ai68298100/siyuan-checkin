@@ -1,11 +1,11 @@
 # 进度
-当前任务：9.7.0 GitHub Release 发布收尾；T-023/T-129 真实客户端验收仍待用户现场完成
+当前任务：9.7.0 GitHub Release 已发布；T-023/T-129 真实客户端验收仍待用户现场完成
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
-未提交变更：9.7.0 版本与发布文档（待本地提交后推送）
+未提交变更：发布状态回写（待本地提交后推送）
 上次提交：feat(api): advertise suggestion read capability（本地里程碑）
-下一步：提交并推送 9.7.0，创建 tag/Release；发布后按 `docs/integration-smoke-checklist.md` 复测 T-023/T-129。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
-上下文备注：v9.7.0 发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；发布后安装渠道为 GitHub Release，集市审核暂缓。
+下一步：按 `docs/integration-smoke-checklist.md` 复测 T-023/T-129；集市审核与 15.0 工作待真实客户端证据。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
+上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
 2026-09-14 分析历史对比批次（T-199~T-218）：历史弹窗不再把快照元数据塞入 DOM dataset，而是直接读取已通过 `normalizeAnalysisSnapshots` 的独立缓存；新增相邻版本默认选择、交换、单版本禁用、非法索引/同版本保护、方向与元信息展示；实际正文对比接入逐行差异模型与安全 HTML 渲染。差异摘要、空态、历史标题/控件/状态/错误全部补齐中英文 i18n，状态区加入 `aria-live`，新增 `tests/analysis-history.test.cjs` 并接入 `test`/`test:ui`。验证：`pnpm run check`、`pnpm run test:ui`、生产构建通过；CSS 298042B，处于 318000 发布预算内。
