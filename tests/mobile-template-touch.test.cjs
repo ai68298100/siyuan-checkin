@@ -20,7 +20,7 @@ assert.match(i18n, /"editor\.archive": "暂时归档"/, "archive label must stay
 // Mobile widths must give the controls room to be tapped without relying on hover.
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
     "320/360px template grid must use two stable columns");
-assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin__form-scroll\s*\{[\s\S]*scroll-padding-bottom:\s*calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
+assert.match(liveStyles, /Fifth narrow-surface pass[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll \{ padding-bottom: max\(108px, calc\(96px \+ env\(safe-area-inset-bottom\)\)\)/,
     "mobile editor scroll must leave room for the fixed action area");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px[\s\S]*padding:\s*9px/,
     "apply template buttons must remain touch friendly");
