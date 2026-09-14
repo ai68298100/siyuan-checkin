@@ -31,11 +31,14 @@ assert.equal(descriptor.events.length, 5);
 assert.equal(descriptor.events.includes("checkin:suggestion-workflow-updated"), true);
 assert.equal(api.hasCheckinCapability("events.record"), true);
 assert.equal(api.hasCheckinCapability("events.delete"), false);
+assert.equal(api.hasCheckinCapability("suggestions.read"), true);
 
 const info = api.getCheckinCapabilityInfo();
 assert.deepEqual(Object.keys(info), api.CHECKIN_CAPABILITIES);
 assert.equal(info["events.record"].effect, "write");
 assert.equal(info["summary.providers"].localOnly, false);
+assert.equal(info["suggestions.read"].effect, "read");
+assert.equal(info["suggestions.read"].localOnly, true);
 assert.equal(Object.values(info).every((entry) => Object.isFrozen(entry)), true);
 
 fs.rmSync(directory, {recursive: true, force: true});

@@ -48,6 +48,8 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 订阅 `checkin:suggestion-workflow-updated` 后，可使用集成层的 `isSuggestionWorkflowEvent` 约束事件形状；建议事件只保证 `suggestionId` 与固定状态字段，未知或伪造状态应直接忽略。
 
+调用前可通过 `hasCapability("suggestions.read")` 协商建议只读能力，并检查 `getCapabilityInfo()["suggestions.read"]` 确认其 `effect` 为 `read`、`localOnly` 为 `true`。
+
 ## 安全边界
 
 - 外部来源必须可追溯，不能伪装成 `manual`。

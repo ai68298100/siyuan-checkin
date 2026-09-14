@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-779~T-798 建议事件类型守卫完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-799~T-818 建议只读能力协商完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(integration): add suggestion event type guard（本地里程碑）
+上次提交：feat(api): advertise suggestion read capability（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -67,6 +67,8 @@
 2026-09-14 建议事件 payload 安全批次（T-759~T-778）：集成层新增 `cloneIntegrationEvent`，对建议事件校验 ID/状态并限制长度，对事项、记录和删除事件做嵌套防御性克隆；`emitIntegrationEvent` 统一在派发前安全过滤。新增运行时事件测试并接入 ecosystem 测试链。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302873 bytes；已提交本地里程碑 `1221eed`，未 push。
 
 2026-09-14 建议事件类型守卫批次（T-779~T-798）：新增 `SuggestionWorkflowIntegrationEvent` 类型别名和 `isSuggestionWorkflowEvent` 守卫，统一校验事件对象、建议 ID 长度和固定状态枚举；payload 克隆与事件派发复用同一边界。扩展运行时、契约和生态文档测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302873 bytes；已提交本地里程碑 `064f2c8`，未 push。
+
+2026-09-14 建议只读能力协商批次（T-799~T-818）：新增 `suggestions.read` capability，标记为 `effect: read` 且 `localOnly: true`，用于协商 `getSuggestionWorkflow` 与摘要接口；保持 API 版本 4 和既有写能力不变。更新生态文档与契约测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302873 bytes；已提交本地里程碑 `d177dd5`，未 push。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 

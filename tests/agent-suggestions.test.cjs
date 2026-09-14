@@ -135,6 +135,8 @@ assert.match(integration, /cloneIntegrationEvent/);
 assert.match(integration, /SUGGESTION_EVENT_ID_MAX_LENGTH/);
 assert.match(integration, /suggestionWorkflowUpdated/);
 assert.match(integration, /isSuggestionWorkflowEvent/);
+const contract = fs.readFileSync('src/api-contract.ts', 'utf8');
+assert.match(contract, /"suggestions\.read"/);
 assert.match(i18n, /"agent\.auditDetails"/);
 assert.match(i18n, /"agent\.audit\.reverted"/);
 console.log('Agent suggestion safety structure checks passed.');
