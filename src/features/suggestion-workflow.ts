@@ -8,6 +8,8 @@ import {
     suggestionApplyAudit,
     suggestionDecisionAudit,
     suggestionRevertAudit,
+    normalizeSuggestionAudits,
+    normalizeSuggestionEnvelope,
     type AgentSuggestionAudit,
     type AgentSuggestionDecision,
     type AgentSuggestionEnvelope,
@@ -22,6 +24,17 @@ export interface SuggestionWorkflowState {
     audits: AgentSuggestionAudit[];
 }
 
+export const SUGGESTION_WORKFLOW_VERSION = 1;
+export const SUGGESTION_WORKFLOW_TOKEN_LIMIT = 100;
+
+export interface SuggestionWorkflowSummary {
+    status: AgentSuggestionEnvelope["status"];
+    canApply: boolean;
+    canUndo: boolean;
+    consumedTokens: number;
+    audits: number;
+}
+
 export interface SuggestionDecisionOutcome {
     state: SuggestionWorkflowState;
     accepted: boolean;
@@ -30,6 +43,27 @@ export interface SuggestionDecisionOutcome {
 
 export function createSuggestionWorkflow(envelope: AgentSuggestionEnvelope): SuggestionWorkflowState {
     return {envelope: {...envelope, changes: envelope.changes.map((change) => ({...change}))}, consumedTokens: [], audits: []};
+}
+
+export function normalizeSuggestionWorkflow(value: unknown, items: readonly import("../types").CheckinItem[]): SuggestionWorkflowState | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as Partial<SuggestionWorkflowState>;
+    const envelope = normalizeSuggestionEnvelope(candidate.envelope, items);
+    if (!envelope) return undefined;
+    const consumedTokens = Array.isArray(candidate.consumedTokens) ? candidate.consumedTokens.filter((token): token is string => typeof token === "string" && token.length > 0).slice(-SUGGESTION_WORKFLOW_TOKEN_LIMIT) : [];
+    const audits = normalizeSuggestionAudits(candidate.audits);
+    return {envelope, consumedTokens, audits};
+}
+
+export function serializeSuggestionWorkflow(state: SuggestionWorkflowState): string {
+    return JSON.stringify({version: SUGGESTION_WORKFLOW_VERSION, envelope: state.envelope, consumedTokens: state.consumedTokens.slice(-SUGGESTION_WORKFLOW_TOKEN_LIMIT), audits: normalizeSuggestionAudits(state.audits)});
+}
+
+export function deserializeSuggestionWorkflow(value: string, items: readonly import("../types").CheckinItem[]): SuggestionWorkflowState | undefined {
+    try {
+        const parsed = JSON.parse(value);
+        return parsed?.version === SUGGESTION_WORKFLOW_VERSION ? normalizeSuggestionWorkflow(parsed, items) : undefined;
+    } catch { return undefined; }
 }
 
 export function decideSuggestion(state: SuggestionWorkflowState, token: string, decision: AgentSuggestionDecision, now = new Date()): SuggestionDecisionOutcome {
@@ -58,4 +92,13 @@ export function workflowAuditSummary(state: SuggestionWorkflowState): Record<Age
     const counts: Record<AgentSuggestionAudit["action"], number> = {created: 0, confirmed: 0, cancelled: 0, applied: 0, rejected: 0};
     for (const audit of state.audits) counts[audit.action] += 1;
     return counts;
+}
+
+export function canUndoSuggestion(state: SuggestionWorkflowState): boolean {
+    const latestApplied = [...state.audits].reverse().find((audit) => audit.action === "applied");
+    return state.envelope.status === "confirmed" && Boolean(latestApplied && (latestApplied.applied || 0) > 0 && latestApplied.reason !== "revert");
+}
+
+export function workflowSummary(state: SuggestionWorkflowState): SuggestionWorkflowSummary {
+    return {status: state.envelope.status, canApply: state.envelope.status === "confirmed", canUndo: canUndoSuggestion(state), consumedTokens: state.consumedTokens.length, audits: state.audits.length};
 }
