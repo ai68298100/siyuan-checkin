@@ -512,3 +512,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 思源 dock API 不支持声明最小宽度，因此不修改思源本体；新增 480px/340px 两档防御布局，窄侧栏将操作区放到正文下方，极窄侧栏使用整行操作区。
 - Dock 底部导航按实际 5 个入口等分，避免旧 6 列轨道产生空列与错位。
 - 验证：浅色/深色真实 Chrome visual QA、width walkthrough、`test:mobile`、响应式结构测试、构建及 release-assets 均通过；CSS 317978 bytes。
+
+### 第三十一批（34 项）
+
+- 将 Today 卡片视觉层级、完成态记录按钮、进度条、组织筛选、移动底栏及历史日历圆角等 34 项窄屏职责迁移至 `ui/components.scss`，统一使用插件语义 token，避免宿主 `--b3-*` 变量渗漏。
+- 新增第四十一次窄屏迁移守门，锁定 Today 卡片视觉增强只存在组件层，防止样式回流 `index.scss`。
+- 验证：`pnpm run check`、`ui-theme`、`width-walkthrough`、`release-assets`、`git diff --check` 全部通过；组件层无 `--b3-*` 引用。CSS 304003 bytes。

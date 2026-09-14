@@ -1677,6 +1677,44 @@
 .lc-checkin__history-event-value { color: var(--lc-checkin-text); font-size: 12px; white-space: nowrap; }
 .lc-checkin__history-empty { padding: 10px; color: var(--lc-checkin-muted); font-size: 11px; }
 
+/* Fourteenth narrow-surface pass: Today card visual polish and mobile surface hierarchy. */
+@container lc5 (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__item { position: relative; overflow: hidden; border-radius: 14px; background: color-mix(in srgb, var(--lc-checkin-surface) 94%, var(--lc-checkin-accent-soft)); box-shadow: 0 3px 12px color-mix(in srgb, var(--lc-checkin-text) 6%, transparent); }
+    .lc-checkin--today .lc-checkin__item::before { position: absolute; inset: 0 auto 0 0; width: 2px; border-radius: 14px 0 0 14px; background: var(--lc-checkin-accent); content: ""; opacity: .38; }
+    .lc-checkin--today .lc-checkin__item.is-complete::before { background: var(--lc-checkin-success); }
+    .lc-checkin--today .lc-checkin__item-body { padding-left: 8px; }
+    .lc-checkin--today .lc-checkin__item-action { border-top: 0; padding-top: 7px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 44px; min-height: 40px; border-radius: 999px; padding: 0 16px; font-weight: 700; box-shadow: 0 2px 7px color-mix(in srgb, var(--lc-checkin-accent) 18%, transparent); }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__record-button { color: var(--lc-checkin-success-text); background: color-mix(in srgb, var(--lc-checkin-success) 12%, var(--lc-checkin-surface)); border-color: color-mix(in srgb, var(--lc-checkin-success) 35%, var(--lc-checkin-border-strong)); }
+    .lc-checkin--today .lc-checkin__item-progress { height: 5px; margin-top: 8px; border-radius: 999px; background: color-mix(in srgb, var(--lc-checkin-muted) 14%, transparent); }
+    .lc-checkin--today .lc-checkin__item-progress span { border-radius: 999px; }
+    .lc-checkin--today .lc-checkin__organize { border-radius: 12px; background: color-mix(in srgb, var(--lc-checkin-surface) 90%, var(--lc-checkin-accent-soft)); }
+    .lc-checkin--today .lc-checkin__organize select { border-radius: 999px; }
+    .lc-checkin--today .lc-checkin__item-topline { min-height: 24px; align-items: center; }
+    .lc-checkin--today .lc-checkin__item-name { line-height: 1.35; }
+    .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
+    .lc-checkin--today .lc-checkin__item-meta { color: var(--lc-checkin-muted); line-height: 1.4; }
+    .lc-checkin--today .lc-checkin__item-progress span { display: block; height: 100%; background: var(--lc-checkin-accent); }
+    .lc-checkin--today .lc-checkin__group-title { color: var(--lc-checkin-text); }
+    .lc-checkin--today .lc-checkin__group-count { color: var(--lc-checkin-muted); }
+    .lc-checkin--today .lc-checkin__organize label { color: var(--lc-checkin-muted); }
+    .lc-checkin--today .lc-checkin__organize input { min-height: 36px; }
+    .lc-checkin--today .lc-checkin__organize select { min-height: 36px; }
+    .lc-checkin__mobile-nav { min-height: 56px; }
+    .lc-checkin__mobile-nav button { min-height: 44px; color: var(--lc-checkin-muted); }
+    .lc-checkin__mobile-nav button svg { flex: 0 0 auto; }
+    .lc-checkin__mobile-nav button span { line-height: 1; }
+    .lc-checkin__mobile-nav button small { line-height: 1.1; }
+    .lc-checkin--history .lc-checkin__calendar-header { color: var(--lc-checkin-text); }
+    .lc-checkin--history .lc-checkin__calendar-day { color: var(--lc-checkin-text); }
+    .lc-checkin--history .lc-checkin__calendar-day.is-muted { color: var(--lc-checkin-muted); }
+    .lc-checkin--history .lc-checkin__calendar-day.is-selected { background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__mobile-nav { border-top: 1px solid color-mix(in srgb, var(--lc-checkin-border-strong) 70%, transparent); background: color-mix(in srgb, var(--lc-checkin-bg) 88%, transparent); backdrop-filter: blur(14px); }
+    .lc-checkin__mobile-nav button { border-radius: 12px; }
+    .lc-checkin__mobile-nav button.is-selected { background: var(--lc-checkin-accent-soft); box-shadow: none; }
+    .lc-checkin--history .lc-checkin__calendar { border-radius: 14px; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
