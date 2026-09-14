@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
 assert.match(quickDialogSource, /visualViewport[\s\S]*addEventListener\("resize", sync\)[\s\S]*addEventListener\("scroll", sync\)/,
@@ -15,7 +16,7 @@ assert.match(editorSource, /<div class="lc-checkin__form-scroll">[\s\S]*<div cla
 assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
     "save template action must remain keyboard-submit capable");
 
-assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
+assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "mobile form scroll must reserve the safe area");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto[\s\S]*background:\s*var\(--b3-theme-background\)/,
     "save bar must stay visible above the keyboard");

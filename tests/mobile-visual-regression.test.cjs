@@ -18,13 +18,13 @@ assert.match(styles, /\.lc-checkin__search-empty[\s\S]*max-width|\.lc-checkin__s
 // Safe-area and keyboard layout contracts.
 assert.match(v5Components, /padding:\s*6px 8px calc\(6px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile navigation must include the bottom safe area");
-assert.match(styles, /scroll-padding:\s*12px 0 calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
+assert.match(v5Components, /scroll-padding:\s*12px 0 calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "editor scrolling must include bottom safe-area space");
 assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:\s*2px solid/,
     "keyboard focus must remain visible");
 
 // Touch interactions must not create a second horizontal scroller.
-assert.match(styles, /\.lc-checkin-dialog-host--mobile\s*\{[\s\S]*touch-action:\s*pan-y/,
+assert.match(v5Components, /\.lc-checkin-dialog-host--mobile\s*\{[\s\S]*touch-action:\s*pan-y/,
     "mobile dialog must reserve horizontal gestures for the page shell");
 /* 曾锁定 index.scss 的 @container lc-checkin 死块；现锁 components.scss 的现行布局：
    打卡主按钮 order 最大（永远最右），其余按钮靠左，右侧不放任何东西（T-118b） */

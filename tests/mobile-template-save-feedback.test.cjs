@@ -7,6 +7,7 @@ const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
     "template save must remain an explicit submit action");
@@ -26,7 +27,7 @@ assert.match(source, /private showToday\(\)/,
 
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto[\s\S]*box-shadow:/,
     "save feedback must have a stable action bar outside the scroll region");
-assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
+assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "keyboard scrolling must keep the bottom save area visible");
 assert.match(styles, /\.lc-checkin__save-button\s*\{[\s\S]*background:\s*var\(--lc-checkin-accent\)/,
     "save action must have a stable visual affordance");

@@ -60,7 +60,7 @@ assert.match(reviewSource, /t\(`source\.\$\{event\.source\}`\)/,
 assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/,
     "record feedback should expose current progress");
 
-assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
+assert.match(v5Components, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
 assert.match(styles, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 16px\)/,
     "mobile dialog must follow the visual viewport when the keyboard opens");

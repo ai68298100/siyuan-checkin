@@ -24,7 +24,7 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*-web
     "touch controls must avoid browser tap flash while retaining focus styling");
 
 // The editor's scroll area must reserve both the safe area and the fixed bottom action bar.
-assert.match(styles, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
+assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "mobile editor scroll must account for the bottom safe area");
 assert.match(styles, /\.lc-checkin:not\(\.lc-checkin--editor\)\s*\{\s*padding-bottom:\s*calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile pages must reserve space for bottom navigation and safe area");

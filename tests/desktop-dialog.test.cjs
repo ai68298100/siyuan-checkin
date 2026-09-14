@@ -13,11 +13,15 @@ const quickDialog = read("src", "render", "quick-dialog.ts");
 const preferences = read("src", "view-preferences.ts");
 const settings = read("src", "render", "settings.ts");
 const i18n = read("src", "i18n.ts");
+assert.ok(!scss.includes("container: lc-dialog / inline-size"),
+    "dialog host width ownership must not return to legacy index.scss");
+assert.ok(!scss.includes("width: min(100%, 700px)"),
+    "dialog base content cap must not return to legacy index.scss");
 
 // 守门：弹窗容器查询阶梯
-assert.match(scss, /\.lc-checkin-dialog-host \{ container: lc-dialog \/ inline-size; \}/,
+assert.match(components, /\.lc-checkin-dialog-host \{ container: lc-dialog \/ inline-size; \}/,
     "the dialog host must expose its own container so the content ladder measures the dialog, not the window");
-const ladder = scss.slice(scss.indexOf("container: lc-dialog / inline-size"));
+const ladder = components.slice(components.indexOf("container: lc-dialog / inline-size"));
 assert.match(ladder, /@container lc-dialog \(min-width: 900px\)[\s\S]*?lc-checkin__layout \{ max-width: 950px; \}/,
     ">=900px dialogs must widen the layout cap to 950px (covers the ~950 CSS-px real-device dialog)");
 assert.match(ladder, /@container lc-dialog \(min-width: 1100px\)[\s\S]*?lc-checkin__layout \{ max-width: 1150px; \}/,
@@ -26,11 +30,11 @@ assert.match(ladder, /@container lc-dialog \(min-width: 1300px\)[\s\S]*?lc-check
     ">=1300px dialogs must widen the layout cap to 1400px");
 assert.match(ladder, /@container lc-dialog \(min-width: 2000px\)[\s\S]*?lc-checkin__layout \{ max-width: 1780px; \}/,
     ">=2000px dialogs must widen the layout cap to 1780px");
-const baseCapIndex = scss.indexOf("width: min(100%, 700px)");
-const ladderIndex = scss.indexOf("container: lc-dialog / inline-size");
+const baseCapIndex = components.indexOf("width: min(100%, 700px)");
+const ladderIndex = components.indexOf("container: lc-dialog / inline-size");
 assert.ok(baseCapIndex >= 0 && ladderIndex > baseCapIndex,
     "the ladder must be declared after the 700px base cap, otherwise equal specificity makes it a dead rule");
-assert.ok(!/@media \(min-width: 1[0-9]{3}px\) \{\s*\.lc-checkin-dialog-host/.test(scss),
+assert.ok(!/@media \(min-width: 1[0-9]{3}px\) \{\s*\.lc-checkin-dialog-host/.test(components),
     "viewport media queries must not size the dialog content (they measured the window, not the dialog)");
 assert.match(components, /@container lc-dialog \(min-width: 900px\)[\s\S]*?\.lc-checkin-dialog-host \.lc-checkin \{ padding-top: 26px; \}/,
     "desktop dialog content spacing must follow the dialog host container width");
@@ -78,7 +82,7 @@ assert.match(read("src", "render", "review.ts"), /const wideDefaultOpen = typeof
 assert.match(read("src", "render", "review.ts"), /ctx\.reviewFoldSections\.has\(id\) \|\| \(wideDefaultOpen && \(id === "trend" \|\| id === "log" \|\| id === "projects" \|\| id === "reminders"\)\)/,
     "wide windows open trend/log/projects/reminders by default");
 assert.match(read("src", "render", "bind-today.ts"), /host\.reviewFoldTouched = true;/, "a manual fold toggle must win over the wide default");
-assert.match(scss, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin:not\(\.lc-checkin--editor\) \.lc-checkin__back-button \{ display: none; \}/,
+assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin:not\(\.lc-checkin--editor\) \.lc-checkin__back-button \{ display: none; \}/,
     "the desktop rail replaces the per-page back button");
 
 // 守门：打卡按钮对齐：操作区用固定轨道，缺按钮的类型留空轨道而不是让主按钮左移
@@ -100,7 +104,7 @@ assert.match(fragments, /isBinary \? "" : `<label><span>本次记录<\/span><inp
 
 // 守门：弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗下 CSS 宽度可能只有 ~950px）
 for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
-    assert.match(scss, new RegExp(`@container lc-dialog \\(min-width: ${threshold}px\\)`),
+    assert.match(components, new RegExp(`@container lc-dialog \\(min-width: ${threshold}px\\)`),
         `the dialog ladder must include the ${threshold}px step`);
 }
 
