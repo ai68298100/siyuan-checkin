@@ -39,7 +39,8 @@ import {renderSettingsView} from "./render/settings";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
-import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, type AgentAnalysisSnapshot} from "./agent-suggestions";
+import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
+import {createSuggestionWorkflow, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
@@ -252,6 +253,7 @@ export default class CheckinPlugin extends Plugin {
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
+    private suggestionWorkflow?: SuggestionWorkflowState;
     private summaryRefreshing = false;
     private analysisHistory: AgentAnalysisSnapshot[] = [];
     private storageReady = false;
@@ -1312,6 +1314,7 @@ export default class CheckinPlugin extends Plugin {
             summaryRange: this.summaryRange,
             summaryCustomRange: this.summaryCustomRange,
             summaryText: this.summaryText,
+            suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
             analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
             analysisHistoryCount: this.analysisHistory.length,
@@ -1527,11 +1530,13 @@ export default class CheckinPlugin extends Plugin {
                 context,
             }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
             if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
-            if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
-            this.summaryText = summaryText;
+            const normalized = normalizeSummaryProviderResult(summaryText, this.store.items);
+            if (!normalized) throw new Error("总结适配器返回格式无效");
+            this.summaryText = normalized.text;
+            this.suggestionWorkflow = normalized.suggestions[0] ? createSuggestionWorkflow(createSuggestionEnvelope(normalized.suggestions[0])) : undefined;
             this.summaryRefreshing = false;
             const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
-            void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: summaryText}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
+            void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: normalized.text}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
             this.render();
         } catch (error) {
             if (requestId === this.summaryRequestId) {
@@ -2144,6 +2149,7 @@ export default class CheckinPlugin extends Plugin {
                 this.selectedHistoryDate = nextDateKey;
             }
             this.summaryText = undefined;
+            this.suggestionWorkflow = undefined;
             this.summaryRefreshing = false;
             this.summaryRequestId += 1;
             this.renderBackgroundUpdate();

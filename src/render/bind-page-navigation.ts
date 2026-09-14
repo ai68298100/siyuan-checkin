@@ -21,6 +21,7 @@ export interface BindPageNavigationHost {
     summaryRange: "day" | "week" | "month";
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
     summaryRefreshing: boolean;
     analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
@@ -280,6 +281,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.summaryRange = range;
             host.summaryCustomRange = undefined;
             host.summaryText = undefined;
+            host.suggestionWorkflow = undefined;
             host.summaryRefreshing = false;
             host.summaryRequestId += 1;
             host.render();

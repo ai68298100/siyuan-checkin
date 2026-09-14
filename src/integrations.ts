@@ -1,5 +1,6 @@
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem} from "./types";
 import type {CustomSummaryRange, SummaryContext, SummaryRange} from "./analytics";
+import type {AgentSuggestion} from "./agent-suggestions";
 import {CHECKIN_INTEGRATION_EVENTS} from "./api-contract";
 
 export const CHECKIN_EVENT_NAMES = {
@@ -31,7 +32,7 @@ export interface SummaryProvider {
         items: CheckinItem[];
         events: CheckinEvent[];
         context?: SummaryContext;
-    }): Promise<string>;
+    }): Promise<string | {text: string; suggestions?: AgentSuggestion[]}>;
 }
 
 export type CheckinEventListener = (event: CheckinIntegrationEvent) => void;

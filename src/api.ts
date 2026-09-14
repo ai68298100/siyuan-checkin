@@ -7,6 +7,7 @@ import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLo
 import {serializeCsv, serializeJson} from "./export";
 import {getVisibleOccasions, type Occasion, type OccasionStore} from "./occasions";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, type FocusAdapter, type SummaryProvider} from "./integrations";
+import {normalizeSummaryProviderResult} from "./agent-suggestions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, hasCheckinCapability, getCheckinApiDescriptor, getCheckinCapabilityInfo, type CheckinCapability, type CheckinApiDescriptor, type CheckinCapabilityInfo} from "./api-contract";
 
 export interface CheckinApi {
@@ -93,7 +94,8 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             events: customRange ? getEventsInCustomRange(host.store, customRange) : host.getSummaryEvents(range, now),
             context,
         }), 30000, "总结适配器响应超时");
-        return host.disposed || host.disposing || host.summaryProviders.get(provider.id) !== provider || typeof output !== "string" ? undefined : output;
+        const normalized = normalizeSummaryProviderResult(output, host.store.items);
+        return host.disposed || host.disposing || host.summaryProviders.get(provider.id) !== provider || !normalized ? undefined : normalized.text;
     };
     return {
         name: CHECKIN_API_NAME,

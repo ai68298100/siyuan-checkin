@@ -12,6 +12,7 @@ import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter, type ReminderUserAction} from "../reminders";
 import {buildLocalSummaryText} from "../features/local-summary";
+import {renderSuggestionWorkflowPanel} from "./suggestion-workflow";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -30,6 +31,7 @@ export interface ReviewViewContext {
     summaryRange: SummaryRange;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
     summaryRefreshing: boolean;
     summaryProvidersCount: number;
     analysisLastGeneratedAt?: string;
@@ -193,6 +195,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const generated = ctx.summaryText
         ? `<div class="lc-checkin__summary-text" data-summary-source="agent"><small>${t("review.agentMeta", {date: escapeHtml(summary.endDate)})}</small><div>${escapeHtml(ctx.summaryText)}</div></div>`
         : `<div class="lc-checkin__summary-text is-local" data-summary-source="local"><small>${t("review.localMeta")}</small><div>${escapeHtml(localSummaryText)}</div></div>`;
+    const suggestionPanel = ctx.suggestionWorkflow ? renderSuggestionWorkflowPanel(ctx.suggestionWorkflow) : "";
     const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" class="${!ctx.summaryCustomRange && ctx.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
     const custom = `<details class="lc-checkin__custom-range-disclosure" ${ctx.summaryCustomRange ? "open" : ""}><summary>${ctx.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>${t("review.customStart")}</span><input type="date" name="customStartDate" value="${escapeHtml(ctx.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">${t("review.customSeparator")}</span><label><span>${t("review.customEnd")}</span><input type="date" name="customEndDate" value="${escapeHtml(ctx.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">${t("review.customApply")}</button></form></details>`;
     /* 宽窗口首屏给出信息：趋势/日志/项目/提醒默认展开；用户一旦手动折叠过就完全尊重其选择（T-011 的
@@ -244,6 +247,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${fold("achievements", `${t("review.foldAchievements")} · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-grid">${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? t("review.achieved") : `${entry.progress}/${entry.target}`}</small></div>`).join("")}</div>`)}
             ${fold("upcoming", t("review.foldUpcoming"), renderUpcomingOccasionsView(ctx.occasionStore))}
             ${generated}
+            ${suggestionPanel}
             ${providerButton}
             </div>
         </div>`;

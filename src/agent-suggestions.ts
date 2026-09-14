@@ -122,6 +122,7 @@ export type AgentSuggestionEnvelope = AgentSuggestion & {
 export const AGENT_SUGGESTION_MAX_ID_LENGTH = 120;
 export const AGENT_SUGGESTION_MAX_TITLE_LENGTH = 200;
 export const AGENT_SUGGESTION_MAX_REASON_LENGTH = 1_000;
+export const AGENT_SUMMARY_MAX_TEXT_LENGTH = 200_000;
 export const AGENT_SUGGESTION_AUDIT_VERSION = 1;
 export const AGENT_SUGGESTION_AUDIT_LIMIT = 50;
 export const AGENT_SUGGESTION_DECISION_VERSION = "s1";
@@ -129,6 +130,31 @@ export const AGENT_SUGGESTION_DECISION_TTL_MS = 10 * 60 * 1000;
 export const AGENT_SUGGESTION_MAX_NONCE_LENGTH = 64;
 
 export type AgentSuggestionDecision = "confirm" | "cancel";
+
+export interface NormalizedSummaryProviderResult {
+    text: string;
+    suggestions: AgentSuggestion[];
+}
+
+export function normalizeAgentSuggestion(value: unknown, items: readonly CheckinItem[]): AgentSuggestion | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as Partial<AgentSuggestion>;
+    if (typeof candidate.id !== "string" || !candidate.id.trim() || candidate.id.length > AGENT_SUGGESTION_MAX_ID_LENGTH) return undefined;
+    if (typeof candidate.title !== "string" || !candidate.title.trim() || candidate.title.length > AGENT_SUGGESTION_MAX_TITLE_LENGTH) return undefined;
+    if (typeof candidate.reason !== "string" || candidate.reason.length > AGENT_SUGGESTION_MAX_REASON_LENGTH || candidate.requiresConfirmation !== true) return undefined;
+    const changes = normalizeSuggestionChanges(candidate.changes, items);
+    if (!changes.length) return undefined;
+    return {id: candidate.id.trim(), title: candidate.title.trim(), reason: candidate.reason.trim(), changes, requiresConfirmation: true};
+}
+
+export function normalizeSummaryProviderResult(value: unknown, items: readonly CheckinItem[]): NormalizedSummaryProviderResult | undefined {
+    if (typeof value === "string") return value.length <= AGENT_SUMMARY_MAX_TEXT_LENGTH ? {text: value, suggestions: []} : undefined;
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as {text?: unknown; suggestions?: unknown};
+    if (typeof candidate.text !== "string" || candidate.text.length > AGENT_SUMMARY_MAX_TEXT_LENGTH) return undefined;
+    const suggestions = Array.isArray(candidate.suggestions) ? candidate.suggestions.map((entry) => normalizeAgentSuggestion(entry, items)).filter((entry): entry is AgentSuggestion => Boolean(entry)).slice(0, 5) : [];
+    return {text: candidate.text, suggestions};
+}
 
 export interface ParsedSuggestionDecision {
     version: string;
