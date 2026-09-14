@@ -6,8 +6,11 @@ assert.match(source, /handleSuggestionDecision\(decision: "confirm" \| "cancel"\
 assert.match(source, /undoSuggestionWorkflow\(\): Promise<void> \| void/);
 assert.match(source, /querySelectorAll<HTMLElement>\("\[data-suggestion-decision\]"\)/);
 assert.match(source, /button\.dataset\.suggestionDecision/);
-assert.match(source, /decision === "confirm" \|\| decision === "cancel"/);
+assert.match(source, /decision !== "confirm" && decision !== "cancel"/);
 assert.match(source, /host\.handleSuggestionDecision\(decision\)/);
+assert.match(source, /setAttribute\("aria-busy", "true"\)/);
+assert.match(source, /Promise\.resolve\(\)\.then/);
+assert.match(source, /button\.isConnected/);
 assert.match(source, /querySelector<HTMLElement>\("\[data-suggestion-undo\]"\)/);
 assert.match(source, /host\.undoSuggestionWorkflow\(\)/);
 

@@ -915,6 +915,7 @@
 .lc-agent-suggestion-changes code { color:var(--lc-checkin-accent-text); font-size:10px; font-weight:700; }
 .lc-agent-suggestion-changes span { color:var(--lc-checkin-text); }
 .lc-agent-suggestion-empty { margin:12px 0; color:var(--lc-checkin-muted); font-size:11px; }
+.lc-agent-suggestion-more { padding:4px 9px; color:var(--lc-checkin-muted); font-size:10px; font-style:italic; }
 .lc-checkin__suggestion-workflow { display:grid; gap:8px; margin:12px 0; padding:12px; border:1px solid var(--lc-checkin-border); border-radius:12px; background:var(--lc-checkin-surface-soft); }
 .lc-checkin__suggestion-workflow header, .lc-checkin__suggestion-workflow footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .lc-checkin__suggestion-workflow header > strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -924,6 +925,7 @@
 .lc-checkin__suggestion-workflow > p { margin:0; color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__suggestion-workflow > small { color:var(--lc-checkin-muted); font-size:10px; }
 .lc-checkin__suggestion-workflow footer { justify-content:flex-start; }
+.lc-checkin__suggestion-workflow footer button[disabled] { cursor:wait; opacity:.6; }
 .lc-agent-compare-diff { margin:10px 0; padding:8px 10px; list-style:none; max-height:220px; overflow:auto; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); font:11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space:pre-wrap; }
 .lc-agent-compare-diff li { padding:1px 4px; border-radius:3px; }
 .lc-agent-compare-diff li > span { display:inline-block; width:14px; color:var(--lc-checkin-muted); font-weight:700; }

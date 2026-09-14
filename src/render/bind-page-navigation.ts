@@ -295,11 +295,28 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelectorAll<HTMLElement>("[data-suggestion-decision]").forEach((button) => {
         button.addEventListener("click", () => {
             const decision = button.dataset.suggestionDecision;
-            if (decision === "confirm" || decision === "cancel") void host.handleSuggestionDecision(decision);
+            if (decision !== "confirm" && decision !== "cancel") return;
+            button.setAttribute("aria-busy", "true");
+            button.setAttribute("disabled", "true");
+            Promise.resolve().then(() => host.handleSuggestionDecision(decision)).finally(() => {
+                if (button.isConnected) {
+                    button.removeAttribute("aria-busy");
+                    button.removeAttribute("disabled");
+                }
+            });
         });
     });
     root.querySelector<HTMLElement>("[data-suggestion-undo]")?.addEventListener("click", () => {
-        void host.undoSuggestionWorkflow();
+        const button = root.querySelector<HTMLElement>("[data-suggestion-undo]");
+        if (!button) return;
+        button.setAttribute("aria-busy", "true");
+        button.setAttribute("disabled", "true");
+        Promise.resolve().then(() => host.undoSuggestionWorkflow()).finally(() => {
+            if (button.isConnected) {
+                button.removeAttribute("aria-busy");
+                button.removeAttribute("disabled");
+            }
+        });
     });
     root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", () => {
         type HistoryRow = import("../agent-suggestions").AgentAnalysisSnapshot;
