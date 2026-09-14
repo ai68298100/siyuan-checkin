@@ -328,7 +328,8 @@ export default class CheckinPlugin extends Plugin {
             id: DOCK_TYPE,
             config: {
                 position: "LeftBottom",
-                size: {width: 380, height: 0},
+                /* Dock API 没有 minWidth；420px 为推荐宽度，拖窄后由容器查询兜底。 */
+                size: {width: 420, height: 0},
                 icon: "iconLvCheckin",
                 title: "小驴打卡",
             },

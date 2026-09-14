@@ -9,6 +9,19 @@
     box-sizing: border-box;
 }
 
+/* 思源允许把 dock 拖到任意窄，API 不提供 minWidth：低于舒适宽度后让操作独占次行。 */
+@container lc-dock (max-width: 480px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr); gap: 3px 8px; padding: 7px 8px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-body { padding-left: 0; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-column: 2; margin-top: 2px; justify-content: stretch; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { flex: 1 1 auto; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@container lc-dock (max-width: 340px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; }
+    .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 5px; }
+}
+
 @container lc5 (max-width: 719px) {
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-header,
     .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-header { position: static !important; top: auto; background: transparent; backdrop-filter: none; }
@@ -3015,7 +3028,6 @@
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-height: 30px; padding: 4px 3px; }
     .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 7px; }
-    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { display: flex; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 180px; overflow: auto; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
     .lc-checkin-dock-host .lc-checkin__reminder-list,
@@ -3083,8 +3095,6 @@
     .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { padding-inline: 6px; font-size: 11px; }
     .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { gap: 3px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 26px minmax(0, 1fr); }
-    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action { grid-column: 2; justify-self: stretch; display: flex; gap: 4px; }
-    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-action button { flex: 1 1 0; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: 1fr; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { max-height: 160px; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-card { min-height: 64px; padding: 6px; }
@@ -3105,10 +3115,8 @@
     .lc-checkin-dock-host .lc-checkin__reminder-row strong,
     .lc-checkin-dock-host .lc-checkin__reminder-row small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__history-event-actions,
-    .lc-checkin-dock-host .lc-checkin__occasion-action,
     .lc-checkin-dock-host .lc-checkin__reminder-actions { display: flex; flex-wrap: wrap; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin__history-event-actions button,
-    .lc-checkin-dock-host .lc-checkin__occasion-action button,
     .lc-checkin-dock-host .lc-checkin__reminder-actions button { min-width: 44px; min-height: 30px; }
     .lc-checkin-dock-host .lc-checkin__item,
     .lc-checkin-dock-host .lc-checkin__history-event,

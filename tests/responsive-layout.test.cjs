@@ -7,6 +7,9 @@ const tokens = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.s
 const components = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
+assert.match(source, /size: \{width: 420, height: 0\}/, "dock opens at the recommended readable width");
+assert.match(components, /@container lc-dock \(max-width: 480px\)[\s\S]*?\.lc-checkin-dock-host \.lc-checkin--today \.lc-checkin__item-action \{ grid-column: 2;/, "narrow dock actions move below item content");
+assert.match(components, /@container lc-dock \(max-width: 340px\)[\s\S]*?grid-column: 1 \/ -1;/, "extremely narrow dock actions use the full card width");
 
 /* Style system wiring: legacy floor loads first, then the v5 token and
    component layers; the v4 patch layers are gone. */
@@ -100,4 +103,3 @@ assert.match(styles, /\.lc-checkin__item-tag\s*\{[^}]*max-width:\s*32%;/,
     "legacy floor still guards metadata tag width");
 
 console.log("Responsive surface layout checks passed.");
-

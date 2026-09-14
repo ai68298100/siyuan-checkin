@@ -139,7 +139,7 @@ assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host
     "the dock panel needs its own host class for narrow-panel layout");
 assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
     "the bottom navigation must be rendered on every surface (wide containers hide it in CSS)");
-assert.match(plugin, /size: \{width: 380, height: 0\}/, "the dock default width must fit a readable card column");
+assert.match(plugin, /size: \{width: 420, height: 0\}/, "the dock default width must fit a readable card column");
 assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/ inline-size;[\s\S]*?display: flex;/,
     "the dock host must be a sized container and a flex column so its bars can be pinned");
 assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
