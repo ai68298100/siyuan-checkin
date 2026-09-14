@@ -41,52 +41,6 @@
 // usable when the surface itself is resized below the mobile breakpoint.
 
 @container lc5 (max-width: 600px) {
-    .lc-checkin--editor .lc-checkin__kind-field legend { margin-bottom: 6px; font-size: 12px; }
-    .lc-checkin--editor .lc-checkin__kind-option span { display: flex; min-height: 50px; align-items: center; justify-content: space-between; }
-    .lc-checkin--editor .lc-checkin__kind-option small { max-width: 70%; line-height: 1.35; }
-    .lc-checkin--editor .lc-checkin__advanced summary { min-height: 44px; }
-    .lc-checkin--editor .lc-checkin__advanced-content { gap: 10px; padding: 0 10px 10px; }
-    .lc-checkin--editor .lc-checkin__advanced:not([open]) { background: var(--lc-checkin-muted-surface); }
-
-    .lc-checkin__mobile-nav { padding-right: max(5px, env(safe-area-inset-right)); padding-left: max(5px, env(safe-area-inset-left)); }
-    .lc-checkin__mobile-nav button { min-width: 0; overflow: hidden; }
-    .lc-checkin__mobile-nav button span,
-    .lc-checkin__mobile-nav button small { pointer-events: none; }
-    .lc-checkin--today [data-action="add"] { right: max(14px, env(safe-area-inset-right)); }
-
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, calc(env(safe-area-inset-top) + 4px)); right: max(8px, calc(env(safe-area-inset-right) + 4px)); }
-    .lc-checkin__back-button,
-    .lc-checkin__dialog-close { -webkit-tap-highlight-color: transparent; }
-    .lc-checkin__back-button:active,
-    .lc-checkin__dialog-close:active { transform: scale(.96); }
-    .lc-checkin-dialog-host--mobile .lc-checkin__header,
-    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { padding-right: 52px; }
-
-    .lc-checkin--today .lc-checkin__organize + .lc-checkin__list { margin-top: 4px; }
-    .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 8px; }
-    .lc-checkin--history .lc-checkin__month-nav { margin-top: 2px; }
-    .lc-checkin--history .lc-checkin__history-tools { margin-top: 6px; }
-
-    .lc-checkin__occasion-manager-list,
-    .lc-checkin__templates,
-    .lc-checkin__icon-grid { overscroll-behavior: contain; scrollbar-width: thin; }
-    .lc-checkin__occasion-manager-list::-webkit-scrollbar,
-    .lc-checkin__templates::-webkit-scrollbar { width: 4px; }
-    .lc-checkin__occasion-manager-list::-webkit-scrollbar-thumb,
-    .lc-checkin__templates::-webkit-scrollbar-thumb { border-radius: 99px; background: color-mix(in srgb, var(--lc-checkin-accent) 40%, transparent); }
-    .lc-checkin--today .lc-checkin__list { padding-bottom: 4px; }
-    .lc-checkin__mobile-nav { box-shadow: 0 -2px 10px color-mix(in srgb, var(--b3-theme-on-background) 7%, transparent); }
-
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle { color: var(--b3-theme-on-surface-light); }
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle:active,
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__section-toggle:focus-visible { color: var(--lc-checkin-accent-text); }
-    .lc-checkin__occasion-manager-row:active { border-color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-    .lc-checkin__occasion-manager-row .lc-checkin__text-button:active { transform: scale(.97); }
-
-    .lc-checkin--today .lc-checkin__all-done { display: flex; min-height: 48px; align-items: center; justify-content: center; text-align: center; color: var(--lc-checkin-success-text); background: color-mix(in srgb, var(--lc-checkin-success) 10%, var(--b3-theme-surface)); border-color: color-mix(in srgb, var(--lc-checkin-success) 28%, var(--b3-border-color)); }
-    .lc-checkin--today .lc-checkin__empty { margin-top: 12px; color: var(--b3-theme-on-surface-light); }
-    .lc-checkin--today .lc-checkin__empty-title { color: var(--b3-theme-on-background); }
-
     .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
     .lc-checkin-dialog-host--mobile .lc-checkin { box-shadow: 0 -4px 24px color-mix(in srgb, var(--b3-theme-on-background) 12%, transparent); }
     .lc-checkin-dialog-host--mobile .lc-checkin__header,

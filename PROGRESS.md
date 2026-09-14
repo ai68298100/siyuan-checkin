@@ -8,6 +8,8 @@
 上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
+2026-09-14 T-105 legacy 样式退役第十九批（39 项）：迁移第二组 600px 窄容器规则，包括编辑器类型/高级选项紧凑态、移动底栏左右安全区、导航内容防溢出、Today 新建按钮避让、关闭/返回触控反馈、页面段落间距、事项/模板滚动容器与细滚动条、完成区切换反馈及 Today 空态；宿主颜色全部映射为插件语义 token。新增第三段窄容器唯一归属守门。legacy SCSS 净减少 46 行，生产 CSS 从 303872B 变为 303886B（语义 token 名展开增加 14B）。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 63ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 与 release-assets 通过。
+
 2026-09-14 T-105 legacy 样式退役第十七批（42 项）：迁移首组 600px 窄容器规则，包括历史详情限高/滚动、历史筛选吸顶、四页面平滑滚动与减弱动态回退、焦点轮廓、Today/历史标题截断、移动弹窗遮罩与层级、Today 卡片元信息/进度/操作、编辑器模板区与操作区、设置页字段和按钮紧凑布局；宿主颜色全部映射为插件语义 token。新增窄容器唯一归属守门。legacy SCSS 净减少 59 行，生产 CSS 从 303844B 降至 303837B。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 32ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 通过。
 
 2026-09-14 T-105 legacy 样式退役第十六批（63 项）：将历史页基础容器/列表、日期行、月份导航、七列日历、四档热度/今日/选中/禁用状态、选中日期区、模板删除危险态、配额提示、字段动作、历史搜索/筛选/结果以及通用焦点层级与禁用态迁入 `src/ui/components.scss`；全部宿主色替换为插件语义 token，模板删除背景以 danger token 与 surface 混合生成。新增历史基础层归属守门。legacy SCSS 净减少 292 行；生产 CSS 由 303838B 变为 303844B（语义危险色混合增加 6B），仍低于 318000B 预算。验证：`pnpm run test:quality` 全链通过；10k 事件完整渲染 36ms、overflow 0px；系统 Chrome 宽度走查覆盖 2000/1600/1180/640/360px 无溢出；浅色/深色 `visual-qa` 均 pageErrors 为空，320/360/390/430px 移动矩阵 scrollWidth 等于 clientWidth；`git diff --check` 通过。
