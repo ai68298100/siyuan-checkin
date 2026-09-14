@@ -128,6 +128,8 @@ assert.match(index, /agent\.confirmedNotice/);
 assert.match(index, /agent\.cancelledNotice/);
 assert.match(index, /agent\.undoAccepted/);
 assert.match(index, /title: current\.envelope\.title/);
+assert.match(i18n, /"agent\.auditDetails"/);
+assert.match(i18n, /"agent\.audit\.reverted"/);
 console.log('Agent suggestion safety structure checks passed.');
 require('./review-summary-refresh.test.cjs');
 require('./suggestion-apply.test.cjs');

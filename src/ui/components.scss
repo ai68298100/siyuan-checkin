@@ -925,6 +925,12 @@
 .lc-checkin__suggestion-workflow > p { margin:0; color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__suggestion-workflow > small { color:var(--lc-checkin-muted); font-size:10px; }
 .lc-checkin__suggestion-workflow .lc-agent-suggestion-updated { opacity:.82; }
+.lc-agent-suggestion-audits { margin-top:2px; border-top:1px solid var(--lc-checkin-border); padding-top:6px; }
+.lc-agent-suggestion-audits summary { cursor:pointer; color:var(--lc-checkin-accent-text); font-size:10px; }
+.lc-agent-suggestion-audits ol { display:grid; gap:4px; margin:6px 0 0; padding-left:18px; }
+.lc-agent-suggestion-audits li { display:grid; grid-template-columns:auto 1fr; gap:2px 8px; color:var(--lc-checkin-muted); font-size:10px; }
+.lc-agent-suggestion-audits time { justify-self:end; font-variant-numeric:tabular-nums; }
+.lc-agent-suggestion-audits small { grid-column:1 / -1; opacity:.85; }
 .lc-checkin__suggestion-workflow footer { justify-content:flex-start; }
 .lc-checkin__suggestion-workflow footer button[disabled] { cursor:wait; opacity:.6; }
 .lc-agent-compare-diff { margin:10px 0; padding:8px 10px; list-style:none; max-height:220px; overflow:auto; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); font:11px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; white-space:pre-wrap; }
