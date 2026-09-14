@@ -981,6 +981,58 @@
 .lc-checkin :where(button, a)[aria-disabled="true"],
 .lc-checkin :where(button, a).is-disabled { cursor: not-allowed; opacity: .55; pointer-events: none; }
 
+/* First narrow-surface pass: scrolling, shell safety and compact controls. */
+@container lc5 (max-width: 600px) {
+    .lc-checkin--history .lc-checkin__history-selected { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin--history .lc-checkin__history-event { padding: 7px; }
+    .lc-checkin { overscroll-behavior-y: contain; -webkit-tap-highlight-color: transparent; }
+    .lc-checkin__history-tools,
+    .lc-checkin__history-filter-row { position: sticky; z-index: 2; top: 0; }
+
+    .lc-checkin--history,
+    .lc-checkin--settings,
+    .lc-checkin--today,
+    .lc-checkin--editor { scroll-behavior: smooth; }
+    [data-reduced-motion="true"] .lc-checkin--history,
+    [data-reduced-motion="true"] .lc-checkin--settings,
+    [data-reduced-motion="true"] .lc-checkin--today,
+    [data-reduced-motion="true"] .lc-checkin--editor { scroll-behavior: auto; }
+    .lc-checkin__history-selected:focus-within,
+    .lc-checkin__insight-section:focus-within { outline: 1px solid var(--lc-checkin-accent-soft); outline-offset: 2px; }
+
+    .lc-checkin--today .lc-checkin__header > div:first-child { min-width: 0; }
+    .lc-checkin--today .lc-checkin__header > div:first-child .lc-checkin__eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--today .lc-checkin__title { font-size: 28px; }
+    .lc-checkin--history .lc-checkin__editor-header .lc-checkin__title { font-size: 26px; }
+    .lc-checkin--history .lc-checkin__editor-header .lc-checkin__eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__month-nav button { min-width: 36px; min-height: 36px; }
+
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { background: color-mix(in srgb, #000 32%, transparent); }
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) .b3-dialog__content { overflow: hidden; border-radius: 18px 18px 0 0; }
+    .lc-checkin-dialog-host--mobile { isolation: isolate; }
+    .lc-checkin-dialog-host--mobile .lc-checkin { position: relative; z-index: 1; }
+    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-text) 10%, transparent); }
+
+    .lc-checkin--today .lc-checkin__item-topline { align-items: center; }
+    .lc-checkin--today .lc-checkin__item-tag { flex: 0 0 auto; max-width: 42%; padding: 2px 5px; line-height: 1.25; }
+    .lc-checkin--today .lc-checkin__item-meta { color: color-mix(in srgb, var(--lc-checkin-muted) 92%, transparent); }
+    .lc-checkin--today .lc-checkin__item-progress { height: 3px; }
+    .lc-checkin--today .lc-checkin__item-progress span { min-width: 3px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { font-size: 12px; font-weight: 650; }
+
+    .lc-checkin--editor .lc-checkin__template-section { max-height: 238px; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__templates { max-height: 164px; }
+    .lc-checkin--editor .lc-checkin__editor-actions { min-height: 58px; box-sizing: border-box; }
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__text-button { flex: 0 0 auto; min-width: 72px; }
+    .lc-checkin--editor .lc-checkin__save-button:focus-visible,
+    .lc-checkin--editor .lc-checkin__primary-button:focus-visible { box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
+
+    .lc-checkin--settings .lc-checkin__field { padding: 8px 0; border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border-strong) 62%, transparent); }
+    .lc-checkin--settings .lc-checkin__field:last-of-type { border-bottom: 0; }
+    .lc-checkin--settings .lc-checkin__field select { min-height: 42px; border-radius: 8px; }
+    .lc-checkin--settings .lc-checkin__text-button { width: 100%; min-height: 38px; margin-top: 8px; border-radius: 8px; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
