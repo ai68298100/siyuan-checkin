@@ -404,6 +404,12 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 - 删除已退役 quick-recent 组件的完整基础样式，以及窄屏、横屏、超窄屏中的独立遗留变体；共享选择器组暂留待下一批安全拆分。
 - 构建 CSS 314185→310800 bytes；类型检查、构建、release-assets、`test:ui` 和真实 Chrome 浅色/深色 visual QA 均通过。
+
+### 第四批
+
+- 从所有共享选择器组拆除 quick-recent 死分支，仓库 legacy 样式中该组件引用归零。
+- 删除已退役 `lc-checkin--summary` 页面别名的统计、历史列表、自定义范围与空态规则；History/Insights/Archived 仍在使用的分支单独保留。
+- 构建 CSS 310800→308412 bytes；类型检查、构建、release-assets、`test:ui`、width walkthrough 与真实 Chrome 双主题 visual QA 通过。
 # 2026-09-14 侧边栏安全宽度
 
 - Dock 默认宽度由 380px 调整为 420px，作为名称、辅助动作和主按钮均可读的推荐宽度。
