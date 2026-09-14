@@ -10,6 +10,7 @@ assert.match(apiSource, /getSuggestionWorkflow/);
 assert.match(apiSource, /getSuggestionWorkflowSummary/);
 assert.match(apiSource, /updatedAt: workflowUpdatedAt\(state\)/);
 assert.match(apiSource, /cloneSuggestionWorkflow\(state\)/);
+assert.match(apiSource, /getSuggestionWorkflowSummary/);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-contract-"));
 const output = path.join(directory, "api-contract.js");
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);

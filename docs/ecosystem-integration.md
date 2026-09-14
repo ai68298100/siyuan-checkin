@@ -46,6 +46,8 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 `getSuggestionWorkflow()` 返回当前建议的防御性快照，包含信封、变更、已消费令牌和审计轨迹；`getSuggestionWorkflowSummary()` 返回状态、可用动作、计数和最近更新时间。两个接口仅用于展示和诊断，不提供确认、撤销、持久化或令牌创建能力。
 
+订阅 `checkin:suggestion-workflow-updated` 后，可使用集成层的 `isSuggestionWorkflowEvent` 约束事件形状；建议事件只保证 `suggestionId` 与固定状态字段，未知或伪造状态应直接忽略。
+
 ## 安全边界
 
 - 外部来源必须可追溯，不能伪装成 `manual`。

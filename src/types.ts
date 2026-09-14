@@ -130,3 +130,9 @@ export interface CheckinIntegrationEvent {
     suggestionId?: string;
     suggestionStatus?: "pending" | "confirmed" | "cancelled" | "failed";
 }
+
+export type SuggestionWorkflowIntegrationEvent = {
+    type: "suggestion-workflow-updated";
+    suggestionId: string;
+    suggestionStatus: "pending" | "confirmed" | "cancelled" | "failed";
+};

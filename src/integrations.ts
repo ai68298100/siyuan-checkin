@@ -1,4 +1,4 @@
-import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem} from "./types";
+import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, SuggestionWorkflowIntegrationEvent} from "./types";
 import type {CustomSummaryRange, SummaryContext, SummaryRange} from "./analytics";
 import type {AgentSuggestion} from "./agent-suggestions";
 import {CHECKIN_INTEGRATION_EVENTS} from "./api-contract";
@@ -42,11 +42,16 @@ export const CHECKIN_API_NAME = "siyuanCheckin";
 
 const SUGGESTION_EVENT_ID_MAX_LENGTH = 160;
 
+export function isSuggestionWorkflowEvent(event: CheckinIntegrationEvent | unknown): event is SuggestionWorkflowIntegrationEvent {
+    if (!event || typeof event !== "object") return false;
+    const candidate = event as Partial<SuggestionWorkflowIntegrationEvent>;
+    return candidate.type === "suggestion-workflow-updated" && typeof candidate.suggestionId === "string" && candidate.suggestionId.trim().length > 0 && candidate.suggestionId.length <= SUGGESTION_EVENT_ID_MAX_LENGTH && (candidate.suggestionStatus === "pending" || candidate.suggestionStatus === "confirmed" || candidate.suggestionStatus === "cancelled" || candidate.suggestionStatus === "failed");
+}
+
 export function cloneIntegrationEvent(event: CheckinIntegrationEvent): CheckinIntegrationEvent | undefined {
     if (!event || typeof event !== "object") return undefined;
     if (event.type === "suggestion-workflow-updated") {
-        if (typeof event.suggestionId !== "string" || !event.suggestionId.trim() || event.suggestionId.length > SUGGESTION_EVENT_ID_MAX_LENGTH) return undefined;
-        if (event.suggestionStatus !== "pending" && event.suggestionStatus !== "confirmed" && event.suggestionStatus !== "cancelled" && event.suggestionStatus !== "failed") return undefined;
+        if (!isSuggestionWorkflowEvent(event)) return undefined;
         return {type: event.type, suggestionId: event.suggestionId.trim(), suggestionStatus: event.suggestionStatus};
     }
     if (event.type === "item-created" || event.type === "item-updated") {
