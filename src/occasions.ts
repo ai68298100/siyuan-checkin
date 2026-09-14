@@ -60,6 +60,7 @@ export interface OccasionTemplate {
     name: string;
     nameKey: string;
     icon: string;
+    category: OccasionTemplateCategory;
     kind: OccasionKind;
     recurrence: OccasionRecurrence;
     calendar?: OccasionCalendar;
@@ -77,28 +78,40 @@ export interface OccasionTemplate {
     note?: string;
 }
 
+export type OccasionTemplateCategory = "birthday" | "anniversary" | "expense" | "renewal" | "health" | "festival";
+
 export const OCCASION_TEMPLATES: OccasionTemplate[] = [
-    {name: "生日（公历）", nameKey: "occ.tpl.birthdaySolar", icon: "🎂", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
-    {name: "生日（农历）", nameKey: "occ.tpl.birthdayLunar", icon: "🥮", kind: "birthday", recurrence: "annual", calendar: "lunar", remindBeforeDays: 3},
-    {name: "结婚纪念日", nameKey: "occ.tpl.wedding", icon: "💍", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
-    {name: "房贷还款", nameKey: "occ.tpl.mortgage", icon: "🏠", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "车贷还款", nameKey: "occ.tpl.carLoan", icon: "🚗", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "房租", nameKey: "occ.tpl.rent", icon: "🔑", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "物业费", nameKey: "occ.tpl.propertyFee", icon: "🏢", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
-    {name: "保险费（年缴）", nameKey: "occ.tpl.insuranceYear", icon: "🛡️", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 14},
-    {name: "保险费（季缴）", nameKey: "occ.tpl.insuranceQuarter", icon: "📄", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
-    {name: "信用卡还款", nameKey: "occ.tpl.creditCard", icon: "💳", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
-    {name: "车辆年检", nameKey: "occ.tpl.vehicleInspection", icon: "🔧", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
-    {name: "定期体检", nameKey: "occ.tpl.healthCheckup", icon: "🩺", kind: "scheduled", recurrence: "interval", intervalUnit: "month", intervalCount: 12, remindBeforeDays: 14},
-    {name: "订阅续费", nameKey: "occ.tpl.subscription", icon: "🔄", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
-    {name: "域名续费", nameKey: "occ.tpl.domain", icon: "🌐", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
-    {name: "发工资", nameKey: "occ.tpl.payday", icon: "💰", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 0},
-    {name: "情人节", nameKey: "occ.tpl.valentines", icon: "🌹", kind: "scheduled", recurrence: "annual", calendar: "solar", date: "2026-02-14", remindBeforeDays: 7},
-    {name: "母亲节", nameKey: "occ.tpl.mothersDay", icon: "🌷", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0, remindBeforeDays: 7},
-    {name: "父亲节", nameKey: "occ.tpl.fathersDay", icon: "👔", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 6, nthWeek: 3, weekday: 0, remindBeforeDays: 7},
-    {name: "七夕", nameKey: "occ.tpl.qixi", icon: "🪶", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-08-19", remindBeforeDays: 7},
-    {name: "中秋节", nameKey: "occ.tpl.midAutumn", icon: "🌕", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-09-25", remindBeforeDays: 7},
-    {name: "春节", nameKey: "occ.tpl.springFestival", icon: "🧨", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-02-17", remindBeforeDays: 14},
+    {name: "生日（公历）", nameKey: "occ.tpl.birthdaySolar", icon: "🎂", category: "birthday", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
+    {name: "生日（农历）", nameKey: "occ.tpl.birthdayLunar", icon: "🥮", category: "birthday", kind: "birthday", recurrence: "annual", calendar: "lunar", remindBeforeDays: 3},
+    {name: "家人生日", nameKey: "occ.tpl.familyBirthday", icon: "👪", category: "birthday", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
+    {name: "朋友生日", nameKey: "occ.tpl.friendBirthday", icon: "🎁", category: "birthday", kind: "birthday", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
+    {name: "结婚纪念日", nameKey: "occ.tpl.wedding", icon: "💍", category: "anniversary", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
+    {name: "恋爱纪念日", nameKey: "occ.tpl.relationship", icon: "💞", category: "anniversary", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 7},
+    {name: "入职纪念日", nameKey: "occ.tpl.workAnniversary", icon: "💼", category: "anniversary", kind: "anniversary", recurrence: "annual", calendar: "solar", remindBeforeDays: 3},
+    {name: "房贷还款", nameKey: "occ.tpl.mortgage", icon: "🏠", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "车贷还款", nameKey: "occ.tpl.carLoan", icon: "🚗", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "房租", nameKey: "occ.tpl.rent", icon: "🔑", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "物业费", nameKey: "occ.tpl.propertyFee", icon: "🏢", category: "expense", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
+    {name: "水电燃气费", nameKey: "occ.tpl.utilities", icon: "💡", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 2},
+    {name: "保险费（年缴）", nameKey: "occ.tpl.insuranceYear", icon: "🛡️", category: "expense", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 14},
+    {name: "保险费（季缴）", nameKey: "occ.tpl.insuranceQuarter", icon: "📄", category: "expense", kind: "scheduled", recurrence: "quarterly", remindBeforeDays: 7},
+    {name: "信用卡还款", nameKey: "occ.tpl.creditCard", icon: "💳", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 1},
+    {name: "发工资", nameKey: "occ.tpl.payday", icon: "💰", category: "expense", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 0},
+    {name: "视频会员续费", nameKey: "occ.tpl.videoRenewal", icon: "🎬", category: "renewal", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
+    {name: "音乐会员续费", nameKey: "occ.tpl.musicRenewal", icon: "🎵", category: "renewal", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
+    {name: "软件订阅续费", nameKey: "occ.tpl.subscription", icon: "🔄", category: "renewal", kind: "scheduled", recurrence: "monthly", monthlySubtype: "byday", remindBeforeDays: 3},
+    {name: "云服务续费", nameKey: "occ.tpl.cloudRenewal", icon: "☁️", category: "renewal", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 14},
+    {name: "域名续费", nameKey: "occ.tpl.domain", icon: "🌐", category: "renewal", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
+    {name: "车辆年检", nameKey: "occ.tpl.vehicleInspection", icon: "🔧", category: "health", kind: "scheduled", recurrence: "annual", calendar: "solar", remindBeforeDays: 30},
+    {name: "定期体检", nameKey: "occ.tpl.healthCheckup", icon: "🩺", category: "health", kind: "scheduled", recurrence: "interval", intervalUnit: "month", intervalCount: 12, remindBeforeDays: 14},
+    {name: "牙齿检查", nameKey: "occ.tpl.dentalCheck", icon: "🦷", category: "health", kind: "scheduled", recurrence: "interval", intervalUnit: "month", intervalCount: 6, remindBeforeDays: 7},
+    {name: "疫苗接种", nameKey: "occ.tpl.vaccination", icon: "💉", category: "health", kind: "scheduled", recurrence: "once", remindBeforeDays: 7},
+    {name: "情人节", nameKey: "occ.tpl.valentines", icon: "🌹", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "solar", date: "2026-02-14", remindBeforeDays: 7},
+    {name: "母亲节", nameKey: "occ.tpl.mothersDay", icon: "🌷", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0, remindBeforeDays: 7},
+    {name: "父亲节", nameKey: "occ.tpl.fathersDay", icon: "👔", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "solar", annualSubtype: "nthweek", month: 6, nthWeek: 3, weekday: 0, remindBeforeDays: 7},
+    {name: "七夕", nameKey: "occ.tpl.qixi", icon: "🪶", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-08-19", remindBeforeDays: 7},
+    {name: "中秋节", nameKey: "occ.tpl.midAutumn", icon: "🌕", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-09-25", remindBeforeDays: 7},
+    {name: "春节", nameKey: "occ.tpl.springFestival", icon: "🧨", category: "festival", kind: "scheduled", recurrence: "annual", calendar: "lunar", date: "2026-02-17", remindBeforeDays: 14},
 ];
 
 export function occasionTemplateName(template: OccasionTemplate): string {

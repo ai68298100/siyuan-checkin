@@ -6,13 +6,17 @@ import {currentCalendarDate, isValidLocalDateInput} from "../shared";
 import {deleteOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
 import {formatLunar, solarToLunar} from "../lunar";
 import {showMessage} from "siyuan";
-import type {Occasion, OccasionStore} from "../occasions";
+import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
 export interface BindOccasionsHost {
     occasionStore: OccasionStore;
     editingOccasionId?: string;
     occasionSearchQuery: string;
+    occasionStatusFilter: "all" | "enabled" | "disabled";
+    occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
+    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
     occasionTemplatesOpen: boolean;
+    occasionTemplateCategory: "all" | OccasionTemplateCategory;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showToday(): void;
@@ -36,8 +40,18 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {
         host.occasionSearchQuery = (event.currentTarget as HTMLInputElement).value;
         host.render();
-        const searchInput = document.querySelector<HTMLInputElement>("[data-occasion-search]");
+        const searchInput = root.querySelector<HTMLInputElement>("[data-occasion-search]");
         if (searchInput) { searchInput.focus(); searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length); }
+    });
+    root.querySelectorAll<HTMLSelectElement>("[data-occasion-filter]").forEach((select) => select.addEventListener("change", () => {
+        const key = select.dataset.occasionFilter;
+        if (key === "status") host.occasionStatusFilter = select.value as BindOccasionsHost["occasionStatusFilter"];
+        if (key === "kind") host.occasionKindFilter = select.value as BindOccasionsHost["occasionKindFilter"];
+        if (key === "time") host.occasionTimeFilter = select.value as BindOccasionsHost["occasionTimeFilter"];
+        host.render();
+    }));
+    root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
+        host.occasionSearchQuery = ""; host.occasionStatusFilter = "all"; host.occasionKindFilter = "all"; host.occasionTimeFilter = "all"; host.render();
     });
     root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = button.dataset.occasionEdit; host.render(); revealOccasionForm(); }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
@@ -105,6 +119,11 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         set("remindBeforeDays", String(template.remindBeforeDays));
         host.editingOccasionId = undefined;
         syncBlocks();
+    }));
+    root.querySelectorAll<HTMLButtonElement>("[data-occasion-template-category]").forEach((button) => button.addEventListener("click", () => {
+        host.occasionTemplateCategory = (button.dataset.occasionTemplateCategory || "all") as BindOccasionsHost["occasionTemplateCategory"];
+        host.occasionTemplatesOpen = true;
+        host.render();
     }));
 
     root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {

@@ -66,6 +66,7 @@ assert.match(i18n, /"set\.dialogAuto": "Adaptive \(recommended\)"/, "en copy for
 
 // 守门：宽容器下的页面级桌面布局
 const components = read("src", "ui", "components.scss");
+assert.match(components, /\.lc-checkin-tab-host > \.lc-checkin__topnav \{[\s\S]*?box-sizing: border-box;/, "tab top navigation must include its horizontal padding inside the host width");
 assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(300px, 420px\) minmax\(0, 1fr\)/,
     "the occasions page must become a list-left / form-right master-detail layout");
 assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-list-panel \{ grid-row: 1; grid-column: 1; \}[\s\S]*?\.lc-checkin--occasions \.lc-checkin__occasion-form-panel \{ grid-row: 1; grid-column: 2; \}/,
@@ -149,8 +150,8 @@ assert.doesNotMatch(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "
 // 守门：事项页：模板折叠 + 列表卡片化（行高曾被按钮折行撑到 219px）
 assert.match(read("src", "render", "occasions.ts"), /<details class="lc-checkin__occasion-templates-fold" \$\{ctx\.occasionTemplatesOpen \? "open" : ""\}>/,
     "the 21 template chips must live behind a fold");
-assert.match(read("src", "render", "occasions.ts"), /class="lc-checkin__occasion-row-actions"><button class="lc-checkin__small-button" type="button" data-occasion-toitem=/,
-    "occasion rows must use icon buttons in a fixed action column instead of wrapping text buttons");
+assert.match(read("src", "render", "occasions.ts"), /class="lc-checkin__occasion-row-actions">\$\{action\("data-occasion-toitem"/,
+    "occasion rows must use compact actions in a fixed desktop action column");
 assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-manager-row \{\s*grid-template-columns: 34px minmax\(0, 1fr\) 128px;/,
     "occasion rows must reserve a fixed action column so the row height stays stable");
 assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-row-actions \{\s*display: grid;\s*grid-template-columns: repeat\(4, 30px\);/,

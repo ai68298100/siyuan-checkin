@@ -38,6 +38,7 @@ assert.match(i18nSource, /source=tomato/);
 assert.match(bindEditorSource, /completionSource: data\.get\("completionSource"\) === "tomato"/);
 assert.match(editorSource, /data-custom-icon-file/);
 assert.match(editorSource, /data-custom-icon-library/);
+assert.match(editorSource, /data-icon-group="all"[\s\S]*data-icon-group="mine"[\s\S]*ICON_GROUPS\.map/, "custom icon library stays visible before scrollable built-in categories");
 assert.match(editorSource, /data-action="open-iconfont"/);
 assert.match(bindEditorSource, /data-action='download-custom-icon'/);
 assert.match(bindEditorSource, /normalizeCustomIconLibrary/);

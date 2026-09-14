@@ -5,12 +5,22 @@ const path = require("node:path");
 const ts = require("typescript");
 const source = fs.readFileSync("src/occasions.ts", "utf8");
 const indexSource = fs.readFileSync("src/index.ts", "utf8");
+const viewSource = fs.readFileSync("src/render/occasions.ts", "utf8");
+const bindSource = fs.readFileSync("src/render/bind-occasions.ts", "utf8");
 
 assert.match(source, /getVisibleOccasions/);
 assert.match(source, /remindBeforeDays/);
 assert.match(source, /recurrence === "once"/);
 assert.match(source, /markOccasionCompleted/);
 assert.match(source, /completedDates/);
+assert.match(viewSource, /data-occasion-filter="\$\{key\}"/, "occasion manager exposes category/status/time filters");
+assert.match(viewSource, /data-occasion-clear-filters/, "occasion manager can return to the full list");
+assert.match(viewSource, /occ\.remindSummary/, "occasion rows show reminder lead time");
+assert.match(viewSource, /data-occasion-toitem/, "occasion rows retain the explicit check-in conversion action");
+assert.doesNotMatch(viewSource, /lc-checkin__item(?:\s|\")/, "occasion manager does not masquerade as a Today check-in card");
+assert.match(bindSource, /occasionStatusFilter/);
+assert.match(bindSource, /occasionKindFilter/);
+assert.match(bindSource, /occasionTimeFilter/);
 const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasions-")), "occasions.js");
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions}).outputText);
@@ -72,7 +82,8 @@ assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [nthWeek]}, n
     "mother's day 2026 is the 2nd sunday of may");
 const lastDay = occasions.normalizeOccasion({id: "last", name: "月末", kind: "scheduled", date: "2026-01-31", recurrence: "monthly", monthlySubtype: "lastday", remindBeforeDays: 2, enabled: true});
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [lastDay]}, new Date(2026, 3, 28, 12))[0].occurrenceDate, "2026-04-30");
-assert.ok(occasions.OCCASION_TEMPLATES.length >= 15, "occasion template library ships with the common fixtures");
+assert.ok(occasions.OCCASION_TEMPLATES.length >= 30, "occasion template library covers detailed everyday scenarios");
+assert.deepEqual([...new Set(occasions.OCCASION_TEMPLATES.map((template) => template.category))].sort(), ["anniversary", "birthday", "expense", "festival", "health", "renewal"], "template library exposes all six categories");
 
 /* T-100 逾期历史：过去发生、从未补记的次数按发生日倒序返回；补记过的不算；今天不计入。 */
 const historyToday = new Date(2026, 8, 20, 12);

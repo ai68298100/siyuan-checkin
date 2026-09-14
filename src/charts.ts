@@ -15,6 +15,13 @@ export interface TrendSeries {
     points: TrendPoint[];
 }
 
+export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
+    const values = series.points.map((point) => point.value);
+    const current = values[values.length - 1] || 0;
+    const previous = values[values.length - 2] || 0;
+    return {current, average: values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0, best: Math.max(0, ...values), delta: current - previous};
+}
+
 /** 近 N 周的完成率（%）：按周一为一周起点，统计"项目-日"粒度的完成占比。 */
 export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf = new Date()): TrendSeries {
     const points: TrendPoint[] = [];
@@ -70,18 +77,22 @@ export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = n
 export function renderLineChart(series: TrendSeries, options: {width?: number; height?: number} = {}): string {
     const width = options.width ?? 320;
     const height = options.height ?? 120;
-    const pad = 8;
+    const padX = 30;
+    const padTop = 12;
+    const padBottom = 22;
     const values = series.points.map((point) => point.value);
     const max = Math.max(100, ...values);
     if (!series.points.length) return "";
-    const stepX = series.points.length > 1 ? (width - pad * 2) / (series.points.length - 1) : 0;
-    const scaleY = (value: number): number => height - pad - (value / max) * (height - pad * 2);
-    const coords = series.points.map((point, index) => `${(pad + index * stepX).toFixed(1)},${scaleY(point.value).toFixed(1)}`);
-    const dots = series.points.map((point, index) => `<circle cx="${(pad + index * stepX).toFixed(1)}" cy="${scaleY(point.value).toFixed(1)}" r="2.5" fill="currentColor"/>`).join("");
-    const labels = series.points.filter((_, index) => index === 0 || index === series.points.length - 1)
-        .map((point, index) => `<text x="${index === 0 ? pad : width - pad}" y="${height - 1}" text-anchor="${index === 0 ? "start" : "end"}" class="lc-chart-label">${point.label}</text>`).join("");
+    const plotBottom = height - padBottom;
+    const stepX = series.points.length > 1 ? (width - padX * 2) / (series.points.length - 1) : 0;
+    const scaleY = (value: number): number => plotBottom - (value / max) * (plotBottom - padTop);
+    const coords = series.points.map((point, index) => `${(padX + index * stepX).toFixed(1)},${scaleY(point.value).toFixed(1)}`);
+    const grid = [0, 25, 50, 75, 100].map((value) => { const y = scaleY(value); return `<line class="lc-chart-grid" x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}"/><text class="lc-chart-axis" x="${padX - 5}" y="${y + 3}" text-anchor="end">${value}%</text>`; }).join("");
+    const area = `${padX},${plotBottom} ${coords.join(" ")} ${width - padX},${plotBottom}`;
+    const dots = series.points.map((point, index) => `<circle cx="${(padX + index * stepX).toFixed(1)}" cy="${scaleY(point.value).toFixed(1)}" r="3" fill="currentColor"><title>${point.label}：${point.value}${series.unit}</title></circle>`).join("");
+    const labels = series.points.map((point, index) => index % 2 === 0 || index === series.points.length - 1 ? `<text x="${(padX + index * stepX).toFixed(1)}" y="${height - 5}" text-anchor="middle" class="lc-chart-label">${point.label}</text>` : "").join("");
     return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${series.title}" preserveAspectRatio="none">` +
-        `<polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+        `${grid}<polygon class="lc-chart-area" points="${area}"/><polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` +
         `${dots}${labels}</svg>`;
 }
 
@@ -89,7 +100,7 @@ export function renderLineChart(series: TrendSeries, options: {width?: number; h
 export function renderBarChart(series: TrendSeries, options: {width?: number; height?: number} = {}): string {
     const width = options.width ?? 320;
     const height = options.height ?? 120;
-    const pad = 8;
+    const pad = 22;
     const max = Math.max(1, ...series.points.map((point) => point.value));
     if (!series.points.length) return "";
     const slot = (width - pad * 2) / series.points.length;
@@ -98,7 +109,7 @@ export function renderBarChart(series: TrendSeries, options: {width?: number; he
         const barHeight = Math.max(point.value > 0 ? 2 : 0, (point.value / max) * (height - pad * 2 - 10));
         const x = pad + index * slot + (slot - barWidth) / 2;
         const y = height - pad - 10 - barHeight;
-        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3" fill="currentColor" opacity="0.85"/>` +
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="4" fill="currentColor" opacity="0.85"><title>${point.label}：${point.value}${series.unit}</title></rect><text x="${(x + barWidth / 2).toFixed(1)}" y="${Math.max(9, y - 4).toFixed(1)}" text-anchor="middle" class="lc-chart-value">${point.value}</text>` +
             `<text x="${(x + barWidth / 2).toFixed(1)}" y="${height - 2}" text-anchor="middle" class="lc-chart-label">${point.label}</text>`;
     }).join("");
     return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${series.title}" preserveAspectRatio="none">${bars}</svg>`;
@@ -161,14 +172,22 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
         if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
     }
     if (currentWeek.length) weeks.push(currentWeek);
-    const width = weeks.length * (cell + gap) + gap;
-    const height = 7 * (cell + gap) + gap;
+    const labelLeft = 22;
+    const labelTop = 18;
+    const width = labelLeft + weeks.length * (cell + gap) + gap;
+    const height = labelTop + 7 * (cell + gap) + gap;
     const levelClass = (level: number): string => level <= 0 ? "is-empty" : `is-level-${level}`;
     const cells = weeks.map((week, weekIndex) => week.map((day, dayIndex) => {
         if (day.count < 0) return "";
-        const x = gap + weekIndex * (cell + gap);
-        const y = gap + dayIndex * (cell + gap);
+        const x = labelLeft + gap + weekIndex * (cell + gap);
+        const y = labelTop + gap + dayIndex * (cell + gap);
         return `<rect class="${levelClass(day.level)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${day.date}：${day.count} 条记录</title></rect>`;
     }).join("")).join("");
-    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年打卡热力图：颜色越深表示完成记录越多，共 ${heatmap.total} 条记录">${cells}</svg>`;
+    const monthLabels = Array.from({length: 12}, (_, month) => {
+        const first = new Date(heatmap.year, month, 1);
+        const week = Math.floor((((first.getTime() - firstDay.getTime()) / 86400000) + leading) / 7);
+        return `<text class="lc-yearheatmap__label" x="${labelLeft + gap + week * (cell + gap)}" y="11">${month + 1}月</text>`;
+    }).join("");
+    const weekdayLabels = [[0, "一"], [2, "三"], [4, "五"], [6, "日"]].map(([index, label]) => `<text class="lc-yearheatmap__label" x="2" y="${labelTop + gap + Number(index) * (cell + gap) + cell - 1}">${label}</text>`).join("");
+    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录">${monthLabels}${weekdayLabels}${cells}</svg>`;
 }

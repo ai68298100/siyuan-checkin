@@ -65,7 +65,8 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
         const timing = item.status === "today" ? t("review.today") : t("review.daysLater", {n: item.daysUntil});
         const completed = isOccasionCompleted(item, item.occurrenceDate);
-        return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="occasions" title="${escapeHtml(item.name)} · ${timing}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${timing}</small></button>`;
+        const action = item.status === "today" ? (completed ? t("today.occasionUndo") : t("today.occasionComplete")) : timing;
+        return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="${item.status === "today" ? "toggle-occasion" : "occasions"}" data-occasion-id="${escapeHtml(item.id)}" data-occasion-date="${escapeHtml(item.occurrenceDate)}" aria-pressed="${completed}" title="${escapeHtml(item.name)} · ${action}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(action)}</small></button>`;
     }).join("");
     return `<section class="lc-checkin__occasion-banner" aria-label="${t("today.occasionTitle")}">
             <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
@@ -96,9 +97,7 @@ export function renderPriorityReminderView(store: CheckinStore, occasionStore: O
 }
 
 export function renderSaveStatusView(state: SaveState): string {
-    return state === "saving"
-        ? `<div class="lc-checkin__save-status is-saving" role="status" aria-live="polite">${t("msg.saving")}</div>`
-        : state === "error"
+    return state === "error"
             ? `<div class="lc-checkin__save-status is-error" role="alert"><span>${t("msg.saveFailedShort")}</span><button type="button" data-action="retry-save">${t("msg.retrySave")}</button></div>`
             : "";
 }
@@ -132,13 +131,13 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
-                    <button class="lc-checkin__small-button" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
                 </div>
                 <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
+                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
+                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
                 ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
@@ -194,13 +193,26 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
     if (!days.length) return "";
     const daySections = days.map((day, index) => {
         const dayEvents = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
-        const rows = dayEvents.map((event) => {
-            const item = itemNames.get(event.itemId);
+        const grouped = new Map<string, CheckinEvent[]>();
+        for (const event of dayEvents) {
+            const key = `${event.itemId}\u0000${event.unit}`;
+            const events = grouped.get(key);
+            if (events) events.push(event); else grouped.set(key, [event]);
+        }
+        const rows = [...grouped.values()].map((events) => {
+            const first = events[0];
+            const item = itemNames.get(first.itemId);
             const icon = item?.icon || "✓";
-            const name = itemNames.get(event.itemId)?.name || t("review.deletedItem");
-            const time = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
-            const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
-            return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span></div>`;
+            const name = item?.name || t("review.deletedItem");
+            const total = events.reduce((sum, event) => sum + event.value, 0);
+            const time = (event: CheckinEvent) => new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
+            if (events.length === 1) {
+                const event = first;
+                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
+                return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time(event)}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span></div>`;
+            }
+            const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`).join("");
+            return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${eventRows}</div></details>`;
         }).join("");
         return `<div class="lc-checkin__log-day"${index >= 2 ? ' data-log-extra hidden' : ''}><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
     }).join("");

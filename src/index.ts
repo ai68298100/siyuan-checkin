@@ -240,7 +240,11 @@ export default class CheckinPlugin extends Plugin {
     private bulkMode = false;
     private bulkSelected = new Set<string>();
     private occasionSearchQuery = "";
+    private occasionStatusFilter: "all" | "enabled" | "disabled" = "all";
+    private occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled" = "all";
+    private occasionTimeFilter: "all" | "today" | "upcoming" | "ended" = "all";
     private occasionTemplatesOpen = false;
+    private occasionTemplateCategory: "all" | import("./occasions").OccasionTemplateCategory = "all";
     private celebration?: {message: string; itemName: string};
     private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();
@@ -1444,7 +1448,11 @@ export default class CheckinPlugin extends Plugin {
             occasionStore: this.occasionStore,
             editingOccasionId: this.editingOccasionId,
             occasionSearchQuery: this.occasionSearchQuery,
+            occasionStatusFilter: this.occasionStatusFilter,
+            occasionKindFilter: this.occasionKindFilter,
+            occasionTimeFilter: this.occasionTimeFilter,
             occasionTemplatesOpen: this.occasionTemplatesOpen,
+            occasionTemplateCategory: this.occasionTemplateCategory,
             appearance: this.resolvedAppearance(),
         });
     }

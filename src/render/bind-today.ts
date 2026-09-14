@@ -287,7 +287,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         });
     });
     root.querySelectorAll<HTMLElement>("[data-action='toggle-occasion']").forEach((button) => button.addEventListener("click", () => {
-        const row = button.closest<HTMLElement>("[data-occasion-id]");
+        const row = button.closest<HTMLElement>("[data-occasion-id]") || button;
         const id = row?.dataset.occasionId || "";
         const occurrenceDate = row?.dataset.occasionDate || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);

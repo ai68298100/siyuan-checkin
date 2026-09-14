@@ -4,7 +4,7 @@ import {dateKey, getEventDateKey, isComplete, isItemAvailableOnDate, isScheduled
 import {escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
-import {buildYearHeatmap, buildWeeklyCompletionTrend, buildMonthlyEventTrend, renderBarChart, renderLineChart, renderYearHeatmap} from "../charts";
+import {buildYearHeatmap, buildWeeklyCompletionTrend, buildMonthlyEventTrend, renderBarChart, renderLineChart, renderYearHeatmap, summarizeTrend} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
 import {uiIcon} from "../ui/icons";
@@ -101,7 +101,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             value: (current?.value || 0) + event.value,
         });
     });
-    const aggregateDetails = totals.size ? [...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("") : "";
+    const aggregateDetails = totals.size ? `<div class="lc-checkin__history-aggregate" aria-label="${t("review.historyAggregate")}">${[...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("")}</div>` : "";
     const hasHistoryFilter = Boolean(ctx.historyQuery.trim()) || ctx.historySource !== "all";
     const renderEvent = ({event, itemName}: {event: any; itemName: string}) => {
         const time = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
@@ -112,7 +112,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__history-event">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}${noteEditor}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
     };
     const eventRows = filteredRecords.map(renderEvent);
-    const eventDetails = filteredRecords.length ? `<div class="lc-checkin__history-events">${eventRows.slice(0, 5).join("")}${eventRows.length > 5 ? `<div data-history-extra hidden>${eventRows.slice(5).join("")}</div><button class="lc-checkin__text-button lc-checkin__history-expand" type="button" data-history-expand>${t("review.historyExpand", {n: eventRows.length - 5})}</button>` : ""}</div>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
+    const eventDetails = filteredRecords.length ? `<details class="lc-checkin__history-details"><summary><span>${t("review.historyDetails")}</span><em>${t("review.recordsCount", {n: filteredRecords.length})}</em><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__history-events">${eventRows.slice(0, 5).join("")}${eventRows.length > 5 ? `<div data-history-extra hidden>${eventRows.slice(5).join("")}</div><button class="lc-checkin__text-button lc-checkin__history-expand" type="button" data-history-expand>${t("review.historyExpand", {n: eventRows.length - 5})}</button>` : ""}</div></details>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
     const details = aggregateDetails + eventDetails;
     const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const nextDisabled = ctx.historyMonth >= currentMonth;
@@ -156,6 +156,11 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const heatmap = buildYearHeatmap(ctx.store, heatmapYear);
     const weeklyTrend = buildWeeklyCompletionTrend(ctx.store, 12);
     const monthlyTrend = buildMonthlyEventTrend(ctx.store, 6);
+    const trendCard = (series: typeof weeklyTrend, chart: string) => {
+        const stats = summarizeTrend(series);
+        const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";
+        return `<div class="lc-checkin__trend-card"><header><div><h3>${escapeHtml(series.title)}</h3><small>${t("review.trendCompared")}</small></div><strong>${stats.current}${escapeHtml(series.unit)}</strong></header><div class="lc-checkin__trend-stats"><span><small>${t("review.trendAverage")}</small><b>${stats.average}${escapeHtml(series.unit)}</b></span><span><small>${t("review.trendBest")}</small><b>${stats.best}${escapeHtml(series.unit)}</b></span><span class="is-${stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "flat"}"><small>${t("review.trendChange")}</small><b>${direction} ${Math.abs(stats.delta)}${escapeHtml(series.unit)}</b></span></div>${chart}</div>`;
+    };
     const achievements = buildAchievements(ctx.store);
     const reminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date(), ctx.reminderUserActions), ctx.reminderFilter);
     /* 11.0-C 延期/跳过：未完成条目给入口，已延期/已跳过条目只留恢复，已完成是终态不给动作。 */
@@ -188,6 +193,12 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const overdueMoreRows = overdueHistory.slice(OVERDUE_VISIBLE).map(overdueRow).join("");
     const overdueHistorySection = overdueHistory.length ? `<div class="lc-checkin__overdue-history"><h3>${t("review.overdueHistory")} · ${overdueHistory.length}</h3>${overdueVisibleRows}${overdueMoreRows ? `<div data-overdue-more hidden>${overdueMoreRows}</div><button class="lc-checkin__text-button" type="button" data-overdue-expand>${t("review.expandAll", {n: overdueHistory.length})}</button>` : ""}</div>` : "";
     const earnedCount = achievements.filter((entry) => entry.achieved).length;
+    const achievementCategories = (["milestone", "consistency", "quality", "reflection", "rhythm"] as const).map((category) => {
+        const entries = achievements.filter((entry) => entry.category === category);
+        const earned = entries.filter((entry) => entry.achieved).length;
+        const cards = entries.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? t("review.achieved") : `${Math.min(entry.progress, entry.target)}/${entry.target}`}</small></div>`).join("");
+        return `<details class="lc-checkin__achievement-category"${category === "milestone" ? " open" : ""}><summary><span>${t(`review.achievementCategory.${category}`)}</span><em>${earned}/${entries.length}</em><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__achievement-grid">${cards}</div></details>`;
+    }).join("");
     const providerButton = ctx.summaryProvidersCount
         ? `<div class="lc-checkin__summary-agent" data-summary-refresh-state="${ctx.summaryRefreshing ? "loading" : "idle"}"><span>${t("review.agentConnected")} · ${t("review.summaryCutoff", {date: escapeHtml(summary.endDate)})}${ctx.analysisLastGeneratedAt ? ` · ${t("review.summaryUpdatedAt", {date: escapeHtml(ctx.analysisLastGeneratedAt)})}` : ""}${ctx.analysisHistoryCount ? ` · ${t("review.summaryHistoryCount", {n: ctx.analysisHistoryCount})}` : ""}</span><span><button class="lc-checkin__text-button" type="button" data-action="generate-summary" aria-label="${t("review.agentRefreshAria")}" ${ctx.summaryRefreshing ? "disabled aria-busy=\"true\"" : ""}>${ctx.summaryRefreshing ? t("review.agentRefreshing") : t("review.agentGenerate")}</button>${ctx.analysisHistoryCount && ctx.analysisHistoryCount > 1 ? `<button class="lc-checkin__text-button" type="button" data-action="view-analysis-history">${t("agent.historyTitle")}</button>` : ""}</span></div>`
         : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>${t("review.agentUnavailable")}</span></div>`;
@@ -238,13 +249,13 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
                 <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
-                <small class="lc-checkin__yearheatmap-total">${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small>
+                <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
             </details>
-            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid"><div class="lc-checkin__trend-card"><h3>${weeklyTrend.title}</h3>${renderLineChart(weeklyTrend)}</div><div class="lc-checkin__trend-card"><h3>${monthlyTrend.title}</h3>${renderBarChart(monthlyTrend)}</div></div>`)}
+            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}</div>`)}
             ${fold("projects", `${t("review.foldProjects")} ${countBadge(summary.items.length)}`, `<section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>`)}
             ${fold("log", `${t("review.foldLog")} · ${ctx.store.events.length} 条`, renderCheckinLogView(ctx.store.events, ctx.store.items))}
             ${groupBars ? fold("balance", `${t("review.balanceTitle")} ${countBadge(groupBars.match(/lc-checkin__balance-row/g)?.length || 0)}`, `<section class="lc-checkin__balance" aria-label="${t("review.balanceTitle")}">${groupBars}</section>`) : ""}
-            ${fold("achievements", `${t("review.foldAchievements")} · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-grid">${achievements.map((entry) => `<div class="lc-checkin__achievement ${entry.achieved ? "is-achieved" : ""}" title="${escapeHtml(entry.description)}"><span class="lc-checkin__achievement-icon" aria-hidden="true">${entry.icon}</span><strong>${escapeHtml(entry.name)}</strong><small>${entry.achieved ? t("review.achieved") : `${entry.progress}/${entry.target}`}</small></div>`).join("")}</div>`)}
+            ${fold("achievements", `${t("review.foldAchievements")} · ${earnedCount}/${achievements.length}`, `<div class="lc-checkin__achievement-categories">${achievementCategories}</div>`)}
             ${fold("upcoming", t("review.foldUpcoming"), renderUpcomingOccasionsView(ctx.occasionStore))}
             ${generated}
             ${suggestionPanel}

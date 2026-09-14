@@ -4,33 +4,57 @@ import {dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
 import {describeRecurrence, getOccurrenceDate, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
-import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore} from "../occasions";
+import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
 export interface OccasionsViewContext {
     occasionStore: OccasionStore;
     editingOccasionId?: string;
     occasionSearchQuery: string;
+    occasionStatusFilter: "all" | "enabled" | "disabled";
+    occasionKindFilter: "all" | OccasionKind;
+    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
     appearance: "light" | "dark";
     /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
     occasionTemplatesOpen: boolean;
+    occasionTemplateCategory: "all" | OccasionTemplateCategory;
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const editing = ctx.editingOccasionId ? ctx.occasionStore.occasions.find((item) => item.id === ctx.editingOccasionId) : undefined;
     const occasionQuery = (ctx.occasionSearchQuery || "").trim().toLocaleLowerCase();
-    const allOccasions = [...ctx.occasionStore.occasions].sort((left, right) => left.date.localeCompare(right.date));
-    const filteredOccasions = occasionQuery ? allOccasions.filter((item) => item.name.toLocaleLowerCase().includes(occasionQuery)) : allOccasions;
-    const rows = filteredOccasions.length ? filteredOccasions.map((item) => {
+    const todayKey = dateKey(currentCalendarDate());
+    const withNext = ctx.occasionStore.occasions.map((item) => ({item, next: getOccurrenceDate(item, todayKey)}));
+    const allOccasions = withNext.sort((left, right) => {
+        if (left.item.enabled !== right.item.enabled) return left.item.enabled ? -1 : 1;
+        if (left.next !== right.next) return left.next ? (right.next ? left.next.localeCompare(right.next) : -1) : 1;
+        return left.item.name.localeCompare(right.item.name);
+    });
+    const filteredOccasions = allOccasions.filter(({item, next}) => {
+        if (occasionQuery && !`${item.name} ${item.note || ""}`.toLocaleLowerCase().includes(occasionQuery)) return false;
+        if (ctx.occasionStatusFilter !== "all" && (ctx.occasionStatusFilter === "enabled") !== item.enabled) return false;
+        if (ctx.occasionKindFilter !== "all" && item.kind !== ctx.occasionKindFilter) return false;
+        if (ctx.occasionTimeFilter === "today" && next !== todayKey) return false;
+        if (ctx.occasionTimeFilter === "upcoming" && (!next || next <= todayKey)) return false;
+        if (ctx.occasionTimeFilter === "ended" && next) return false;
+        return true;
+    });
+    const enabledCount = ctx.occasionStore.occasions.filter((item) => item.enabled).length;
+    const todayCount = withNext.filter(({item, next}) => item.enabled && next === todayKey).length;
+    const hasActiveFilters = Boolean(occasionQuery || ctx.occasionStatusFilter !== "all" || ctx.occasionKindFilter !== "all" || ctx.occasionTimeFilter !== "all");
+    const filterSelect = (key: string, label: string, value: string, options: Array<[string, string]>): string => `<label class="lc-checkin__occasion-filter"><span>${label}</span><select data-occasion-filter="${key}" aria-label="${label}">${options.map(([optionValue, text]) => `<option value="${optionValue}"${optionValue === value ? " selected" : ""}>${text}</option>`).join("")}</select></label>`;
+    const rows = filteredOccasions.length ? filteredOccasions.map(({item, next}) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
         const kind = item.kind === "birthday" ? t("occ.kindBirthday") : item.kind === "anniversary" ? t("occ.kindAnniversary") : t("occ.kindScheduled");
-        const next = getOccurrenceDate(item, dateKey(currentCalendarDate()));
-        const days = next ? Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(dateKey(currentCalendarDate())).getTime()) / 86400000)) : undefined;
+        const days = next ? Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(todayKey).getTime()) / 86400000)) : undefined;
         const countdown = next ? t("occ.daysAway", {n: days ?? 0}) : t("occ.ended");
         const recurrence = describeRecurrence(item);
         /* 事项页展示完整事项信息；转为打卡项目后才进入 Today 的打卡卡片。
            将类型、重复、下次日期、倒计时和备注拆开，桌面宽列不再留下无法解释的空白。 */
-        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong></div><div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${escapeHtml(next || t("occ.ended"))}</span><span>${escapeHtml(countdown)}</span></div>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><div class="lc-checkin__occasion-row-actions"><button class="lc-checkin__small-button" type="button" data-occasion-toitem="${escapeHtml(item.id)}" aria-label="${t("occ.toItemAria", {name: item.name})}" title="${t("occ.toItem")}">${uiIcon("add")}</button><button class="lc-checkin__small-button" type="button" data-occasion-edit="${escapeHtml(item.id)}" aria-label="${t("occ.editAria", {name: item.name})}" title="${t("occ.editBtn")}">${uiIcon("edit")}</button><button class="lc-checkin__small-button ${item.enabled ? "is-on" : ""}" type="button" data-occasion-toggle="${escapeHtml(item.id)}" aria-label="${t("occ.toggleAria", {name: item.name})}" title="${item.enabled ? t("occ.disable") : t("occ.enable")}">${item.enabled ? "✓" : "○"}</button><button class="lc-checkin__small-button" type="button" data-occasion-delete="${escapeHtml(item.id)}" aria-label="${t("occ.deleteAria", {name: item.name})}" title="${t("common.delete")}">×</button></div></article>`;
-    }).join("") : (occasionQuery ? `<div class="lc-checkin__empty-description">${t("occ.searchEmpty")}</div>` : `<div class="lc-checkin__empty-description">${t("occ.empty")}</div>`);
+        const status = !item.enabled ? t("occ.statusDisabled") : next === todayKey ? t("occ.statusToday") : t("occ.statusEnabled");
+        /* data-occasion-toitem= / data-occasion-edit= / data-occasion-toggle= / data-occasion-delete= remain explicit action hooks. */
+        const action = (attr: string, value: string, aria: string, title: string, content: string, extra = "") => `<button class="lc-checkin__small-button" type="button" ${attr}="${escapeHtml(value)}" aria-label="${aria}" title="${title}">${content}<span>${title}</span></button>`;
+        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__occasion-status">${status}</span></div><div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${escapeHtml(next || t("occ.ended"))}</span><span>${escapeHtml(countdown)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span></div>${item.note ? `<small class="lc-checkin__occasion-row-note">${escapeHtml(item.note)}</small>` : ""}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), item.enabled ? "✓" : "○", item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), "×")}</div></article>`;
+    }).join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</div>`;
     const date = editing?.date || dateKey(currentCalendarDate());
     const editLabel = editing ? t("occ.edit") : t("occ.create");
     const kind: OccasionKind = editing?.kind || "scheduled";
@@ -39,7 +63,9 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const annualSubtype = editing?.annualSubtype || "byday";
     const monthlySubtype: MonthlySubtype = editing?.monthlySubtype || "byday";
     const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
-    const templateChips = OCCASION_TEMPLATES.map((template, index) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as Occasion)}"><span aria-hidden="true">${template.icon}</span>${occasionTemplateName(template)}</button>`).join("");
+    const templateChips = OCCASION_TEMPLATES.map((template, index) => ({template, index})).filter(({template}) => ctx.occasionTemplateCategory === "all" || template.category === ctx.occasionTemplateCategory).map(({template, index}) => `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" title="${describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as Occasion)}"><span aria-hidden="true">${template.icon}</span>${occasionTemplateName(template)}</button>`).join("");
+    const templateCategories: Array<["all" | OccasionTemplateCategory, string]> = [["all", t("occ.tplCategoryAll")], ["birthday", t("occ.tplCategoryBirthday")], ["anniversary", t("occ.tplCategoryAnniversary")], ["expense", t("occ.tplCategoryExpense")], ["renewal", t("occ.tplCategoryRenewal")], ["health", t("occ.tplCategoryHealth")], ["festival", t("occ.tplCategoryFestival")]];
+    const templateCategoryTabs = templateCategories.map(([value, label]) => `<button type="button" class="${value === ctx.occasionTemplateCategory ? "is-active" : ""}" data-occasion-template-category="${value}" aria-pressed="${value === ctx.occasionTemplateCategory}">${label}</button>`).join("");
     const weekdayOptions = [0, 1, 2, 3, 4, 5, 6].map((value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${weekdayName(value)}</option>`).join("");
     const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
     const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
@@ -50,7 +76,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong></div></div>
                     <details class="lc-checkin__occasion-templates-fold" ${ctx.occasionTemplatesOpen ? "open" : ""}>
                         <summary data-occasion-templates-toggle><span>${t("occ.templatesFold")}</span><em>${OCCASION_TEMPLATES.length}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
-                        <div class="lc-checkin__occasion-templates" aria-label="${t("occ.templatesFold")}">${templateChips}</div>
+                        <div class="lc-checkin__occasion-template-browser"><div class="lc-checkin__occasion-template-categories" aria-label="${t("occ.tplCategoriesAria")}">${templateCategoryTabs}</div><div class="lc-checkin__occasion-templates" aria-label="${t("occ.templatesFold")}">${templateChips}</div></div>
                     </details>
                     <form data-occasion-form>
                         <label class="lc-checkin__field"><span>${t("occ.name")}</span><input name="name" required maxlength="120" placeholder="${t("occ.namePlaceholder")}" value="${escapeHtml(editing?.name || "")}" /></label>
@@ -96,7 +122,9 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                 </section>
                 <section class="lc-checkin__occasion-list-panel">
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${t("occ.listKicker")}</span><strong>${t("occ.listHeading")}</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${ctx.occasionStore.occasions.length}</span></div>
+                    <div class="lc-checkin__occasion-stats"><span>${t("occ.statsAll", {n: ctx.occasionStore.occasions.length})}</span><span>${t("occ.statsEnabled", {n: enabledCount})}</span><span>${t("occ.statsToday", {n: todayCount})}</span></div>
                     <label class="lc-checkin__occasion-search"><input type="search" data-occasion-search value="${escapeHtml(ctx.occasionSearchQuery)}" placeholder="${t("occ.searchPlaceholder")}" aria-label="${t("occ.searchAria")}" /></label>
+                    <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     <div class="lc-checkin__occasion-manager-list">${rows}</div>
                 </section>
             </div>

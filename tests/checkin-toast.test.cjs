@@ -7,6 +7,10 @@ const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
+assert.doesNotMatch(fragments, /state === "saving"[\s\S]{0,180}lc-checkin__save-status is-saving/, "saving must not insert a layout-shifting block");
+assert.match(fragments, /state === "error"[\s\S]{0,180}role="alert"/, "save errors remain visible and retryable");
+assert.match(fragments, /lc-checkin__item-secondary-action/, "secondary actions should not truncate the item title");
+
 assert.match(indexSource, /this\.recentRecordTimer = window\.setTimeout\([\s\S]*?\}, 2600\);/, "check-in feedback should dismiss quickly");
 assert.match(fragments, /<main class="lc-checkin__list">[\s\S]*?<\/main>\s*\$\{recentRecord\}/, "check-in feedback must render after the list, not in the mobile header flow");
 assert.equal((fragments.match(/\$\{recentRecord\}/g) || []).length, 1, "check-in feedback must render exactly once");

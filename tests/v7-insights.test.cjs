@@ -52,19 +52,37 @@ assert.equal(monthly.points[monthly.points.length - 1].value, 2, "current month 
 const line = charts.renderLineChart(weekly);
 assert.match(line, /<svg class="lc-chart"/);
 assert.match(line, /<polyline points="/);
+assert.match(line, /lc-chart-grid/);
+assert.match(line, /lc-chart-area/);
 assert.ok(charts.renderLineChart({title: "空", unit: "%", points: []}) === "", "empty series renders nothing");
 const bars = charts.renderBarChart(monthly);
 assert.match(bars, /<rect /);
+assert.match(bars, /lc-chart-value/);
+assert.deepEqual(charts.summarizeTrend({title: "x", unit: "%", points: [{label: "a", value: 20}, {label: "b", value: 50}]}), {current: 50, average: 35, best: 50, delta: 30});
 assert.equal(charts.renderBarChart({title: "空", unit: "条", points: []}), "");
+const heatmap = charts.buildYearHeatmap(store(), new Date().getFullYear());
+const heatmapSvg = charts.renderYearHeatmap(heatmap);
+assert.match(heatmapSvg, /class="lc-yearheatmap"/);
+assert.equal((heatmapSvg.match(/月<\/text>/g) || []).length, 12, "year heatmap labels all months");
+assert.match(heatmapSvg, /每格一天/);
 
 // 成就引擎：从种子数据推导达成状态
 const achievements = buildAchievements(store());
 const first = achievements.find((entry) => entry.id === "first");
 assert.ok(first && first.achieved, "first check-in achievement is earned");
-assert.equal(achievements.length >= 9, true, "achievement catalog ships with at least nine badges");
+assert.equal(achievements.length >= 20, true, "achievement catalog ships with a rich badge set");
+assert.deepEqual(new Set(achievements.map((entry) => entry.category)), new Set(["milestone", "consistency", "quality", "reflection", "rhythm"]));
 const perfect = achievements.find((entry) => entry.id === "perfect-1");
 assert.ok(perfect && perfect.achieved, "a day where all scheduled items completed counts as a perfect day");
 const events200 = achievements.find((entry) => entry.id === "events-200");
 assert.ok(events200 && !events200.achieved && events200.progress === 2, "unearned badges expose honest progress");
+
+const fragmentsSource = fs.readFileSync(path.join(sourceRoot, "render", "fragments.ts"), "utf8");
+assert.match(fragmentsSource, /class="lc-checkin__log-group"/);
+assert.match(fragmentsSource, /review\.logEntries/);
+assert.match(fragmentsSource, /events\.reduce\(\(sum, event\) => sum \+ event\.value/);
+const reviewSource = fs.readFileSync(path.join(sourceRoot, "render", "review.ts"), "utf8");
+assert.match(reviewSource, /lc-checkin__achievement-category/);
+assert.match(reviewSource, /category === "milestone" \? " open"/);
 
 console.log("7.0 trend chart and achievement engine checks passed.");
