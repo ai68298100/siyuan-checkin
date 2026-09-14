@@ -3,7 +3,7 @@
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(nav): app-bar style top navigation, 归档 folded into 回顾
+上次提交：feat(today): expand priority reminder queue（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；自动化侧继续推进 T-133 建议确认写入闭环与 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -12,7 +12,7 @@
 
 2026-09-14 离线本地总结批次（T-219~T-238）：新增 `src/features/local-summary.ts`，从真实 `SummaryContext` 推导空数据/起步/稳步/高完成四档语气、完成率、周期范围、最佳项目和待关注项目；排序使用完成率→记录数→名称的确定性规则，单项目不重复提示。回顾页无智能体或暂无智能体正文时自动展示本地总结，智能体正文存在时保持优先；本地总结带离线标识和虚线卡片样式。中英文文案全部进入 i18n，新增 `tests/local-summary.test.cjs` 并接入 `test`/`test:ui`。验证：`pnpm run check`、`pnpm run test:ui` 通过。
 
-2026-09-14 今日页优先提醒批次（T-239~T-258）：新增 `src/features/priority-reminder.ts`，只读筛选现有提醒投影中的逾期/今日条目，按状态→天数→名称→ID 确定性排序并输出首条摘要。今日页新增低干扰优先提醒横幅，显示来源、名称和状态；打卡来源点击后滚动到对应卡片并聚焦主操作，事项来源进入事项页；接入延期/跳过后的用户动作投影，补齐 CSS.escape、aria-live、双语文案与窄容器样式。新增 `tests/priority-reminder.test.cjs` 并接入 `test`/`test:ui`。验证：`pnpm run check`、`pnpm run test:ui` 通过。
+2026-09-14 今日页优先提醒批次（T-239~T-258）：新增 `src/features/priority-reminder.ts`，只读筛选现有提醒投影中的逾期/今日条目，按状态→天数→名称→ID 确定性排序并输出首条摘要。今日页新增低干扰优先提醒横幅，显示来源、名称和状态；打卡来源点击后滚动到对应卡片并聚焦主操作，事项来源进入事项页；接入延期/跳过后的用户动作投影，补齐 CSS.escape、aria-live、双语文案与窄容器样式。增强折叠队列语义：section 标题 aria-label、首条提醒专用操作文案、其余列表最多展示 5 条且摘要数量与实际一致。新增并扩展 `tests/priority-reminder.test.cjs`，覆盖模型、渲染标记、折叠上限、绑定行为、样式与 i18n，并接入 `test`/`test:ui`。验证：`pnpm run test:quality` 全链通过（check、主测试、UI、mobile、ecosystem、perf、release、build）；构建 CSS 299506 bytes，仍在 318000 bytes 预算内。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 

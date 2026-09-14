@@ -70,19 +70,20 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const item = host.store.items.find((candidate) => candidate.id === button.dataset.streakInsights && !candidate.archived);
         if (item) { host.insightsReturnPage = "today"; host.showInsights(item); }
     }));
-    root.querySelector<HTMLElement>("[data-priority-reminder]")?.querySelector<HTMLElement>("[data-priority-reminder-action]")?.addEventListener("click", (event) => {
+    root.querySelectorAll<HTMLElement>("[data-priority-reminder-action]").forEach((button) => button.addEventListener("click", (event) => {
         const reminder = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-priority-reminder]");
         if (!reminder) return;
-        if (reminder.dataset.prioritySource === "occasion") {
+        const action = event.currentTarget as HTMLElement;
+        if (action.dataset.prioritySource === "occasion") {
             host.showOccasions();
             return;
         }
-        const item = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(reminder.dataset.priorityId || "")}"]`);
+        const item = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(action.dataset.priorityId || "")}"]`);
         if (!item) return;
         item.scrollIntoView({behavior: "smooth", block: "center"});
-        const action = item.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
-        action?.focus();
-    });
+        const primaryAction = item.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
+        primaryAction?.focus();
+    }));
     host.bindMobileNav(root);
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
     let searchTimer: number | undefined;

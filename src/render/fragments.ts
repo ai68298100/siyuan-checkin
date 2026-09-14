@@ -77,13 +77,21 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
 }
 
 export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): string {
-    const entry = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions))[0];
+    const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
+    const entry = entries[0];
     if (!entry) return "";
     const overdue = entry.status === "overdue";
-    const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
-    const timing = overdue ? t("today.priorityOverdue") : t("today.priorityToday");
-    const action = entry.source === "checkin" ? t("today.priorityOpen") : t("today.priorityOccasion");
-    return `<section class="lc-checkin__priority-reminder is-${entry.status}" data-priority-reminder data-priority-source="${entry.source}" data-priority-id="${escapeHtml(entry.sourceId)}" role="status" aria-live="polite"><span class="lc-checkin__priority-reminder-mark" aria-hidden="true">${overdue ? "!" : "→"}</span><div><small>${escapeHtml(t("today.priorityTitle"))} · ${escapeHtml(source)}</small><strong>${escapeHtml(entry.title)}</strong><span>${escapeHtml(timing)}</span></div><button type="button" class="lc-checkin__text-button" data-priority-reminder-action aria-label="${escapeHtml(t("today.priorityActionAria", {name: entry.title}))}">${escapeHtml(action)}</button></section>`;
+    const row = (item: typeof entry, primary = false) => {
+        const itemOverdue = item.status === "overdue";
+        const itemSource = item.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
+        const itemTiming = itemOverdue ? t("today.priorityOverdue") : t("today.priorityToday");
+        const itemAction = item.source === "checkin" ? t("today.priorityOpen") : t("today.priorityOccasion");
+        const ariaLabel = primary ? t("today.priorityActionAria", {name: item.title}) : t("today.priorityItemAria", {name: item.title});
+        return `<div class="lc-checkin__priority-reminder-row${primary ? " is-primary" : ""}"><span class="lc-checkin__priority-reminder-row-mark" aria-hidden="true">${itemOverdue ? "!" : "→"}</span><span class="lc-checkin__priority-reminder-row-text"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(itemSource)} · ${escapeHtml(itemTiming)}</small></span><button type="button" class="lc-checkin__text-button" data-priority-reminder-action data-priority-source="${item.source}" data-priority-id="${escapeHtml(item.sourceId)}" aria-label="${escapeHtml(ariaLabel)}">${escapeHtml(itemAction)}</button></div>`;
+    };
+    const remaining = entries.slice(1, 6);
+    const more = remaining.length ? `<details class="lc-checkin__priority-reminder-more"><summary aria-label="${escapeHtml(t("today.priorityMoreAria", {n: remaining.length}))}">${t("today.priorityMore", {n: remaining.length})}</summary><div>${remaining.map((item) => row(item)).join("")}</div></details>` : "";
+    return `<section class="lc-checkin__priority-reminder is-${entry.status}" data-priority-reminder data-priority-count="${entries.length}" role="status" aria-live="polite" aria-label="${escapeHtml(t("today.priorityTitle"))}">${row(entry, true)}${more}</section>`;
 }
 
 export function renderSaveStatusView(state: SaveState): string {
