@@ -127,6 +127,7 @@ assert.match(index, /isWorkflowNewer/);
 assert.match(index, /agent\.confirmedNotice/);
 assert.match(index, /agent\.cancelledNotice/);
 assert.match(index, /agent\.undoAccepted/);
+assert.match(index, /title: current\.envelope\.title/);
 console.log('Agent suggestion safety structure checks passed.');
 require('./review-summary-refresh.test.cjs');
 require('./suggestion-apply.test.cjs');

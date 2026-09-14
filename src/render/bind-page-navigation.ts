@@ -299,6 +299,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             button.removeAttribute("aria-busy");
             button.removeAttribute("disabled");
         }
+        root.querySelector<HTMLElement>("[data-suggestion-workflow] [data-suggestion-undo]:not([disabled])")?.focus();
     };
     root.querySelectorAll<HTMLElement>("[data-suggestion-decision]").forEach((button) => {
         button.addEventListener("click", () => {

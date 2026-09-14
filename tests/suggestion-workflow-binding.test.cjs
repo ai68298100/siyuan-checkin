@@ -16,6 +16,8 @@ assert.match(source, /WeakSet<HTMLElement>/);
 assert.match(source, /suggestionBusyButtons\.has\(button\)/);
 assert.match(source, /suggestionBusyButtons\.delete\(button\)/);
 assert.match(source, /catch\(\(\) => undefined\)/);
+assert.match(source, /data-suggestion-undo\]:not\(\[disabled\]\)/);
+assert.match(source, /\?\.focus\(\)/);
 assert.match(source, /querySelector<HTMLElement>\("\[data-suggestion-undo\]"\)/);
 assert.match(source, /host\.undoSuggestionWorkflow\(\)/);
 

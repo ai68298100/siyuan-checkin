@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-619~T-638 建议操作成功反馈完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-639~T-658 建议操作焦点连续性完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(agent): add suggestion action success feedback（本地里程碑）
+上次提交：feat(agent): preserve suggestion action focus（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -51,6 +51,8 @@
 2026-09-14 建议工作流跨窗口一致性批次（T-599~T-618）：新增工作流更新时间推导和新旧比较，数据变化恢复仅在远端状态更新时覆盖本地，旧或同时间快照不会覆盖未完成操作；过期/损坏远端状态仍按生命周期策略清理，有效本地状态保持不变。扩展运行时和结构测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `8923941`，未 push。
 
 2026-09-14 建议操作成功反馈批次（T-619~T-638）：确认、取消、撤销完成后分别显示明确双语提示，持久化失败、应用冲突和不可撤销等失败分支继续使用原有错误文案。扩展 index 与 i18n 结构守门测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `b6dc498`，未 push。
+
+2026-09-14 建议操作焦点连续性批次（T-639~T-658）：成功提示包含建议标题；确认/取消/撤销后的重渲染会尝试将焦点恢复到更新后的可用撤销按钮，且不会聚焦禁用或已脱离 DOM 的控件。扩展绑定与文案结构测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `2cc11ad`，未 push。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 
