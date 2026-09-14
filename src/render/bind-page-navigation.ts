@@ -24,6 +24,7 @@ export interface BindPageNavigationHost {
     suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
     handleSuggestionDecision(decision: "confirm" | "cancel"): Promise<void> | void;
     undoSuggestionWorkflow(): Promise<void> | void;
+    persistSuggestionWorkflow(): Promise<void> | void;
     summaryRefreshing: boolean;
     analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
@@ -284,6 +285,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.summaryCustomRange = undefined;
             host.summaryText = undefined;
             host.suggestionWorkflow = undefined;
+            void host.persistSuggestionWorkflow();
             host.summaryRefreshing = false;
             host.summaryRequestId += 1;
             host.render();

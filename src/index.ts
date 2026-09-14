@@ -40,7 +40,7 @@ import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
-import {applySuggestion, createSuggestionWorkflow, decideSuggestion, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, serializeSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -57,6 +57,7 @@ const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
+const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
@@ -403,10 +404,14 @@ export default class CheckinPlugin extends Plugin {
                 const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
                 const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
                 this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
+                const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
+                this.suggestionWorkflow = typeof storedSuggestionWorkflow === "string"
+                    ? deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items)
+                    : undefined;
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
                 this.analysisHistory = await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY);
                 this.summaryText = this.analysisHistory[this.analysisHistory.length - 1]?.text;
@@ -449,8 +454,13 @@ export default class CheckinPlugin extends Plugin {
             const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
             const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
             this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
+            const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
             this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
+            if (typeof storedSuggestionWorkflow === "string") {
+                const restoredWorkflow = deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items);
+                if (restoredWorkflow) this.suggestionWorkflow = restoredWorkflow;
+            }
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();
         } catch (error) {
@@ -1535,6 +1545,7 @@ export default class CheckinPlugin extends Plugin {
             if (!normalized) throw new Error("总结适配器返回格式无效");
             this.summaryText = normalized.text;
             this.suggestionWorkflow = normalized.suggestions[0] ? createSuggestionWorkflow(createSuggestionEnvelope(normalized.suggestions[0])) : undefined;
+            void this.persistSuggestionWorkflow().catch(() => undefined);
             this.summaryRefreshing = false;
             const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
             void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: normalized.text}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
@@ -1564,12 +1575,14 @@ export default class CheckinPlugin extends Plugin {
         }
         if (decision === "cancel") {
             this.suggestionWorkflow = outcome.state;
+            await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
             return;
         }
         const applied = applySuggestion(outcome.state, this.store);
         if (!applied.result.applied) {
             this.suggestionWorkflow = applied.state;
+            await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
             showMessage(t("agent.applyRejected"));
             return;
@@ -1579,6 +1592,7 @@ export default class CheckinPlugin extends Plugin {
         try {
             await this.persist();
             this.suggestionWorkflow = applied.state;
+            await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
         } catch (error) {
             this.store = previousStore;
@@ -1593,6 +1607,7 @@ export default class CheckinPlugin extends Plugin {
         const undone = undoSuggestion(current, this.store);
         if (!undone.result.reverted) {
             this.suggestionWorkflow = undone.state;
+            await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
             showMessage(t("agent.undoRejected"));
             return;
@@ -1602,6 +1617,7 @@ export default class CheckinPlugin extends Plugin {
         try {
             await this.persist();
             this.suggestionWorkflow = undone.state;
+            await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
         } catch (error) {
             this.store = previousStore;
@@ -1851,6 +1867,17 @@ export default class CheckinPlugin extends Plugin {
             if (this.saveState === "saving") { this.saveState = "idle"; this.lastPersistedStore = this.cloneStore(snapshot); }
             this.renderBackgroundUpdate();
         }, () => undefined);
+        return write;
+    }
+
+    /** 建议工作流使用独立版本化存储，不混入主打卡 store。 */
+    private persistSuggestionWorkflow(): Promise<void> {
+        if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
+        const payload = this.suggestionWorkflow ? serializeSuggestionWorkflow(this.suggestionWorkflow) : "";
+        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(SUGGESTION_WORKFLOW_STORAGE_NAME, payload));
+        this.saveQueue = write.catch((error) => {
+            if (!this.disposed && !this.disposing) showMessage(t("agent.workflowPersistFail", {error: String(error)}));
+        });
         return write;
     }
 

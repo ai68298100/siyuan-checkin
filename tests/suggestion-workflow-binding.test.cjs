@@ -22,5 +22,9 @@ assert.match(index, /private async undoSuggestionWorkflow/);
 assert.match(index, /createSuggestionDecisionToken\(/);
 assert.match(index, /const previousStore = this\.store/);
 assert.match(index, /this\.store = previousStore/);
+assert.match(index, /SUGGESTION_WORKFLOW_STORAGE_NAME/);
+assert.match(index, /private persistSuggestionWorkflow/);
+assert.match(index, /deserializeSuggestionWorkflow\(storedSuggestionWorkflow/);
+assert.match(index, /serializeSuggestionWorkflow\(this\.suggestionWorkflow\)/);
 
 console.log("Suggestion workflow binding structure checks passed.");

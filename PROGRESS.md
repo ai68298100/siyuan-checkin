@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-459~T-478 建议工作流确认/取消/撤销接线完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-479~T-498 建议工作流独立恢复与持久化完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(agent): wire suggestion workflow decisions（本地里程碑）
+上次提交：feat(agent): persist suggestion workflow state（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -35,6 +35,8 @@
 2026-09-14 建议工作流面板批次（T-419~T-438）：新增 `src/render/suggestion-workflow.ts`，展示建议标题、状态、原因、审计统计和字段变更；pending 状态提供确认/取消按钮，其他状态提供按资格禁用的撤销按钮，所有操作补齐 aria-label；新增响应式面板样式与结构守门测试，并接入 agent-suggestions 测试链。验证：类型检查与定向测试通过，随后执行完整 `pnpm run test:quality`。
 
 2026-09-14 建议工作流确认闭环批次（T-459~T-478）：建议面板确认/取消/撤销按钮全部绑定到宿主 workflow；每次动作生成短时决策令牌并消费，确认后按基线安全应用建议，撤销仅回滚仍匹配的字段；确认与撤销持久化失败恢复旧 store，取消不修改主 store，无变更与不可撤销场景显示双语提示。新增绑定与宿主接线结构守门测试，更新 agent-suggestions 主测试链。已通过 `pnpm run check`、定向建议测试与完整 `pnpm run test:quality`（QUALITY_EXIT=0）；构建 CSS 302043 bytes，仍在 318000 bytes 预算内。
+
+2026-09-14 建议工作流恢复与持久化批次（T-479~T-498）：工作流状态使用独立存储键和版本化序列化格式，启动及数据变化时按当前条目安全恢复，不覆盖主 store；确认、取消、应用拒绝、撤销和新建议生成均写回工作流快照，范围切换与无建议场景清理旧快照；写入串入保存队列，失败仅提示且不阻断主 store。新增恢复/持久化结构断言。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302043 bytes；已提交本地里程碑 `c719eeb`，未 push。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 
