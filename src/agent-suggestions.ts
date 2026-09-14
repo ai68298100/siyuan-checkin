@@ -124,6 +124,40 @@ export const AGENT_SUGGESTION_MAX_TITLE_LENGTH = 200;
 export const AGENT_SUGGESTION_MAX_REASON_LENGTH = 1_000;
 export const AGENT_SUGGESTION_AUDIT_VERSION = 1;
 export const AGENT_SUGGESTION_AUDIT_LIMIT = 50;
+export const AGENT_SUGGESTION_DECISION_VERSION = "s1";
+export const AGENT_SUGGESTION_DECISION_TTL_MS = 10 * 60 * 1000;
+export const AGENT_SUGGESTION_MAX_NONCE_LENGTH = 64;
+
+export type AgentSuggestionDecision = "confirm" | "cancel";
+
+export interface ParsedSuggestionDecision {
+    version: string;
+    suggestionId: string;
+    decision: AgentSuggestionDecision;
+    at: string;
+    nonce: string;
+}
+
+export function createSuggestionDecisionToken(envelope: AgentSuggestionEnvelope, decision: AgentSuggestionDecision, now = new Date().toISOString(), nonce = "local"): string {
+    if (!envelope.id || !/^(confirm|cancel)$/.test(decision) || Number.isNaN(Date.parse(now))) return "";
+    const safeNonce = String(nonce).slice(0, AGENT_SUGGESTION_MAX_NONCE_LENGTH);
+    return [AGENT_SUGGESTION_DECISION_VERSION, envelope.id, decision, now, safeNonce].join("|");
+}
+
+export function parseSuggestionDecisionToken(token: string): ParsedSuggestionDecision | undefined {
+    const parts = String(token || "").split("|");
+    if (parts.length !== 5 || parts[0] !== AGENT_SUGGESTION_DECISION_VERSION) return undefined;
+    const [version, suggestionId, decision, at, nonce] = parts;
+    if (!suggestionId || suggestionId.length > AGENT_SUGGESTION_MAX_ID_LENGTH || !/^(confirm|cancel)$/.test(decision) || Number.isNaN(Date.parse(at)) || !nonce || nonce.length > AGENT_SUGGESTION_MAX_NONCE_LENGTH) return undefined;
+    return {version, suggestionId, decision: decision as AgentSuggestionDecision, at, nonce};
+}
+
+export function isSuggestionDecisionValid(envelope: AgentSuggestionEnvelope, token: string, now = new Date()): boolean {
+    const parsed = parseSuggestionDecisionToken(token);
+    if (!parsed || parsed.suggestionId !== envelope.id || envelope.status !== "pending") return false;
+    const age = now.getTime() - Date.parse(parsed.at);
+    return age >= 0 && age <= AGENT_SUGGESTION_DECISION_TTL_MS;
+}
 
 export type AgentSuggestionAuditAction = "created" | "confirmed" | "cancelled" | "applied" | "rejected";
 export interface AgentSuggestionAudit {
@@ -254,6 +288,13 @@ export interface SuggestionApplyResult {
     conflicts: string[];
 }
 
+export interface SuggestionRevertResult {
+    store: import("./types").CheckinStore;
+    reverted: number;
+    skipped: number;
+    conflicts: string[];
+}
+
 /** Applies only an already-confirmed suggestion and skips stale/conflicting fields. */
 export function applyConfirmedSuggestion(store: import("./types").CheckinStore, envelope: AgentSuggestionEnvelope): SuggestionApplyResult {
     if (envelope.status !== "confirmed") return {store, applied: 0, skipped: envelope.changes.length, conflicts: []};
@@ -281,6 +322,30 @@ export function applyConfirmedSuggestion(store: import("./types").CheckinStore, 
         return next;
     });
     return {store: applied ? {...store, items} : store, applied, skipped, conflicts};
+}
+
+/** Reverts only fields that still contain the applied value; later user edits win. */
+export function revertSuggestionApplication(store: import("./types").CheckinStore, envelope: AgentSuggestionEnvelope): SuggestionRevertResult {
+    if (envelope.status !== "confirmed") return {store, reverted: 0, skipped: envelope.changes.length, conflicts: []};
+    let reverted = 0;
+    let skipped = 0;
+    const conflicts: string[] = [];
+    const items = store.items.map((item) => {
+        const changes = envelope.changes.filter((change) => change.itemId === item.id);
+        if (!changes.length) return item;
+        let next = item;
+        for (const change of changes) {
+            if (!ALLOWED_CHANGE_FIELDS.has(change.field) || !Object.is(next[change.field], change.after)) {
+                skipped += 1;
+                conflicts.push(`${change.itemId}:${String(change.field)}`);
+                continue;
+            }
+            next = {...next, [change.field]: change.before} as typeof item;
+            reverted += 1;
+        }
+        return next;
+    });
+    return {store: reverted ? {...store, items} : store, reverted, skipped, conflicts};
 }
 
 function escapeSuggestionHtml(value: string): string {
