@@ -518,3 +518,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 将 Today 卡片视觉层级、完成态记录按钮、进度条、组织筛选、移动底栏及历史日历圆角等 34 项窄屏职责迁移至 `ui/components.scss`，统一使用插件语义 token，避免宿主 `--b3-*` 变量渗漏。
 - 新增第四十一次窄屏迁移守门，锁定 Today 卡片视觉增强只存在组件层，防止样式回流 `index.scss`。
 - 验证：`pnpm run check`、`ui-theme`、`width-walkthrough`、`release-assets`、`git diff --check` 全部通过；组件层无 `--b3-*` 引用。CSS 304003 bytes。
+
+### 第三十二批（31 项）
+
+- 迁移 380px 超窄容器下的任务卡片、图标/模板网格、组织字段、洞察统计与历史事件布局共 31 项职责至组件层。
+- 新增超窄布局回流守门，确保 `index.scss` 不再承载该容器规则；组件层继续保持插件 Token 隔离。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `7a5a8d9`，未推送。
