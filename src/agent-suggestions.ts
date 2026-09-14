@@ -122,6 +122,63 @@ export type AgentSuggestionEnvelope = AgentSuggestion & {
 export const AGENT_SUGGESTION_MAX_ID_LENGTH = 120;
 export const AGENT_SUGGESTION_MAX_TITLE_LENGTH = 200;
 export const AGENT_SUGGESTION_MAX_REASON_LENGTH = 1_000;
+export const AGENT_SUGGESTION_AUDIT_VERSION = 1;
+export const AGENT_SUGGESTION_AUDIT_LIMIT = 50;
+
+export type AgentSuggestionAuditAction = "created" | "confirmed" | "cancelled" | "applied" | "rejected";
+export interface AgentSuggestionAudit {
+    suggestionId: string;
+    action: AgentSuggestionAuditAction;
+    at: string;
+    applied?: number;
+    skipped?: number;
+    conflicts?: string[];
+    reason?: string;
+}
+
+export function normalizeSuggestionAudits(value: unknown, limit = AGENT_SUGGESTION_AUDIT_LIMIT): AgentSuggestionAudit[] {
+    if (!Array.isArray(value)) return [];
+    const safeLimit = Math.max(1, Math.min(AGENT_SUGGESTION_AUDIT_LIMIT, Math.floor(limit)));
+    return value.filter((entry): entry is AgentSuggestionAudit => {
+        if (!entry || typeof entry !== "object") return false;
+        const candidate = entry as Partial<AgentSuggestionAudit>;
+        if (typeof candidate.suggestionId !== "string" || !candidate.suggestionId.trim() || candidate.suggestionId.length > AGENT_SUGGESTION_MAX_ID_LENGTH) return false;
+        if (!/^(created|confirmed|cancelled|applied|rejected)$/.test(String(candidate.action))) return false;
+        if (typeof candidate.at !== "string" || Number.isNaN(Date.parse(candidate.at))) return false;
+        if (candidate.applied !== undefined && (!Number.isInteger(candidate.applied) || candidate.applied < 0)) return false;
+        if (candidate.skipped !== undefined && (!Number.isInteger(candidate.skipped) || candidate.skipped < 0)) return false;
+        if (candidate.conflicts !== undefined && (!Array.isArray(candidate.conflicts) || candidate.conflicts.some((item) => typeof item !== "string" || item.length > 180))) return false;
+        if (candidate.reason !== undefined && (typeof candidate.reason !== "string" || candidate.reason.length > 240)) return false;
+        return true;
+    }).map((entry) => ({
+        suggestionId: entry.suggestionId.trim(), action: entry.action, at: entry.at,
+        ...(entry.applied !== undefined ? {applied: entry.applied} : {}),
+        ...(entry.skipped !== undefined ? {skipped: entry.skipped} : {}),
+        ...(entry.conflicts?.length ? {conflicts: entry.conflicts.slice(0, 20)} : {}),
+        ...(entry.reason ? {reason: entry.reason.slice(0, 240)} : {}),
+    })).slice(-safeLimit);
+}
+
+export function serializeSuggestionAudits(audits: readonly AgentSuggestionAudit[]): string {
+    return JSON.stringify({version: AGENT_SUGGESTION_AUDIT_VERSION, audits: normalizeSuggestionAudits(audits)});
+}
+
+export function deserializeSuggestionAudits(value: string): AgentSuggestionAudit[] {
+    try {
+        const parsed = JSON.parse(value);
+        return parsed?.version === AGENT_SUGGESTION_AUDIT_VERSION ? normalizeSuggestionAudits(parsed.audits) : [];
+    } catch { return []; }
+}
+
+export function appendSuggestionAudit(audits: readonly AgentSuggestionAudit[], entry: AgentSuggestionAudit): AgentSuggestionAudit[] {
+    return normalizeSuggestionAudits([...audits, entry]);
+}
+
+export function summarizeSuggestionAudits(audits: readonly AgentSuggestionAudit[]): Record<AgentSuggestionAuditAction, number> {
+    const summary: Record<AgentSuggestionAuditAction, number> = {created: 0, confirmed: 0, cancelled: 0, applied: 0, rejected: 0};
+    for (const entry of normalizeSuggestionAudits(audits)) summary[entry.action] += 1;
+    return summary;
+}
 
 export function normalizeSuggestionEnvelope(value: unknown, items: readonly CheckinItem[]): AgentSuggestionEnvelope | undefined {
     if (!value || typeof value !== "object") return undefined;
