@@ -1819,6 +1819,40 @@
     .lc-checkin, .lc-template-manager { --lc-checkin-border: var(--lc-checkin-text); }
     .lc-checkin :where(button, input, select, textarea):focus-visible { outline: 3px solid var(--lc-checkin-accent); outline-offset: 2px; box-shadow: none; }
 }
+/* Nineteenth interaction pass: compact landscape and coarse-pointer history affordances. */
+@media (max-height: 520px) and (orientation: landscape) {
+    .lc-checkin-dialog { height: calc(100vh - 12px) !important; max-height: calc(100vh - 12px); }
+    .lc-checkin-dialog-host .lc-checkin { padding-top: var(--lc-checkin-space-3); padding-bottom: var(--lc-checkin-space-3); }
+    .lc-checkin__mobile-nav { position: sticky; }
+    .lc-checkin--today .lc-checkin__group { margin-top: 8px; }
+    .lc-checkin--today .lc-checkin__item { padding-block: 6px; }
+    .lc-checkin--history .lc-checkin__calendar { max-height: 46vh; overflow: auto; }
+    .lc-checkin--editor .lc-checkin__form-scroll { max-height: 58vh; }
+}
+@media (hover: none), (pointer: coarse) {
+    .lc-checkin--history .lc-checkin__history-search input { min-height: 40px; height: 40px; }
+    .lc-checkin--history .lc-checkin__history-filter-row select { min-height: 40px; }
+    .lc-checkin--history .lc-checkin__history-result .lc-checkin__text-button { min-height: 36px; padding-inline: 7px; }
+    .lc-checkin--history .lc-checkin__history-event .lc-checkin__text-button { min-height: 36px; padding-inline: 7px; }
+    .lc-checkin__small-button { opacity: 1; width: 34px; min-height: 34px; }
+    .lc-checkin__item-icon { min-width: 40px; min-height: 40px; }
+    .lc-checkin__history-search { gap: 6px; }
+    .lc-checkin__history-filter-row { gap: 6px; }
+    .lc-checkin__history-result { min-height: 34px; }
+    .lc-checkin__history-event-actions { gap: 4px; }
+    .lc-checkin__history-event-actions button { min-height: 36px; }
+    .lc-checkin__calendar-day button { min-width: 34px; min-height: 34px; }
+    .lc-checkin__item-action button { min-height: 40px; }
+    .lc-checkin__item-topline button { min-width: 36px; }
+    .lc-checkin__organize select { min-height: 40px; }
+    .lc-checkin__today-search input { min-height: 40px; }
+    .lc-checkin__group-toggle { min-height: 36px; }
+    .lc-checkin__text-button { touch-action: manipulation; }
+    .lc-checkin__small-button { touch-action: manipulation; }
+    .lc-checkin__record-button { touch-action: manipulation; }
+    .lc-checkin__quick-button { touch-action: manipulation; }
+    .lc-checkin__mobile-nav button { touch-action: manipulation; }
+}
 @media (forced-colors: active) {
     .lc-checkin, .lc-template-manager { --lc-checkin-accent: Highlight; --lc-checkin-accent-soft: transparent; --lc-checkin-border: CanvasText; --lc-checkin-bg: Canvas; --lc-checkin-surface: Canvas; --lc-checkin-surface-raised: Canvas; --lc-checkin-text: CanvasText; --lc-checkin-muted: CanvasText; }
     .lc-checkin__progress > i, .lc-checkin__item-progress > i, .lc-checkin__preview-progress > i { forced-color-adjust: none; background: Highlight; }

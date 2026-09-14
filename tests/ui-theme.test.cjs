@@ -95,6 +95,8 @@ assert.match(liveStyles, /Seventeenth narrow-surface pass: viewport fallback and
 assert.ok(!styles.includes("@media (prefers-contrast: more)"), "compatibility media rules must not return to legacy index.scss");
 assert.match(liveStyles, /Eighteenth compatibility pass: contrast, forced colors, motion and touch input[\s\S]*\.lc-checkin__quick-button/,
     "compatibility media rules belong to the component layer");
+assert.match(liveStyles, /Nineteenth interaction pass: compact landscape and coarse-pointer history affordances[\s\S]*\.lc-checkin__mobile-nav button \{ touch-action: manipulation; \}/,
+    "compact landscape and coarse-pointer affordances belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
