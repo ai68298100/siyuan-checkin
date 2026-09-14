@@ -7,6 +7,8 @@ const ts = require("typescript");
 const source = fs.readFileSync("src/api-contract.ts", "utf8");
 const apiSource = fs.readFileSync("src/api.ts", "utf8");
 assert.match(apiSource, /getSuggestionWorkflow/);
+assert.match(apiSource, /getSuggestionWorkflowSummary/);
+assert.match(apiSource, /updatedAt: workflowUpdatedAt\(state\)/);
 assert.match(apiSource, /consumedTokens: \[\.\.\.state\.consumedTokens\]/);
 assert.match(apiSource, /conflicts: \[\.\.\.audit\.conflicts\]/);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-contract-"));

@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-679~T-698 建议工作流 API 只读投影完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-699~T-718 建议工作流摘要 API 完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：feat(api): expose read-only suggestion workflow snapshot（本地里程碑）
+上次提交：feat(api): expose suggestion workflow summary（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -57,6 +57,8 @@
 2026-09-14 建议审计明细面板批次（T-659~T-678）：工作流面板新增可展开审计明细，按最新优先展示最近 10 条动作、时间与拒绝原因；撤销动作使用独立文案，所有字段统一转义，空审计不渲染明细。补齐双语文案、窄屏样式与结构测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `961a691`，未 push。
 
 2026-09-14 建议工作流 API 只读投影批次（T-679~T-698）：CheckinApi 新增 `getSuggestionWorkflow`，仅返回建议信封、变更、消费令牌和审计的防御性副本；空状态返回 undefined，不暴露持久化或决策写入口，不共享内部 store 引用。新增 API 结构守门测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302873 bytes；已提交本地里程碑 `847f12d`，未 push。
+
+2026-09-14 建议工作流摘要 API 批次（T-699~T-718）：CheckinApi 新增 `getSuggestionWorkflowSummary`，提供状态、可应用/撤销标志、消费令牌与审计计数及更新时间；空状态返回 undefined，摘要为新对象且保持主 API 版本兼容。更新生态文档和结构测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302873 bytes；已提交本地里程碑 `d045c3b`，未 push。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 

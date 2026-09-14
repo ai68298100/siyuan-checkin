@@ -42,6 +42,10 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 思源支持 `addAgentCapability` 时，插件可以注册只读总结、项目列表、单项洞察和明确确认后的记录能力。不支持该 API 时应显示离线状态，不要求用户重复配置模型 API。
 
+### 建议工作流只读查询
+
+`getSuggestionWorkflow()` 返回当前建议的防御性快照，包含信封、变更、已消费令牌和审计轨迹；`getSuggestionWorkflowSummary()` 返回状态、可用动作、计数和最近更新时间。两个接口仅用于展示和诊断，不提供确认、撤销、持久化或令牌创建能力。
+
 ## 安全边界
 
 - 外部来源必须可追溯，不能伪装成 `manual`。

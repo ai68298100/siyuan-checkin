@@ -121,6 +121,7 @@ interface CheckinApi {
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
     summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
     getSuggestionWorkflow: () => SuggestionWorkflowState | undefined;
+    getSuggestionWorkflowSummary: () => {status: string; canApply: boolean; canUndo: boolean; consumedTokens: number; audits: number; updatedAt: string} | undefined;
     subscribe: (listener: (event: CheckinIntegrationEvent) => void) => () => void;
 }
 
