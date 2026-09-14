@@ -8,6 +8,8 @@
 上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
+2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。
+
 2026-09-15 T-105 legacy 样式退役第二十九批（52 项）：迁移第十三组响应式规则，包括横屏导航/底栏/Today/历史/洞察密度、移动弹窗圆角与滚动条、页面安全区底部留白、编辑器 padding 和底栏边框，以及 360px 超窄布局。颜色全部映射为插件语义 token，并新增第十三段窄屏归属守门。`index.scss` 减少 52 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动但受旧归属断言中断，断言已修正，下一轮补跑全链和双主题视觉。
 
 2026-09-15 T-105 legacy 样式退役第二十八批（52 项）：迁移第十二组窄屏规则，包括长文本换行、深色移动导航/完成态对比、历史筛选结果、洞察空态、Today 顶线布局与操作区、移动弹窗模糊降级和卡片 contain；全部宿主颜色映射为插件语义 token。同步修正移动弹窗测试读取组件层样式。legacy SCSS 减少 52 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链曾因测试变量归属断言中断，已修正后专项复核通过，下一批补跑完整链及双主题视觉。

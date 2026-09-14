@@ -40,87 +40,8 @@
 // The dock can be narrower than the browser viewport. Keep secondary pages
 // usable when the surface itself is resized below the mobile breakpoint.
 
-@container lc5 (max-width: 600px) {
-}
-
-@container lc5 (max-width: 600px) {
-}
-
 /* 360px 以下的内容密度按实际 surface 宽度决定；标题的 viewport 上限保留为
    宿主级回退，避免容器查询无法匹配 .lc-checkin 自身时改变旧版行为。 */
-@container lc5 (max-width: 600px) { }
-
-@keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes lc-checkin-mobile-nav-enter { from { opacity: .7; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-.lc-checkin__history-events {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    margin-top: 4px;
-}
-
-.lc-checkin__history-event {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 5px 10px;
-    border-radius: 6px;
-    background: var(--b3-theme-surface);
-
-    > div {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        gap: 2px;
-
-        strong,
-        span {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        strong {
-            color: var(--b3-theme-on-background);
-            font-size: 12px;
-            font-weight: 550;
-        }
-
-        span {
-            color: var(--b3-theme-on-surface-light);
-            font-size: 10px;
-        }
-
-        .lc-checkin__history-event-note {
-            overflow: hidden;
-            color: var(--b3-theme-on-surface-light);
-            font-size: 10px;
-            line-height: 1.35;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-
-            a {
-                color: var(--lc-checkin-accent-text);
-                text-decoration: none;
-            }
-        }
-    }
-}
-
-.lc-checkin__history-event-value {
-    color: var(--b3-theme-on-background);
-    font-size: 12px;
-    white-space: nowrap;
-}
-
-.lc-checkin__history-empty {
-    padding: 10px;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
-}
 
 .lc-checkin__range-tabs {
     display: flex;

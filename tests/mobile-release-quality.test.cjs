@@ -50,9 +50,9 @@ assert.match(plugin, /if \(this\.hostThemeSignatures\.get\(root\) === signature\
     "unchanged appearance and palette should skip repeated computed-style work");
 assert.match(plugin, /class=\"lc-checkin__mobile-topbar\" data-appearance=\"\$\{this\.resolvedAppearance\(\)\}\"/,
     "mobile top bar must expose its resolved appearance for deterministic styling");
-assert.match(styles, /@container lc5 \(max-width: 380px\)/,
+assert.match(components, /@container lc5 \(max-width: 380px\)/,
     "sub-380px content layout should respond to the surface container width");
-assert.match(styles, /@container lc5 \(max-width: 360px\)/,
+assert.match(components, /@container lc5 \(max-width: 360px\)/,
     "sub-360px content density should respond to the surface container width");
 assert.match(components, /@container lc-dock \(max-width: 719px\)/,
     "dock must have a dedicated narrow-container layout tier");
