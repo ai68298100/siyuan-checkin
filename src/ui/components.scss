@@ -1621,6 +1621,45 @@
     }
 }
 
+/* Thirteenth narrow-surface pass: landscape and ultra-narrow density tiers. */
+@media (max-width: 600px) and (orientation: landscape) {
+    .lc-checkin__mobile-nav { min-height: 50px; }
+    .lc-checkin__mobile-nav button { min-height: 42px; }
+    .lc-checkin__mobile-nav button span { height: 16px; font-size: 15px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today [data-action="add"] { bottom: calc(60px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today .lc-checkin__group { margin-top: 12px; }
+    .lc-checkin--today .lc-checkin__item { padding: 8px; }
+    .lc-checkin--history .lc-checkin__calendar-day { min-height: 34px; }
+    .lc-checkin--insights .lc-checkin__insight-stats div { min-height: 54px; }
+}
+@container lc5 (max-width: 600px) {
+    .lc-checkin-dialog-host--mobile .lc-checkin { border-radius: 18px 18px 0 0; scrollbar-color: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-border-strong)) transparent; }
+    .lc-checkin--history,
+    .lc-checkin--settings,
+    .lc-checkin--today { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+    .lc-checkin--editor { padding-bottom: 0; }
+    .lc-checkin__mobile-nav { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 82%, transparent); }
+}
+@media (max-width: 360px) {
+    .lc-checkin { padding-right: 9px; padding-left: 9px; }
+    .lc-checkin__title { max-width: calc(100vw - 108px); font-size: 22px; }
+}
+@container lc5 (max-width: 360px) {
+    .lc-checkin__header-actions { max-width: 46%; }
+    .lc-checkin__organize { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin__organize .lc-checkin__today-search { grid-column: auto; }
+    .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr); padding: 8px; }
+    .lc-checkin__item-icon { width: 34px; height: 34px; flex-basis: 34px; font-size: 16px; }
+    .lc-checkin__insight-stats,
+    .lc-checkin__summary-stats { gap: 4px; }
+    .lc-checkin__insight-stats div,
+    .lc-checkin__summary-stats div { min-height: 58px; }
+    .lc-checkin__insight-stats strong,
+    .lc-checkin__summary-stats strong { font-size: 16px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+}
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
