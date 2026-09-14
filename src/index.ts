@@ -40,7 +40,7 @@ import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
-import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, serializeSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -409,9 +409,10 @@ export default class CheckinPlugin extends Plugin {
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
-                this.suggestionWorkflow = typeof storedSuggestionWorkflow === "string"
+                const restoredWorkflow = typeof storedSuggestionWorkflow === "string"
                     ? deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items)
                     : undefined;
+                this.suggestionWorkflow = restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow) ? restoredWorkflow : undefined;
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
                 this.analysisHistory = await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY);
                 this.summaryText = this.analysisHistory[this.analysisHistory.length - 1]?.text;
@@ -459,7 +460,8 @@ export default class CheckinPlugin extends Plugin {
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
             if (typeof storedSuggestionWorkflow === "string") {
                 const restoredWorkflow = deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items);
-                if (restoredWorkflow) this.suggestionWorkflow = restoredWorkflow;
+                this.suggestionWorkflow = restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow) ? restoredWorkflow : undefined;
+                if (!this.suggestionWorkflow) void this.persistSuggestionWorkflow().catch(() => undefined);
             }
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();

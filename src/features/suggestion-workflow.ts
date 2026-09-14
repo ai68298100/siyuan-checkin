@@ -26,6 +26,7 @@ export interface SuggestionWorkflowState {
 
 export const SUGGESTION_WORKFLOW_VERSION = 1;
 export const SUGGESTION_WORKFLOW_TOKEN_LIMIT = 100;
+export const SUGGESTION_WORKFLOW_PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface SuggestionWorkflowSummary {
     status: AgentSuggestionEnvelope["status"];
@@ -64,6 +65,15 @@ export function deserializeSuggestionWorkflow(value: string, items: readonly imp
         const parsed = JSON.parse(value);
         return parsed?.version === SUGGESTION_WORKFLOW_VERSION ? normalizeSuggestionWorkflow(parsed, items) : undefined;
     } catch { return undefined; }
+}
+
+/** Pending suggestions are short-lived UI work; confirmed history remains available for undo. */
+export function shouldRestoreSuggestionWorkflow(state: SuggestionWorkflowState, now = new Date()): boolean {
+    if (state.envelope.status !== "pending") return true;
+    const created = Date.parse(state.envelope.createdAt);
+    if (!Number.isFinite(created)) return false;
+    const age = now.getTime() - created;
+    return age >= 0 && age <= SUGGESTION_WORKFLOW_PENDING_MAX_AGE_MS;
 }
 
 export function decideSuggestion(state: SuggestionWorkflowState, token: string, decision: AgentSuggestionDecision, now = new Date()): SuggestionDecisionOutcome {
