@@ -1853,6 +1853,41 @@
     .lc-checkin__quick-button { touch-action: manipulation; }
     .lc-checkin__mobile-nav button { touch-action: manipulation; }
 }
+/* Twentieth interaction pass: keyboard and print-friendly affordances. */
+@media print {
+ .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__floating-action,.lc-checkin__text-button{display:none!important}
+ .lc-checkin,.lc-checkin__layout,.lc-checkin__content{padding:0!important;box-shadow:none!important}
+ .lc-checkin__item,.lc-checkin__section,.lc-checkin__history-event,.lc-checkin__insight-section{break-inside:avoid}
+ .lc-checkin__item-progress,.lc-checkin__progress{print-color-adjust:exact}
+}
+.lc-checkin :where(button,input,select,textarea):focus-visible{outline-offset:2px}
+.lc-checkin__item:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
+.lc-checkin__calendar-day:focus-visible{z-index:1;outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__mobile-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__record-button:focus-visible{box-shadow:0 0 0 3px var(--lc-checkin-accent-soft)}
+.lc-checkin__quick-button:focus-visible{box-shadow:0 0 0 3px var(--lc-checkin-accent-soft)}
+.lc-checkin__text-button:focus-visible{box-shadow:0 0 0 2px var(--lc-checkin-accent-soft)}
+.lc-checkin__icon-grid button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-template-card:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
+.lc-template-card button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-template-form input:focus-visible,.lc-template-form textarea:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__history-search input:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__today-search input:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__organize select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__insight-picker select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__group-toggle:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__header-actions button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__dialog-close:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__settings-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__rail button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__floating-action:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__calendar-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__history-filter-row select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__history-result button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
+.lc-checkin__coaching-item:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
+.lc-checkin__occasion-card:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
+.lc-checkin__summary-stats div:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
+.lc-checkin__insight-stats div:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
 @media (forced-colors: active) {
     .lc-checkin, .lc-template-manager { --lc-checkin-accent: Highlight; --lc-checkin-accent-soft: transparent; --lc-checkin-border: CanvasText; --lc-checkin-bg: Canvas; --lc-checkin-surface: Canvas; --lc-checkin-surface-raised: Canvas; --lc-checkin-text: CanvasText; --lc-checkin-muted: CanvasText; }
     .lc-checkin__progress > i, .lc-checkin__item-progress > i, .lc-checkin__preview-progress > i { forced-color-adjust: none; background: Highlight; }
