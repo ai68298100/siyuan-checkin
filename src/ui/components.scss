@@ -1133,6 +1133,83 @@
     .lc-checkin--today .lc-checkin__empty-title { color: var(--lc-checkin-text); }
 }
 
+/* Fourth narrow-surface pass: dialog polish, compact records and motion. */
+@container lc5 (max-width: 600px) {
+    .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+    .lc-checkin-dialog-host--mobile .lc-checkin { box-shadow: 0 -4px 24px color-mix(in srgb, var(--lc-checkin-text) 12%, transparent); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: 0 1px 0 color-mix(in srgb, var(--lc-checkin-border-strong) 55%, transparent); }
+    [data-reduced-motion="true"] .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .lc-checkin--today .lc-checkin__item-body { padding-bottom: 1px; }
+    .lc-checkin--today .lc-checkin__item-progress { margin-right: 2px; margin-left: 0; }
+    .lc-checkin--today .lc-checkin__item-action { border-top: 1px solid color-mix(in srgb, var(--lc-checkin-border-strong) 48%, transparent); padding-top: 5px; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { box-shadow: none; }
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { color: var(--lc-checkin-muted); }
+    .lc-checkin--today .lc-checkin__organize { margin-top: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .lc-checkin--history .lc-checkin__month-nav { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+    .lc-checkin--history .lc-checkin__month-nav strong { text-align: center; }
+    .lc-checkin--history .lc-checkin__month-nav button { border-radius: 50%; }
+    .lc-checkin--history .lc-checkin__history-date span { padding: 2px 6px; border-radius: 99px; background: var(--lc-checkin-muted-surface); font-size: 9px; }
+    .lc-checkin--history .lc-checkin__history-selected { scroll-margin-top: 76px; }
+    .lc-checkin__insight-stats div,
+    .lc-checkin__summary-stats div { overflow: hidden; }
+    .lc-checkin__insight-stats strong,
+    .lc-checkin__summary-stats strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__insight-grid { width: 100%; min-width: 0; }
+    .lc-checkin--settings .lc-checkin__settings-card + .lc-checkin__settings-card { margin-top: 12px; }
+    .lc-checkin--settings .lc-checkin__settings-card h2 { scroll-margin-top: 72px; }
+    .lc-checkin--today [data-action="add"] { border: 2px solid var(--lc-checkin-bg); box-shadow: 0 5px 14px color-mix(in srgb, var(--lc-checkin-accent) 32%, transparent); }
+    .lc-checkin--today [data-action="add"]:active { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-accent) 26%, transparent); }
+    .lc-checkin--editor [data-action="add"] { display: none; }
+    .lc-checkin--today .lc-checkin__header-actions { gap: 4px; }
+    .lc-checkin--today .lc-checkin__list,
+    .lc-checkin--history .lc-checkin__history-selected,
+    .lc-checkin--settings .lc-checkin__settings-card:last-child { margin-bottom: 10px; }
+    .lc-checkin__occasion-manager-list { padding-bottom: 4px; }
+    .lc-checkin__organize,
+    .lc-checkin__history-tools { border-color: color-mix(in srgb, var(--lc-checkin-border-strong) 70%, transparent); }
+    .lc-checkin__item + .lc-checkin__item { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 46%, transparent); }
+    .lc-checkin__settings-card + .lc-checkin__settings-card { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 54%, transparent); }
+    .lc-checkin__history-event + .lc-checkin__history-event { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 46%, transparent); }
+    .lc-checkin--today .lc-checkin__item,
+    .lc-checkin--today .lc-checkin__item-action button,
+    .lc-checkin__mobile-nav button { transition: transform 120ms ease, background-color 160ms ease, border-color 160ms ease, opacity 160ms ease; }
+    .lc-checkin--today .lc-checkin__item.is-complete { animation: lc-checkin-complete-pulse 220ms ease-out; }
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item { animation: none; }
+    .lc-checkin button,
+    .lc-checkin select,
+    .lc-checkin input,
+    .lc-checkin textarea { max-width: 100%; }
+    .lc-checkin__mobile-nav button small { line-height: 1.25; }
+    .lc-checkin__item-action { flex-wrap: wrap; }
+    .lc-checkin__item-action .lc-checkin__record-button,
+    .lc-checkin__item-action .lc-checkin__quick-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__item-action .lc-checkin__amount { flex: 0 0 44px; }
+    .lc-checkin__save-status,
+    .lc-checkin__sync-notice { min-height: 20px; max-width: 100%; box-sizing: border-box; padding: 3px 0; font-size: 10px; }
+    .lc-checkin__save-status { justify-content: flex-start; text-align: left; }
+    .lc-checkin__save-status button { min-height: 28px; }
+    .lc-checkin .is-error { color: var(--lc-checkin-danger-text); }
+    .lc-checkin .is-success { color: var(--lc-checkin-success-text); }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel { min-height: 0; }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel .lc-checkin__section-heading { position: sticky; z-index: 2; top: 0; background: var(--lc-checkin-surface); }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row { min-width: 0; }
+    .lc-checkin__history-event-note { display: -webkit-box; max-height: 2.8em; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; }
+    .lc-checkin__history-note-editor { width: 100%; min-height: 72px; box-sizing: border-box; margin-top: 5px; }
+    .lc-checkin__history-event-actions { position: relative; z-index: 1; }
+    .lc-checkin__history-event-actions .lc-checkin__text-button { white-space: nowrap; }
+    .lc-checkin--today .lc-checkin__group-header { color: var(--lc-checkin-text); }
+    .lc-checkin--today .lc-checkin__group-header span:first-child { font-weight: 650; }
+    .lc-checkin--today .lc-checkin__group-header em { flex: 0 0 auto; min-width: 20px; padding: 2px 6px; text-align: center; }
+    .lc-checkin--today .lc-checkin__group-header[aria-expanded="false"] { color: var(--lc-checkin-muted); }
+    .lc-checkin--editor .lc-checkin__advanced { overflow: hidden; border-color: color-mix(in srgb, var(--lc-checkin-border-strong) 74%, transparent); }
+    .lc-checkin--editor .lc-checkin__advanced summary { padding: 10px; background: color-mix(in srgb, var(--lc-checkin-muted-surface) 82%, transparent); }
+    .lc-checkin--editor .lc-checkin__advanced[open] summary { color: var(--lc-checkin-accent-text); border-bottom: 1px solid var(--lc-checkin-border-strong); }
+    .lc-checkin--editor .lc-checkin__advanced-content .lc-checkin__field + .lc-checkin__field { margin-top: 3px; }
+    .lc-checkin--editor .lc-checkin__form-row { gap: 10px; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
