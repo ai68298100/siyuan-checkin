@@ -1582,6 +1582,7 @@ export default class CheckinPlugin extends Plugin {
             this.suggestionWorkflow = outcome.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
+            showMessage(t("agent.cancelledNotice"));
             return;
         }
         const applied = applySuggestion(outcome.state, this.store);
@@ -1589,6 +1590,7 @@ export default class CheckinPlugin extends Plugin {
             this.suggestionWorkflow = applied.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
+            showMessage(t("agent.confirmedNotice"));
             showMessage(t("agent.applyRejected"));
             return;
         }
@@ -1614,6 +1616,7 @@ export default class CheckinPlugin extends Plugin {
             this.suggestionWorkflow = undone.state;
             await this.persistSuggestionWorkflow().catch(() => undefined);
             this.render();
+            showMessage(t("agent.undoAccepted"));
             showMessage(t("agent.undoRejected"));
             return;
         }
