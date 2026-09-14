@@ -20,7 +20,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__f
     "mobile form scroll must reserve the safe area");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto[\s\S]*background:\s*var\(--b3-theme-background\)/,
     "save bar must stay visible above the keyboard");
-assert.match(styles, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)[\s\S]*max-height:\s*calc\(100dvh - 16px\)/,
+assert.match(components, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)[\s\S]*max-height:\s*calc\(100dvh - 16px\)/,
     "dynamic viewport height must be used when the keyboard changes the visual viewport");
 assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:/,
     "focused controls must remain visible while the keyboard is open");

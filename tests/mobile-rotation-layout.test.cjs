@@ -14,9 +14,9 @@ assert.match(quickDialogSource, /viewport\.addEventListener\("resize", sync\)[\s
     "orientation changes must trigger both visual and layout viewport updates");
 assert.match(quickDialogSource, /viewport\.removeEventListener\("resize", sync\)[\s\S]*window\.removeEventListener\("resize", sync\)/,
     "orientation listeners must be cleaned up when the dialog closes");
-assert.match(styles, /\.lc-checkin-dialog-host\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*overflow:\s*hidden/,
+assert.match(liveStyles, /\.lc-checkin-dialog-host\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*overflow:\s*hidden/,
     "dialog host must recover to the current container width after rotation");
-assert.match(styles, /\.lc-checkin\s*\{[\s\S]*width:\s*100%[\s\S]*min-height:\s*280px[\s\S]*overflow:\s*auto/,
+assert.match(liveStyles, /\.lc-checkin\s*\{[\s\S]*width:\s*100%[\s\S]*min-height:\s*280px[\s\S]*overflow:\s*auto/,
     "check-in surface must remain scrollable after orientation changes");
 assert.match(styles, /\.lc-checkin__form-scroll\s*\{[\s\S]*min-height:\s*0[\s\S]*flex:\s*1[\s\S]*overflow-y:\s*auto/,
     "editor scroll position must remain in the dedicated form scroller");

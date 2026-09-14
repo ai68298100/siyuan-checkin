@@ -5,11 +5,15 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
+const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+assert.ok(!styles.includes("height: 88vh !important"), "mobile dialog shell must not return to legacy index.scss");
 
 // Template management must remain usable without network data and expose a stable keyboard/touch structure.
 assert.match(editorSource, /data-template-query[\s\S]*data-template-group[\s\S]*data-template-list/, "editor must expose template search, groups, and list hooks");
-assert.match(editorSource, /data-template-empty[\s\S]*没有匹配的模板/, "template filtering must have an explicit empty state");
+assert.match(editorSource, /data-template-empty[\s\S]*t\("editor\.templateEmpty"\)/, "template filtering must have an explicit empty state");
+assert.match(i18n, /"editor\.templateEmpty": "没有匹配的模板"/, "template empty copy must stay localized");
 assert.match(editorSource, /data-icon-query[\s\S]*data-icon-group[\s\S]*data-icon-results/, "icon picker must expose searchable grouped results");
 assert.match(editorSource, /data-advanced[\s\S]*data-advanced-summary/, "advanced editor fields must have a collapsible summary");
 assert.match(editorSource, /lc-checkin__editor-actions[\s\S]*data-action="archive"/, "editor actions must stay in a dedicated action bar");
@@ -17,8 +21,8 @@ assert.match(editorSource, /lc-checkin__editor-actions[\s\S]*data-action="archiv
 // The editor has a form scroll region and a fixed action bar that can be checked at all mobile widths.
 assert.match(styles, /\.lc-checkin__form-scroll\s*\{[\s\S]*overflow-y:\s*auto;/, "editor fields must scroll independently");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto;/, "editor actions must remain visible while fields scroll");
-assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin-dialog\s*\{[\s\S]*height:\s*88vh/, "mobile dialog needs a bounded viewport layout");
-assert.match(styles, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)/, "mobile dialog must follow dynamic viewport height");
+assert.match(components, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin-dialog\s*\{[\s\S]*height:\s*88vh/, "mobile dialog needs a bounded viewport layout");
+assert.match(components, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)/, "mobile dialog must follow dynamic viewport height");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px/, "template cards must remain touch-friendly");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__icon-option\s*\{[\s\S]*min-height:\s*42px/, "icon buttons must remain touch-friendly");
 

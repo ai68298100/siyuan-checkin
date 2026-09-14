@@ -20,6 +20,8 @@ assert.ok(!styles.includes(".lc-checkin { --lc-checkin-border: var(--b3-theme-on
 assert.match(liveStyles, /@media \(prefers-contrast: more\) \{\s*\.lc-checkin \{ --lc-checkin-border: var\(--lc-checkin-muted\); \}[\s\S]*@media \(forced-colors: active\)/,
     "contrast and forced-color accessibility rules belong to the component layer");
 assert.ok(!styles.includes("lc-checkin-dialog__resize-handle"), "dialog frame controls must not return to legacy index.scss");
+assert.match(liveStyles, /Base plugin canvas and compact mobile shell[\s\S]*\.lc-checkin__progress/,
+    "the base canvas, mobile shell and progress feedback belong to the component layer");
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
 assert.match(styles, /--lc-checkin-shadow:/);
