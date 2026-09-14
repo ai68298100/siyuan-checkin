@@ -68,6 +68,13 @@ assert.equal(workflow.workflowUpdatedAt(undone.state), "2026-09-14T00:04:00.000Z
 assert.equal(workflow.isWorkflowNewer(undone.state, state), true);
 assert.equal(workflow.isWorkflowNewer(state, undone.state), false);
 assert.equal(workflow.isWorkflowNewer(state, undefined), true);
+const cloned = workflow.cloneSuggestionWorkflow(undone.state);
+assert.notEqual(cloned, undone.state);
+assert.notEqual(cloned.envelope, undone.state.envelope);
+assert.notEqual(cloned.envelope.changes, undone.state.envelope.changes);
+assert.notEqual(cloned.audits, undone.state.audits);
+cloned.consumedTokens.push("external");
+assert.equal(undone.state.consumedTokens.includes("external"), false);
 const oversized = {...state, consumedTokens: Array.from({length: 130}, (_, index) => `t-${index}`)};
 assert.equal(workflow.normalizeSuggestionWorkflow(oversized, [item]).consumedTokens.length, 100);
 fs.rmSync(root, {recursive: true, force: true});

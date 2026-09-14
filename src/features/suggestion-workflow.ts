@@ -24,6 +24,14 @@ export interface SuggestionWorkflowState {
     audits: AgentSuggestionAudit[];
 }
 
+export function cloneSuggestionWorkflow(state: SuggestionWorkflowState): SuggestionWorkflowState {
+    return {
+        envelope: {...state.envelope, changes: state.envelope.changes.map((change) => ({...change}))},
+        consumedTokens: [...state.consumedTokens],
+        audits: state.audits.map((audit) => ({...audit, ...(audit.conflicts ? {conflicts: [...audit.conflicts]} : {})})),
+    };
+}
+
 export const SUGGESTION_WORKFLOW_VERSION = 1;
 export const SUGGESTION_WORKFLOW_TOKEN_LIMIT = 100;
 export const SUGGESTION_WORKFLOW_PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -49,7 +57,7 @@ export interface SuggestionDecisionOutcome {
 }
 
 export function createSuggestionWorkflow(envelope: AgentSuggestionEnvelope): SuggestionWorkflowState {
-    return {envelope: {...envelope, changes: envelope.changes.map((change) => ({...change}))}, consumedTokens: [], audits: []};
+    return cloneSuggestionWorkflow({envelope: {...envelope, changes: envelope.changes.map((change) => ({...change}))}, consumedTokens: [], audits: []});
 }
 
 export function normalizeSuggestionWorkflow(value: unknown, items: readonly import("../types").CheckinItem[]): SuggestionWorkflowState | undefined {
