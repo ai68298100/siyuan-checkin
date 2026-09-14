@@ -1781,6 +1781,39 @@
     .lc-template-manager h3 { font-size: 13px; }
     .lc-template-manager p { font-size: 11px; }
 }
+/* Seventeenth narrow-surface pass: viewport fallback and insight density. */
+@media (max-width: 380px) {
+    .lc-checkin { padding-right: 12px; padding-left: 12px; }
+    .lc-checkin__insight-section { margin-top: 12px; }
+    .lc-checkin__insight-section h2 { font-size: 12px; }
+    .lc-checkin__insight-grid { gap: 3px; }
+    .lc-checkin__insight-grid span { border-radius: 2px; }
+    .lc-checkin__insight-row { min-height: 30px; font-size: 10px; }
+    .lc-checkin__insight-row strong { font-size: 11px; }
+    .lc-checkin__insight-stats { gap: 4px; }
+    .lc-checkin__insight-stats div { min-height: 54px; padding: 7px 5px; }
+    .lc-checkin__insight-stats strong { font-size: 15px; }
+    .lc-checkin__insight-stats span { font-size: 9px; }
+    .lc-checkin__insight-picker { gap: 3px; }
+    .lc-checkin__insight-picker label { font-size: 10px; }
+    .lc-checkin__insight-picker select { min-height: 34px; }
+    .lc-checkin__insight-legend { gap: 4px 6px; font-size: 9px; }
+    .lc-checkin__insight-legend span { gap: 3px; }
+    .lc-checkin__history-note-editor { min-height: 52px; padding: 7px 8px; }
+    .lc-checkin__history-event { gap: 6px; min-height: 38px; padding: 5px 8px; }
+    .lc-checkin__history-event-value { font-size: 11px; }
+    .lc-checkin__history-empty { padding: 8px; font-size: 10px; }
+    .lc-checkin__calendar { padding: 6px; }
+    .lc-checkin__calendar-day { min-height: 30px; font-size: 10px; }
+    .lc-checkin__header-actions { gap: 4px; }
+    .lc-checkin__title { letter-spacing: -.01em; }
+    .lc-checkin__section-heading { gap: 6px; }
+    .lc-checkin__text-button { min-height: 30px; }
+    .lc-checkin__small-button { min-height: 28px; }
+    .lc-checkin__empty { padding: 14px 10px; }
+    .lc-checkin__empty-title { font-size: 16px; }
+    .lc-checkin__empty-description { font-size: 11px; }
+}
 
 .lc-checkin {
     box-sizing: border-box;

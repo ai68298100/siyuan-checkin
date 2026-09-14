@@ -154,13 +154,6 @@
     strong { color: var(--b3-theme-on-background); font-weight: 550; }
 }
 
-@media (max-width: 380px) {
-    .lc-checkin {
-        padding-right: 12px;
-        padding-left: 12px;
-    }
-}
-
 /* 内容布局按 surface 容器宽度收敛；保留上面的 surface 自身内边距视口回退，
    因为容器查询无法匹配容器元素自身。这样窄 dock 与窄弹窗也能获得同一套
    卡片、编辑器和历史布局，而不会被设备视口宽度绑死。 */
