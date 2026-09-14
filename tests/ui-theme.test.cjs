@@ -92,6 +92,9 @@ assert.match(liveStyles, /Sixteenth narrow-surface pass: template manager compac
 assert.ok(!styles.includes("@media (max-width: 380px) {\n    .lc-checkin {\n        padding-right: 12px"), "viewport fallback must not return to legacy index.scss");
 assert.match(liveStyles, /Seventeenth narrow-surface pass: viewport fallback and insight density[\s\S]*\.lc-checkin__empty-description/,
     "viewport fallback and insight density belong to the component layer");
+assert.ok(!styles.includes("@media (prefers-contrast: more)"), "compatibility media rules must not return to legacy index.scss");
+assert.match(liveStyles, /Eighteenth compatibility pass: contrast, forced colors, motion and touch input[\s\S]*\.lc-checkin__quick-button/,
+    "compatibility media rules belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */

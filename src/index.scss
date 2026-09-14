@@ -184,60 +184,9 @@
 .lc-checkin[data-density="comfortable"] .lc-checkin__item { padding: 14px; }
 .lc-checkin :where(button, input, select, textarea) { min-height: var(--lc-checkin-control-height); }
 
-@media (prefers-contrast: more) {
-    .lc-checkin,
-    .lc-template-manager {
-        --lc-checkin-border: var(--b3-theme-on-background);
-    }
-    .lc-checkin :where(button, input, select, textarea):focus-visible {
-        outline: 3px solid var(--lc-checkin-accent);
-        outline-offset: 2px;
-        box-shadow: none;
-    }
-}
-
-@media (forced-colors: active) {
-    .lc-checkin,
-    .lc-template-manager {
-        --lc-checkin-accent: Highlight;
-        --lc-checkin-accent-soft: transparent;
-        --lc-checkin-border: CanvasText;
-        --lc-checkin-bg: Canvas;
-        --lc-checkin-surface: Canvas;
-        --lc-checkin-surface-raised: Canvas;
-        --lc-checkin-text: CanvasText;
-        --lc-checkin-muted: CanvasText;
-    }
-    .lc-checkin__progress > i,
-    .lc-checkin__item-progress > i,
-    .lc-checkin__preview-progress > i {
-        forced-color-adjust: none;
-        background: Highlight;
-    }
-}
-
 .lc-checkin :where(button, input, select, textarea):focus-visible {
     outline: none;
     box-shadow: var(--lc-checkin-focus);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .lc-checkin *,
-    .lc-checkin *::before,
-    .lc-checkin *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-@media (pointer: coarse) {
-    .lc-checkin :where(button, input, select, textarea),
-    .lc-template-manager :where(button, input, select, textarea) {
-        min-height: 42px;
-    }
-    .lc-checkin__small-button { min-width: 38px; min-height: 38px; }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
