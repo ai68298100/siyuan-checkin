@@ -8,6 +8,13 @@ const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "u
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
 const archivedSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "archived.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
+assert.ok(!styles.includes("2.0 visual foundation"), "visual foundation must not return to legacy index.scss");
+assert.match(liveStyles, /2\.0 visual foundation[\s\S]*\.lc-checkin__header,[\s\S]*\.lc-checkin__preview-card:hover/,
+    "shared surface hierarchy belongs to the live component layer");
+assert.match(liveStyles, /Semantic state tokens[\s\S]*data-status="missed"[\s\S]*data-status="partial"/,
+    "semantic completion states belong to the live component layer");
+assert.match(liveStyles, /@container lc5 \(min-width: 900px\) \{[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll \{[\s\S]*grid-template-columns: minmax\(260px, \.8fr\) minmax\(0, 1\.4fr\)/,
+    "desktop editor enhancement remains in the live component layer");
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
 assert.match(styles, /--lc-checkin-shadow:/);

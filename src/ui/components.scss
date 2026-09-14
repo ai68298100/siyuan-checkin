@@ -4,6 +4,108 @@
    本文件在 legacy 佐层之后加载，同优先级规则以后加载者为准。
    ============================================================ */
 
+/* 2.0 visual foundation: layered surfaces and clearer interaction hierarchy. */
+.lc-checkin__header,
+.lc-checkin__editor-header {
+    padding-bottom: var(--lc-checkin-space-3);
+    border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent);
+}
+
+.lc-checkin__section-heading,
+.lc-checkin__organize,
+.lc-checkin__editor-preview {
+    border-radius: var(--lc-checkin-radius);
+    box-shadow: var(--lc-checkin-shadow-sm);
+}
+
+.lc-checkin__item,
+.lc-checkin__history-row,
+.lc-checkin__history-event,
+.lc-checkin__preview-card {
+    border-radius: var(--lc-checkin-radius);
+    box-shadow: var(--lc-checkin-shadow-sm);
+    transition: transform var(--lc-checkin-motion), box-shadow var(--lc-checkin-motion), border-color var(--lc-checkin-motion);
+}
+
+.lc-checkin__item:hover,
+.lc-checkin__item:focus-within,
+.lc-checkin__history-event:hover,
+.lc-checkin__preview-card:hover {
+    box-shadow: var(--lc-checkin-shadow-md);
+    transform: translateY(-1px);
+}
+
+.lc-checkin__item.is-complete,
+.lc-checkin__item.is-done {
+    opacity: .82;
+    box-shadow: none;
+}
+
+.lc-checkin__progress,
+.lc-checkin__item-progress,
+.lc-checkin__preview-progress {
+    border-radius: 999px;
+}
+
+.lc-checkin__record-button,
+.lc-checkin__quick-button,
+.lc-checkin__more-button {
+    border-radius: var(--lc-checkin-radius-sm);
+}
+
+/* Semantic state tokens: keep the calm pastel language readable in both
+   appearance modes and at desktop viewing distances. */
+.lc-checkin :where(.is-complete, [aria-checked="true"], [aria-selected="true"]) {
+    --lc-checkin-state-color: var(--lc-checkin-success-text);
+}
+.lc-checkin :where(.is-missed, [data-status="missed"]) {
+    --lc-checkin-state-color: var(--lc-checkin-danger-text);
+}
+.lc-checkin :where(.is-partial, [data-status="partial"]) {
+    --lc-checkin-state-color: var(--lc-checkin-warning-text);
+}
+.lc-checkin :where(.is-complete, .is-missed, .is-partial) .lc-checkin__item-tag {
+    color: var(--lc-checkin-state-color);
+    border-color: color-mix(in srgb, var(--lc-checkin-state-color) 35%, var(--lc-checkin-border-strong));
+    background: color-mix(in srgb, var(--lc-checkin-state-color) 12%, var(--lc-checkin-surface));
+}
+.lc-checkin :where(input, select, textarea, button):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 72%, transparent);
+    outline-offset: 2px;
+}
+
+@container lc5 (min-width: 900px) {
+    .lc-checkin--editor .lc-checkin__form-scroll {
+        display: grid;
+        grid-template-columns: minmax(260px, .8fr) minmax(0, 1.4fr);
+        align-items: start;
+        gap: 16px 20px;
+    }
+    .lc-checkin--editor .lc-checkin__template-section,
+    .lc-checkin--editor .lc-checkin__field--name,
+    .lc-checkin--editor .lc-checkin__field--icons,
+    .lc-checkin--editor .lc-checkin__kind-field,
+    .lc-checkin--editor .lc-checkin__advanced { margin: 0; }
+    .lc-checkin--editor .lc-checkin__template-section { grid-row: span 3; }
+    .lc-checkin--editor .lc-checkin__editor-actions { grid-column: 1 / -1; }
+    .lc-checkin--editor .lc-checkin__templates,
+    .lc-checkin--editor .lc-checkin__icon-grid { scrollbar-width: thin; }
+    .lc-checkin--editor .lc-checkin__kind-option { transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast); }
+    .lc-checkin--editor .lc-checkin__kind-option:hover { transform: translateY(-1px); border-color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+}
+
+.lc-checkin--settings .lc-checkin__field > label,
+.lc-checkin--settings .lc-checkin__field > legend {
+    color: var(--lc-checkin-muted);
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: .02em;
+}
+
+@container lc5 (min-width: 900px) {
+    .lc-checkin--settings .lc-checkin__settings-card { border-radius: 14px; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
