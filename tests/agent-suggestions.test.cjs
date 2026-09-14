@@ -105,3 +105,4 @@ console.log('Agent suggestion safety structure checks passed.');
 require('./review-summary-refresh.test.cjs');
 require('./suggestion-apply.test.cjs');
 require('./suggestion-workflow.test.cjs');
+require('./suggestion-workflow-render.test.cjs');
