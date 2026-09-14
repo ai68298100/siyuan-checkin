@@ -119,6 +119,36 @@ export type AgentSuggestionEnvelope = AgentSuggestion & {
     error?: string;
 };
 
+export const AGENT_SUGGESTION_MAX_ID_LENGTH = 120;
+export const AGENT_SUGGESTION_MAX_TITLE_LENGTH = 200;
+export const AGENT_SUGGESTION_MAX_REASON_LENGTH = 1_000;
+
+export function normalizeSuggestionEnvelope(value: unknown, items: readonly CheckinItem[]): AgentSuggestionEnvelope | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const candidate = value as Partial<AgentSuggestionEnvelope>;
+    if (typeof candidate.id !== "string" || !candidate.id.trim() || candidate.id.length > AGENT_SUGGESTION_MAX_ID_LENGTH) return undefined;
+    if (typeof candidate.title !== "string" || candidate.title.length > AGENT_SUGGESTION_MAX_TITLE_LENGTH) return undefined;
+    if (typeof candidate.reason !== "string" || candidate.reason.length > AGENT_SUGGESTION_MAX_REASON_LENGTH) return undefined;
+    if (candidate.requiresConfirmation !== true || !/^(pending|confirmed|cancelled|failed)$/.test(String(candidate.status))) return undefined;
+    if (typeof candidate.createdAt !== "string" || Number.isNaN(Date.parse(candidate.createdAt))) return undefined;
+    const changes = normalizeSuggestionChanges(candidate.changes, items);
+    return {
+        id: candidate.id.trim(), title: candidate.title.trim(), reason: candidate.reason.trim(),
+        changes, requiresConfirmation: true, status: candidate.status as AgentSuggestionStatus,
+        createdAt: candidate.createdAt,
+        ...(typeof candidate.confirmedAt === "string" && !Number.isNaN(Date.parse(candidate.confirmedAt)) ? {confirmedAt: candidate.confirmedAt} : {}),
+        ...(typeof candidate.error === "string" && candidate.error ? {error: candidate.error.slice(0, 160)} : {}),
+    };
+}
+
+export function serializeSuggestionEnvelope(envelope: AgentSuggestionEnvelope): string {
+    return JSON.stringify(envelope);
+}
+
+export function deserializeSuggestionEnvelope(value: string, items: readonly CheckinItem[]): AgentSuggestionEnvelope | undefined {
+    try { return normalizeSuggestionEnvelope(JSON.parse(value), items); } catch { return undefined; }
+}
+
 export function createSuggestionEnvelope(suggestion: AgentSuggestion, now = new Date().toISOString()): AgentSuggestionEnvelope {
     return {...suggestion, status: "pending", createdAt: now};
 }
@@ -178,6 +208,11 @@ export function applyConfirmedSuggestion(store: import("./types").CheckinStore, 
         if (!changes.length) return item;
         let next = item;
         for (const change of changes) {
+            if (!ALLOWED_CHANGE_FIELDS.has(change.field)) {
+                skipped += 1;
+                conflicts.push(`${change.itemId}:${String(change.field)}`);
+                continue;
+            }
             if (!Object.is(next[change.field], change.before)) {
                 skipped += 1;
                 conflicts.push(`${change.itemId}:${String(change.field)}`);
