@@ -3,7 +3,7 @@ import {t} from "../i18n";
 import {escapeHtml} from "../shared";
 import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
-import type {CheckinAppearance, CheckinPalette, DialogSizeMode, TodayGroupMode} from "../view-preferences";
+import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 
 export interface SettingsViewContext {
@@ -15,6 +15,7 @@ export interface SettingsViewContext {
     appearance: CheckinAppearance;
     reducedMotion: boolean;
     hapticFeedback: boolean;
+    focusTimerProvider: FocusTimerProvider;
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -35,8 +36,14 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const iconKb = Math.max(0, Math.round(ctx.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
     const storageKb = Math.max(1, Math.round((ctx.store.events.length * 160 + ctx.store.items.length * 320) * 0.75 / 1024) + photoKb + iconKb);
     const auditLabel = (type: string) => type === "conflict" ? t("set.auditConflict") : type === "merge" ? t("set.auditMerge") : type === "restore" ? t("set.auditRestore") : t("set.auditMigration");
-    const auditRows = ctx.auditEntries.slice(-5).reverse().map((entry) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`).join("");
-    const snapshotRows = [...ctx.snapshots].reverse().map((snapshot, position) => `<li><span><strong>${position === 0 ? t("set.snapshotLatest") : t("set.snapshotOlder")}</strong><small>${escapeHtml(snapshot.capturedAt ? new Date(snapshot.capturedAt).toLocaleString() : t("set.snapshotLegacy"))} · ${t("set.snapshotCounts", {items: snapshot.itemCount, events: snapshot.eventCount})}</small></span><button class="lc-checkin__text-button" type="button" data-restore-snapshot="${snapshot.index}">${t("set.restoreSnapshotBtn")}</button></li>`).join("");
+    const auditEntries = ctx.auditEntries.slice(-5).reverse();
+    const renderAuditRow = (entry: typeof auditEntries[number]) => `<li><strong>${auditLabel(entry.type)}</strong><small>${escapeHtml(new Date(entry.at).toLocaleString())} · ${escapeHtml(JSON.stringify(entry.details))}</small></li>`;
+    const auditLatest = auditEntries[0] ? renderAuditRow(auditEntries[0]) : "";
+    const auditOlder = auditEntries.slice(1).map(renderAuditRow).join("");
+    const auditRows = auditLatest ? `${auditLatest}${auditOlder ? `<li class="lc-checkin__settings-fold-item"><details class="lc-checkin__settings-fold"><summary>${t("set.showOlderAudit", {n: auditEntries.length - 1})}</summary><ul>${auditOlder}</ul></details></li>` : ""}` : "";
+    const snapshots = [...ctx.snapshots].reverse();
+    const renderSnapshotRow = (snapshot: typeof snapshots[number], latest: boolean) => `<li><span><strong>${latest ? t("set.snapshotLatest") : t("set.snapshotOlder")}</strong><small>${escapeHtml(snapshot.capturedAt ? new Date(snapshot.capturedAt).toLocaleString() : t("set.snapshotLegacy"))} · ${t("set.snapshotCounts", {items: snapshot.itemCount, events: snapshot.eventCount})}</small></span><button class="lc-checkin__text-button" type="button" data-restore-snapshot="${snapshot.index}">${t("set.restoreSnapshotBtn")}</button></li>`;
+    const snapshotRows = snapshots[0] ? `${renderSnapshotRow(snapshots[0], true)}${snapshots.length > 1 ? `<li class="lc-checkin__settings-fold-item"><details class="lc-checkin__settings-fold"><summary>${t("set.showOlderSnapshots", {n: snapshots.length - 1})}</summary><ul>${snapshots.slice(1).map((snapshot) => renderSnapshotRow(snapshot, false)).join("")}</ul></details></li>` : ""}` : "";
     const kbdRow = (label: string, hint: string, keys: string[]) => `<div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${label}</span><small>${hint}</small></span><span class="lc-checkin__kbd-group">${keys.map((key) => `<kbd class="lc-checkin__kbd">${key}</kbd>`).join('<span class="lc-checkin__kbd-plus" aria-hidden="true">+</span>')}</span></div>`;
     const groups: Array<{id: string; label: string; body: string}> = [
         {
@@ -95,6 +102,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             id: "integrations",
             label: t("set.groupIntegrations"),
             body: `
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="plugin" ${ctx.focusTimerProvider === "plugin" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value">${t("set.tomatoPending")}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,

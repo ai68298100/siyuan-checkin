@@ -118,8 +118,8 @@ assert.match(plugin, /renderTopNav\(\)\);/,
     "the desktop top nav keeps its render path");
 assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
     "the top nav must not render unconditionally (mobile now owns its own top bar)");
-assert.match(plugin, /if \(!this\.isMobileFrontend\) layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
-    "the top nav must be skipped on the mobile frontend");
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+    "the desktop top nav must be attached to the host, outside the scrolling layout");
 assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
     "the mobile bottom bar must be attached to the host as well");
 assert.match(plugin, /private todayProgressLabel\(\): string \{/,
@@ -161,6 +161,21 @@ assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin-
     "the occasion form must own the remaining width (it is the work area)");
 assert.match(read("src", "render", "bind-occasions.ts"), /host\.occasionTemplatesOpen = \(event\.currentTarget as HTMLDetailsElement\)\.open;/,
     "the template fold state must survive re-renders");
+assert.match(read("src", "render", "occasions.ts"), /lc-checkin__occasion-row-meta/,
+    "occasion rows must expose separate type, recurrence, date and countdown metadata");
+assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-row-note[\s\S]*?-webkit-line-clamp: 2;/,
+    "occasion notes must remain readable without expanding into an unbounded blank-looking row");
+
+// 设置页恢复点与同步审计：最新一条直显，其余通过 details 折叠，避免长列表占满页面
+const settingsView = read("src", "render", "settings.ts");
+assert.match(settingsView, /set\.showOlderSnapshots/,
+    "older restore points must be behind an explicit disclosure");
+assert.match(settingsView, /set\.showOlderAudit/,
+    "older sync audit entries must be behind an explicit disclosure");
+assert.match(settingsView, /lc-checkin__settings-fold/,
+    "settings history must use the shared fold disclosure");
+assert.match(components, /\.lc-checkin__settings-fold > summary/,
+    "settings history disclosure needs a compact summary style");
 
 // 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
@@ -210,4 +225,3 @@ assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catc
     "the catch-up toast must offer an undo that rolls back the mark");
 
 console.log("Desktop dialog structure checks passed.");
-

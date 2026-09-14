@@ -10,7 +10,7 @@ import {showMessage} from "siyuan";
 import type {FocusAdapter} from "../integrations";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
-import type {TodayGroupMode} from "../view-preferences";
+import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 
 export interface BindTodayHost {
     store: CheckinStore;
@@ -21,6 +21,8 @@ export interface BindTodayHost {
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
     completedCollapsed: boolean;
+    priorityReminderExpanded: boolean;
+    focusTimerProvider: FocusTimerProvider;
     heatmapYearOffset: number;
     collapsedTodayGroups: Set<string>;
     reviewFoldSections: Set<string>;
@@ -84,6 +86,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const primaryAction = item.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
         primaryAction?.focus();
     }));
+    root.querySelector<HTMLDetailsElement>(".lc-checkin__priority-reminder-more")?.addEventListener("toggle", (event) => {
+        host.priorityReminderExpanded = (event.currentTarget as HTMLDetailsElement).open;
+    });
     host.bindMobileNav(root);
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
     let searchTimer: number | undefined;
@@ -197,11 +202,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         });
         element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
             const focusItem = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
-            if (focusItem && host.findFocusAdapter(focusItem, currentCalendarDate())) void host.startFocus(itemId);
-            else {
-                host.focusTimerRoot = element.closest(".lc-checkin")?.parentElement ?? undefined;
-                host.openFocusTimer(itemId);
+            if (!focusItem) return;
+            if (host.focusTimerProvider === "plugin") {
+                if (!host.findFocusAdapter(focusItem, currentCalendarDate())) {
+                    showMessage(t("msg.focusPluginUnavailable"));
+                    return;
+                }
+                void host.startFocus(itemId);
+                return;
             }
+            host.focusTimerRoot = element.closest(".lc-checkin")?.parentElement ?? undefined;
+            host.openFocusTimer(itemId);
         });
         element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", () => {
             const item = host.store.items.find((candidate) => candidate.id === itemId);

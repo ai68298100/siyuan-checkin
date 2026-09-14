@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 // Archive is the reversible delete operation and must have a visible, labelled action in the editor.
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
@@ -29,6 +30,12 @@ assert.match(styles, /\.lc-checkin:not\(\.lc-checkin--editor\)\s*\{\s*padding-bo
     "mobile pages must reserve space for bottom navigation and safe area");
 assert.match(styles, /\.lc-checkin__editor-actions\s*\{[\s\S]*position:\s*sticky|\.lc-checkin__editor-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto/,
     "editor actions must remain visible while the form scrolls");
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__form-scroll\s*\{[\s\S]*overscroll-behavior-y:\s*auto;[\s\S]*touch-action:\s*pan-y;/,
+    "mobile editor form must allow vertical scroll chaining");
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__template-section\s*\{[\s\S]*max-height:\s*none;[\s\S]*overflow:\s*visible;/,
+    "template section must not capture the whole mobile page scroll");
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*48px;/,
+    "mobile template cards must use the compact two-line layout");
 
 for (const width of [320, 360, 390, 430]) assert.ok(width >= 320 && width <= 430);
 console.log("Mobile template visual checks passed for focus, archive, and safe-area behavior.");

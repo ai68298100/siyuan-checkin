@@ -22,7 +22,10 @@ assert.match(source, /data-focus-timer-minutes/, "focus timer duration is adjust
 assert.match(source, /private tickFocusTimer()/, "focus timer ticks without full re-render");
 assert.match(source, /recordEvent\(item, value, moment, fingerprint, `专注 \$\{elapsedMinutes\} 分钟`\)/,
     "focus completion records a labelled duration note");
-assert.match(source, /registerFocusAdapter/, "external focus adapters keep priority over the built-in timer");
+assert.match(source, /registerFocusAdapter/, "external focus adapters remain available for the configured plugin timer");
+const bindToday = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");
+assert.match(bindToday, /focusTimerProvider === "plugin"/, "the clock button must honor the configured plugin provider");
+assert.match(bindToday, /focusPluginUnavailable/, "plugin mode must not silently fall back to the built-in timer");
 
 console.log("6.0 efficiency feature checks passed.");
 

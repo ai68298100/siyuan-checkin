@@ -39,6 +39,7 @@ export interface TodayViewContext extends TodayItemContext {
     bestStreakItem?: CheckinItem;
     bestStreakValue: number;
     reminderUserActions?: ReminderUserAction[];
+    priorityReminderExpanded?: boolean;
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -76,7 +77,7 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
         </section>`;
 }
 
-export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): string {
+export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false): string {
     const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
     const entry = entries[0];
     if (!entry) return "";
@@ -90,7 +91,7 @@ export function renderPriorityReminderView(store: CheckinStore, occasionStore: O
         return `<div class="lc-checkin__priority-reminder-row${primary ? " is-primary" : ""}"><span class="lc-checkin__priority-reminder-row-mark" aria-hidden="true">${itemOverdue ? "!" : "→"}</span><span class="lc-checkin__priority-reminder-row-text"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(itemSource)} · ${escapeHtml(itemTiming)}</small></span><button type="button" class="lc-checkin__text-button" data-priority-reminder-action data-priority-source="${item.source}" data-priority-id="${escapeHtml(item.sourceId)}" aria-label="${escapeHtml(ariaLabel)}">${escapeHtml(itemAction)}</button></div>`;
     };
     const remaining = entries.slice(1, 6);
-    const more = remaining.length ? `<details class="lc-checkin__priority-reminder-more"><summary aria-label="${escapeHtml(t("today.priorityMoreAria", {n: remaining.length}))}">${t("today.priorityMore", {n: remaining.length})}</summary><div>${remaining.map((item) => row(item)).join("")}</div></details>` : "";
+    const more = remaining.length ? `<details class="lc-checkin__priority-reminder-more"${expanded ? " open" : ""}><summary aria-label="${escapeHtml(t("today.priorityMoreAria", {n: remaining.length}))}">${t("today.priorityMore", {n: remaining.length})}</summary><div>${remaining.map((item) => row(item)).join("")}</div></details>` : "";
     return `<section class="lc-checkin__priority-reminder is-${entry.status}" data-priority-reminder data-priority-count="${entries.length}" role="status" aria-live="polite" aria-label="${escapeHtml(t("today.priorityTitle"))}">${row(entry, true)}${more}</section>`;
 }
 
@@ -314,7 +315,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.reducedMotion);
     const saveStatus = renderSaveStatusView(ctx.saveState);
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
-    const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || []);
+    const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
     return `<div class="lc-checkin lc-checkin--today" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">

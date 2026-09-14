@@ -14,6 +14,20 @@
 
 2026-09-14 今日页优先提醒批次（T-239~T-258）：新增 `src/features/priority-reminder.ts`，只读筛选现有提醒投影中的逾期/今日条目，按状态→天数→名称→ID 确定性排序并输出首条摘要。今日页新增低干扰优先提醒横幅，显示来源、名称和状态；打卡来源点击后滚动到对应卡片并聚焦主操作，事项来源进入事项页；接入延期/跳过后的用户动作投影，补齐 CSS.escape、aria-live、双语文案与窄容器样式。增强折叠队列语义：section 标题 aria-label、首条提醒专用操作文案、其余列表最多展示 5 条且摘要数量与实际一致。新增并扩展 `tests/priority-reminder.test.cjs`，覆盖模型、渲染标记、折叠上限、绑定行为、样式与 i18n，并接入 `test`/`test:ui`。验证：`pnpm run test:quality` 全链通过（check、主测试、UI、mobile、ecosystem、perf、release、build）；构建 CSS 299506 bytes，仍在 318000 bytes 预算内。
 
+2026-09-14 桌面事项页布局批次：桌面顶栏从滚动的 `.lc-checkin__layout` 提升到宿主 flex 层，并与内容列共用 1320px 最大宽度，切换事项/回顾/今日时保持同一水平基线；事项管理行拆分展示类型、重复规则、下次日期、倒计时和备注，桌面列表列宽提升至 380–480px，仍与 Today 打卡卡片保持独立语义。扩展 `tests/desktop-dialog.test.cjs` 守门。验证：`pnpm run check`、`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run build`、`git diff --check` 通过；未执行真实客户端截图，待 T-023/T-129 现场复测。
+
+远端核对：`git fetch --prune` 与 `git ls-remote` 受 GitHub HTTPS 重置影响未完成；改用 GitHub commits Atom 与 raw 主分支探测，得到远端 main 最新提交 `5b98be33fda28ba248abf4e5993854bd244a95e3`，与本地 `HEAD` 及缓存 `origin/main` 完全一致，无需更新本地仓库。
+
+2026-09-14 设置页恢复点/同步审计折叠批次：恢复点列表与同步审计均改为最新一条直显，其余记录收进可展开的 `details`，新增中英文“展开其余 N 条”文案和紧凑样式，保留每条恢复/导出/清空操作。扩展 `tests/desktop-dialog.test.cjs` 结构守门。验证：`pnpm run check`、`pnpm run test:ui`、`pnpm run test:mobile`、`git diff --check` 通过；生产构建同步通过，CSS 308579 bytes。
+
+2026-09-14 桌面 Today UI 细节批次：将任务卡左侧状态色条由高对比 3px 改为 2px 柔和混合色，降低视觉抢占；宽屏（≥1500px）收紧卡片网格间距与列表间距，减少两列布局的空旷感，同时保持 380px 最小卡宽与操作轨道可读性。验证：类型检查、桌面结构守门与 diff 检查通过。
+
+2026-09-14 大版本路线复盘：结合桌面/移动端现场反馈，修订 `docs/development-roadmap.md`。新增 9.8.x 稳定化窗口，明确 T-023/T-129、番茄钟双窗口和 CI/产物证据完成前不扩展功能；将 10.0/11.0 标记为恢复兼容维护与提醒跨端契约阶段；确认/取消/撤销及审计工作流已从 13.0“待实现”更正为“基础闭环完成，进入真实宿主试点”；15.0 保留为 UI 系统整合，但依赖前述现场验收完成。
+
+2026-09-14 9.8 稳定化首批：新增 `tests/stability-9_8.test.cjs`，把桌面顶栏宿主层级、设置页历史折叠、Today 柔和状态线和“先验收后扩展”路线文档固化为结构守门，并接入 `test:ui`。同时将 TODO 中已实际完成的 T-132~T-134（本地总结、建议确认、分析缓存）状态同步为 done。验证：`pnpm run check`、`pnpm run test:ui`、`git diff --check` 通过。
+
+2026-09-14 9.8 稳定化第二批（T-819~T-848）：新增 30 项稳定化验收条目，覆盖顶栏/底栏宿主结构、Toast 单实例、滚动与焦点恢复、恢复点/同步审计折叠与操作入口、事项页四类动作及元数据、桌面卡片状态线与宽屏间距、i18n 和 test:ui 接线。实现集中在 `tests/stability-9_8.test.cjs`，作为 UI 结构回归门禁。验证：`pnpm run check`、`node tests/stability-9_8.test.cjs`、`pnpm run test:ui`、`git diff --check` 全部通过。
+
 2026-09-14 回顾智能总结刷新批次（T-259~T-278）：回顾页总结上下文新增刷新状态，智能体生成期间按钮显示进行中并禁用，成功/失败/跨天/离开页面均清理悬挂状态，防止并发请求；截止日期、更新时间、历史数量、自定义范围字段全部迁移 i18n；新增 `tests/review-summary-refresh.test.cjs` 并通过 agent-suggestions 测试链执行。验证：类型检查通过；随后执行完整 `pnpm run test:quality`。
 
 2026-09-14 智能体建议确认批次（T-279~T-298）：建议状态、影响摘要和字段变更摘要统一迁移 i18n；新增 `canConfirmSuggestion` 与 `applyConfirmedSuggestion` 纯函数，仅允许 confirmed 建议按 before 基线应用，冲突字段跳过并返回 applied/skipped/conflicts 结果，不触发持久化；建议预览文案同步 i18n，新增 `tests/suggestion-apply.test.cjs` 并接入 agent-suggestions 主测试链。验证：类型检查与定向模型测试通过，随后执行完整 `pnpm run test:quality`。
@@ -342,3 +356,14 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 2026-09-14 真机截图核对检查点（T-023 首批反馈落地，B-006）：新增加载探针 scripts/visual-probe.cjs（真 Chrome + 真构建 + 截图到 .artifacts/visual-probe，可复现真机场景）后逐项核对四张手机截图，复现并修复 7 类问题：①今日操作轨道 390px 向左溢出压正文（flex-end 溢出规则；主按钮可收缩省略、图标钮 26px 固定）②连续徽章撑高标题行悬浮卡中（压回 22px 行内）③回顾/事项/编辑器/归档页内大标题与移动端顶栏重复（窄档隐藏文字保留返回/新增钮）④hero 零记录仍显示最佳项目与建议噪声（门控在 totalEvents）⑤编辑器模板分类 chip 被行容器 overflow 裁成空胶囊（行 overflow visible + wrap）⑥模板预览区限高过紧裁卡（窄档放宽 380px 露出整行卡）⑦自定义范围 chip 未激活呈双选中观感（降为普通 tab 权重）。另：死 FAB 样式清除（思源悬浮钮为宿主 UI，列表底部加 64px 避让）；mobile-release-quality 新增 10 条守门。验证：真机场景探针四页截图逐一目检、pnpm run test:quality exit 0、浅/深视觉走查、宽度走查全绿。
 2026-09-14 9.7.0 发布候选整理：将提醒中心延期/跳过、dock 响应式打磨、移动端截图反馈修复、回顾页离线摘要与分析历史、智能体建议确认/审计/撤销闭环及只读生态能力纳入版本；版本号同步至 package.json/plugin.json/src/version.ts，README 改为 GitHub Release 当前安装渠道并明确暂缓集市审核；新增 `docs/v9.7.0-change-log.md`。T-023/T-129 真实思源客户端验收继续作为发布后现场任务。下一步：完整质量门禁、重新生成安装包并记录 SHA-256，然后提交版本提交、推送 main、创建 v9.7.0 tag/Release。
+
+2026-09-14 手机截图反馈第二批：①移动顶栏收口为 40px，避免宿主全屏与 safe-area 重复叠加造成顶部空白；②今日优先提醒移动端压缩间距与行高，`还有 N 项今天提醒` 展开状态跨数据重渲染保持，避免闪回收起；③底栏按钮改为固定图标/文字网格轨道并统一 SVG 尺寸，修复图标偏移及右侧裁切。真 Chrome 390×844 视觉探针复核通过；check、pnpm test、test:ui、test:mobile、build 全部通过。
+
+2026-09-14 新建任务页截图反馈：模板卡改为 48px 紧凑两行（图标/名称/摘要），模板区取消整块 overflow 截断，仅保留 186px 内部列表滚动并开启纵向滚动链，表单可继续上下滑到名称、图标和类型。真 Chrome 390×844 探针复核通过，编辑器页面 `scrollHeight 1391 / clientHeight 710` 可滚至 `scrollTop 681`；check、test:ui、test:mobile、build 通过。
+
+2026-09-14 完成任务无闪烁：Today 手机/桌面完成记录改为卡片原地更新，保留节点事件、焦点与滚动位置；同步更新顶部完成计数、进度条及周进度芯片，Toast 仍由独立底部提示层显示，待完成筛选下完成项直接移除而不重建整页。新增结构守门覆盖原地完成态、周条和计数更新；check、test:ui、pnpm test、build 均通过。
+
+2026-09-14 番茄钟入口选择：新增持久化的“默认专注计时器”偏好（自带番茄钟 / 番茄钟插件）。Today 手机与桌面点击小钟表时按该偏好路由；插件模式没有已注册适配器时只提示插件不可用，不再静默打开自带计时器。补充双语设置文案与偏好/路由守门；check、pnpm test、test:ui、build 通过。
+2026-09-14 第三批检查点（50 项，9.8 发布准备门禁）：新增 `tests/stability-9_8c.test.cjs`，覆盖 package/plugin 版本与语义版本、前后端声明、资源/README/LICENSE、pnpm 与 Node 约束、生产构建/类型检查脚本、质量链组成、CI push/PR/Node22/frozen lockfile/构建/单测/移动端/发布资源、Chromium/无障碍/视觉审计、环境探针 JSON 与浏览器候选、桌面页签/dock/移动端 smoke、番茄钟双窗口、提醒动作、SHA-256 回滚、兼容矩阵与恢复并发写入文档，共 50 条可复现守门。新增 `pnpm run check:stability`，并纳入 `test:ui`。证据：`node tests/stability-9_8c.test.cjs`、`pnpm run check:stability` 均通过（50/50）；下一步运行完整 `test:quality` 并继续处理真实宿主 smoke（T-023/T-129）。
+
+2026-09-14 第二批检查点补录（36 项）：`tests/stability-9_8b.test.cjs` 覆盖提醒动作生命周期、番茄钟 focus、externalRef 幂等、saveQueue/audit、宿主 token、reduced-motion、Today 局部刷新、快照/恢复/安全区与人工验收入口；已接入 `test:ui`，定向执行通过。

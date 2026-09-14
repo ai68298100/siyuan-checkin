@@ -14,8 +14,9 @@ assert.match(indexSource, /surface\?\.querySelector<HTMLElement>\("\.lc-checkin_
 assert.match(indexSource, /private renderTodayItemLocally\(itemId: string\): boolean/, "Today updates should have a conservative local-render path");
 assert.match(indexSource, /pendingLocalItemId = current\.id[\s\S]*?renderBackgroundUpdate\(\)/, "successful records should request a local card refresh");
 assert.match(indexSource, /renderTodayItemLocally\(localItemId\)\)\s*\{[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
-assert.match(indexSource, /card\.classList\.contains\("is-complete"\) !== complete/, "completion-state changes must fall back to structural rendering");
-assert.match(indexSource, /if \(this\.pendingOnly && complete\) return false/, "filtered completed cards must fall back to the full render");
+assert.match(indexSource, /card\.className = next\.className/, "completion-state changes should update the existing card in place");
+assert.match(indexSource, /updateTodayWeekStrip\(surface, date\)/, "local completion refresh should update the week strip without rebuilding Today");
+assert.match(indexSource, /count\.innerHTML =/, "local completion refresh should update the header counter");
 assert.match(fragments, /export function renderRecentRecordView\(/, "window toast markup should be reusable by local updates");
 assert.match(components, /\.lc-checkin-dialog-host,[\s\S]*?\.lc-checkin-tab-host,[\s\S]*?\.lc-checkin-dock-host \{ position: relative; \}/, "every plugin surface must bound the toast position");
 assert.match(components, /\.lc-checkin__recent-record \{[\s\S]*?position: absolute;[\s\S]*?bottom: 18px;[\s\S]*?width: min\(360px, calc\(100% - 24px\)\);[\s\S]*?animation: lc-checkin-toast-in 120ms ease-out both;/, "check-in feedback should be a compact toast bounded by the plugin window");

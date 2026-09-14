@@ -43,7 +43,7 @@ import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, c
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
-import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, FocusTimerProvider, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
@@ -166,6 +166,8 @@ export default class CheckinPlugin extends Plugin {
     private todayQuery = "";
     private pendingOnly = false;
     private completedCollapsed = DEFAULT_VIEW_PREFERENCES.completedCollapsed;
+    /** Keep the Today priority reminder expanded across data-driven rerenders. */
+    private priorityReminderExpanded = false;
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
     private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
@@ -218,6 +220,7 @@ export default class CheckinPlugin extends Plugin {
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
+    private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     private pendingFocusItemId?: string;
     private pendingLocalItemId?: string;
     private collapsedTodayGroups = new Set<string>();
@@ -748,9 +751,8 @@ export default class CheckinPlugin extends Plugin {
         renderBackgroundUpdateFor(this as unknown as PluginOpsHost);
     }
 
-    /* 数值记录未改变卡片所属分组/完成态时，只更新该卡片的派生文本与进度，
-       避免一次打卡重建整个 Today 页面。若卡片因筛选、完成态或连续天数
-       结构变化而需要移动，则返回 false 让调用方走完整渲染。 */
+    /* 打卡后只更新目标卡片及 Today 的派生计数，保留滚动位置、焦点和其余
+       控件节点。即使完成态发生变化，也不重建整个 surface，避免页面闪烁。 */
     private renderTodayItemLocally(itemId: string): boolean {
         if (typeof document === "undefined") return false;
         const date = currentCalendarDate();
@@ -759,8 +761,6 @@ export default class CheckinPlugin extends Plugin {
         const complete = isComplete(this.store, item, date);
         const query = this.todayQuery.trim().toLocaleLowerCase();
         if (query && !`${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query)) return false;
-        if (this.pendingOnly && complete) return false;
-        if (this.weekStripVisible) return false;
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement]
             .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
         if (!roots.length) return false;
@@ -772,20 +772,25 @@ export default class CheckinPlugin extends Plugin {
             bulkSelected: this.bulkSelected,
             todaySortMode: this.todaySortMode,
         };
-        const replacements: Array<{card: HTMLElement; next: HTMLElement}> = [];
+        const cards: Array<{card: HTMLElement; next: HTMLElement; surface: HTMLElement}> = [];
         for (const root of roots) {
             const surface = root.querySelector<HTMLElement>(".lc-checkin--today");
             const card = [...(surface?.querySelectorAll<HTMLElement>("[data-item-id]") || [])]
                 .find((candidate) => candidate.dataset.itemId === itemId);
-            if (!surface || !card || card.classList.contains("is-complete") !== complete) return false;
+            if (!surface || !card) return false;
+            if (this.pendingOnly && complete) {
+                card.remove();
+                cards.push({card, next: card, surface});
+                continue;
+            }
             const template = document.createElement("template");
             template.innerHTML = renderItemView(item, date, ctx).trim();
             const next = template.content.firstElementChild;
             if (!(next instanceof HTMLElement)) return false;
-            if (Boolean(card.querySelector(".lc-checkin__streak-badge")) !== Boolean(next.querySelector(".lc-checkin__streak-badge"))) return false;
-            replacements.push({card, next});
+            cards.push({card, next, surface});
         }
-        for (const {card, next} of replacements) {
+        for (const {card, next, surface} of cards) {
+            if (card === next) continue;
             card.className = next.className;
             const style = next.getAttribute("style");
             if (style) card.setAttribute("style", style);
@@ -799,9 +804,68 @@ export default class CheckinPlugin extends Plugin {
             const currentStreak = card.querySelector<HTMLElement>(".lc-checkin__streak-badge");
             const nextStreak = next.querySelector<HTMLElement>(".lc-checkin__streak-badge");
             if (currentStreak && nextStreak) currentStreak.textContent = nextStreak.textContent;
+            if (nextStreak && !currentStreak) {
+                const topline = card.querySelector<HTMLElement>(".lc-checkin__item-topline");
+                if (topline) {
+                    const inserted = nextStreak.cloneNode(true) as HTMLElement;
+                    inserted.addEventListener("click", () => {
+                        this.insightsReturnPage = "today";
+                        this.showInsights(item);
+                    });
+                    topline.insertBefore(inserted, topline.querySelector(".lc-checkin__small-button"));
+                }
+            } else if (currentStreak && !nextStreak) {
+                currentStreak.remove();
+            }
+            const currentIcon = card.querySelector<HTMLElement>(".lc-checkin__item-icon");
+            const nextIcon = next.querySelector<HTMLElement>(".lc-checkin__item-icon");
+            if (currentIcon && nextIcon) {
+                const ariaLabel = nextIcon.getAttribute("aria-label");
+                if (ariaLabel) currentIcon.setAttribute("aria-label", ariaLabel);
+            }
+            const currentPrimary = card.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record']");
+            const nextPrimary = next.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record']");
+            if (currentPrimary && nextPrimary && currentPrimary.classList.contains("lc-checkin__record-button")) {
+                currentPrimary.textContent = nextPrimary.textContent;
+            }
+            const currentMore = card.querySelector<HTMLElement>("[data-action='toggle-exact']");
+            if (currentMore) currentMore.hidden = complete;
+            const currentExact = card.querySelector<HTMLElement>("[data-exact-entry]");
+            if (currentExact && complete) currentExact.hidden = true;
+            /* Keep the existing card/listeners connected. Only move it when a
+               completed section already exists; creating/removing whole Today
+               markup here would reintroduce the full-page flash this path avoids. */
+            if (complete && !card.closest(".lc-checkin__completed-section")) {
+                const completedItems = surface.querySelector<HTMLElement>(".lc-checkin__completed-section .lc-checkin__group-items");
+                if (completedItems) completedItems.appendChild(card);
+            }
+        }
+        for (const surface of new Set(cards.map(({surface}) => surface))) {
+            const scheduledItems = this.store.items.filter((candidate) => !candidate.archived && isItemAvailableOnDate(candidate, date) && isScheduledToday(candidate, date));
+            const completedCount = scheduledItems.filter((candidate) => isComplete(this.store, candidate, date)).length;
+            const count = surface.querySelector<HTMLElement>(".lc-checkin__count");
+            if (count) count.innerHTML = `${completedCount}<span>/</span>${scheduledItems.length}`;
+            const progress = surface.querySelector<HTMLElement>(".lc-checkin__progress > span");
+            if (progress) progress.style.width = `${scheduledItems.length ? Math.round((completedCount / scheduledItems.length) * 100) : 0}%`;
+            this.updateTodayWeekStrip(surface, date);
         }
         this.syncRecentRecordToast();
         return true;
+    }
+
+    private updateTodayWeekStrip(surface: HTMLElement, now: Date) {
+        const chips = [...surface.querySelectorAll<HTMLElement>(".lc-checkin__day-chip")];
+        if (!chips.length) return;
+        for (let index = 0; index < chips.length; index += 1) {
+            const day = new Date(now);
+            day.setDate(now.getDate() - (6 - index));
+            const dayItems = this.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, day) && isScheduledToday(item, day));
+            const done = dayItems.filter((item) => isComplete(this.store, item, day)).length;
+            const status = !dayItems.length ? "empty" : done === dayItems.length ? "complete" : done ? "partial" : "pending";
+            const chip = chips[index];
+            chip.className = `lc-checkin__day-chip is-${status} ${dateKey(day) === dateKey(now) ? "is-today" : ""}`.trim();
+            chip.title = t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length});
+        }
     }
 
     private syncRecentRecordToast() {
@@ -889,8 +953,9 @@ export default class CheckinPlugin extends Plugin {
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
-               窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。 */
-            if (!this.isMobileFrontend) layout.insertAdjacentHTML("afterbegin", this.renderTopNav());
+               窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。
+               桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
+            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav());
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
@@ -984,6 +1049,7 @@ export default class CheckinPlugin extends Plugin {
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
+            focusTimerProvider: this.focusTimerProvider,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
@@ -1009,6 +1075,13 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            if (value === "builtin" || value === "plugin") {
+                this.focusTimerProvider = value;
+                savePreference();
+            }
+        });
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {
@@ -1258,6 +1331,7 @@ export default class CheckinPlugin extends Plugin {
             appearance: this.resolvedAppearance(),
             reducedMotion: this.reducedMotion,
             reminderUserActions: this.reminderUserActions,
+            priorityReminderExpanded: this.priorityReminderExpanded,
         });
     }
 
@@ -2117,6 +2191,7 @@ export default class CheckinPlugin extends Plugin {
         this.dialogFixedSize = {...preferences.dialogFixedSize};
         this.reducedMotion = preferences.reducedMotion;
         this.hapticFeedback = preferences.hapticFeedback;
+        this.focusTimerProvider = preferences.focusTimerProvider;
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
@@ -2147,6 +2222,7 @@ export default class CheckinPlugin extends Plugin {
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
+            focusTimerProvider: this.focusTimerProvider,
             todayQuery: this.todayQuery,
             pendingOnly: this.pendingOnly,
             showWeekStrip: this.weekStripVisible,

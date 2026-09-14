@@ -5,6 +5,8 @@ export type CheckinAppearance = "system" | "light" | "dark";
 /** How the quick dialog sizes itself on desktop. "auto" adapts to the content and remembers a user resize. */
 export type DialogSizeMode = "auto" | "percent" | "fullscreen" | "fixed";
 export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
+/** Which focus timer should open from a duration item's clock button. */
+export type FocusTimerProvider = "builtin" | "plugin";
 
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
@@ -20,6 +22,8 @@ export interface CheckinViewPreferences {
     reducedMotion: boolean;
     /** Short vibration on successful check-ins (mobile only; no-op where Vibration API is missing). */
     hapticFeedback: boolean;
+    /** Default focus timer launcher: the built-in panel or a registered tomato plugin adapter. */
+    focusTimerProvider: FocusTimerProvider;
     todayQuery: string;
     pendingOnly: boolean;
     /** Optional today-page extras (week strip). Off by default: the checklist is the first screen. */
@@ -50,6 +54,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     appearance: "system",
     reducedMotion: false,
     hapticFeedback: true,
+    focusTimerProvider: "builtin",
     todayQuery: "",
     pendingOnly: false,
     lastExportAt: undefined,
@@ -63,6 +68,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
+const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "plugin"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
     const parsed = typeof value === "number" ? value : Number(value);
@@ -85,6 +91,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
     const hapticFeedback = typeof source.hapticFeedback === "boolean" ? source.hapticFeedback : DEFAULT_VIEW_PREFERENCES.hapticFeedback;
+    const focusTimerProvider = FOCUS_TIMER_PROVIDERS.has(source.focusTimerProvider as FocusTimerProvider) ? source.focusTimerProvider as FocusTimerProvider : DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
@@ -122,6 +129,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         appearance,
         reducedMotion,
         hapticFeedback,
+        focusTimerProvider,
         todayQuery,
         pendingOnly,
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
