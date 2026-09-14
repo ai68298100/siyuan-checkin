@@ -40,11 +40,31 @@ export type CheckinEventListener = (event: CheckinIntegrationEvent) => void;
 
 export const CHECKIN_API_NAME = "siyuanCheckin";
 
+const SUGGESTION_EVENT_ID_MAX_LENGTH = 160;
+
+export function cloneIntegrationEvent(event: CheckinIntegrationEvent): CheckinIntegrationEvent | undefined {
+    if (!event || typeof event !== "object") return undefined;
+    if (event.type === "suggestion-workflow-updated") {
+        if (typeof event.suggestionId !== "string" || !event.suggestionId.trim() || event.suggestionId.length > SUGGESTION_EVENT_ID_MAX_LENGTH) return undefined;
+        if (event.suggestionStatus !== "pending" && event.suggestionStatus !== "confirmed" && event.suggestionStatus !== "cancelled" && event.suggestionStatus !== "failed") return undefined;
+        return {type: event.type, suggestionId: event.suggestionId.trim(), suggestionStatus: event.suggestionStatus};
+    }
+    if (event.type === "item-created" || event.type === "item-updated") {
+        return {...event, item: event.item ? {...event.item, archivePeriods: event.item.archivePeriods?.map((period) => ({...period})), schedule: event.item.schedule ? {...event.item.schedule} : event.item.schedule} : undefined};
+    }
+    if (event.type === "event-recorded" || event.type === "event-deleted") {
+        return {...event, event: event.event ? {...event.event} : undefined, deletedEvents: event.deletedEvents?.map((entry) => ({...entry}))};
+    }
+    return undefined;
+}
+
 export function emitIntegrationEvent(event: CheckinIntegrationEvent): void {
     if (typeof window === "undefined") {
         return;
     }
-    window.dispatchEvent(new CustomEvent(toExternalEventName(event), {detail: event}));
+    const safe = cloneIntegrationEvent(event);
+    if (!safe) return;
+    window.dispatchEvent(new CustomEvent(toExternalEventName(safe), {detail: safe}));
 }
 
 export function toExternalEventName(event: CheckinIntegrationEvent): string {
