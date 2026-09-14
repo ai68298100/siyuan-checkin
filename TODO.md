@@ -269,10 +269,10 @@
     删除 .lc-checkin 上被覆盖的 container-name: lc-checkin 死声明；重建后 dist/index.css 301555→262270 字节（-13%）；
     check/test/test:mobile/check:release 全绿；走查截图逐页比对无渲染变化；4 个测试文件里锁定死块的断言迁到现行活规则
   - 状态：done（84c6d37 后续）
-- [ ] T-104 legacy index.scss 退役 Phase 2：视口 @media 残余清理
+- [x] T-104 legacy index.scss 退役 Phase 2：视口 @media 残余清理
   - 验收：@media 视口规则与 lc5 容器规则的职责边界收敛；迁移或删除前先走查比对（@media 按 viewport 触发，≠容器宽度，需运行时验证）
   - 依赖：无
-  - 状态：doing（已迁移编辑器双栏、设置选项三栏、历史页桌面增强、多组窄屏内容规则及模板管理器到 `@container lc5`；弹窗宿主/无障碍/横竖屏媒体规则待后续分批处理）
+  - 状态：done（内容布局均已迁到 `@container lc5`；删除窄屏+减弱动画重复规则。保留的 viewport 规则仅负责无法由子容器查询表达的弹窗外壳尺寸/圆角、屏幕高度与方向，以及 prefers/forced-colors/reduced-motion/pointer/hover/print 等设备和无障碍能力）
 - [ ] T-105 legacy index.scss 退役 Phase 3：无条件存量规则迁移 + 文件退役
   - 验收：剩余无条件规则逐条判定（迁移到 components/tokens 或删除），index.scss 缩到可删或删空；每迁一批跑全链路+走查比对
   - 依赖：T-104

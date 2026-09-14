@@ -382,3 +382,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 验证：`pnpm run check`、`node tests/occasions.test.cjs`、`node tests/interval-editor.test.cjs`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run build`、release-assets（CSS 317961 bytes）均通过。
 - 浏览器补验发现页签顶栏 `width:100%` 之外又增加左右各 24px padding，造成 1140px 宿主实际滚动宽 1188px；顶栏改为 `border-box` 后消除 48px 横向溢出，并加入桌面结构守门。
 - 真实 Chrome 证据：`width-walkthrough` 的 2000/1320/1180/640/360 档均无横向溢出；浅色、深色 `visual-qa` 均通过，页签 1140/1140；`pnpm run test:quality` 全链通过（10k 记录完整渲染 30ms、CSS 317983 bytes）。
+
+## T-104 legacy viewport 规则收敛
+
+- 内容响应式职责已全部交给命名容器；删除了与全局 reduced-motion 完全重复的“窄视口+减弱动画”规则。
+- 剩余 `@media` 明确限于弹窗外壳自身、屏幕高度/方向、打印、触控/悬停和系统无障碍偏好，这些条件不能等价替换为内容容器宽度。
+- 验证基线沿用本轮真实 Chrome 双主题 visual QA、width walkthrough 与全量 `test:quality`；删除冗余规则后继续复跑发布资源和视觉门禁。

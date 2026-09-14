@@ -3073,10 +3073,6 @@
     [data-reduced-motion="true"] .lc-checkin button { transition: none !important; transform: none !important; }
 }
 
-@media (max-width: 600px) and (prefers-reduced-motion: reduce) {
-    .lc-checkin *, .lc-checkin *::before, .lc-checkin *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
-}
-
 @container lc5 (max-width: 600px) {
     .lc-checkin__loading,
     .lc-checkin__error,
