@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-559~T-578 建议操作并发与异常边界完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：T-579~T-598 建议操作能力门面完成，准备进入 T-129 真机验收与 15.0-A 样式精简
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
 未提交变更：无
-上次提交：fix(agent): guard suggestion action concurrency（本地里程碑）
+上次提交：refactor(agent): centralize suggestion action availability（本地里程碑）
 下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
 上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -45,6 +45,8 @@
 2026-09-14 建议审计信息增强批次（T-539~T-558）：工作流新增最新审计查询并返回防御性副本；面板展示最近更新时间（无审计时回退创建时间），时间字段统一转义并补齐中英文文案与样式。扩展运行时及渲染守门测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302228 bytes；已提交本地里程碑 `254bf07`，未 push。
 
 2026-09-14 建议操作并发与异常边界批次（T-559~T-578）：建议确认/取消/撤销按钮增加 WeakSet 忙碌集合，阻止重复触发；同步宿主抛错统一转为异步 Promise，完成后安全清理 aria-busy/disabled，按钮脱离 DOM 时不再操作；统一吞吐异常避免未处理拒绝。新增并发与异常结构断言。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `0b5664c`，未 push。
+
+2026-09-14 建议操作能力门面批次（T-579~T-598）：新增纯函数 `workflowActions` 统一计算确认/取消/撤销可用性，面板复用该结果，pending 无变更时确认按钮自动禁用，应用与撤销状态按审计资格保持一致；扩展运行时和渲染测试。验证：`pnpm run test:quality` 通过（QUALITY_EXIT=0），构建 CSS 302302 bytes；已提交本地里程碑 `f01623a`，未 push。
 
 T-122 complete: mobile topbar and bottom navigation now inherit the resolved independent light/dark palette from the surface even though they live outside the scrolling `.lc-checkin` element. Host datasets and fixed token synchronization prevent fallback to Siyuan global colors; topbar exposes `data-appearance` for deterministic styling. Verification: `pnpm run check`, `pnpm run test:mobile`, `pnpm run test:ui`, and `pnpm run build` passed (CSS 262 KiB, existing webpack size warnings only).
 

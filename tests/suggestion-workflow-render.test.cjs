@@ -7,7 +7,7 @@ assert.match(render, /renderSuggestionWorkflowPanel/);
 assert.match(render, /data-suggestion-workflow/);
 assert.match(render, /data-suggestion-decision/);
 assert.match(render, /data-suggestion-undo/);
-assert.match(render, /canUndoSuggestion/);
+assert.match(render, /workflowActions/);
 assert.match(render, /workflowAuditSummary/);
 assert.match(render, /agent\.workflowAuditMeta/);
 assert.match(render, /agent\.confirmAria/);

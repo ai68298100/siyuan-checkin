@@ -36,6 +36,12 @@ export interface SuggestionWorkflowSummary {
     audits: number;
 }
 
+export interface SuggestionWorkflowActions {
+    canConfirm: boolean;
+    canCancel: boolean;
+    canUndo: boolean;
+}
+
 export interface SuggestionDecisionOutcome {
     state: SuggestionWorkflowState;
     accepted: boolean;
@@ -112,6 +118,11 @@ export function latestWorkflowAudit(state: SuggestionWorkflowState): AgentSugges
 export function canUndoSuggestion(state: SuggestionWorkflowState): boolean {
     const latestApplied = [...state.audits].reverse().find((audit) => audit.action === "applied");
     return state.envelope.status === "confirmed" && Boolean(latestApplied && (latestApplied.applied || 0) > 0 && latestApplied.reason !== "revert");
+}
+
+export function workflowActions(state: SuggestionWorkflowState): SuggestionWorkflowActions {
+    const pending = state.envelope.status === "pending";
+    return {canConfirm: pending && state.envelope.changes.length > 0, canCancel: pending, canUndo: canUndoSuggestion(state)};
 }
 
 export function workflowSummary(state: SuggestionWorkflowState): SuggestionWorkflowSummary {
