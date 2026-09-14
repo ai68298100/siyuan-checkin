@@ -1143,10 +1143,3 @@
 
 /* 3.0 reference-inspired task language: a quiet card, a visible status rail,
    and one unambiguous completion control. */
-@container lc5 (max-width: 560px) {
-    .lc-template-manager { padding: 12px; }
-    .lc-template-manager > header { display: grid; }
-    .lc-template-manager > header button { width: 100%; }
-    .lc-template-card { grid-template-columns: 30px minmax(0,1fr); }
-    .lc-template-card__actions { grid-column: 2; }
-}

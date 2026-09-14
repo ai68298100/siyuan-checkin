@@ -1747,6 +1747,40 @@
     .lc-checkin__insight-grid span { min-width: 0; }
     .lc-checkin__templates > * { min-width: 0; }
 }
+/* Sixteenth narrow-surface pass: template manager compact mobile layout. */
+@container lc5 (max-width: 560px) {
+    .lc-template-manager { padding: 12px; }
+    .lc-template-manager > header { display: grid; gap: 8px; }
+    .lc-template-manager > header h2 { min-width: 0; }
+    .lc-template-manager > header p { min-width: 0; }
+    .lc-template-manager > header button { width: 100%; }
+    .lc-template-manager__search { gap: 5px; }
+    .lc-template-manager__search label { line-height: 1.3; }
+    .lc-template-manager__search input { min-width: 0; }
+    .lc-template-manager__count { line-height: 1.3; }
+    .lc-template-manager__list { gap: 6px; }
+    .lc-template-card { grid-template-columns: 30px minmax(0,1fr); gap: 8px; }
+    .lc-template-card__icon { width: 30px; font-size: 20px; }
+    .lc-template-card h3 { min-width: 0; line-height: 1.3; }
+    .lc-template-card p { min-width: 0; line-height: 1.35; }
+    .lc-template-card small { min-width: 0; line-height: 1.3; }
+    .lc-template-card__actions { grid-column: 2; justify-content: flex-start; }
+    .lc-template-card__actions button { min-height: 32px; }
+    .lc-template-form { gap: 8px; padding: 10px; }
+    .lc-template-form label { gap: 4px; }
+    .lc-template-form input { min-width: 0; }
+    .lc-template-form textarea { min-height: 64px; }
+    .lc-template-form > div { justify-content: stretch; }
+    .lc-template-form > div button { flex: 1; }
+    .lc-template-manager button { min-height: 36px; }
+    .lc-template-manager :where(input, textarea) { box-sizing: border-box; }
+    .lc-template-card { overflow: hidden; }
+    .lc-template-card__actions { min-width: 0; }
+    .lc-template-card__actions button { flex: 0 1 auto; }
+    .lc-template-manager h2 { font-size: 18px; }
+    .lc-template-manager h3 { font-size: 13px; }
+    .lc-template-manager p { font-size: 11px; }
+}
 
 .lc-checkin {
     box-sizing: border-box;
