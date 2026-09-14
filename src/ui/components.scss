@@ -1210,6 +1210,84 @@
     .lc-checkin--editor .lc-checkin__form-row { gap: 10px; }
 }
 
+/* Fifth narrow-surface pass: motion, focus, safe areas and readable content. */
+@container lc5 (max-width: 600px) {
+    .lc-checkin,
+    .lc-checkin__mobile-nav,
+    .lc-checkin__item,
+    .lc-checkin__settings-card,
+    .lc-checkin__history-selected { transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease; }
+    [data-reduced-motion="true"] .lc-checkin,
+    [data-reduced-motion="true"] .lc-checkin__mobile-nav,
+    [data-reduced-motion="true"] .lc-checkin__item,
+    [data-reduced-motion="true"] .lc-checkin__settings-card,
+    [data-reduced-motion="true"] .lc-checkin__history-selected { transition: none; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: max(88px, calc(72px + env(safe-area-inset-bottom))); }
+    .lc-checkin__mobile-nav { padding-bottom: max(5px, calc(5px + env(safe-area-inset-bottom))); }
+    .lc-checkin--editor .lc-checkin__form-scroll { padding-bottom: max(108px, calc(96px + env(safe-area-inset-bottom))); }
+    .lc-checkin--editor .lc-checkin__editor-actions { padding-bottom: max(9px, calc(9px + env(safe-area-inset-bottom))); }
+    .lc-checkin :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
+    .lc-checkin__mobile-nav button:focus-visible { outline-offset: -2px; }
+    .lc-checkin__calendar-day:focus-visible { outline-offset: -3px; }
+    .lc-checkin__item:focus-within,
+    .lc-checkin__occasion-manager-row:focus-within { border-color: var(--lc-checkin-accent-text); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-text) 5%, transparent); }
+    .lc-checkin-dialog-host--mobile .lc-checkin__header .lc-checkin__eyebrow,
+    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header .lc-checkin__eyebrow { opacity: .82; }
+    [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__header,
+    [data-reduced-motion="true"] .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { box-shadow: none; }
+    .lc-checkin > * { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+    .lc-checkin__item,
+    .lc-checkin__organize,
+    .lc-checkin__settings-card,
+    .lc-checkin__history-tools,
+    .lc-checkin__history-selected { margin-right: 0; margin-left: 0; }
+    .lc-checkin--today .lc-checkin__item-icon { align-self: start; line-height: 1; }
+    .lc-checkin--today .lc-checkin__item-topline { min-height: 22px; }
+    .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
+    .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
+    .lc-checkin--history .lc-checkin__calendar-weekdays { margin-bottom: 2px; }
+    .lc-checkin--history .lc-checkin__calendar + .lc-checkin__history-tools { margin-top: 6px; }
+    .lc-checkin--history .lc-checkin__history-tools + .lc-checkin__history-result { margin-top: 4px; }
+    .lc-checkin--history .lc-checkin__history-result + .lc-checkin__history-selected { margin-top: 6px; }
+    .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
+    .lc-checkin__insight-legend i.is-complete { background: var(--lc-checkin-success); }
+    .lc-checkin__insight-legend i.is-partial { background: var(--lc-checkin-warning); }
+    .lc-checkin__insight-legend i.is-missed { background: var(--lc-checkin-danger); }
+    .lc-checkin__insight-legend i.is-off { background: var(--lc-checkin-muted-surface); }
+    .lc-checkin--settings [data-setting-appearance],
+    .lc-checkin--settings [data-setting-group],
+    .lc-checkin--settings [data-setting-sort] { font-weight: 550; }
+    .lc-checkin--today .lc-checkin__item-progress span { transition: width 180ms ease, background-color 160ms ease; }
+    .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { transition: color 160ms ease, opacity 160ms ease; }
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item-progress span,
+    [data-reduced-motion="true"] .lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-name { transition: none; }
+    .lc-checkin__header,
+    .lc-checkin__editor-header { min-width: 0; }
+    .lc-checkin__header > div:first-child,
+    .lc-checkin__editor-header > div { min-width: 0; flex: 1 1 auto; }
+    .lc-checkin__header-actions { flex: 0 1 auto; min-width: 0; }
+    .lc-checkin__header-actions .lc-checkin__count { flex: 0 0 auto; }
+    .lc-checkin--today .lc-checkin__title { max-width: 100%; }
+    .lc-checkin__search-field input { min-height: 40px; }
+    .lc-checkin__search-field > button { min-width: 32px; min-height: 32px; border-radius: 50%; }
+    .lc-checkin--history .lc-checkin__history-search { min-width: 0; }
+    .lc-checkin--history .lc-checkin__history-search input { width: 100%; min-width: 0; }
+    .lc-checkin--editor .lc-checkin__template-section { margin-bottom: 0; }
+    .lc-checkin--editor .lc-checkin__field--name { margin-top: 0; }
+    .lc-checkin--editor .lc-checkin__kind-field { margin-top: 0; }
+    .lc-checkin--editor .lc-checkin__field--name input { min-height: 44px; font-size: 15px; }
+    .lc-checkin--editor .lc-checkin__kind-option span { min-height: 46px; }
+    .lc-checkin--insights .lc-checkin__coaching-item { overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__coaching-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--insights .lc-checkin__coaching-item p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+    .lc-checkin--insights .lc-checkin__coaching-item small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--settings .lc-checkin__settings-card p { max-height: 3.2em; overflow: hidden; }
+    .lc-checkin--settings .lc-checkin__settings-card .lc-checkin__text-button { min-height: 40px; }
+}
+
 /* ---------------- root shell ---------------- */
 .lc-checkin {
     box-sizing: border-box;
