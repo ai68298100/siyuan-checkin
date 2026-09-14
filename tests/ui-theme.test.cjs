@@ -25,7 +25,10 @@ assert.match(liveStyles, /Base plugin canvas and compact mobile shell[\s\S]*\.lc
 assert.match(styles, /--lc-checkin-control-height:\s*36px/);
 assert.match(styles, /--lc-checkin-muted-surface:/);
 assert.match(styles, /--lc-checkin-shadow:/);
-assert.match(styles, /\.lc-checkin__organize[\s\S]*background:\s*var\(--lc-checkin-muted-surface\)/);
+assert.match(liveStyles, /\.lc-checkin__organize[\s\S]*background:\s*var\(--lc-checkin-muted-surface\)/);
+assert.ok(!styles.includes("display: inline-flex !important"), "today search base primitive must not return to legacy index.scss");
+assert.match(liveStyles, /Today organization, search, feedback and grouping primitives[\s\S]*\.lc-checkin__all-done/,
+    "today organization and grouping primitives belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
