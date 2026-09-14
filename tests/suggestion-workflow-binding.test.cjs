@@ -35,5 +35,6 @@ assert.match(index, /private persistSuggestionWorkflow/);
 assert.match(index, /deserializeSuggestionWorkflow\(storedSuggestionWorkflow/);
 assert.match(index, /serializeSuggestionWorkflow\(this\.suggestionWorkflow\)/);
 assert.match(index, /shouldRestoreSuggestionWorkflow\(restoredWorkflow\)/);
+assert.match(index, /isWorkflowNewer\(restoredWorkflow, this\.suggestionWorkflow\)/);
 
 console.log("Suggestion workflow binding structure checks passed.");

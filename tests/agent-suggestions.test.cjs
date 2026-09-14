@@ -123,6 +123,7 @@ assert.match(index, /deserializeSuggestionWorkflow/);
 assert.match(index, /serializeSuggestionWorkflow/);
 assert.match(index, /persistSuggestionWorkflow/);
 assert.match(index, /shouldRestoreSuggestionWorkflow/);
+assert.match(index, /isWorkflowNewer/);
 console.log('Agent suggestion safety structure checks passed.');
 require('./review-summary-refresh.test.cjs');
 require('./suggestion-apply.test.cjs');

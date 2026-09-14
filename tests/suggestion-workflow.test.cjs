@@ -64,6 +64,10 @@ const stale = workflow.createSuggestionWorkflow(model.createSuggestionEnvelope({
 assert.equal(workflow.shouldRestoreSuggestionWorkflow(stale, new Date("2026-09-14T00:00:00.000Z")), false);
 const confirmedStale = {...stale, envelope: {...stale.envelope, status: "confirmed"}};
 assert.equal(workflow.shouldRestoreSuggestionWorkflow(confirmedStale, new Date("2026-09-14T00:00:00.000Z")), true);
+assert.equal(workflow.workflowUpdatedAt(undone.state), "2026-09-14T00:04:00.000Z");
+assert.equal(workflow.isWorkflowNewer(undone.state, state), true);
+assert.equal(workflow.isWorkflowNewer(state, undone.state), false);
+assert.equal(workflow.isWorkflowNewer(state, undefined), true);
 const oversized = {...state, consumedTokens: Array.from({length: 130}, (_, index) => `t-${index}`)};
 assert.equal(workflow.normalizeSuggestionWorkflow(oversized, [item]).consumedTokens.length, 100);
 fs.rmSync(root, {recursive: true, force: true});

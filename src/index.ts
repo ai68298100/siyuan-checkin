@@ -40,7 +40,7 @@ import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
-import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
@@ -460,8 +460,11 @@ export default class CheckinPlugin extends Plugin {
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
             if (typeof storedSuggestionWorkflow === "string") {
                 const restoredWorkflow = deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items);
-                this.suggestionWorkflow = restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow) ? restoredWorkflow : undefined;
-                if (!this.suggestionWorkflow) void this.persistSuggestionWorkflow().catch(() => undefined);
+                if (restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow)) {
+                    if (isWorkflowNewer(restoredWorkflow, this.suggestionWorkflow)) this.suggestionWorkflow = restoredWorkflow;
+                } else if (!this.suggestionWorkflow) {
+                    void this.persistSuggestionWorkflow().catch(() => undefined);
+                }
             }
             this.applyViewPreferences(preferences);
             this.renderBackgroundUpdate();

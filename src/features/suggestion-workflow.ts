@@ -115,6 +115,17 @@ export function latestWorkflowAudit(state: SuggestionWorkflowState): AgentSugges
     return audit ? {...audit, conflicts: audit.conflicts ? [...audit.conflicts] : undefined} : undefined;
 }
 
+export function workflowUpdatedAt(state: SuggestionWorkflowState): string {
+    return latestWorkflowAudit(state)?.at || state.envelope.createdAt;
+}
+
+export function isWorkflowNewer(candidate: SuggestionWorkflowState, current: SuggestionWorkflowState | undefined): boolean {
+    if (!current) return true;
+    const candidateTime = Date.parse(workflowUpdatedAt(candidate));
+    const currentTime = Date.parse(workflowUpdatedAt(current));
+    return Number.isFinite(candidateTime) && (!Number.isFinite(currentTime) || candidateTime > currentTime);
+}
+
 export function canUndoSuggestion(state: SuggestionWorkflowState): boolean {
     const latestApplied = [...state.audits].reverse().find((audit) => audit.action === "applied");
     return state.envelope.status === "confirmed" && Boolean(latestApplied && (latestApplied.applied || 0) > 0 && latestApplied.reason !== "revert");
