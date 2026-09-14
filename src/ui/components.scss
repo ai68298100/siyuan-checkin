@@ -1716,6 +1716,38 @@
 }
 
 /* ---------------- root shell ---------------- */
+/* Fifteenth narrow-surface pass: ultra-narrow 380px grid and history density. */
+@container lc5 (max-width: 380px) {
+    .lc-checkin__item { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: start; gap: 7px; padding: 8px; }
+    .lc-checkin__item-icon { flex-basis: 32px; width: 32px; height: 32px; grid-row: span 2; }
+    .lc-checkin__item-action { grid-column: 2; justify-content: flex-start; width: 100%; }
+    .lc-checkin__item-action .lc-checkin__quick-button { flex: 1; }
+    .lc-checkin__exact-entry { grid-column: 2; flex-wrap: wrap; }
+    .lc-checkin__record-button { padding-right: 5px; padding-left: 5px; }
+    .lc-checkin__icon-grid { grid-template-columns: repeat(6, 1fr); }
+    .lc-checkin__templates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin__organization-fields { grid-template-columns: 1fr; }
+    .lc-checkin__organization-fields .lc-checkin__field:first-child { grid-column: auto; }
+    .lc-checkin__insight-stats { gap: 5px; }
+    .lc-checkin__insight-stats div { min-height: 58px; }
+    .lc-checkin__insight-stats strong { font-size: 16px; }
+    .lc-checkin__insight-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .lc-checkin__insight-picker { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .lc-checkin__insight-picker select { width: 100%; }
+    .lc-checkin__insight-legend { gap: 5px 8px; }
+    .lc-checkin__history-filter-row { grid-template-columns: 1fr; }
+    .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+    .lc-checkin__history-event .lc-checkin__history-event-value { grid-column: 2; grid-row: 1; }
+    .lc-checkin__history-event .lc-checkin__text-button { grid-row: 2; }
+    .lc-checkin__history-event .lc-checkin__text-button[data-history-event-id] { grid-column: 2; }
+    .lc-checkin__history-event .lc-checkin__text-button[data-edit-history-event-id] { grid-column: 1; justify-self: start; }
+    .lc-checkin__history-event > div { min-width: 0; }
+    .lc-checkin__history-event strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__history-event span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__insight-grid span { min-width: 0; }
+    .lc-checkin__templates > * { min-width: 0; }
+}
+
 .lc-checkin {
     box-sizing: border-box;
 }
