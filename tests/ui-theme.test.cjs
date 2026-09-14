@@ -61,6 +61,9 @@ assert.match(liveStyles, /Sixth narrow-surface pass: containment, themed surface
 assert.ok(!styles.includes("grid-template-columns: 38px minmax(0, 1fr)"), "the seventh narrow-surface pass must not return to legacy index.scss");
 assert.match(liveStyles, /Seventh narrow-surface pass: core page layouts and editor panels[\s\S]*data-appearance="dark"[^}]*lc-checkin__settings-card p/,
     "core page layouts and editor panels belong to the component layer");
+assert.ok(!styles.includes("--lc-checkin-radius-sm: 7px"), "the eighth narrow-surface pass must not return to legacy index.scss");
+assert.match(liveStyles, /Eighth narrow-surface pass: mobile navigation, floating action and type scale[\s\S]*\.lc-checkin__insight-section h2/,
+    "mobile navigation, floating action and type scale belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
