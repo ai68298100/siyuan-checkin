@@ -9,6 +9,7 @@ import {getVisibleOccasions, type Occasion, type OccasionStore} from "./occasion
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, type FocusAdapter, type SummaryProvider} from "./integrations";
 import {normalizeSummaryProviderResult} from "./agent-suggestions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, hasCheckinCapability, getCheckinApiDescriptor, getCheckinCapabilityInfo, type CheckinCapability, type CheckinApiDescriptor, type CheckinCapabilityInfo} from "./api-contract";
+import type {SuggestionWorkflowState} from "./features/suggestion-workflow";
 
 export interface CheckinApi {
     name: string;
@@ -39,6 +40,7 @@ export interface CheckinApi {
     registerSummaryProvider: (provider: SummaryProvider) => () => void;
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
     summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
+    getSuggestionWorkflow: () => SuggestionWorkflowState | undefined;
     subscribe: (listener: (event: CheckinIntegrationEvent) => void) => () => void;
 }
 
@@ -72,6 +74,7 @@ export interface CheckinApiHost {
     stopAdapterSilently(adapter: FocusAdapter): Promise<void>;
     invalidateSummary(): void;
     renderBackgroundUpdate(): void;
+    suggestionWorkflow?: SuggestionWorkflowState;
 }
 
 export function createCheckinApi(host: CheckinApiHost): CheckinApi {
@@ -186,6 +189,15 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         },
         summarize: (range, providerId) => summarizeWithProvider(range, undefined, providerId),
         summarizeCustom: (range, providerId) => summarizeWithProvider("day", range, providerId),
+        getSuggestionWorkflow: () => {
+            const state = host.suggestionWorkflow;
+            if (!state) return undefined;
+            return {
+                envelope: {...state.envelope, changes: state.envelope.changes.map((change) => ({...change}))},
+                consumedTokens: [...state.consumedTokens],
+                audits: state.audits.map((audit) => ({...audit, ...(audit.conflicts ? {conflicts: [...audit.conflicts]} : {})})),
+            };
+        },
         subscribe: (listener) => {
             if (!host.acceptingOperations || host.disposed || typeof listener !== "function") {
                 return () => undefined;

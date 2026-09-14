@@ -120,6 +120,7 @@ interface CheckinApi {
     registerSummaryProvider: (provider: SummaryProvider) => () => void;
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
     summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
+    getSuggestionWorkflow: () => SuggestionWorkflowState | undefined;
     subscribe: (listener: (event: CheckinIntegrationEvent) => void) => () => void;
 }
 

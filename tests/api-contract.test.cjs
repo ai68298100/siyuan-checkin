@@ -5,6 +5,10 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const source = fs.readFileSync("src/api-contract.ts", "utf8");
+const apiSource = fs.readFileSync("src/api.ts", "utf8");
+assert.match(apiSource, /getSuggestionWorkflow/);
+assert.match(apiSource, /consumedTokens: \[\.\.\.state\.consumedTokens\]/);
+assert.match(apiSource, /conflicts: \[\.\.\.audit\.conflicts\]/);
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-api-contract-"));
 const output = path.join(directory, "api-contract.js");
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
