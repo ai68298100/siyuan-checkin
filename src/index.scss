@@ -2243,43 +2243,6 @@
     }
 }
 
-/* Feedback states shared by every 2.0 surface. */
-.lc-checkin__loading,
-.lc-checkin__empty,
-.lc-checkin__error,
-.lc-checkin__sync-notice {
-    display: flex;
-    min-height: 72px;
-    align-items: center;
-    justify-content: center;
-    padding: var(--lc-checkin-space-4);
-    border: 1px dashed var(--lc-checkin-border);
-    border-radius: var(--lc-checkin-radius);
-    color: var(--lc-checkin-muted);
-    background: color-mix(in srgb, var(--lc-checkin-surface) 80%, var(--lc-checkin-bg));
-    text-align: center;
-}
-
-.lc-checkin__error {
-    border-style: solid;
-    border-color: color-mix(in srgb, var(--lc-checkin-danger) 55%, var(--lc-checkin-border));
-    color: var(--lc-checkin-danger-text);
-    background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--lc-checkin-bg));
-}
-
-.lc-checkin__loading::before {
-    width: 14px;
-    height: 14px;
-    margin-right: var(--lc-checkin-space-2);
-    border: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
-    border-top-color: var(--lc-checkin-accent-text);
-    border-radius: 50%;
-    animation: lc-checkin-spin .8s linear infinite;
-    content: "";
-}
-
-@keyframes lc-checkin-spin { to { transform: rotate(360deg); } }
-
 .lc-checkin :where(a, button, input, select, textarea):focus-visible {
     position: relative;
     z-index: 1;
@@ -2290,10 +2253,6 @@
     cursor: not-allowed;
     opacity: .55;
     pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .lc-checkin__loading::before { animation: none; }
 }
 
 @container lc5 (max-width: 600px) {
@@ -2876,12 +2835,9 @@
 }
 
 @container lc5 (max-width: 600px) {
-    .lc-checkin__loading,
-    .lc-checkin__error,
     .lc-checkin__empty,
     .lc-checkin__history-empty,
     .lc-checkin__empty-description { width: 100%; max-width: 100%; box-sizing: border-box; min-height: 88px; padding: 16px 12px; border-radius: 10px; }
-    .lc-checkin__error { min-height: 0; }
     .lc-checkin__empty-title { font-size: 15px; }
     .lc-checkin__empty-description { color: var(--b3-theme-on-surface-light); font-size: 11px; line-height: 1.5; }
     .lc-checkin__sync-notice { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

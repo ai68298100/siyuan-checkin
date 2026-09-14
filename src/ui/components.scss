@@ -3958,3 +3958,58 @@
     }
     .lc-checkin--editor .lc-checkin__template-delete { top: 2px; right: 2px; }
 }
+
+/* Shared loading and failure feedback belongs to the component layer. */
+.lc-checkin__loading,
+.lc-checkin__empty,
+.lc-checkin__error,
+.lc-checkin__sync-notice {
+    display: flex;
+    min-height: 72px;
+    align-items: center;
+    justify-content: center;
+    padding: var(--lc-checkin-space-4);
+    border: 1px dashed var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius);
+    color: var(--lc-checkin-muted);
+    background: color-mix(in srgb, var(--lc-checkin-surface) 80%, var(--lc-checkin-bg));
+    text-align: center;
+}
+
+.lc-checkin__error {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--lc-checkin-danger) 55%, var(--lc-checkin-border));
+    color: var(--lc-checkin-danger-text);
+    background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--lc-checkin-bg));
+}
+
+.lc-checkin__loading::before {
+    width: 14px;
+    height: 14px;
+    margin-right: var(--lc-checkin-space-2);
+    border: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
+    border-top-color: var(--lc-checkin-accent-text);
+    border-radius: 50%;
+    animation: lc-checkin-spin .8s linear infinite;
+    content: "";
+}
+
+@keyframes lc-checkin-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin__loading::before { animation: none; }
+}
+
+@container lc5 (max-width: 600px) {
+    .lc-checkin__loading,
+    .lc-checkin__error {
+        width: 100%;
+        max-width: 100%;
+        min-height: 88px;
+        box-sizing: border-box;
+        padding: 16px 12px;
+        border-radius: 10px;
+    }
+
+    .lc-checkin__error { min-height: 0; }
+}

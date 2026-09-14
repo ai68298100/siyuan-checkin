@@ -421,6 +421,12 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 - 追踪渲染、事件绑定和 classList 操作后，删除无任何创建来源的 always-visible、section-arrow 与旧悬浮 dialog-fullscreen 控件规则；仍在使用的容器状态 `lc-checkin-dialog--fullscreen` 完整保留。
 - 构建 CSS 305621→304160 bytes；类型检查、构建、`test:ui`、release-assets 与真实 Chrome 双主题 visual QA 通过。
+
+### 第七批
+
+- 静态来源复核确认无引用的 legacy 类已清零；`loading/error` 属于运行时反馈状态，因此不删除，连同共享空态与同步提示基础规则迁入 `ui/components.scss`。
+- 同步迁移加载旋转动画、系统减弱动画分支和 600px 容器下的状态布局；保留 dock 高特异性覆盖及错误态紧凑高度。
+- 构建 CSS 304160→304296 bytes（迁移后展开可维护格式增加 136 bytes）；类型检查、构建、`test:ui`、`test:mobile`、release-assets 与真实 Chrome 双主题 visual QA 通过。
 # 2026-09-14 侧边栏安全宽度
 
 - Dock 默认宽度由 380px 调整为 420px，作为名称、辅助动作和主按钮均可读的推荐宽度。
