@@ -416,6 +416,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 删除当前渲染层无引用的旧设置 check/danger/help/summary/density/theme 变体、旧 occasion-section、insights item-picker 与 history-actions 全部规则。
 - 对 loading/error、dialog fullscreen、always-visible 等可能由状态或宿主动态生成的类保持保守，不以静态字符串扫描直接删除。
 - 构建 CSS 308412→305621 bytes；`pnpm test`、`test:ui`、`test:mobile`、类型检查、release-assets 与真实 Chrome 双主题 visual QA 均通过。
+
+### 第六批
+
+- 追踪渲染、事件绑定和 classList 操作后，删除无任何创建来源的 always-visible、section-arrow 与旧悬浮 dialog-fullscreen 控件规则；仍在使用的容器状态 `lc-checkin-dialog--fullscreen` 完整保留。
+- 构建 CSS 305621→304160 bytes；类型检查、构建、`test:ui`、release-assets 与真实 Chrome 双主题 visual QA 通过。
 # 2026-09-14 侧边栏安全宽度
 
 - Dock 默认宽度由 380px 调整为 420px，作为名称、辅助动作和主按钮均可读的推荐宽度。
