@@ -18,7 +18,7 @@ assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived
     "archive action must use the persisted reversible operation");
 
 // Keyboard and touch users need a visible focus ring on every form control.
-assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:/,
+assert.match(components, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:/,
     "buttons, inputs, and selects must expose a focus ring");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*-webkit-tap-highlight-color:\s*transparent/,
     "touch controls must avoid browser tap flash while retaining focus styling");

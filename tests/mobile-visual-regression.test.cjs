@@ -20,7 +20,7 @@ assert.match(v5Components, /padding:\s*6px 8px calc\(6px \+ env\(safe-area-inset
     "mobile navigation must include the bottom safe area");
 assert.match(v5Components, /scroll-padding:\s*12px 0 calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "editor scrolling must include bottom safe-area space");
-assert.match(styles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:\s*2px solid/,
+assert.match(components, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:\s*2px solid/,
     "keyboard focus must remain visible");
 
 // Touch interactions must not create a second horizontal scroller.
