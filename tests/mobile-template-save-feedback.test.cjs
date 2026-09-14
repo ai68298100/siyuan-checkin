@@ -29,7 +29,7 @@ assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\
     "save feedback must have a stable action bar outside the scroll region");
 assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "keyboard scrolling must keep the bottom save area visible");
-assert.match(styles, /\.lc-checkin__save-button\s*\{[\s\S]*background:\s*var\(--lc-checkin-accent\)/,
+assert.match(components, /Editor organization[\s\S]*\.lc-checkin__save-button\s*\{[^}]*background:\s*var\(--lc-checkin-accent\)/,
     "save action must have a stable visual affordance");
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
     "narrow screens must stack fields without hiding save feedback");

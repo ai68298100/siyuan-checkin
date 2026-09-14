@@ -24,7 +24,7 @@ assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\
     "delete action must stay on a solid action surface above the keyboard");
 assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
     "narrow editor must collapse fields before the delete action");
-assert.match(styles, /\.lc-checkin__archive-button[\s\S]*cursor:\s*pointer/,
+assert.match(components, /Editor organization[\s\S]*\.lc-checkin__archive-button\s*\{[^}]*cursor:\s*pointer/,
     "archive/delete action must remain visibly actionable");
 
 for (const width of [320, 360, 390, 430]) assert.ok(width >= 320 && width <= 430);

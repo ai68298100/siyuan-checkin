@@ -26,7 +26,7 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc
     "apply template buttons must remain touch friendly");
 assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin__form input:not\(\[type=\"checkbox\"\]\),[\s\S]*\.lc-checkin__form select[\s\S]*height:\s*42px/,
     "mobile form controls must meet the touch target");
-assert.match(styles, /\.lc-checkin__save-button\s*\{[\s\S]*height:\s*36px/,
+assert.match(liveStyles, /Editor organization[\s\S]*\.lc-checkin__save-button\s*\{[^}]*height:\s*36px/,
     "save action must have a stable mobile-friendly height");
 assert.match(liveStyles, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "save and archive actions need a solid mobile surface");
