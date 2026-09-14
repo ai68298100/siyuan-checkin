@@ -73,6 +73,9 @@ assert.match(liveStyles, /Tenth narrow-surface pass: sticky layers, touch target
 assert.ok(!styles.includes("lc-checkin__coaching-item { border-left-width: 3px"), "the eleventh narrow-surface pass must not return to legacy index.scss");
 assert.match(liveStyles, /Eleventh narrow-surface pass: insights, history events and Today controls[\s\S]*\.lc-checkin__mobile-nav button\.is-selected/,
     "insights, history events and Today controls belong to the component layer");
+assert.ok(!styles.includes("overflow-wrap: anywhere; white-space: normal"), "the twelfth narrow-surface pass must not return to legacy index.scss");
+assert.match(liveStyles, /Twelfth narrow-surface pass: wrapping, dark contrast and compact feedback[\s\S]*@supports not \(backdrop-filter/,
+    "wrapping, dark contrast and compact feedback belong to the component layer");
 assert.match(styles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */

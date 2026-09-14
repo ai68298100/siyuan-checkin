@@ -80,7 +80,7 @@ assert.match(i18nSource, /"msg\.syncedElsewhere":\s*"[^"]+"/,
     "multi-window merges should expose a transient sync notice");
 assert.match(source, /private showSyncNotice\(\)/,
     "sync notices should have an expiring lifecycle");
-assert.match(styles, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*env\(safe-area-inset-bottom\)/,
+assert.match(v5Components, /\.lc-checkin--editor \.lc-checkin__editor-actions[\s\S]*env\(safe-area-inset-bottom\)/,
     "mobile editor actions must clear the device safe area");
 
 console.log("mobile dialog lifecycle checks passed");
