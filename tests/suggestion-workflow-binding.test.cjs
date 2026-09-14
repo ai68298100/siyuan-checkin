@@ -11,6 +11,11 @@ assert.match(source, /host\.handleSuggestionDecision\(decision\)/);
 assert.match(source, /setAttribute\("aria-busy", "true"\)/);
 assert.match(source, /Promise\.resolve\(\)\.then/);
 assert.match(source, /button\.isConnected/);
+assert.match(source, /suggestionBusyButtons/);
+assert.match(source, /WeakSet<HTMLElement>/);
+assert.match(source, /suggestionBusyButtons\.has\(button\)/);
+assert.match(source, /suggestionBusyButtons\.delete\(button\)/);
+assert.match(source, /catch\(\(\) => undefined\)/);
 assert.match(source, /querySelector<HTMLElement>\("\[data-suggestion-undo\]"\)/);
 assert.match(source, /host\.undoSuggestionWorkflow\(\)/);
 

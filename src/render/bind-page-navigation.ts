@@ -292,31 +292,33 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     }));
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => { if (!host.summaryRefreshing) void host.generateSummary(); });
+    const suggestionBusyButtons = new WeakSet<HTMLElement>();
+    const finishSuggestionButton = (button: HTMLElement) => {
+        suggestionBusyButtons.delete(button);
+        if (button.isConnected) {
+            button.removeAttribute("aria-busy");
+            button.removeAttribute("disabled");
+        }
+    };
     root.querySelectorAll<HTMLElement>("[data-suggestion-decision]").forEach((button) => {
         button.addEventListener("click", () => {
             const decision = button.dataset.suggestionDecision;
             if (decision !== "confirm" && decision !== "cancel") return;
+            if (suggestionBusyButtons.has(button)) return;
+            suggestionBusyButtons.add(button);
             button.setAttribute("aria-busy", "true");
             button.setAttribute("disabled", "true");
-            Promise.resolve().then(() => host.handleSuggestionDecision(decision)).finally(() => {
-                if (button.isConnected) {
-                    button.removeAttribute("aria-busy");
-                    button.removeAttribute("disabled");
-                }
-            });
+            Promise.resolve().then(() => host.handleSuggestionDecision(decision)).finally(() => finishSuggestionButton(button)).catch(() => undefined);
         });
     });
     root.querySelector<HTMLElement>("[data-suggestion-undo]")?.addEventListener("click", () => {
         const button = root.querySelector<HTMLElement>("[data-suggestion-undo]");
         if (!button) return;
+        if (suggestionBusyButtons.has(button)) return;
+        suggestionBusyButtons.add(button);
         button.setAttribute("aria-busy", "true");
         button.setAttribute("disabled", "true");
-        Promise.resolve().then(() => host.undoSuggestionWorkflow()).finally(() => {
-            if (button.isConnected) {
-                button.removeAttribute("aria-busy");
-                button.removeAttribute("disabled");
-            }
-        });
+        Promise.resolve().then(() => host.undoSuggestionWorkflow()).finally(() => finishSuggestionButton(button)).catch(() => undefined);
     });
     root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", () => {
         type HistoryRow = import("../agent-suggestions").AgentAnalysisSnapshot;
