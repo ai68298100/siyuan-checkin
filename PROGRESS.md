@@ -524,3 +524,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 迁移 380px 超窄容器下的任务卡片、图标/模板网格、组织字段、洞察统计与历史事件布局共 31 项职责至组件层。
 - 新增超窄布局回流守门，确保 `index.scss` 不再承载该容器规则；组件层继续保持插件 Token 隔离。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `7a5a8d9`，未推送。
+
+### 第三十三批（30 项）
+
+- 将 560px 容器下模板管理器的紧凑布局、卡片操作区、表单控件、文字截断与按钮触控尺寸等 30 项职责迁移至 `ui/components.scss`。
+- 增加模板移动布局回流守门，确保 legacy `index.scss` 不再承载该响应式块。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 全部通过；本地提交 `85b4620`，未推送。
