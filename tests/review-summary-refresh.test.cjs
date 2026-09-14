@@ -1,0 +1,34 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+
+const review = fs.readFileSync("src/render/review.ts", "utf8");
+const index = fs.readFileSync("src/index.ts", "utf8");
+const navigation = fs.readFileSync("src/navigation.ts", "utf8");
+const bind = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
+const i18n = fs.readFileSync("src/i18n.ts", "utf8");
+
+assert.match(review, /summaryRefreshing: boolean/);
+assert.match(review, /data-summary-refresh-state=/);
+assert.match(review, /review\.agentRefreshing/);
+assert.match(review, /review\.agentRefreshAria/);
+assert.match(review, /disabled aria-busy/);
+assert.match(review, /review\.summaryCutoff/);
+assert.match(review, /review\.summaryUpdatedAt/);
+assert.match(review, /review\.summaryHistoryCount/);
+assert.match(review, /review\.customStart/);
+assert.match(review, /review\.customEnd/);
+assert.match(review, /review\.customSeparator/);
+assert.match(review, /review\.customApply/);
+assert.match(index, /private summaryRefreshing = false/);
+assert.match(index, /this\.summaryRefreshing = true/);
+assert.match(index, /this\.summaryRefreshing = false/);
+assert.match(index, /if \(this\.summaryRefreshing\) return/);
+assert.match(bind, /if \(!host\.summaryRefreshing\)/);
+assert.match(bind, /host\.summaryRefreshing = false/);
+assert.match(navigation, /summaryRefreshing\?: boolean/);
+assert.match(navigation, /host\.summaryRefreshing = false/);
+assert.match(i18n, /"review\.agentRefreshing"/);
+assert.match(i18n, /"review\.agentRefreshAria"/);
+assert.match(i18n, /"review\.summaryCutoff"/);
+assert.match(i18n, /"review\.customApply"/);
+console.log("Review summary refresh and cutoff structure checks passed.");

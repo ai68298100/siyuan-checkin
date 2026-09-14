@@ -25,6 +25,7 @@ export interface BindEditorHost {
     editingFingerprint?: string;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    summaryRefreshing?: boolean;
     summaryRequestId: number;
     pendingAttachments: Map<string, string>;
     bindMobileNav(root: HTMLElement): void;
@@ -353,6 +354,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         host.summaryCustomRange = {startDate, endDate};
         host.summaryText = undefined;
+        host.summaryRefreshing = false;
         host.summaryRequestId += 1;
         host.render();
     });

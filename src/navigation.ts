@@ -17,6 +17,7 @@ export interface NavigationHost {
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
     summaryRequestId: number;
+    summaryRefreshing?: boolean;
     getTabId(): string;
     itemFingerprint(item: CheckinItem): string;
     persistViewPreferences(): Promise<void>;
@@ -26,6 +27,7 @@ export interface NavigationHost {
 
 export function showTodayFor(host: NavigationHost): void {
     host.summaryRequestId += 1;
+    host.summaryRefreshing = false;
     host.currentPage = "today";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
@@ -40,6 +42,7 @@ export function showReviewFor(host: NavigationHost): void {
 }
 
 export function showArchivedFor(host: NavigationHost): void {
+    host.summaryRefreshing = false;
     host.currentPage = "archived";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
@@ -47,6 +50,7 @@ export function showArchivedFor(host: NavigationHost): void {
 }
 
 export function showOccasionsFor(host: NavigationHost): void {
+    host.summaryRefreshing = false;
     host.currentPage = "occasions";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
@@ -54,6 +58,7 @@ export function showOccasionsFor(host: NavigationHost): void {
 }
 
 export function showSettingsFor(host: NavigationHost): void {
+    host.summaryRefreshing = false;
     host.currentPage = "settings";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
@@ -61,6 +66,7 @@ export function showSettingsFor(host: NavigationHost): void {
 }
 
 export function showEditorFor(host: NavigationHost, item?: CheckinItem): void {
+    host.summaryRefreshing = false;
     host.currentPage = "editor";
     host.editingId = item?.id;
     host.editingFingerprint = item ? host.itemFingerprint(item) : undefined;
@@ -70,6 +76,7 @@ export function showEditorFor(host: NavigationHost, item?: CheckinItem): void {
 export function showInsightsFor(host: NavigationHost, item?: CheckinItem): void {
     const candidate = item || host.store.items.find((entry) => entry.id === host.insightsItemId && !entry.archived) || host.store.items.find((entry) => !entry.archived);
     if (!candidate) return;
+    host.summaryRefreshing = false;
     host.insightsReturnPage = host.currentPage === "review" ? "review" : "today";
     host.currentPage = "insights";
     host.insightsItemId = candidate.id;

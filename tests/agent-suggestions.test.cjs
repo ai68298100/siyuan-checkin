@@ -53,3 +53,4 @@ assert.match(diffPanel, /新增/);
 assert.match(diffPanel, /aria-label="[$][{]t[(]"agent[.]compareAria"[)][}]"/);
 assert.match(i18n, /"agent.compareAria": "分析差异"/);
 console.log('Agent suggestion safety structure checks passed.');
+require('./review-summary-refresh.test.cjs');

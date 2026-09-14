@@ -21,6 +21,7 @@ export interface BindPageNavigationHost {
     summaryRange: "day" | "week" | "month";
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    summaryRefreshing: boolean;
     analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
     editingHistoryNoteId?: string;
@@ -279,11 +280,12 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.summaryRange = range;
             host.summaryCustomRange = undefined;
             host.summaryText = undefined;
+            host.summaryRefreshing = false;
             host.summaryRequestId += 1;
             host.render();
         }
     }));
-    root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => host.generateSummary());
+    root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => { if (!host.summaryRefreshing) void host.generateSummary(); });
     root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", () => {
         type HistoryRow = import("../agent-suggestions").AgentAnalysisSnapshot;
         const rows: HistoryRow[] = host.analysisHistory.filter((row) => row && typeof row.text === "string");

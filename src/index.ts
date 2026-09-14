@@ -252,6 +252,7 @@ export default class CheckinPlugin extends Plugin {
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
+    private summaryRefreshing = false;
     private analysisHistory: AgentAnalysisSnapshot[] = [];
     private storageReady = false;
     private activeFocusAdapter?: FocusAdapter;
@@ -1311,6 +1312,7 @@ export default class CheckinPlugin extends Plugin {
             summaryRange: this.summaryRange,
             summaryCustomRange: this.summaryCustomRange,
             summaryText: this.summaryText,
+            summaryRefreshing: this.summaryRefreshing,
             analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
             analysisHistoryCount: this.analysisHistory.length,
             summaryProvidersCount: this.summaryProviders.size,
@@ -1507,12 +1509,15 @@ export default class CheckinPlugin extends Plugin {
     private async generateSummary() {
         const provider = this.summaryProviders.values().next().value as SummaryProvider | undefined;
         if (!provider) return;
+        if (this.summaryRefreshing) return;
         const range = this.summaryRange;
         const customRange = this.summaryCustomRange;
         const requestId = ++this.summaryRequestId;
         const now = currentCalendarDate();
         const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
         const summaryItemIds = new Set(context.items.map((item) => item.itemId));
+        this.summaryRefreshing = true;
+        this.render();
         try {
             const summaryText = await withTimeout(provider.summarize({
                 range,
@@ -1524,11 +1529,16 @@ export default class CheckinPlugin extends Plugin {
             if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
             if (typeof summaryText !== "string") throw new Error("总结适配器没有返回文本");
             this.summaryText = summaryText;
+            this.summaryRefreshing = false;
             const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
             void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: summaryText}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
             this.render();
         } catch (error) {
+            if (requestId === this.summaryRequestId) {
+                this.summaryRefreshing = false;
+            }
             if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
+                this.render();
                 showMessage(t("msg.summaryFail", {error: String(error)}));            }
         }
     }
@@ -2134,6 +2144,7 @@ export default class CheckinPlugin extends Plugin {
                 this.selectedHistoryDate = nextDateKey;
             }
             this.summaryText = undefined;
+            this.summaryRefreshing = false;
             this.summaryRequestId += 1;
             this.renderBackgroundUpdate();
         }
