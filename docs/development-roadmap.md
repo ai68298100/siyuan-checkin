@@ -2,10 +2,10 @@
 
 ## 当前状态
 
-- `v9.6.1` 已发布并是 GitHub Latest；本地 main 在其之后还有一批未发布提交（dock 四档宽度打磨 + 11.0 提醒模型）。
+- `v9.7.0` 为当前 GitHub Release 候选，包含 dock 四档宽度打磨、11.0-C 提醒动作和智能体建议安全协作收口；思源集市审核暂缓。
 - 自动化实测（2026-09-13，Windows 本机，pnpm 11.4.0）：`check`、`pnpm test`、`test:mobile`、`test:ecosystem`、`test:perf`、`check:environment` 全部通过；系统 Chrome 下无障碍审计（浅+深，0 违规）、视觉走查（浅/深）、宽度走查全部通过。
 - 唯一红灯是 CSS 体积预算：`release-assets` 断言 294502 > 283000 字节（B-005）。同工具链下 v9.6.1 实测 264920 字节，增量全部来自未发布的 dock 宽度工作，属真实增长而非环境差异。（2026-09-14 已处置：经全量类名核查无死样式后，预算按 T-109 机制上调至 318000 并更新基线注释，四档样式的合并精简立项为 15.0-A。）
-- CI 根因已修复、待 push 验证：此前 GitHub Actions 全部倒在 Install dependencies（pnpm 11 拦截 esbuild/@parcel/watcher 构建脚本）。allowBuilds 白名单与 `.gitattributes` LF 固定已入库；QA 脚本的硬编码机器路径已改为按检出位置解析（D-055）。
+- CI 根因已修复：此前 GitHub Actions 全部倒在 Install dependencies（pnpm 11 拦截 esbuild/@parcel/watcher 构建脚本）。allowBuilds 白名单与 `.gitattributes` LF 固定已入库；QA 脚本的硬编码机器路径已改为按检出位置解析（D-055）。9.7.0 发布后需以远端运行结果作为最终 CI 证据。
 - 4 个历史乱码文件已按字节证据修复：DECISIONS.md、PROGRESS.md、desktop-dialog 与 responsive-layout 守门测试（D-054）。
 - T-023 真机验收仍然独立阻塞：需要真实思源桌面端和移动端操作。
 
@@ -20,8 +20,8 @@
 ### 9.x 收尾（当前）
 
 1. ~~处置 B-005~~（已完成：预算上调至 318000 并记录依据，见 B-005 与 D-056），`test:quality` 全链恢复绿灯。
-2. push 后确认 CI（verify + browser-audit）首次转绿，把"自动化基线已通过"重新变成有 CI 背书的事实。
-3. 未发布的提醒模型、dock 工作与 11.0-C 延期/跳过整理为一个 9.x 发布窗口；版本号与发布策略待确认。
+2. ~~整理 9.7.0 发布窗口~~（已完成：提醒模型、dock 工作与智能体建议安全能力纳入本版本；发布候选已准备，待网络恢复后创建 GitHub Release，集市审核暂缓）。
+3. 发布后优先收集真实思源客户端验收证据，完成 T-023/T-129 后再决定集市审核与后续 15.0 工作。
 
 ### 10.0 数据安全与迁移（自动化已完成）
 

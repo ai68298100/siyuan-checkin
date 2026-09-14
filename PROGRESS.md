@@ -1,11 +1,11 @@
 # 进度
-当前任务：T-799~T-818 建议只读能力协商完成，准备进入 T-129 真机验收与 15.0-A 样式精简
+当前任务：9.7.0 GitHub Release 发布收尾；T-023/T-129 真实客户端验收仍待用户现场完成
 上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
-未提交变更：无
+未提交变更：9.7.0 版本与发布文档（待本地提交后推送）
 上次提交：feat(api): advertise suggestion read capability（本地里程碑）
-下一步：在真实客户端按清单复测 T-129/T-033；继续推进 15.0-A dock 样式精简。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
-上下文备注：v9.5.1（T-029 事项页三处修复）。手工部署三步：unzip 覆盖 → 集市安装本地包 或 重启思源；测试包 siyuan-checkin-v9.5.1-test.zip。守门测试 tests/desktop-dialog.test.cjs。
+下一步：提交并推送 9.7.0，创建 tag/Release；发布后按 `docs/integration-smoke-checklist.md` 复测 T-023/T-129。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
+上下文备注：v9.7.0 发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；发布后安装渠道为 GitHub Release，集市审核暂缓。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
 2026-09-14 分析历史对比批次（T-199~T-218）：历史弹窗不再把快照元数据塞入 DOM dataset，而是直接读取已通过 `normalizeAnalysisSnapshots` 的独立缓存；新增相邻版本默认选择、交换、单版本禁用、非法索引/同版本保护、方向与元信息展示；实际正文对比接入逐行差异模型与安全 HTML 渲染。差异摘要、空态、历史标题/控件/状态/错误全部补齐中英文 i18n，状态区加入 `aria-live`，新增 `tests/analysis-history.test.cjs` 并接入 `test`/`test:ui`。验证：`pnpm run check`、`pnpm run test:ui`、生产构建通过；CSS 298042B，处于 318000 发布预算内。
@@ -341,3 +341,4 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 2026-09-14 第三批检查点（22 项，i18n 收尾批次）：render 层剩余硬编码全部迁入 i18n 双语——回顾页 hero 全块/三档建议语/子导航 7 标签/4 个折叠标题/智能体分析元信息、设置导航 aria、事项 kind 三标签、bind-editor 图标计数 4 分支与间隔/配额标签与图片错误 3 处、fragments 最近记录条/单位默认/日志展开/分组 3 选项/批量条 5 处、agent 预览弹窗 9 处、analysis-diff/focus-timer/quick-dialog aria（新增 60 键，含复用已有键 8 处）；新增 tests/i18n-hygiene.test.cjs 守门（17 个 render 模块属性级中文为零）入 test:ui；agent-suggestions 守门改锁 i18n 键。验证：tsc、pnpm run test:quality（exit 0）、浅/深视觉走查、宽度走查全绿；CSS 296740B。下轮批次：15.0-A dock 四档样式合并（专轮）、回顾页 hero 徽章 token 化、settings.ts 剩余 group label 盘点。
 
 2026-09-14 真机截图核对检查点（T-023 首批反馈落地，B-006）：新增加载探针 scripts/visual-probe.cjs（真 Chrome + 真构建 + 截图到 .artifacts/visual-probe，可复现真机场景）后逐项核对四张手机截图，复现并修复 7 类问题：①今日操作轨道 390px 向左溢出压正文（flex-end 溢出规则；主按钮可收缩省略、图标钮 26px 固定）②连续徽章撑高标题行悬浮卡中（压回 22px 行内）③回顾/事项/编辑器/归档页内大标题与移动端顶栏重复（窄档隐藏文字保留返回/新增钮）④hero 零记录仍显示最佳项目与建议噪声（门控在 totalEvents）⑤编辑器模板分类 chip 被行容器 overflow 裁成空胶囊（行 overflow visible + wrap）⑥模板预览区限高过紧裁卡（窄档放宽 380px 露出整行卡）⑦自定义范围 chip 未激活呈双选中观感（降为普通 tab 权重）。另：死 FAB 样式清除（思源悬浮钮为宿主 UI，列表底部加 64px 避让）；mobile-release-quality 新增 10 条守门。验证：真机场景探针四页截图逐一目检、pnpm run test:quality exit 0、浅/深视觉走查、宽度走查全绿。
+2026-09-14 9.7.0 发布候选整理：将提醒中心延期/跳过、dock 响应式打磨、移动端截图反馈修复、回顾页离线摘要与分析历史、智能体建议确认/审计/撤销闭环及只读生态能力纳入版本；版本号同步至 package.json/plugin.json/src/version.ts，README 改为 GitHub Release 当前安装渠道并明确暂缓集市审核；新增 `docs/v9.7.0-change-log.md`。T-023/T-129 真实思源客户端验收继续作为发布后现场任务。下一步：完整质量门禁、重新生成安装包并记录 SHA-256，然后提交版本提交、推送 main、创建 v9.7.0 tag/Release。
