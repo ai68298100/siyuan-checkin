@@ -1,0 +1,45 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+
+const root = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-workflow-"));
+fs.writeFileSync(path.join(root, "i18n.js"), "exports.t=(key, vars={})=>key.replace(/\\{(\\w+)\\}/g, (_, name)=>String(vars[name] ?? ''));", "utf8");
+for (const file of ["agent-suggestions.ts", path.join("features", "suggestion-workflow.ts")]) {
+    const source = fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8");
+    const out = ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
+    const target = path.join(root, file.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
+    fs.writeFileSync(target, out, "utf8");
+}
+const workflow = require(path.join(root, "features", "suggestion-workflow.js"));
+const model = require(path.join(root, "agent-suggestions.js"));
+const item = {id: "a", name: "阅读", target: 1, unit: "次", kind: "count", priority: "medium", timeSlot: "any", tomatoMode: "off", createdAt: "2026-01-01", updatedAt: "2026-01-01", archived: false, archivePeriods: [], schedule: {type: "daily"}};
+const store = {version: 1, items: [item], events: [], eventTombstones: []};
+const envelope = model.createSuggestionEnvelope({id: "s1", title: "调整", reason: "", changes: [{itemId: "a", field: "target", before: 1, after: 2}], requiresConfirmation: true}, "2026-09-14T00:00:00.000Z");
+let state = workflow.createSuggestionWorkflow(envelope);
+assert.deepEqual(state.consumedTokens, []);
+const token = model.createSuggestionDecisionToken(envelope, "confirm", "2026-09-14T00:01:00.000Z", "n");
+let outcome = workflow.decideSuggestion(state, token, "confirm", new Date("2026-09-14T00:02:00.000Z"));
+assert.equal(outcome.accepted, true);
+state = outcome.state;
+assert.equal(state.envelope.status, "confirmed");
+assert.equal(state.audits[0].action, "confirmed");
+outcome = workflow.decideSuggestion(state, token, "confirm", new Date("2026-09-14T00:02:00.000Z"));
+assert.equal(outcome.reason, "replayed");
+const applied = workflow.applySuggestion(state, store, new Date("2026-09-14T00:03:00.000Z"));
+state = applied.state;
+assert.equal(applied.result.applied, 1);
+assert.equal(state.audits.at(-1).action, "applied");
+const undone = workflow.undoSuggestion(state, applied.result.store, new Date("2026-09-14T00:04:00.000Z"));
+assert.equal(undone.result.reverted, 1);
+assert.equal(undone.result.store.items[0].target, 1);
+assert.equal(undone.state.audits.at(-1).reason, "revert");
+assert.deepEqual(workflow.workflowAuditSummary(undone.state), {created: 0, confirmed: 1, cancelled: 0, applied: 2, rejected: 0});
+const cancelEnvelope = model.createSuggestionEnvelope({...envelope, id: "s2"}, "2026-09-14T00:00:00.000Z");
+const cancelState = workflow.createSuggestionWorkflow(cancelEnvelope);
+const cancelToken = model.createSuggestionDecisionToken(cancelEnvelope, "cancel", "2026-09-14T00:01:00.000Z", "c");
+assert.equal(workflow.decideSuggestion(cancelState, cancelToken, "cancel", new Date("2026-09-14T00:02:00.000Z")).state.envelope.status, "cancelled");
+fs.rmSync(root, {recursive: true, force: true});
+console.log("Suggestion workflow orchestration checks passed.");
