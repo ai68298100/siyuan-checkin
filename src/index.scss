@@ -41,58 +41,6 @@
 // usable when the surface itself is resized below the mobile breakpoint.
 
 @container lc5 (max-width: 600px) {
-    .lc-checkin { overscroll-behavior-y: contain; scrollbar-width: thin; }
-    .lc-checkin-dialog-host--mobile .lc-checkin__header,
-    .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { position: sticky; z-index: 4; top: 0; padding-top: max(8px, env(safe-area-inset-top)); background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent); backdrop-filter: blur(10px); }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { z-index: 7; }
-    .lc-checkin__mobile-nav { z-index: 8; }
-    .lc-checkin--today [data-action="add"] { z-index: 9; }
-    .lc-checkin--editor .lc-checkin__editor-actions { z-index: 10; }
-    .lc-checkin:not(.lc-checkin--editor) { scroll-padding-top: 70px; scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
-
-    .lc-checkin--today .lc-checkin__group-header { display: flex; align-items: center; min-height: 30px; padding: 0 2px; border-bottom: 1px solid color-mix(in srgb, var(--b3-border-color) 65%, transparent); }
-    .lc-checkin--today .lc-checkin__group-header::after { content: ""; flex: 1; height: 1px; margin-left: 9px; background: color-mix(in srgb, var(--b3-border-color) 45%, transparent); }
-    .lc-checkin--today .lc-checkin__group-header em { padding: 2px 7px; border-radius: 99px; font-size: 9px; font-style: normal; }
-    .lc-checkin--today .lc-checkin__completed-section { margin-top: 20px; padding-top: 10px; border-top: 1px dashed var(--b3-border-color); }
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item { opacity: .72; }
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:active,
-    .lc-checkin--today .lc-checkin__completed-section .lc-checkin__item:focus-within { opacity: 1; }
-
-    .lc-checkin__occasion-manager-row { min-height: 56px; padding: 9px; border-radius: 9px; }
-    .lc-checkin__occasion-manager-row + .lc-checkin__occasion-manager-row { margin-top: 7px; }
-    .lc-checkin__occasion-manager-row small { line-height: 1.4; }
-    .lc-checkin__occasion-manager-row .is-overdue,
-    .lc-checkin__occasion-manager-row .is-today { color: var(--lc-checkin-danger-text); }
-    .lc-checkin__occasion-manager-row .is-upcoming { color: var(--lc-checkin-warning-text); }
-
-    .lc-checkin__calendar-day { position: relative; border: 1px solid transparent; }
-    .lc-checkin__calendar-day.is-today { border-color: var(--lc-checkin-accent-text); }
-    .lc-checkin__calendar-day.is-selected { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
-    .lc-checkin__calendar-day.has-records::after { content: ""; position: absolute; right: 5px; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: var(--lc-checkin-accent); }
-    .lc-checkin__calendar-day.is-empty { color: color-mix(in srgb, var(--b3-theme-on-surface-light) 48%, transparent); }
-    .lc-checkin__month-nav strong { font-size: 17px; }
-
-
-    .lc-checkin button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-    .lc-checkin :is(button, select, input, textarea) { min-height: 40px; }
-    .lc-checkin__small-button { min-width: 32px; min-height: 32px; }
-    .lc-checkin__item-action .lc-checkin__more-button { min-width: 34px; min-height: 34px; }
-    .lc-checkin button:active { transform: scale(.98); }
-    .lc-checkin__item:active { transform: translateY(1px); }
-    .lc-checkin input:focus,
-    .lc-checkin select:focus,
-    .lc-checkin textarea:focus { border-color: var(--lc-checkin-accent-text); box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft); }
-    .lc-checkin__mobile-nav button:active { transform: none; }
-
-    [data-appearance="dark"] .lc-checkin__item,
-    [data-appearance="dark"] .lc-checkin__organize,
-    [data-appearance="dark"] .lc-checkin__settings-card,
-    [data-appearance="dark"] .lc-checkin__history-selected { border-color: color-mix(in srgb, var(--b3-border-color) 92%, #fff 8%); }
-    [data-appearance="dark"] .lc-checkin__item-meta,
-    [data-appearance="dark"] .lc-checkin__history-event-main > span { color: color-mix(in srgb, var(--b3-theme-on-background) 72%, transparent); }
-    [data-reduced-motion="true"] .lc-checkin__item,
-    [data-reduced-motion="true"] .lc-checkin__mobile-nav button,
-    [data-reduced-motion="true"] .lc-checkin button { transition: none !important; transform: none !important; }
 }
 
 @container lc5 (max-width: 600px) {
