@@ -22,6 +22,8 @@ export interface BindPageNavigationHost {
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
     suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
+    handleSuggestionDecision(decision: "confirm" | "cancel"): Promise<void> | void;
+    undoSuggestionWorkflow(): Promise<void> | void;
     summaryRefreshing: boolean;
     analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
@@ -288,6 +290,15 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         }
     }));
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => { if (!host.summaryRefreshing) void host.generateSummary(); });
+    root.querySelectorAll<HTMLElement>("[data-suggestion-decision]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const decision = button.dataset.suggestionDecision;
+            if (decision === "confirm" || decision === "cancel") void host.handleSuggestionDecision(decision);
+        });
+    });
+    root.querySelector<HTMLElement>("[data-suggestion-undo]")?.addEventListener("click", () => {
+        void host.undoSuggestionWorkflow();
+    });
     root.querySelector<HTMLElement>("[data-action='view-analysis-history']")?.addEventListener("click", () => {
         type HistoryRow = import("../agent-suggestions").AgentAnalysisSnapshot;
         const rows: HistoryRow[] = host.analysisHistory.filter((row) => row && typeof row.text === "string");

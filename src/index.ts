@@ -40,7 +40,8 @@ import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
-import {createSuggestionWorkflow, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {applySuggestion, createSuggestionWorkflow, decideSuggestion, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
 import type {CheckinAppearance, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
@@ -1545,6 +1546,67 @@ export default class CheckinPlugin extends Plugin {
             if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
                 this.render();
                 showMessage(t("msg.summaryFail", {error: String(error)}));            }
+        }
+    }
+
+    private suggestionNonce(): string {
+        try { return crypto.randomUUID(); } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+    }
+
+    private async handleSuggestionDecision(decision: "confirm" | "cancel") {
+        const current = this.suggestionWorkflow;
+        if (!current) return;
+        const token = createSuggestionDecisionToken(current.envelope, decision, new Date().toISOString(), this.suggestionNonce());
+        const outcome = decideSuggestion(current, token, decision, new Date());
+        if (!outcome.accepted) {
+            showMessage(t(`agent.decision.${outcome.reason}`));
+            return;
+        }
+        if (decision === "cancel") {
+            this.suggestionWorkflow = outcome.state;
+            this.render();
+            return;
+        }
+        const applied = applySuggestion(outcome.state, this.store);
+        if (!applied.result.applied) {
+            this.suggestionWorkflow = applied.state;
+            this.render();
+            showMessage(t("agent.applyRejected"));
+            return;
+        }
+        const previousStore = this.store;
+        this.store = applied.result.store;
+        try {
+            await this.persist();
+            this.suggestionWorkflow = applied.state;
+            this.render();
+        } catch (error) {
+            this.store = previousStore;
+            showMessage(t("msg.saveFailedShort"));
+            throw error;
+        }
+    }
+
+    private async undoSuggestionWorkflow() {
+        const current = this.suggestionWorkflow;
+        if (!current) return;
+        const undone = undoSuggestion(current, this.store);
+        if (!undone.result.reverted) {
+            this.suggestionWorkflow = undone.state;
+            this.render();
+            showMessage(t("agent.undoRejected"));
+            return;
+        }
+        const previousStore = this.store;
+        this.store = undone.result.store;
+        try {
+            await this.persist();
+            this.suggestionWorkflow = undone.state;
+            this.render();
+        } catch (error) {
+            this.store = previousStore;
+            showMessage(t("msg.saveFailedShort"));
+            throw error;
         }
     }
 
