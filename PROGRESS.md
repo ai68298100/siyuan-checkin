@@ -388,6 +388,17 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 内容响应式职责已全部交给命名容器；删除了与全局 reduced-motion 完全重复的“窄视口+减弱动画”规则。
 - 剩余 `@media` 明确限于弹窗外壳自身、屏幕高度/方向、打印、触控/悬停和系统无障碍偏好，这些条件不能等价替换为内容容器宽度。
 - 验证基线沿用本轮真实 Chrome 双主题 visual QA、width walkthrough 与全量 `test:quality`；删除冗余规则后继续复跑发布资源和视觉门禁。
+
+## T-105 legacy 无条件样式退役 Phase 3（第一批）
+
+- 以当前 TypeScript 渲染源码为真值，删除无任何 DOM 引用的旧事项 `.occasion-body`、`.occasion-empty`、`.occasions` 规则，以及已退役的 `.summary-total` 规则。
+- 本批不触碰仍由当前 DOM 使用的共享事项卡、列表、表单样式；构建 CSS 317978→316821 bytes。
+- 验证：类型检查、构建、release-assets、响应式结构测试和真实 Chrome visual QA 通过；T-105 保持 doing，继续逐批审计。
+
+### 第二批
+
+- 删除当前设置页已不再渲染的旧 density/theme 卡片、settings check/summary/help/reset/danger 样式，并从共享编辑器规则中移除不存在的旧 template-card 选择器。
+- 构建 CSS 316821→314185 bytes；类型检查、`test:ui`、release-assets 与真实 Chrome visual QA 通过。
 # 2026-09-14 侧边栏安全宽度
 
 - Dock 默认宽度由 380px 调整为 420px，作为名称、辅助动作和主按钮均可读的推荐宽度。

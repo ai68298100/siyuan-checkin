@@ -120,40 +120,10 @@
     .lc-checkin--editor .lc-checkin__editor-actions { grid-column: 1 / -1; }
     .lc-checkin--editor .lc-checkin__templates,
     .lc-checkin--editor .lc-checkin__icon-grid { scrollbar-width: thin; }
-    .lc-checkin--editor .lc-checkin__template-card,
     .lc-checkin--editor .lc-checkin__kind-option { transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast); }
-    .lc-checkin--editor .lc-checkin__template-card:hover,
     .lc-checkin--editor .lc-checkin__kind-option:hover { transform: translateY(-1px); border-color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
 
-/* Settings should feel like a control panel, not a collection of raw fields. */
-.lc-checkin--settings .lc-checkin__density-options,
-.lc-checkin--settings .lc-checkin__theme-options {
-    display: grid;
-    gap: 10px;
-}
-.lc-checkin--settings .lc-checkin__density-options button,
-.lc-checkin--settings .lc-checkin__theme-options button {
-    min-height: 54px;
-    padding: 10px 12px;
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: 12px;
-    background: var(--b3-theme-surface);
-    text-align: left;
-    transition: transform var(--lc-checkin-motion-fast), border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
-}
-.lc-checkin--settings .lc-checkin__density-options button:hover,
-.lc-checkin--settings .lc-checkin__theme-options button:hover {
-    transform: translateY(-1px);
-    border-color: var(--lc-checkin-accent-text);
-}
-.lc-checkin--settings .lc-checkin__density-options button[aria-checked="true"],
-.lc-checkin--settings .lc-checkin__theme-options button[aria-checked="true"] {
-    color: var(--lc-checkin-accent-text);
-    border-color: var(--lc-checkin-accent-text);
-    background: var(--lc-checkin-accent-soft);
-    box-shadow: inset 3px 0 0 var(--lc-checkin-accent);
-}
 .lc-checkin--settings .lc-checkin__field > label,
 .lc-checkin--settings .lc-checkin__field > legend {
     color: var(--b3-theme-on-surface-light);
@@ -163,8 +133,6 @@
 }
 
 @container lc5 (min-width: 900px) {
-    .lc-checkin--settings .lc-checkin__density-options,
-    .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .lc-checkin--settings .lc-checkin__settings-card { border-radius: 14px; }
 }
 
@@ -2628,9 +2596,6 @@
     .lc-checkin--today .lc-checkin__quick-recent + .lc-checkin__organize { border-top-color: color-mix(in srgb, var(--b3-border-color) 45%, transparent); }
     .lc-checkin--today .lc-checkin__quick-recent-heading small { color: var(--b3-theme-on-surface-light); }
 
-    .lc-checkin__occasion-body { min-width: 0; }
-    .lc-checkin__occasion-body strong { display: block; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin__occasion-body small { display: block; margin-top: 2px; line-height: 1.4; }
 
     .lc-checkin--history .lc-checkin__month-nav { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
     .lc-checkin--history .lc-checkin__month-nav strong { text-align: center; }
@@ -2769,7 +2734,6 @@
     .lc-checkin--summary .lc-checkin__summary-stats div { justify-content: center; text-align: center; }
     .lc-checkin--summary .lc-checkin__summary-stats div:first-child strong { font-size: 21px; }
     .lc-checkin--summary .lc-checkin__summary-stats span { line-height: 1.2; }
-    .lc-checkin--summary .lc-checkin__summary-total { margin: 4px 0 8px; font-size: 10px; }
 
     .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; }
     .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
@@ -3370,12 +3334,6 @@
     }
 }
 
-.lc-checkin__summary-total {
-    margin: 0 0 14px 40px;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 12px;
-}
-
 .lc-checkin__summary-text {
     margin-top: 14px;
     padding: 10px;
@@ -3909,14 +3867,6 @@
 
 .lc-checkin__header-actions { gap: 6px; }
 
-.lc-checkin__occasions {
-    margin-top: 18px;
-    padding: 16px;
-    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--b3-border-color));
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--lc-checkin-accent) 5%, var(--b3-theme-surface));
-}
-
 .lc-checkin__section-heading {
     display: flex;
     align-items: center;
@@ -3984,33 +3934,24 @@
     font-size: 18px;
 }
 
-.lc-checkin__occasion-body,
 .lc-checkin__occasion-manager-row > div {
     display: grid;
     min-width: 0;
     gap: 3px;
 }
 
-.lc-checkin__occasion-body strong,
 .lc-checkin__occasion-manager-row strong {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.lc-checkin__occasion-body small,
 .lc-checkin__occasion-manager-row small {
     overflow: hidden;
     color: var(--b3-theme-on-surface-light);
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.lc-checkin__occasion-empty {
-    padding: 8px 0 2px;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 12px;
 }
 
 /* 事项页主从两列模板已移交 components.scss（基础单列 + @container lc5 ≥900 两列）。
@@ -4041,12 +3982,6 @@
 }
 .lc-checkin__settings-card h2,
 .lc-checkin__settings-card p { margin: 0; }
-.lc-checkin__settings-check { display: flex; align-items: center; gap: var(--lc-checkin-space-2); }
-.lc-checkin__settings-summary { margin: 0; padding-top: var(--lc-checkin-space-2); border-top: 1px solid var(--lc-checkin-border); color: var(--lc-checkin-muted); font-size: 12px; }
-.lc-checkin__settings-help { display: block; color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.4; }
-.lc-checkin--settings > .lc-checkin__settings-reset { margin-top: var(--lc-checkin-space-2); }
-.lc-checkin__settings-danger { border-color: color-mix(in srgb, var(--lc-checkin-danger) 35%, var(--lc-checkin-border)); }
-.lc-checkin__settings-danger button { color: var(--lc-checkin-danger-text); }
 .lc-checkin--settings .lc-checkin__field select { min-height: var(--lc-checkin-control-height); }
 .lc-checkin--settings[data-appearance="dark"] { color-scheme: dark; }
 .lc-checkin--settings[data-appearance="light"] { color-scheme: light; }
@@ -4062,13 +3997,8 @@
     scroll-behavior: auto !important;
 }
 .lc-checkin__settings-card p { color: var(--lc-checkin-muted); }
-.lc-checkin__density-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--lc-checkin-space-2); }
-.lc-checkin__density-options button { display: grid; min-height: 68px; align-content: center; gap: 3px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius); color: var(--lc-checkin-text); background: var(--lc-checkin-bg); cursor: pointer; }
-.lc-checkin__density-options button[aria-checked="true"] { border-color: var(--lc-checkin-accent-text); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); box-shadow: var(--lc-checkin-focus); }
-.lc-checkin__density-options button:focus-visible,
 .lc-checkin--settings select:focus-visible,
 .lc-checkin--settings input:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
-.lc-checkin__density-options small { color: var(--lc-checkin-muted); font-size: 11px; }
 
 .lc-checkin--occasions .lc-checkin__field textarea {
     width: 100%;
@@ -4191,7 +4121,6 @@
 }
 
 .lc-checkin__range-tabs button { min-height: 28px; }
-.lc-checkin__summary-total { margin: 0 0 16px; font-size: 11px; }
 .lc-checkin__history-list { gap: 8px; }
 .lc-checkin__history-row { min-height: 48px; padding: 0 12px; border: 1px solid var(--b3-border-color); border-radius: 7px; background: var(--b3-theme-surface); }
 .lc-checkin__history-event { min-height: 48px; padding: 7px 11px; border: 1px solid transparent; box-shadow: 0 1px 2px rgba(0, 0, 0, .035); }
@@ -4270,7 +4199,6 @@
 }
 
 /* Occasions and management surfaces use the same hierarchy as analytics pages. */
-.lc-checkin__occasions,
 .lc-checkin__occasion-manager,
 .lc-checkin__occasion-form-panel,
 .lc-checkin__occasion-list-panel {
@@ -4411,13 +4339,6 @@
         break-inside: avoid;
         box-shadow: none;
     }
-}
-
-.lc-checkin__summary-total {
-    padding: var(--lc-checkin-space-3) var(--lc-checkin-space-4);
-    border-left: 3px solid var(--lc-checkin-accent);
-    border-radius: var(--lc-checkin-radius-sm);
-    background: var(--lc-checkin-accent-soft);
 }
 
 .lc-checkin__summary-text {
