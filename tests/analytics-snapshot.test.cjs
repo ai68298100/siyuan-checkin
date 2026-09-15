@@ -22,6 +22,9 @@ assert.match(source, /\[\["weekly", value\.weekly\].*\["yearly", value\.yearly\]
 assert.match(source, /ANALYTICS_SERIES_LIMITS/);
 assert.match(source, /series\.points\.length > ANALYTICS_SERIES_LIMITS\[name\]/);
 assert.match(source, /Number\.isFinite\(point\.value\)/);
+assert.match(source, /point\.label\.length > 64/);
+assert.match(source, /point\.value < 0/);
+assert.match(source, /value\[key\].*value\[key\] < 0/s);
 assert.match(source, /buildWeeklyCompletionTrend\(store, 12, asOf\)/);
 assert.match(source, /buildMonthlyEventTrend\(store, 6, asOf\)/);
 assert.match(source, /buildDailyActivityTrend\(store, 30, asOf\)/);

@@ -54,7 +54,7 @@ export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefin
         for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
             if (typeof series.title !== "string" || typeof series.unit !== "string" || !Array.isArray(series.points)) return undefined;
             if (series.points.length > ANALYTICS_SERIES_LIMITS[name]) return undefined;
-            if (series.points.some((point) => !point || typeof point.label !== "string" || typeof point.value !== "number" || !Number.isFinite(point.value))) return undefined;
+            if (series.points.some((point) => !point || typeof point.label !== "string" || point.label.length > 64 || typeof point.value !== "number" || !Number.isFinite(point.value) || point.value < 0)) return undefined;
         }
         return cloneAnalyticsSnapshot(value as AnalyticsSnapshot);
     } catch {
@@ -94,7 +94,7 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
         if (!isAnalyticsDate(value.asOf)) return undefined;
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
-            if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return undefined;
+            if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] < 0) return undefined;
         }
         return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!, yearlyCurrent: value.yearlyCurrent!};
     } catch {
