@@ -788,6 +788,26 @@
 .lc-checkin__group-header span:first-child { font-weight:650; }
 .lc-checkin__group-header em { min-width:20px; }
 .lc-checkin__group-items { gap:8px; }
+.lc-checkin__kind-grid { gap:8px; }
+.lc-checkin__kind-option span { min-height:56px; padding:8px 10px; border-radius:8px; }
+.lc-checkin__advanced { border-color:var(--lc-checkin-border-strong); border-radius:8px; background:var(--lc-checkin-muted-surface); }
+.lc-checkin__advanced summary { min-height:48px; padding:8px 11px; }
+.lc-checkin__advanced-content { padding:0 11px 12px; }
+.lc-checkin__save-button { min-height:42px; height:auto; border-radius:8px; font-weight:650; box-shadow:0 3px 8px color-mix(in srgb,var(--lc-checkin-accent) 22%,transparent); }
+.lc-checkin__editor-actions { padding-top:12px; }
+.lc-checkin__completed-section { margin-top:24px; padding-top:12px; border-top-color:var(--lc-checkin-border); }
+.lc-checkin__completed-section .lc-checkin__section-title { font-size:12px; }
+.lc-checkin--history .lc-checkin__editor-header { margin-bottom:22px; }
+.lc-checkin__history-list { gap:8px; }
+.lc-checkin__history-row { min-height:48px; padding:0 12px; border:1px solid var(--lc-checkin-border); border-radius:7px; background:var(--lc-checkin-surface); }
+.lc-checkin__history-event { min-height:48px; padding:7px 11px; border:1px solid transparent; box-shadow:var(--lc-checkin-shadow-sm); }
+.lc-checkin__history-event:hover { border-color:var(--lc-checkin-border); }
+.lc-checkin__calendar-day { border-radius:8px; }
+.lc-checkin__form { gap:18px; }
+.lc-checkin__form-scroll { gap:20px; padding:0 2px 24px; }
+.lc-checkin__kind-field legend { font-weight:600; }
+.lc-checkin__field input:not([type="checkbox"]),.lc-checkin__field select { height:var(--lc-checkin-control-height); border-radius:7px; }
+.lc-checkin__kind-grid + .lc-checkin__validation { margin-top:6px; }
 .lc-checkin__item { min-height:72px; padding:11px 12px; border-color:transparent; border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
 .lc-checkin__item:hover,.lc-checkin__item:focus-within { border-color:color-mix(in srgb,var(--lc-checkin-accent) 35%,var(--lc-checkin-border-strong)); }
 .lc-checkin__item-icon { flex-basis:40px; width:40px; height:40px; border-radius:10px; font-size:20px; }
