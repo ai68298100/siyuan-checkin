@@ -5857,6 +5857,9 @@
     .lc-checkin--occasions .lc-checkin__occasion-form-panel { max-width: 100%; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row { grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 12px; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row > * { min-width: 0; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { padding-bottom: 16px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions { margin-top: 4px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions button { max-width: 220px; margin-inline: auto; }
 }
 
 
