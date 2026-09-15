@@ -3043,6 +3043,7 @@
 .lc-checkin--today .lc-checkin__today-filters > summary::-webkit-details-marker { display: none; }
 .lc-checkin--today .lc-checkin__today-filters[open] > summary { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); }
 .lc-checkin--today .lc-checkin__today-filter-fields { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 2px 2px; }
+.lc-checkin--today .lc-checkin__today-filters[open] .lc-checkin__today-filter-fields { padding-top: 4px; padding-bottom: 0; gap: 4px; }
 .lc-checkin--today .lc-checkin__today-filter-fields label { display: flex; align-items: center; gap: 6px; color: var(--lc-checkin-muted); font-size: 11px; }
 .lc-checkin--today .lc-checkin__today-filter-fields :is(select, .lc-checkin__filter-toggle) { min-height: 30px; border-radius: 999px; font-size: 12px; }
 .lc-checkin--today .lc-checkin__filter-toggle { padding: 0 12px; border: 1px solid var(--lc-checkin-border); color: var(--lc-checkin-muted); background: var(--lc-checkin-surface); cursor: pointer; }
