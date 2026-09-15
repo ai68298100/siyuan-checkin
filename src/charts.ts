@@ -48,7 +48,7 @@ export function serializeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): string 
 export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefined {
     try {
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
-        if (value.version !== 1 || typeof value.asOf !== "string" || !value.weekly || !value.monthly || !value.daily) return undefined;
+        if (value.version !== 1 || typeof value.asOf !== "string" || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
         for (const series of [value.weekly, value.monthly, value.daily, value.yearly]) {
             if (typeof series.title !== "string" || typeof series.unit !== "string" || !Array.isArray(series.points)) return undefined;
             if (series.points.some((point) => !point || typeof point.label !== "string" || typeof point.value !== "number" || !Number.isFinite(point.value))) return undefined;
