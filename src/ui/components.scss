@@ -2911,14 +2911,14 @@
 .lc-checkin__reminder-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .lc-checkin__reminder-heading h2 { margin: 0; font-size: 15px; }
 .lc-checkin__reminder-heading select { min-height: 30px; font-size: 12px; }
-.lc-checkin__reminder-list { display: grid; gap: 8px; }
+.lc-checkin__reminder-list { display: grid; gap: 4px; }
 .lc-checkin__reminder-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 8px 12px;
-    min-height: 40px;
-    padding: 8px 10px;
+    min-height: 34px;
+    padding: 5px 8px;
     border-radius: var(--lc-checkin-radius);
     background: var(--lc-checkin-surface);
     transition: background-color var(--lc-checkin-motion-fast), opacity var(--lc-checkin-motion-fast);
@@ -2931,7 +2931,7 @@
     .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr); min-height: 36px; padding: 7px 8px; }
     .lc-checkin__reminder-timing { grid-column: 2; }
 }
-.lc-checkin__reminder-actions { display: inline-flex; gap: 6px; justify-content: flex-end; min-width: 0; grid-column: 1 / -1; }
+.lc-checkin__reminder-actions { display: inline-flex; gap: 4px; justify-content: flex-end; min-width: 0; grid-column: 3; grid-row: 1 / span 2; }
 .lc-checkin__reminder-row.is-completed,
 .lc-checkin__reminder-row.is-snoozed,
 .lc-checkin__reminder-row.is-skipped { opacity: .68; }
