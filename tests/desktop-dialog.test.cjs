@@ -216,6 +216,8 @@ assert.match(components, /settings-nav button \{ width: 100%; min-width: 0; box-
     "desktop settings navigation buttons must fill the rail without overflow");
 assert.match(components, /settings-nav button \{ width: 100%;[\s\S]*text-overflow: ellipsis; white-space: nowrap; \}/,
     "desktop settings navigation labels must remain on one line");
+assert.match(components, /settings-nav button:focus-visible \{ outline: 2px solid var\(--lc-checkin-accent\);/,
+    "desktop settings navigation must expose keyboard focus");
 assert.match(components, /settings-groups \{ gap: 10px; \}/,
     "desktop settings groups must keep compact vertical spacing");
 assert.match(components, /settings-card \{ scroll-margin-top: 72px; \}/,
