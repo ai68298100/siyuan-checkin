@@ -9,6 +9,7 @@
         "check": "tsc --noEmit",
         "check:release": "node tests/release-assets.test.cjs",
         "test:legacy-style": "node tests/legacy-style-audit.test.cjs",
+        "test:cross-surface": "node tests/cross-surface-matrix.test.cjs",
         "check:environment": "node scripts/environment-check.cjs",
         "check:stability": "node tests/stability-9_8.test.cjs && node tests/stability-9_8b.test.cjs && node tests/stability-9_8c.test.cjs",
         "test:quality": "pnpm run check:environment && pnpm run check && pnpm test && pnpm run test:ui && pnpm run test:legacy-style && pnpm run test:mobile && pnpm run test:ecosystem && pnpm run test:perf && pnpm run check:release && pnpm run build",
