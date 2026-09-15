@@ -39,9 +39,11 @@ export interface ReviewViewContext {
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
     reminderUserActions: ReminderUserAction[];
+    analyticsSummary?: {asOf: string; weeklyCurrent: number; monthlyCurrent: number; activeDays: number};
 }
 
 export function renderReviewView(ctx: ReviewViewContext): string {
+    const analyticsSummary = ctx.analyticsSummary;
     const eventsByDay = new Map<string, CheckinEvent[]>();
     ctx.store.events.forEach((event) => {
         const key = getEventDateKey(event);
@@ -114,6 +116,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const eventRows = filteredRecords.map(renderEvent);
     const eventDetails = filteredRecords.length ? `<details class="lc-checkin__history-details"><summary><span>${t("review.historyDetails")}</span><em>${t("review.recordsCount", {n: filteredRecords.length})}</em><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__history-events">${eventRows.slice(0, 5).join("")}${eventRows.length > 5 ? `<div data-history-extra hidden>${eventRows.slice(5).join("")}</div><button class="lc-checkin__text-button lc-checkin__history-expand" type="button" data-history-expand>${t("review.historyExpand", {n: eventRows.length - 5})}</button>` : ""}</div></details>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
     const details = aggregateDetails + eventDetails;
+    const analyticsBadge = analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.activeDays}</span>` : "";
     const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const nextDisabled = ctx.historyMonth >= currentMonth;
     const historySourceOptions = (["all", "manual", "tomato", "import", "api"] as HistorySourceFilter[]).map((value) => `<option value="${value}" ${ctx.historySource === value ? "selected" : ""}>${escapeHtml(t(`source.${value}`))}</option>`).join("");
@@ -239,7 +242,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                     <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}" title="${t("review.exportCsv")}">${uiIcon("history")}</button>
                 </div>
             </header>
-            <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div></section>
+            <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div>${analyticsBadge}</section>
             ${summaryHero}
             <nav class="lc-checkin__review-subnav" aria-label="${t("review.subnavAria")}"><button type="button" data-review-jump="0">${t("review.subnavReminders")}</button><button type="button" data-review-jump="1">${t("review.subnavTrend")}</button><button type="button" data-review-jump="2">${t("review.subnavProjects")}</button><button type="button" data-review-jump="3">${t("review.subnavLog")}</button><button type="button" data-review-jump="4">${t("review.subnavBalance")}</button><button type="button" data-review-jump="5">${t("review.subnavAchievements")}</button><button type="button" data-review-jump="6">${t("review.subnavPlans")}</button></nav>
             <div class="lc-checkin__review-layout">
