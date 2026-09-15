@@ -9,6 +9,7 @@ export const CHECKIN_EVENT_NAMES = {
     eventRecorded: "checkin:event-recorded",
     eventDeleted: "checkin:event-deleted",
     suggestionWorkflowUpdated: "checkin:suggestion-workflow-updated",
+    analyticsUpdated: "checkin:analytics-updated",
 } as const;
 
 // Keep the runtime map aligned with the public protocol snapshot.
@@ -54,6 +55,9 @@ export function cloneIntegrationEvent(event: CheckinIntegrationEvent): CheckinIn
         if (!isSuggestionWorkflowEvent(event)) return undefined;
         return {type: event.type, suggestionId: event.suggestionId.trim(), suggestionStatus: event.suggestionStatus};
     }
+    if (event.type === "analytics-updated") {
+        return {type: event.type, analyticsAsOf: typeof event.analyticsAsOf === "string" ? event.analyticsAsOf.slice(0, 32) : undefined};
+    }
     if (event.type === "item-created" || event.type === "item-updated") {
         return {...event, item: event.item ? {...event.item, archivePeriods: event.item.archivePeriods?.map((period) => ({...period})), schedule: event.item.schedule ? {...event.item.schedule} : event.item.schedule} : undefined};
     }
@@ -84,5 +88,7 @@ export function toExternalEventName(event: CheckinIntegrationEvent): string {
             return CHECKIN_EVENT_NAMES.eventDeleted;
         case "suggestion-workflow-updated":
             return CHECKIN_EVENT_NAMES.suggestionWorkflowUpdated;
+        case "analytics-updated":
+            return CHECKIN_EVENT_NAMES.analyticsUpdated;
     }
 }

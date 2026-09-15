@@ -123,12 +123,13 @@ export interface UserTemplate {
 }
 
 export interface CheckinIntegrationEvent {
-    type: "item-created" | "item-updated" | "event-recorded" | "event-deleted" | "suggestion-workflow-updated";
+    type: "item-created" | "item-updated" | "event-recorded" | "event-deleted" | "suggestion-workflow-updated" | "analytics-updated";
     item?: CheckinItem;
     event?: CheckinEvent;
     deletedEvents?: CheckinEvent[];
     suggestionId?: string;
     suggestionStatus?: "pending" | "confirmed" | "cancelled" | "failed";
+    analyticsAsOf?: string;
 }
 
 export type SuggestionWorkflowIntegrationEvent = {
