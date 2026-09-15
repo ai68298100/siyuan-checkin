@@ -2588,6 +2588,35 @@
     .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item { min-height: 46px; padding-block: 5px; }
 }
 
+/* Mobile final layout pass: five centered bottom actions and readable single-column cards. */
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__mobile-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    justify-content: center;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-items,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-items {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    min-width: 0;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item-body,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item-body,
+.lc-checkin--today .lc-checkin__priority-reminder-row-text {
+    min-width: 0;
+}
+.lc-checkin--today .lc-checkin__priority-reminder-row-text strong,
+.lc-checkin--today .lc-checkin__priority-reminder-row-text small {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 @container lc5 (max-width: 600px) {
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__item-secondary-action { display: none; }
     .lc-checkin--today .lc-checkin__item-action { grid-template-columns: 30px minmax(64px, 1fr) 30px; gap: 4px; }
