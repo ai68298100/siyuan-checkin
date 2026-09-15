@@ -430,6 +430,86 @@
         }
     }
 }
+/* 10.0 foundation pass 2: desktop/dock rails, landscape and ultra-narrow safeguards. */
+@container lc5 (min-width: 900px) {
+ .lc-checkin__header { max-width: 1780px; margin-inline: auto; }
+ .lc-checkin__layout { max-width: 1780px; margin-inline: auto; }
+ .lc-checkin--today .lc-checkin__organize { max-width: 100%; }
+ .lc-checkin--today .lc-checkin__item { min-width: 0; }
+ .lc-checkin--today .lc-checkin__item-body { min-width: 0; }
+ .lc-checkin--today .lc-checkin__item-name { max-width: 42ch; }
+ .lc-checkin--today .lc-checkin__item-meta { max-width: 56ch; }
+ .lc-checkin--review .lc-checkin__review-hero { min-height: 138px; }
+ .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 58px; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager { gap: 16px; }
+ .lc-checkin--occasions .lc-checkin__occasion-list-panel { max-height: calc(100vh - 190px); overflow: auto; }
+ .lc-checkin--occasions .lc-checkin__occasion-form-panel { position: sticky; top: 8px; }
+ .lc-checkin--settings .lc-checkin__settings-card { max-width: 1180px; margin-inline: auto; }
+ .lc-checkin__history-events { min-width: 0; }
+ .lc-checkin__history-event-main { min-width: 0; }
+ .lc-checkin__history-event-main > span { max-width: 60ch; }
+ .lc-checkin__trend-card { min-width: 0; }
+ .lc-chart { min-height: 170px; }
+ .lc-checkin__yearheatmap-scroll { scrollbar-width: thin; }
+}
+@container lc-dock (min-width: 340px) and (max-width: 560px) {
+ .lc-checkin-dock-host .lc-checkin { padding-inline: 10px; }
+ .lc-checkin-dock-host .lc-checkin__header { gap: 5px; }
+ .lc-checkin-dock-host .lc-checkin__title { font-size: 21px; }
+ .lc-checkin-dock-host .lc-checkin__count { font-size: 11px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items { gap: 7px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item { grid-template-columns: 32px minmax(0,1fr); gap: 6px; padding: 7px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-icon { width: 32px; height: 32px; flex-basis: 32px; font-size: 16px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-meta { font-size: 10px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-progress { margin-top: 4px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { gap: 3px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-height: 30px; font-size: 11px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-height: 30px; font-size: 11px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav { min-height: 50px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav button { min-height: 38px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav button span { font-size: 14px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav button small { font-size: 7px; }
+ .lc-checkin-dock-host .lc-checkin__organize { gap: 5px; }
+ .lc-checkin-dock-host .lc-checkin__today-search { min-width: 0; }
+ .lc-checkin-dock-host .lc-checkin__today-search input { width: 64px; }
+ .lc-checkin-dock-host .lc-checkin__group-header { min-height: 24px; }
+ .lc-checkin-dock-host .lc-checkin__group-title { font-size: 12px; }
+ .lc-checkin-dock-host .lc-checkin__group-count { font-size: 10px; }
+ .lc-checkin-dock-host .lc-checkin__empty { padding: 12px 8px; }
+ .lc-checkin-dock-host .lc-checkin__empty-title { font-size: 15px; }
+ .lc-checkin-dock-host .lc-checkin__empty-description { font-size: 10px; }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+ .lc-checkin-dialog-host--mobile .lc-checkin__header { min-height: 38px; padding-block: 2px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin__title { font-size: 18px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { width: 32px; height: 32px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+ .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav { min-height: 46px; padding-top: 2px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav button { min-height: 36px; }
+ .lc-checkin--today .lc-checkin__item { padding-block: 6px; }
+ .lc-checkin--today .lc-checkin__group { margin-top: 8px; }
+ .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 44px; }
+ .lc-checkin--review .lc-checkin__review-hero { padding: 8px 12px; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: 44vh; }
+ .lc-checkin--settings .lc-checkin__settings-card { margin-bottom: 6px; }
+}
+@media (max-width: 340px) {
+ .lc-checkin { padding-inline: 7px; }
+ .lc-checkin__header-actions { max-width: 44%; }
+ .lc-checkin__title { font-size: 19px; }
+ .lc-checkin--today .lc-checkin__item { grid-template-columns: 30px minmax(0,1fr); padding: 6px; }
+ .lc-checkin--today .lc-checkin__item-icon { width: 30px; height: 30px; flex-basis: 30px; font-size: 15px; }
+ .lc-checkin--today .lc-checkin__item-name { font-size: 12px; }
+ .lc-checkin--today .lc-checkin__item-meta { font-size: 9px; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { padding-inline: 5px; font-size: 10px; }
+ .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 46px; padding-inline: 5px; }
+ .lc-checkin--review .lc-checkin__summary-stats strong { font-size: 15px; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 24px minmax(0,1fr); padding: 7px; }
+ .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: 1fr; }
+ .lc-checkin--settings .lc-checkin__settings-row select,.lc-checkin--settings .lc-checkin__settings-row input { max-width: 100%; }
+ .lc-checkin__mobile-nav button small { font-size: 7px; }
+}
 /* Mobile cross-page audit: remove duplicate header whitespace and protect dense rows. */
 @media (max-width: 600px) {
  .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header { min-height: 42px; margin-bottom: 4px; padding-block: 3px; }
