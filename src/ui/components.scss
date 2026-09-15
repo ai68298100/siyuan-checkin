@@ -788,6 +788,13 @@
 .lc-checkin__group-header span:first-child { font-weight:650; }
 .lc-checkin__group-header em { min-width:20px; }
 .lc-checkin__group-items { gap:8px; }
+.lc-checkin__item { min-height:72px; padding:11px 12px; border-color:transparent; border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
+.lc-checkin__item:hover,.lc-checkin__item:focus-within { border-color:color-mix(in srgb,var(--lc-checkin-accent) 35%,var(--lc-checkin-border-strong)); }
+.lc-checkin__item-icon { flex-basis:40px; width:40px; height:40px; border-radius:10px; font-size:20px; }
+.lc-checkin__item-name { font-size:14px; font-weight:650; }
+.lc-checkin__item-meta { margin-top:3px; font-size:11px; }
+.lc-checkin__item-progress { height:3px; margin-top:7px; }
+.lc-checkin__item-action { gap:6px; }
 .lc-checkin__range-tabs { display:flex; align-self:flex-start; gap:3px; margin:-7px 0 14px 40px; padding:3px; border-radius:7px; background:var(--lc-checkin-muted-surface); }
 .lc-checkin__range-tabs button { min-width:30px; height:25px; padding:0 7px; border:0; border-radius:5px; color:var(--lc-checkin-muted); background:transparent; font-size:11px; }
 .lc-checkin__range-tabs button.is-selected { color:var(--lc-checkin-text); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
