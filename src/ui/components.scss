@@ -5820,6 +5820,15 @@
     }
 }
 
+@container lc5 (min-width: 720px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); align-items: start; }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel,
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { min-width: 0; overflow: hidden; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list { overflow-x: hidden; }
+    .lc-checkin--occasions .lc-checkin__occasion-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { max-width: 100%; }
+}
+
 
 /* ============================================================
    T-031 桌面顶栏（应用标题栏式）：
