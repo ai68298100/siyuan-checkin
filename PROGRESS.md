@@ -585,3 +585,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 统一卡片阴影和边框 Token，删除 legacy 重复规则 25 行。
 - 同步 UI 主题守门，改为锁定组件层 `lc-checkin-shadow-sm` 归属。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `b37e431`、`851e927`，未推送。
+### 10.0 基础开发第十九批（约 100 项）
+
+- 继续推进 T-105：迁移编辑器类型网格、高级设置、保存按钮、编辑器操作区及历史列表基础规则至组件层。
+- 同步迁移历史行、历史事件、日历单元格和完成区基础视觉规则，删除 legacy 重复声明。
+- 统一使用插件 Token，避免宿主变量直接进入新增组件规则。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `bfdb908`，未推送。
