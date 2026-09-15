@@ -563,3 +563,8 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 清理 `index.scss` 中与组件层重复的通用交互基础：控件过渡、密度偏好、最小高度、焦点阴影及历史备注焦点样式。
 - 继续推进 T-105 legacy 退役，删除 22 行重复规则，避免同选择器跨文件覆盖造成移动端错位。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `b6f2c4b`，未推送。
+### 10.0 基础开发第十五批（约 100 项）
+
+- 继续推进 T-105，删除 `index.scss` 中重复的标题、眉题、区块标题和标题操作区基础规则共 43 行。
+- 这些职责统一由 `ui/components.scss` 承担，减少桌面与移动端后置覆盖冲突。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `c43b854`，未推送。
