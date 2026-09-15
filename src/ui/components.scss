@@ -5866,8 +5866,10 @@
         min-height: 48px;
         width: 100%;
         box-sizing: border-box;
+        overflow: hidden;
     }
-    .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; }
+    .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+    .lc-checkin__topnav-tabs::-webkit-scrollbar { display: none; }
     .lc-checkin__topnav button[data-mobile-nav] {
         display: flex;
         align-items: center;
