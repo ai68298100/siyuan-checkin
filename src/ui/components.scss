@@ -3846,6 +3846,7 @@
 @container lc5 (min-width: 820px) {
     .lc-checkin__settings-nav { position: sticky; top: 58px; flex-direction: column; overflow: hidden; overscroll-behavior: contain; padding: 4px; border: 1px solid var(--lc-checkin-border); border-radius: 12px; background: color-mix(in srgb, var(--lc-checkin-surface) 88%, transparent); box-shadow: var(--lc-checkin-shadow-sm); }
     .lc-checkin__settings-nav button { width: 100%; min-width: 0; box-sizing: border-box; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin__settings-nav button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
 }
 .lc-checkin__settings-nav button {
     flex: none;
