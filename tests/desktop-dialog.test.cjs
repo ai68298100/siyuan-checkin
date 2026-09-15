@@ -181,6 +181,8 @@ assert.match(components, /occasion-manager-row \{[\s\S]*min-height: 56px;[\s\S]*
     "desktop occasion cards must stay compact and readable");
 assert.match(components, /occasion-filter select \{ height: 34px; \}/,
     "desktop occasion filters must share a compact control height");
+assert.match(components, /occasions :is\(select, input, textarea\):focus-visible \{ outline: 2px solid var\(--lc-checkin-accent\);/,
+    "desktop occasion controls must expose keyboard focus");
 assert.match(components, /occasion-form-panel \{ padding-bottom: 16px; \}/,
     "desktop occasion form must avoid excessive bottom whitespace");
 assert.match(components, /occasion-form-panel \{ position: sticky; top: 58px; \}/,
