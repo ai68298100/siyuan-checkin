@@ -4334,6 +4334,7 @@
     .lc-checkin--review .lc-checkin__range-tabs { flex: 1 1 100%; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 30px; padding-inline: 9px; }
     .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 56px; display: grid; place-content: center; }
+    .lc-checkin--review .lc-checkin__summary-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .lc-checkin--review .lc-checkin__summary-text,
     .lc-checkin--review .lc-checkin__summary-agent { max-width: 1180px; margin-inline: auto; }
     .lc-checkin--review .lc-checkin__review-subnav { max-width: 1180px; margin-inline: auto; }
