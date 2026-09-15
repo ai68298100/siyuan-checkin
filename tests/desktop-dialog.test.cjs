@@ -185,6 +185,8 @@ assert.match(components, /occasion-form-panel \{ padding-bottom: 16px; \}/,
     "desktop occasion form must avoid excessive bottom whitespace");
 assert.match(components, /occasion-form-panel \{ position: sticky; top: 58px; \}/,
     "desktop occasion form must stay below the top navigation");
+assert.match(components, /occasion-manager-list \{ max-height: 60vh; \}/,
+    "desktop occasion list must expose a taller usable viewport");
 assert.match(components, /occasion-list-panel,[\s\S]*occasion-form-panel \{ align-self: start; \}/,
     "desktop occasion panels must not stretch to match each other");
 
