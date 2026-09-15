@@ -16,6 +16,7 @@ export interface TrendSeries {
 }
 
 const clampRange = (value: number, fallback: number, max: number): number => Number.isFinite(value) ? Math.min(max, Math.max(1, Math.floor(value))) : fallback;
+const ANALYTICS_SERIES_LIMITS = {weekly: 52, monthly: 24, daily: 366, yearly: 10} as const;
 
 export interface AnalyticsSnapshot {
     version: 1;
@@ -49,8 +50,9 @@ export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefin
     try {
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
         if (value.version !== 1 || typeof value.asOf !== "string" || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
-        for (const series of [value.weekly, value.monthly, value.daily, value.yearly]) {
+        for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
             if (typeof series.title !== "string" || typeof series.unit !== "string" || !Array.isArray(series.points)) return undefined;
+            if (series.points.length > ANALYTICS_SERIES_LIMITS[name]) return undefined;
             if (series.points.some((point) => !point || typeof point.label !== "string" || typeof point.value !== "number" || !Number.isFinite(point.value))) return undefined;
         }
         return cloneAnalyticsSnapshot(value as AnalyticsSnapshot);
