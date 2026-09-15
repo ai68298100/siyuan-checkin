@@ -10,7 +10,7 @@ import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, type FocusAdapter, type SummaryPr
 import {normalizeSummaryProviderResult} from "./agent-suggestions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, hasCheckinCapability, getCheckinApiDescriptor, getCheckinCapabilityInfo, type CheckinCapability, type CheckinApiDescriptor, type CheckinCapabilityInfo} from "./api-contract";
 import {cloneSuggestionWorkflow, workflowSummary, workflowUpdatedAt, type SuggestionWorkflowState} from "./features/suggestion-workflow";
-import {buildAnalyticsSnapshot, cloneAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
+import {buildAnalyticsSnapshot, cloneAnalyticsSnapshot, summarizeAnalyticsSnapshot, type AnalyticsSnapshot, type AnalyticsSnapshotSummary} from "./charts";
 
 export interface CheckinApi {
     name: string;
@@ -31,6 +31,7 @@ export interface CheckinApi {
     getSummaryContext: (range: SummaryRange) => ReturnType<typeof buildSummaryContext>;
     getCustomSummaryContext: (range: CustomSummaryRange) => ReturnType<typeof buildCustomSummaryContext>;
     getAnalyticsSnapshot: (asOf?: Date) => AnalyticsSnapshot;
+    getAnalyticsSummary: (asOf?: Date) => AnalyticsSnapshotSummary;
     getArchivedItems: () => CheckinItem[];
     setItemArchived: (itemId: string, archived: boolean) => Promise<boolean>;
     exportJson: () => string;
@@ -130,6 +131,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             return buildCustomSummaryContext(host.store, range, currentCalendarDate());
         },
         getAnalyticsSnapshot: (asOf = currentCalendarDate()) => cloneAnalyticsSnapshot(buildAnalyticsSnapshot(host.store, asOf)),
+        getAnalyticsSummary: (asOf = currentCalendarDate()) => summarizeAnalyticsSnapshot(buildAnalyticsSnapshot(host.store, asOf)),
         getArchivedItems: () => host.store.items.filter((item) => item.archived).map((item) => host.cloneItem(item)),
         setItemArchived: (itemId, archived) => {
             if (!host.acceptingOperations) return Promise.resolve(false);
