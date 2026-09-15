@@ -17,6 +17,7 @@ export interface SettingsViewContext {
     hapticFeedback: boolean;
     focusTimerProvider: FocusTimerProvider;
     focusTimerAdapterCount?: number;
+    focusTimerAdapterIds?: readonly string[];
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;

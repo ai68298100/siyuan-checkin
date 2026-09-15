@@ -689,6 +689,11 @@ export default class CheckinPlugin extends Plugin {
         return this.registerQuickAction({id, label: id, handler, targets});
     }
 
+    /** Read-only diagnostics for integrations; does not expose handlers or write access. */
+    public getRegisteredQuickActionIds(): readonly string[] {
+        return Object.freeze([...this.quickActionAdapters.keys()]);
+    }
+
     /* 方法体外置于 render/quick-dialog.ts（T-022）。 */
     private ensureMobileTopBarButton() {
         ensureMobileTopBarButtonFor(this as unknown as QuickDialogHost);
@@ -1055,7 +1060,7 @@ export default class CheckinPlugin extends Plugin {
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
-            focusTimerAdapterCount: this.quickActionAdapters.size,
+            focusTimerAdapterCount: [...this.quickActionAdapters.keys()].filter((id) => /tomato|pomodoro|focus/i.test(id)).length,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
