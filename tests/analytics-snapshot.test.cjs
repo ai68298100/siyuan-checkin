@@ -50,6 +50,8 @@ assert.match(source, /isAnalyticsDate/);
 assert.match(source, /\\d\{4\}-\\d\{2\}-\\d\{2\}/);
 assert.match(source, /getUTCFullYear\(\)/);
 assert.match(source, /getUTCMonth\(\)/);
+assert.match(source, /year < 1970/);
+assert.match(source, /year > 9999/);
 assert.match(source, /mergeAnalyticsSummaries/);
 assert.match(source, /incoming\.asOf > current\.asOf/);
 assert.match(source, /if \(!current \|\| incoming\.asOf > current\.asOf\)/);
