@@ -4333,7 +4333,9 @@
 /* 范围切换与导出在窄容器内允许换行，不被裁切 */
 .lc-checkin--review .lc-checkin__range-tabs { flex-wrap: wrap; max-width: 100%; }
 @container lc5 (min-width: 720px) {
-    .lc-checkin--review .lc-checkin__editor-header { align-items: flex-start; gap: 20px; }
+    .lc-checkin--review .lc-checkin__editor-header { align-items: flex-start; gap: 20px; min-width: 0; }
+    .lc-checkin--review .lc-checkin__editor-header > :first-child { min-width: 0; flex: 1 1 auto; }
+    .lc-checkin--review .lc-checkin__editor-header .lc-checkin__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin--review .lc-checkin__header-actions { min-width: 0; max-width: 58%; flex-wrap: wrap; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__range-tabs { flex: 1 1 100%; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 30px; padding-inline: 9px; }
