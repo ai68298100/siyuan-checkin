@@ -1720,6 +1720,16 @@
     }
 }
 .lc-checkin__history-event-value { color: var(--lc-checkin-text); font-size: 12px; white-space: nowrap; }
+.lc-checkin__history-event-main > span { display: block; min-height: 1.35em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lc-checkin__history-event-main > span::first-letter { font-variant-numeric: tabular-nums; }
+.lc-checkin__history-event-value { min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+.lc-checkin__history-event-actions { min-width: 112px; justify-content: flex-end; }
+@container lc5 (max-width: 720px) {
+ .lc-checkin__history-event { grid-template-columns: minmax(0,1fr) minmax(56px,auto); }
+ .lc-checkin__history-event-main > span { max-width: 34ch; }
+ .lc-checkin__history-event-value { min-width: 56px; }
+ .lc-checkin__history-event-actions { min-width: 0; }
+}
 .lc-checkin__history-empty { padding: 10px; color: var(--lc-checkin-muted); font-size: 11px; }
 
 /* Fourteenth narrow-surface pass: Today card visual polish and mobile surface hierarchy. */
