@@ -2679,6 +2679,8 @@
 @container lc5 (max-width: 719px) {
     .lc-checkin__mobile-nav,
     .lc-checkin-tab-host .lc-checkin__mobile-nav { display: grid; }
+    .lc-checkin__mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; justify-items: stretch; }
+    .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add { width: 100%; min-width: 0; justify-self: stretch; }
 }
 .lc-checkin__mobile-nav button {
     min-width: 0;
