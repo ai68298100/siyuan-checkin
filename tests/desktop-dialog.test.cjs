@@ -182,6 +182,10 @@ assert.match(settingsView, /lc-checkin__settings-fold/,
     "settings history must use the shared fold disclosure");
 assert.match(components, /\.lc-checkin__settings-fold > summary/,
     "settings history disclosure needs a compact summary style");
+assert.match(components, /\.lc-checkin--settings \.lc-checkin__settings-row \{ display: grid; grid-template-columns:/,
+    "desktop settings rows must use a stable two-column grid");
+assert.match(components, /\.lc-checkin--settings \.lc-checkin__settings-layout \{ max-width: 1180px;/,
+    "desktop settings layout must remain centered and bounded");
 
 // 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
