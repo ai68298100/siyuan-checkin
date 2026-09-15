@@ -3793,6 +3793,7 @@
 
 /* ---------------- occasions page ---------------- */
 .lc-checkin--occasions .lc-checkin__occasion-manager { display: grid; gap: 14px; }
+.lc-checkin--occasions .lc-checkin__occasion-manager { align-items: start; }
 /* 桌面主从布局：列表在左（可扫读、定宽），表单在右（工作区、吃满剩余）。
    窄容器保持单列堆叠（表单在前，列表在后），不做等宽双栏——等宽会把列表行压成竖条。
    阈值按容器内容盒（.lc-checkin 有 24px 横内边距）取 900，覆盖 948px 以上的宿主。 */
