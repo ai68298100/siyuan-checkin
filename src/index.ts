@@ -3,6 +3,7 @@ import "./index.scss";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
+import {buildAnalyticsSnapshot, summarizeAnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -1404,6 +1405,7 @@ export default class CheckinPlugin extends Plugin {
 
     /* 方法体外置于 render/review.ts（T-022）。 */
     private renderReview(): string {
+        const analyticsSummary = summarizeAnalyticsSnapshot(buildAnalyticsSnapshot(this.store));
         return renderReviewView({
             store: this.store,
             occasionStore: this.occasionStore,
@@ -1427,6 +1429,7 @@ export default class CheckinPlugin extends Plugin {
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
             reminderUserActions: this.reminderUserActions,
+            analyticsSummary,
         });
     }
 
