@@ -23,6 +23,8 @@ assert.match(source, /buildWeeklyCompletionTrend\(store, 12, asOf\)/);
 assert.match(source, /buildMonthlyEventTrend\(store, 6, asOf\)/);
 assert.match(source, /buildDailyActivityTrend\(store, 30, asOf\)/);
 assert.match(source, /buildYearlyEventTrend\(store, 5, asOf\)/);
+assert.match(source, /const clampRange/);
+assert.match(source, /Math\.min\(max, Math\.max\(1/);
 assert.match(source, /serializeAnalyticsSummary/);
 assert.match(source, /parseAnalyticsSummary/);
 assert.match(source, /value\.asOf\.length > 32/);

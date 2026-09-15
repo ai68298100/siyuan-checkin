@@ -15,6 +15,8 @@ export interface TrendSeries {
     points: TrendPoint[];
 }
 
+const clampRange = (value: number, fallback: number, max: number): number => Number.isFinite(value) ? Math.min(max, Math.max(1, Math.floor(value))) : fallback;
+
 export interface AnalyticsSnapshot {
     version: 1;
     asOf: string;
@@ -141,6 +143,7 @@ export function summarizeTrend(series: TrendSeries): {current: number; average: 
 
 /** 近 N 周的完成率（%）：按周一为一周起点，统计"项目-日"粒度的完成占比。 */
 export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf = new Date()): TrendSeries {
+    weeks = clampRange(weeks, 12, 52);
     const points: TrendPoint[] = [];
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
     const currentMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
@@ -165,6 +168,7 @@ export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf
 
 /** 近 N 个月的记录条数。 */
 export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = new Date()): TrendSeries {
+    months = clampRange(months, 6, 24);
     const points: TrendPoint[] = [];
     for (let index = months - 1; index >= 0; index -= 1) {
         const start = new Date(asOf.getFullYear(), asOf.getMonth() - index, 1);
@@ -180,6 +184,7 @@ export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = n
 
 /** 近 N 天的活跃天数分布（每天是否有记录）。 */
 export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = new Date()): TrendSeries {
+    days = clampRange(days, 30, 366);
     const points: TrendPoint[] = [];
     const activeDays = new Set(store.events.map((event) => event.localDate));
     for (let index = days - 1; index >= 0; index -= 1) {
@@ -191,6 +196,7 @@ export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = n
 }
 
 export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new Date()): TrendSeries {
+    years = clampRange(years, 5, 10);
     const points: TrendPoint[] = [];
     for (let index = years - 1; index >= 0; index -= 1) {
         const year = asOf.getFullYear() - index;
