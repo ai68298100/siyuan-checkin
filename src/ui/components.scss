@@ -6274,6 +6274,22 @@
 }
 .lc-checkin__topnav-action { width: 34px; height: 34px; border-radius: 9px; }
 
+/* Keep the topbar aligned with the page content rail (avoid the centered 1320px offset). */
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav,
+.lc-checkin-tab-host > .lc-checkin__topnav {
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: 24px;
+}
+
+/* Occasions desktop: let the manager define its own height and give filters readable columns. */
+.lc-checkin--occasions .lc-checkin__occasion-manager { align-self: start; }
+.lc-checkin--occasions .lc-checkin__occasion-filters {
+    grid-template-columns: repeat(3, minmax(110px, 1fr));
+    gap: 10px;
+}
+.lc-checkin--occasions .lc-checkin__occasion-filter select { min-width: 0; }
+
 /* 侧边栏不显示顶部导航（它有自己的底栏导航）；rail 已退役 */
 .lc-checkin-dock-host > .lc-checkin__topnav { display: none; }
 .lc-checkin__rail { display: none !important; }
