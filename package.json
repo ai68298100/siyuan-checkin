@@ -1,55 +1,55 @@
-{
-    "name": "siyuan-checkin",
-    "version": "11.0.0",
-        "description": "SiYuan plugin: С¿��",
-    "main": "index.js",
-    "scripts": {
-        "dev": "webpack --config webpack.config.js --mode development",
-        "build": "webpack --config webpack.config.js --mode production",
-        "check": "tsc --noEmit",
-        "check:release": "node tests/release-assets.test.cjs",
-        "test:legacy-style": "node tests/legacy-style-audit.test.cjs",
-        "test:cross-surface": "node tests/cross-surface-matrix.test.cjs",
-        "test:analytics-snapshot": "node tests/analytics-snapshot.test.cjs",
-        "check:environment": "node scripts/environment-check.cjs",
-        "check:stability": "node tests/stability-9_8.test.cjs && node tests/stability-9_8b.test.cjs && node tests/stability-9_8c.test.cjs",
-        "test:quality": "pnpm run check:environment && pnpm run check && pnpm test && pnpm run test:ui && pnpm run test:legacy-style && pnpm run test:mobile && pnpm run test:ecosystem && pnpm run test:perf && pnpm run check:release && pnpm run build",
-        "test:ui": "node tests/analytics-snapshot.test.cjs && node tests/reminder-projection.test.cjs && node tests/reminder-actions.test.cjs && node tests/i18n-hygiene.test.cjs && node tests/agent-suggestions.test.cjs && node tests/analysis-history.test.cjs && node tests/local-summary.test.cjs && node tests/priority-reminder.test.cjs && node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/insight-a11y.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/ui-docs.test.cjs && node tests/mobile-release-quality.test.cjs && node tests/desktop-dialog.test.cjs && node tests/stability-9_8.test.cjs && node tests/stability-9_8b.test.cjs && node tests/stability-9_8c.test.cjs && node tests/checkin-toast.test.cjs && node tests/release-assets.test.cjs",
-        "test": "pnpm run check && node tests/reminder-projection.test.cjs && node tests/reminder-actions.test.cjs && node tests/model.test.cjs && node tests/rules.test.cjs && node tests/insights.test.cjs && node tests/coaching.test.cjs && node tests/insight-records.test.cjs && node tests/record-notes.test.cjs && node tests/backup.test.cjs && node tests/conflict.test.cjs && node tests/mobile-dialog.test.cjs && node tests/interval-editor.test.cjs && node tests/editor-validation.test.cjs && node tests/template-manager.test.cjs && node tests/responsive-layout.test.cjs && node tests/ui-theme.test.cjs && node tests/occasions.test.cjs && node tests/archived-search.test.cjs && node tests/history-filter.test.cjs && node tests/view-preferences.test.cjs && node tests/entry-capabilities.test.cjs && node tests/agent-suggestions.test.cjs && node tests/analysis-history.test.cjs && node tests/local-summary.test.cjs && node tests/priority-reminder.test.cjs && node tests/insight-a11y.test.cjs",
-        "test:mobile": "node tests/mobile-dialog.test.cjs && node tests/mobile-template-touch.test.cjs && node tests/mobile-template-visual.test.cjs && node tests/mobile-template-delete-touch.test.cjs && node tests/mobile-editor-keyboard.test.cjs && node tests/mobile-template-save-feedback.test.cjs && node tests/mobile-template-grid.test.cjs && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs",
-        "test:mobile-dialog": "node tests/mobile-dialog.test.cjs",
-        "test:mobile:visual": "pnpm run test:mobile && node tests/mobile-preview-overflow.test.cjs && node tests/mobile-rotation-layout.test.cjs && node tests/mobile-visual-regression.test.cjs",
-        "test:mobile:visual:browser": "node tests/mobile-visual-browser.cjs",
-        "test:visual:harness": "node tests/mobile-qa-harness-status.cjs",
-        "test:ecosystem": "node tests/ecosystem.test.cjs && node tests/integration-events.test.cjs && node tests/ecosystem-docs.test.cjs && node tests/api-contract.test.cjs && node tests/preferences-docs.test.cjs",
-        "test:perf": "node tests/performance.test.cjs",
-        "test:backup": "node tests/backup.test.cjs && node tests/restore-audit.test.cjs",
-        "test:conflict": "node tests/conflict.test.cjs"
-    },
-    "keywords": [
-        "siyuan",
-        "plugin",
-        "checkin",
-        "habit"
-    ],
-    "author": "ai68298100",
-    "license": "MIT",
-    "packageManager": "pnpm@11.4.0",
-    "engines": {
-        "node": ">=18.0.0"
-    },
-    "devDependencies": {
-        "copy-webpack-plugin": "^14.0.0",
-        "css-loader": "^7.1.4",
-        "esbuild-loader": "^4.4.3",
-        "mini-css-extract-plugin": "^2.10.2",
-        "playwright": "^1.63.0",
-        "sass": "^1.100.0",
-        "sass-loader": "^16.0.5",
-        "siyuan": "1.2.6",
-        "typescript": "^5.5.4",
-        "webpack": "^5.101.3",
-        "webpack-cli": "^6.0.1",
-        "yazl": "3.3.1"
-    }
+﻿{
+    "name":  "siyuan-checkin",
+    "version":  "11.0.0",
+    "description":  "SiYuan plugin: 小驴打卡",
+    "main":  "index.js",
+    "scripts":  {
+                    "dev":  "webpack --config webpack.config.js --mode development",
+                    "build":  "webpack --config webpack.config.js --mode production",
+                    "check":  "tsc --noEmit",
+                    "check:release":  "node tests/release-assets.test.cjs",
+                    "test:legacy-style":  "node tests/legacy-style-audit.test.cjs",
+                    "test:cross-surface":  "node tests/cross-surface-matrix.test.cjs",
+                    "test:analytics-snapshot":  "node tests/analytics-snapshot.test.cjs",
+                    "check:environment":  "node scripts/environment-check.cjs",
+                    "check:stability":  "node tests/stability-9_8.test.cjs \u0026\u0026 node tests/stability-9_8b.test.cjs \u0026\u0026 node tests/stability-9_8c.test.cjs",
+                    "test:quality":  "pnpm run check:environment \u0026\u0026 pnpm run check \u0026\u0026 pnpm test \u0026\u0026 pnpm run test:ui \u0026\u0026 pnpm run test:legacy-style \u0026\u0026 pnpm run test:mobile \u0026\u0026 pnpm run test:ecosystem \u0026\u0026 pnpm run test:perf \u0026\u0026 pnpm run check:release \u0026\u0026 pnpm run build",
+                    "test:ui":  "node tests/analytics-snapshot.test.cjs \u0026\u0026 node tests/reminder-projection.test.cjs \u0026\u0026 node tests/reminder-actions.test.cjs \u0026\u0026 node tests/i18n-hygiene.test.cjs \u0026\u0026 node tests/agent-suggestions.test.cjs \u0026\u0026 node tests/analysis-history.test.cjs \u0026\u0026 node tests/local-summary.test.cjs \u0026\u0026 node tests/priority-reminder.test.cjs \u0026\u0026 node tests/responsive-layout.test.cjs \u0026\u0026 node tests/ui-theme.test.cjs \u0026\u0026 node tests/insight-a11y.test.cjs \u0026\u0026 node tests/occasions.test.cjs \u0026\u0026 node tests/archived-search.test.cjs \u0026\u0026 node tests/ui-docs.test.cjs \u0026\u0026 node tests/mobile-release-quality.test.cjs \u0026\u0026 node tests/desktop-dialog.test.cjs \u0026\u0026 node tests/stability-9_8.test.cjs \u0026\u0026 node tests/stability-9_8b.test.cjs \u0026\u0026 node tests/stability-9_8c.test.cjs \u0026\u0026 node tests/checkin-toast.test.cjs \u0026\u0026 node tests/release-assets.test.cjs",
+                    "test":  "pnpm run check \u0026\u0026 node tests/reminder-projection.test.cjs \u0026\u0026 node tests/reminder-actions.test.cjs \u0026\u0026 node tests/model.test.cjs \u0026\u0026 node tests/rules.test.cjs \u0026\u0026 node tests/insights.test.cjs \u0026\u0026 node tests/coaching.test.cjs \u0026\u0026 node tests/insight-records.test.cjs \u0026\u0026 node tests/record-notes.test.cjs \u0026\u0026 node tests/backup.test.cjs \u0026\u0026 node tests/conflict.test.cjs \u0026\u0026 node tests/mobile-dialog.test.cjs \u0026\u0026 node tests/interval-editor.test.cjs \u0026\u0026 node tests/editor-validation.test.cjs \u0026\u0026 node tests/template-manager.test.cjs \u0026\u0026 node tests/responsive-layout.test.cjs \u0026\u0026 node tests/ui-theme.test.cjs \u0026\u0026 node tests/occasions.test.cjs \u0026\u0026 node tests/archived-search.test.cjs \u0026\u0026 node tests/history-filter.test.cjs \u0026\u0026 node tests/view-preferences.test.cjs \u0026\u0026 node tests/entry-capabilities.test.cjs \u0026\u0026 node tests/agent-suggestions.test.cjs \u0026\u0026 node tests/analysis-history.test.cjs \u0026\u0026 node tests/local-summary.test.cjs \u0026\u0026 node tests/priority-reminder.test.cjs \u0026\u0026 node tests/insight-a11y.test.cjs",
+                    "test:mobile":  "node tests/mobile-dialog.test.cjs \u0026\u0026 node tests/mobile-template-touch.test.cjs \u0026\u0026 node tests/mobile-template-visual.test.cjs \u0026\u0026 node tests/mobile-template-delete-touch.test.cjs \u0026\u0026 node tests/mobile-editor-keyboard.test.cjs \u0026\u0026 node tests/mobile-template-save-feedback.test.cjs \u0026\u0026 node tests/mobile-template-grid.test.cjs \u0026\u0026 node tests/mobile-preview-overflow.test.cjs \u0026\u0026 node tests/mobile-rotation-layout.test.cjs",
+                    "test:mobile-dialog":  "node tests/mobile-dialog.test.cjs",
+                    "test:mobile:visual":  "pnpm run test:mobile \u0026\u0026 node tests/mobile-preview-overflow.test.cjs \u0026\u0026 node tests/mobile-rotation-layout.test.cjs \u0026\u0026 node tests/mobile-visual-regression.test.cjs",
+                    "test:mobile:visual:browser":  "node tests/mobile-visual-browser.cjs",
+                    "test:visual:harness":  "node tests/mobile-qa-harness-status.cjs",
+                    "test:ecosystem":  "node tests/ecosystem.test.cjs \u0026\u0026 node tests/integration-events.test.cjs \u0026\u0026 node tests/ecosystem-docs.test.cjs \u0026\u0026 node tests/api-contract.test.cjs \u0026\u0026 node tests/preferences-docs.test.cjs",
+                    "test:perf":  "node tests/performance.test.cjs",
+                    "test:backup":  "node tests/backup.test.cjs \u0026\u0026 node tests/restore-audit.test.cjs",
+                    "test:conflict":  "node tests/conflict.test.cjs"
+                },
+    "keywords":  [
+                     "siyuan",
+                     "plugin",
+                     "checkin",
+                     "habit"
+                 ],
+    "author":  "ai68298100",
+    "license":  "MIT",
+    "packageManager":  "pnpm@11.4.0",
+    "engines":  {
+                    "node":  "\u003e=18.0.0"
+                },
+    "devDependencies":  {
+                            "copy-webpack-plugin":  "^14.0.0",
+                            "css-loader":  "^7.1.4",
+                            "esbuild-loader":  "^4.4.3",
+                            "mini-css-extract-plugin":  "^2.10.2",
+                            "playwright":  "^1.63.0",
+                            "sass":  "^1.100.0",
+                            "sass-loader":  "^16.0.5",
+                            "siyuan":  "1.2.6",
+                            "typescript":  "^5.5.4",
+                            "webpack":  "^5.101.3",
+                            "webpack-cli":  "^6.0.1",
+                            "yazl":  "3.3.1"
+                        }
 }
