@@ -76,6 +76,23 @@ export function compareAnalyticsSnapshots(left: AnalyticsSnapshot, right: Analyt
     return left.asOf < right.asOf ? "older" : "newer";
 }
 
+export function serializeAnalyticsSummary(snapshot: AnalyticsSnapshot): string {
+    return JSON.stringify(summarizeAnalyticsSnapshot(snapshot));
+}
+
+export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | undefined {
+    try {
+        const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
+        if (typeof value.asOf !== "string" || value.asOf.length > 32) return undefined;
+        for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays"] as const) {
+            if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return undefined;
+        }
+        return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent, monthlyCurrent: value.monthlyCurrent, activeDays: value.activeDays};
+    } catch {
+        return undefined;
+    }
+}
+
 export interface AnalyticsSnapshotEnvelope {
     version: 1;
     snapshot: AnalyticsSnapshot;
