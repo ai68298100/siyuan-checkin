@@ -3971,6 +3971,9 @@
 .lc-checkin__settings-nav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__settings-nav button.is-active { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__settings-groups { display: grid; gap: 12px; min-width: 0; }
+.lc-checkin--settings .lc-checkin__settings-groups,
+.lc-checkin--settings .lc-checkin__settings-card { width: 100%; max-width: 100%; box-sizing: border-box; }
+.lc-checkin--settings .lc-checkin__settings-content { width: 100%; min-width: 0; }
 .lc-checkin__settings-card { padding: 4px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
 .lc-checkin__settings-card h2 { margin: 10px 0 4px; color: var(--lc-checkin-text); font-size: 14px; font-weight: 720; }
 .lc-checkin__settings-row {
