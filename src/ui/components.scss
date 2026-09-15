@@ -2568,6 +2568,11 @@
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
     .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item { min-height: 46px; padding-block: 5px; }
 }
+
+@container lc5 (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__item-secondary-action { display: none; }
+    .lc-checkin--today .lc-checkin__item-action { grid-template-columns: 30px minmax(64px, 1fr) 30px; gap: 4px; }
+}
 .lc-checkin__layout {
     box-sizing: border-box;
     width: 100%;
