@@ -2593,6 +2593,13 @@
     /* 底栏已移出 layout（挂在滚动容器上，sticky 才可靠），这里只需留一点收尾空间 */
     .lc-checkin__layout { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
     .lc-checkin__rail { display: none; }
+    .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header {
+        min-height: 44px;
+        margin-bottom: 6px;
+        padding-top: 2px;
+        padding-bottom: 4px;
+    }
+    .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header .lc-checkin__title { font-size: 22px; }
 }
 
 /* Mobile compact pass: group labels scroll with content, cards stay dense, and Add is the central primary action. */
