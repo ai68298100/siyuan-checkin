@@ -12,6 +12,7 @@ const packageManifest = JSON.parse(fs.readFileSync(path.join(root, "package.json
 const distPlugin = JSON.parse(fs.readFileSync(path.join(root, "dist", "plugin.json"), "utf8"));
 assert.equal(plugin.version, packageManifest.version, "source manifest versions must match");
 assert.equal(distPlugin.version, plugin.version, "built manifest must match source version");
+assert.match(packageManifest.scripts["test:quality"], /test:legacy-style/, "quality chain must include legacy style audit");
 assert.equal(packageManifest.description, "SiYuan plugin: 小飞驴打卡", "package metadata must use readable UTF-8 Chinese");
 assert.ok(!/灏忛|鎵撳崱/.test(packageManifest.description), "package metadata must not contain mojibake");
 assert.ok(fs.statSync(path.join(root, "package.zip")).size > 10_000, "package.zip must be a non-empty release archive");
@@ -29,4 +30,5 @@ const CSS_WARN_LIMIT = 340_000;
 const CSS_HARD_LIMIT = 360_000;
 assert.ok(builtCssBytes <= CSS_HARD_LIMIT, `built CSS exceeds the hard 360000-byte budget: ${builtCssBytes} bytes`);
 const budgetState = builtCssBytes <= CSS_SOFT_LIMIT ? "within-budget" : builtCssBytes <= CSS_WARN_LIMIT ? "warning" : "near-hard-limit";
+assert.ok(["within-budget", "warning", "near-hard-limit"].includes(budgetState), "CSS budget state must be explicit");
 console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes, ${budgetState}).`);
