@@ -1061,6 +1061,7 @@ export default class CheckinPlugin extends Plugin {
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
             focusTimerAdapterCount: [...this.quickActionAdapters.keys()].filter((id) => /tomato|pomodoro|focus/i.test(id)).length,
+            focusTimerBusy: this.focusBusy,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,

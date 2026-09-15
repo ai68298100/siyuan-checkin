@@ -18,6 +18,7 @@ export interface SettingsViewContext {
     focusTimerProvider: FocusTimerProvider;
     focusTimerAdapterCount?: number;
     focusTimerAdapterIds?: readonly string[];
+    focusTimerBusy?: boolean;
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -33,7 +34,7 @@ export interface SettingsViewContext {
 
 export function renderSettingsView(ctx: SettingsViewContext): string {
     const agentStatus = ctx.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
-    const tomatoStatus = (ctx.focusTimerAdapterCount ?? 0) > 0 ? `已连接 · ${ctx.focusTimerAdapterCount} 个适配器` : t("set.tomatoPending");
+    const tomatoStatus = ctx.focusTimerBusy ? "计时器处理中" : (ctx.focusTimerAdapterCount ?? 0) > 0 ? `已连接 · ${ctx.focusTimerAdapterCount} 个适配器` : t("set.tomatoPending");
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
     const iconKb = Math.max(0, Math.round(ctx.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
