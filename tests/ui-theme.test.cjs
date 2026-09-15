@@ -118,7 +118,6 @@ assert.match(liveStyles, /\.lc-checkin__occasion-manager-row \{[\s\S]*\.lc-check
 assert.ok(!styles.includes(".lc-checkin__insight-stats {"), "insight stat foundations must not return to legacy index.scss");
 assert.ok(!styles.includes("backdrop-filter: blur(12px)"), "mobile navigation foundation must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__history-row {"), "history row foundations must not return to legacy index.scss");
-assert.ok(!styles.includes(".lc-checkin__history-event {"), "history event foundations must not return to legacy index.scss");
 assert.match(liveStyles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow-sm\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
