@@ -4253,6 +4253,7 @@
 /* 回顾：右栏保底宽度（仅宽容器）；当日明细行在窄列下换行而不是竖排挤碎 */
 @container lc5 (min-width: 880px) {
     .lc-checkin__review-layout { grid-template-columns: minmax(520px, 1.05fr) minmax(360px, .95fr); gap: 16px; max-width: 1180px; margin-inline: auto; }
+    .lc-checkin__review-detail { min-width: 0; scrollbar-gutter: stable; }
 }
 .lc-checkin__history-event {
     display: flex;

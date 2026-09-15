@@ -18,6 +18,7 @@ assert.match(css, /lc-checkin--review \.lc-checkin__summary-text[\s\S]*max-width
 assert.match(css, /lc-checkin--review \.lc-checkin__header-actions[\s\S]*max-width: 58%/);
 assert.match(css, /minmax\(520px, 1\.05fr\)/);
 assert.match(css, /minmax\(360px, \.95fr\)/);
+assert.match(css, /\.lc-checkin__review-detail \{ min-width: 0; scrollbar-gutter: stable;/);
 assert.match(css, /forced-colors: active/);
 assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
 console.log("Cross-surface 12.0 matrix checks passed.");
