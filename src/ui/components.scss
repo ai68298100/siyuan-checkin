@@ -3480,8 +3480,10 @@
 .lc-checkin--review .lc-checkin__top-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .lc-checkin--review .lc-checkin__top-actions .lc-checkin__text-button[data-action="generate-summary"] { color: var(--lc-checkin-accent-text); border: 1px solid var(--lc-checkin-accent); border-radius: 999px; padding-inline: 10px; font-weight: 650; }
 .lc-checkin--review .lc-checkin__header-actions { align-items: center; gap: 6px; }
+.lc-checkin--review .lc-checkin__editor-header { min-height: 0; margin-bottom: 10px; }
 .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 32px; padding-inline: 11px; border-radius: 999px; }
 .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { font-size: 9px; letter-spacing: .01em; }
+.lc-checkin--review .lc-checkin__summary-stats > div:has(.lc-checkin__analytics-badge) { align-content: center; background: transparent; border-color: transparent; box-shadow: none; }
 .lc-checkin--review .lc-checkin__summary-agent { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); }
 .lc-checkin--review .lc-checkin__summary-agent > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
