@@ -1055,6 +1055,7 @@ export default class CheckinPlugin extends Plugin {
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
+            focusTimerAdapterCount: this.quickActionAdapters.size,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,

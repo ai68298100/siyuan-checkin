@@ -16,6 +16,7 @@ export interface SettingsViewContext {
     reducedMotion: boolean;
     hapticFeedback: boolean;
     focusTimerProvider: FocusTimerProvider;
+    focusTimerAdapterCount?: number;
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -31,6 +32,7 @@ export interface SettingsViewContext {
 
 export function renderSettingsView(ctx: SettingsViewContext): string {
     const agentStatus = ctx.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
+    const tomatoStatus = (ctx.focusTimerAdapterCount ?? 0) > 0 ? `已连接 · ${ctx.focusTimerAdapterCount} 个适配器` : t("set.tomatoPending");
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
     const iconKb = Math.max(0, Math.round(ctx.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
@@ -103,7 +105,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             label: t("set.groupIntegrations"),
             body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="plugin" ${ctx.focusTimerProvider === "plugin" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value">${t("set.tomatoPending")}</span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value ${ctx.focusTimerAdapterCount ? "is-success" : "is-muted"}">${tomatoStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
