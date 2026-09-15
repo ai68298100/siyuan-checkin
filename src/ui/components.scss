@@ -2748,10 +2748,17 @@
         width: 100%;
         max-width: 100%;
         grid-template-columns: minmax(0, 1fr);
+        contain: inline-size;
     }
     .lc-checkin--review .lc-checkin__review-subnav {
         max-width: 100%;
         overflow-x: auto;
+        contain: inline-size;
+    }
+    .lc-checkin--review .lc-checkin__yearheatmap-scroll {
+        min-width: 0;
+        max-width: 100%;
+        contain: inline-size;
     }
     .lc-checkin--review .lc-checkin__top-actions,
     .lc-checkin--review .lc-checkin__header-actions {
