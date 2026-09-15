@@ -5864,6 +5864,8 @@
         background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent);
         backdrop-filter: blur(10px);
         min-height: 48px;
+        width: 100%;
+        box-sizing: border-box;
     }
     .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; }
     .lc-checkin__topnav button[data-mobile-nav] {

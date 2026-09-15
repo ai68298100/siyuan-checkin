@@ -8,6 +8,7 @@ for (const host of ["lc-checkin-dialog-host", "lc-checkin-tab-host", "lc-checkin
 for (const surface of ["today", "history", "occasions", "settings", "archived"]) assert.match(css, new RegExp(`lc-checkin--${surface}`), `${surface} surface must be styled`);
 for (const width of ["320px", "340px", "360px", "380px", "719px"]) assert.match(css, new RegExp(`max-width: ${width.replace("px", "\\s*px")}`), `responsive tier ${width} must be declared`);
 assert.match(css, /safe-area-inset-bottom/); assert.match(css, /safe-area-inset-top/);
+assert.match(css, /\.lc-checkin__topnav[\s\S]*width: 100%/);
 assert.match(css, /:focus-visible/); assert.match(css, /overflow-x:\s*hidden/);
 assert.match(css, /lc-checkin__analytics-badge/);
 assert.match(css, /lc-checkin--review \.lc-checkin__summary-text[\s\S]*max-width: 1180px/);
