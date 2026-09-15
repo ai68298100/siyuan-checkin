@@ -2721,6 +2721,16 @@
     .lc-checkin--review .lc-checkin__summary-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    .lc-checkin--review .lc-checkin__calendar,
+    .lc-checkin--review .lc-checkin__calendar-weekdays {
+        min-width: 0;
+        width: 100%;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+    .lc-checkin--review .lc-checkin__calendar-day {
+        min-width: 0;
+        min-height: 0;
+    }
     .lc-checkin--review .lc-checkin__top-actions,
     .lc-checkin--review .lc-checkin__header-actions {
         min-width: 0;
