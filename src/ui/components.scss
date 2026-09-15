@@ -2743,6 +2743,16 @@
         max-width: 100%;
         white-space: normal;
     }
+    .lc-checkin--review .lc-checkin__review-sections {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .lc-checkin--review .lc-checkin__review-subnav {
+        max-width: 100%;
+        overflow-x: auto;
+    }
     .lc-checkin--review .lc-checkin__top-actions,
     .lc-checkin--review .lc-checkin__header-actions {
         min-width: 0;
