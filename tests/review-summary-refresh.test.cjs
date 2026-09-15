@@ -11,6 +11,8 @@ const components = fs.readFileSync("src/ui/components.scss", "utf8");
 assert.match(review, /summaryRefreshing: boolean/);
 assert.match(review, /data-summary-refresh-state=/);
 assert.match(review, /data-analytics-as-of/);
+assert.match(review, /title=\\"\$\{escapeHtml\(t\(\\"review\.analyticsBadgeAria\\"/);
+assert.match(review, /aria-label=\\"\$\{escapeHtml\(t\(\\"review\.analyticsBadgeAria\\"/);
 assert.match(review, /analyticsSummary \?/);
 assert.match(review, /escapeHtml\(analyticsSummary\.asOf\)/);
 assert.match(review, /analyticsSummary\.weeklyCurrent/);
