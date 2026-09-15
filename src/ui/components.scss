@@ -510,6 +510,85 @@
  .lc-checkin--settings .lc-checkin__settings-row select,.lc-checkin--settings .lc-checkin__settings-row input { max-width: 100%; }
  .lc-checkin__mobile-nav button small { font-size: 7px; }
 }
+/* 10.0 foundation pass 3: unified state language, feedback and accessible density. */
+.lc-checkin__item.is-complete { opacity: .78; }
+.lc-checkin__item.is-complete .lc-checkin__item-progress { opacity: .72; }
+.lc-checkin__item.is-complete .lc-checkin__item-icon { filter: saturate(.82); }
+.lc-checkin__item.is-disabled { opacity: .58; }
+.lc-checkin__item.is-disabled .lc-checkin__item-action { pointer-events: none; }
+.lc-checkin__item.is-overdue { border-color: color-mix(in srgb, var(--lc-checkin-danger) 35%, var(--lc-checkin-border)); }
+.lc-checkin__item.is-overdue .lc-checkin__item-meta { color: var(--lc-checkin-danger-text); }
+.lc-checkin__item.is-due { border-color: color-mix(in srgb, var(--lc-checkin-warning) 32%, var(--lc-checkin-border)); }
+.lc-checkin__item.is-due .lc-checkin__item-meta { color: var(--lc-checkin-warning-text); }
+.lc-checkin__item-action .is-saving { pointer-events: none; opacity: .7; }
+.lc-checkin__record-button[aria-busy="true"] { cursor: wait; }
+.lc-checkin__record-button[disabled] { opacity: .66; }
+.lc-checkin__quick-button[disabled] { opacity: .66; }
+.lc-checkin__item-action .lc-checkin__amount:invalid { border-color: var(--lc-checkin-danger); }
+.lc-checkin__item-action .lc-checkin__amount:focus-visible { z-index: 1; }
+.lc-checkin__item-body > :first-child { min-width: 0; }
+.lc-checkin__item-topline > * { min-width: 0; }
+.lc-checkin__item-topline .lc-checkin__small-button { flex: 0 0 auto; }
+.lc-checkin__item-name a { color: inherit; text-decoration: none; }
+.lc-checkin__item-name a:hover { text-decoration: underline; }
+.lc-checkin__item-meta em { color: var(--lc-checkin-muted); font-style: normal; }
+.lc-checkin__progress[aria-hidden="true"] { visibility: hidden; }
+.lc-checkin__empty[hidden] { display: none; }
+.lc-checkin__empty-action { margin-top: 10px; }
+.lc-checkin__empty-action button { min-height: 36px; }
+.lc-checkin__filter-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__filter-chip.is-active { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__filter-chip:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
+.lc-checkin__search-field input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
+.lc-checkin__today-search input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
+.lc-checkin__history-search input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
+.lc-checkin__organize label > span { flex: 0 0 auto; }
+.lc-checkin__organize select option { color: var(--lc-checkin-text); background: var(--lc-checkin-surface); }
+.lc-checkin__group-header button { min-width: 28px; }
+.lc-checkin__group-header button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
+.lc-checkin__group-header [aria-expanded="false"] + * { visibility: hidden; }
+.lc-checkin__history-details > summary { min-height: 34px; }
+.lc-checkin__history-details > summary:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
+.lc-checkin__history-event.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
+.lc-checkin__history-event-note a:hover { text-decoration: underline; }
+.lc-checkin__history-expand { justify-self: start; }
+.lc-checkin__calendar-day[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
+.lc-checkin__calendar-day[aria-disabled="true"] { cursor: not-allowed; opacity: .45; }
+.lc-checkin__calendar-day:not([aria-disabled="true"]):hover { background: var(--lc-checkin-accent-soft); }
+.lc-checkin__month-nav button:disabled { opacity: .45; cursor: not-allowed; }
+.lc-checkin__occasion-manager-row.is-today { border-color: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-border)); }
+.lc-checkin__occasion-manager-row.is-overdue { border-color: color-mix(in srgb, var(--lc-checkin-danger) 42%, var(--lc-checkin-border)); }
+.lc-checkin__occasion-manager-row.is-upcoming { border-color: color-mix(in srgb, var(--lc-checkin-warning) 34%, var(--lc-checkin-border)); }
+.lc-checkin__occasion-row-actions button[disabled] { opacity: .5; cursor: not-allowed; }
+.lc-checkin__occasion-form-panel form :where(input,select,textarea):user-invalid { border-color: var(--lc-checkin-danger); }
+.lc-checkin__occasion-form-panel form :where(input,select,textarea):user-valid { border-color: var(--lc-checkin-success); }
+.lc-checkin__settings-card[aria-busy="true"] { opacity: .72; }
+.lc-checkin__settings-card .is-saving { color: var(--lc-checkin-muted); }
+.lc-checkin__settings-card .is-error { color: var(--lc-checkin-danger-text); }
+.lc-checkin__settings-card .is-success { color: var(--lc-checkin-success-text); }
+.lc-checkin__snapshot-list li.is-latest { border-color: var(--lc-checkin-accent); }
+.lc-checkin__audit-list li.is-conflict { border-color: var(--lc-checkin-warning); }
+.lc-checkin__audit-list li.is-error { border-color: var(--lc-checkin-danger); }
+.lc-checkin__summary-text[data-summary-source="agent"] { border-left: 3px solid var(--lc-checkin-accent); padding-left: 10px; }
+.lc-checkin__summary-text[data-summary-source="local"] { border-left: 3px solid var(--lc-checkin-muted); padding-left: 10px; }
+.lc-checkin__summary-agent[data-summary-refresh-state="loading"] { opacity: .72; }
+.lc-checkin__summary-agent[data-summary-refresh-state="loading"] button { cursor: wait; }
+.lc-checkin__suggestion-workflow[data-state="pending"] { border-color: var(--lc-checkin-accent); }
+.lc-checkin__suggestion-workflow[data-state="confirmed"] { border-color: var(--lc-checkin-success); }
+.lc-checkin__suggestion-workflow[data-state="failed"] { border-color: var(--lc-checkin-danger); }
+.lc-checkin__suggestion-workflow footer button { min-height: 34px; }
+.lc-checkin__suggestion-workflow footer button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
+.lc-checkin__agent-preview-actions button { min-height: 34px; }
+.lc-checkin__agent-preview-actions button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
+.lc-checkin__toast[role="status"] { max-width: min(420px, calc(100vw - 24px)); overflow-wrap: anywhere; }
+.lc-checkin__toast.is-error { border-color: var(--lc-checkin-danger); }
+.lc-checkin__toast.is-success { border-color: var(--lc-checkin-success); }
+.lc-checkin__toast.is-info { border-color: var(--lc-checkin-accent); }
+.lc-checkin [aria-live="polite"] { min-width: 0; }
+.lc-checkin [aria-live="assertive"] { color: var(--lc-checkin-danger-text); }
+@media (prefers-reduced-motion: reduce) {
+ .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__occasion-manager-row { transition: none !important; }
+}
 /* Mobile cross-page audit: remove duplicate header whitespace and protect dense rows. */
 @media (max-width: 600px) {
  .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header { min-height: 42px; margin-bottom: 4px; padding-block: 3px; }
