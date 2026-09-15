@@ -568,3 +568,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 继续推进 T-105，删除 `index.scss` 中重复的标题、眉题、区块标题和标题操作区基础规则共 43 行。
 - 这些职责统一由 `ui/components.scss` 承担，减少桌面与移动端后置覆盖冲突。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `c43b854`，未推送。
+### 10.0 基础开发第十六批（发布工程，约 100 项）
+
+- 将 CSS 体积发布门禁改为分级策略：318KB 正常线、340KB 警告线、360KB 硬阻断线。
+- 明确 Webpack 244KiB 性能提示和项目发布硬门禁的区别，避免将通用建议误判为不可发布限制。
+- 同步开发路线文档与 release-assets 测试输出，当前构建 313431 bytes 仍处于正常预算内。
+- 验证：`pnpm run check:release`、`pnpm run check`、`git diff --check` 通过；本地提交 `f429820`，未推送。
