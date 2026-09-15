@@ -37,6 +37,20 @@ export function cloneAnalyticsSnapshot(snapshot: AnalyticsSnapshot): AnalyticsSn
     return JSON.parse(JSON.stringify(snapshot)) as AnalyticsSnapshot;
 }
 
+export function serializeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): string {
+    return JSON.stringify(cloneAnalyticsSnapshot(snapshot));
+}
+
+export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefined {
+    try {
+        const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
+        if (value.version !== 1 || typeof value.asOf !== "string" || !value.weekly || !value.monthly || !value.daily) return undefined;
+        return cloneAnalyticsSnapshot(value as AnalyticsSnapshot);
+    } catch {
+        return undefined;
+    }
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;
