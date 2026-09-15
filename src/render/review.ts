@@ -39,7 +39,7 @@ export interface ReviewViewContext {
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
     reminderUserActions: ReminderUserAction[];
-    analyticsSummary?: {asOf: string; weeklyCurrent: number; monthlyCurrent: number; activeDays: number};
+    analyticsSummary?: {asOf: string; weeklyCurrent: number; monthlyCurrent: number; yearlyCurrent: number; activeDays: number};
 }
 
 export function renderReviewView(ctx: ReviewViewContext): string {
