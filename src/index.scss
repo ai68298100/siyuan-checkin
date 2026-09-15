@@ -36,21 +36,6 @@
 /* 内容布局按 surface 容器宽度收敛；保留上面的 surface 自身内边距视口回退，
    因为容器查询无法匹配容器元素自身。这样窄 dock 与窄弹窗也能获得同一套
    卡片、编辑器和历史布局，而不会被设备视口宽度绑死。 */
-.lc-checkin__history-note-editor {
-    width: 100%;
-    min-height: 56px;
-    box-sizing: border-box;
-    margin-top: 6px;
-    padding: 8px 10px;
-    resize: vertical;
-    border: 1px solid var(--b3-border-color);
-    border-radius: 8px;
-    color: var(--lc-checkin-text);
-    background: var(--lc-checkin-bg);
-    font: inherit;
-    line-height: 1.5;
-}
-
 .lc-checkin :where(button, input, select, textarea) {
     transition: border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast),
         color var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);

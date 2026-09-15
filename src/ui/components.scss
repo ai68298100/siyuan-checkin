@@ -511,6 +511,39 @@
  .lc-checkin__mobile-nav button small { font-size: 7px; }
 }
 /* 10.0 foundation pass 3: unified state language, feedback and accessible density. */
+.lc-checkin__history-note-editor { width:100%; min-height:56px; box-sizing:border-box; margin-top:6px; padding:8px 10px; resize:vertical; border:1px solid var(--lc-checkin-border-strong); border-radius:8px; color:var(--lc-checkin-text); background:var(--lc-checkin-bg); font:inherit; line-height:1.5; }
+.lc-checkin :where(button,input,select,textarea) { transition:border-color var(--lc-checkin-motion-fast),background-color var(--lc-checkin-motion-fast),color var(--lc-checkin-motion-fast),box-shadow var(--lc-checkin-motion-fast),transform var(--lc-checkin-motion-fast); }
+.lc-checkin[data-density="compact"] { --lc-checkin-density-scale:.88; }
+.lc-checkin[data-density="comfortable"] { --lc-checkin-density-scale:1.12; }
+.lc-checkin[data-density="compact"] .lc-checkin__item { padding:8px 10px; }
+.lc-checkin[data-density="comfortable"] .lc-checkin__item { padding:14px; }
+.lc-checkin :where(button,input,select,textarea) { min-height:var(--lc-checkin-control-height); }
+.lc-checkin :where(button,input,select,textarea):focus-visible { outline:none; box-shadow:var(--lc-checkin-focus); }
+.lc-checkin__history-note-editor:focus { outline:2px solid color-mix(in srgb,var(--lc-checkin-accent) 35%,transparent); border-color:var(--lc-checkin-accent-text); }
+.lc-checkin__coaching-list { display:grid; gap:8px; }
+.lc-checkin__coaching-item { display:grid; gap:5px; padding:10px 11px; border-left:3px solid var(--lc-checkin-border); border-radius:6px; background:var(--lc-checkin-surface); }
+.lc-checkin__coaching-item div { display:grid; gap:3px; min-width:0; }
+.lc-checkin__coaching-item strong { color:var(--lc-checkin-text); font-size:12px; font-weight:600; }
+.lc-checkin__coaching-item span,.lc-checkin__coaching-item small { color:var(--lc-checkin-muted); }
+.lc-checkin__coaching-item span { font-size:11px; line-height:1.55; }
+.lc-checkin__coaching-item small { font-size:10px; }
+.lc-checkin__coaching-item.is-positive { border-left-color:var(--lc-checkin-success); }
+.lc-checkin__coaching-item.is-attention { border-left-color:var(--lc-checkin-warning); }
+.lc-checkin__coaching-item.is-neutral { border-left-color:var(--lc-checkin-accent-text); }
+.lc-checkin__custom-range { display:flex; align-items:end; gap:7px; margin-top:10px; }
+.lc-checkin__custom-range label { display:flex; min-width:0; flex:1; gap:4px; flex-direction:column; color:var(--lc-checkin-muted); font-size:10px; }
+.lc-checkin__custom-range input { min-width:0; height:32px; box-sizing:border-box; padding:0 7px; border:1px solid var(--lc-checkin-border-strong); border-radius:6px; color:var(--lc-checkin-text); background:var(--lc-checkin-surface); font:inherit; font-size:11px; }
+.lc-checkin__custom-range-separator { padding-bottom:8px; color:var(--lc-checkin-muted); font-size:11px; }
+.lc-checkin__insight-picker { display:flex; align-items:center; gap:8px; margin-bottom:14px; color:var(--lc-checkin-muted); font-size:12px; }
+.lc-checkin__insight-picker select { min-width:0; flex:1; min-height:36px; }
+.lc-checkin__insight-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.lc-checkin__insight-legend { display:flex; flex-wrap:wrap; gap:6px 10px; color:var(--lc-checkin-muted); font-size:10px; }
+.lc-checkin__insight-legend span { display:inline-flex; align-items:center; gap:4px; }
+.lc-checkin__insight-legend i { width:8px; height:8px; border-radius:2px; background:var(--lc-checkin-muted-surface); }
+.lc-checkin__insight-legend .is-complete { background:var(--lc-checkin-success); }
+.lc-checkin__insight-legend .is-partial { background:var(--lc-checkin-warning); }
+.lc-checkin__insight-legend .is-missed { background:color-mix(in srgb,var(--lc-checkin-accent) 52%,var(--lc-checkin-muted-surface)); }
+.lc-checkin__insight-legend .is-off { opacity:.45; }
 .lc-checkin__item.is-complete { opacity: .78; }
 .lc-checkin__item.is-complete .lc-checkin__item-progress { opacity: .72; }
 .lc-checkin__item.is-complete .lc-checkin__item-icon { filter: saturate(.82); }
