@@ -430,6 +430,27 @@
         }
     }
 }
+/* Mobile cross-page audit: remove duplicate header whitespace and protect dense rows. */
+@media (max-width: 600px) {
+ .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header { min-height: 42px; margin-bottom: 4px; padding-block: 3px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__editor-header { margin-bottom: 2px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header { margin-bottom: 2px; }
+ .lc-checkin-dialog-host--mobile .lc-checkin--settings .lc-checkin__editor-header { margin-bottom: 2px; }
+ .lc-checkin--review .lc-checkin__range-tabs { width: 100%; overflow-x: auto; justify-content: flex-start; }
+ .lc-checkin--review .lc-checkin__range-tabs button { flex: 0 0 auto; padding-inline: 11px; }
+ .lc-checkin--review .lc-checkin__summary-stats { gap: 5px; margin-bottom: 9px; }
+ .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 50px; padding-inline: 8px; }
+ .lc-checkin--review .lc-checkin__summary-stats strong { font-size: 17px; }
+ .lc-checkin--review .lc-checkin__review-hero { padding: 12px 14px; }
+ .lc-checkin--review .lc-checkin__review-hero-rate { font-size: 32px; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 30px minmax(0,1fr) auto; gap: 6px; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__occasion-row-actions { flex-wrap: wrap; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-row small { line-height: 1.3; }
+ .lc-checkin--settings .lc-checkin__snapshot-list li,.lc-checkin--settings .lc-checkin__audit-list li { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 6px; }
+ .lc-checkin--settings .lc-checkin__snapshot-list li > span,.lc-checkin--settings .lc-checkin__audit-list li > span { min-width: 0; overflow-wrap: anywhere; }
+ .lc-checkin--settings .lc-checkin__snapshot-list li small,.lc-checkin--settings .lc-checkin__audit-list li small { word-break: break-word; line-height: 1.35; }
+ .lc-checkin--settings .lc-checkin__snapshot-list .lc-checkin__text-button,.lc-checkin--settings .lc-checkin__audit-list .lc-checkin__text-button { min-width: 64px; white-space: nowrap; }
+}
 
 @supports (height: 100dvh) {
     .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) {
