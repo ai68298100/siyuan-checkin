@@ -34,6 +34,8 @@ assert.match(css, /review-detail \.lc-checkin__history-event-value,[\s\S]*flex: 
 assert.match(css, /review \.lc-checkin__history-selected \{ padding: 10px 12px; \}/);
 assert.match(css, /review \.lc-checkin__history-event \{ padding: 6px 0; \}/);
 assert.match(css, /review-calendar:focus-within,[\s\S]*review-detail:focus-within \{ outline: 2px solid/);
+assert.match(css, /occasion-list-panel,[\s\S]*occasion-form-panel \{ contain: layout paint; \}/);
+assert.match(css, /review-calendar,[\s\S]*review-detail \{ contain: layout paint; \}/);
 assert.match(css, /forced-colors: active/);
 assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
 console.log("Cross-surface 12.0 matrix checks passed.");
