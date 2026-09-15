@@ -82,6 +82,8 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 调用 `getAnalyticsSnapshot()` 或 `getAnalyticsSummary()` 前，先检查 `hasCapability("analytics.read")`。两个接口均为本地只读，不会修改打卡数据；订阅 `checkin:analytics-updated` 可在数据刷新后重新读取。事件中的 `analyticsAsOf` 仅用于判断日期，不应被当作写入版本号。
 
+趋势模型对窗口数量设有保护上限：周 52、月 24、日 366、年 10；超出范围会自动截断，非法值回退到默认窗口。
+
 ```js
 const checkin = window.siyuanCheckin;
 if (checkin?.hasCapability("analytics.read")) {
