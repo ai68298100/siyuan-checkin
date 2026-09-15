@@ -6,9 +6,13 @@ const index = fs.readFileSync("src/index.ts", "utf8");
 const navigation = fs.readFileSync("src/navigation.ts", "utf8");
 const bind = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
+const components = fs.readFileSync("src/ui/components.scss", "utf8");
 
 assert.match(review, /summaryRefreshing: boolean/);
 assert.match(review, /data-summary-refresh-state=/);
+assert.match(review, /data-analytics-as-of/);
+assert.match(review, /analyticsSummary \?/);
+assert.match(components, /lc-checkin__analytics-badge/);
 assert.match(review, /review\.agentRefreshing/);
 assert.match(review, /review\.agentRefreshAria/);
 assert.match(review, /disabled aria-busy/);
