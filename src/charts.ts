@@ -21,6 +21,7 @@ export interface AnalyticsSnapshot {
     weekly: TrendSeries;
     monthly: TrendSeries;
     daily: TrendSeries;
+    yearly: TrendSeries;
 }
 
 export function buildAnalyticsSnapshot(store: CheckinStore, asOf = new Date()): AnalyticsSnapshot {
@@ -30,6 +31,7 @@ export function buildAnalyticsSnapshot(store: CheckinStore, asOf = new Date()): 
         weekly: buildWeeklyCompletionTrend(store, 12, asOf),
         monthly: buildMonthlyEventTrend(store, 6, asOf),
         daily: buildDailyActivityTrend(store, 30, asOf),
+        yearly: buildYearlyEventTrend(store, 5, asOf),
     };
 }
 
@@ -184,6 +186,16 @@ export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = n
         points.push({label: `${date.getMonth() + 1}/${date.getDate()}`, value: activeDays.has(key) ? 1 : 0});
     }
     return {title: `近${days}天活跃`, unit: "天", points};
+}
+
+export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new Date()): TrendSeries {
+    const points: TrendPoint[] = [];
+    for (let index = years - 1; index >= 0; index -= 1) {
+        const year = asOf.getFullYear() - index;
+        const count = store.events.filter((event) => new Date(event.occurredAt).getFullYear() === year).length;
+        points.push({label: String(year), value: count});
+    }
+    return {title: "年度记录数", unit: "条", points};
 }
 
 /** 折线图 SVG：紫罗兰线条 + 数据点，宽度自适应（viewBox）。 */

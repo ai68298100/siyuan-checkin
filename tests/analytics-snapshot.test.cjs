@@ -7,6 +7,8 @@ assert.match(source, /buildAnalyticsSnapshot\(store: CheckinStore/);
 assert.match(source, /weekly: buildWeeklyCompletionTrend/);
 assert.match(source, /monthly: buildMonthlyEventTrend/);
 assert.match(source, /daily: buildDailyActivityTrend/);
+assert.match(source, /yearly: buildYearlyEventTrend/);
+assert.match(source, /export function buildYearlyEventTrend/);
 assert.match(source, /cloneAnalyticsSnapshot/);
 assert.match(source, /serializeAnalyticsSnapshot/);
 assert.match(source, /parseAnalyticsSnapshot/);
