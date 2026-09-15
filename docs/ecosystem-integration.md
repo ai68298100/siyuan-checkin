@@ -82,6 +82,15 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 调用 `getAnalyticsSnapshot()` 或 `getAnalyticsSummary()` 前，先检查 `hasCapability("analytics.read")`。两个接口均为本地只读，不会修改打卡数据；订阅 `checkin:analytics-updated` 可在数据刷新后重新读取。事件中的 `analyticsAsOf` 仅用于判断日期，不应被当作写入版本号。
 
+```js
+const checkin = window.siyuanCheckin;
+if (checkin?.hasCapability("analytics.read")) {
+  const render = () => console.log(checkin.getAnalyticsSummary());
+  render();
+  window.addEventListener("checkin:analytics-updated", render);
+}
+```
+
 接入方应把 `version` 作为协议主版本判断，把 `capabilities` 作为功能开关，不应通过插件版本号猜测能力。推荐流程：
 
 1. 检查 `window.siyuanCheckin` 的 `name` 和 `version`。
