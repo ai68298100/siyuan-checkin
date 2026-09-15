@@ -270,21 +270,6 @@
 .lc-checkin__field input:not([type="checkbox"]),
 .lc-checkin__field select { height: var(--lc-checkin-control-height); border-radius: 7px; }
 
-.lc-checkin__insight-stats { gap: 9px; margin-bottom: 22px; }
-.lc-checkin__insight-stats div { min-height: 76px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, .035); }
-.lc-checkin__insight-section { margin-top: 22px; }
-.lc-checkin__insight-section h2 { font-size: 14px; }
-.lc-checkin__coaching-item { padding: 11px 12px; border-radius: 7px; box-shadow: 0 1px 2px rgba(0, 0, 0, .035); }
-
-.lc-checkin__mobile-nav {
-    border-top-color: var(--b3-border-color);
-    background: color-mix(in srgb, var(--b3-theme-background) 94%, transparent);
-    backdrop-filter: blur(12px);
-}
-
-
-
-
 /* Secondary pages keep the same visual rhythm as the today view while remaining readable in a dock. */
 .lc-checkin__summary-stats {
     display: grid;
