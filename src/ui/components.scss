@@ -5706,6 +5706,15 @@
    D) 编辑器模板分类 chip 文字不可见、模板卡被裁切——恢复可见与自适应;
    E) 自定义范围 chip 未激活时降为普通观感;列表底部为思源悬浮钮留避让空间。 */
 .lc-checkin--today .lc-checkin__item-action { min-width: 0; max-width: 100%; }
+.lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { min-width: 0; width: auto; max-width: 48%; display: flex; flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; gap: 4px; margin-left: auto; padding-left: 6px; }
+.lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { flex: 1 1 auto; min-width: 56px; max-width: 132px; }
+.lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { flex: 0 1 52px; min-width: 42px; }
+.lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 28px; height: 28px; flex: 0 0 28px; }
+@container lc-dock (max-width: 360px) {
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { max-width: 54%; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { min-width: 48px; padding-inline: 6px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 24px; height: 24px; flex-basis: 24px; }
+}
 .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
     flex: 0 1 auto;
     min-width: 0;
