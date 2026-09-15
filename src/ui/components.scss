@@ -2409,6 +2409,11 @@
     .lc-template-manager h3 { font-size: 13px; }
     .lc-template-manager p { font-size: 11px; }
 }
+@container lc5 (min-width: 561px) {
+    .lc-checkin--review .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr) 96px 118px; }
+    .lc-checkin--review .lc-checkin__reminder-row small { grid-column: 2 / 4; }
+    .lc-checkin--review .lc-checkin__reminder-actions { grid-column: 4; grid-row: 1 / span 2; }
+}
 /* Seventeenth narrow-surface pass: viewport fallback and insight density. */
 @media (max-width: 380px) {
     .lc-checkin { padding-right: 12px; padding-left: 12px; }
@@ -2939,9 +2944,13 @@
     min-height: 34px;
     padding: 5px 8px;
     border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-surface);
+    border: 1px solid transparent;
+    background: color-mix(in srgb, var(--lc-checkin-surface) 72%, var(--lc-checkin-muted-surface));
     transition: background-color var(--lc-checkin-motion-fast), opacity var(--lc-checkin-motion-fast);
 }
+.lc-checkin__reminder-row + .lc-checkin__reminder-row { border-top-color: var(--lc-checkin-border); }
+.lc-checkin__reminder-row .lc-checkin__reminder-source { font-weight: 650; }
+.lc-checkin__reminder-row .lc-checkin__reminder-timing { justify-self: end; }
 .lc-checkin__reminder-row:hover { background: var(--lc-checkin-muted-surface); }
 .lc-checkin__reminder-row small { grid-column: 2 / -1; color: var(--lc-checkin-muted); }
 .lc-checkin__reminder-source { font-size: 12px; color: var(--lc-checkin-accent); }
