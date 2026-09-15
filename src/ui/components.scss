@@ -3600,6 +3600,7 @@
   .lc-agent-compare-grid { grid-template-columns:1fr; }
 }
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
+.lc-checkin--review .lc-checkin__review-subnav { position: relative; top: auto; z-index: 1; margin: 8px 0 10px; padding: 4px 0; }
 .lc-checkin__review-subnav button { border:1px solid var(--lc-checkin-border); border-radius:999px; padding:5px 12px; color:var(--lc-checkin-muted); background:var(--lc-checkin-surface); white-space:nowrap; cursor:pointer; }
 .lc-checkin__log-day[data-log-extra] { display:none; }
 .lc-checkin__log-day[data-log-extra][hidden] { display:none; }
