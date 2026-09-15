@@ -35,6 +35,8 @@ assert.equal(api.hasCheckinCapability("suggestions.read"), true);
 
 const info = api.getCheckinCapabilityInfo();
 assert.deepEqual(Object.keys(info), api.CHECKIN_CAPABILITIES);
+assert.ok(api.CHECKIN_CAPABILITIES.includes("analytics.read"));
+assert.deepEqual(info["analytics.read"], {available: true, localOnly: true, effect: "read"});
 assert.equal(info["events.record"].effect, "write");
 assert.equal(info["summary.providers"].localOnly, false);
 assert.equal(info["suggestions.read"].effect, "read");
