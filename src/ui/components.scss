@@ -5875,6 +5875,7 @@
     .lc-checkin--occasions .lc-checkin__occasion-filter { gap: 2px; }
     .lc-checkin--occasions .lc-checkin__occasion-filter > span { font-size: 10px; line-height: 1.2; }
     .lc-checkin--occasions .lc-checkin__occasion-filter select { height: 34px; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list { max-height: 60vh; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel { max-width: 100%; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel { position: sticky; top: 58px; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row { grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 12px; }
