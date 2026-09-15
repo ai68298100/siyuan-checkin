@@ -171,6 +171,8 @@ assert.match(read("src", "render", "occasions.ts"), /lc-checkin__occasion-row-me
     "occasion rows must expose separate type, recurrence, date and countdown metadata");
 assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-row-note[\s\S]*?-webkit-line-clamp: 2;/,
     "occasion notes must remain readable without expanding into an unbounded blank-looking row");
+assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-manager-list \{ overflow-x: hidden; scrollbar-gutter: stable;/,
+    "desktop occasion list must not shift or expose a horizontal scrollbar");
 
 // 设置页恢复点与同步审计：最新一条直显，其余通过 details 折叠，避免长列表占满页面
 const settingsView = read("src", "render", "settings.ts");
