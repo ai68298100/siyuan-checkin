@@ -2555,6 +2555,8 @@
     .lc-checkin--review .lc-checkin__review-detail { min-width: 0; max-width: 100%; }
     .lc-checkin--review .lc-checkin__month-nav { min-width: 0; }
     .lc-checkin--review .lc-checkin__review-subnav { width: 100%; max-width: 100%; box-sizing: border-box; }
+    .lc-checkin--review > * { max-width: 100%; box-sizing: border-box; }
+    .lc-checkin--review .lc-checkin__floating-action { max-width: calc(100vw - 24px); box-sizing: border-box; }
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-header,
     .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-header { position: static !important; top: auto; background: transparent; backdrop-filter: none; }
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
