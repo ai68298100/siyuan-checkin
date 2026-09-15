@@ -574,3 +574,8 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 明确 Webpack 244KiB 性能提示和项目发布硬门禁的区别，避免将通用建议误判为不可发布限制。
 - 同步开发路线文档与 release-assets 测试输出，当前构建 313431 bytes 仍处于正常预算内。
 - 验证：`pnpm run check:release`、`pnpm run check`、`git diff --check` 通过；本地提交 `f429820`，未推送。
+### 10.0 基础开发第十七批（约 100 项）
+
+- 继续推进 T-105：迁移 Today 组织筛选、搜索尺寸、分组标题、分组间距与分组项目间距等基础职责至组件层。
+- 删除 `index.scss` 中 20 行重复规则，减少桌面/移动后置覆盖冲突。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `9c0ebda`，未推送。
