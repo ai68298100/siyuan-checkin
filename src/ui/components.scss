@@ -2590,12 +2590,14 @@
 
 /* Mobile final layout pass: five centered bottom actions and readable single-column cards. */
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__mobile-nav {
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__mobile-nav,
+.lc-checkin-dock-host > .lc-checkin__mobile-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     justify-content: center;
 }
 .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-items,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-items {
+    display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 8px;
 }
@@ -2609,12 +2611,55 @@
 .lc-checkin--today .lc-checkin__priority-reminder-row-text {
     min-width: 0;
 }
-.lc-checkin--today .lc-checkin__priority-reminder-row-text strong,
-.lc-checkin--today .lc-checkin__priority-reminder-row-text small {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+@media (max-width: 719px) {
+    /* Preserve the complete reminder title on phones; use a compact two-line clamp. */
+    .lc-checkin--today .lc-checkin__priority-reminder-row-text strong {
+        display: -webkit-box;
+        max-width: 100%;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        white-space: normal;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder-row-text small {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder {
+        gap: 7px;
+        margin-block: 5px 7px;
+        padding: 6px 9px;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder-row {
+        display: grid;
+        grid-template-columns: 20px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+        padding: 4px 0;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder > .lc-checkin__priority-reminder-row {
+        display: grid;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder-row-mark {
+        width: 20px;
+        height: 20px;
+        flex-basis: 20px;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder-row-text strong {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-height: 1.25;
+        white-space: normal;
+    }
+    .lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__text-button {
+        justify-self: end;
+        min-width: 54px;
+        min-height: 28px;
+    }
 }
 
 @container lc5 (max-width: 600px) {
