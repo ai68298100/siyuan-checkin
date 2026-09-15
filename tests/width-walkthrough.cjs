@@ -93,8 +93,8 @@ const cases = [
         await goto(surface);
         await page.waitForTimeout(60);
         const overflow = await page.evaluate(() => {
-            const layout = document.querySelector(".lc-checkin__layout");
-            return layout ? {sw: layout.scrollWidth, cw: layout.clientWidth} : null;
+            const host = document.querySelector("#dock");
+            return host ? {sw: host.scrollWidth, cw: host.clientWidth} : null;
         });
         await page.screenshot({path: path.join(outputRoot, `${surface}-${width}.png`)});
         console.log(`${surface}-${width}: overflow ${overflow ? overflow.sw + "/" + overflow.cw + (overflow.sw > overflow.cw ? " ⚠ H-OVERFLOW" : " ok") : "no layout"}`);
