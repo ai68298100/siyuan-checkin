@@ -216,6 +216,8 @@ assert.match(components, /settings-nav button \{ width: 100%;[\s\S]*text-overflo
     "desktop settings navigation labels must remain on one line");
 assert.match(components, /settings-groups \{ gap: 10px; \}/,
     "desktop settings groups must keep compact vertical spacing");
+assert.match(components, /settings-card \{ scroll-margin-top: 72px; \}/,
+    "desktop settings cards must avoid topbar overlap on anchor scroll");
 assert.match(components, /occasion-form-panel form \{ gap: 8px; \}/,
     "desktop occasion form must use compact vertical spacing");
 
