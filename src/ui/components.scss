@@ -2679,8 +2679,45 @@
 @container lc5 (max-width: 719px) {
     .lc-checkin__mobile-nav,
     .lc-checkin-tab-host .lc-checkin__mobile-nav { display: grid; }
-    .lc-checkin__mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; justify-items: stretch; }
-    .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add { width: 100%; min-width: 0; justify-self: stretch; }
+    .lc-checkin__mobile-nav {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: stretch;
+        justify-items: stretch;
+        box-sizing: border-box;
+        max-width: 100%;
+        overflow-x: clip;
+    }
+    .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add {
+        width: min(100%, 48px);
+        max-width: 48px;
+        min-width: 0;
+        box-sizing: border-box;
+        justify-self: center;
+        margin-inline: auto;
+    }
+    .lc-checkin__layout {
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 auto;
+    }
+    .lc-checkin--review .lc-checkin__mobile-nav {
+        position: relative;
+        width: 100%;
+        max-width: 100%;
+        inset-inline: auto;
+    }
+    .lc-checkin--review {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: clip;
+    }
+    .lc-checkin--review .lc-checkin__layout,
+    .lc-checkin--review .lc-checkin__layout * {
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 .lc-checkin__mobile-nav button {
     min-width: 0;
