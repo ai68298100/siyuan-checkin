@@ -605,10 +605,13 @@
 .lc-checkin-dialog-host .lc-checkin__header > div { min-width:0; }
 .lc-checkin-dialog-host .lc-checkin__title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__topnav { min-width:0; }
+.lc-checkin__topnav { min-height: 48px; padding-inline: 6px; }
 .lc-checkin__topnav-tabs { min-width:0; overflow-x:auto; scrollbar-width:none; }
 .lc-checkin__topnav-tabs::-webkit-scrollbar { display:none; }
 .lc-checkin__topnav-tabs button { flex:0 0 auto; white-space:nowrap; }
 .lc-checkin__topnav-actions { flex:0 0 auto; }
+.lc-checkin--today .lc-checkin__item-action { column-gap: 4px; }
+.lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button) { opacity: .78; }
 .lc-checkin__rail { min-width:0; overflow-x:auto; scrollbar-width:none; }
 .lc-checkin__rail::-webkit-scrollbar { display:none; }
 .lc-checkin__rail button { flex:0 0 auto; }
