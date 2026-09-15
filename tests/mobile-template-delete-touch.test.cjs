@@ -22,7 +22,7 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc
     "archive/delete action must be touch-sized on mobile");
 assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "delete action must stay on a solid action surface above the keyboard");
-assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+assert.match(components, /@container lc5 \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
     "narrow editor must collapse fields before the delete action");
 assert.match(components, /Editor organization[\s\S]*\.lc-checkin__archive-button\s*\{[^}]*cursor:\s*pointer/,
     "archive/delete action must remain visibly actionable");

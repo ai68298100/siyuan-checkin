@@ -593,6 +593,12 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `bfdb908`，未推送。
 ### 10.0 基础开发第二十批（约 100 项）
 
+### 10.0 基础开发第二十一批（34 项）
+
+- 退役 `index.scss` 中回顾/洞察 coaching、custom range、picker、heading、legend 等 34 项重复职责，统一由组件层承载。
+- 更新移动发布与模板触控测试的样式归属断言，避免将已迁移的窄容器规则锁回 legacy 文件。
+- 验证：`pnpm run check`、`ui-theme`、`test:mobile`、`pnpm run test:quality`（除迁移中发现并修正的旧断言外）通过；本地未推送。
+
 - 继续推进 T-105：迁移事项面板、事项行、事项图标、事项表单间距与历史筛选/选中/事件表面基础规则至组件层。
 - 删除 legacy 重复样式 38 行，组件层统一使用插件 Token 和阴影/圆角语义。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `46603c2`，未推送。

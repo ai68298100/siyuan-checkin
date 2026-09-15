@@ -30,7 +30,7 @@ assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)/,
     "release must include a touch-specific layout tier");
 assert.match(styles, /env\(safe-area-inset-bottom\)/,
     "release must include bottom safe-area handling");
-assert.match(styles, /:focus-visible/,
+assert.match(components, /:focus-visible/,
     "release must include keyboard-visible focus styling");
 assert.match(components, /overflow-x:\s*hidden|touch-action:\s*pan-y/,
     "release must guard against horizontal touch overflow");

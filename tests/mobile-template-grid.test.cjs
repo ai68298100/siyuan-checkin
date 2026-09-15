@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "u
 
 assert.match(liveStyles, /Editor foundations[\s\S]*\.lc-checkin__templates\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/,
     "normal editor widths must use a stable three-column template grid");
-assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
+assert.match(liveStyles, /@container lc5 \(max-width:\s*380px\)[\s\S]*\.lc-checkin__templates\s*\{[\s\S]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/,
     "320/360px widths must switch templates to two columns");
 /* 原 index.scss 的 340px 视口块已迁入 components.scss 末尾容器层（T-104） */
 assert.match(liveStyles, /@container lc5 \(max-width:\s*340px\)[\s\S]*\.lc-checkin__templates\s*\{[^}]*grid-template-columns:\s*1fr/,

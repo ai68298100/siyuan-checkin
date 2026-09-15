@@ -31,7 +31,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__f
     "keyboard scrolling must keep the bottom save area visible");
 assert.match(components, /Editor organization[\s\S]*\.lc-checkin__save-button\s*\{[^}]*background:\s*var\(--lc-checkin-accent\)/,
     "save action must have a stable visual affordance");
-assert.match(styles, /@media \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+assert.match(components, /@container lc5 \(max-width:\s*380px\)[\s\S]*\.lc-checkin__organization-fields\s*\{[\s\S]*grid-template-columns:\s*1fr/,
     "narrow screens must stack fields without hiding save feedback");
 
 for (const width of [320, 360, 390, 430]) assert.ok(width >= 320 && width <= 430);
