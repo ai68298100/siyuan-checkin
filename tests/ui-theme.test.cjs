@@ -121,7 +121,7 @@ const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render
 assert.match(settingsSource, /lc-checkin__settings-nav/);
 assert.match(source, /window\.confirm\(t\("msg\.prefsResetConfirm"\)\)/);
 assert.match(i18n, /"msg\.prefsResetConfirm": "确定恢复全部显示偏好吗？打卡数据不会受到影响。"/);
-assert.match(styles, /\.lc-checkin\[data-reduced-motion="true"\]/);
+assert.match(liveStyles, /\.lc-checkin\[data-reduced-motion="true"\]/);
 assert.match(styles, /--lc-checkin-success:[^;]*#63c98d/);
 assert.match(styles, /--lc-checkin-danger:[^;]*#b83232/);
 /* radius-lg 的真实生效声明在 tokens.scss（20px）；index.scss 里曾有一份死块里的 16px 从未生效 */
