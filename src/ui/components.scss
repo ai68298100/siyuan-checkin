@@ -4368,6 +4368,8 @@
     .lc-checkin--review .lc-checkin__history-event { padding: 6px 0; }
     .lc-checkin--review .lc-checkin__review-calendar:focus-within,
     .lc-checkin--review .lc-checkin__review-detail:focus-within { outline: 2px solid var(--lc-checkin-accent-soft); outline-offset: 3px; border-radius: 10px; }
+    .lc-checkin--review .lc-checkin__calendar-day:focus-visible,
+    .lc-checkin--review .lc-checkin__history-event-actions button:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
 }
 
 /* ============================================================
