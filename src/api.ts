@@ -36,6 +36,7 @@ export interface CheckinApi {
     recordEvent: (input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}) => Promise<CheckinEvent | undefined>;
     startFocus: (itemId: string) => Promise<boolean>;
     stopFocus: () => Promise<boolean>;
+    getFocusAdapters: () => ReadonlyArray<{id: string; name: string}>;
     registerFocusAdapter: (adapter: FocusAdapter) => () => void;
     registerSummaryProvider: (provider: SummaryProvider) => () => void;
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
@@ -149,6 +150,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         },
         startFocus: (itemId) => host.startFocus(itemId),
         stopFocus: () => host.stopFocus(),
+        getFocusAdapters: () => Object.freeze([...host.focusAdapters.values()].map((adapter) => Object.freeze({id: adapter.id, name: adapter.name}))),
         registerFocusAdapter: (adapter) => {
             if (!host.acceptingOperations || host.disposed || !adapter || typeof adapter.id !== "string" || !adapter.id || typeof adapter.canStart !== "function" || typeof adapter.start !== "function" || typeof adapter.stop !== "function") {
                 return () => undefined;
