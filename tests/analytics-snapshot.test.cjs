@@ -20,6 +20,8 @@ assert.match(source, /Number\.isFinite\(point\.value\)/);
 assert.match(source, /serializeAnalyticsSummary/);
 assert.match(source, /parseAnalyticsSummary/);
 assert.match(source, /value\.asOf\.length > 32/);
+assert.match(source, /mergeAnalyticsSummaries/);
+assert.match(source, /incoming\.asOf > current\.asOf/);
 assert.match(source, /catch \{\s*return undefined;/);
 assert.match(source, /summarizeAnalyticsSnapshot/);
 assert.match(source, /compareAnalyticsSnapshots/);

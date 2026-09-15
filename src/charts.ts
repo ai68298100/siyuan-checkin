@@ -93,6 +93,11 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
     }
 }
 
+export function mergeAnalyticsSummaries(current: AnalyticsSnapshotSummary | undefined, incoming: AnalyticsSnapshotSummary): AnalyticsSnapshotSummary {
+    if (!current || incoming.asOf > current.asOf) return {...incoming};
+    return {...current};
+}
+
 export interface AnalyticsSnapshotEnvelope {
     version: 1;
     snapshot: AnalyticsSnapshot;
