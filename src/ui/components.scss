@@ -564,6 +564,16 @@
 .lc-checkin__history-event-main > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__history-event-actions button { flex:0 0 auto; }
 .lc-checkin__occasion-form-panel form { min-width:0; }
+.lc-checkin__occasion-list-panel { border-radius:var(--lc-checkin-radius); }
+.lc-checkin__occasion-form-panel,.lc-checkin__occasion-list-panel { border:1px solid var(--lc-checkin-border); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
+.lc-checkin__occasion,.lc-checkin__occasion-manager-row { border-color:var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-surface); transition:border-color var(--lc-checkin-motion),background-color var(--lc-checkin-motion),transform var(--lc-checkin-motion); }
+.lc-checkin__occasion:hover,.lc-checkin__occasion-manager-row:hover { border-color:color-mix(in srgb,var(--lc-checkin-accent) 36%,var(--lc-checkin-border)); transform:translateY(-1px); }
+.lc-checkin__occasion-icon { border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-accent-soft); }
+.lc-checkin__occasion-form-panel form { gap:var(--lc-checkin-space-4); }
+.lc-checkin--occasions .lc-checkin__field textarea { min-height:88px; }
+.lc-checkin__history-tools,.lc-checkin__history-filter-row { padding:var(--lc-checkin-space-3); border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); }
+.lc-checkin__history-selected { border-radius:var(--lc-checkin-radius-lg); box-shadow:var(--lc-checkin-shadow-sm); }
+.lc-checkin__history-event { background:var(--lc-checkin-surface); }
 .lc-checkin__occasion-form-panel .lc-checkin__field > span { font-weight:650; }
 .lc-checkin__occasion-form-panel .lc-checkin__field input,.lc-checkin__occasion-form-panel .lc-checkin__field select { min-height:38px; }
 .lc-checkin__occasion-form-panel .lc-checkin__field textarea { min-height:84px; }
