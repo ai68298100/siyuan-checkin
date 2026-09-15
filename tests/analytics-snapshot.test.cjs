@@ -26,7 +26,7 @@ assert.match(source, /point\.value > ANALYTICS_VALUE_LIMIT/);
 assert.match(source, /raw\.length > ANALYTICS_PAYLOAD_LIMIT/);
 assert.match(source, /parseAnalyticsEnvelope[\s\S]*raw\.length > ANALYTICS_PAYLOAD_LIMIT/);
 assert.match(source, /series\.points\.length > ANALYTICS_SERIES_LIMITS\[name\]/);
-assert.match(source, /Number\.isFinite\(point\.value\)/);
+assert.match(source, /Number\.isSafeInteger\(point\.value\)/);
 assert.match(source, /point\.label\.length > 64/);
 assert.match(source, /series\.title\.length > 64/);
 assert.match(source, /series\.unit\.length > 16/);
