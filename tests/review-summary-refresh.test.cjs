@@ -12,6 +12,7 @@ assert.match(review, /summaryRefreshing: boolean/);
 assert.match(review, /data-summary-refresh-state=/);
 assert.match(review, /data-analytics-as-of/);
 assert.match(review, /analyticsSummary \?/);
+assert.match(review, /yearlyCurrent/);
 assert.match(review, /escapeHtml\(analyticsSummary\.asOf\)/);
 assert.match(review, /analyticsSummary\.weeklyCurrent/);
 assert.match(review, /analyticsSummary\.activeDays/);
