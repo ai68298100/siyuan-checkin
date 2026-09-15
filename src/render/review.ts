@@ -162,7 +162,16 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__trend-card"><header><div><h3>${escapeHtml(series.title)}</h3><small>${t("review.trendCompared")}</small></div><strong>${stats.current}${escapeHtml(series.unit)}</strong></header><div class="lc-checkin__trend-stats"><span><small>${t("review.trendAverage")}</small><b>${stats.average}${escapeHtml(series.unit)}</b></span><span><small>${t("review.trendBest")}</small><b>${stats.best}${escapeHtml(series.unit)}</b></span><span class="is-${stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "flat"}"><small>${t("review.trendChange")}</small><b>${direction} ${Math.abs(stats.delta)}${escapeHtml(series.unit)}</b></span></div>${chart}</div>`;
     };
     const achievements = buildAchievements(ctx.store);
-    const reminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date(), ctx.reminderUserActions), ctx.reminderFilter);
+    const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date(), ctx.reminderUserActions), ctx.reminderFilter);
+    /* 同一打卡只保留最新实例，累计次数以内联摘要展示，避免提醒列表纵向膨胀。 */
+    const reminderByTitle = new Map<string, (typeof rawReminders)[number] & {occurrenceCount?: number}>();
+    rawReminders.forEach((entry) => {
+        const key = `${entry.source}:${entry.title}`;
+        const previous = reminderByTitle.get(key);
+        if (!previous || entry.dueDate >= previous.dueDate) reminderByTitle.set(key, {...entry, occurrenceCount: (previous?.occurrenceCount ?? 0) + 1});
+        else previous.occurrenceCount = (previous.occurrenceCount ?? 1) + 1;
+    });
+    const reminders = [...reminderByTitle.values()];
     /* 11.0-C 延期/跳过：未完成条目给入口，已延期/已跳过条目只留恢复，已完成是终态不给动作。 */
     const reminderActionButtons = (entry: (typeof reminders)[number]): string => {
         const id = escapeHtml(entry.id);
@@ -182,7 +191,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             : entry.status === "skipped" ? `${t("review.remindersSkipped")} · ${dueLabel}`
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
-        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
+        const count = (entry.occurrenceCount ?? 1) > 1 ? ` · ${(entry.occurrenceCount ?? 1)} 次` : "";
+        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}${count}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
     /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */
     const overdueHistory = projectOverdueOccurrenceHistory(ctx.occasionStore, new Date()).slice(0, 12);
