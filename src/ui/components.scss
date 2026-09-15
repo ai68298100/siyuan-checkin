@@ -730,6 +730,31 @@
     span { display: block; height: 100%; border-radius: inherit; background: var(--lc-checkin-accent); }
 }
 .lc-checkin__item-action { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
+/* Twenty-first visual-density pass: reclaim Today whitespace and right-align actions. */
+.lc-checkin--today .lc-checkin__item-action { margin-left: auto; padding-left: 12px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 96px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { min-width: 52px; }
+.lc-checkin--today .lc-checkin__item-body { background: transparent; }
+.lc-checkin--today .lc-checkin__item-topline { padding-right: 4px; }
+.lc-checkin--today .lc-checkin__item-meta { max-width: 100%; }
+.lc-checkin--today .lc-checkin__organize { margin-bottom: 6px; }
+.lc-checkin--today .lc-checkin__organize label { white-space: nowrap; }
+.lc-checkin--today .lc-checkin__organize select { max-width: 180px; }
+.lc-checkin--today .lc-checkin__today-search { flex: 1 1 180px; }
+.lc-checkin--today .lc-checkin__group { margin-top: 12px; }
+.lc-checkin--today .lc-checkin__group-header { min-height: 26px; }
+.lc-checkin--today .lc-checkin__group-items { gap: 8px; }
+.lc-checkin--today .lc-checkin__item { min-height: 62px; }
+.lc-checkin--today .lc-checkin__item-progress { margin-top: 5px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { min-width: 30px; }
+.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 72px; }
+.lc-checkin--today .lc-checkin__item-action :where(button,input) { flex-shrink: 0; }
+.lc-checkin--today .lc-checkin__item-name { max-width: 100%; }
+.lc-checkin--today .lc-checkin__item-tag { flex-shrink: 0; }
+.lc-checkin--today .lc-checkin__organize { align-items: center; }
+.lc-checkin--today .lc-checkin__organize > label { min-height: 28px; }
+.lc-checkin--today .lc-checkin__organize input { max-width: 240px; }
+.lc-checkin--today .lc-checkin__organize + .lc-checkin__list { margin-top: 2px; }
 .lc-checkin__amount {
     width: 38px;
     height: 28px;
