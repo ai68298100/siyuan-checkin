@@ -589,6 +589,74 @@
 @media (prefers-reduced-motion: reduce) {
  .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__occasion-manager-row { transition: none !important; }
 }
+/* 10.0 foundation pass 4: desktop readability and keyboard navigation rails. */
+@container lc5 (min-width: 720px) {
+ .lc-checkin__topnav { min-height: 52px; }
+ .lc-checkin__topnav-tabs { gap: 4px; }
+ .lc-checkin__topnav-tabs button { min-width: 72px; padding-inline: 12px; }
+ .lc-checkin__topnav-action { min-width: 36px; min-height: 36px; }
+ .lc-checkin--today .lc-checkin__organize { justify-content: flex-start; }
+ .lc-checkin--today .lc-checkin__today-search { flex: 0 1 280px; }
+ .lc-checkin--today .lc-checkin__organize select { min-width: 112px; }
+ .lc-checkin--today .lc-checkin__item-action { min-width: 220px; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 92px; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 72px; }
+ .lc-checkin__history-filter-row { grid-template-columns: repeat(3,minmax(0,1fr)); }
+ .lc-checkin__history-tools { padding: 12px 14px; }
+ .lc-checkin__history-event-actions { min-width: 150px; }
+ .lc-checkin__occasion-manager-row { min-height: 58px; }
+ .lc-checkin__occasion-row-actions { min-width: 104px; }
+ .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0,1fr) 260px; }
+ .lc-checkin--settings .lc-checkin__settings-row select,.lc-checkin--settings .lc-checkin__settings-row input { width: 100%; }
+ .lc-checkin__summary-agent { min-height: 36px; }
+ .lc-checkin__suggestion-workflow { max-width: 860px; }
+}
+@container lc-dock (min-width: 560px) {
+ .lc-checkin-dock-host .lc-checkin__item-action { max-width: 44%; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { min-width: 180px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 76px; }
+ .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 64px; }
+ .lc-checkin-dock-host .lc-checkin__item-name { max-width: 24ch; }
+ .lc-checkin-dock-host .lc-checkin__item-meta { max-width: 30ch; }
+ .lc-checkin-dock-host .lc-checkin__group-items { gap: 8px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav { min-height: 52px; }
+ .lc-checkin-dock-host .lc-checkin__mobile-nav button { min-height: 40px; }
+}
+@media (max-width: 600px) {
+ .lc-checkin :where(button,input,select,textarea):focus-visible { outline-width: 2px; outline-offset: 1px; }
+ .lc-checkin__item:focus-within { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+ .lc-checkin__history-event:focus-within { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+ .lc-checkin__occasion-manager-row:focus-within { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+ .lc-checkin__settings-card:focus-within { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
+ .lc-checkin__mobile-nav button:focus-visible { outline-offset: -2px; }
+ .lc-checkin__item-action { overflow: hidden; }
+ .lc-checkin__item-action button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin__item-action .lc-checkin__more-button { flex: 0 0 28px; }
+ .lc-checkin__item-action .lc-checkin__focus-button { flex: 0 0 28px; }
+ .lc-checkin__item-action .lc-checkin__drag-handle { flex: 0 0 28px; }
+ .lc-checkin__review-hero-rate { flex: 0 0 auto; }
+ .lc-checkin__summary-text { overflow-wrap: anywhere; }
+ .lc-checkin__summary-text > div { line-height: 1.55; }
+ .lc-checkin__trend-stats { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+ .lc-checkin__trend-stats b { font-size: 12px; }
+ .lc-checkin__trend-stats small { font-size: 9px; }
+ .lc-checkin__yearheatmap-scroll { margin-inline: -4px; padding-inline: 4px; }
+ .lc-checkin__yearheatmap-meta { gap: 5px 8px; font-size: 10px; }
+ .lc-checkin__calendar-day { aspect-ratio: 1; }
+ .lc-checkin__calendar-day strong { font-variant-numeric: tabular-nums; }
+ .lc-checkin__history-event-main > span { max-width: 28ch; }
+ .lc-checkin__history-event-note { max-width: 28ch; }
+ .lc-checkin__occasion-row-body { overflow: hidden; }
+ .lc-checkin__occasion-row-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin__occasion-row-body small { max-width: 100%; }
+ .lc-checkin__settings-card h2 { overflow-wrap: anywhere; }
+ .lc-checkin__settings-card .lc-checkin__text-button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin__snapshot-list li,.lc-checkin__audit-list li { min-width: 0; }
+ .lc-checkin__snapshot-list li > span,.lc-checkin__audit-list li > span { overflow-wrap: anywhere; }
+ .lc-checkin__suggestion-workflow header { flex-wrap: wrap; }
+ .lc-checkin__suggestion-workflow footer { flex-wrap: wrap; }
+ .lc-checkin__suggestion-workflow footer button { flex: 1 1 auto; }
+}
 /* Mobile cross-page audit: remove duplicate header whitespace and protect dense rows. */
 @media (max-width: 600px) {
  .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) > .lc-checkin__editor-header { min-height: 42px; margin-bottom: 4px; padding-block: 3px; }
