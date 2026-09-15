@@ -21,6 +21,7 @@ assert.match(source, /getCustomSummaryContext/);
 assert.match(apiSource, /自定义总结范围无效/);
 assert.match(apiSource, /CHECKIN_API_VERSION/);
 assert.match(apiSource, /summarizeCustom: \(range, providerId\) => summarizeWithProvider\("day", range, providerId\)/);
+assert.match(apiSource, /getAnalyticsSnapshot: \(asOf = currentCalendarDate\(\)\)/);
 assert.match(source, /customRange \? buildCustomSummaryContext/);
 assert.match(source, /getEventsInCustomRange\(this\.store, customRange\)/);
 assert.match(source, /const SUMMARY_TIMEOUT_MS = 30000/);

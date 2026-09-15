@@ -10,6 +10,7 @@ import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, type FocusAdapter, type SummaryPr
 import {normalizeSummaryProviderResult} from "./agent-suggestions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, hasCheckinCapability, getCheckinApiDescriptor, getCheckinCapabilityInfo, type CheckinCapability, type CheckinApiDescriptor, type CheckinCapabilityInfo} from "./api-contract";
 import {cloneSuggestionWorkflow, workflowSummary, workflowUpdatedAt, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {buildAnalyticsSnapshot, cloneAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 
 export interface CheckinApi {
     name: string;
@@ -29,6 +30,7 @@ export interface CheckinApi {
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
     getSummaryContext: (range: SummaryRange) => ReturnType<typeof buildSummaryContext>;
     getCustomSummaryContext: (range: CustomSummaryRange) => ReturnType<typeof buildCustomSummaryContext>;
+    getAnalyticsSnapshot: (asOf?: Date) => AnalyticsSnapshot;
     getArchivedItems: () => CheckinItem[];
     setItemArchived: (itemId: string, archived: boolean) => Promise<boolean>;
     exportJson: () => string;
@@ -127,6 +129,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             if (!range || !isValidLocalDateInput(range.startDate) || !isValidLocalDateInput(range.endDate) || range.startDate > range.endDate) throw new TypeError("自定义总结范围无效");
             return buildCustomSummaryContext(host.store, range, currentCalendarDate());
         },
+        getAnalyticsSnapshot: (asOf = currentCalendarDate()) => cloneAnalyticsSnapshot(buildAnalyticsSnapshot(host.store, asOf)),
         getArchivedItems: () => host.store.items.filter((item) => item.archived).map((item) => host.cloneItem(item)),
         setItemArchived: (itemId, archived) => {
             if (!host.acceptingOperations) return Promise.resolve(false);
