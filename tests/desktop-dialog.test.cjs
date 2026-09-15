@@ -175,6 +175,8 @@ assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-manager
     "desktop occasion list must not shift or expose a horizontal scrollbar");
 assert.match(components, /occasion-form-panel \.lc-checkin__form-row \{ grid-template-columns: repeat\(2, minmax\(180px, 1fr\)\)/,
     "desktop occasion form rows must keep balanced two-column fields");
+assert.match(components, /occasion-row-actions[\s\S]*min-width: 128px;/,
+    "desktop occasion actions must reserve a stable hit-target column");
 
 // 设置页恢复点与同步审计：最新一条直显，其余通过 details 折叠，避免长列表占满页面
 const settingsView = read("src", "render", "settings.ts");
