@@ -441,6 +441,7 @@
  .lc-checkin--today .lc-checkin__item-meta { max-width: 56ch; }
  .lc-checkin--review .lc-checkin__review-hero { min-height: 138px; }
  .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 58px; }
+ .lc-checkin__summary-stats .lc-checkin__analytics-badge { display:inline-flex; min-width:0; align-items:center; justify-content:center; padding:4px 7px; border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-sm); color:var(--lc-checkin-muted); background:var(--lc-checkin-muted-surface); font-size:10px; font-variant-numeric:tabular-nums; white-space:nowrap; }
  .lc-checkin--occasions .lc-checkin__occasion-manager { gap: 16px; }
  .lc-checkin--occasions .lc-checkin__occasion-list-panel { max-height: calc(100vh - 190px); overflow: auto; }
  .lc-checkin--occasions .lc-checkin__occasion-form-panel { position: sticky; top: 8px; }
