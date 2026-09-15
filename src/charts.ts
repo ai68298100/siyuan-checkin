@@ -18,6 +18,7 @@ export interface TrendSeries {
 const clampRange = (value: number, fallback: number, max: number): number => Number.isFinite(value) ? Math.min(max, Math.max(1, Math.floor(value))) : fallback;
 const ANALYTICS_SERIES_LIMITS = {weekly: 52, monthly: 24, daily: 366, yearly: 10} as const;
 const ANALYTICS_PAYLOAD_LIMIT = 512 * 1024;
+const ANALYTICS_VALUE_LIMIT = 1_000_000_000;
 const isAnalyticsDate = (value: unknown): value is string => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
     const [year, month, day] = value.split("-").map(Number);
@@ -61,7 +62,7 @@ export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefin
         for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
             if (typeof series.title !== "string" || typeof series.unit !== "string" || series.title.length > 64 || series.unit.length > 16 || /[\u0000-\u001f\u007f]/.test(series.title) || /[\u0000-\u001f\u007f]/.test(series.unit) || !Array.isArray(series.points)) return undefined;
             if (series.points.length > ANALYTICS_SERIES_LIMITS[name]) return undefined;
-            if (series.points.some((point) => !point || typeof point.label !== "string" || point.label.length > 64 || /[\u0000-\u001f\u007f]/.test(point.label) || typeof point.value !== "number" || !Number.isFinite(point.value) || point.value < 0 || !Number.isInteger(point.value))) return undefined;
+            if (series.points.some((point) => !point || typeof point.label !== "string" || point.label.length > 64 || /[\u0000-\u001f\u007f]/.test(point.label) || typeof point.value !== "number" || !Number.isFinite(point.value) || point.value < 0 || point.value > ANALYTICS_VALUE_LIMIT || !Number.isInteger(point.value))) return undefined;
         }
         return cloneAnalyticsSnapshot(value as AnalyticsSnapshot);
     } catch {
@@ -102,7 +103,7 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
         if (!isAnalyticsDate(value.asOf)) return undefined;
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
-            if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] < 0 || !Number.isInteger(value[key])) return undefined;
+            if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] < 0 || value[key] > ANALYTICS_VALUE_LIMIT || !Number.isInteger(value[key])) return undefined;
         }
         return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!, yearlyCurrent: value.yearlyCurrent!};
     } catch {
