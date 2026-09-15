@@ -2718,6 +2718,14 @@
         min-width: 0;
         max-width: 100%;
     }
+    .lc-checkin--review .lc-checkin__summary-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .lc-checkin--review .lc-checkin__top-actions,
+    .lc-checkin--review .lc-checkin__header-actions {
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 .lc-checkin__mobile-nav button {
     min-width: 0;
