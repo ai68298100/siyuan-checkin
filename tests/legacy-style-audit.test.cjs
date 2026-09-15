@@ -1,0 +1,11 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.join(__dirname, "..");
+const legacy = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
+const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+assert.ok(legacy.length > 0, "legacy floor stylesheet must remain available");
+assert.doesNotMatch(components, /--b3-[\w-]+/, "component layer must stay independent from host tokens");
+assert.ok(!legacy.includes(".lc-checkin__preview-card {"), "preview foundation must stay retired from legacy layer");
+assert.ok(!legacy.includes(".lc-checkin__history-row {"), "history row foundation must stay retired from legacy layer");
+console.log("Legacy style audit passed: retired foundations stay out of index.scss.");
