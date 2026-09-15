@@ -51,6 +51,27 @@ export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefin
     }
 }
 
+export interface AnalyticsSnapshotSummary {
+    asOf: string;
+    weeklyCurrent: number;
+    monthlyCurrent: number;
+    activeDays: number;
+}
+
+export function summarizeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): AnalyticsSnapshotSummary {
+    return {
+        asOf: snapshot.asOf,
+        weeklyCurrent: summarizeTrend(snapshot.weekly).current,
+        monthlyCurrent: summarizeTrend(snapshot.monthly).current,
+        activeDays: snapshot.daily.points.reduce((sum, point) => sum + (point.value > 0 ? 1 : 0), 0),
+    };
+}
+
+export function compareAnalyticsSnapshots(left: AnalyticsSnapshot, right: AnalyticsSnapshot): "older" | "same" | "newer" {
+    if (left.asOf === right.asOf) return "same";
+    return left.asOf < right.asOf ? "older" : "newer";
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;
