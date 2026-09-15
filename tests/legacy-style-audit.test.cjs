@@ -8,4 +8,8 @@ assert.ok(legacy.length > 0, "legacy floor stylesheet must remain available");
 assert.doesNotMatch(components, /--b3-[\w-]+/, "component layer must stay independent from host tokens");
 assert.ok(!legacy.includes(".lc-checkin__preview-card {"), "preview foundation must stay retired from legacy layer");
 assert.ok(!legacy.includes(".lc-checkin__history-row {"), "history row foundation must stay retired from legacy layer");
+assert.ok(!legacy.includes(".lc-checkin__editor-preview {"), "editor preview shell must stay retired from legacy layer");
+assert.ok(!legacy.includes(".lc-checkin__history-event-actions {"), "history action layout must stay retired from legacy layer");
+assert.match(components, /\.lc-checkin__editor-actions \{/, "editor actions must have a component-layer owner");
+assert.match(components, /\.lc-checkin__history-event-actions \{/, "history actions must have a component-layer owner");
 console.log("Legacy style audit passed: retired foundations stay out of index.scss.");
