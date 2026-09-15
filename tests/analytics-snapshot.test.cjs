@@ -26,6 +26,8 @@ assert.match(source, /parseAnalyticsEnvelope[\s\S]*raw\.length > ANALYTICS_PAYLO
 assert.match(source, /series\.points\.length > ANALYTICS_SERIES_LIMITS\[name\]/);
 assert.match(source, /Number\.isFinite\(point\.value\)/);
 assert.match(source, /point\.label\.length > 64/);
+assert.match(source, /series\.title\.length > 64/);
+assert.match(source, /series\.unit\.length > 16/);
 assert.match(source, /u0000-\\u001f/);
 assert.match(source, /point\.value < 0/);
 assert.match(source, /value\[key\].*value\[key\] < 0/s);

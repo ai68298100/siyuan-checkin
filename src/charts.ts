@@ -59,7 +59,7 @@ export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefin
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
         if (value.version !== 1 || !isAnalyticsDate(value.asOf) || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
         for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
-            if (typeof series.title !== "string" || typeof series.unit !== "string" || !Array.isArray(series.points)) return undefined;
+            if (typeof series.title !== "string" || typeof series.unit !== "string" || series.title.length > 64 || series.unit.length > 16 || /[\u0000-\u001f\u007f]/.test(series.title) || /[\u0000-\u001f\u007f]/.test(series.unit) || !Array.isArray(series.points)) return undefined;
             if (series.points.length > ANALYTICS_SERIES_LIMITS[name]) return undefined;
             if (series.points.some((point) => !point || typeof point.label !== "string" || point.label.length > 64 || /[\u0000-\u001f\u007f]/.test(point.label) || typeof point.value !== "number" || !Number.isFinite(point.value) || point.value < 0)) return undefined;
         }
