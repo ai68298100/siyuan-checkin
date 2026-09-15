@@ -4356,6 +4356,8 @@
     .lc-checkin--review .lc-checkin__review-subnav { top: 58px; gap: 4px; box-shadow: 0 1px 0 color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
     .lc-checkin--review .lc-checkin__review-subnav button { padding-inline: 10px; }
     .lc-checkin--review .lc-checkin__history-result { min-height: 30px; font-size: 11px; }
+    .lc-checkin--review .lc-checkin__history-date { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .lc-checkin--review .lc-checkin__history-date > span { flex: 0 0 auto; white-space: nowrap; }
 }
 
 /* ============================================================
