@@ -31,6 +31,7 @@ assert.match(source, /series\.unit\.length > 16/);
 assert.match(source, /u0000-\\u001f/);
 assert.match(source, /point\.value < 0/);
 assert.match(source, /value\[key\].*value\[key\] < 0/s);
+assert.match(source, /Number\.isInteger\(value\[key\]\)/);
 assert.match(source, /buildWeeklyCompletionTrend\(store, 12, asOf\)/);
 assert.match(source, /buildMonthlyEventTrend\(store, 6, asOf\)/);
 assert.match(source, /buildDailyActivityTrend\(store, 30, asOf\)/);

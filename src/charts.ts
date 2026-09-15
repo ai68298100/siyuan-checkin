@@ -102,7 +102,7 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
         if (!isAnalyticsDate(value.asOf)) return undefined;
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
-            if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] < 0) return undefined;
+            if (typeof value[key] !== "number" || !Number.isFinite(value[key]) || value[key] < 0 || !Number.isInteger(value[key])) return undefined;
         }
         return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!, yearlyCurrent: value.yearlyCurrent!};
     } catch {
