@@ -12,7 +12,7 @@ assert.match(css, /:focus-visible/); assert.match(css, /overflow-x:\s*hidden/);
 assert.match(css, /lc-checkin__analytics-badge/);
 assert.match(css, /lc-checkin--review \.lc-checkin__summary-text[\s\S]*max-width: 1180px/);
 assert.match(css, /lc-checkin--review \.lc-checkin__header-actions[\s\S]*max-width: 58%/);
-assert.match(css, /min-width: 520px, 1\.05fr/);
+assert.match(css, /minmax\(520px, 1\.05fr\)/);
 assert.match(css, /minmax\(360px, \.95fr\)/);
 assert.match(css, /forced-colors: active/);
 assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
