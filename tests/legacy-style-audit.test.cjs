@@ -6,6 +6,8 @@ const legacy = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 assert.ok(legacy.length > 0, "legacy floor stylesheet must remain available");
 assert.doesNotMatch(components, /--b3-[\w-]+/, "component layer must stay independent from host tokens");
+assert.doesNotMatch(legacy, /@(?:media|container)[^{]+\{\s*\}/, "legacy stylesheet must not keep empty responsive blocks");
+assert.doesNotMatch(legacy, /Fourteenth narrow-surface pass|Fifteenth narrow-surface pass/, "retired migration markers must not remain in legacy stylesheet");
 assert.ok(!legacy.includes(".lc-checkin__preview-card {"), "preview foundation must stay retired from legacy layer");
 assert.ok(!legacy.includes(".lc-checkin__history-row {"), "history row foundation must stay retired from legacy layer");
 assert.ok(!legacy.includes(".lc-checkin__history-event-actions {"), "history action layout must stay retired from legacy layer");
