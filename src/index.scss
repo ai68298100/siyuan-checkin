@@ -36,23 +36,6 @@
 /* 内容布局按 surface 容器宽度收敛；保留上面的 surface 自身内边距视口回退，
    因为容器查询无法匹配容器元素自身。这样窄 dock 与窄弹窗也能获得同一套
    卡片、编辑器和历史布局，而不会被设备视口宽度绑死。 */
-.lc-checkin :where(button, input, select, textarea) {
-    transition: border-color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast),
-        color var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast), transform var(--lc-checkin-motion-fast);
-}
-
-/* Personalization hooks: hosts can override these variables without replacing the theme. */
-.lc-checkin[data-density="compact"] { --lc-checkin-density-scale: .88; }
-.lc-checkin[data-density="comfortable"] { --lc-checkin-density-scale: 1.12; }
-.lc-checkin[data-density="compact"] .lc-checkin__item { padding: 8px 10px; }
-.lc-checkin[data-density="comfortable"] .lc-checkin__item { padding: 14px; }
-.lc-checkin :where(button, input, select, textarea) { min-height: var(--lc-checkin-control-height); }
-
-.lc-checkin :where(button, input, select, textarea):focus-visible {
-    outline: none;
-    box-shadow: var(--lc-checkin-focus);
-}
-
 @media (max-height: 520px) and (orientation: landscape) {
     .lc-checkin-dialog {
         height: calc(100vh - 12px) !important;
@@ -67,11 +50,6 @@
     }
 }
 
-
-.lc-checkin__history-note-editor:focus {
-    outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 35%, transparent);
-    border-color: var(--lc-checkin-accent-text);
-}
 
 .lc-checkin__coaching-list {
     display: grid;
