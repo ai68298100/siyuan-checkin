@@ -97,6 +97,11 @@ export function migrateAnalyticsEnvelope(raw: string): {snapshot: AnalyticsSnaps
     return {snapshot: cloneAnalyticsSnapshot(snapshot), migrated: !raw.includes('"version":1') || raw.includes('"snapshot"') === false};
 }
 
+export function mergeAnalyticsSnapshots(current: AnalyticsSnapshot | undefined, incoming: AnalyticsSnapshot): AnalyticsSnapshot {
+    if (!current) return cloneAnalyticsSnapshot(incoming);
+    return compareAnalyticsSnapshots(current, incoming) === "newer" ? cloneAnalyticsSnapshot(current) : cloneAnalyticsSnapshot(incoming);
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;

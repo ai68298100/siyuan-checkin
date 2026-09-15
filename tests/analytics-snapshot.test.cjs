@@ -13,6 +13,8 @@ assert.match(source, /parseAnalyticsSnapshot/);
 assert.match(source, /value\.version !== 1/);
 assert.match(source, /migrateAnalyticsEnvelope/);
 assert.match(source, /migrated:/);
+assert.match(source, /mergeAnalyticsSnapshots/);
+assert.match(source, /if \(!current\)/);
 assert.match(source, /catch \{\s*return undefined;/);
 assert.match(source, /summarizeAnalyticsSnapshot/);
 assert.match(source, /compareAnalyticsSnapshots/);
