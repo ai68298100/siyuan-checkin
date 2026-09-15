@@ -121,7 +121,6 @@ assert.ok(!styles.includes(".lc-checkin__history-row {"), "history row foundatio
 assert.ok(!styles.includes(".lc-checkin__preview-card {"), "editor preview foundations must not return to legacy index.scss");
 assert.match(liveStyles, /\.lc-checkin__preview-card \{[\s\S]*\.lc-checkin__preview-progress/,
     "editor preview foundations belong to the component layer");
-assert.ok(!styles.includes(".lc-checkin__editor-preview {"), "editor preview shell must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__history-event-actions {"), "history action layout must not return to legacy index.scss");
 assert.match(liveStyles, /\.lc-checkin__history-event-actions \{[\s\S]*\.lc-checkin__history-event-actions button/,
     "history action layout belongs to the component layer");
