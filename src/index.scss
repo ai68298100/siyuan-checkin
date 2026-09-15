@@ -284,49 +284,6 @@
     padding-bottom: 4px;
 }
 
-.lc-checkin__eyebrow {
-    margin-bottom: 3px;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
-    font-weight: 500;
-}
-
-.lc-checkin__title {
-    font-size: clamp(22px, 3vw, 28px);
-    font-weight: 700;
-    line-height: 1.15;
-}
-
-.lc-checkin__header-actions { gap: 6px; }
-
-.lc-checkin__section-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-}
-
-.lc-checkin__section-heading > div {
-    display: grid;
-    gap: 3px;
-    min-width: 0;
-}
-
-.lc-checkin__section-kicker {
-    color: var(--b3-theme-on-surface-light);
-    font-size: 11px;
-}
-
-.lc-checkin__section-heading strong {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--b3-theme-on-background);
-    font-size: 14px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .lc-checkin__occasion-list,
 .lc-checkin__occasion-manager-list {
     display: grid;
