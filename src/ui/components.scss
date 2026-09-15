@@ -4387,6 +4387,9 @@
 .lc-checkin--today .lc-checkin__group-items {
     grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
 }
+.lc-checkin--today .lc-checkin__group-items:has(> :nth-child(2)):not(:has(> :nth-child(3))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 
 /* 今日：筛选胶囊不被拉伸；卡片名称拥挤时优先生长换行 */
 .lc-checkin--today .lc-checkin__today-filters { flex: 0 0 auto; }
