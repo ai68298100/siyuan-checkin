@@ -7,4 +7,7 @@ assert.match(source, /getSuggestionWorkflow/); assert.match(source, /getSuggesti
 assert.match(source, /checkin:suggestion-workflow-updated/); assert.match(source, /规范化的建议 ID/);
 assert.match(source, /isSuggestionWorkflowEvent/); assert.match(source, /伪造状态/);
 assert.match(source, /suggestions\.read/); assert.match(source, /localOnly/);
+assert.match(source, /analytics\.read/);
+assert.match(source, /512 KiB/);
+assert.match(source, /366/);
 console.log("Integration ecosystem documentation checks passed.");
