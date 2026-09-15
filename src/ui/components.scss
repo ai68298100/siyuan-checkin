@@ -2731,6 +2731,18 @@
         min-width: 0;
         min-height: 0;
     }
+    .lc-checkin--review .lc-checkin__history-event,
+    .lc-checkin--review .lc-checkin__history-selected {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    .lc-checkin--review .lc-checkin__history-event-value,
+    .lc-checkin--review .lc-checkin__history-event-actions {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+    }
     .lc-checkin--review .lc-checkin__top-actions,
     .lc-checkin--review .lc-checkin__header-actions {
         min-width: 0;
