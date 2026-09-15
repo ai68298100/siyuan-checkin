@@ -451,6 +451,70 @@
  .lc-checkin--settings .lc-checkin__snapshot-list li small,.lc-checkin--settings .lc-checkin__audit-list li small { word-break: break-word; line-height: 1.35; }
  .lc-checkin--settings .lc-checkin__snapshot-list .lc-checkin__text-button,.lc-checkin--settings .lc-checkin__audit-list .lc-checkin__text-button { min-width: 64px; white-space: nowrap; }
 }
+/* 10.0 foundation pass: cross-surface mobile density and resilient content rails. */
+@media (max-width: 600px) {
+ .lc-checkin { padding-inline: 10px; }
+ .lc-checkin__header { gap: 6px; }
+ .lc-checkin__header-actions { gap: 4px; max-width: 48%; }
+ .lc-checkin__count { font-size: 11px; }
+ .lc-checkin__section-heading { margin-bottom: 7px; }
+ .lc-checkin__section-heading strong { font-size: 13px; }
+ .lc-checkin__group-header { gap: 6px; }
+ .lc-checkin__group-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin__group-count { flex: 0 0 auto; }
+ .lc-checkin--today .lc-checkin__item { grid-template-columns: 36px minmax(0,1fr); gap: 7px; padding: 8px; }
+ .lc-checkin--today .lc-checkin__item-icon { width: 36px; height: 36px; flex-basis: 36px; }
+ .lc-checkin--today .lc-checkin__item-body { min-width: 0; }
+ .lc-checkin--today .lc-checkin__item-topline { gap: 4px; }
+ .lc-checkin--today .lc-checkin__item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin--today .lc-checkin__item-tag { max-width: 30%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin--today .lc-checkin__item-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; width: 100%; margin-top: 3px; padding-left: 0; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; flex: 1 1 auto; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 0; flex: 1 1 auto; }
+ .lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { flex: 0 1 64px; }
+ .lc-checkin--today .lc-checkin__item-progress { grid-column: 2; }
+ .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 5px; padding: 6px; }
+ .lc-checkin--today .lc-checkin__organize select { max-width: none; min-height: 34px; }
+ .lc-checkin--today .lc-checkin__today-search { min-width: 0; height: 34px; }
+ .lc-checkin--today .lc-checkin__group { margin-top: 10px; }
+ .lc-checkin--today .lc-checkin__group-items { gap: 6px; }
+ .lc-checkin--review .lc-checkin__review-layout { gap: 9px; }
+ .lc-checkin--review .lc-checkin__review-sections { gap: 9px; }
+ .lc-checkin--review .lc-checkin__trend-card { padding: 10px; }
+ .lc-checkin--review .lc-checkin__trend-card > header { gap: 6px; }
+ .lc-checkin--review .lc-checkin__trend-card > header > strong { font-size: 17px; }
+ .lc-checkin--review .lc-checkin__review-hero { min-height: 0; }
+ .lc-checkin--review .lc-checkin__review-hero > div { min-width: 0; }
+ .lc-checkin--review .lc-checkin__review-hero p { overflow-wrap: anywhere; }
+ .lc-checkin--review .lc-checkin__summary-agent { flex-wrap: wrap; }
+ .lc-checkin--review .lc-checkin__summary-agent > span:last-child { margin-left: auto; }
+ .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 28px minmax(0,1fr); }
+ .lc-checkin--occasions .lc-checkin__occasion-row-actions { grid-column: 2; justify-self: start; }
+ .lc-checkin--occasions .lc-checkin__occasion-row-actions button { min-height: 34px; }
+ .lc-checkin--occasions .lc-checkin__occasion-row-body strong { line-height: 1.3; }
+ .lc-checkin--occasions .lc-checkin__occasion-row-body small { display: block; overflow-wrap: anywhere; }
+ .lc-checkin--settings .lc-checkin__settings-card { padding: 10px 12px; }
+ .lc-checkin--settings .lc-checkin__settings-card h2 { font-size: 16px; }
+ .lc-checkin--settings .lc-checkin__settings-card p { max-width: 100%; overflow-wrap: anywhere; }
+ .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+ .lc-checkin--settings .lc-checkin__settings-row > label { min-width: 0; }
+ .lc-checkin--settings .lc-checkin__settings-row select { max-width: 160px; }
+ .lc-checkin--settings .lc-checkin__settings-row input { max-width: 160px; }
+ .lc-checkin--settings .lc-checkin__audit-list { max-height: 42vh; overflow: auto; }
+ .lc-checkin--settings .lc-checkin__snapshot-list { max-height: 42vh; overflow: auto; }
+ .lc-checkin--editor .lc-checkin__form-scroll { gap: 8px; }
+ .lc-checkin--editor .lc-checkin__template-section { padding: 10px 12px; }
+ .lc-checkin--editor .lc-checkin__template-section .lc-checkin__templates { gap: 5px; }
+ .lc-checkin--editor .lc-checkin__field--name input { min-height: 42px; }
+ .lc-checkin--editor .lc-checkin__field--icons { padding: 10px 12px; }
+ .lc-checkin--editor .lc-checkin__kind-field { padding: 10px 12px; }
+ .lc-checkin--editor .lc-checkin__advanced { padding: 10px 12px; }
+ .lc-checkin__mobile-nav { min-height: 54px; }
+ .lc-checkin__mobile-nav button { min-height: 42px; }
+ .lc-checkin__mobile-nav button span { font-size: 16px; }
+ .lc-checkin__mobile-nav button small { font-size: 8px; }
+}
 
 @supports (height: 100dvh) {
     .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) {
