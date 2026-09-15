@@ -3845,6 +3845,7 @@
 .lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
 @container lc5 (min-width: 820px) {
     .lc-checkin__settings-nav { position: sticky; top: 58px; flex-direction: column; overflow: hidden; padding: 4px; border: 1px solid var(--lc-checkin-border); border-radius: 12px; background: color-mix(in srgb, var(--lc-checkin-surface) 88%, transparent); box-shadow: var(--lc-checkin-shadow-sm); }
+    .lc-checkin__settings-nav button { width: 100%; min-width: 0; box-sizing: border-box; }
 }
 .lc-checkin__settings-nav button {
     flex: none;

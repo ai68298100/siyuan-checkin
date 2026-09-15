@@ -206,6 +206,8 @@ assert.match(components, /\.lc-checkin__settings-nav \{ position: sticky; top: 5
     "desktop settings navigation must stay below the top bar");
 assert.match(components, /settings-nav \{ position: sticky; top: 58px;[\s\S]*border-radius: 12px;/,
     "desktop settings navigation must have a bounded visual surface");
+assert.match(components, /settings-nav button \{ width: 100%; min-width: 0; box-sizing: border-box; \}/,
+    "desktop settings navigation buttons must fill the rail without overflow");
 
 // 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
