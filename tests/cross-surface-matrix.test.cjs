@@ -24,6 +24,7 @@ assert.match(css, /minmax\(360px, \.95fr\)/);
 assert.match(css, /\.lc-checkin__review-detail \{ min-width: 0; scrollbar-gutter: stable;/);
 assert.match(css, /\.lc-checkin__review-calendar \{ max-width: 700px; width: 100%;/);
 assert.match(css, /review-calendar \.lc-checkin__calendar-day \{ min-height: 40px; \}/);
+assert.match(css, /review-detail \.lc-checkin__history-event \{ min-width: 0; overflow-wrap: anywhere; \}/);
 assert.match(css, /forced-colors: active/);
 assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
 console.log("Cross-surface 12.0 matrix checks passed.");
