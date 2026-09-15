@@ -433,26 +433,6 @@
     background: var(--lc-checkin-muted-surface);
 }
 
-.lc-checkin__organize label { font-size: 11px; }
-.lc-checkin__organize select,
-.lc-checkin__today-search { height: var(--lc-checkin-control-height); }
-.lc-checkin__today-search { flex: 1 1 150px; min-width: 120px; border-radius: 7px; }
-
-.lc-checkin__group { gap: 7px; margin-top: var(--lc-checkin-section-gap); }
-
-.lc-checkin__group-header,
-.lc-checkin__section-toggle {
-    min-height: 30px;
-    padding: 0 2px;
-    color: var(--b3-theme-on-surface-light);
-    font-size: 12px;
-}
-
-.lc-checkin__group-header span:first-child { font-weight: 650; }
-.lc-checkin__group-header em { min-width: 20px; }
-
-.lc-checkin__group-items { gap: 8px; }
-
 .lc-checkin__item {
     min-height: 72px;
     padding: 11px 12px;

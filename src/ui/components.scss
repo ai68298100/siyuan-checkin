@@ -780,6 +780,14 @@
  .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__occasion-manager-row { transition: none !important; }
 }
 /* 10.0 foundation pass 4: desktop readability and keyboard navigation rails. */
+.lc-checkin__organize label { font-size:11px; }
+.lc-checkin__organize select,.lc-checkin__today-search { height:var(--lc-checkin-control-height); }
+.lc-checkin__today-search { flex:1 1 150px; min-width:120px; border-radius:7px; }
+.lc-checkin__group { gap:7px; margin-top:var(--lc-checkin-section-gap); }
+.lc-checkin__group-header,.lc-checkin__section-toggle { min-height:30px; padding:0 2px; color:var(--lc-checkin-muted); font-size:12px; }
+.lc-checkin__group-header span:first-child { font-weight:650; }
+.lc-checkin__group-header em { min-width:20px; }
+.lc-checkin__group-items { gap:8px; }
 .lc-checkin__range-tabs { display:flex; align-self:flex-start; gap:3px; margin:-7px 0 14px 40px; padding:3px; border-radius:7px; background:var(--lc-checkin-muted-surface); }
 .lc-checkin__range-tabs button { min-width:30px; height:25px; padding:0 7px; border:0; border-radius:5px; color:var(--lc-checkin-muted); background:transparent; font-size:11px; }
 .lc-checkin__range-tabs button.is-selected { color:var(--lc-checkin-text); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
