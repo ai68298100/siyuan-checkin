@@ -4345,7 +4345,7 @@
     .lc-checkin--review .lc-checkin__summary-text,
     .lc-checkin--review .lc-checkin__summary-agent { max-width: 1180px; margin-inline: auto; }
     .lc-checkin--review .lc-checkin__review-subnav { max-width: 1180px; margin-inline: auto; }
-    .lc-checkin--review .lc-checkin__review-subnav { top: 58px; }
+    .lc-checkin--review .lc-checkin__review-subnav { top: 58px; box-shadow: 0 1px 0 color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
 }
 
 /* ============================================================
