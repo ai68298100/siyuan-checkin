@@ -109,6 +109,12 @@ assert.match(liveStyles, /\.lc-checkin__coaching-list \{ display:grid; gap:8px; 
     "coaching and custom range foundations belong to the component layer");
 assert.match(liveStyles, /\.lc-checkin__insight-picker \{ display:flex;[\s\S]*\.lc-checkin__insight-legend \.is-off \{ opacity:\.45; \}/,
     "insight controls and legend foundations belong to the component layer");
+assert.ok(!styles.includes(".lc-checkin__occasion-manager-row"),
+    "occasion manager foundations must not return to legacy index.scss");
+assert.ok(!styles.includes(".lc-checkin__occasion-form-panel"),
+    "occasion panel foundations must not return to legacy index.scss");
+assert.match(liveStyles, /\.lc-checkin__occasion-manager-row \{[\s\S]*\.lc-checkin__occasion-form-panel form \{/, 
+    "occasion manager and form foundations belong to the component layer");
 assert.match(liveStyles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow-sm\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
