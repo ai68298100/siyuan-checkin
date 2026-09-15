@@ -212,6 +212,8 @@ assert.match(components, /settings-nav \{ position: sticky; top: 58px;[\s\S]*bor
     "desktop settings navigation must have a bounded visual surface");
 assert.match(components, /settings-nav button \{ width: 100%; min-width: 0; box-sizing: border-box; \}/,
     "desktop settings navigation buttons must fill the rail without overflow");
+assert.match(components, /settings-nav button \{ width: 100%;[\s\S]*text-overflow: ellipsis; white-space: nowrap; \}/,
+    "desktop settings navigation labels must remain on one line");
 assert.match(components, /settings-groups \{ gap: 10px; \}/,
     "desktop settings groups must keep compact vertical spacing");
 assert.match(components, /occasion-form-panel form \{ gap: 8px; \}/,
