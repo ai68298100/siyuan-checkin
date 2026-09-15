@@ -17,6 +17,7 @@ assert.equal((fragments.match(/\$\{recentRecord\}/g) || []).length, 1, "check-in
 assert.match(indexSource, /surface\?\.querySelector<HTMLElement>\("\.lc-checkin__recent-record"\)[\s\S]*?root\.appendChild\(recentRecordToast\)/, "check-in feedback must be hoisted to the plugin window host");
 assert.match(indexSource, /private renderTodayItemLocally\(itemId: string\): boolean/, "Today updates should have a conservative local-render path");
 assert.match(indexSource, /pendingLocalItemId = current\.id[\s\S]*?renderBackgroundUpdate\(\)/, "successful records should request a local card refresh");
+assert.match(indexSource, /broadcast\(\{type: "analytics-updated"/);
 assert.match(indexSource, /renderTodayItemLocally\(localItemId\)\)\s*\{[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
 assert.match(indexSource, /card\.className = next\.className/, "completion-state changes should update the existing card in place");
 assert.match(indexSource, /updateTodayWeekStrip\(surface, date\)/, "local completion refresh should update the week strip without rebuilding Today");

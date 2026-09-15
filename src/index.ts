@@ -599,6 +599,7 @@ export default class CheckinPlugin extends Plugin {
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item, event});
+        this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         this.pendingLocalItemId = item.id;
         this.renderBackgroundUpdate();
         return {...event};
@@ -1799,7 +1800,8 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.invalidateSummary();
-            this.broadcast({type: "event-deleted", item, deletedEvents});
+        this.broadcast({type: "event-deleted", item, deletedEvents});
+        this.broadcast({type: "analytics-updated", analyticsAsOf: currentCalendarDate().toISOString().slice(0, 10)});
             this.pendingLocalItemId = item.id;
             this.renderBackgroundUpdate();
             return;
@@ -1839,6 +1841,7 @@ export default class CheckinPlugin extends Plugin {
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item: current, event});
+        this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         /* 6.0 occasion linkage: completing a generated one-shot item resolves its occasion. */
         if (current.linkedOccasionId && isComplete(this.store, current, actionDate)) {
             void this.setOccasionCompleted(current.linkedOccasionId, moment.localDate, true);
