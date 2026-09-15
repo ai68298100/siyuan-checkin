@@ -15,6 +15,28 @@ export interface TrendSeries {
     points: TrendPoint[];
 }
 
+export interface AnalyticsSnapshot {
+    version: 1;
+    asOf: string;
+    weekly: TrendSeries;
+    monthly: TrendSeries;
+    daily: TrendSeries;
+}
+
+export function buildAnalyticsSnapshot(store: CheckinStore, asOf = new Date()): AnalyticsSnapshot {
+    return {
+        version: 1,
+        asOf: dateKey(asOf),
+        weekly: buildWeeklyCompletionTrend(store, 12, asOf),
+        monthly: buildMonthlyEventTrend(store, 6, asOf),
+        daily: buildDailyActivityTrend(store, 30, asOf),
+    };
+}
+
+export function cloneAnalyticsSnapshot(snapshot: AnalyticsSnapshot): AnalyticsSnapshot {
+    return JSON.parse(JSON.stringify(snapshot)) as AnalyticsSnapshot;
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;

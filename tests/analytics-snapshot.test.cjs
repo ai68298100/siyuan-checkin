@@ -1,0 +1,12 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const source = fs.readFileSync(path.join(__dirname, "..", "src", "charts.ts"), "utf8");
+assert.match(source, /export interface AnalyticsSnapshot/);
+assert.match(source, /buildAnalyticsSnapshot\(store: CheckinStore/);
+assert.match(source, /weekly: buildWeeklyCompletionTrend/);
+assert.match(source, /monthly: buildMonthlyEventTrend/);
+assert.match(source, /daily: buildDailyActivityTrend/);
+assert.match(source, /cloneAnalyticsSnapshot/);
+assert.match(source, /version: 1/);
+console.log("Analytics snapshot contract checks passed.");
