@@ -20,6 +20,8 @@ assert.match(source, /if \(!current\)/);
 assert.match(source, /Array\.isArray\(series\.points\)/);
 assert.match(source, /\[\["weekly", value\.weekly\].*\["yearly", value\.yearly\]\]/s);
 assert.match(source, /ANALYTICS_SERIES_LIMITS/);
+assert.match(source, /ANALYTICS_PAYLOAD_LIMIT/);
+assert.match(source, /raw\.length > ANALYTICS_PAYLOAD_LIMIT/);
 assert.match(source, /series\.points\.length > ANALYTICS_SERIES_LIMITS\[name\]/);
 assert.match(source, /Number\.isFinite\(point\.value\)/);
 assert.match(source, /point\.label\.length > 64/);

@@ -17,6 +17,7 @@ export interface TrendSeries {
 
 const clampRange = (value: number, fallback: number, max: number): number => Number.isFinite(value) ? Math.min(max, Math.max(1, Math.floor(value))) : fallback;
 const ANALYTICS_SERIES_LIMITS = {weekly: 52, monthly: 24, daily: 366, yearly: 10} as const;
+const ANALYTICS_PAYLOAD_LIMIT = 512 * 1024;
 const isAnalyticsDate = (value: unknown): value is string => {
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
     const [year, month, day] = value.split("-").map(Number);
@@ -54,6 +55,7 @@ export function serializeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): string 
 
 export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefined {
     try {
+        if (typeof raw !== "string" || raw.length > ANALYTICS_PAYLOAD_LIMIT) return undefined;
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
         if (value.version !== 1 || !isAnalyticsDate(value.asOf) || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
         for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
@@ -96,6 +98,7 @@ export function serializeAnalyticsSummary(snapshot: AnalyticsSnapshot): string {
 
 export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | undefined {
     try {
+        if (typeof raw !== "string" || raw.length > ANALYTICS_PAYLOAD_LIMIT) return undefined;
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
         if (!isAnalyticsDate(value.asOf)) return undefined;
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
