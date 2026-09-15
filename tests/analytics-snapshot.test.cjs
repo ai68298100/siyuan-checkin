@@ -18,6 +18,7 @@ assert.match(source, /migrated:/);
 assert.match(source, /mergeAnalyticsSnapshots/);
 assert.match(source, /if \(!current\)/);
 assert.match(source, /Array\.isArray\(series\.points\)/);
+assert.match(source, /value\.daily, value\.yearly/);
 assert.match(source, /Number\.isFinite\(point\.value\)/);
 assert.match(source, /buildWeeklyCompletionTrend\(store, 12, asOf\)/);
 assert.match(source, /buildMonthlyEventTrend\(store, 6, asOf\)/);
