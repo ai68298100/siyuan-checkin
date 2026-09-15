@@ -7052,6 +7052,161 @@
     white-space: nowrap;
 }
 
+/* Mobile occasions final layer: host-scoped so device pixel ratio/container width cannot re-enable desktop spacing. */
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header {
+    height: 44px;
+    min-height: 44px;
+    margin: 0 0 6px;
+    padding: 0;
+    align-items: center;
+    position: static;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__eyebrow,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__back-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__back-button {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    border-radius: 50%;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__icon-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__icon-button {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    margin-left: auto;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin: 0;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-list-panel,
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-list-panel,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    padding: 9px;
+    border-radius: 11px;
+    overflow: visible;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__section-heading,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__section-heading {
+    min-height: 34px;
+    margin-bottom: 7px;
+    gap: 6px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__section-heading strong,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 15px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-stats,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-stats { gap: 4px; margin-bottom: 6px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-stats span,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-stats span { padding: 3px 7px; font-size: 10px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-search,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-search { margin-bottom: 6px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-search input,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-search input {
+    min-height: 38px;
+    height: 38px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-filters,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-bottom: 7px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-filter select,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-filter select {
+    height: 36px;
+    padding-inline: 7px 22px;
+    font-size: 11px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager-list,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager-list {
+    display: grid;
+    gap: 6px;
+    max-height: none;
+    overflow: visible;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager-row,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 0;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 10px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-body,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-body { min-width: 0; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-title,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-title { gap: 5px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-title strong,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-title strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-meta,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-meta {
+    gap: 2px 6px;
+    font-size: 10px;
+    line-height: 1.3;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-meta span + span::before,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-meta span + span::before { margin-right: 6px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+    gap: 4px;
+    padding-top: 6px;
+    border-top: 1px solid var(--lc-checkin-border);
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    min-height: 30px;
+    border-radius: 8px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span {
+    display: inline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel form,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel form { gap: 7px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row { gap: 6px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel :is(input, select),
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel :is(input, select) { min-height: 38px; height: 38px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea { min-height: 64px; }
+
 /* Mobile editor density: reclaim the header/template/form dead space while preserving touch targets. */
 .lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__editor-header,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__editor-header {
