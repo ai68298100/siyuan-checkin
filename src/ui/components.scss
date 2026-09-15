@@ -2785,8 +2785,8 @@
 
 .lc-checkin--review .lc-checkin__summary-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 14px; }
 .lc-checkin--review .lc-checkin__summary-stats > div {
-    min-height: 64px;
-    padding: 10px 16px;
+    min-height: 54px;
+    padding: 8px 14px;
     border: 1px solid var(--lc-checkin-border);
     border-radius: var(--lc-checkin-radius-lg);
     background: var(--lc-checkin-surface);
@@ -2794,10 +2794,14 @@
     display: grid;
     align-content: center;
 }
-.lc-checkin--review .lc-checkin__summary-stats strong { color: var(--lc-checkin-text); font-size: 22px; font-weight: 760; letter-spacing: -.02em; line-height: 1; }
+.lc-checkin--review .lc-checkin__summary-stats strong { color: var(--lc-checkin-text); font-size: 18px; font-weight: 700; letter-spacing: -.01em; line-height: 1; }
 .lc-checkin--review .lc-checkin__summary-stats > div:first-child strong { color: var(--lc-checkin-accent-text); }
 .lc-checkin--review .lc-checkin__summary-stats > div:nth-child(2) strong { color: var(--lc-checkin-success-text); }
-.lc-checkin--review .lc-checkin__summary-stats span { display: block; margin-top: 4px; color: var(--lc-checkin-muted); font-size: 10.5px; font-weight: 620; }
+.lc-checkin--review .lc-checkin__summary-stats span { display: block; margin-top: 3px; color: var(--lc-checkin-muted); font-size: 10px; font-weight: 600; }
+.lc-checkin--review .lc-checkin__top-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lc-checkin--review .lc-checkin__top-actions .lc-checkin__text-button[data-action="generate-summary"] { color: var(--lc-checkin-accent-text); border: 1px solid var(--lc-checkin-accent); border-radius: 999px; padding-inline: 10px; font-weight: 650; }
+.lc-checkin--review .lc-checkin__summary-agent { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); }
+.lc-checkin--review .lc-checkin__summary-agent > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .lc-checkin__review-layout { display: grid; gap: 14px; }
 @container lc5 (min-width: 880px) {
