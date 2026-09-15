@@ -11,6 +11,7 @@ assert.match(css, /safe-area-inset-bottom/); assert.match(css, /safe-area-inset-
 assert.match(css, /\.lc-checkin__topnav[\s\S]*width: 100%/);
 assert.match(css, /\.lc-checkin__topnav-tabs[\s\S]*overflow-x: auto/);
 assert.match(css, /\.lc-checkin__topnav-actions \{ flex: 0 0 auto; min-width: 72px;/);
+assert.match(css, /\.lc-checkin__topnav-tabs \{ display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 auto;/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__summary-stats[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__review-fold-body[\s\S]*gap: 8px/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__review-subnav \{ top: 58px;/);
