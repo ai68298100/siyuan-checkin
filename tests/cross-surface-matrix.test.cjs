@@ -14,6 +14,8 @@ assert.match(css, /\.lc-checkin__topnav-actions \{ flex: 0 0 auto; min-width: 72
 assert.match(css, /\.lc-checkin--review \.lc-checkin__summary-stats[\s\S]*repeat\(4, minmax\(0, 1fr\)\)/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__review-fold-body[\s\S]*gap: 8px/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__review-subnav \{ top: 58px;/);
+assert.match(css, /review-subnav \{ top: 58px; gap: 4px;/);
+assert.match(css, /review-subnav button \{ padding-inline: 10px; \}/);
 assert.match(css, /\.lc-checkin--review \.lc-checkin__editor-header > :first-child[\s\S]*flex: 1 1 auto/);
 assert.match(css, /:focus-visible/); assert.match(css, /overflow-x:\s*hidden/);
 assert.match(css, /lc-checkin__analytics-badge/);
