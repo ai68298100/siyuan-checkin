@@ -1320,6 +1320,7 @@
  .lc-checkin__reminder-row .lc-checkin__reminder-timing { grid-column: 2; font-size: 10px; }
  .lc-checkin__reminder-row .lc-checkin__reminder-actions { grid-column: 3; grid-row: 1 / span 2; }
 }
+
 /* Twenty-first visual-density pass: reclaim Today whitespace and right-align actions. */
 .lc-checkin--today .lc-checkin__item-action { margin-left: auto; padding-left: 12px; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 96px; }
@@ -6973,4 +6974,80 @@
     }
 
     .lc-checkin__error { min-height: 0; }
+}
+
+/* Final mobile review alignment layer (must follow all legacy container overrides). */
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__editor-header,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__editor-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 6px;
+    min-height: 0;
+    margin: 0 0 8px;
+    padding: 0;
+    position: static;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__editor-header > div:first-child,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__editor-header > div:first-child { display: none; }
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions {
+    display: contents;
+    position: static;
+    max-width: none;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__range-tabs,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__range-tabs {
+    order: 1;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar { display: none; }
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button {
+    order: 2;
+    min-height: 32px;
+    padding-inline: 11px;
+    white-space: nowrap;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button {
+    order: 3;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 0 8px;
+    padding: 4px 2px 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav::-webkit-scrollbar,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav::-webkit-scrollbar { display: none; }
+.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
 }
