@@ -3844,7 +3844,7 @@
 .lc-checkin__settings-nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
 @container lc5 (min-width: 820px) {
-    .lc-checkin__settings-nav { position: sticky; top: 12px; flex-direction: column; overflow: visible; }
+    .lc-checkin__settings-nav { position: sticky; top: 58px; flex-direction: column; overflow: visible; }
 }
 .lc-checkin__settings-nav button {
     flex: none;

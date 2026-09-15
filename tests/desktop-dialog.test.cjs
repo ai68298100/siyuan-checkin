@@ -202,6 +202,8 @@ assert.match(components, /\.lc-checkin--settings \.lc-checkin__settings-layout \
     "desktop settings layout must remain centered and bounded");
 assert.match(components, /settings-row > select,[\s\S]*width: min\(100%, 240px\)/,
     "desktop settings controls must use a bounded consistent width");
+assert.match(components, /\.lc-checkin__settings-nav \{ position: sticky; top: 58px;/,
+    "desktop settings navigation must stay below the top bar");
 
 // 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
