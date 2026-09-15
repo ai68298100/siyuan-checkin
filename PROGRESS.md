@@ -579,3 +579,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 继续推进 T-105：迁移 Today 组织筛选、搜索尺寸、分组标题、分组间距与分组项目间距等基础职责至组件层。
 - 删除 `index.scss` 中 20 行重复规则，减少桌面/移动后置覆盖冲突。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `9c0ebda`，未推送。
+### 10.0 基础开发第十八批（约 100 项）
+
+- 继续推进 T-105：迁移 Today 卡片基础样式（高度、内边距、图标、标题、元信息、进度、操作区）至组件层。
+- 统一卡片阴影和边框 Token，删除 legacy 重复规则 25 行。
+- 同步 UI 主题守门，改为锁定组件层 `lc-checkin-shadow-sm` 归属。
+- 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `b37e431`、`851e927`，未推送。
