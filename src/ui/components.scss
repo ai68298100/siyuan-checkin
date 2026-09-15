@@ -3099,7 +3099,7 @@
    阈值按容器内容盒（.lc-checkin 有 24px 横内边距）取 900，覆盖 948px 以上的宿主。 */
 @container lc5 (min-width: 900px) {
     .lc-checkin--occasions .lc-checkin__occasion-manager {
-        grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+        grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
         align-items: start;
     }
     .lc-checkin--occasions .lc-checkin__occasion-list-panel { grid-row: 1; grid-column: 1; }
@@ -3512,6 +3512,16 @@
 .lc-checkin__occasion-row-body small { color: var(--lc-checkin-muted); font-size: 10.5px; }
 .lc-checkin__occasion-row-note { color: color-mix(in srgb, var(--lc-checkin-muted) 80%, transparent); }
 .lc-checkin__occasion-manager-row.is-disabled { opacity: .55; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled { opacity: 1; border-style: dashed; background: color-mix(in srgb, var(--lc-checkin-muted-surface) 72%, var(--lc-checkin-bg)); }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body { color: var(--lc-checkin-muted); }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body strong { color: var(--lc-checkin-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { content: "已停用"; justify-self: end; color: var(--lc-checkin-muted); font-size: 10px; }
+.lc-checkin--occasions .lc-checkin__occasion-form-panel { min-width: 0; }
+.lc-checkin--occasions .lc-checkin__occasion-list-panel { min-width: 0; }
+@container lc5 (max-width: 899px) {
+ .lc-checkin--occasions .lc-checkin__occasion-manager { gap: 10px; }
+ .lc-checkin--occasions .lc-checkin__occasion-form-panel,.lc-checkin--occasions .lc-checkin__occasion-list-panel { padding: 11px 12px; }
+}
 .lc-checkin__upcoming { margin-top: 16px; padding: 12px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
 .lc-checkin__upcoming h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 13.5px; font-weight: 720; }
 .lc-checkin__upcoming-row {
