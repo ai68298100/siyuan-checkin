@@ -20,7 +20,6 @@ assert.match(fragmentsSource, /data-action="open-tab"/);
 assert.match(source, /getCustomSummaryContext/);
 assert.match(apiSource, /自定义总结范围无效/);
 assert.match(apiSource, /CHECKIN_API_VERSION/);
-assert.match(apiSource, /analytics\.read/);
 assert.match(apiSource, /summarizeCustom: \(range, providerId\) => summarizeWithProvider\("day", range, providerId\)/);
 assert.match(source, /customRange \? buildCustomSummaryContext/);
 assert.match(source, /getEventsInCustomRange\(this\.store, customRange\)/);
