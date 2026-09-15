@@ -91,6 +91,12 @@ export function parseAnalyticsEnvelope(raw: string): AnalyticsSnapshot | undefin
     }
 }
 
+export function migrateAnalyticsEnvelope(raw: string): {snapshot: AnalyticsSnapshot; migrated: boolean} | undefined {
+    const snapshot = parseAnalyticsEnvelope(raw) ?? parseAnalyticsSnapshot(raw);
+    if (!snapshot) return undefined;
+    return {snapshot: cloneAnalyticsSnapshot(snapshot), migrated: !raw.includes('"version":1') || raw.includes('"snapshot"') === false};
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;
