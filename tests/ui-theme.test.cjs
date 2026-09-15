@@ -121,6 +121,10 @@ assert.ok(!styles.includes(".lc-checkin__history-row {"), "history row foundatio
 assert.ok(!styles.includes(".lc-checkin__preview-card {"), "editor preview foundations must not return to legacy index.scss");
 assert.match(liveStyles, /\.lc-checkin__preview-card \{[\s\S]*\.lc-checkin__preview-progress/,
     "editor preview foundations belong to the component layer");
+assert.ok(!styles.includes(".lc-checkin__editor-preview {"), "editor preview shell must not return to legacy index.scss");
+assert.ok(!styles.includes(".lc-checkin__history-event-actions {"), "history action layout must not return to legacy index.scss");
+assert.match(liveStyles, /\.lc-checkin__history-event-actions \{[\s\S]*\.lc-checkin__history-event-actions button/,
+    "history action layout belongs to the component layer");
 assert.match(liveStyles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow-sm\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */
