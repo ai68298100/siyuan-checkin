@@ -126,6 +126,7 @@ export function serializeAnalyticsEnvelope(snapshot: AnalyticsSnapshot): string 
 
 export function parseAnalyticsEnvelope(raw: string): AnalyticsSnapshot | undefined {
     try {
+        if (typeof raw !== "string" || raw.length > ANALYTICS_PAYLOAD_LIMIT) return undefined;
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotEnvelope>;
         if (value.version !== 1 || !value.snapshot) return undefined;
         return parseAnalyticsSnapshot(JSON.stringify(value.snapshot));
