@@ -33,6 +33,7 @@ assert.match(source, /summarizeAnalyticsSnapshot/);
 assert.match(source, /compareAnalyticsSnapshots/);
 assert.match(source, /left\.asOf === right\.asOf/);
 assert.match(source, /activeDays: snapshot\.daily\.points/);
+assert.match(source, /yearlyCurrent: summarizeTrend\(snapshot\.yearly\)/);
 assert.match(source, /AnalyticsSnapshotEnvelope/);
 assert.match(source, /serializeAnalyticsEnvelope/);
 assert.match(source, /parseAnalyticsEnvelope/);

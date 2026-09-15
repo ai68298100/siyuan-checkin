@@ -62,6 +62,7 @@ export interface AnalyticsSnapshotSummary {
     weeklyCurrent: number;
     monthlyCurrent: number;
     activeDays: number;
+    yearlyCurrent: number;
 }
 
 export function summarizeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): AnalyticsSnapshotSummary {
@@ -70,6 +71,7 @@ export function summarizeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): Analyti
         weeklyCurrent: summarizeTrend(snapshot.weekly).current,
         monthlyCurrent: summarizeTrend(snapshot.monthly).current,
         activeDays: snapshot.daily.points.reduce((sum, point) => sum + (point.value > 0 ? 1 : 0), 0),
+        yearlyCurrent: summarizeTrend(snapshot.yearly).current,
     };
 }
 
@@ -86,10 +88,10 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
     try {
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
         if (typeof value.asOf !== "string" || value.asOf.length > 32) return undefined;
-        for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays"] as const) {
+        for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
             if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return undefined;
         }
-        return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!};
+        return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!, yearlyCurrent: value.yearlyCurrent!};
     } catch {
         return undefined;
     }
