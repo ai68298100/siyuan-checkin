@@ -7051,3 +7051,71 @@
     line-height: 1.2;
     white-space: nowrap;
 }
+
+/* Mobile editor density: reclaim the header/template/form dead space while preserving touch targets. */
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__editor-header,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__editor-header {
+    height: 44px;
+    min-height: 44px;
+    margin: 0 0 6px;
+    padding: 0;
+    align-items: center;
+    position: static;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__back-button,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__back-button {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    border-radius: 50%;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__title,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__title { display: none; }
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__form-scroll,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__form-scroll {
+    gap: 8px;
+    padding-bottom: 84px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__template-section,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__template-section {
+    max-height: 340px;
+    min-height: 0;
+    overflow: hidden;
+    gap: 5px;
+    padding: 9px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__templates,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__templates {
+    max-height: 224px;
+    min-height: 0;
+    overflow-y: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__template,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__template {
+    min-height: 52px;
+    padding: 5px 7px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name,
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--icons,
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__kind-field,
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__advanced,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--icons,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__kind-field,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__advanced {
+    padding: 9px 10px;
+    border-radius: 10px;
+}
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name { gap: 4px; }
+.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name input,
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name input {
+    min-height: 40px;
+    height: 40px;
+    padding-block: 6px;
+}
