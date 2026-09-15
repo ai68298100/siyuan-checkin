@@ -15,6 +15,8 @@ assert.match(source, /migrateAnalyticsEnvelope/);
 assert.match(source, /migrated:/);
 assert.match(source, /mergeAnalyticsSnapshots/);
 assert.match(source, /if \(!current\)/);
+assert.match(source, /Array\.isArray\(series\.points\)/);
+assert.match(source, /Number\.isFinite\(point\.value\)/);
 assert.match(source, /catch \{\s*return undefined;/);
 assert.match(source, /summarizeAnalyticsSnapshot/);
 assert.match(source, /compareAnalyticsSnapshots/);
