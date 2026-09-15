@@ -17,6 +17,7 @@ export interface TrendSeries {
 
 const clampRange = (value: number, fallback: number, max: number): number => Number.isFinite(value) ? Math.min(max, Math.max(1, Math.floor(value))) : fallback;
 const ANALYTICS_SERIES_LIMITS = {weekly: 52, monthly: 24, daily: 366, yearly: 10} as const;
+const isAnalyticsDate = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 export interface AnalyticsSnapshot {
     version: 1;
@@ -49,7 +50,7 @@ export function serializeAnalyticsSnapshot(snapshot: AnalyticsSnapshot): string 
 export function parseAnalyticsSnapshot(raw: string): AnalyticsSnapshot | undefined {
     try {
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshot>;
-        if (value.version !== 1 || typeof value.asOf !== "string" || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
+        if (value.version !== 1 || !isAnalyticsDate(value.asOf) || !value.weekly || !value.monthly || !value.daily || !value.yearly) return undefined;
         for (const [name, series] of [["weekly", value.weekly], ["monthly", value.monthly], ["daily", value.daily], ["yearly", value.yearly]] as const) {
             if (typeof series.title !== "string" || typeof series.unit !== "string" || !Array.isArray(series.points)) return undefined;
             if (series.points.length > ANALYTICS_SERIES_LIMITS[name]) return undefined;
@@ -91,7 +92,7 @@ export function serializeAnalyticsSummary(snapshot: AnalyticsSnapshot): string {
 export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | undefined {
     try {
         const value = JSON.parse(raw) as Partial<AnalyticsSnapshotSummary>;
-        if (typeof value.asOf !== "string" || value.asOf.length > 32) return undefined;
+        if (!isAnalyticsDate(value.asOf)) return undefined;
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays", "yearlyCurrent"] as const) {
             if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return undefined;
         }
