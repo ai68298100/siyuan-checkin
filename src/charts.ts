@@ -87,7 +87,7 @@ export function parseAnalyticsSummary(raw: string): AnalyticsSnapshotSummary | u
         for (const key of ["weeklyCurrent", "monthlyCurrent", "activeDays"] as const) {
             if (typeof value[key] !== "number" || !Number.isFinite(value[key])) return undefined;
         }
-        return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent, monthlyCurrent: value.monthlyCurrent, activeDays: value.activeDays};
+        return {asOf: value.asOf, weeklyCurrent: value.weeklyCurrent!, monthlyCurrent: value.monthlyCurrent!, activeDays: value.activeDays!};
     } catch {
         return undefined;
     }
