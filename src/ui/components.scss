@@ -5917,6 +5917,7 @@
         overflow: hidden;
     }
     .lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 auto; overflow-x: auto; scrollbar-width: none; }
+    .lc-checkin__topnav-tabs button { flex: 0 0 auto; }
     .lc-checkin__topnav-tabs::-webkit-scrollbar { display: none; }
     .lc-checkin__topnav-actions { flex: 0 0 auto; min-width: 72px; justify-content: flex-end; }
     .lc-checkin__topnav-action { flex: 0 0 32px; }
