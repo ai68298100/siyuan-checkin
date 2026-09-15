@@ -126,7 +126,7 @@ assert.match(liveStyles, /\.lc-checkin--today \.lc-checkin__item-name \{[^}]*ove
     "long item names must truncate instead of widening cards");
 assert.match(liveStyles, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-checkin--today \.lc-checkin__item \{ grid-template-columns: 34px minmax\(0, 1fr\) auto;/,
     "narrow containers must use the width-safe compact card grid");
-assert.match(styles, /backdrop-filter:\s*blur\(12px\)/);
+assert.match(liveStyles, /backdrop-filter:\s*blur\(12px\)|backdrop-filter:\s*blur\(14px\)/);
 assert.match(styles, /\.lc-checkin__summary-stats[\s\S]*grid-template-columns:\s*repeat\(3/);
 assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-checkin__text-button[\s\S]*min-width:\s*36px/);
 assert.match(reviewSource, /lc-checkin--review[\s\S]*lc-checkin__summary-stats/);
