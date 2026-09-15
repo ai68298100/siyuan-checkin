@@ -208,6 +208,8 @@ assert.match(components, /settings-nav \{ position: sticky; top: 58px;[\s\S]*bor
     "desktop settings navigation must have a bounded visual surface");
 assert.match(components, /settings-nav button \{ width: 100%; min-width: 0; box-sizing: border-box; \}/,
     "desktop settings navigation buttons must fill the rail without overflow");
+assert.match(components, /occasion-form-panel form \{ gap: 8px; \}/,
+    "desktop occasion form must use compact vertical spacing");
 
 // 回顾页归档入口唯一（T-032）：归档按钮只渲染一次，补记 aria 的 {name} 与 {date} 占位符必须传值
 const reviewSource = read("src", "render", "review.ts");
