@@ -9,5 +9,7 @@ for (const surface of ["today", "history", "occasions", "settings", "archived"])
 for (const width of ["320px", "340px", "360px", "380px", "719px"]) assert.match(css, new RegExp(`max-width: ${width.replace("px", "\\s*px")}`), `responsive tier ${width} must be declared`);
 assert.match(css, /safe-area-inset-bottom/); assert.match(css, /safe-area-inset-top/);
 assert.match(css, /:focus-visible/); assert.match(css, /overflow-x:\s*hidden/);
+assert.match(css, /lc-checkin__analytics-badge/);
+assert.match(css, /forced-colors: active/);
 assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
 console.log("Cross-surface 12.0 matrix checks passed.");
