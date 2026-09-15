@@ -650,7 +650,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* Desktop quick dialog sizing follows the user preference: a percentage of
-       the host window (default 80%), fullscreen, or a fixed pixel size. */
+       the host window (default 90%), fullscreen, or a fixed pixel size. */
     private quickDialogSize(): {width: string; height: string} {
         return quickDialogSizeOf(this as unknown as QuickDialogHost);
     }
