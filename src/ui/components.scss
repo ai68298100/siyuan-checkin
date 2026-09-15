@@ -3879,6 +3879,9 @@
     .lc-checkin--settings .lc-checkin__settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 260px); align-items: center; }
     .lc-checkin--settings .lc-checkin__settings-row > :is(select, input, .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) { justify-self: end; max-width: 100%; }
     .lc-checkin--settings .lc-checkin__settings-layout { max-width: 1180px; margin-inline: auto; }
+    .lc-checkin--settings .lc-checkin__settings-row > select,
+    .lc-checkin--settings .lc-checkin__settings-row > input[type="range"] { width: min(100%, 240px); box-sizing: border-box; }
+    .lc-checkin--settings .lc-checkin__settings-inline { min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
 }
 .lc-checkin__settings-row:last-child { border-bottom: 0; }
 .lc-checkin__settings-label { display: grid; gap: 2px; min-width: 0; }
