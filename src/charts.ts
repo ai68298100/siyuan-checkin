@@ -72,6 +72,25 @@ export function compareAnalyticsSnapshots(left: AnalyticsSnapshot, right: Analyt
     return left.asOf < right.asOf ? "older" : "newer";
 }
 
+export interface AnalyticsSnapshotEnvelope {
+    version: 1;
+    snapshot: AnalyticsSnapshot;
+}
+
+export function serializeAnalyticsEnvelope(snapshot: AnalyticsSnapshot): string {
+    return JSON.stringify({version: 1, snapshot: cloneAnalyticsSnapshot(snapshot)} satisfies AnalyticsSnapshotEnvelope);
+}
+
+export function parseAnalyticsEnvelope(raw: string): AnalyticsSnapshot | undefined {
+    try {
+        const value = JSON.parse(raw) as Partial<AnalyticsSnapshotEnvelope>;
+        if (value.version !== 1 || !value.snapshot) return undefined;
+        return parseAnalyticsSnapshot(JSON.stringify(value.snapshot));
+    } catch {
+        return undefined;
+    }
+}
+
 export function summarizeTrend(series: TrendSeries): {current: number; average: number; best: number; delta: number} {
     const values = series.points.map((point) => point.value);
     const current = values[values.length - 1] || 0;
