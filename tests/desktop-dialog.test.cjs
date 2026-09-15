@@ -183,6 +183,8 @@ assert.match(components, /occasion-filter select \{ height: 34px; \}/,
     "desktop occasion filters must share a compact control height");
 assert.match(components, /occasion-form-panel \{ padding-bottom: 16px; \}/,
     "desktop occasion form must avoid excessive bottom whitespace");
+assert.match(components, /occasion-list-panel,[\s\S]*occasion-form-panel \{ align-self: start; \}/,
+    "desktop occasion panels must not stretch to match each other");
 
 // 设置页恢复点与同步审计：最新一条直显，其余通过 details 折叠，避免长列表占满页面
 const settingsView = read("src", "render", "settings.ts");

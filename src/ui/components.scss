@@ -5849,6 +5849,8 @@
     .lc-checkin--occasions .lc-checkin__occasion-manager { grid-template-columns: minmax(340px, 400px) minmax(0, 1fr); align-items: start; }
     .lc-checkin--occasions .lc-checkin__occasion-list-panel,
     .lc-checkin--occasions .lc-checkin__occasion-form-panel { min-width: 0; overflow: hidden; }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel,
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { align-self: start; }
     .lc-checkin--occasions .lc-checkin__occasion-manager-list { overflow-x: hidden; scrollbar-gutter: stable; }
     .lc-checkin--occasions .lc-checkin__occasion-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .lc-checkin--occasions .lc-checkin__occasion-filter > span { white-space: nowrap; }
