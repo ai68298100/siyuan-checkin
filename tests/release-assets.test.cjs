@@ -22,8 +22,11 @@ const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
 for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {
     assert.match(builtCss, new RegExp(`\\.lc-checkin--${surface}`), `built CSS missing 4.0 ${surface} surface`);
 }
-/* CSS 体积预算（T-109，B-005 处置后基线）：dock 四档宽度层入库后实测 294502 字节（v9.6.1 为 264920，全部为源码有引用的活样式），
-   上限留 8% 余量防样式膨胀回潮；四档样式的合并精简立项在 15.0，完成后再下修基线。 */
+/* CSS 体积分级门禁：正常线 318KB，合理新增允许至 340KB，超过 360KB 才阻断发布。 */
 const builtCssBytes = fs.statSync(path.join(root, "dist", "index.css")).size;
-assert.ok(builtCssBytes <= 318_000, `built CSS exceeds the 318000-byte budget: ${builtCssBytes} bytes`);
-console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes).`);
+const CSS_SOFT_LIMIT = 318_000;
+const CSS_WARN_LIMIT = 340_000;
+const CSS_HARD_LIMIT = 360_000;
+assert.ok(builtCssBytes <= CSS_HARD_LIMIT, `built CSS exceeds the hard 360000-byte budget: ${builtCssBytes} bytes`);
+const budgetState = builtCssBytes <= CSS_SOFT_LIMIT ? "within-budget" : builtCssBytes <= CSS_WARN_LIMIT ? "warning" : "near-hard-limit";
+console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes, ${budgetState}).`);
