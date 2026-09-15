@@ -4348,7 +4348,7 @@
     .lc-checkin--review .lc-checkin__header-actions { min-width: 0; max-width: 58%; flex-wrap: wrap; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__range-tabs { flex: 1 1 100%; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 30px; padding-inline: 9px; }
-    .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 56px; display: grid; place-content: center; }
+    .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 56px; display: grid; place-content: center; overflow: hidden; }
     .lc-checkin--review .lc-checkin__summary-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     .lc-checkin--review .lc-checkin__summary-text,
