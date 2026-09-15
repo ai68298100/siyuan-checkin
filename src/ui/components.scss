@@ -2414,6 +2414,16 @@
     .lc-checkin--review .lc-checkin__reminder-row small { grid-column: 2 / 4; }
     .lc-checkin--review .lc-checkin__reminder-actions { grid-column: 4; grid-row: 1 / span 2; }
 }
+/* Final review log alignment: values share one fixed numeric column. */
+.lc-checkin--review .lc-checkin__history-event {
+    grid-template-columns: minmax(0, 1fr) 96px;
+}
+.lc-checkin--review .lc-checkin__history-event-value {
+    width: 96px;
+    min-width: 96px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
 /* Seventeenth narrow-surface pass: viewport fallback and insight density. */
 @media (max-width: 380px) {
     .lc-checkin { padding-right: 12px; padding-left: 12px; }
