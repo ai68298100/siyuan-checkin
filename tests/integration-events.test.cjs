@@ -11,10 +11,13 @@ for (const file of ["api-contract.ts", "integrations.ts"]) {
 }
 const events = require(path.join(root, "integrations.js"));
 const input = {type: "suggestion-workflow-updated", suggestionId: " s1 ", suggestionStatus: "confirmed", item: {id: "leak"}};
+const analytics = {type: "analytics-updated", analyticsAsOf: "2026-09-15", leaked: {secret: true}};
 const safe = events.cloneIntegrationEvent(input);
 assert.deepEqual(safe, {type: "suggestion-workflow-updated", suggestionId: "s1", suggestionStatus: "confirmed"});
 assert.notEqual(safe, input);
 assert.equal(events.toExternalEventName(safe), "checkin:suggestion-workflow-updated");
+assert.equal(events.cloneIntegrationEvent(analytics).analyticsAsOf, "2026-09-15");
+assert.equal(events.toExternalEventName({type: "analytics-updated"}), "checkin:analytics-updated");
 assert.equal(events.isSuggestionWorkflowEvent(safe), true);
 assert.equal(events.isSuggestionWorkflowEvent(input), true);
 assert.equal(events.cloneIntegrationEvent({...input, suggestionId: ""}), undefined);
