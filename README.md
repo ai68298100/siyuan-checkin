@@ -1,5 +1,17 @@
 <div align="center">
 
+<!-- 11.0.0 release summary: the detailed sections below retain historical context. -->
+
+## 11.0.0 发布摘要
+
+小驴打卡是思源笔记中的本地打卡与习惯工作台。11.0.0 收口了今日页、回顾页、日期事项、移动端/dock 布局、智能体建议工作流、番茄钟适配器、独立主题与发布质量门禁。
+
+安装：从 [GitHub Releases](https://github.com/ai68298100/siyuan-checkin/releases) 下载 `package.zip`，在思源「设置 → 集市 → 下载包」中安装。需要思源 v3.4.2 或更高版本。
+
+核心数据本地保存，不依赖网络或 AI；支持 JSON/CSV 导出、恢复点、冲突保护和跨窗口同步。API 通过 `window.siyuanCheckin`（协议 v4）提供能力协商与生态集成，详见 [生态集成文档](docs/ecosystem-integration.md)。
+
+完整变更记录见 [v11.0.0-change-log.md](docs/v11.0.0-change-log.md)。
+
 <img src="icon.png" width="96" alt="小驴打卡图标" />
 
 # 小驴打卡
