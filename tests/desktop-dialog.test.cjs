@@ -177,6 +177,8 @@ assert.match(components, /occasion-form-panel \.lc-checkin__form-row \{ grid-tem
     "desktop occasion form rows must keep balanced two-column fields");
 assert.match(components, /occasion-row-actions[\s\S]*min-width: 128px;/,
     "desktop occasion actions must reserve a stable hit-target column");
+assert.match(components, /occasion-manager-row \{[\s\S]*min-height: 56px;[\s\S]*padding: 6px 10px;/,
+    "desktop occasion cards must stay compact and readable");
 
 // 设置页恢复点与同步审计：最新一条直显，其余通过 details 折叠，避免长列表占满页面
 const settingsView = read("src", "render", "settings.ts");
