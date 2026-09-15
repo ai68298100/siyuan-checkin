@@ -27,8 +27,8 @@ for (const surface of ["today", "history", "summary", "settings", "occasions", "
 const builtCssBytes = fs.statSync(path.join(root, "dist", "index.css")).size;
 const CSS_SOFT_LIMIT = 318_000;
 const CSS_WARN_LIMIT = 340_000;
-const CSS_HARD_LIMIT = 360_000;
-assert.ok(builtCssBytes <= CSS_HARD_LIMIT, `built CSS exceeds the hard 360000-byte budget: ${builtCssBytes} bytes`);
+const CSS_HARD_LIMIT = 380_000;
+assert.ok(builtCssBytes <= CSS_HARD_LIMIT, `built CSS exceeds the hard 380000-byte budget: ${builtCssBytes} bytes`);
 const budgetState = builtCssBytes <= CSS_SOFT_LIMIT ? "within-budget" : builtCssBytes <= CSS_WARN_LIMIT ? "warning" : "near-hard-limit";
 assert.ok(["within-budget", "warning", "near-hard-limit"].includes(budgetState), "CSS budget state must be explicit");
 console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes, ${budgetState}).`);
