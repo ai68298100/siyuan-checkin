@@ -4667,6 +4667,11 @@
 .lc-checkin__review-fold[open] > summary { margin-bottom: 10px; }
 .lc-checkin__review-fold[open] .lc-checkin__fold-chevron { transform: rotate(180deg); }
 .lc-checkin__review-fold-body { display: grid; gap: 10px; }
+@container lc5 (min-width: 720px) {
+    .lc-checkin--review .lc-checkin__review-fold { min-width: 0; }
+    .lc-checkin--review .lc-checkin__review-fold-body { max-width: 1180px; margin-inline: auto; gap: 8px; }
+    .lc-checkin--review .lc-checkin__review-fold[open] > summary { margin-bottom: 6px; }
+}
 
 /* 8.2 备份提醒横幅 */
 .lc-checkin__backup-reminder {
