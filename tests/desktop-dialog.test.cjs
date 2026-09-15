@@ -72,7 +72,7 @@ assert.match(i18n, /"set\.dialogAuto": "Adaptive \(recommended\)"/, "en copy for
 
 // 守门：宽容器下的页面级桌面布局
 assert.match(components, /\.lc-checkin-tab-host > \.lc-checkin__topnav \{[\s\S]*?box-sizing: border-box;/, "tab top navigation must include its horizontal padding inside the host width");
-assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(300px, 420px\) minmax\(0, 1fr\)/,
+assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(320px, 360px\) minmax\(0, 1fr\)/,
     "the occasions page must become a list-left / form-right master-detail layout");
 assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-list-panel \{ grid-row: 1; grid-column: 1; \}[\s\S]*?\.lc-checkin--occasions \.lc-checkin__occasion-form-panel \{ grid-row: 1; grid-column: 2; \}/,
     "the occasion list must be placed before the form on desktop");
