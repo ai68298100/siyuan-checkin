@@ -4411,7 +4411,8 @@
    最小宽 380 是「图标 + 至少 6 个字的名称 + 完整操作区（固定轨道 ~172px）」的下限，
    低于它名称会被压成一两个字（320 时实测名称列只剩 65px）。 */
 .lc-checkin--today .lc-checkin__group-items {
-    grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    align-items: stretch;
 }
 .lc-checkin--today .lc-checkin__group-items:has(> :nth-child(2)):not(:has(> :nth-child(3))) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
