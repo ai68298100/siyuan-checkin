@@ -1773,3 +1773,15 @@
 - [x] T-1057 项目边界 100+ 运行期验收
   - 验收：25组污染数组和25组污染项目分别验证 getter 零执行与 missing-item，新增不少于50条检查。
   - 状态：done（两组各50条、共100条逐项断言，另覆盖已匹配项目的三种字段 getter）。
+
+## 13.0 专注生态第二十四批（T-1058~T-1060）
+
+- [x] T-1058 completion 上下文无损校验
+  - 验收：itemId、itemUnit、tomatoMode 必须非空、无首尾空白且不超过既定边界；不得 trim/slice 后接受伪造回调。
+  - 状态：done（三个上下文字段统一 exactBoundedText，异常返回 invalid-context）。
+- [x] T-1059 完成时长禁止隐式转换
+  - 验收：durationMinutes 只接受有限 number；Symbol、字符串、对象及 valueOf/toString 钩子不得执行或被转换。
+  - 状态：done（先做 typeof number 与 Number.isFinite 判断，再进入0～1440业务范围）。
+- [x] T-1060 Payload 边界 100+ 运行期验收
+  - 验收：25组异常上下文和25组异常时长分别执行两项断言，新增不少于50条检查。
+  - 状态：done（两组各50条、共100条逐项断言，另覆盖数值字符串拒绝与零 coercion 调用）。

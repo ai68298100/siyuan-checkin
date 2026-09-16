@@ -826,3 +826,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - completion 项目匹配新增 `findCompletionItem`，使用 ownDataValue 读取数组位置和项目 id，污染 getter 不执行且稳定返回 missing-item。
 - archived、unit、tomatoMode 以及分钟/小时/次数换算改为自有数据读取，损坏字段不会进入第三方代码或被误报成写入失败。
 - 25组污染数组与25组污染项目新增100条逐项断言，另覆盖匹配项目字段 getter；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 36ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十四批（2026-09-17，T-1058~T-1060）
+
+- completion 的 itemId/itemUnit/tomatoMode 改为无损文本校验，带空白或超长字段不再经 trim/slice 后匹配本地项目。
+- durationMinutes 仅接受有限 number，不再执行 Number 隐式转换；Symbol、字符串及恶意 valueOf 对象稳定返回 invalid-duration。
+- 25组异常上下文与25组异常时长共新增100条逐项断言，另覆盖数值字符串和零 coercion 调用；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 42ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

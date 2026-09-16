@@ -334,3 +334,9 @@
 - bridge 正常接收主 store 项目，但 completion 判定是独立导出的安全边界；损坏数组或对象不应执行 getter，更不应被 catch 分支误记为 write-failed。
 - 项目查找通过 ownDataValue 读取数组元素和 id，未找到稳定返回 missing-item；找到后 archived、unit、tomatoMode 也只接受自有数据属性。
 - 不限制项目数组长度，以免大型合法仓库找不到旧项目；13.0 先消除副作用，十万级索引和查询性能按路线归入14.0数据内核。
+
+## D-125：Completion 回调必须原样复现启动上下文（2026-09-17）
+
+- itemId、itemUnit、tomatoMode 是启动时签名的一部分，消费端不能通过 trim/slice 接受被修改的回调；任何不可无损往返字段均按 invalid-context 拒绝。
+- durationMinutes 的公共契约是 number，不接受数值字符串或对象隐式转换；这既避免执行第三方 valueOf/toString，也避免不同 provider 对字符串格式产生歧义。
+- 严格校验位于项目匹配和持久写入之前，因此异常 payload 不调用 recordEvent，也不会污染幂等身份集合。

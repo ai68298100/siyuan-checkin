@@ -57,6 +57,28 @@ assert.equal(evaluateDockTomatoCompletion(detail({}, {tomatoMode: "sessions"}), 
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 0}, {tomatoMode: "sessions"}), [{...item, tomatoMode: "sessions"}]).reason, "invalid-duration");
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 30}, {itemUnit: "小时"}), [{...item, unit: "小时"}]).value, 0.5);
 
+const malformedContexts = Array.from({length: 25}, (_, index) => {
+    if (index % 6 === 0) return {itemId: " read"};
+    if (index % 6 === 1) return {itemId: "read "};
+    if (index % 6 === 2) return {itemId: "i".repeat(161)};
+    if (index % 6 === 3) return {itemUnit: " 分钟"};
+    if (index % 6 === 4) return {itemUnit: "u".repeat(81)};
+    return {tomatoMode: " minutes"};
+});
+for (let index = 0; index < malformedContexts.length; index += 1) {
+    const contextDecision = evaluateDockTomatoCompletion(detail({}, malformedContexts[index]), [item]);
+    assert.equal(contextDecision.accepted, false, `completion context ${index + 1} must be rejected`);
+    assert.equal(contextDecision.reason, "invalid-context", `completion context ${index + 1} must not be normalized`);
+}
+for (let index = 0; index < 25; index += 1) {
+    let coercionReads = 0;
+    const hostileDuration = index % 2 === 0 ? Symbol(`duration-${index}`) : {valueOf() { coercionReads += 1; throw new Error("must not execute"); }};
+    const durationDecision = evaluateDockTomatoCompletion(detail({durationMinutes: hostileDuration}), [item]);
+    assert.equal(coercionReads, 0, `duration ${index + 1} must not execute coercion hooks`);
+    assert.equal(durationDecision.reason, "invalid-duration", `duration ${index + 1} must fail closed`);
+}
+assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: "25"}), [item]).reason, "invalid-duration");
+
 for (let index = 0; index < 25; index += 1) {
     let arrayGetterReads = 0;
     const hostileItems = [];

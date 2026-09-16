@@ -111,6 +111,9 @@ assert.match(bridge, /value\.length <= COMPLETION_ISSUE_ARCHIVE_MAX_CHARS/, "ove
 assert.match(bridge, /function findCompletionItem/, "completion item lookup must use one defensive boundary");
 assert.match(bridge, /const candidate = ownDataValue\(items, String\(index\)\)/, "completion item lookup must not execute array accessors");
 assert.match(bridge, /ownDataValue\(candidate, "id"\) === itemId/, "completion item lookup must not execute item identity accessors");
+assert.match(bridge, /exactBoundedText\(ownDataValue\(context, "itemId"\), 160\)/, "completion item context must round-trip exactly");
+assert.match(bridge, /exactBoundedText\(ownDataValue\(context, "itemUnit"\), 80\)/, "completion unit context must round-trip exactly");
+assert.match(bridge, /typeof rawDuration === "number" && Number\.isFinite\(rawDuration\)/, "completion duration must not execute coercion hooks");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");
