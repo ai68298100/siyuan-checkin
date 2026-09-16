@@ -18,7 +18,7 @@ assert.match(source, /aria-label="\$\{t\("item\.noteAria"\)\}"/);
 assert.match(source, /data-edit-history-event-id/);
 assert.match(source, /updateEventNote\(host\.store, event\.id, note\)/);
 assert.match(source, /data-history-event-id/);
-assert.match(source, /host\.store\.events\.find\(\(candidate\) => candidate\.id === eventId\)/);
+assert.match(source, /getEventById\(host\.store, eventId\)/);
 assert.match(source, /data-history-date="\$\{key\}"/);
 assert.match(source, /future \? "disabled"/);
 assert.match(source, /host\.showEditor\(\)/);

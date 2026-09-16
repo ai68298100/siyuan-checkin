@@ -1,6 +1,6 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, getEventDateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventsForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
@@ -43,16 +43,6 @@ export interface ReviewViewContext {
 
 export function renderReviewView(ctx: ReviewViewContext): string {
     const analyticsSummary = ctx.analyticsSummary;
-    const eventsByDay = new Map<string, CheckinEvent[]>();
-    ctx.store.events.forEach((event) => {
-        const key = getEventDateKey(event);
-        const dayEvents = eventsByDay.get(key);
-        if (dayEvents) {
-            dayEvents.push(event);
-        } else {
-            eventsByDay.set(key, [event]);
-        }
-    });
     const itemNames = new Map(ctx.store.items.map((item) => [item.id, item.name]));
     const year = ctx.historyMonth.getFullYear();
     const month = ctx.historyMonth.getMonth();
@@ -67,7 +57,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             const key = dateKey(date);
             const scheduled = activeItems.filter((item) => isItemAvailableOnDate(item, date) && isScheduledToday(item, date));
             const completed = scheduled.filter((item) => isComplete(ctx.store, item, date)).length;
-            const eventCount = eventsByDay.get(key)?.length || 0;
+            const eventCount = getEventsForDate(ctx.store, key).length;
             const rate = scheduled.length ? completed / scheduled.length : 0;
             const level = rate >= 1 ? 4 : rate >= .66 ? 3 : rate > 0 ? 2 : eventCount ? 1 : 0;
             const future = key > today;
@@ -81,7 +71,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount > 999 ? "999+" : eventCount}</b>` : ""}</button>`;
         }),
     ].join("");
-    const selectedEvents = eventsByDay.get(ctx.selectedHistoryDate) || [];
+    const selectedEvents = getEventsForDate(ctx.store, ctx.selectedHistoryDate);
     const selectedRecords = selectedEvents.map((event) => ({
         event,
         itemName: itemNames.get(event.itemId) || t("review.deletedItem"),

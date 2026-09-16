@@ -3,7 +3,7 @@
 import {t} from "../i18n";
 import {buildWeeklyReportMarkdown} from "../features/report";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
-import {removeEvents, updateEventNote} from "../model";
+import {getEventById, removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {Dialog, showMessage} from "siyuan";
@@ -198,7 +198,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
         const eventId = button.dataset.historyEventId;
-        const event = host.store.events.find((candidate) => candidate.id === eventId);
+        const event = getEventById(host.store, eventId);
         if (!event) return;
         const moment = captureActionMoment();
         void host.enqueueMutation(async () => {
@@ -224,13 +224,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         (event.currentTarget as HTMLElement).remove();
     });
     root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
-        const event = host.store.events.find((candidate) => candidate.id === button.dataset.editHistoryEventId);
+        const event = getEventById(host.store, button.dataset.editHistoryEventId);
         if (!event) return;
         host.editingHistoryNoteId = event.id;
         host.render();
     }));
     root.querySelectorAll<HTMLElement>("[data-save-history-note-id]").forEach((button) => button.addEventListener("click", () => {
-        const event = host.store.events.find((candidate) => candidate.id === button.dataset.saveHistoryNoteId);
+        const event = getEventById(host.store, button.dataset.saveHistoryNoteId);
         const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input='${button.dataset.saveHistoryNoteId}']`);
         if (!event || !input) return;
         const note = input.value.trim();

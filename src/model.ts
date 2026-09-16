@@ -394,6 +394,8 @@ export function getItemRevisionForDate(item: CheckinItem, date = new Date()): Ch
 
 interface StoreEventIndex {
     byItemDate: Map<string, CheckinEvent[]>;
+    byDate: Map<string, CheckinEvent[]>;
+    byId: Map<string, CheckinEvent>;
 }
 
 const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
@@ -401,12 +403,17 @@ const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
 export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     let index = storeIndexes.get(store);
     if (!index) {
-        index = { byItemDate: new Map() };
+        index = {byItemDate: new Map(), byDate: new Map(), byId: new Map()};
         for (const event of store.events) {
-            const key = event.itemId + ":" + event.localDate;
-            const list = index.byItemDate.get(key);
-            if (list) list.push(event);
-            else index.byItemDate.set(key, [event]);
+            const day = getEventDateKey(event);
+            const itemDateKey = event.itemId + ":" + day;
+            const itemDateEvents = index.byItemDate.get(itemDateKey);
+            if (itemDateEvents) itemDateEvents.push(event);
+            else index.byItemDate.set(itemDateKey, [event]);
+            const dateEvents = index.byDate.get(day);
+            if (dateEvents) dateEvents.push(event);
+            else index.byDate.set(day, [event]);
+            if (!index.byId.has(event.id)) index.byId.set(event.id, event);
         }
         storeIndexes.set(store, index);
     }
@@ -416,6 +423,15 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
 export function getEventsForDay(store: CheckinStore, itemId: string, date = new Date()): CheckinEvent[] {
     const index = getStoreIndex(store);
     return index.byItemDate.get(itemId + ":" + dateKey(date)) || EMPTY_EVENTS;
+}
+
+export function getEventsForDate(store: CheckinStore, date: Date | string = new Date()): CheckinEvent[] {
+    const key = typeof date === "string" ? date : dateKey(date);
+    return getStoreIndex(store).byDate.get(key) || EMPTY_EVENTS;
+}
+
+export function getEventById(store: CheckinStore, eventId: string | undefined): CheckinEvent | undefined {
+    return eventId ? getStoreIndex(store).byId.get(eventId) : undefined;
 }
 
 const EMPTY_EVENTS: CheckinEvent[] = [];
