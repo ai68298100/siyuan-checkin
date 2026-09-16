@@ -650,3 +650,10 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 新增响应式源码守门，锁定窄 dock 等分、宽 rail 分布和局部刷新结构选择器；`pnpm run test:quality`、`width-walkthrough`、`ui-sweep`、类型检查和构建均通过。
 - 本轮生产 CSS 为 427260 bytes，超过 420KB 告警线但低于 450000-byte 硬阻断线；未 push、未发版、未同步本地集市，B-007 真实思源宿主复核继续开放。
 - 参考上游 `HaoCeans/siyuan-points-reward@eb78e447` 与 `royc01/pinch@8ce2a252`，仅采用稳定 dock 尺寸、单滚动容器、等分导航、信息分层和反馈闭环原则，不复制其主题、业务模型或可能造成弹层裁切/双滚动的实现。
+
+### v12.0.1 已发布并同步本地集市（2026-09-17，T-981）
+
+- 发布提交 `0b4663b` 已推送到 `main`，标签 `v12.0.1` 与 GitHub Release 已创建；远端 CI run `35120024779` 成功。
+- 最终 `package.zip` 为 354276 bytes，SHA-256 为 `72d456b9c64db8d1f36676d218e7de580299f6680252687e667469607161745b`；GitHub Release API 返回的资产摘要与本地一致。
+- `pnpm run test:quality` 全链通过；10k 事件完整渲染 29ms、横向溢出 0px；生产 CSS 427260 bytes，低于 450000-byte 硬阻断线。
+- 已将 `dist/` 的七个发布文件覆盖同步到 `D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin`；逐文件 SHA-256 与构建目录一致，本地 `plugin.json` 版本为 12.0.1。目录中额外的历史 `LICENSE` 文件未删除。
