@@ -152,6 +152,7 @@ interface DockTomatoCompletionDecision {
 
 const completionIssues: DockTomatoCompletionIssue[] = [];
 const COMPLETION_ISSUE_LIMIT = 20;
+const COMPLETION_ISSUE_ARCHIVE_MAX_CHARS = 512 * 1024;
 
 function ownDataValue(object: unknown, key: string): unknown {
     if (!object || typeof object !== "object") return undefined;
@@ -199,7 +200,11 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
 }
 
 export function restoreDockTomatoCompletionIssues(value: unknown): readonly DockTomatoCompletionIssue[] {
-    const source = typeof value === "string" ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })() : value;
+    const source = typeof value === "string"
+        ? value.length <= COMPLETION_ISSUE_ARCHIVE_MAX_CHARS
+            ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })()
+            : undefined
+        : value;
     const entries = Array.isArray(source)
         ? source
         : ownDataValue(source, "schemaVersion") === 1 && Array.isArray(ownDataValue(source, "issues"))

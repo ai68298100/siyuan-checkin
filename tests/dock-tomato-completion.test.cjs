@@ -86,6 +86,17 @@ assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 2, issues: pe
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "unknown", at: persisted[0].at}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "write-failed", at: "not-a-date"}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues(null), []);
+const diagnosticsArchiveMaxChars = 512 * 1024;
+for (let index = 0; index < 25; index += 1) {
+    const oversizedArchive = " ".repeat(diagnosticsArchiveMaxChars + index + 1);
+    const rejectedArchive = restoreDockTomatoCompletionIssues(oversizedArchive);
+    assert.equal(rejectedArchive.length, 0, `oversized diagnostics archive ${index + 1} must be rejected`);
+    assert.equal(Object.isFrozen(rejectedArchive), true, `oversized diagnostics archive ${index + 1} must return a safe snapshot`);
+}
+const boundaryArchiveSeed = JSON.stringify({schemaVersion: 1, issues: [{reason: "write-failed", at: "2026-09-17T00:30:00.000Z", identity: "boundary-archive"}]});
+const boundaryArchive = `${boundaryArchiveSeed}${" ".repeat(diagnosticsArchiveMaxChars - boundaryArchiveSeed.length)}`;
+assert.equal(boundaryArchive.length, diagnosticsArchiveMaxChars);
+assert.equal(restoreDockTomatoCompletionIssues(boundaryArchive)[0].identity, "boundary-archive");
 
 const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(160), identity: `${String(index).padStart(2, "0")}-${"y".repeat(237)}`}));
 const bounded = restoreDockTomatoCompletionIssues(oversized);

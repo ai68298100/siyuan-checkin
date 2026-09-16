@@ -814,3 +814,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 诊断恢复不再通过 map 直接读取数组索引，改为 ownDataValue 逐项读取，污染索引 getter 不会执行或中断恢复。
 - 损坏输入最多扫描最后512项，百万长度稀疏数组不会被完整遍历；Symbol 等异常 count 通过 finiteNumber 安全降级为1。
 - 25组 hostile 数组新增50条逐项断言，另覆盖百万稀疏尾项、身份保留和异常计数；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 86ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十二批（2026-09-17，T-1052~T-1054）
+
+- 诊断字符串恢复在 JSON.parse 前增加512KiB字符上限，超限数据直接返回冻结空快照，避免损坏文件触发高成本解析。
+- 恰好512KiB的合法 JSON 仍可恢复，超过一个字符即拒绝；对象输入继续使用上一批的512项尾窗扫描。
+- 25个不同超限长度新增50条逐项断言，另覆盖精确边界长度和合法 identity 恢复；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 28ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
