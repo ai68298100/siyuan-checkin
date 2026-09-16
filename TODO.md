@@ -1605,3 +1605,15 @@
 - [x] T-1015 历史投影 50+ 行为验收
   - 验收：50 个候选身份逐项断言成员关系，另验证唯一数量、空身份、重复和非法输入。
   - 状态：done（新增 56 条运行期断言，bridge/completion/integration 定向测试通过）。
+
+## 13.0 专注生态第十批（T-1016~T-1018）
+
+- [x] T-1016 Availability 风暴幂等注册
+  - 验收：同一 facade 连续 25 次 availability 不重复注册、不注销当前适配器，状态刷新合并为一次。
+  - 状态：done（每次同时断言注册数与注销数，共 50 条逐事件检查）。
+- [x] T-1017 Provider 替换/停用/恢复生命周期
+  - 验收：facade 替换先注销旧适配器再注册新实例；缺失或版本不兼容时解绑；恢复兼容实例后重新注册；最终卸载只释放当前实例。
+  - 状态：done（FakeWindow 完整执行替换、缺失、v2 不兼容、恢复和 dispose）。
+- [x] T-1018 Provider 容器访问器隔离
+  - 验收：`__dockTomato` 或 `focus` 为抛错 getter 时不得执行，诊断按 missing 安全返回，availability 不向宿主抛异常。
+  - 状态：done（统一 `getDockTomatoCandidate` own-data 读取，两个恶意 getter 执行次数均为 0）。

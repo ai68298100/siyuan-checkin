@@ -201,10 +201,50 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     fakeWindow.dispatch("tomato:focus-ended"); await flush();
     assert.equal(stopCalls, beforeEndedStops + 1);
 
+    const availabilityRefreshBaseline = refreshes;
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-api-availability-changed");
+        assert.equal(adapters.length, 1, `same facade availability ${index + 1} must not register twice`);
+        assert.equal(adapterDisposals, 0, `same facade availability ${index + 1} must not dispose the adapter`);
+    }
+    await flush();
+    assert.equal(refreshes, availabilityRefreshBaseline + 1);
+
+    const replacementStarts = [];
+    const replacementFacade = {
+        version: 1,
+        capabilities: ["status", "start", "pause", "completion-event"],
+        getStatus() { return {ready: true, active: false}; },
+        async start(input) { replacementStarts.push(input); return {ready: true, active: true, running: true}; },
+        async pause() { return {ready: true, active: true, paused: true}; },
+    };
+    fakeWindow.__dockTomato = {focus: replacementFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
+    assert.equal(adapterDisposals, 1);
+    assert.equal(adapters.length, 2);
+    assert.equal(adapters[1].id, "siyuan-plugin-docktomato");
+    assert.equal(adapters[1].canStart(items[0]), true);
+    await adapters[1].start(items[0]);
+    assert.equal(replacementStarts.length, 1);
+    assert.equal(replacementStarts[0].context.itemId, "read");
+
+    fakeWindow.__dockTomato = {};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
+    assert.equal(adapterDisposals, 2);
+    assert.equal(adapters.length, 2);
+    fakeWindow.__dockTomato = {focus: {...replacementFacade, version: 2}};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
+    assert.equal(adapterDisposals, 2);
+    assert.equal(adapters.length, 2);
+    fakeWindow.__dockTomato = {focus: replacementFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
+    assert.equal(adapters.length, 3);
+    assert.equal(adapterDisposals, 2);
+
     const listenerTypes = ["tomato:focus-api-availability-changed", "tomato:focus-session-started", "tomato:focus-session-paused", "tomato:focus-session-completed", "tomato:focus-ended"];
     for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 1);
     dispose();
-    assert.equal(adapterDisposals, 1);
+    assert.equal(adapterDisposals, 3);
     for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 0);
     const beforeDisposedWrites = writes.length, beforeDisposedRefreshes = refreshes;
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "after-dispose"})); fakeWindow.runTimers(); await flush();

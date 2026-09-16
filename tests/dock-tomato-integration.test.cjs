@@ -35,6 +35,9 @@ assert.match(bridge, /item\.tomatoMode === "sessions"\) return 1/, "session-mode
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");
 assert.match(bridge, /Object\.getOwnPropertyDescriptor\(object, key\)/, "foreign payload accessors must not execute during validation");
 assert.match(bridge, /export function readDockTomatoRuntimeStatus/, "provider status reads must share one defensive boundary");
+assert.match(bridge, /function getDockTomatoCandidate/, "provider container discovery must share one defensive boundary");
+assert.match(bridge, /ownDataValue\(host, "__dockTomato"\)/, "provider container getters must not execute");
+assert.match(bridge, /ownDataValue\(container, "focus"\)/, "provider facade getters must not execute");
 assert.match(bridge, /getStatus\.call\(candidate\)/, "provider status methods must retain their receiver");
 assert.match(bridge, /if \(!status\.readable\) return \{state: "error"/, "unreadable status must remain distinguishable");
 assert.match(bridge, /if \(bridgeDisposed\) return;/, "release polling must stop after bridge disposal");

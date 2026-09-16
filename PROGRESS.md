@@ -742,3 +742,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 把每次 completion 的历史 externalRef `map/filter/map` 三段投影改为单遍 Set 收集，减少中间数组和重复身份占用，同时不牺牲完整历史幂等正确性。
 - 单独导出纯投影函数，明确只接受非空 `docktomato:` 身份；其它 provider、重复、空/非字符串和恶意访问器字段均安全忽略。
 - 50 个混合候选逐项验证成员关系，共新增 56 条运行期断言；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 39ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第十批（2026-09-17，T-1016~T-1018）
+
+- 同一 facade 连续派发 25 次 availability，每次验证不重复注册且不注销当前 adapter；刷新请求在微任务边界合并为一次。
+- 执行 provider facade 替换、完全缺失、API v2 不兼容与兼容实例恢复：旧实例及时注销，不健康实例不注册，最终 dispose 只释放当前实例。
+- provider 容器和 focus facade 改用统一 own-data 发现函数，`__dockTomato`/`focus` 抛错 getter 均零执行；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 75ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

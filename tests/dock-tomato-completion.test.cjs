@@ -14,7 +14,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
+const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -171,5 +171,16 @@ for (let index = 0; index < 50; index += 1) {
 }
 assert.equal(collected.has(""), false);
 assert.equal(collected.has("stored-0"), true);
+
+let providerContainerGetterReads = 0;
+const hostileProviderHost = {};
+Object.defineProperty(hostileProviderHost, "__dockTomato", {get() { providerContainerGetterReads += 1; throw new Error("must not execute"); }});
+assert.equal(inspectDockTomatoProvider(hostileProviderHost).state, "missing");
+assert.equal(providerContainerGetterReads, 0);
+let focusGetterReads = 0;
+const hostileFocusContainer = {};
+Object.defineProperty(hostileFocusContainer, "focus", {get() { focusGetterReads += 1; throw new Error("must not execute"); }});
+assert.equal(inspectDockTomatoProvider({__dockTomato: hostileFocusContainer}).state, "missing");
+assert.equal(focusGetterReads, 0);
 
 console.log("Dock Tomato completion decision checks passed.");

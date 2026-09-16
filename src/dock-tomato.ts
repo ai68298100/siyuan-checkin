@@ -48,6 +48,12 @@ interface DockTomatoHost extends Window {
 
 const REQUIRED_CAPABILITIES = ["status", "start", "pause", "completion-event"] as const;
 
+function getDockTomatoCandidate(host: unknown): DockTomatoFocusApi | undefined {
+    const container = ownDataValue(host, "__dockTomato");
+    const candidate = ownDataValue(container, "focus");
+    return candidate && typeof candidate === "object" ? candidate as DockTomatoFocusApi : undefined;
+}
+
 export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRuntimeStatus {
     if (!candidate || typeof candidate !== "object") return {readable: false, ready: false, active: false, running: false, paused: false};
     const getStatus = ownDataValue(candidate, "getStatus");
@@ -72,7 +78,7 @@ export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRunti
 }
 
 export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockTomatoHost): DockTomatoProviderDiagnostics {
-    const candidate = host.__dockTomato?.focus;
+    const candidate = getDockTomatoCandidate(host);
     if (!candidate) return {state: "missing", available: false, ready: false, active: false, capabilities: []};
     const parsedVersion = Number(ownDataValue(candidate, "version"));
     const apiVersion = Number.isFinite(parsedVersion) ? parsedVersion : undefined;
@@ -248,7 +254,7 @@ interface DockCheckinApi {
 }
 
 function getDockTomatoFocusApi(): DockTomatoFocusApi | undefined {
-    const candidate = (window as DockTomatoHost).__dockTomato?.focus;
+    const candidate = getDockTomatoCandidate(window as DockTomatoHost);
     const diagnostics = inspectDockTomatoProvider();
     if (!candidate || !["ready", "running", "paused"].includes(diagnostics.state)) return undefined;
     return candidate;
