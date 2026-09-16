@@ -14,7 +14,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
+const {evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -109,5 +109,47 @@ assert.equal(JSON.stringify(diagnostics).includes("y".repeat(241)), false);
 
 clearDockTomatoCompletionIssues();
 assert.equal(JSON.parse(serializeDockTomatoCompletionIssues()).issues.length, 0);
+
+const falseStatus = {readable: false, ready: false, active: false, running: false, paused: false};
+assert.deepEqual(readDockTomatoRuntimeStatus(null), falseStatus);
+assert.deepEqual(readDockTomatoRuntimeStatus({}), falseStatus);
+assert.deepEqual(readDockTomatoRuntimeStatus({getStatus: () => null}), falseStatus);
+assert.deepEqual(readDockTomatoRuntimeStatus({getStatus() { throw new Error("offline"); }}), falseStatus);
+assert.deepEqual(readDockTomatoRuntimeStatus({getStatus: 1}), falseStatus);
+
+const statusCases = [
+    [{}, {ready: true, active: false, running: false, paused: false}],
+    [{ready: false}, {ready: false, active: false, running: false, paused: false}],
+    [{active: true}, {ready: true, active: true, running: false, paused: false}],
+    [{running: true}, {ready: true, active: false, running: true, paused: false}],
+    [{paused: true}, {ready: true, active: false, running: false, paused: true}],
+    [{ready: false, active: true, running: true, paused: true}, {ready: false, active: true, running: true, paused: true}],
+];
+for (const [input, expected] of statusCases) {
+    const actual = readDockTomatoRuntimeStatus({getStatus() { return input; }});
+    assert.equal(actual.readable, true);
+    assert.equal(actual.ready, expected.ready);
+    assert.equal(actual.active, expected.active);
+    assert.equal(actual.running, expected.running);
+    assert.equal(actual.paused, expected.paused);
+}
+
+for (const field of ["ready", "active", "running", "paused", "sessionId"]) {
+    const hostileStatus = {};
+    Object.defineProperty(hostileStatus, field, {get() { throw new Error("must not execute"); }});
+    const safe = readDockTomatoRuntimeStatus({getStatus() { return hostileStatus; }});
+    assert.equal(safe.readable, true);
+    assert.equal(safe.ready, true);
+    assert.equal(safe.active, false);
+    assert.equal(safe.running, false);
+    assert.equal(safe.paused, false);
+}
+
+let receiver;
+const provider = {getStatus() { receiver = this; return {sessionId: `  ${"s".repeat(300)}  `}; }};
+const receiverStatus = readDockTomatoRuntimeStatus(provider);
+assert.equal(receiver, provider);
+assert.equal(receiverStatus.sessionId.length, 240);
+assert.equal(receiverStatus.sessionId, "s".repeat(240));
 
 console.log("Dock Tomato completion decision checks passed.");

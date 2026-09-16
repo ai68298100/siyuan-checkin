@@ -14,6 +14,15 @@ interface DockTomatoFocusStatus {
     sessionId?: string;
 }
 
+export interface DockTomatoRuntimeStatus {
+    readable: boolean;
+    ready: boolean;
+    active: boolean;
+    running: boolean;
+    paused: boolean;
+    sessionId?: string;
+}
+
 interface DockTomatoFocusApi {
     version: number;
     capabilities?: readonly string[];
@@ -39,31 +48,51 @@ interface DockTomatoHost extends Window {
 
 const REQUIRED_CAPABILITIES = ["status", "start", "pause", "completion-event"] as const;
 
+export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRuntimeStatus {
+    if (!candidate || typeof candidate !== "object") return {readable: false, ready: false, active: false, running: false, paused: false};
+    const getStatus = ownDataValue(candidate, "getStatus");
+    if (typeof getStatus !== "function") return {readable: false, ready: false, active: false, running: false, paused: false};
+    try {
+        const status = getStatus.call(candidate);
+        if (!status || typeof status !== "object") return {readable: false, ready: false, active: false, running: false, paused: false};
+        const active = ownDataValue(status, "active") === true;
+        const running = ownDataValue(status, "running") === true;
+        const paused = ownDataValue(status, "paused") === true;
+        return {
+            readable: true,
+            ready: ownDataValue(status, "ready") !== false,
+            active,
+            running,
+            paused,
+            sessionId: boundedText(ownDataValue(status, "sessionId"), 240) || undefined,
+        };
+    } catch {
+        return {readable: false, ready: false, active: false, running: false, paused: false};
+    }
+}
+
 export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockTomatoHost): DockTomatoProviderDiagnostics {
     const candidate = host.__dockTomato?.focus;
     if (!candidate) return {state: "missing", available: false, ready: false, active: false, capabilities: []};
-    const parsedVersion = Number(candidate.version);
+    const parsedVersion = Number(ownDataValue(candidate, "version"));
     const apiVersion = Number.isFinite(parsedVersion) ? parsedVersion : undefined;
-    const capabilities = Array.isArray(candidate.capabilities)
-        ? candidate.capabilities.filter((value): value is string => typeof value === "string").slice(0, 32)
+    const rawCapabilities = ownDataValue(candidate, "capabilities");
+    const capabilities = Array.isArray(rawCapabilities)
+        ? rawCapabilities.filter((value): value is string => typeof value === "string").slice(0, 32)
         : [];
     if (apiVersion !== 1) return {state: "incompatible-version", available: true, ready: false, active: false, apiVersion, capabilities};
-    if (typeof candidate.getStatus !== "function" || typeof candidate.start !== "function" || typeof candidate.pause !== "function") {
+    if (typeof ownDataValue(candidate, "getStatus") !== "function" || typeof ownDataValue(candidate, "start") !== "function" || typeof ownDataValue(candidate, "pause") !== "function") {
         return {state: "incomplete-api", available: true, ready: false, active: false, apiVersion, capabilities};
     }
     if (capabilities.length && !REQUIRED_CAPABILITIES.every((name) => capabilities.includes(name))) {
         return {state: "missing-capabilities", available: true, ready: false, active: false, apiVersion, capabilities};
     }
-    try {
-        const status = candidate.getStatus();
-        const active = status?.active === true;
-        if (status?.paused === true) return {state: "paused", available: true, ready: status.ready !== false, active, apiVersion, capabilities};
-        if (status?.running === true || active) return {state: "running", available: true, ready: status.ready !== false, active, apiVersion, capabilities};
-        if (status?.ready === false) return {state: "not-ready", available: true, ready: false, active: false, apiVersion, capabilities};
-        return {state: "ready", available: true, ready: true, active: false, apiVersion, capabilities};
-    } catch {
-        return {state: "error", available: true, ready: false, active: false, apiVersion, capabilities};
-    }
+    const status = readDockTomatoRuntimeStatus(candidate);
+    if (!status.readable) return {state: "error", available: true, ready: false, active: false, apiVersion, capabilities};
+    if (status.paused) return {state: "paused", available: true, ready: status.ready, active: status.active, apiVersion, capabilities};
+    if (status.running || status.active) return {state: "running", available: true, ready: status.ready, active: status.active, apiVersion, capabilities};
+    if (!status.ready) return {state: "not-ready", available: true, ready: false, active: false, apiVersion, capabilities};
+    return {state: "ready", available: true, ready: true, active: false, apiVersion, capabilities};
 }
 
 interface DockTomatoCompletionDetail {
@@ -248,11 +277,14 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
     };
 
     const releaseWhenIdle = (remaining = 20) => {
+        if (bridgeDisposed) return;
         if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
         const facade = getDockTomatoFocusApi();
-        if (!facade || !facade.getStatus().active) {
+        const status = readDockTomatoRuntimeStatus(facade);
+        if (!facade || (status.readable && !status.active)) {
             void api.stopFocus().catch(() => false);
             releaseTimer = undefined;
+            scheduleProviderRefresh();
             return;
         }
         if (remaining <= 0) return;
@@ -276,7 +308,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         const adapter: FocusAdapter = {
             id: DOCK_TOMATO_ADAPTER_ID,
             name: "底栏番茄钟",
-            canStart: (item) => canUseDockTomato(item) && facade.getStatus().ready !== false && !facade.getStatus().active,
+            canStart: (item) => {
+                const status = readDockTomatoRuntimeStatus(facade);
+                return canUseDockTomato(item) && status.readable && status.ready && !status.active;
+            },
             start: async (item) => {
                 await facade.start({
                     confirm: true,
@@ -334,6 +369,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 if (expired) completedIdentities.delete(expired);
             }
             releaseWhenIdle();
+            scheduleProviderRefresh();
         } catch {
             appendCompletionIssue("write-failed");
             scheduleProviderRefresh();
@@ -345,7 +381,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         })();
     };
 
-    const handleEnded = () => releaseWhenIdle();
+    const handleEnded = () => {
+        releaseWhenIdle();
+        scheduleProviderRefresh();
+    };
 
     window.addEventListener(DOCK_TOMATO_API_EVENT, handleAvailability);
     window.addEventListener("tomato:focus-session-started", handleProviderState);

@@ -22,6 +22,13 @@ assert.match(bridge, /item\.unit === "小时" \? durationMinutes \/ 60 : duratio
 assert.match(bridge, /item\.tomatoMode === "sessions"\) return 1/, "session-mode items must record one completion");
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");
 assert.match(bridge, /Object\.getOwnPropertyDescriptor\(object, key\)/, "foreign payload accessors must not execute during validation");
+assert.match(bridge, /export function readDockTomatoRuntimeStatus/, "provider status reads must share one defensive boundary");
+assert.match(bridge, /getStatus\.call\(candidate\)/, "provider status methods must retain their receiver");
+assert.match(bridge, /if \(!status\.readable\) return \{state: "error"/, "unreadable status must remain distinguishable");
+assert.match(bridge, /if \(bridgeDisposed\) return;/, "release polling must stop after bridge disposal");
+assert.match(bridge, /status\.readable && !status\.active/, "unreadable status must not prematurely release focus ownership");
+assert.match(bridge, /status\.readable && status\.ready && !status\.active/, "canStart must fail closed on unreadable status");
+assert.match(bridge, /const handleEnded = \(\) => \{[\s\S]*scheduleProviderRefresh\(\)/, "ended events must refresh diagnostics as well as release ownership");
 assert.match(bridge, /removeEventListener\(DOCK_TOMATO_COMPLETED_EVENT/, "plugin unload must remove completion listeners");
 assert.match(bridge, /releaseWhenIdle\(remaining - 1\), 250/, "adapter state must only release after Dock Tomato becomes idle");
 assert.match(bridge, /tomato:focus-ended/, "manual completion or abandonment must also release the adapter state");
@@ -35,13 +42,13 @@ for (const state of ["missing", "incompatible-version", "incomplete-api", "missi
     assert.match(bridge, new RegExp(`state: "${state}"`), `provider diagnostics must cover ${state}`);
 }
 assert.match(bridge, /REQUIRED_CAPABILITIES/, "required capabilities must have one source of truth");
-assert.match(bridge, /candidate\.capabilities\.filter/, "foreign capability values must be sanitized");
+assert.match(bridge, /rawCapabilities\.filter/, "foreign capability values must be sanitized");
 assert.match(bridge, /slice\(0, 32\)/, "foreign capability lists must be bounded");
 assert.match(bridge, /Number\.isFinite\(parsedVersion\)/, "invalid external version values must not leak into UI diagnostics");
-assert.match(bridge, /status\?\.paused === true/, "paused provider state must be distinguishable");
-assert.match(bridge, /status\?\.running === true \|\| active/, "running provider state must be distinguishable");
-assert.match(bridge, /status\?\.ready === false/, "provider recovery must be distinguishable from absence");
-assert.match(bridge, /catch \{[\s\S]*state: "error"/, "throwing provider status reads must be isolated");
+assert.match(bridge, /if \(status\.paused\) return \{state: "paused"/, "paused provider state must be distinguishable");
+assert.match(bridge, /if \(status\.running \|\| status\.active\) return \{state: "running"/, "running provider state must be distinguishable");
+assert.match(bridge, /if \(!status\.ready\) return \{state: "not-ready"/, "provider recovery must be distinguishable from absence");
+assert.match(bridge, /if \(!status\.readable\) return \{state: "error"/, "throwing provider status reads must be isolated");
 assert.match(bridge, /\["ready", "running", "paused"\]\.includes\(diagnostics\.state\)/, "only healthy provider states may register an adapter");
 assert.match(bridge, /onProviderStateChanged/, "provider lifecycle changes must refresh visible surfaces");
 assert.match(bridge, /providerRefreshQueued/, "provider lifecycle refreshes must be coalesced");
