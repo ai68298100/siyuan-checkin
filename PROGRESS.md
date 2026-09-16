@@ -856,3 +856,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 删除109行旧 root token/基础控件规则和145行回顾、事项、编辑器、移动导航重复规则；缺失的3个几何 token 归入 tokens 层。
 - 最后25行模板管理器规则迁入组件层并替换宿主色引用；`index.scss` 从281行缩为一行退役说明，生产入口移除 legacy import，T-105 完成。
 - UI、移动矩阵、模板管理器、legacy audit、宽度走查和完整 `pnpm run test:quality` 通过；10k 事件完整渲染 30ms、横向溢出 0px，生产 CSS 419910 bytes，已回到420000 bytes 告警线以内。
+
+### 13.0 移动质量门禁（2026-09-17，T-1067~T-1069）
+
+- 修正孤立的移动编辑器结构测试，将底部留白断言从过期12px更新为当前单一64px操作栏高度。
+- 将 `mobile-editor-structure.test.cjs` 纳入标准 `test:mobile`，320/360/390/430px 的模板、图标、滚动、安全区与操作栏约束进入完整质量链。
+- `pnpm run test:mobile` 与完整 `pnpm run test:quality` 通过；10k 事件完整渲染 74ms、横向溢出 0px，CSS 419910 bytes。

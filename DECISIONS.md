@@ -364,3 +364,9 @@
 - `index.scss` 剩余主题、页面和表单规则均已有 tokens/components 后置真值；继续打包只会增加重复 CSS 与加载顺序耦合。
 - 缺失的 control-height、density-scale、section-gap 正式归入 token 层；模板管理器的必要规则迁入组件层并改用插件语义色。
 - 入口移除 legacy import，文件暂保留一行退役说明供历史测试和迁移审计读取；任何 active selector、media block 或 root token 回流都由 legacy audit 阻止。
+
+## D-130：移动结构测试必须进入标准门禁（2026-09-17）
+
+- 独立测试文件若不在任何 package script 中执行，会在布局演进后静默过期，无法提供发布保护。
+- 移动编辑器当前由宿主外固定操作栏占用64px，布局只预留这一份高度；测试应锁定现行结构语义而不是旧的12px临时值。
+- `mobile-editor-structure` 纳入 `test:mobile`，使本地质量链和 CI 都覆盖模板、图标、独立滚动、安全区与操作栏结构。
