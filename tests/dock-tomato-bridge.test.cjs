@@ -9,6 +9,14 @@ class FakeWindow {
     dispatch(type, detail) { for (const listener of [...(this.listeners.get(type) || [])]) listener({type, detail}); }
     setTimeout(callback) { const id = this.nextTimer++; this.timers.set(id, callback); return id; }
     clearTimeout(id) { this.timers.delete(id); }
+    runNextTimer() {
+        const next = this.timers.entries().next().value;
+        if (!next) return false;
+        const [id, callback] = next;
+        this.timers.delete(id);
+        callback();
+        return true;
+    }
     runTimers() { const pending = [...this.timers.values()]; this.timers.clear(); for (const callback of pending) callback(); }
 }
 
@@ -211,12 +219,13 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     assert.equal(refreshes, availabilityRefreshBaseline + 1);
 
     const replacementStarts = [];
+    let replacementStatus = {ready: true, active: false};
     const replacementFacade = {
         version: 1,
         capabilities: ["status", "start", "pause", "completion-event"],
-        getStatus() { return {ready: true, active: false}; },
-        async start(input) { replacementStarts.push(input); return {ready: true, active: true, running: true}; },
-        async pause() { return {ready: true, active: true, paused: true}; },
+        getStatus() { return replacementStatus; },
+        async start(input) { replacementStarts.push(input); replacementStatus = {ready: true, active: true, running: true}; return replacementStatus; },
+        async pause() { replacementStatus = {ready: true, active: true, paused: true}; return replacementStatus; },
     };
     fakeWindow.__dockTomato = {focus: replacementFacade};
     fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
@@ -240,6 +249,25 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
     assert.equal(adapters.length, 3);
     assert.equal(adapterDisposals, 2);
+
+    replacementStatus = {ready: true, active: true, running: true};
+    const boundedPollingStops = stopCalls;
+    const boundedPollingRefreshes = refreshes;
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(fakeWindow.timers.size, 1);
+    for (let index = 0; index < 20; index += 1) {
+        assert.equal(fakeWindow.runNextTimer(), true, `release poll ${index + 1} must execute`);
+        assert.equal(stopCalls, boundedPollingStops, `release poll ${index + 1} must not release active focus`);
+        assert.equal(refreshes, boundedPollingRefreshes + 1, `release poll ${index + 1} must not spam refreshes`);
+    }
+    assert.equal(fakeWindow.timers.size, 0);
+    assert.equal(stopCalls, boundedPollingStops);
+    replacementStatus = {ready: true, active: false};
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(stopCalls, boundedPollingStops + 1);
+    assert.equal(fakeWindow.timers.size, 0);
 
     const listenerTypes = ["tomato:focus-api-availability-changed", "tomato:focus-session-started", "tomato:focus-session-paused", "tomato:focus-session-completed", "tomato:focus-ended"];
     for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 1);

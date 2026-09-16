@@ -305,7 +305,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             scheduleProviderRefresh();
             return;
         }
-        if (remaining <= 0) return;
+        if (remaining <= 0) {
+            releaseTimer = undefined;
+            return;
+        }
         releaseTimer = window.setTimeout(() => releaseWhenIdle(remaining - 1), 250);
     };
 

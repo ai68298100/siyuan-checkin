@@ -1617,3 +1617,15 @@
 - [x] T-1018 Provider 容器访问器隔离
   - 验收：`__dockTomato` 或 `focus` 为抛错 getter 时不得执行，诊断按 missing 安全返回，availability 不向宿主抛异常。
   - 状态：done（统一 `getDockTomatoCandidate` own-data 读取，两个恶意 getter 执行次数均为 0）。
+
+## 13.0 专注生态第十一批（T-1019~T-1021）
+
+- [x] T-1019 活动状态释放轮询上限
+  - 验收：ended 后 provider 持续 active 时按 250ms 最多轮询 20 次，不提前 stopFocus，不无限创建 timer。
+  - 状态：done（FakeWindow 逐轮驱动全部20次并确认最终 timer 数为0）。
+- [x] T-1020 轮询耗尽资源清理与恢复
+  - 验收：达到上限后清空内部 timer 标识；之后 provider 变 idle 再收到 ended 时可立即释放，不受旧 timer 干扰。
+  - 状态：done（耗尽分支显式 `releaseTimer = undefined`，后续 idle 路径成功 stopFocus）。
+- [x] T-1021 释放轮询 60+ 运行期验收
+  - 验收：每轮同时断言执行成功、不提前释放、不产生刷新风暴，新增不少于50条检查。
+  - 状态：done（20×3 共60条逐轮断言，另覆盖初始/耗尽/恢复状态）。

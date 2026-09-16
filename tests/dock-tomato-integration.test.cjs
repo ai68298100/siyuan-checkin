@@ -46,6 +46,7 @@ assert.match(bridge, /status\.readable && status\.ready && !status\.active/, "ca
 assert.match(bridge, /const handleEnded = \(\) => \{[\s\S]*scheduleProviderRefresh\(\)/, "ended events must refresh diagnostics as well as release ownership");
 assert.match(bridge, /removeEventListener\(DOCK_TOMATO_COMPLETED_EVENT/, "plugin unload must remove completion listeners");
 assert.match(bridge, /releaseWhenIdle\(remaining - 1\), 250/, "adapter state must only release after Dock Tomato becomes idle");
+assert.match(bridge, /if \(remaining <= 0\) \{[\s\S]*releaseTimer = undefined;[\s\S]*return;/, "exhausted release polling must clear its timer identity");
 assert.match(bridge, /tomato:focus-ended/, "manual completion or abandonment must also release the adapter state");
 assert.match(preferences, /source\.focusTimerProvider === "plugin" \? "docktomato"/, "the legacy generic provider must migrate safely");
 assert.match(settings, /option value="docktomato"/, "settings must expose only the named Dock Tomato provider");
