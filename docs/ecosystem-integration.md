@@ -40,6 +40,10 @@ await checkin.recordEvent({                     // 4. 写入记录（去重安�
 
 番茄钟可以通过 `registerFocusAdapter` 提供开始和停止专注能力。适配器不可用、宿主不支持或调用超时时，核心打卡仍可离线使用。
 
+当前产品设置只开放 `siyuan-plugin-docktomato`（底栏番茄钟）这一外部提供方。小飞驴打卡通过 `window.__dockTomato.focus` v1 启动计时，监听持久化后的 `tomato:focus-session-completed`，并以 `docktomato:<sessionId>` 去重。旧偏好值 `plugin` 自动迁移为 `docktomato`；未来增加其他番茄钟时，应增加独立 provider 值和适配器 ID，不恢复“任取第一个已注册适配器”的不确定行为。
+
+底栏番茄钟桥接只消费公开门面和事件，不读取其数据文件、不调用私有函数、不模拟 DOM 点击。次数模式记录 1；分钟模式记录实际完成分钟，打卡单位为“小时”时除以 60。项目已归档/删除、API 版本不匹配、完成时长非法或缺少稳定会话 ID 时拒绝写入。
+
 ## 智能体
 
 思源支持 `addAgentCapability` 时，插件可以注册只读总结、项目列表、单项洞察和明确确认后的记录能力。不支持该 API 时应显示离线状态，不要求用户重复配置模型 API。

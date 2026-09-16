@@ -6,7 +6,7 @@ export type CheckinAppearance = "system" | "light" | "dark";
 export type DialogSizeMode = "auto" | "percent" | "fullscreen" | "fixed";
 export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
 /** Which focus timer should open from a duration item's clock button. */
-export type FocusTimerProvider = "builtin" | "plugin";
+export type FocusTimerProvider = "builtin" | "docktomato";
 
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
@@ -68,7 +68,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
-const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "plugin"]);
+const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "docktomato"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
     const parsed = typeof value === "number" ? value : Number(value);
@@ -91,7 +91,10 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const appearance = source.appearance === "light" || source.appearance === "dark" ? source.appearance : DEFAULT_VIEW_PREFERENCES.appearance;
     const reducedMotion = typeof source.reducedMotion === "boolean" ? source.reducedMotion : DEFAULT_VIEW_PREFERENCES.reducedMotion;
     const hapticFeedback = typeof source.hapticFeedback === "boolean" ? source.hapticFeedback : DEFAULT_VIEW_PREFERENCES.hapticFeedback;
-    const focusTimerProvider = FOCUS_TIMER_PROVIDERS.has(source.focusTimerProvider as FocusTimerProvider) ? source.focusTimerProvider as FocusTimerProvider : DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
+    // “plugin” was the generic pre-12.0 value. Preserve the user's choice while
+    // narrowing the first supported external provider to Dock Tomato.
+    const legacyFocusTimerProvider = source.focusTimerProvider === "plugin" ? "docktomato" : source.focusTimerProvider;
+    const focusTimerProvider = FOCUS_TIMER_PROVIDERS.has(legacyFocusTimerProvider as FocusTimerProvider) ? legacyFocusTimerProvider as FocusTimerProvider : DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     const todayQuery = typeof source.todayQuery === "string" ? source.todayQuery.trim().slice(0, 120) : "";
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;

@@ -25,6 +25,8 @@ export interface FocusAdapter {
     stop(): Promise<void>;
 }
 
+export const DOCK_TOMATO_ADAPTER_ID = "siyuan-plugin-docktomato";
+
 export interface SummaryProvider {
     id: string;
     name: string;

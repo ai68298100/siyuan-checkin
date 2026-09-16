@@ -1479,3 +1479,18 @@
 - [x] T-982 思源官方集市首次上架提交
   - 验收：按官方 Bazaar 规则确认插件未重复收录；个人 fork 与上游 main 同步；PR 仅向 `plugins.txt` 增加 `ai68298100/siyuan-checkin`；官方自动检查通过。
   - 状态：done（Bazaar PR `siyuan-note/bazaar#2248` 已创建，`prepare` 与包检查均成功，获得 `plugin`、`ci-passed` 标签；等待维护者审核合并）。
+- [x] T-983 底栏番茄钟提供方收口
+  - 验收：设置只显示自带/底栏番茄钟；旧 `plugin` 偏好无损迁移；只按 `siyuan-plugin-docktomato` 精确路由，不误选其他适配器。
+  - 状态：done（新增明确 provider、固定适配器 ID、迁移与生态契约守门）。
+- [x] T-984 底栏番茄钟兼容 PR 本地草案
+  - 验收：基于上游 v2.2.7 准备消费方无关的 v1 focus facade、生命周期事件、安全 context、持久化后完成事件、文档、测试及详尽 PR 正文；不得创建或推送对方 PR。
+  - 状态：done（本地目录 `D:\AI\Codex\siyuan-plugin-docktomato-pr`；全量 `scripts/*.test.js` 与语法检查通过；待用户审阅）。
+- [x] T-985 底栏番茄钟 PR 契约边界加固
+  - 验收：能力协商、稳定错误码、同步语义签名、旧任务关联清理、ready 时序和实时事件边界均有实现、测试及双语文档；不扩大为不可靠的内部历史读取或消费方耦合。
+  - 状态：done（增加冻结 capabilities、NOT_READY/BUSY/INVALID_CONTEXT、externalFocus 签名与完整关联清理；对方全量脚本与本项目质量链通过）。
+- [x] T-986 底栏番茄钟 PR 最终可合并性审计
+  - 验收：方法命名与真实语义一致；外部 context 绑定唯一专注 session，不能污染后续手动会话；差异、测试和文档通过后冻结待命，不 push、不创建 PR。
+  - 状态：done（`stop` 收敛为 `pause`，新增 externalFocusSessionId 全链守门；Dock Tomato 全量脚本通过，分支保持本地领先 1 提交）。
+- [x] T-987 12.x 后续大版本路线重排
+  - 验收：结合现有能力、技术债、真机阻塞和生态依赖，明确 13.0～18.0 的目标、范围、非目标、顺序和完成门槛。
+  - 状态：done（新增 `docs/development-roadmap-2026.md`，README 指向当前路线，旧路线保留为历史背景）。

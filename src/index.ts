@@ -12,7 +12,7 @@ import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, f
 import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
-import {CHECKIN_API_NAME, emitIntegrationEvent} from "./integrations";
+import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
 import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, detectStoreConflict, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
@@ -51,6 +51,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
+import {installDockTomatoBridge} from "./dock-tomato";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -268,6 +269,7 @@ export default class CheckinPlugin extends Plugin {
     private mutationQueue: Promise<void> = Promise.resolve();
     private api?: CheckinApi;
     private focusAdapters = new Map<string, FocusAdapter>();
+    private disposeDockTomatoBridge?: () => void;
     private summaryProviders = new Map<string, SummaryProvider>();
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
@@ -401,6 +403,7 @@ export default class CheckinPlugin extends Plugin {
 
         this.api = this.createApi();
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
+        this.disposeDockTomatoBridge = installDockTomatoBridge(this.api);
         window.addEventListener("focus", this.handleWindowFocus);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
@@ -538,6 +541,8 @@ export default class CheckinPlugin extends Plugin {
         }
         this.summaryRequestId += 1;
         [...this.apiSubscriptions].forEach((dispose) => dispose());
+        this.disposeDockTomatoBridge?.();
+        this.disposeDockTomatoBridge = undefined;
         const host = window as Window & {siyuanCheckin?: CheckinApi};
         if (host.siyuanCheckin === this.api) {
             delete host.siyuanCheckin;
@@ -1134,7 +1139,7 @@ export default class CheckinPlugin extends Plugin {
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
-            focusTimerAdapterCount: [...this.quickActionAdapters.keys()].filter((id) => /tomato|pomodoro|focus/i.test(id)).length,
+            focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
@@ -1163,7 +1168,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
-            if (value === "builtin" || value === "plugin") {
+            if (value === "builtin" || value === "docktomato") {
                 this.focusTimerProvider = value;
                 savePreference();
             }
@@ -1994,12 +1999,12 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 方法体外置于 render/focus-adapter.ts（T-022）。 */
-    private startFocus(itemId: string): Promise<boolean> {
-        return startFocusFor(this as unknown as FocusAdapterHost, itemId);
+    private startFocus(itemId: string, adapterId?: string): Promise<boolean> {
+        return startFocusFor(this as unknown as FocusAdapterHost, itemId, adapterId);
     }
 
-    private findFocusAdapter(item: CheckinItem, date = new Date()): FocusAdapter | undefined {
-        return findFocusAdapterFor(this as unknown as FocusAdapterHost, item, date);
+    private findFocusAdapter(item: CheckinItem, date = new Date(), adapterId?: string): FocusAdapter | undefined {
+        return findFocusAdapterFor(this as unknown as FocusAdapterHost, item, date, adapterId);
     }
 
     private canStartWithAdapter(adapter: FocusAdapter, item: CheckinItem, date: Date): boolean {

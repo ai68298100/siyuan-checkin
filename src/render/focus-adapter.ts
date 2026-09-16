@@ -22,14 +22,14 @@ export interface FocusAdapterHost {
     renderBackgroundUpdate(): void;
 }
 
-export function startFocusFor(host: FocusAdapterHost, itemId: string): Promise<boolean> {
+export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?: string): Promise<boolean> {
     if (!host.acceptingOperations || host.disposed || host.initializationState !== "ready" || host.focusBusy || host.activeFocusAdapter) return Promise.resolve(false);
     const startedAt = currentCalendarDate();
     const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
     if (!item || !isItemAvailableOnDate(item, startedAt) || getItemRevisionForDate(item, startedAt).kind === "binary") {
         return Promise.resolve(false);
     }
-    const adapter = findFocusAdapterFor(host, item, startedAt);
+    const adapter = findFocusAdapterFor(host, item, startedAt, adapterId);
     if (!adapter) {
         return Promise.resolve(false);
     }
@@ -57,7 +57,11 @@ export function startFocusFor(host: FocusAdapterHost, itemId: string): Promise<b
     return operation;
 }
 
-export function findFocusAdapterFor(host: FocusAdapterHost, item: CheckinItem, date = new Date()): FocusAdapter | undefined {
+export function findFocusAdapterFor(host: FocusAdapterHost, item: CheckinItem, date = new Date(), adapterId?: string): FocusAdapter | undefined {
+    if (adapterId) {
+        const adapter = host.focusAdapters.get(adapterId);
+        return adapter && canStartWithAdapter(host, adapter, item, date) ? adapter : undefined;
+    }
     return [...host.focusAdapters.values()].find((candidate) => canStartWithAdapter(host, candidate, item, date));
 }
 

@@ -141,7 +141,7 @@ if (checkin.hasCapability("events.record")) {
 - `focus.adapters`、`summary.providers`：注册专注或总结适配器；
 - `suggestions.read`、`integrations.events`：读取建议工作流快照并订阅规范事件。
 
-番茄钟插件可通过 `registerFocusAdapter` 提供开始/停止专注，并使用 `source: "tomato"` 与稳定 `externalRef` 写入完成事件。未加载适配器、宿主不支持或调用超时时，手动打卡和内置专注流程仍可用。完整字段、事件和安全边界见[生态集成契约](docs/ecosystem-integration.md)。
+当前设置页明确提供“自带番茄钟”和“底栏番茄钟插件”两个选择。兼容版底栏番茄钟通过版本化 focus facade 提供开始/停止专注，并在记录持久化后返回稳定会话；小飞驴打卡使用 `source: "tomato"` 与 `docktomato:<sessionId>` 幂等写入完成事件。旧的泛化“番茄钟插件”偏好会自动迁移到“底栏番茄钟插件”，但只有适配器 ID 精确匹配时才会启用，避免误调用其他番茄钟。未加载兼容版、宿主不支持或调用失败时，手动打卡和内置专注流程仍可用。完整字段、事件和安全边界见[生态集成契约](docs/ecosystem-integration.md)。
 
 ### 思源智能体
 
@@ -188,7 +188,7 @@ node tests/width-walkthrough.cjs
 ## 文档索引
 
 - [12.0.0 变更记录](docs/v12.0.0-change-log.md) · [发布与回滚](docs/release-rollback.md)
-- [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap.md)
+- [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap-2026.md)
 - [4.0 UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 产品路线](docs/ui-product-roadmap.md)
 - [生态集成与 API](docs/ecosystem-integration.md) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [AI 集成计划](docs/ai-integration-plan.md) · [2.0 迁移说明](docs/v2.0-migration-notes.md) · [2.0 变更记录](docs/v2.0-change-log.md)

@@ -17,6 +17,8 @@ assert.match(source, /slice\(0, 200\)/);
 assert.match(source, /hapticFeedback: true/, "haptic feedback defaults to on");
 assert.match(source, /typeof source\.hapticFeedback === "boolean"/, "haptic feedback must be normalized from stored prefs");
 assert.match(source, /focusTimerProvider: "builtin"/, "focus timer provider defaults to the built-in timer");
+assert.match(source, /source\.focusTimerProvider === "plugin" \? "docktomato"/, "legacy generic plugin preference migrates to Dock Tomato");
+assert.match(source, /\["builtin", "docktomato"\]/, "only the built-in timer and Dock Tomato are selectable providers");
 assert.match(source, /FOCUS_TIMER_PROVIDERS/, "focus timer provider must be normalized");
 const bindToday = fs.readFileSync("src/render/bind-today.ts", "utf8");
 assert.match(bindToday, /pulseHaptic\(\): void;/, "the today host must expose the haptic pulse");

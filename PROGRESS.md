@@ -664,3 +664,25 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 已确认 `ai68298100/siyuan-checkin` 尚未收录且无历史/进行中同包 PR；个人 Bazaar fork 已同步到上游 main `588209f0626bbeb8ca23e17f5bd8abea5a125c72`。
 - 已推送分支 `ai68298100/bazaar:codex/add-siyuan-checkin` 并创建 `siyuan-note/bazaar#2248`；差异仅新增一行 `ai68298100/siyuan-checkin`。
 - 官方 PR Check 已读取 v12.0.1 Release 与 `package.zip`（SHA-256 `72d456b9c64db8d1f36676d218e7de580299f6680252687e667469607161745b`）并通过，PR 获得 `plugin`、`ci-passed` 标签；当前等待维护者审核合并。
+
+### 底栏番茄钟首个外部提供方与兼容 PR 草案（2026-09-17，T-983~T-984）
+
+- 小飞驴打卡的外部计时选择由泛化 `plugin` 收口为 `docktomato`，UI 明确显示“底栏番茄钟插件”；旧偏好自动迁移，运行时只接受 `siyuan-plugin-docktomato`，未来新增提供方时使用独立 provider。
+- 新增 `src/dock-tomato.ts`：兼容任意加载顺序，调用 Dock Tomato v1 focus facade；完成事件按稳定 session ID 去重，支持次数、分钟和小时换算，并在结束后等待 Dock Tomato 空闲再释放活动适配器。
+- 基于 Dock Tomato `main@7863b58`（v2.2.7）在独立目录准备兼容差异：冻结的 v1 focus facade、busy 保护、4 KiB 原始类型 context、非破坏性 stop、事务成功后的 completion、卸载 availability、双语文档和契约测试；不依赖小飞驴打卡，不修改其核心计时/存储机制。
+- 小飞驴打卡 `pnpm run test:quality` 全链通过（10k 事件 35ms，CSS 427260 bytes）；Dock Tomato 全部 `scripts/*.test.js` 与 `node --check tomato.js` 通过。未创建、未推送对方 PR，详见 `docs/docktomato-compat-pr-draft.md`。
+
+### 底栏番茄钟兼容 PR 深度加固（2026-09-17，T-985）
+
+- 对外 focus facade 增加冻结能力列表，区分 API 可发现与计时器真正 ready；调用方在能力存在时显式校验 `status/start/pause/completion-event`，避免未来只靠版本号猜功能。
+- 稳定区分 `DOCK_TOMATO_NOT_READY`、`DOCK_TOMATO_TIMER_BUSY` 与 `DOCK_TOMATO_INVALID_CONTEXT`；非法显式 context 不再静默丢失关联。
+- 外部启动完整清理主任务、分段任务、聚焦恢复来源、最近快照和同步任务 envelope；若核心启动失败则恢复调用前时长、关联、envelope 与 UI，避免半修改状态；安全 context 纳入同步语义签名，历史归一化继续保留未知安全字段。
+- PR 文档明确 completed 是实时事件而非可靠消息队列；重载补偿留待双方定义有界查询、游标、权限及发生时间口径后再做，当前不读取对方内部历史文件。
+- Dock Tomato `node --check tomato.js` 与全部 `scripts/*.test.js` 通过；小飞驴打卡完整质量链通过。两边仅本地修订提交，未创建或推送上游 PR。
+
+### Dock Tomato PR 冻结与后续路线重排（2026-09-17，T-986~T-987）
+
+- 最终审计将公共 `stop()` 政名为与行为一致的 `pause()`，事件同步改为 paused；小飞驴打卡适配器保持内部 stop 语义，但调用上游公开 pause。
+- 每次外部启动预分配唯一 focus session ID，context、同步签名、状态展示与历史完成事件均校验该 ID，防止同步残留污染之后的手动专注；启动失败完整恢复原 session 和 envelope。
+- Dock Tomato 语法检查及全部 `scripts/*.test.js` 通过，小飞驴打卡类型、集成契约与文档检查通过。兼容分支冻结在本地，等待用户通知后才可 push/PR。
+- 新增当前路线 `docs/development-roadmap-2026.md`：12.x 现场稳定、13.0 专注生态、14.0 数据内核、15.0 UI 系统、16.0 复盘计划、17.0 受控自动化、18.0 开放生态；旧路线仅保留历史背景。

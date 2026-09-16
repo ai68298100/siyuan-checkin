@@ -7,7 +7,7 @@ import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
 import {showMessage} from "siyuan";
-import type {FocusAdapter} from "../integrations";
+import {DOCK_TOMATO_ADAPTER_ID} from "../integrations";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
@@ -56,8 +56,8 @@ export interface BindTodayHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     toggleItem(itemId: string, moment: {occurredAt: string; localDate: string}, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo?: CheckinEvent[]): Promise<unknown>;
-    findFocusAdapter(item: CheckinItem, date?: Date): unknown;
-    startFocus(itemId: string): Promise<boolean>;
+    findFocusAdapter(item: CheckinItem, date?: Date, adapterId?: string): unknown;
+    startFocus(itemId: string, adapterId?: string): Promise<boolean>;
     openFocusTimer(itemId: string): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
@@ -203,12 +203,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
             const focusItem = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
             if (!focusItem) return;
-            if (host.focusTimerProvider === "plugin") {
-                if (!host.findFocusAdapter(focusItem, currentCalendarDate())) {
+            if (host.focusTimerProvider === "docktomato") {
+                if (!host.findFocusAdapter(focusItem, currentCalendarDate(), DOCK_TOMATO_ADAPTER_ID)) {
                     showMessage(t("msg.focusPluginUnavailable"));
                     return;
                 }
-                void host.startFocus(itemId);
+                void host.startFocus(itemId, DOCK_TOMATO_ADAPTER_ID);
                 return;
             }
             host.focusTimerRoot = element.closest(".lc-checkin")?.parentElement ?? undefined;
