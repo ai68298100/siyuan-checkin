@@ -712,3 +712,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 统一 Dock Tomato 运行状态读取：方法按原 receiver 调用，返回字段只读 own data descriptor，外部 getter、抛错、空返回或错误类型均转换为不可读状态。
 - `canStart` 在状态不可读、未就绪或活动中时关闭；释放轮询在状态不可读时保留所有权并继续有界等待，卸载后立即停止；completed/ended 均刷新设置与 Today 状态。
 - 新增 60+ 条运行期检查，覆盖布尔组合、恶意 getter、receiver、会话标识裁剪和生命周期源码契约；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 36ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第五批（2026-09-17，T-1001~T-1003）
+
+- 新增可执行 FakeWindow/Provider/Checkin API bridge harness，直接运行 `installDockTomatoBridge`，覆盖适配器注册、项目资格、启动 context、暂停、完成回写、externalRef 去重与结束释放。
+- 验证其它 consumer 不产生记录或诊断，非法时长产生有界原因，started/paused 刷新被合并；dispose 后五类监听器、计时器、写入和刷新均无残留。
+- 新测试包含 55 条运行期断言并进入 `test:ecosystem`；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 37ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
