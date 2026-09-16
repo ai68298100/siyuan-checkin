@@ -2360,12 +2360,26 @@
     .lc-checkin__record-button { touch-action: manipulation; }
     .lc-checkin__quick-button { touch-action: manipulation; }
     .lc-checkin__mobile-nav button { touch-action: manipulation; }
+    .lc-checkin__quick-button, .lc-checkin__more-button, .lc-checkin__focus-button { min-height: 40px; }
+    .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(72px + env(safe-area-inset-bottom)); scroll-padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+    .lc-checkin__header-actions { flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+    .lc-checkin__icon-button { width: 36px; height: 36px; }
+    .lc-checkin__record-button, .lc-checkin__focus-button { min-height: 36px; }
+    .lc-checkin__record-button { padding-inline: 8px; }
+    .lc-checkin__amount { width: 42px; height: 36px; font-size: 14px; }
+    .lc-checkin__form input:not([type="checkbox"]), .lc-checkin__form select { height: 42px; font-size: 14px; }
+    .lc-checkin--editor :is(.lc-checkin__filter-row, .lc-checkin__icon-tabs, .lc-checkin__unit-options, .lc-checkin__group-options) button { min-height: 40px; padding-block: 8px; }
+    .lc-checkin--editor .lc-checkin__template { min-height: 64px; padding: 9px; }
+    .lc-checkin--editor .lc-checkin__archive-button { min-height: 40px; padding: 8px 12px; }
+    .lc-checkin--editor .lc-checkin__icon-option { height: 42px; min-height: 42px; }
+    .lc-checkin__form :is(button, input, select) { -webkit-tap-highlight-color: transparent; }
 }
 /* Twentieth interaction pass: keyboard and print-friendly affordances. */
 @media print {
- .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__text-button{display:none!important}
+ .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__text-button,.lc-checkin__history-event-actions,.lc-checkin__editor-actions,.lc-checkin__dialog-close{display:none!important}
  .lc-checkin,.lc-checkin__layout{padding:0!important;box-shadow:none!important}
- .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__insight-section{break-inside:avoid}
+ .lc-checkin{height:auto;overflow:visible;color:#111;background:#fff}
+ .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__summary-stats div,.lc-checkin__insight-section{break-inside:avoid;box-shadow:none}
  .lc-checkin__item-progress,.lc-checkin__progress{print-color-adjust:exact}
 }
 .lc-checkin :where(button,input,select,textarea):focus-visible{outline-offset:2px}

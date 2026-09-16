@@ -23,8 +23,8 @@ assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__form-scroll\s*\
 assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto;/, "editor actions must remain visible while fields scroll");
 assert.match(components, /@media \(max-width:\s*600px\)[\s\S]*\.lc-checkin-dialog\s*\{[\s\S]*height:\s*88vh/, "mobile dialog needs a bounded viewport layout");
 assert.match(components, /@supports \(height:\s*100dvh\)[\s\S]*\.b3-dialog__container:has\(\.lc-checkin-dialog-host--mobile\)/, "mobile dialog must follow dynamic viewport height");
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px/, "template cards must remain touch-friendly");
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__icon-option\s*\{[\s\S]*min-height:\s*42px/, "icon buttons must remain touch-friendly");
+assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[^}]*min-height:\s*64px/, "template cards must remain touch-friendly");
+assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__icon-option\s*\{[^}]*min-height:\s*42px/, "icon buttons must remain touch-friendly");
 
 // The final mobile spacing layer may trim the short-form cushion, but it must
 // preserve the independent scroller's safe-area reservation and keep the

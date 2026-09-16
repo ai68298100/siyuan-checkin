@@ -7,7 +7,6 @@ const plugin = `${read("src", "index.ts")}\n${read("src", "render", "bind-today.
 const model = read("src", "model.ts");
 const reminders = read("src", "reminders.ts");
 const components = read("src", "ui", "components.scss");
-const indexScss = read("src", "index.scss");
 const checklist = read("docs", "integration-smoke-checklist.md");
 
 const checks = [
@@ -43,7 +42,7 @@ const checks = [
     [components, /env\(safe-area-inset-bottom\)/, "component spacing respects mobile safe area"],
     [components, /data-reduced-motion|reducedMotion/, "reduced motion styling hooks remain present"],
     [components, /env\(safe-area-inset-top\)/, "component top spacing respects safe area"],
-    [indexScss, /scroll-padding-bottom/, "mobile scrolling reserves bottom controls"],
+    [components, /scroll-padding-bottom/, "mobile scrolling reserves bottom controls"],
     [checklist, /局部刷新/, "manual checklist covers local refresh"],
     [checklist, /双窗口/, "manual checklist covers dual-window tomato flow"],
     [checklist, /提醒中心/, "manual checklist covers reminder center"],

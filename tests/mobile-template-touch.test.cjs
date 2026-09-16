@@ -6,7 +6,6 @@ const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const liveStyles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 // Built-in templates are applied through real buttons; saving stays a native form submit.
@@ -22,9 +21,9 @@ assert.match(liveStyles, /@container lc5 \(max-width:\s*380px\)[\s\S]*\.lc-check
     "320/360px template grid must use two stable columns");
 assert.match(liveStyles, /Fifth narrow-surface pass[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll \{ padding-bottom: max\(108px, calc\(96px \+ env\(safe-area-inset-bottom\)\)\)/,
     "mobile editor scroll must leave room for the fixed action area");
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[\s\S]*min-height:\s*64px[\s\S]*padding:\s*9px/,
+assert.match(liveStyles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__template\s*\{[^}]*min-height:\s*64px;[^}]*padding:\s*9px/,
     "apply template buttons must remain touch friendly");
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin__form input:not\(\[type=\"checkbox\"\]\),[\s\S]*\.lc-checkin__form select[\s\S]*height:\s*42px/,
+assert.match(liveStyles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin__form input:not\(\[type=\"checkbox\"\]\), \.lc-checkin__form select \{[^}]*height:\s*42px/,
     "mobile form controls must meet the touch target");
 assert.match(liveStyles, /Editor organization[\s\S]*\.lc-checkin__save-button\s*\{[^}]*height:\s*36px/,
     "save action must have a stable mobile-friendly height");

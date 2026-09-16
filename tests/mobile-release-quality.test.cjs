@@ -26,9 +26,9 @@ assert.match(browserEntry, /spawnSync\(process\.execPath/,
 assert.match(packageJson.scripts["test:ui"], /responsive-layout\.test\.cjs/,
     "4.0 UI verification must be discoverable from package scripts");
 
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)/,
+assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)/,
     "release must include a touch-specific layout tier");
-assert.match(styles, /env\(safe-area-inset-bottom\)/,
+assert.match(components, /env\(safe-area-inset-bottom\)/,
     "release must include bottom safe-area handling");
 assert.match(components, /:focus-visible/,
     "release must include keyboard-visible focus styling");

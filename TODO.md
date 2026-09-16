@@ -276,6 +276,7 @@
 - [ ] T-105 legacy index.scss 退役 Phase 3：无条件存量规则迁移 + 文件退役
   - 验收：剩余无条件规则逐条判定（迁移到 components/tokens 或删除），index.scss 缩到可删或删空；每迁一批跑全链路+走查比对
   - 依赖：T-104
+  - 进度：第三十一批已迁移 coarse-pointer、reduced-motion 与 print 三组设备能力规则，legacy 减少135行；剩余281行继续按职责逐段迁移。
 
 ## P2 想法池（UI/体验/性能，随时认领）
 

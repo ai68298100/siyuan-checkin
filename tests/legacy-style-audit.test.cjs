@@ -11,6 +11,11 @@ assert.doesNotMatch(legacy, /Fourteenth narrow-surface pass|Fifteenth narrow-sur
 assert.ok(!legacy.includes(".lc-checkin__preview-card {"), "preview foundation must stay retired from legacy layer");
 assert.ok(!legacy.includes(".lc-checkin__history-row {"), "history row foundation must stay retired from legacy layer");
 assert.ok(!legacy.includes(".lc-checkin__history-event-actions {"), "history action layout must stay retired from legacy layer");
+assert.doesNotMatch(legacy, /@media \(hover: none\), \(pointer: coarse\)/, "coarse-pointer behavior must stay retired from legacy layer");
+assert.doesNotMatch(legacy, /@media \(prefers-reduced-motion: reduce\)/, "reduced-motion behavior must stay retired from legacy layer");
+assert.doesNotMatch(legacy, /@media print/, "print behavior must stay retired from legacy layer");
+assert.match(components, /@media \(hover: none\), \(pointer: coarse\)/, "coarse-pointer behavior must have a component-layer owner");
+assert.match(components, /@media print/, "print behavior must have a component-layer owner");
 assert.match(components, /\.lc-checkin__editor-actions \{/, "editor actions must have a component-layer owner");
 assert.match(components, /\.lc-checkin__history-event-actions \{/, "history actions must have a component-layer owner");
 console.log("Legacy style audit passed: retired foundations stay out of index.scss.");

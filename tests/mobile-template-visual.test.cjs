@@ -5,7 +5,6 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 // Archive is the reversible delete operation and must have a visible, labelled action in the editor.
@@ -20,13 +19,13 @@ assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived
 // Keyboard and touch users need a visible focus ring on every form control.
 assert.match(components, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*\.lc-checkin select:focus-visible[\s\S]*outline:/,
     "buttons, inputs, and selects must expose a focus ring");
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*-webkit-tap-highlight-color:\s*transparent/,
+assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*-webkit-tap-highlight-color:\s*transparent/,
     "touch controls must avoid browser tap flash while retaining focus styling");
 
 // The editor's scroll area must reserve both the safe area and the fixed bottom action bar.
 assert.match(components, /\.lc-checkin-dialog-host--mobile[\s\S]*\.lc-checkin__form-scroll[\s\S]*scroll-padding:[^;]*env\(safe-area-inset-bottom\)/,
     "mobile editor scroll must account for the bottom safe area");
-assert.match(styles, /\.lc-checkin:not\(\.lc-checkin--editor\)\s*\{\s*padding-bottom:\s*calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
+assert.match(components, /\.lc-checkin:not\(\.lc-checkin--editor\)\s*\{[^}]*padding-bottom:\s*calc\(72px \+ env\(safe-area-inset-bottom\)\)/,
     "mobile pages must reserve space for bottom navigation and safe area");
 assert.match(components, /\.lc-checkin__editor-actions\s*\{[^}]*position:\s*sticky|Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto/,
     "editor actions must remain visible while the form scrolls");

@@ -844,3 +844,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - Dock Tomato 空闲释放新增在途 Promise 单飞，重复 completed/ended 不再并发调用 stopFocus，也不会建立空闲状态下的多余计时器。
 - 释放结算只清理对应 operation，随后可处理未来新会话；插件卸载后迟到结算不再触发 provider UI 刷新。
 - 25次结束风暴新增50条逐项断言，另覆盖首发、结算和再次释放；定向验证及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 32ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### T-105 legacy 样式退役第三十一批（2026-09-17，135项）
+
+- 将 coarse-pointer 触控目标、安全区、编辑器控件、tap highlight，以及 reduced-motion 和 print 职责统一迁入组件层；删除 legacy 中对应135行。
+- 更新7组移动/发布验收的样式归属，并增加触控、减弱动态和打印规则不得回流 legacy 的静态守门；`index.scss` 从416行降至281行。
+- 类型检查、构建、移动矩阵、主题、legacy audit、宽度走查和完整 `pnpm run test:quality` 通过；10k 事件完整渲染 40ms、横向溢出 0px，生产 CSS 426185 bytes（较本批前减少1075 bytes）。

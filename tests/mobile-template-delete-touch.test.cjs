@@ -6,7 +6,6 @@ const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
-const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(editorSource, /class="lc-checkin__archive-button" type="button" data-action="archive"/,
@@ -18,7 +17,7 @@ assert.match(i18n, /"editor\.archive": "暂时归档"/);
 assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
     "delete action must use reversible persistence rather than removing the item");
 
-assert.match(styles, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__archive-button\s*\{[\s\S]*min-height:\s*40px/,
+assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__archive-button\s*\{[^}]*min-height:\s*40px/,
     "archive/delete action must be touch-sized on mobile");
 assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*background:\s*var\(--lc-checkin-bg\)/,
     "delete action must stay on a solid action surface above the keyboard");
