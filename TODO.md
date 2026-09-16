@@ -1476,3 +1476,6 @@
 - [x] T-981 v12.0.1 发布与本地集市同步
   - 验收：版本、README、变更记录、发布说明与构建产物一致；完整质量链和远端 CI 通过；GitHub Release 资产摘要与本地一致；本地集市文件逐项校验一致。
   - 状态：done（Release `v12.0.1`；提交 `0b4663b`；package.zip 354276 bytes，SHA-256 `72d456b9c64db8d1f36676d218e7de580299f6680252687e667469607161745b`；本地集市版本 12.0.1）。
+- [x] T-982 思源官方集市首次上架提交
+  - 验收：按官方 Bazaar 规则确认插件未重复收录；个人 fork 与上游 main 同步；PR 仅向 `plugins.txt` 增加 `ai68298100/siyuan-checkin`；官方自动检查通过。
+  - 状态：done（Bazaar PR `siyuan-note/bazaar#2248` 已创建，`prepare` 与包检查均成功，获得 `plugin`、`ci-passed` 标签；等待维护者审核合并）。

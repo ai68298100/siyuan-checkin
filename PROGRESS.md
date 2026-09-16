@@ -657,3 +657,10 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 最终 `package.zip` 为 354276 bytes，SHA-256 为 `72d456b9c64db8d1f36676d218e7de580299f6680252687e667469607161745b`；GitHub Release API 返回的资产摘要与本地一致。
 - `pnpm run test:quality` 全链通过；10k 事件完整渲染 29ms、横向溢出 0px；生产 CSS 427260 bytes，低于 450000-byte 硬阻断线。
 - 已将 `dist/` 的七个发布文件覆盖同步到 `D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin`；逐文件 SHA-256 与构建目录一致，本地 `plugin.json` 版本为 12.0.1。目录中额外的历史 `LICENSE` 文件未删除。
+
+### 思源官方集市首次上架提交（2026-09-17，T-982）
+
+- 依据 `siyuan-note/bazaar` 当前规则，首次上架仅在 `plugins.txt` 增加 `owner/repo`，后续版本由集市从插件仓库 Latest Release 自动更新。
+- 已确认 `ai68298100/siyuan-checkin` 尚未收录且无历史/进行中同包 PR；个人 Bazaar fork 已同步到上游 main `588209f0626bbeb8ca23e17f5bd8abea5a125c72`。
+- 已推送分支 `ai68298100/bazaar:codex/add-siyuan-checkin` 并创建 `siyuan-note/bazaar#2248`；差异仅新增一行 `ai68298100/siyuan-checkin`。
+- 官方 PR Check 已读取 v12.0.1 Release 与 `package.zip`（SHA-256 `72d456b9c64db8d1f36676d218e7de580299f6680252687e667469607161745b`）并通过，PR 获得 `plugin`、`ci-passed` 标签；当前等待维护者审核合并。
