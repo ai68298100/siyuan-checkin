@@ -285,6 +285,21 @@ const cappedStoredIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, 
 assert.equal(cappedStoredIssues.length, 1);
 assert.equal(cappedStoredIssues[0].count, 9999);
 assert.equal(cappedStoredIssues[0].at, "2026-09-17T07:01:00.000Z");
+for (let index = 0; index < 25; index += 1) {
+    let entryGetterReads = 0;
+    const hostileEntries = [];
+    Object.defineProperty(hostileEntries, "0", {get() { entryGetterReads += 1; throw new Error("must not execute"); }});
+    const restoredHostile = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: hostileEntries});
+    assert.equal(entryGetterReads, 0, `restore array ${index + 1} must not execute entry getters`);
+    assert.equal(restoredHostile.length, 0, `restore array ${index + 1} must ignore accessor entries`);
+}
+const sparseRestore = [];
+sparseRestore.length = 1000000;
+sparseRestore[999999] = {reason: "write-failed", at: "2026-09-17T09:00:00.000Z", identity: "sparse-tail", count: Symbol("bad")};
+const sparseRestored = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: sparseRestore});
+assert.equal(sparseRestored.length, 1);
+assert.equal(sparseRestored[0].identity, "sparse-tail");
+assert.equal(sparseRestored[0].count, 1);
 
 let providerContainerGetterReads = 0;
 const hostileProviderHost = {};

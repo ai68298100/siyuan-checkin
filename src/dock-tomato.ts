@@ -193,8 +193,8 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
     if (!at || !Number.isFinite(Date.parse(at))) return undefined;
     const itemId = exactBoundedText(ownDataValue(value, "itemId"), 160) || undefined;
     const identity = exactBoundedText(ownDataValue(value, "identity"), 240) || undefined;
-    const rawCount = Number(ownDataValue(value, "count"));
-    const count = Number.isInteger(rawCount) && rawCount > 0 ? Math.min(rawCount, 9999) : 1;
+    const rawCount = finiteNumber(ownDataValue(value, "count"));
+    const count = rawCount !== undefined && Number.isInteger(rawCount) && rawCount > 0 ? Math.min(rawCount, 9999) : 1;
     return {reason, at: new Date(at).toISOString(), itemId, identity, count};
 }
 
@@ -205,10 +205,13 @@ export function restoreDockTomatoCompletionIssues(value: unknown): readonly Dock
         : ownDataValue(source, "schemaVersion") === 1 && Array.isArray(ownDataValue(source, "issues"))
             ? ownDataValue(source, "issues") as unknown[]
             : [];
-    const normalized = entries
-        .map((entry, index) => ({issue: normalizeCompletionIssue(entry), index}))
-        .filter((entry): entry is {issue: DockTomatoCompletionIssue; index: number} => Boolean(entry.issue))
-        .sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index);
+    const normalized: Array<{issue: DockTomatoCompletionIssue; index: number}> = [];
+    const scanStart = Math.max(0, entries.length - 512);
+    for (let index = scanStart; index < entries.length; index += 1) {
+        const issue = normalizeCompletionIssue(ownDataValue(entries, String(index)));
+        if (issue) normalized.push({issue, index});
+    }
+    normalized.sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index);
     const folded = new Map<string, DockTomatoCompletionIssue>();
     for (const {issue} of normalized) {
         const key = JSON.stringify([issue.reason, issue.itemId || null, issue.identity || null]);
