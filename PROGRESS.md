@@ -754,3 +754,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - provider 在 ended 后持续 active 时执行有界释放轮询：250ms 间隔最多20次，每轮不提前调用 stopFocus，也不触发额外 UI 刷新。
 - 轮询耗尽分支显式清空 releaseTimer 标识，避免逻辑上残留已失效 timer；之后 provider 变 idle 并再次 ended 时仍能立即释放。
 - 新增60条逐轮运行期断言，另覆盖初始 timer、耗尽归零及恢复释放；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 33ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第十二批（2026-09-17，T-1022~T-1024）
+
+- 成功重试现在会精确清除同一 provider identity 的 write-failed 诊断，避免已恢复故障继续占据设置页；其它原因和其它 session 不受影响。
+- 诊断解决发生在 recordEvent 返回真实记录且 bridge 仍存活之后，不会把空返回、抛错或卸载后的迟到结果误标为恢复。
+- 20个独立 session 先失败后逐个成功重试，新增100条逐会话运行期断言及最终空诊断检查；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 37ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

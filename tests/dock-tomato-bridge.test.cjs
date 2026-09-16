@@ -160,6 +160,29 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-throw"));
 
     clearDockTomatoCompletionIssues();
+    const retryMatrixIds = Array.from({length: 20}, (_, index) => `retry-matrix-${index}`);
+    writeBehavior = "empty";
+    for (const identity of retryMatrixIds) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity}));
+        await flush();
+        const latest = getDockTomatoCompletionIssues().at(-1);
+        assert.equal(latest.reason, "write-failed");
+        assert.equal(latest.identity, identity);
+    }
+    assert.equal(getDockTomatoCompletionIssues().length, 20);
+    writeBehavior = "success";
+    for (let index = 0; index < retryMatrixIds.length; index += 1) {
+        const identity = retryMatrixIds[index];
+        const writesBeforeRetry = writes.length;
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity}));
+        await flush(); await flush();
+        assert.equal(writes.length, writesBeforeRetry + 1);
+        assert.equal(getDockTomatoCompletionIssues().some((issue) => issue.identity === identity), false);
+        assert.equal(events.filter((entry) => storedExternalRef(entry) === `docktomato:${identity}`).length, 1);
+    }
+    assert.equal(getDockTomatoCompletionIssues().length, 0);
+
+    clearDockTomatoCompletionIssues();
     writeBehavior = "deferred";
     const concurrentBaseline = writes.length;
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));

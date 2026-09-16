@@ -209,6 +209,13 @@ function appendCompletionIssue(reason: DockTomatoCompletionIssueReason, itemId?:
     if (completionIssues.length > COMPLETION_ISSUE_LIMIT) completionIssues.splice(0, completionIssues.length - COMPLETION_ISSUE_LIMIT);
 }
 
+function resolveCompletionWriteIssue(identity: string): void {
+    for (let index = completionIssues.length - 1; index >= 0; index -= 1) {
+        const issue = completionIssues[index];
+        if (issue.reason === "write-failed" && issue.identity === identity) completionIssues.splice(index, 1);
+    }
+}
+
 export function evaluateDockTomatoCompletion(detail: unknown, items: readonly CheckinItem[], duplicateIdentities: ReadonlySet<string> = new Set()): DockTomatoCompletionDecision {
     if (!detail || typeof detail !== "object") return {accepted: false, reason: "invalid-event"};
     if (ownDataValue(detail, "apiVersion") !== 1) return {accepted: false, reason: "unsupported-version"};
@@ -387,6 +394,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             });
             if (!recorded) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
             if (bridgeDisposed) return;
+            resolveCompletionWriteIssue(identity);
             completedIdentities.add(identity);
             completionIdentityOrder.push(identity);
             if (completionIdentityOrder.length > 500) {

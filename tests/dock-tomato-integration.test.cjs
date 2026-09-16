@@ -28,6 +28,8 @@ assert.match(bridge, /if \(!recorded\) throw new Error\("DOCK_TOMATO_CHECKIN_WRI
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
 assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");
+assert.match(bridge, /resolveCompletionWriteIssue\(identity\)/, "successful retries must resolve their prior write diagnostic");
+assert.match(bridge, /issue\.reason === "write-failed" && issue\.identity === identity/, "retry resolution must be scoped by reason and identity");
 assert.match(bridge, /if \(bridgeDisposed\) return;[\s\S]*completedIdentities\.add/, "late writes must not recreate completion state after disposal");
 assert.match(bridge, /if \(!bridgeDisposed\) \{[\s\S]*appendCompletionIssue\("write-failed"/, "late failures must not recreate diagnostics after disposal");
 assert.match(bridge, /item\.unit === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must convert to hour-based items");

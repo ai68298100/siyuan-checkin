@@ -262,3 +262,9 @@
 - Dock Tomato 的结束事件与状态持久化/广播可能存在短暂顺序差，收到 ended 后先读取公开状态；仍 active 时每250ms重试，最多20次（约5秒）。
 - 轮询期间不提前释放小驴打卡的 active adapter，避免用户在提供方仍活动时启动第二个计时；轮询也不重复刷新 UI，状态事件本身负责可见更新。
 - 达到上限只停止观察并清理 timer 标识，不猜测 provider 已空闲；后续 lifecycle 事件可重新触发确认。
+
+## D-113：可恢复故障在真实成功后按 session 精确解决（2026-09-17）
+
+- write-failed 是可恢复状态，不应永久成为历史错误；只有 recordEvent 返回真实记录后，才删除同一 identity 的 write-failed 诊断。
+- 解决范围不按 itemId 批量匹配，因为同一项目可能有多个独立失败 session；也不删除 invalid-duration、mapping-changed 等仍需用户理解的非写入问题。
+- 诊断解决与成功回写在同一 bridge 流程中触发持久化刷新，设置页最终反映当前未解决问题，而导出的支持包不会继续携带已恢复噪音。
