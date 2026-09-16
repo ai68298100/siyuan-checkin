@@ -188,6 +188,14 @@ const equalTimestampIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1
 assert.equal(equalTimestampIssues.length, 20);
 assert.equal(equalTimestampIssues[0].identity, "stable-5");
 assert.equal(equalTimestampIssues[19].identity, "stable-24");
+const countedIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [
+    {reason: "write-failed", at: "2026-09-17T05:00:00.000Z", count: 0},
+    {reason: "write-failed", at: "2026-09-17T05:01:00.000Z", count: 4},
+    {reason: "write-failed", at: "2026-09-17T05:02:00.000Z", count: 20000},
+]});
+assert.equal(countedIssues[0].count, 1);
+assert.equal(countedIssues[1].count, 4);
+assert.equal(countedIssues[2].count, 9999);
 
 let providerContainerGetterReads = 0;
 const hostileProviderHost = {};

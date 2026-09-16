@@ -116,6 +116,7 @@ export interface DockTomatoCompletionIssue {
     at: string;
     itemId?: string;
     identity?: string;
+    count?: number;
 }
 
 export interface DockTomatoDiagnosticsArchive {
@@ -172,7 +173,9 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
     if (!at || !Number.isFinite(Date.parse(at))) return undefined;
     const itemId = boundedText(ownDataValue(value, "itemId"), 160) || undefined;
     const identity = boundedText(ownDataValue(value, "identity"), 240) || undefined;
-    return {reason, at: new Date(at).toISOString(), itemId, identity};
+    const rawCount = Number(ownDataValue(value, "count"));
+    const count = Number.isInteger(rawCount) && rawCount > 0 ? Math.min(rawCount, 9999) : 1;
+    return {reason, at: new Date(at).toISOString(), itemId, identity, count};
 }
 
 export function restoreDockTomatoCompletionIssues(value: unknown): readonly DockTomatoCompletionIssue[] {
@@ -210,7 +213,11 @@ export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagn
 }
 
 function appendCompletionIssue(reason: DockTomatoCompletionIssueReason, itemId?: string, identity?: string): void {
-    completionIssues.push({reason, at: new Date().toISOString(), itemId: boundedText(itemId, 160) || undefined, identity: boundedText(identity, 240) || undefined});
+    const safeItemId = boundedText(itemId, 160) || undefined;
+    const safeIdentity = boundedText(identity, 240) || undefined;
+    const existingIndex = completionIssues.findIndex((issue) => issue.reason === reason && issue.itemId === safeItemId && issue.identity === safeIdentity);
+    const existing = existingIndex >= 0 ? completionIssues.splice(existingIndex, 1)[0] : undefined;
+    completionIssues.push({reason, at: new Date().toISOString(), itemId: safeItemId, identity: safeIdentity, count: Math.min((existing?.count || 1) + (existing ? 1 : 0), 9999)});
     if (completionIssues.length > COMPLETION_ISSUE_LIMIT) completionIssues.splice(0, completionIssues.length - COMPLETION_ISSUE_LIMIT);
 }
 

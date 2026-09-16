@@ -83,6 +83,9 @@ assert.match(plugin, /FOCUS_DIAGNOSTICS_STORAGE_NAME/, "completion diagnostics m
 assert.match(plugin, /restoreDockTomatoCompletionIssues\(storedFocusDiagnostics\)/, "completion diagnostics must survive plugin reloads");
 assert.match(plugin, /serializeDockTomatoCompletionIssues\(\)/, "completion diagnostics changes must be persisted");
 assert.match(settings, /data-action="export-focus-issues"/, "settings must offer a support-safe diagnostics export");
+assert.match(settings, /completionIssueCount/, "settings must report folded occurrence totals instead of row count");
+assert.match(bridge, /issue\.reason === reason && issue\.itemId === safeItemId && issue\.identity === safeIdentity/, "repeated diagnostics must fold only on the full issue key");
+assert.match(bridge, /Math\.min\(\(existing\?\.count \|\| 1\) \+ \(existing \? 1 : 0\), 9999\)/, "folded diagnostic counts must remain bounded");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

@@ -111,6 +111,19 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     fakeWindow.dispatch("tomato:focus-session-completed", completion()); await flush();
     assert.equal(writes.length, 1);
     assert.equal(getDockTomatoCompletionIssues().length, 0);
+
+    clearDockTomatoCompletionIssues();
+    const repeatedFailureBaseline = writes.length;
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "repeated-invalid", durationMinutes: 0}));
+        await flush();
+        const repeated = getDockTomatoCompletionIssues();
+        assert.equal(repeated.length, 1, `repeat ${index + 1} must stay folded`);
+        assert.equal(repeated[0].count, index + 1, `repeat ${index + 1} must increment count`);
+    }
+    assert.equal(writes.length, repeatedFailureBaseline);
+    assert.equal(getDockTomatoCompletionIssues()[0].identity, "repeated-invalid");
+    clearDockTomatoCompletionIssues();
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "foreign", context: {...completion().context, consumer: "other"}})); await flush();
     assert.equal(writes.length, 1);
     assert.equal(getDockTomatoCompletionIssues().length, 0);
