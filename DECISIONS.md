@@ -238,3 +238,9 @@
 - `inFlightIdentities` 不只是集合，也是并发写锁。只有实际把 identity 加入集合并开始持久化的 handler 才拥有释放权；观察到 duplicate 后提前返回的 handler 不得在 finally 删除共享锁。
 - 幂等验证分为写入中与写入后两阶段：前者由 owner-held in-flight identity 阻断，后者由 store 的 externalRef 阻断；运行期 completed 集合只是加速层，不是唯一正确性来源。
 - duplicate 属于预期重放而非用户故障，不进入诊断列表、不产生提示；只有格式、映射或持久化问题才需要可见处理。
+
+## D-109：历史幂等索引按不可信数据读取（2026-09-17）
+
+- 主 store 虽由本插件维护，但可能来自旧版本、恢复包或损坏同步，因此用于幂等的 externalRef 也必须按不可信数据处理，不执行 getter、不接受非字符串、不扫描无限长度。
+- 历史去重只识别 `docktomato:` 命名空间并剥离前缀后的身份；其它 provider 或手工 externalRef 不进入 Dock Tomato 判定集合。
+- 已落账重放是正常恢复路径，保持安静；损坏历史字段被忽略，让当前事件继续按自身合法性处理，而不是让一条坏记录阻断所有后续回写。

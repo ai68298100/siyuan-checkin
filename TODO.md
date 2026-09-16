@@ -1581,3 +1581,15 @@
 - [x] T-1009 并发幂等 100+ 运行期验收
   - 验收：两阶段各 25 次重放，每次同时断言写入数和诊断数，新增不少于 50 条自动化检查。
   - 状态：done（新增 100 条逐次断言及最终唯一 externalRef 检查）。
+
+## 13.0 专注生态第八批（T-1010~T-1012）
+
+- [x] T-1010 持久事件字段安全扫描
+  - 验收：历史 externalRef 使用 own data descriptor 读取，损坏对象的 getter 不得执行或中断完成事件。
+  - 状态：done（stored identity 投影改用 `ownDataValue`，恶意访问器读取次数保持 0）。
+- [x] T-1011 多身份持久去重矩阵
+  - 验收：25 个不同已落账 Dock Tomato session 重放后均不再调用 recordEvent，也不产生 duplicate 诊断噪音。
+  - 状态：done（FakeWindow store 预置 25 个 externalRef 并逐项派发验证）。
+- [x] T-1012 持久去重 50 项运行期验收
+  - 验收：每个身份分别断言写入数不变和诊断为空，新增不少于 50 条自动化检查。
+  - 状态：done（25×2 共 50 条逐项断言，另验证 getter 零执行与种子完整性）。

@@ -730,3 +730,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - deferred write 测试复现真实竞态：第二个 duplicate handler 的 finally 会误删首个 handler 的 in-flight identity，使第三个事件穿透。改为只有执行 `inFlightIdentities.add` 的 handler 记录 `claimedIdentity` 并负责释放。
 - 写入悬挂期间连续重放 25 次、写入完成并进入持久 externalRef 后再重放 25 次，始终只有一条记录且不产生 duplicate 诊断噪音。
 - 新增 100 条逐次运行期断言和最终唯一记录检查；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 32ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第八批（2026-09-17，T-1010~T-1012）
+
+- 持久历史 externalRef 扫描改为 own-data descriptor 读取，损坏记录即使定义抛错 getter 也不会被执行或阻断完成回写。
+- 预置 25 个不同 `docktomato:<identity>` 历史引用并逐项重放，全部由持久幂等层安静拦截，不调用 recordEvent、不写 duplicate 诊断。
+- 新增 50 条逐项运行期断言，另验证恶意 getter 零读取和种子数量完整；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 31ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

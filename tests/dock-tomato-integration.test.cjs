@@ -15,6 +15,7 @@ assert.match(bridge, /tomato:focus-api-availability-changed/, "either plugin loa
 assert.match(bridge, /tomato:focus-session-completed/, "durable completion events must be consumed");
 assert.match(bridge, /externalRef: `docktomato:\$\{identity\}`/, "session identity must make retries idempotent");
 assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must participate in deduplication after reload");
+assert.match(bridge, /boundedText\(ownDataValue\(entry, "externalRef"\), 260\)/, "persisted identities must not execute corrupted record getters");
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
 assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
 assert.match(bridge, /inFlightIdentities\.add\(identity\)[\s\S]*await api\.recordEvent/, "identity must enter the in-flight set before persistence starts");

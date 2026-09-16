@@ -25,6 +25,7 @@ new Function("require", "module", "exports", compiled)((id) => {
 
 const {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, installDockTomatoBridge} = moduleUnderTest.exports;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
+const storedExternalRef = (entry) => Object.getOwnPropertyDescriptor(entry, "externalRef")?.value;
 const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", durationMinutes: 25, context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"}, ...overrides});
 
 (async () => {
@@ -165,7 +166,24 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     }
     deferredWriteResolve();
     await flush(); await flush();
-    assert.equal(events.filter((entry) => entry.externalRef === "docktomato:concurrent-session").length, 1);
+    assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
+
+    clearDockTomatoCompletionIssues();
+    const persistedMatrixBaseline = writes.length;
+    const persistedIdentities = Array.from({length: 25}, (_, index) => `persisted-${index}`);
+    for (const identity of persistedIdentities) events.push({id: `seed-${identity}`, externalRef: `docktomato:${identity}`});
+    let hostileExternalRefReads = 0;
+    const hostileStoredEvent = {id: "hostile-event"};
+    Object.defineProperty(hostileStoredEvent, "externalRef", {get() { hostileExternalRefReads += 1; throw new Error("must not execute"); }});
+    events.push(hostileStoredEvent);
+    for (let index = 0; index < persistedIdentities.length; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: persistedIdentities[index]}));
+        await flush();
+        assert.equal(writes.length, persistedMatrixBaseline, `stored replay ${index + 1} must not write`);
+        assert.equal(getDockTomatoCompletionIssues().length, 0, `stored replay ${index + 1} must stay quiet`);
+    }
+    assert.equal(hostileExternalRefReads, 0);
+    assert.equal(events.filter((entry) => typeof storedExternalRef(entry) === "string" && storedExternalRef(entry).startsWith("docktomato:persisted-")).length, 25);
     writeBehavior = "success";
     for (let index = 0; index < 25; index += 1) {
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
@@ -173,7 +191,7 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
         assert.equal(writes.length, concurrentBaseline + 1, `persisted replay ${index + 1} must not write`);
         assert.equal(getDockTomatoCompletionIssues().length, 0, `persisted replay ${index + 1} must stay quiet`);
     }
-    assert.equal(events.filter((entry) => entry.externalRef === "docktomato:concurrent-session").length, 1);
+    assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
 
     const beforeLifecycleRefresh = refreshes;
     fakeWindow.dispatch("tomato:focus-session-started"); fakeWindow.dispatch("tomato:focus-session-paused"); await flush();

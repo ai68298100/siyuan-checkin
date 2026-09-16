@@ -342,7 +342,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         try {
             const detail = customEventDetail(event);
             const storedIdentities = api.getEvents()
-                .map((entry) => boundedText(entry.externalRef, 260))
+                .map((entry) => boundedText(ownDataValue(entry, "externalRef"), 260))
                 .filter((reference) => reference.startsWith("docktomato:"))
                 .map((reference) => reference.slice("docktomato:".length));
             const decision = evaluateDockTomatoCompletion(detail, api.getItems(), new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]));
