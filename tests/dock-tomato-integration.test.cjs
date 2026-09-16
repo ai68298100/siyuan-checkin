@@ -86,6 +86,9 @@ assert.match(settings, /data-action="export-focus-issues"/, "settings must offer
 assert.match(settings, /completionIssueCount/, "settings must report folded occurrence totals instead of row count");
 assert.match(bridge, /issue\.reason === reason && issue\.itemId === safeItemId && issue\.identity === safeIdentity/, "repeated diagnostics must fold only on the full issue key");
 assert.match(bridge, /Math\.min\(\(existing\?\.count \|\| 1\) \+ \(existing \? 1 : 0\), 9999\)/, "folded diagnostic counts must remain bounded");
+assert.match(bridge, /const folded = new Map<string, DockTomatoCompletionIssue>\(\)/, "restored diagnostics must fold duplicate persisted rows");
+assert.match(bridge, /folded\.delete\(key\)/, "restored diagnostic order must follow the newest occurrence");
+assert.match(bridge, /\(existing\?\.count \|\| 0\) \+ \(issue\.count \|\| 1\)/, "restored diagnostic counts must be accumulated");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

@@ -79,7 +79,7 @@ assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "write-failed", at: "not-a-date"}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues(null), []);
 
-const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(300), identity: "y".repeat(400)}));
+const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(300), identity: `${String(index).padStart(2, "0")}-${"y".repeat(400)}`}));
 const bounded = restoreDockTomatoCompletionIssues(oversized);
 assert.equal(bounded.length, 20);
 assert.equal(bounded[0].at, "2026-09-17T01:07:00.000Z");
@@ -189,13 +189,42 @@ assert.equal(equalTimestampIssues.length, 20);
 assert.equal(equalTimestampIssues[0].identity, "stable-5");
 assert.equal(equalTimestampIssues[19].identity, "stable-24");
 const countedIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [
-    {reason: "write-failed", at: "2026-09-17T05:00:00.000Z", count: 0},
-    {reason: "write-failed", at: "2026-09-17T05:01:00.000Z", count: 4},
-    {reason: "write-failed", at: "2026-09-17T05:02:00.000Z", count: 20000},
+    {reason: "write-failed", at: "2026-09-17T05:00:00.000Z", identity: "count-default", count: 0},
+    {reason: "write-failed", at: "2026-09-17T05:01:00.000Z", identity: "count-valid", count: 4},
+    {reason: "write-failed", at: "2026-09-17T05:02:00.000Z", identity: "count-capped", count: 20000},
 ]});
 assert.equal(countedIssues[0].count, 1);
 assert.equal(countedIssues[1].count, 4);
 assert.equal(countedIssues[2].count, 9999);
+const repeatedStoredIssues = [];
+for (let index = 0; index < 25; index += 1) {
+    repeatedStoredIssues.push({
+        reason: "write-failed",
+        at: `2026-09-17T06:${String(index).padStart(2, "0")}:00.000Z`,
+        itemId: "folded-item",
+        identity: "folded-session",
+        count: 2,
+    });
+}
+repeatedStoredIssues.splice(12, 0, {reason: "invalid-duration", at: "2026-09-17T06:12:30.000Z", itemId: "folded-item", identity: "folded-session", count: 3});
+const foldedStoredIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: repeatedStoredIssues});
+assert.equal(foldedStoredIssues.length, 2);
+assert.equal(foldedStoredIssues[0].reason, "invalid-duration");
+assert.equal(foldedStoredIssues[0].count, 3);
+assert.equal(foldedStoredIssues[1].reason, "write-failed");
+assert.equal(foldedStoredIssues[1].count, 50);
+assert.equal(foldedStoredIssues[1].at, "2026-09-17T06:24:00.000Z");
+for (let index = 0; index < 25; index += 1) {
+    assert.equal(foldedStoredIssues[1].itemId, "folded-item", `folded restore ${index + 1} must preserve item`);
+    assert.equal(foldedStoredIssues[1].identity, "folded-session", `folded restore ${index + 1} must preserve identity`);
+}
+const cappedStoredIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [
+    {reason: "write-failed", at: "2026-09-17T07:00:00.000Z", identity: "capped", count: 9990},
+    {reason: "write-failed", at: "2026-09-17T07:01:00.000Z", identity: "capped", count: 20},
+]});
+assert.equal(cappedStoredIssues.length, 1);
+assert.equal(cappedStoredIssues[0].count, 9999);
+assert.equal(cappedStoredIssues[0].at, "2026-09-17T07:01:00.000Z");
 
 let providerContainerGetterReads = 0;
 const hostileProviderHost = {};

@@ -188,10 +188,16 @@ export function restoreDockTomatoCompletionIssues(value: unknown): readonly Dock
     const normalized = entries
         .map((entry, index) => ({issue: normalizeCompletionIssue(entry), index}))
         .filter((entry): entry is {issue: DockTomatoCompletionIssue; index: number} => Boolean(entry.issue))
-        .sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index)
-        .slice(-COMPLETION_ISSUE_LIMIT)
-        .map((entry) => entry.issue);
-    completionIssues.splice(0, completionIssues.length, ...normalized);
+        .sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index);
+    const folded = new Map<string, DockTomatoCompletionIssue>();
+    for (const {issue} of normalized) {
+        const key = JSON.stringify([issue.reason, issue.itemId || null, issue.identity || null]);
+        const existing = folded.get(key);
+        if (existing) folded.delete(key);
+        folded.set(key, {...issue, count: Math.min((existing?.count || 0) + (issue.count || 1), 9999)});
+    }
+    const restored = Array.from(folded.values()).slice(-COMPLETION_ISSUE_LIMIT);
+    completionIssues.splice(0, completionIssues.length, ...restored);
     return getDockTomatoCompletionIssues();
 }
 
