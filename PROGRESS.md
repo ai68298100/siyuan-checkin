@@ -736,3 +736,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 持久历史 externalRef 扫描改为 own-data descriptor 读取，损坏记录即使定义抛错 getter 也不会被执行或阻断完成回写。
 - 预置 25 个不同 `docktomato:<identity>` 历史引用并逐项重放，全部由持久幂等层安静拦截，不调用 recordEvent、不写 duplicate 诊断。
 - 新增 50 条逐项运行期断言，另验证恶意 getter 零读取和种子数量完整；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 31ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第九批（2026-09-17，T-1013~T-1015）
+
+- 把每次 completion 的历史 externalRef `map/filter/map` 三段投影改为单遍 Set 收集，减少中间数组和重复身份占用，同时不牺牲完整历史幂等正确性。
+- 单独导出纯投影函数，明确只接受非空 `docktomato:` 身份；其它 provider、重复、空/非字符串和恶意访问器字段均安全忽略。
+- 50 个混合候选逐项验证成员关系，共新增 56 条运行期断言；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 39ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

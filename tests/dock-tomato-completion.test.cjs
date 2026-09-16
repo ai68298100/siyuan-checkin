@@ -14,7 +14,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
+const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -151,5 +151,25 @@ const receiverStatus = readDockTomatoRuntimeStatus(provider);
 assert.equal(receiver, provider);
 assert.equal(receiverStatus.sessionId.length, 240);
 assert.equal(receiverStatus.sessionId, "s".repeat(240));
+
+assert.equal(collectDockTomatoStoredIdentities(null).size, 0);
+assert.equal(collectDockTomatoStoredIdentities({}).size, 0);
+const mixedHistory = [];
+for (let index = 0; index < 50; index += 1) {
+    mixedHistory.push({externalRef: index % 2 === 0 ? `docktomato:stored-${index}` : `another:stored-${index}`});
+}
+mixedHistory.push({externalRef: "docktomato:stored-0"}, {externalRef: "docktomato:"}, {externalRef: 42}, null);
+let historyGetterReads = 0;
+const hostileHistoryEntry = {};
+Object.defineProperty(hostileHistoryEntry, "externalRef", {get() { historyGetterReads += 1; throw new Error("must not execute"); }});
+mixedHistory.push(hostileHistoryEntry);
+const collected = collectDockTomatoStoredIdentities(mixedHistory);
+assert.equal(collected.size, 25);
+assert.equal(historyGetterReads, 0);
+for (let index = 0; index < 50; index += 1) {
+    assert.equal(collected.has(`stored-${index}`), index % 2 === 0);
+}
+assert.equal(collected.has(""), false);
+assert.equal(collected.has("stored-0"), true);
 
 console.log("Dock Tomato completion decision checks passed.");

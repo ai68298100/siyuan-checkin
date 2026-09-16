@@ -227,6 +227,18 @@ export function evaluateDockTomatoCompletion(detail: unknown, items: readonly Ch
     return {accepted: true, item, value, identity};
 }
 
+export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<string> {
+    const identities = new Set<string>();
+    if (!Array.isArray(events)) return identities;
+    for (const entry of events) {
+        const reference = boundedText(ownDataValue(entry, "externalRef"), 260);
+        if (!reference.startsWith("docktomato:")) continue;
+        const identity = reference.slice("docktomato:".length);
+        if (identity) identities.add(identity);
+    }
+    return identities;
+}
+
 interface DockCheckinApi {
     getItems(): CheckinItem[];
     getEvents(): CheckinEvent[];
@@ -341,10 +353,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         let claimedIdentity: string | undefined;
         try {
             const detail = customEventDetail(event);
-            const storedIdentities = api.getEvents()
-                .map((entry) => boundedText(ownDataValue(entry, "externalRef"), 260))
-                .filter((reference) => reference.startsWith("docktomato:"))
-                .map((reference) => reference.slice("docktomato:".length));
+            const storedIdentities = collectDockTomatoStoredIdentities(api.getEvents());
             const decision = evaluateDockTomatoCompletion(detail, api.getItems(), new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]));
             if (!decision.accepted || !decision.item || decision.value === undefined || !decision.identity) {
                 if (decision.reason && decision.reason !== "duplicate") {
