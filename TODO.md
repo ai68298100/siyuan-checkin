@@ -1396,11 +1396,14 @@
 - [x] T-954 完成浅色/深色视觉走查与无障碍审计
 - [x] T-955 完成宽度走查、备份恢复与跨表面门禁
 - [x] T-956 完善 README、变更记录和发布说明
-- [ ] T-957 生成 v12.0.0 构建、提交、标签和 GitHub Release
-  - 状态：进行中；待最终哈希写入发布说明、提交并推送后关闭。
+- [x] T-957 生成 v12.0.0 构建、提交、标签和 GitHub Release
+  - 状态：done；最终构建、哈希核对、提交 `6c35296`、推送、`v12.0.0` 标签和 GitHub Release 均完成。
 
 - [x] T-958 补齐 12.0.0 发布审计记录（PROGRESS/DECISIONS/BLOCKERS）
   - 状态：done；自动化证据与真实宿主验收边界已记录。
-- [ ] T-959 最终构建后写入真实 package.zip SHA-256
-- [ ] T-960 提交并推送 v12.0.0 发布范围
-- [ ] T-961 创建并核对 GitHub v12.0.0 Release
+- [x] T-959 最终构建后写入真实 package.zip SHA-256
+  - 证据：`4b4dd41976f8a5828005005fd98296025c3531b5965108e5ccd721a5b2364703`，GitHub 资产摘要一致。
+- [x] T-960 提交并推送 v12.0.0 发布范围
+  - 证据：`main` 已推送至 `6c35296`，远端 CI 成功。
+- [x] T-961 创建并核对 GitHub v12.0.0 Release
+  - 证据：https://github.com/ai68298100/siyuan-checkin/releases/tag/v12.0.0，资产 349404 bytes。
