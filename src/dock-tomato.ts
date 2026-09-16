@@ -336,6 +336,8 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
     const handleProviderState = () => scheduleProviderRefresh();
     const handleCompleted = (event: Event) => {
         void (async () => {
+        let failureItemId: string | undefined;
+        let failureIdentity: string | undefined;
         try {
             const detail = customEventDetail(event);
             const storedIdentities = api.getEvents()
@@ -352,6 +354,8 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 return;
             }
             const {item, value, identity} = decision;
+            failureItemId = item.id;
+            failureIdentity = identity;
             inFlightIdentities.add(identity);
             const recorded = await api.recordEvent({
                 itemId: item.id,
@@ -362,6 +366,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 note: "来自底栏番茄钟",
             });
             if (!recorded) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
+            if (bridgeDisposed) return;
             completedIdentities.add(identity);
             completionIdentityOrder.push(identity);
             if (completionIdentityOrder.length > 500) {
@@ -371,8 +376,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             releaseWhenIdle();
             scheduleProviderRefresh();
         } catch {
-            appendCompletionIssue("write-failed");
-            scheduleProviderRefresh();
+            if (!bridgeDisposed) {
+                appendCompletionIssue("write-failed", failureItemId, failureIdentity);
+                scheduleProviderRefresh();
+            }
         } finally {
             const detail = customEventDetail(event);
             const identity = boundedText(ownDataValue(detail, "sessionId"), 240) || boundedText(ownDataValue(detail, "recordId"), 240);

@@ -18,6 +18,11 @@ assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must part
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
 assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
 assert.match(bridge, /if \(!recorded\) throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an empty write result must remain observable and retryable");
+assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
+assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
+assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");
+assert.match(bridge, /if \(bridgeDisposed\) return;[\s\S]*completedIdentities\.add/, "late writes must not recreate completion state after disposal");
+assert.match(bridge, /if \(!bridgeDisposed\) \{[\s\S]*appendCompletionIssue\("write-failed"/, "late failures must not recreate diagnostics after disposal");
 assert.match(bridge, /item\.unit === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must convert to hour-based items");
 assert.match(bridge, /item\.tomatoMode === "sessions"\) return 1/, "session-mode items must record one completion");
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");

@@ -718,3 +718,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 新增可执行 FakeWindow/Provider/Checkin API bridge harness，直接运行 `installDockTomatoBridge`，覆盖适配器注册、项目资格、启动 context、暂停、完成回写、externalRef 去重与结束释放。
 - 验证其它 consumer 不产生记录或诊断，非法时长产生有界原因，started/paused 刷新被合并；dispose 后五类监听器、计时器、写入和刷新均无残留。
 - 新测试包含 55 条运行期断言并进入 `test:ecosystem`；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 37ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第六批（2026-09-17，T-1004~T-1006）
+
+- 回写失败诊断现在保留有界 itemId/session identity；写接口空返回和抛错都不加入完成集合，同一身份随后可成功重试并生成唯一 externalRef。
+- recordEvent 等待期间若插件卸载，迟到成功不再重建运行期完成状态，迟到失败不再追加诊断或触发界面刷新。
+- bridge harness 增加 20 组非法时长的 80 条字段级断言，以及空返回、抛错和成功重试验证；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 36ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

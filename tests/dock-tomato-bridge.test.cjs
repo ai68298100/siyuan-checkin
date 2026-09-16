@@ -46,11 +46,17 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
     const events = [], writes = [], adapters = [];
+    let writeBehavior = "success";
     let adapterDisposals = 0, stopCalls = 0, refreshes = 0;
     const api = {
         getItems: () => items,
         getEvents: () => events,
-        async recordEvent(input) { writes.push(input); const record = {...input, id: `event-${writes.length}`}; events.push(record); return record; },
+        async recordEvent(input) {
+            writes.push(input);
+            if (writeBehavior === "empty") return undefined;
+            if (writeBehavior === "throw") throw new Error("storage unavailable");
+            const record = {...input, id: `event-${writes.length}`}; events.push(record); return record;
+        },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
         async stopFocus() { stopCalls += 1; return true; },
     };
@@ -94,6 +100,45 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     const issues = getDockTomatoCompletionIssues();
     assert.equal(issues.length, 1);
     for (const [key, value] of Object.entries({reason: "invalid-duration", itemId: "read", identity: "bad"})) assert.equal(issues[0][key], value);
+
+    clearDockTomatoCompletionIssues();
+    const invalidDurations = [0, -1, -25, 1441, 2000, Infinity, -Infinity, NaN, 0, -2, 1441, 9999, NaN, Infinity, -3, 0, 1442, 5000, -100, NaN];
+    const writesBeforeInvalidMatrix = writes.length;
+    for (let index = 0; index < invalidDurations.length; index += 1) {
+        const identity = `invalid-${index}`;
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity, durationMinutes: invalidDurations[index]}));
+        await flush();
+        const snapshot = getDockTomatoCompletionIssues();
+        const latest = snapshot[snapshot.length - 1];
+        assert.equal(writes.length, writesBeforeInvalidMatrix);
+        assert.equal(latest.reason, "invalid-duration");
+        assert.equal(latest.itemId, "read");
+        assert.equal(latest.identity, identity);
+    }
+    assert.equal(getDockTomatoCompletionIssues().length, 20);
+
+    clearDockTomatoCompletionIssues();
+    writeBehavior = "empty";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush();
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).itemId, "read");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-empty");
+    const writesAfterEmpty = writes.length;
+    writeBehavior = "success";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush(); await flush();
+    assert.equal(writes.length, writesAfterEmpty + 1);
+    assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-empty"));
+
+    writeBehavior = "throw";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-throw"})); await flush();
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).itemId, "read");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-throw");
+    const writesAfterThrow = writes.length;
+    writeBehavior = "success";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-throw"})); await flush(); await flush();
+    assert.equal(writes.length, writesAfterThrow + 1);
+    assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-throw"));
 
     const beforeLifecycleRefresh = refreshes;
     fakeWindow.dispatch("tomato:focus-session-started"); fakeWindow.dispatch("tomato:focus-session-paused"); await flush();
