@@ -71,6 +71,9 @@ assert.match(bridge, /if \(!status\.readable\) return \{state: "error"/, "throwi
 assert.match(bridge, /\["ready", "running", "paused"\]\.includes\(diagnostics\.state\)/, "only healthy provider states may register an adapter");
 assert.match(bridge, /onProviderStateChanged/, "provider lifecycle changes must refresh visible surfaces");
 assert.match(bridge, /providerRefreshQueued/, "provider lifecycle refreshes must be coalesced");
+assert.match(bridge, /let releaseOperation: Promise<void> \| undefined/, "focus release must retain one in-flight operation");
+assert.match(bridge, /if \(bridgeDisposed \|\| releaseOperation\) return/, "duplicate or disposed focus releases must be ignored");
+assert.match(bridge, /if \(releaseOperation !== operation\) return/, "settled releases must not clear a newer operation");
 assert.match(bridge, /Promise\.resolve\(\)\.then/, "provider refreshes must run after the current event stack");
 assert.match(bridge, /if \(providerRefreshQueued \|\| bridgeDisposed\) return/, "duplicate or disposed refreshes must be ignored");
 assert.match(bridge, /if \(!bridgeDisposed\) onProviderStateChanged\(\)/, "queued refreshes must recheck disposal");

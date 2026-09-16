@@ -360,6 +360,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
     let disposeAdapter: (() => void) | undefined;
     let boundFacade: DockTomatoFocusApi | undefined;
     let releaseTimer: number | undefined;
+    let releaseOperation: Promise<void> | undefined;
     let providerRefreshQueued = false;
     let bridgeDisposed = false;
     const completedIdentities = new Set<string>();
@@ -375,15 +376,27 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         });
     };
 
+    const requestFocusRelease = () => {
+        if (bridgeDisposed || releaseOperation) return;
+        const operation = Promise.resolve()
+            .then(() => api.stopFocus())
+            .then(() => undefined, () => undefined);
+        releaseOperation = operation;
+        void operation.then(() => {
+            if (releaseOperation !== operation) return;
+            releaseOperation = undefined;
+            if (!bridgeDisposed) scheduleProviderRefresh();
+        });
+    };
+
     const releaseWhenIdle = (remaining = 20) => {
         if (bridgeDisposed) return;
         if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
         const facade = getDockTomatoFocusApi();
         const status = readDockTomatoRuntimeStatus(facade);
         if (!facade || (status.readable && !status.active)) {
-            void api.stopFocus().catch(() => false);
             releaseTimer = undefined;
-            scheduleProviderRefresh();
+            requestFocusRelease();
             return;
         }
         if (remaining <= 0) {

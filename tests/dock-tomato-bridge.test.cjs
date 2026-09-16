@@ -55,8 +55,9 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
     const events = [], writes = [], adapters = [];
-    let writeBehavior = "success";
+    let writeBehavior = "success", stopBehavior = "success";
     let deferredWriteResolve;
+    let deferredStopResolve;
     let adapterDisposals = 0, stopCalls = 0, refreshes = 0;
     const api = {
         getItems: () => items,
@@ -77,7 +78,11 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
             const record = {...input, id: `event-${writes.length}`}; events.push(record); return record;
         },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
-        async stopFocus() { stopCalls += 1; return true; },
+        async stopFocus() {
+            stopCalls += 1;
+            if (stopBehavior === "deferred") return new Promise((resolve) => { deferredStopResolve = () => resolve(true); });
+            return true;
+        },
     };
 
     const dispose = installDockTomatoBridge(api, () => { refreshes += 1; });
@@ -259,6 +264,25 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     const beforeEndedStops = stopCalls;
     fakeWindow.dispatch("tomato:focus-ended"); await flush();
     assert.equal(stopCalls, beforeEndedStops + 1);
+
+    stopBehavior = "deferred";
+    const releaseStormBaseline = stopCalls;
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(stopCalls, releaseStormBaseline + 1);
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-ended");
+        assert.equal(stopCalls, releaseStormBaseline + 1, `release storm ${index + 1} must share the in-flight stop`);
+        assert.equal(fakeWindow.timers.size, 0, `release storm ${index + 1} must not create an idle poll`);
+    }
+    await flush();
+    assert.equal(stopCalls, releaseStormBaseline + 1);
+    deferredStopResolve();
+    await flush();
+    stopBehavior = "success";
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(stopCalls, releaseStormBaseline + 2, "a settled release must allow a later lifecycle release");
 
     const availabilityRefreshBaseline = refreshes;
     for (let index = 0; index < 25; index += 1) {

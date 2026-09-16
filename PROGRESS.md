@@ -838,3 +838,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 持久 externalRef 扫描从 for-of 改为普通索引循环，数组元素通过 ownDataValue 读取，不再触发索引 getter 或自定义 Symbol.iterator。
 - 扫描仍覆盖完整 events.length，不用固定窗口牺牲旧 session 幂等；10,000项稀疏数组的尾部合法身份可正常识别。
 - 25组污染数组新增75条逐项断言，另覆盖大型稀疏历史完整性；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 37ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十六批（2026-09-17，T-1064~T-1066）
+
+- Dock Tomato 空闲释放新增在途 Promise 单飞，重复 completed/ended 不再并发调用 stopFocus，也不会建立空闲状态下的多余计时器。
+- 释放结算只清理对应 operation，随后可处理未来新会话；插件卸载后迟到结算不再触发 provider UI 刷新。
+- 25次结束风暴新增50条逐项断言，另覆盖首发、结算和再次释放；定向验证及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 32ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
