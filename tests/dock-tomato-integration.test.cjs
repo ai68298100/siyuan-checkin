@@ -54,6 +54,13 @@ assert.match(bridge, /tomato:focus-session-paused/, "external pauses must refres
 assert.match(bridge, /removeEventListener\("tomato:focus-session-started"/, "start listeners must be removed on unload");
 assert.match(bridge, /removeEventListener\("tomato:focus-session-paused"/, "pause listeners must be removed on unload");
 assert.match(plugin, /dockTomatoDiagnostics: inspectDockTomatoProvider\(\)/, "settings must receive a current provider snapshot");
+assert.match(plugin, /FOCUS_DIAGNOSTICS_STORAGE_NAME/, "completion diagnostics must use isolated versioned storage");
+assert.match(plugin, /restoreDockTomatoCompletionIssues\(storedFocusDiagnostics\)/, "completion diagnostics must survive plugin reloads");
+assert.match(plugin, /serializeDockTomatoCompletionIssues\(\)/, "completion diagnostics changes must be persisted");
+assert.match(settings, /data-action="export-focus-issues"/, "settings must offer a support-safe diagnostics export");
+assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
+assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
+assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");
 assert.match(plugin, /data-action='use-builtin-focus'/, "the unavailable-provider recovery action must be bound");
 assert.match(plugin, /this\.focusTimerProvider = "builtin"/, "recovery must explicitly select the built-in provider");
 assert.match(plugin, /set\.tomatoFallbackSaved/, "provider fallback must give user feedback");

@@ -83,6 +83,13 @@ export interface DockTomatoCompletionIssue {
     identity?: string;
 }
 
+export interface DockTomatoDiagnosticsArchive {
+    schemaVersion: 1;
+    exportedAt: string;
+    provider: DockTomatoProviderDiagnostics;
+    issues: readonly DockTomatoCompletionIssue[];
+}
+
 interface DockTomatoCompletionDecision {
     accepted: boolean;
     ignored?: boolean;
@@ -119,6 +126,47 @@ export function getDockTomatoCompletionIssues(): readonly DockTomatoCompletionIs
 
 export function clearDockTomatoCompletionIssues(): void {
     completionIssues.splice(0, completionIssues.length);
+}
+
+function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const reason = boundedText(ownDataValue(value, "reason"), 40) as DockTomatoCompletionIssueReason;
+    const validReasons: readonly DockTomatoCompletionIssueReason[] = ["invalid-event", "unsupported-version", "invalid-context", "missing-item", "archived-item", "mapping-changed", "invalid-duration", "missing-identity", "duplicate", "write-failed"];
+    if (!validReasons.includes(reason)) return undefined;
+    const at = boundedText(ownDataValue(value, "at"), 40);
+    if (!at || !Number.isFinite(Date.parse(at))) return undefined;
+    const itemId = boundedText(ownDataValue(value, "itemId"), 160) || undefined;
+    const identity = boundedText(ownDataValue(value, "identity"), 240) || undefined;
+    return {reason, at: new Date(at).toISOString(), itemId, identity};
+}
+
+export function restoreDockTomatoCompletionIssues(value: unknown): readonly DockTomatoCompletionIssue[] {
+    const source = typeof value === "string" ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })() : value;
+    const entries = Array.isArray(source)
+        ? source
+        : ownDataValue(source, "schemaVersion") === 1 && Array.isArray(ownDataValue(source, "issues"))
+            ? ownDataValue(source, "issues") as unknown[]
+            : [];
+    const normalized = entries.map(normalizeCompletionIssue).filter((issue): issue is DockTomatoCompletionIssue => Boolean(issue)).slice(-COMPLETION_ISSUE_LIMIT);
+    completionIssues.splice(0, completionIssues.length, ...normalized);
+    return getDockTomatoCompletionIssues();
+}
+
+export function serializeDockTomatoCompletionIssues(): string {
+    return JSON.stringify({schemaVersion: 1, issues: getDockTomatoCompletionIssues()});
+}
+
+export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagnostics, exportedAt = new Date().toISOString()): string {
+    const safeProvider: DockTomatoProviderDiagnostics = {
+        state: provider.state,
+        available: provider.available === true,
+        ready: provider.ready === true,
+        active: provider.active === true,
+        apiVersion: Number.isFinite(provider.apiVersion) ? provider.apiVersion : undefined,
+        capabilities: Array.isArray(provider.capabilities) ? provider.capabilities.filter((value): value is string => typeof value === "string").map((value) => value.slice(0, 80)).slice(0, 32) : [],
+    };
+    const archive: DockTomatoDiagnosticsArchive = {schemaVersion: 1, exportedAt: new Date(exportedAt).toISOString(), provider: safeProvider, issues: getDockTomatoCompletionIssues()};
+    return JSON.stringify(archive, null, 2);
 }
 
 function appendCompletionIssue(reason: DockTomatoCompletionIssueReason, itemId?: string, identity?: string): void {

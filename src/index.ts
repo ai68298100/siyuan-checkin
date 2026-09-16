@@ -26,7 +26,7 @@ import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadExportFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -51,7 +51,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
-import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge} from "./dock-tomato";
+import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -61,6 +61,7 @@ const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
 const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
+const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const DOCK_TYPE = "siyuan-checkin-dock";
@@ -403,7 +404,10 @@ export default class CheckinPlugin extends Plugin {
 
         this.api = this.createApi();
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
-        this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => this.renderBackgroundUpdate());
+        this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => {
+            this.renderBackgroundUpdate();
+            if (this.storageReady && getDockTomatoCompletionIssues().length) void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
+        });
         window.addEventListener("focus", this.handleWindowFocus);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
@@ -426,6 +430,7 @@ export default class CheckinPlugin extends Plugin {
                 const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
                 this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
                 const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
+                const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
@@ -442,6 +447,7 @@ export default class CheckinPlugin extends Plugin {
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
+                restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -477,8 +483,10 @@ export default class CheckinPlugin extends Plugin {
             const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
             this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
             const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
+            const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
             this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
+            restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
             if (typeof storedSuggestionWorkflow === "string") {
                 const restoredWorkflow = deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items);
                 if (restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow)) {
@@ -1182,8 +1190,13 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", () => {
             clearDockTomatoCompletionIssues();
+            void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
             showMessage(t("set.tomatoIssuesCleared"));
             this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='export-focus-issues']")?.addEventListener("click", () => {
+            downloadDockTomatoDiagnosticsFor(inspectDockTomatoProvider());
+            showMessage(t("set.tomatoIssuesExported"));
         });
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;

@@ -14,7 +14,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues} = moduleUnderTest.exports;
+const {evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -59,5 +59,55 @@ assert.equal(evaluateDockTomatoCompletion(detail({context: accessorContext}), [i
 clearDockTomatoCompletionIssues();
 assert.deepEqual(getDockTomatoCompletionIssues(), []);
 assert.ok(Object.isFrozen(getDockTomatoCompletionIssues()));
+
+const reasons = ["invalid-event", "unsupported-version", "invalid-context", "missing-item", "archived-item", "mapping-changed", "invalid-duration", "missing-identity", "duplicate", "write-failed"];
+const persisted = reasons.map((reason, index) => ({reason, at: `2026-09-17T00:${String(index).padStart(2, "0")}:00.000Z`, itemId: ` item-${index} `, identity: ` session-${index} `}));
+const restored = restoreDockTomatoCompletionIssues(JSON.stringify({schemaVersion: 1, issues: persisted}));
+assert.equal(restored.length, 10);
+for (let index = 0; index < reasons.length; index += 1) {
+    assert.equal(restored[index].reason, reasons[index]);
+    assert.equal(restored[index].itemId, `item-${index}`);
+    assert.equal(restored[index].identity, `session-${index}`);
+    assert.match(restored[index].at, /^2026-09-17T00:/);
+}
+assert.ok(Object.isFrozen(restored));
+assert.ok(Object.isFrozen(restored[0]));
+
+assert.deepEqual(restoreDockTomatoCompletionIssues("not json"), []);
+assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 2, issues: persisted}), []);
+assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "unknown", at: persisted[0].at}]}), []);
+assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "write-failed", at: "not-a-date"}]}), []);
+assert.deepEqual(restoreDockTomatoCompletionIssues(null), []);
+
+const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(300), identity: "y".repeat(400)}));
+const bounded = restoreDockTomatoCompletionIssues(oversized);
+assert.equal(bounded.length, 20);
+assert.equal(bounded[0].at, "2026-09-17T01:07:00.000Z");
+assert.equal(bounded[19].at, "2026-09-17T01:26:00.000Z");
+assert.equal(bounded[0].itemId.length, 160);
+assert.equal(bounded[0].identity.length, 240);
+
+const storagePayload = JSON.parse(serializeDockTomatoCompletionIssues());
+assert.equal(storagePayload.schemaVersion, 1);
+assert.equal(storagePayload.issues.length, 20);
+assert.equal(storagePayload.issues[0].itemId.length, 160);
+
+const diagnostics = JSON.parse(serializeDockTomatoDiagnostics({state: "ready", available: true, ready: true, active: false, apiVersion: 1, capabilities: ["status", "start", 42, "z".repeat(100)]}, "2026-09-17T02:00:00.000Z"));
+assert.equal(diagnostics.schemaVersion, 1);
+assert.equal(diagnostics.exportedAt, "2026-09-17T02:00:00.000Z");
+assert.equal(diagnostics.provider.state, "ready");
+assert.equal(diagnostics.provider.available, true);
+assert.equal(diagnostics.provider.ready, true);
+assert.equal(diagnostics.provider.active, false);
+assert.equal(diagnostics.provider.apiVersion, 1);
+assert.deepEqual(diagnostics.provider.capabilities.slice(0, 2), ["status", "start"]);
+assert.equal(diagnostics.provider.capabilities.length, 3);
+assert.equal(diagnostics.provider.capabilities[2].length, 80);
+assert.equal(diagnostics.issues.length, 20);
+assert.equal(JSON.stringify(diagnostics).includes("x".repeat(161)), false);
+assert.equal(JSON.stringify(diagnostics).includes("y".repeat(241)), false);
+
+clearDockTomatoCompletionIssues();
+assert.equal(JSON.parse(serializeDockTomatoCompletionIssues()).issues.length, 0);
 
 console.log("Dock Tomato completion decision checks passed.");

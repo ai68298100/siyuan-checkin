@@ -7,6 +7,7 @@ import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
+import {serializeDockTomatoDiagnostics, type DockTomatoProviderDiagnostics} from "./dock-tomato";
 
 export interface PluginOpsHost {
     store: CheckinStore;
@@ -151,6 +152,16 @@ export function downloadSnapshotHistoryFor(history: unknown): void {
     const link = document.createElement("a");
     link.href = url;
     link.download = `siyuan-checkin-snapshots-${dateKey(new Date())}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDiagnostics): void {
+    const blob = new Blob([serializeDockTomatoDiagnostics(provider)], {type: "application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
