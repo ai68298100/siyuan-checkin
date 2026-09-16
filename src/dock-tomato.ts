@@ -206,15 +206,33 @@ export function serializeDockTomatoCompletionIssues(): string {
 }
 
 export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagnostics, exportedAt = new Date().toISOString()): string {
+    const validStates: readonly DockTomatoProviderState[] = ["missing", "incompatible-version", "incomplete-api", "missing-capabilities", "not-ready", "ready", "running", "paused", "error"];
+    const rawState = boundedText(ownDataValue(provider, "state"), 40) as DockTomatoProviderState;
+    const rawCapabilities = ownDataValue(provider, "capabilities");
+    const capabilities: string[] = [];
+    if (Array.isArray(rawCapabilities)) {
+        for (let index = 0; index < Math.min(rawCapabilities.length, 128) && capabilities.length < 32; index += 1) {
+            const capability = ownDataValue(rawCapabilities, String(index));
+            if (typeof capability === "string") capabilities.push(capability.slice(0, 80));
+        }
+    }
+    let apiVersion: number | undefined;
+    try {
+        const parsedVersion = Number(ownDataValue(provider, "apiVersion"));
+        if (Number.isFinite(parsedVersion)) apiVersion = parsedVersion;
+    } catch {
+        apiVersion = undefined;
+    }
+    const parsedExportedAt = typeof exportedAt === "string" ? Date.parse(exportedAt) : Number.NaN;
     const safeProvider: DockTomatoProviderDiagnostics = {
-        state: provider.state,
-        available: provider.available === true,
-        ready: provider.ready === true,
-        active: provider.active === true,
-        apiVersion: Number.isFinite(provider.apiVersion) ? provider.apiVersion : undefined,
-        capabilities: Array.isArray(provider.capabilities) ? provider.capabilities.filter((value): value is string => typeof value === "string").map((value) => value.slice(0, 80)).slice(0, 32) : [],
+        state: validStates.includes(rawState) ? rawState : "error",
+        available: ownDataValue(provider, "available") === true,
+        ready: ownDataValue(provider, "ready") === true,
+        active: ownDataValue(provider, "active") === true,
+        apiVersion,
+        capabilities,
     };
-    const archive: DockTomatoDiagnosticsArchive = {schemaVersion: 1, exportedAt: new Date(exportedAt).toISOString(), provider: safeProvider, issues: getDockTomatoCompletionIssues()};
+    const archive: DockTomatoDiagnosticsArchive = {schemaVersion: 1, exportedAt: Number.isFinite(parsedExportedAt) ? new Date(parsedExportedAt).toISOString() : new Date().toISOString(), provider: safeProvider, issues: getDockTomatoCompletionIssues()};
     return JSON.stringify(archive, null, 2);
 }
 

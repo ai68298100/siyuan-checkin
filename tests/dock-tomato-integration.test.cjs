@@ -89,6 +89,9 @@ assert.match(bridge, /Math\.min\(\(existing\?\.count \|\| 1\) \+ \(existing \? 1
 assert.match(bridge, /const folded = new Map<string, DockTomatoCompletionIssue>\(\)/, "restored diagnostics must fold duplicate persisted rows");
 assert.match(bridge, /folded\.delete\(key\)/, "restored diagnostic order must follow the newest occurrence");
 assert.match(bridge, /\(existing\?\.count \|\| 0\) \+ \(issue\.count \|\| 1\)/, "restored diagnostic counts must be accumulated");
+assert.match(bridge, /ownDataValue\(provider, "state"\)/, "diagnostics export must not execute provider accessors");
+assert.match(bridge, /Math\.min\(rawCapabilities\.length, 128\)/, "diagnostics capability scanning must be bounded");
+assert.match(bridge, /Number\.isFinite\(parsedExportedAt\)/, "diagnostics export must repair invalid timestamps");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

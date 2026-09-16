@@ -107,6 +107,27 @@ assert.equal(diagnostics.issues.length, 20);
 assert.equal(JSON.stringify(diagnostics).includes("x".repeat(161)), false);
 assert.equal(JSON.stringify(diagnostics).includes("y".repeat(241)), false);
 
+for (let index = 0; index < 25; index += 1) {
+    let getterReads = 0;
+    const hostileProvider = {};
+    const hostileField = ["state", "available", "ready", "active", "apiVersion", "capabilities"][index % 6];
+    Object.defineProperty(hostileProvider, hostileField, {get() { getterReads += 1; throw new Error("must not execute"); }});
+    const safeArchive = JSON.parse(serializeDockTomatoDiagnostics(hostileProvider, "invalid-date"));
+    assert.equal(getterReads, 0, `diagnostics export ${index + 1} must not execute provider getters`);
+    assert.equal(safeArchive.provider.state, "error", `diagnostics export ${index + 1} must use a safe state`);
+    assert.equal(Number.isFinite(Date.parse(safeArchive.exportedAt)), true, `diagnostics export ${index + 1} must repair invalid time`);
+}
+let capabilityGetterReads = 0;
+const hostileCapabilities = [];
+Object.defineProperty(hostileCapabilities, "0", {get() { capabilityGetterReads += 1; throw new Error("must not execute"); }});
+hostileCapabilities.length = 129;
+hostileCapabilities[1] = "status";
+const capabilitySafeArchive = JSON.parse(serializeDockTomatoDiagnostics({state: "ready", available: true, ready: true, active: false, apiVersion: Symbol("bad"), capabilities: hostileCapabilities}));
+assert.equal(capabilityGetterReads, 0);
+assert.deepEqual(capabilitySafeArchive.provider.capabilities, ["status"]);
+assert.equal(capabilitySafeArchive.provider.apiVersion, undefined);
+assert.equal(JSON.parse(serializeDockTomatoDiagnostics({...diagnostics.provider, state: "unknown"})).provider.state, "error");
+
 clearDockTomatoCompletionIssues();
 assert.equal(JSON.parse(serializeDockTomatoCompletionIssues()).issues.length, 0);
 

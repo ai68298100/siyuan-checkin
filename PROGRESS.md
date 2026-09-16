@@ -778,3 +778,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 恢复诊断文件时按 reason/itemId/identity 完整键归并旧版或多窗口遗留的重复行，count 求和且封顶9999，继续兼容 schema v1。
 - 恢复过程先稳定排序、再以最后一次出现更新键的插入位置，最后按20个唯一问题键裁剪；最新时间、原因隔离和诊断容量语义保持一致。
 - 25条同键持久记录新增50条逐项关联断言，另覆盖次数合计、最新顺序、不同原因、计数封顶和独立身份容量；定向 completion/integration、bridge、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 31ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第十六批（2026-09-17，T-1034~T-1036）
+
+- 诊断导出改为 own-data 防御读取，九种 provider 状态使用白名单，未知状态降级 error，Symbol 等异常版本值不会中断序列化。
+- 非法 exportedAt 自动生成有效 ISO 时间；能力数组最多扫描128项、输出32项且单项80字符，数组索引访问器不会执行。
+- 25组 hostile provider 新增75条逐项断言，另覆盖能力 getter、稀疏数组、Symbol 版本和未知状态；定向 completion/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 30ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
