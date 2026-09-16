@@ -9,6 +9,8 @@ const CONSUMER_ID = "siyuan-checkin";
 interface DockTomatoFocusStatus {
     ready?: boolean;
     active?: boolean;
+    running?: boolean;
+    paused?: boolean;
     sessionId?: string;
 }
 
@@ -20,8 +22,48 @@ interface DockTomatoFocusApi {
     pause(): Promise<DockTomatoFocusStatus>;
 }
 
+export type DockTomatoProviderState = "missing" | "incompatible-version" | "incomplete-api" | "missing-capabilities" | "not-ready" | "ready" | "running" | "paused" | "error";
+
+export interface DockTomatoProviderDiagnostics {
+    state: DockTomatoProviderState;
+    available: boolean;
+    ready: boolean;
+    active: boolean;
+    apiVersion?: number;
+    capabilities: readonly string[];
+}
+
 interface DockTomatoHost extends Window {
     __dockTomato?: {focus?: DockTomatoFocusApi};
+}
+
+const REQUIRED_CAPABILITIES = ["status", "start", "pause", "completion-event"] as const;
+
+export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockTomatoHost): DockTomatoProviderDiagnostics {
+    const candidate = host.__dockTomato?.focus;
+    if (!candidate) return {state: "missing", available: false, ready: false, active: false, capabilities: []};
+    const parsedVersion = Number(candidate.version);
+    const apiVersion = Number.isFinite(parsedVersion) ? parsedVersion : undefined;
+    const capabilities = Array.isArray(candidate.capabilities)
+        ? candidate.capabilities.filter((value): value is string => typeof value === "string").slice(0, 32)
+        : [];
+    if (apiVersion !== 1) return {state: "incompatible-version", available: true, ready: false, active: false, apiVersion, capabilities};
+    if (typeof candidate.getStatus !== "function" || typeof candidate.start !== "function" || typeof candidate.pause !== "function") {
+        return {state: "incomplete-api", available: true, ready: false, active: false, apiVersion, capabilities};
+    }
+    if (capabilities.length && !REQUIRED_CAPABILITIES.every((name) => capabilities.includes(name))) {
+        return {state: "missing-capabilities", available: true, ready: false, active: false, apiVersion, capabilities};
+    }
+    try {
+        const status = candidate.getStatus();
+        const active = status?.active === true;
+        if (status?.paused === true) return {state: "paused", available: true, ready: status.ready !== false, active, apiVersion, capabilities};
+        if (status?.running === true || active) return {state: "running", available: true, ready: status.ready !== false, active, apiVersion, capabilities};
+        if (status?.ready === false) return {state: "not-ready", available: true, ready: false, active: false, apiVersion, capabilities};
+        return {state: "ready", available: true, ready: true, active: false, apiVersion, capabilities};
+    } catch {
+        return {state: "error", available: true, ready: false, active: false, apiVersion, capabilities};
+    }
 }
 
 interface DockTomatoCompletionDetail {
@@ -41,9 +83,8 @@ interface DockCheckinApi {
 
 function getDockTomatoFocusApi(): DockTomatoFocusApi | undefined {
     const candidate = (window as DockTomatoHost).__dockTomato?.focus;
-    if (!candidate || candidate.version !== 1 || typeof candidate.getStatus !== "function" || typeof candidate.start !== "function" || typeof candidate.pause !== "function") return undefined;
-    const capabilities = Array.isArray(candidate.capabilities) ? new Set(candidate.capabilities) : undefined;
-    if (capabilities && (!["status", "start", "pause", "completion-event"].every((name) => capabilities.has(name)))) return undefined;
+    const diagnostics = inspectDockTomatoProvider();
+    if (!candidate || !["ready", "running", "paused"].includes(diagnostics.state)) return undefined;
     return candidate;
 }
 
@@ -62,10 +103,21 @@ function completedValue(item: CheckinItem, durationMinutes: number): number | un
  * facade and events; no DOM selectors, storage paths or private functions are
  * coupled across plugins.
  */
-export function installDockTomatoBridge(api: DockCheckinApi): () => void {
+export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChanged: () => void = () => undefined): () => void {
     let disposeAdapter: (() => void) | undefined;
     let boundFacade: DockTomatoFocusApi | undefined;
     let releaseTimer: number | undefined;
+    let providerRefreshQueued = false;
+    let bridgeDisposed = false;
+
+    const scheduleProviderRefresh = () => {
+        if (providerRefreshQueued || bridgeDisposed) return;
+        providerRefreshQueued = true;
+        void Promise.resolve().then(() => {
+            providerRefreshQueued = false;
+            if (!bridgeDisposed) onProviderStateChanged();
+        });
+    };
 
     const releaseWhenIdle = (remaining = 20) => {
         if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
@@ -114,7 +166,11 @@ export function installDockTomatoBridge(api: DockCheckinApi): () => void {
         disposeAdapter = api.registerFocusAdapter(adapter);
     };
 
-    const handleAvailability = () => bind();
+    const handleAvailability = () => {
+        bind();
+        scheduleProviderRefresh();
+    };
+    const handleProviderState = () => scheduleProviderRefresh();
     const handleCompleted = (event: Event) => {
         try {
             const detail = (event as CustomEvent<DockTomatoCompletionDetail>).detail;
@@ -142,11 +198,16 @@ export function installDockTomatoBridge(api: DockCheckinApi): () => void {
     const handleEnded = () => releaseWhenIdle();
 
     window.addEventListener(DOCK_TOMATO_API_EVENT, handleAvailability);
+    window.addEventListener("tomato:focus-session-started", handleProviderState);
+    window.addEventListener("tomato:focus-session-paused", handleProviderState);
     window.addEventListener(DOCK_TOMATO_COMPLETED_EVENT, handleCompleted);
     window.addEventListener(DOCK_TOMATO_ENDED_EVENT, handleEnded);
     bind();
     return () => {
+        bridgeDisposed = true;
         window.removeEventListener(DOCK_TOMATO_API_EVENT, handleAvailability);
+        window.removeEventListener("tomato:focus-session-started", handleProviderState);
+        window.removeEventListener("tomato:focus-session-paused", handleProviderState);
         window.removeEventListener(DOCK_TOMATO_COMPLETED_EVENT, handleCompleted);
         window.removeEventListener(DOCK_TOMATO_ENDED_EVENT, handleEnded);
         if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);

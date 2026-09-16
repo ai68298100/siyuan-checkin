@@ -51,7 +51,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
-import {installDockTomatoBridge} from "./dock-tomato";
+import {inspectDockTomatoProvider, installDockTomatoBridge} from "./dock-tomato";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -403,7 +403,7 @@ export default class CheckinPlugin extends Plugin {
 
         this.api = this.createApi();
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
-        this.disposeDockTomatoBridge = installDockTomatoBridge(this.api);
+        this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => this.renderBackgroundUpdate());
         window.addEventListener("focus", this.handleWindowFocus);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
@@ -1140,6 +1140,7 @@ export default class CheckinPlugin extends Plugin {
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
+            dockTomatoDiagnostics: inspectDockTomatoProvider(),
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
@@ -1172,6 +1173,11 @@ export default class CheckinPlugin extends Plugin {
                 this.focusTimerProvider = value;
                 savePreference();
             }
+        });
+        root.querySelector<HTMLElement>("[data-action='use-builtin-focus']")?.addEventListener("click", () => {
+            this.focusTimerProvider = "builtin";
+            void this.persistViewPreferences().then(() => showMessage(t("set.tomatoFallbackSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;

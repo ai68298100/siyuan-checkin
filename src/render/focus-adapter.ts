@@ -22,6 +22,21 @@ export interface FocusAdapterHost {
     renderBackgroundUpdate(): void;
 }
 
+export function focusStartErrorMessage(error: unknown): string {
+    let code = "";
+    try {
+        if (error && typeof error === "object" && "code" in error) code = String((error as {code?: unknown}).code || "");
+    } catch {
+        code = "";
+    }
+    if (code === "DOCK_TOMATO_NOT_READY") return t("msg.focusDockLoading");
+    if (code === "DOCK_TOMATO_TIMER_BUSY") return t("msg.focusDockBusy");
+    if (code === "DOCK_TOMATO_INVALID_CONTEXT") return t("msg.focusDockContext");
+    let detail = "";
+    try { detail = error instanceof Error ? error.message : String(error); } catch { detail = t("common.unknownError"); }
+    return t("msg.focusStartFail", {error: detail.slice(0, 240)});
+}
+
 export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?: string): Promise<boolean> {
     if (!host.acceptingOperations || host.disposed || host.initializationState !== "ready" || host.focusBusy || host.activeFocusAdapter) return Promise.resolve(false);
     const startedAt = currentCalendarDate();
@@ -46,7 +61,7 @@ export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?
             host.activeFocusAdapter = adapter;
             return true;
         } catch (error) {
-            if (!host.disposed) showMessage(t("msg.focusStartFail", {error: String(error)}));
+            if (!host.disposed) showMessage(focusStartErrorMessage(error));
             return false;
         } finally {
             host.focusBusy = false;

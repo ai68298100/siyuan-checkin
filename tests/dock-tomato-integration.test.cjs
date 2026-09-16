@@ -5,9 +5,11 @@ const bridge = fs.readFileSync("src/dock-tomato.ts", "utf8");
 const preferences = fs.readFileSync("src/view-preferences.ts", "utf8");
 const settings = fs.readFileSync("src/render/settings.ts", "utf8");
 const focus = fs.readFileSync("src/render/focus-adapter.ts", "utf8");
+const today = fs.readFileSync("src/render/bind-today.ts", "utf8");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
+const plugin = fs.readFileSync("src/index.ts", "utf8");
 
-assert.match(bridge, /version !== 1/, "unknown Dock Tomato API versions must be rejected");
+assert.match(bridge, /apiVersion !== 1/, "unknown Dock Tomato API versions must be rejected");
 assert.match(bridge, /\["status", "start", "pause", "completion-event"\]/, "declared capabilities must be negotiated when present");
 assert.match(bridge, /tomato:focus-api-availability-changed/, "either plugin load order must be supported");
 assert.match(bridge, /tomato:focus-session-completed/, "durable completion events must be consumed");
@@ -24,5 +26,60 @@ assert.match(settings, /option value="docktomato"/, "settings must expose only t
 assert.match(focus, /if \(adapterId\)[\s\S]*host\.focusAdapters\.get\(adapterId\)/, "named focus routing must not pick an unrelated adapter");
 assert.match(bridge, /id: DOCK_TOMATO_ADAPTER_ID/, "the built-in Dock Tomato bridge must register the exact provider id");
 assert.match(i18n, /底栏番茄钟插件/, "the selected provider must be explicit to users");
+assert.match(bridge, /export type DockTomatoProviderState/, "provider diagnostics must use a closed state union");
+for (const state of ["missing", "incompatible-version", "incomplete-api", "missing-capabilities", "not-ready", "ready", "running", "paused", "error"]) {
+    assert.match(bridge, new RegExp(`state: "${state}"`), `provider diagnostics must cover ${state}`);
+}
+assert.match(bridge, /REQUIRED_CAPABILITIES/, "required capabilities must have one source of truth");
+assert.match(bridge, /candidate\.capabilities\.filter/, "foreign capability values must be sanitized");
+assert.match(bridge, /slice\(0, 32\)/, "foreign capability lists must be bounded");
+assert.match(bridge, /Number\.isFinite\(parsedVersion\)/, "invalid external version values must not leak into UI diagnostics");
+assert.match(bridge, /status\?\.paused === true/, "paused provider state must be distinguishable");
+assert.match(bridge, /status\?\.running === true \|\| active/, "running provider state must be distinguishable");
+assert.match(bridge, /status\?\.ready === false/, "provider recovery must be distinguishable from absence");
+assert.match(bridge, /catch \{[\s\S]*state: "error"/, "throwing provider status reads must be isolated");
+assert.match(bridge, /\["ready", "running", "paused"\]\.includes\(diagnostics\.state\)/, "only healthy provider states may register an adapter");
+assert.match(bridge, /onProviderStateChanged/, "provider lifecycle changes must refresh visible surfaces");
+assert.match(bridge, /providerRefreshQueued/, "provider lifecycle refreshes must be coalesced");
+assert.match(bridge, /Promise\.resolve\(\)\.then/, "provider refreshes must run after the current event stack");
+assert.match(bridge, /if \(providerRefreshQueued \|\| bridgeDisposed\) return/, "duplicate or disposed refreshes must be ignored");
+assert.match(bridge, /if \(!bridgeDisposed\) onProviderStateChanged\(\)/, "queued refreshes must recheck disposal");
+assert.match(bridge, /bridgeDisposed = true;[\s\S]*removeEventListener/, "unload must invalidate queued refreshes before removing listeners");
+assert.match(bridge, /tomato:focus-session-started/, "external starts must refresh provider diagnostics");
+assert.match(bridge, /tomato:focus-session-paused/, "external pauses must refresh provider diagnostics");
+assert.match(bridge, /removeEventListener\("tomato:focus-session-started"/, "start listeners must be removed on unload");
+assert.match(bridge, /removeEventListener\("tomato:focus-session-paused"/, "pause listeners must be removed on unload");
+assert.match(plugin, /dockTomatoDiagnostics: inspectDockTomatoProvider\(\)/, "settings must receive a current provider snapshot");
+assert.match(plugin, /data-action='use-builtin-focus'/, "the unavailable-provider recovery action must be bound");
+assert.match(plugin, /this\.focusTimerProvider = "builtin"/, "recovery must explicitly select the built-in provider");
+assert.match(plugin, /set\.tomatoFallbackSaved/, "provider fallback must give user feedback");
+assert.match(settings, /Record<DockTomatoProviderState, string>/, "every diagnostic state must map to localized copy");
+assert.match(settings, /data-focus-provider-state/, "diagnostic state must be inspectable in rendered UI");
+assert.match(settings, /role="status"/, "diagnostic changes must be announced accessibly");
+assert.match(settings, /ctx\.focusTimerProvider === "docktomato" && !tomatoHealthy/, "fallback must only appear for an unhealthy selected provider");
+assert.match(settings, /set\.tomatoDiagnosticVersion/, "detected API versions must be explained");
+assert.match(settings, /set\.tomatoDiagnosticInstall/, "missing providers must receive installation guidance");
+assert.match(i18n, /"set\.tomatoStateMissing": "未安装或未启用"/, "Chinese copy must distinguish missing providers");
+assert.match(i18n, /"set\.tomatoStateVersion": "版本不兼容"/, "Chinese copy must distinguish incompatible versions");
+assert.match(i18n, /"set\.tomatoStateCapabilities": "缺少所需能力"/, "Chinese copy must distinguish missing capabilities");
+assert.match(i18n, /"set\.tomatoUseBuiltin": "改用自带番茄钟"/, "Chinese recovery action must be explicit");
+assert.match(i18n, /"set\.tomatoStateMissing": "Not installed or disabled"/, "English copy must distinguish missing providers");
+assert.match(i18n, /"set\.tomatoStateError": "Could not read status"/, "English copy must distinguish status failures");
+assert.match(i18n, /"set\.tomatoUseBuiltin": "Use built-in timer"/, "English recovery action must be explicit");
+assert.match(today, /DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string>/, "Today must map every provider state to an actionable message");
+assert.match(today, /inspectDockTomatoProvider\(\)\.state/, "Today must inspect the current provider state at click time");
+for (const key of ["focusDockMissing", "focusDockVersion", "focusDockApi", "focusDockCapabilities", "focusDockLoading", "focusDockBusy", "focusDockPaused", "focusDockError"]) {
+    assert.match(today, new RegExp(`msg\\.${key}`), `Today must handle ${key}`);
+}
+assert.match(focus, /export function focusStartErrorMessage/, "start failures must pass through a stable error translator");
+assert.match(focus, /DOCK_TOMATO_NOT_READY/, "not-ready errors must be translated");
+assert.match(focus, /DOCK_TOMATO_TIMER_BUSY/, "busy errors must be translated");
+assert.match(focus, /DOCK_TOMATO_INVALID_CONTEXT/, "invalid-context errors must be translated");
+assert.match(focus, /detail\.slice\(0, 240\)/, "unrecognized provider errors must be bounded before display");
+assert.match(focus, /catch \{ detail = t\("common\.unknownError"\); \}/, "hostile error objects must not escape error rendering");
+assert.match(i18n, /"msg\.focusDockMissing": "未检测到底栏番茄钟/, "Chinese missing-provider guidance must be actionable");
+assert.match(i18n, /"msg\.focusDockPaused": "底栏番茄钟有暂停中的专注/, "Chinese paused guidance must be actionable");
+assert.match(i18n, /"msg\.focusDockMissing": "Dock Tomato was not detected/, "English missing-provider guidance must be actionable");
+assert.match(i18n, /"msg\.focusDockPaused": "Dock Tomato has a paused focus session/, "English paused guidance must be actionable");
 
 console.log("Dock Tomato integration contract checks passed.");

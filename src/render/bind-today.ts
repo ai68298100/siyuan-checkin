@@ -8,6 +8,7 @@ import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecord
 import {isOccasionCompleted} from "../occasions";
 import {showMessage} from "siyuan";
 import {DOCK_TOMATO_ADAPTER_ID} from "../integrations";
+import {inspectDockTomatoProvider, type DockTomatoProviderState} from "../dock-tomato";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
@@ -61,6 +62,18 @@ export interface BindTodayHost {
     openFocusTimer(itemId: string): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
+
+const DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string> = {
+    missing: "msg.focusDockMissing",
+    "incompatible-version": "msg.focusDockVersion",
+    "incomplete-api": "msg.focusDockApi",
+    "missing-capabilities": "msg.focusDockCapabilities",
+    "not-ready": "msg.focusDockLoading",
+    ready: "msg.focusPluginUnavailable",
+    running: "msg.focusDockBusy",
+    paused: "msg.focusDockPaused",
+    error: "msg.focusDockError",
+};
 
 export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void {
     host.bindDialogClose(root);
@@ -205,7 +218,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             if (!focusItem) return;
             if (host.focusTimerProvider === "docktomato") {
                 if (!host.findFocusAdapter(focusItem, currentCalendarDate(), DOCK_TOMATO_ADAPTER_ID)) {
-                    showMessage(t("msg.focusPluginUnavailable"));
+                    showMessage(t(DOCK_TOMATO_MESSAGE_KEYS[inspectDockTomatoProvider().state]));
                     return;
                 }
                 void host.startFocus(itemId, DOCK_TOMATO_ADAPTER_ID);

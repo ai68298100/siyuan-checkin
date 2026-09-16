@@ -5,6 +5,7 @@ import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
 import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
+import type {DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 
 let settingsViewSequence = 0;
 
@@ -21,6 +22,7 @@ export interface SettingsViewContext {
     focusTimerAdapterCount?: number;
     focusTimerAdapterIds?: readonly string[];
     focusTimerBusy?: boolean;
+    dockTomatoDiagnostics?: DockTomatoProviderDiagnostics;
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -37,7 +39,26 @@ export interface SettingsViewContext {
 export function renderSettingsView(ctx: SettingsViewContext): string {
     const settingsViewId = `lc-checkin-settings-${++settingsViewSequence}`;
     const agentStatus = ctx.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
-    const tomatoStatus = ctx.focusTimerBusy ? "计时器处理中" : (ctx.focusTimerAdapterCount ?? 0) > 0 ? `已连接 · ${ctx.focusTimerAdapterCount} 个适配器` : t("set.tomatoPending");
+    const diagnosticState: DockTomatoProviderState = ctx.dockTomatoDiagnostics?.state || "missing";
+    const diagnosticKey: Record<DockTomatoProviderState, string> = {
+        missing: "set.tomatoStateMissing",
+        "incompatible-version": "set.tomatoStateVersion",
+        "incomplete-api": "set.tomatoStateApi",
+        "missing-capabilities": "set.tomatoStateCapabilities",
+        "not-ready": "set.tomatoStateLoading",
+        ready: "set.tomatoStateReady",
+        running: "set.tomatoStateRunning",
+        paused: "set.tomatoStatePaused",
+        error: "set.tomatoStateError",
+    };
+    const tomatoStatus = t(diagnosticKey[diagnosticState]);
+    const tomatoHealthy = diagnosticState === "ready" || diagnosticState === "running" || diagnosticState === "paused";
+    const tomatoDiagnosticDetail = ctx.dockTomatoDiagnostics?.apiVersion != null
+        ? t("set.tomatoDiagnosticVersion", {version: ctx.dockTomatoDiagnostics.apiVersion})
+        : t("set.tomatoDiagnosticInstall");
+    const tomatoFallback = ctx.focusTimerProvider === "docktomato" && !tomatoHealthy
+        ? `<button class="lc-checkin__text-button" type="button" data-action="use-builtin-focus">${t("set.tomatoUseBuiltin")}</button>`
+        : "";
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
     const iconKb = Math.max(0, Math.round(ctx.customIconLibrary.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
@@ -110,7 +131,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             label: t("set.groupIntegrations"),
             body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small></span><span class="lc-checkin__settings-value ${ctx.focusTimerAdapterCount ? "is-success" : "is-muted"}">${tomatoStatus}</span></div>
+                    <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
