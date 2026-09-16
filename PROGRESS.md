@@ -790,3 +790,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 外部专注启动新增可往返上下文构造器，itemId/unit 必须非空、无首尾空白且不超过 completion 侧160/80字符边界，避免完成后无法匹配项目。
 - canStart 提前关闭非法入口，start 再次守门并返回既有 DOCK_TOMATO_INVALID_CONTEXT，绕过资格检查也不会调用外部 provider。
 - 25组异常项目新增50条逐项断言，另覆盖合法最大边界、直接 start 拒绝和零 provider 调用；定向 bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 55ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第十八批（2026-09-17，T-1040~T-1042）
+
+- completion 的 sessionId/recordId 改为无损身份校验，禁止首尾空白和超过240字符的值被 trim/slice 后进入 externalRef，消除不同长身份截断碰撞。
+- 持久历史只投影总长不超过251字符且拆分身份不超过240字符的原样 `docktomato:` 引用，与运行期判定共享边界。
+- 25组异常 completion 身份与25组异常历史引用共新增100条逐项断言，另覆盖合法最大边界和 recordId 回退；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 32ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

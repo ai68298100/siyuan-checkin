@@ -152,6 +152,11 @@ function boundedText(value: unknown, maxLength: number): string {
     return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function exactBoundedText(value: unknown, maxLength: number): string {
+    if (typeof value !== "string" || !value || value.length > maxLength || value.trim() !== value) return "";
+    return value;
+}
+
 function customEventDetail(event: Event): unknown {
     try { return (event as CustomEvent<unknown>).detail; } catch { return undefined; }
 }
@@ -270,7 +275,7 @@ export function evaluateDockTomatoCompletion(detail: unknown, items: readonly Ch
     const durationMinutes = Number(ownDataValue(detail, "durationMinutes"));
     const value = completedValue(item, durationMinutes);
     if (value === undefined) return {accepted: false, reason: "invalid-duration", item};
-    const identity = boundedText(ownDataValue(detail, "sessionId"), 240) || boundedText(ownDataValue(detail, "recordId"), 240);
+    const identity = exactBoundedText(ownDataValue(detail, "sessionId"), 240) || exactBoundedText(ownDataValue(detail, "recordId"), 240);
     if (!identity) return {accepted: false, reason: "missing-identity", item};
     if (duplicateIdentities.has(identity)) return {accepted: false, reason: "duplicate", item, identity};
     return {accepted: true, item, value, identity};
@@ -280,10 +285,10 @@ export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<
     const identities = new Set<string>();
     if (!Array.isArray(events)) return identities;
     for (const entry of events) {
-        const reference = boundedText(ownDataValue(entry, "externalRef"), 260);
+        const reference = exactBoundedText(ownDataValue(entry, "externalRef"), 251);
         if (!reference.startsWith("docktomato:")) continue;
         const identity = reference.slice("docktomato:".length);
-        if (identity) identities.add(identity);
+        if (exactBoundedText(identity, 240)) identities.add(identity);
     }
     return identities;
 }

@@ -298,3 +298,9 @@
 - completion 消费端对 itemId 和 unit 有160/80字符边界，因此启动端不能发送会被截断或 trim 后改变的字段，否则一次合法计时也无法匹配回原项目。
 - canStart 与 start 共享上下文构造器：前者让 UI 提前禁用不可用入口，后者防止状态变化或直接调用绕过资格检查。
 - 不自动修剪或截断项目字段，因为那会让外部 session 绑定到不同标识；非法上下文使用既有 DOCK_TOMATO_INVALID_CONTEXT 错误码和用户提示。
+
+## D-119：幂等身份禁止规范化后使用（2026-09-17）
+
+- sessionId、recordId 和持久 externalRef 都是身份而非展示文本；对身份执行 trim 或 slice 会让两个不同上游值碰撞成同一幂等键，因此必须原样满足边界才接受。
+- sessionId 缺失或非法时仍允许使用合法 recordId，这是既有契约的降级路径；两者均非法时返回 missing-identity，不创建截断后的 externalRef。
+- 历史投影只接收总长不超过 `docktomato:` 11字符加240字符身份的完整引用，并再次校验拆分后的身份，使运行期与跨重载去重语义一致。

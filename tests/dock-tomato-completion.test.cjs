@@ -28,6 +28,14 @@ assert.equal(evaluateDockTomatoCompletion(detail(), [item]).accepted, true);
 assert.equal(evaluateDockTomatoCompletion(detail(), [item]).value, 25);
 assert.equal(evaluateDockTomatoCompletion(detail(), [item]).identity, "session-1");
 assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "", recordId: "record-1"}), [item]).identity, "record-1");
+const malformedIdentities = Array.from({length: 25}, (_, index) => index % 3 === 0 ? ` ${index}` : index % 3 === 1 ? `${index} ` : `${index}-${"s".repeat(240)}`);
+for (let index = 0; index < malformedIdentities.length; index += 1) {
+    const rejectedIdentity = evaluateDockTomatoCompletion(detail({sessionId: malformedIdentities[index], recordId: ""}), [item]);
+    assert.equal(rejectedIdentity.accepted, false, `malformed completion identity ${index + 1} must be rejected`);
+    assert.equal(rejectedIdentity.reason, "missing-identity", `malformed completion identity ${index + 1} must not be truncated`);
+}
+assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "s".repeat(240)}), [item]).identity, "s".repeat(240));
+assert.equal(evaluateDockTomatoCompletion(detail({sessionId: " invalid ", recordId: "record-fallback"}), [item]).identity, "record-fallback");
 assert.equal(evaluateDockTomatoCompletion(null, [item]).reason, "invalid-event");
 assert.equal(evaluateDockTomatoCompletion(detail({apiVersion: 2}), [item]).reason, "unsupported-version");
 assert.equal(evaluateDockTomatoCompletion(detail({context: null}), [item]).reason, "invalid-context");
@@ -192,6 +200,17 @@ for (let index = 0; index < 50; index += 1) {
 }
 assert.equal(collected.has(""), false);
 assert.equal(collected.has("stored-0"), true);
+const malformedReferences = Array.from({length: 25}, (_, index) => index % 3 === 0
+    ? {externalRef: ` docktomato:bad-${index}`}
+    : index % 3 === 1
+        ? {externalRef: `docktomato:bad-${index} `}
+        : {externalRef: `docktomato:${index}-${"x".repeat(240)}`});
+for (let index = 0; index < malformedReferences.length; index += 1) {
+    const malformedSet = collectDockTomatoStoredIdentities([malformedReferences[index]]);
+    assert.equal(malformedSet.size, 0, `malformed stored identity ${index + 1} must be ignored`);
+    assert.equal(malformedSet.has(`bad-${index}`), false, `malformed stored identity ${index + 1} must not be normalized`);
+}
+assert.equal(collectDockTomatoStoredIdentities([{externalRef: `docktomato:${"s".repeat(240)}`}]).has("s".repeat(240)), true);
 
 const reversedIssues = Array.from({length: 30}, (_, index) => {
     const minute = 29 - index;

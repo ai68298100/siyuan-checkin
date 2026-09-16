@@ -17,8 +17,8 @@ assert.match(bridge, /externalRef: `docktomato:\$\{identity\}`/, "session identi
 assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must participate in deduplication after reload");
 assert.match(bridge, /export function collectDockTomatoStoredIdentities/, "persistent identities must use one reusable projection boundary");
 assert.match(bridge, /for \(const entry of events\)/, "persistent identities must be collected in one pass");
-assert.match(bridge, /boundedText\(ownDataValue\(entry, "externalRef"\), 260\)/, "persisted identities must not execute corrupted record getters");
-assert.match(bridge, /if \(identity\) identities\.add\(identity\)/, "empty provider identities must not enter the dedupe set");
+assert.match(bridge, /exactBoundedText\(ownDataValue\(entry, "externalRef"\), 251\)/, "persisted identities must not execute corrupted record getters or accept lossy values");
+assert.match(bridge, /if \(exactBoundedText\(identity, 240\)\) identities\.add\(identity\)/, "empty or oversized provider identities must not enter the dedupe set");
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
 assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
 assert.match(bridge, /inFlightIdentities\.add\(identity\)[\s\S]*await api\.recordEvent/, "identity must enter the in-flight set before persistence starts");
@@ -95,6 +95,9 @@ assert.match(bridge, /Number\.isFinite\(parsedExportedAt\)/, "diagnostics export
 assert.match(bridge, /itemId !== item\.id/, "focus start IDs must round-trip without silent trimming or truncation");
 assert.match(bridge, /itemUnit !== item\.unit/, "focus start units must round-trip without silent trimming or truncation");
 assert.match(bridge, /error\.code = "DOCK_TOMATO_INVALID_CONTEXT"/, "invalid start context must expose the stable recovery error code");
+assert.match(bridge, /exactBoundedText\(ownDataValue\(detail, "sessionId"\), 240\)/, "completion identities must not be silently truncated");
+assert.match(bridge, /exactBoundedText\(ownDataValue\(entry, "externalRef"\), 251\)/, "persisted focus references must round-trip exactly");
+assert.match(bridge, /exactBoundedText\(identity, 240\)/, "persisted focus identities must share the completion boundary");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");
