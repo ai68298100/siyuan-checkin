@@ -182,7 +182,12 @@ export function restoreDockTomatoCompletionIssues(value: unknown): readonly Dock
         : ownDataValue(source, "schemaVersion") === 1 && Array.isArray(ownDataValue(source, "issues"))
             ? ownDataValue(source, "issues") as unknown[]
             : [];
-    const normalized = entries.map(normalizeCompletionIssue).filter((issue): issue is DockTomatoCompletionIssue => Boolean(issue)).slice(-COMPLETION_ISSUE_LIMIT);
+    const normalized = entries
+        .map((entry, index) => ({issue: normalizeCompletionIssue(entry), index}))
+        .filter((entry): entry is {issue: DockTomatoCompletionIssue; index: number} => Boolean(entry.issue))
+        .sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index)
+        .slice(-COMPLETION_ISSUE_LIMIT)
+        .map((entry) => entry.issue);
     completionIssues.splice(0, completionIssues.length, ...normalized);
     return getDockTomatoCompletionIssues();
 }

@@ -172,6 +172,23 @@ for (let index = 0; index < 50; index += 1) {
 assert.equal(collected.has(""), false);
 assert.equal(collected.has("stored-0"), true);
 
+const reversedIssues = Array.from({length: 30}, (_, index) => {
+    const minute = 29 - index;
+    return {reason: "write-failed", at: `2026-09-17T03:${String(minute).padStart(2, "0")}:00.000Z`, itemId: `item-${minute}`, identity: `ordered-${minute}`};
+});
+const orderedIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: reversedIssues});
+assert.equal(orderedIssues.length, 20);
+for (let index = 0; index < 20; index += 1) {
+    const expected = index + 10;
+    assert.equal(orderedIssues[index].at, `2026-09-17T03:${String(expected).padStart(2, "0")}:00.000Z`);
+    assert.equal(orderedIssues[index].itemId, `item-${expected}`);
+    assert.equal(orderedIssues[index].identity, `ordered-${expected}`);
+}
+const equalTimestampIssues = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: Array.from({length: 25}, (_, index) => ({reason: "write-failed", at: "2026-09-17T04:00:00.000Z", identity: `stable-${index}`}))});
+assert.equal(equalTimestampIssues.length, 20);
+assert.equal(equalTimestampIssues[0].identity, "stable-5");
+assert.equal(equalTimestampIssues[19].identity, "stable-24");
+
 let providerContainerGetterReads = 0;
 const hostileProviderHost = {};
 Object.defineProperty(hostileProviderHost, "__dockTomato", {get() { providerContainerGetterReads += 1; throw new Error("must not execute"); }});
