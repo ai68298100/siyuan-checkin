@@ -1,6 +1,6 @@
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
-import {dateKey, getEventDateKey, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+import {dateKey, getEventsInDateRange, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
 
 export type SummaryRange = "day" | "week" | "month";
 
@@ -64,10 +64,7 @@ export function getEventsInRange(store: CheckinStore, range: SummaryRange, date 
     const elapsedEnd = getElapsedEnd(bounds, date);
     const startKey = dateKey(bounds.start);
     const endKey = dateKey(elapsedEnd);
-    return store.events.filter((event) => {
-        const eventKey = getEventDateKey(event);
-        return eventKey >= startKey && eventKey < endKey;
-    });
+    return getEventsInDateRange(store, startKey, endKey);
 }
 
 export function getEventsInCustomRange(store: CheckinStore, range: CustomSummaryRange): CheckinEvent[] {
@@ -75,10 +72,7 @@ export function getEventsInCustomRange(store: CheckinStore, range: CustomSummary
     const end = dateFromKey(range.endDate);
     if (!start || !end || range.startDate > range.endDate) return [];
     const endExclusive = dateKey(addDays(end, 1));
-    return store.events.filter((event) => {
-        const key = getEventDateKey(event);
-        return key >= range.startDate && key < endExclusive;
-    });
+    return getEventsInDateRange(store, range.startDate, endExclusive);
 }
 
 export function buildSummaryContext(store: CheckinStore, range: SummaryRange, date = new Date()): SummaryContext {

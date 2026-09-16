@@ -396,6 +396,7 @@ interface StoreEventIndex {
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
+    byDateOrdered?: Array<{date: string; event: CheckinEvent; ordinal: number}>;
 }
 
 const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
@@ -404,7 +405,8 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     let index = storeIndexes.get(store);
     if (!index) {
         index = {byItemDate: new Map(), byDate: new Map(), byId: new Map()};
-        for (const event of store.events) {
+        for (let ordinal = 0; ordinal < store.events.length; ordinal += 1) {
+            const event = store.events[ordinal];
             const day = getEventDateKey(event);
             const itemDateKey = event.itemId + ":" + day;
             const itemDateEvents = index.byItemDate.get(itemDateKey);
@@ -432,6 +434,30 @@ export function getEventsForDate(store: CheckinStore, date: Date | string = new 
 
 export function getEventById(store: CheckinStore, eventId: string | undefined): CheckinEvent | undefined {
     return eventId ? getStoreIndex(store).byId.get(eventId) : undefined;
+}
+
+export function getEventsInDateRange(store: CheckinStore, startDate: string, endDateExclusive: string): CheckinEvent[] {
+    if (startDate >= endDateExclusive) return [];
+    const index = getStoreIndex(store);
+    const entries = index.byDateOrdered || store.events.map((event, ordinal) => ({
+        date: getEventDateKey(event),
+        event,
+        ordinal,
+    })).sort((left, right) => left.date.localeCompare(right.date) || left.ordinal - right.ordinal);
+    index.byDateOrdered = entries;
+    const lowerBound = (target: string): number => {
+        let low = 0;
+        let high = entries.length;
+        while (low < high) {
+            const middle = (low + high) >>> 1;
+            if (entries[middle].date < target) low = middle + 1;
+            else high = middle;
+        }
+        return low;
+    };
+    const start = lowerBound(startDate);
+    const end = lowerBound(endDateExclusive);
+    return entries.slice(start, end).sort((left, right) => left.ordinal - right.ordinal).map((entry) => entry.event);
 }
 
 const EMPTY_EVENTS: CheckinEvent[] = [];
