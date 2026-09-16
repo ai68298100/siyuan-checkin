@@ -229,6 +229,8 @@ export default class CheckinPlugin extends Plugin {
     private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     private pendingFocusItemId?: string;
     private pendingLocalItemId?: string;
+    /* 仅当变更发生在当前日时才尝试 Today 局部刷新；跨日事件必须走完整投影。 */
+    private pendingLocalItemDate?: string;
     private collapsedTodayGroups = new Set<string>();
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
@@ -613,6 +615,7 @@ export default class CheckinPlugin extends Plugin {
         this.broadcast({type: "event-recorded", item, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         this.pendingLocalItemId = item.id;
+        this.pendingLocalItemDate = event.localDate;
         this.renderBackgroundUpdate();
         return {...event};
     }
@@ -772,8 +775,10 @@ export default class CheckinPlugin extends Plugin {
 
     private renderBackgroundUpdate() {
         const localItemId = this.pendingLocalItemId;
+        const localItemDate = this.pendingLocalItemDate;
         this.pendingLocalItemId = undefined;
-        if (localItemId && this.currentPage === "today" && this.renderTodayItemLocally(localItemId)) {
+        this.pendingLocalItemDate = undefined;
+        if (localItemId && this.currentPage === "today" && this.renderTodayItemLocally(localItemId, localItemDate)) {
             /* The original control stays connected, so no focus restoration is needed;
                clear the deferred full-render target to avoid stealing focus later. */
             this.pendingFocusItemId = undefined;
@@ -782,11 +787,15 @@ export default class CheckinPlugin extends Plugin {
         renderBackgroundUpdateFor(this as unknown as PluginOpsHost);
     }
 
-    /* 打卡后只更新目标卡片及 Today 的派生计数，保留滚动位置、焦点和其余
-       控件节点。即使完成态发生变化，也不重建整个 surface，避免页面闪烁。 */
-    private renderTodayItemLocally(itemId: string): boolean {
+    /* 打卡后只更新同结构目标卡片及 Today 的派生计数，保留滚动位置、焦点和
+       其余控件节点。完成区/操作节点发生变化时保守回退完整投影，避免留下
+       错误分区或失效按钮。 */
+    private renderTodayItemLocally(itemId: string, localDate?: string): boolean {
         if (typeof document === "undefined") return false;
         const date = currentCalendarDate();
+        /* 外部适配器、番茄钟和撤销操作都可能带着非今天的 localDate 回来。
+           Today 的卡片是当天投影，跨日强行局部改写会把历史事件错误显示到今天。 */
+        if (localDate && localDate !== dateKey(date)) return false;
         const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) return false;
         const complete = isComplete(this.store, item, date);
@@ -809,15 +818,32 @@ export default class CheckinPlugin extends Plugin {
             const card = [...(surface?.querySelectorAll<HTMLElement>("[data-item-id]") || [])]
                 .find((candidate) => candidate.dataset.itemId === itemId);
             if (!surface || !card) return false;
-            if (this.pendingOnly && complete) {
-                card.remove();
-                cards.push({card, next: card, surface});
-                continue;
-            }
+            /* 任何完成态变化都会改变操作节点、完成区归属或拖拽语义。
+               先拒绝局部 patch，统一回退到完整 render，避免先 remove 一个
+               surface 后才发现另一个 surface 缺卡，造成跨表面短暂不一致。 */
+            if (this.pendingOnly && complete) return false;
             const template = document.createElement("template");
             template.innerHTML = renderItemView(item, date, ctx).trim();
             const next = template.content.firstElementChild;
             if (!(next instanceof HTMLElement)) return false;
+            const has = (node: HTMLElement, selector: string) => Boolean(node.querySelector(selector));
+            const currentComplete = card.classList.contains("is-complete");
+            const currentInCompleted = Boolean(card.closest(".lc-checkin__completed-section"));
+            const nextInCompleted = Boolean(next.classList.contains("is-complete"));
+            const structuralSelectors = [
+                "[data-action='toggle-exact']",
+                "[data-exact-entry]",
+                "[data-drag-handle]",
+                "[data-bulk-check]",
+                "[data-action='record']",
+                "[data-action='quick-record']",
+            ];
+            /* Local patch intentionally handles only same-shape updates (for
+               example progress/count changes). Completion transitions are
+               rendered atomically so their parent section and listeners stay
+               correct on every surface. */
+            if (currentComplete !== complete || currentInCompleted !== nextInCompleted) return false;
+            if (structuralSelectors.some((selector) => has(card, selector) !== has(next, selector))) return false;
             cards.push({card, next, surface});
         }
         for (const {card, next, surface} of cards) {
@@ -863,13 +889,8 @@ export default class CheckinPlugin extends Plugin {
             if (currentMore) currentMore.hidden = complete;
             const currentExact = card.querySelector<HTMLElement>("[data-exact-entry]");
             if (currentExact && complete) currentExact.hidden = true;
-            /* Keep the existing card/listeners connected. Only move it when a
-               completed section already exists; creating/removing whole Today
-               markup here would reintroduce the full-page flash this path avoids. */
-            if (complete && !card.closest(".lc-checkin__completed-section")) {
-                const completedItems = surface.querySelector<HTMLElement>(".lc-checkin__completed-section .lc-checkin__group-items");
-                if (completedItems) completedItems.appendChild(card);
-            }
+            /* Parent section and completion-state changes were rejected during
+               preflight above; no card is moved or removed after mutation starts. */
         }
         for (const surface of new Set(cards.map(({surface}) => surface))) {
             const scheduledItems = this.store.items.filter((candidate) => !candidate.archived && isItemAvailableOnDate(candidate, date) && isScheduledToday(candidate, date));
@@ -1867,9 +1888,10 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.invalidateSummary();
-        this.broadcast({type: "event-deleted", item, deletedEvents});
-        this.broadcast({type: "analytics-updated", analyticsAsOf: currentCalendarDate().toISOString().slice(0, 10)});
+            this.broadcast({type: "event-deleted", item, deletedEvents});
+            this.broadcast({type: "analytics-updated", analyticsAsOf: moment.localDate});
             this.pendingLocalItemId = item.id;
+            this.pendingLocalItemDate = moment.localDate;
             this.renderBackgroundUpdate();
             return;
         }
@@ -1922,6 +1944,7 @@ export default class CheckinPlugin extends Plugin {
             unit: revision.unit || "次",
         });
         this.pendingLocalItemId = current.id;
+        this.pendingLocalItemDate = moment.localDate;
         this.renderBackgroundUpdate();
         return {...event};
     }
@@ -1965,6 +1988,7 @@ export default class CheckinPlugin extends Plugin {
             this.invalidateSummary();
             this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
             this.pendingLocalItemId = event.itemId;
+            this.pendingLocalItemDate = event.localDate;
             this.renderBackgroundUpdate();
         });
     }

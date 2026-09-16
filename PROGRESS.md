@@ -605,11 +605,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 删除 legacy 重复样式 38 行，组件层统一使用插件 Token 和阴影/圆角语义。
 - 验证：`pnpm run check`、`node tests/ui-theme.test.cjs`、`git diff --check` 通过；本地提交 `46603c2`，未推送。
 
-### 10.0 ���������ڶ�ʮ������30 �
+### 10.0 基础开发第二十二批（30 项）
 
-- �����ƽ� T-105��ɾ����ʷҳ�б�����ʷ�С�������Ԫ��� legacy �ظ�����ְ��
-- ���� UI ����������ţ�ȷ����ʷ���ּ�����������ṩ��
-- ��֤��pnpm run check��ui-theme��git diff --check ͨ�����ύ c65265a��95db225��δ���͡�
+- 继续推进 T-105，删除历史页列表、历史行、日历单元格等 legacy 重复基础职责。
+- 更新 UI 主题归属守门，确认历史布局继续由组件层提供。
+- 验证：pnpm run check、ui-theme、git diff --check 通过；提交 c65265a、95db225，未推送。
 
 ### 12.0.0 发布收口（2026-09-16）
 
@@ -641,3 +641,12 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 事项操作按钮拆分图标与标签节点，归一化过程只替换图标，重绘/停用切换后不丢失 label、title 和 ARIA 语义；窄栏继续隐藏标签以保持固定操作列。
 - 验证：`pnpm run check`、`pnpm run build`、`pnpm run test:quality`、系统 Chrome `width-walkthrough`、桌面浅色/深色 visual QA、mobile frontend visual QA 均通过；10k 事件完整渲染 33ms，横向溢出 0px。
 - 最终生产 CSS 为 425364 bytes，超过 420KB 告警线但低于 450000-byte 硬线；本轮仍未 push、未发版、未同步 `D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin`，B-007 真宿主复核继续开放。
+
+### 12.0.0 发布后 dock 与局部刷新加固（2026-09-16，T-975~T-980）
+
+- Today 局部刷新传播实际 `localDate`；跨日事件、完成区归属变化和操作节点结构变化均先回退完整投影，避免历史事件错误改写今日卡片或完成卡片残留在错误分区。
+- 局部 patch 在 dock、页签和快速窗口上先完成多 surface 预检，再执行任何 DOM mutation；`pending-only` 移除不再出现“先删一个 surface、另一个 surface 才发现不匹配”的短暂不一致。
+- 窄 dock 底栏补充最终几何守门：五个 `minmax(0,1fr)` 等分轨道、图标与标签同格居中、标签省略；宽 dock rail 使用等分 flex 轨道并保留 72px 最小可用宽度；卡片正文和操作按钮统一 `min-width:0`。
+- 新增响应式源码守门，锁定窄 dock 等分、宽 rail 分布和局部刷新结构选择器；`pnpm run test:quality`、`width-walkthrough`、`ui-sweep`、类型检查和构建均通过。
+- 本轮生产 CSS 为 427260 bytes，超过 420KB 告警线但低于 450000-byte 硬阻断线；未 push、未发版、未同步本地集市，B-007 真实思源宿主复核继续开放。
+- 参考上游 `HaoCeans/siyuan-points-reward@eb78e447` 与 `royc01/pinch@8ce2a252`，仅采用稳定 dock 尺寸、单滚动容器、等分导航、信息分层和反馈闭环原则，不复制其主题、业务模型或可能造成弹层裁切/双滚动的实现。

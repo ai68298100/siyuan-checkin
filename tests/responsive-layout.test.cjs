@@ -133,4 +133,15 @@ assert.match(components, /@container\s+lc5\s*\(max-width:\s*719px\)[\s\S]*\.lc-c
 assert.match(components, /@container\s+lc5\s*\(max-width:\s*340px\)[\s\S]*\.lc-checkin--today \.lc-checkin__header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*overflow:\s*hidden;/,
     "the 320px Today header must keep streak and progress badges on one compact row");
 
+/* Dock navigation geometry: reference sidebars use equal tracks and let
+   labels shrink before they can push the host wider.  Keep this contract in
+   the final cascade so later visual layers cannot reintroduce intrinsic-width
+   overflow or an off-centre add action. */
+assert.match(components, /12\.0 dock navigation geometry guard[\s\S]*\.lc-checkin-dock-host > \.lc-checkin__mobile-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)\s*!important;/,
+    "narrow dock navigation must keep five equal, shrinkable tracks");
+assert.match(components, /12\.0 dock navigation geometry guard[\s\S]*\.lc-checkin-dock-host > \.lc-checkin__mobile-nav > button\s*\{[\s\S]*justify-items:\s*center;[\s\S]*min-width:\s*0;/,
+    "narrow dock buttons must centre icon/label content without intrinsic overflow");
+assert.match(components, /12\.0 dock navigation geometry guard[\s\S]*\.lc-checkin-dock-host > \.lc-checkin__rail > button\s*\{[\s\S]*flex:\s*1 1 0;[\s\S]*min-width:\s*72px;/,
+    "wide dock rail buttons must distribute evenly while retaining a usable minimum");
+
 console.log("Responsive surface layout checks passed.");

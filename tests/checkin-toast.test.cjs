@@ -15,11 +15,15 @@ assert.match(indexSource, /this\.recentRecordTimer = window\.setTimeout\([\s\S]*
 assert.match(fragments, /<main class="lc-checkin__list">[\s\S]*?<\/main>\s*\$\{recentRecord\}/, "check-in feedback must render after the list, not in the mobile header flow");
 assert.equal((fragments.match(/\$\{recentRecord\}/g) || []).length, 1, "check-in feedback must render exactly once");
 assert.match(indexSource, /surface\?\.querySelector<HTMLElement>\("\.lc-checkin__recent-record"\)[\s\S]*?root\.appendChild\(recentRecordToast\)/, "check-in feedback must be hoisted to the plugin window host");
-assert.match(indexSource, /private renderTodayItemLocally\(itemId: string\): boolean/, "Today updates should have a conservative local-render path");
+assert.match(indexSource, /private renderTodayItemLocally\(itemId: string, localDate\?: string\): boolean/, "Today updates should have a conservative local-render path");
+assert.match(indexSource, /if \(localDate && localDate !== dateKey\(date\)\) return false/, "cross-day updates must fall back to a full Today projection");
+assert.match(indexSource, /if \(this\.pendingOnly && complete\) return false/, "pending-only completion must not remove a card before every surface is validated");
+assert.match(indexSource, /if \(currentComplete !== complete \|\| currentInCompleted !== nextInCompleted\) return false/, "completion section transitions must use an atomic full render");
+assert.match(indexSource, /structuralSelectors\.some\(\(selector\) => has\(card, selector\) !== has\(next, selector\)\)/, "structural card changes must not use a stale local patch");
 assert.match(indexSource, /pendingLocalItemId = current\.id[\s\S]*?renderBackgroundUpdate\(\)/, "successful records should request a local card refresh");
 assert.match(indexSource, /broadcast\(\{type: "analytics-updated"/);
-assert.match(indexSource, /renderTodayItemLocally\(localItemId\)\)\s*\{[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
-assert.match(indexSource, /card\.className = next\.className/, "completion-state changes should update the existing card in place");
+assert.match(indexSource, /renderTodayItemLocally\(localItemId, localItemDate\)[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
+assert.match(indexSource, /card\.className = next\.className/, "same-shape state classes should update the existing card in place");
 assert.match(indexSource, /updateTodayWeekStrip\(surface, date\)/, "local completion refresh should update the week strip without rebuilding Today");
 assert.match(indexSource, /count\.innerHTML =/, "local completion refresh should update the header counter");
 assert.match(fragments, /export function renderRecentRecordView\(/, "window toast markup should be reusable by local updates");

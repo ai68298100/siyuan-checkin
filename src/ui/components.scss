@@ -9317,3 +9317,122 @@
    closed state explicit so a folded filter, menu, audit list or template
    browser can never leak height into the surrounding layout. */
 details:not([open]) > :not(summary) { display: none !important; }
+
+/* ============================================================
+   12.0 dock navigation geometry guard
+
+   Reference plugins keep sidebar actions on equal tracks and let the label
+   column shrink before it can push the panel wider.  Keep the existing grid
+   semantics (which are supported by the older WebViews used by SiYuan), but
+   make the contract explicit at the final cascade layer: every narrow-dock
+   action owns one equal track, every label can shrink/ellipsis, and the wide
+   rail distributes its buttons across the available row.
+   ============================================================ */
+.lc-checkin-dock-host {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.lc-checkin-dock-host > .lc-checkin,
+.lc-checkin-dock-host > .lc-checkin__mobile-nav,
+.lc-checkin-dock-host > .lc-checkin__rail {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.lc-checkin-dock-host .lc-checkin__item-body,
+.lc-checkin-dock-host .lc-checkin__item-topline,
+.lc-checkin-dock-host .lc-checkin__item-topline > * {
+    min-width: 0;
+}
+
+@container lc-dock (max-width: 719px) {
+    /* Five equal columns are more stable than intrinsic button widths in a
+       narrow dock.  The explicit minmax(0, 1fr) tracks prevent long labels
+       from widening the host and keep the add action centred with its peers. */
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        grid-auto-columns: minmax(0, 1fr);
+        align-items: stretch;
+        justify-items: stretch;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > button {
+        display: grid;
+        grid-template-rows: 24px minmax(12px, auto);
+        align-content: center;
+        justify-items: center;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        flex: 1 1 0;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > button > span,
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > button > small {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > button > small {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    /* The action row is allowed to consume the full second line.  Primary
+       controls use a zero flex basis so intrinsic Chinese/English labels do
+       not reserve more width than the dock can provide. */
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action {
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action
+        :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+@container lc-dock (min-width: 720px) {
+    /* Wide docks use the persistent rail.  Equal flex tracks keep the nav
+       visually centred instead of leaving a large empty tail after the last
+       button, while min-width preserves usability at the threshold width. */
+    .lc-checkin-dock-host > .lc-checkin__rail {
+        min-width: 0;
+        width: 100%;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .lc-checkin-dock-host > .lc-checkin__rail > button {
+        flex: 1 1 0;
+        min-width: 72px;
+        min-height: 46px;
+        overflow: hidden;
+    }
+
+    .lc-checkin-dock-host > .lc-checkin__rail > button > small {
+        display: block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
