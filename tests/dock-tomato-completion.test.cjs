@@ -277,4 +277,33 @@ Object.defineProperty(hostileFocusContainer, "focus", {get() { focusGetterReads 
 assert.equal(inspectDockTomatoProvider({__dockTomato: hostileFocusContainer}).state, "missing");
 assert.equal(focusGetterReads, 0);
 
+for (let index = 0; index < 25; index += 1) {
+    let capabilityReads = 0;
+    const providerCapabilities = ["status", "start", "pause", "completion-event"];
+    Object.defineProperty(providerCapabilities, String(index % 4), {get() { capabilityReads += 1; throw new Error("must not execute"); }});
+    const candidate = {
+        version: index % 2 === 0 ? Symbol(`version-${index}`) : 1,
+        capabilities: providerCapabilities,
+        getStatus() { return {ready: true, active: false}; },
+        async start() { return {}; },
+        async pause() { return {}; },
+    };
+    const providerDiagnostics = inspectDockTomatoProvider({__dockTomato: {focus: candidate}});
+    assert.equal(capabilityReads, 0, `provider inspection ${index + 1} must not execute capability getters`);
+    assert.equal(typeof providerDiagnostics.state, "string", `provider inspection ${index + 1} must return diagnostics`);
+}
+const sparseCapabilities = [];
+sparseCapabilities.length = 1000000;
+sparseCapabilities[127] = "status";
+sparseCapabilities[128] = "must-not-scan";
+const sparseDiagnostics = inspectDockTomatoProvider({__dockTomato: {focus: {
+    version: 1,
+    capabilities: sparseCapabilities,
+    getStatus() { return {ready: true, active: false}; },
+    async start() { return {}; },
+    async pause() { return {}; },
+}}});
+assert.deepEqual(sparseDiagnostics.capabilities, ["status"]);
+assert.equal(sparseDiagnostics.state, "missing-capabilities");
+
 console.log("Dock Tomato completion decision checks passed.");

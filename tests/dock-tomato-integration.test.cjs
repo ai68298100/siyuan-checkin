@@ -60,9 +60,9 @@ for (const state of ["missing", "incompatible-version", "incomplete-api", "missi
     assert.match(bridge, new RegExp(`state: "${state}"`), `provider diagnostics must cover ${state}`);
 }
 assert.match(bridge, /REQUIRED_CAPABILITIES/, "required capabilities must have one source of truth");
-assert.match(bridge, /rawCapabilities\.filter/, "foreign capability values must be sanitized");
-assert.match(bridge, /slice\(0, 32\)/, "foreign capability lists must be bounded");
-assert.match(bridge, /Number\.isFinite\(parsedVersion\)/, "invalid external version values must not leak into UI diagnostics");
+assert.match(bridge, /projectCapabilities\(ownDataValue\(candidate, "capabilities"\)\)/, "foreign capability values must be sanitized without executing accessors");
+assert.match(bridge, /capabilities\.length < 32/, "foreign capability lists must be bounded");
+assert.match(bridge, /finiteNumber\(ownDataValue\(candidate, "version"\)\)/, "invalid external version values must not leak into UI diagnostics");
 assert.match(bridge, /if \(status\.paused\) return \{state: "paused"/, "paused provider state must be distinguishable");
 assert.match(bridge, /if \(status\.running \|\| status\.active\) return \{state: "running"/, "running provider state must be distinguishable");
 assert.match(bridge, /if \(!status\.ready\) return \{state: "not-ready"/, "provider recovery must be distinguishable from absence");
@@ -90,7 +90,9 @@ assert.match(bridge, /const folded = new Map<string, DockTomatoCompletionIssue>\
 assert.match(bridge, /folded\.delete\(key\)/, "restored diagnostic order must follow the newest occurrence");
 assert.match(bridge, /\(existing\?\.count \|\| 0\) \+ \(issue\.count \|\| 1\)/, "restored diagnostic counts must be accumulated");
 assert.match(bridge, /ownDataValue\(provider, "state"\)/, "diagnostics export must not execute provider accessors");
-assert.match(bridge, /Math\.min\(rawCapabilities\.length, 128\)/, "diagnostics capability scanning must be bounded");
+assert.match(bridge, /function projectCapabilities/, "provider inspection and diagnostics export must share one capability boundary");
+assert.match(bridge, /Math\.min\(value\.length, 128\)/, "diagnostics capability scanning must be bounded");
+assert.match(bridge, /function finiteNumber/, "provider version coercion must be isolated from hostile values");
 assert.match(bridge, /Number\.isFinite\(parsedExportedAt\)/, "diagnostics export must repair invalid timestamps");
 assert.match(bridge, /itemId !== item\.id/, "focus start IDs must round-trip without silent trimming or truncation");
 assert.match(bridge, /itemUnit !== item\.unit/, "focus start units must round-trip without silent trimming or truncation");

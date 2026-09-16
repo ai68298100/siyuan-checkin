@@ -304,3 +304,9 @@
 - sessionId、recordId 和持久 externalRef 都是身份而非展示文本；对身份执行 trim 或 slice 会让两个不同上游值碰撞成同一幂等键，因此必须原样满足边界才接受。
 - sessionId 缺失或非法时仍允许使用合法 recordId，这是既有契约的降级路径；两者均非法时返回 missing-identity，不创建截断后的 externalRef。
 - 历史投影只接收总长不超过 `docktomato:` 11字符加240字符身份的完整引用，并再次校验拆分后的身份，使运行期与跨重载去重语义一致。
+
+## D-120：Provider 检测与诊断导出共享安全投影（2026-09-17）
+
+- 实时检测和支持包导出面对的是同一个第三方 facade 边界，版本与 capabilities 不应各自维护不同的强制转换和数组读取逻辑。
+- 版本通过捕获异常的有限数值投影处理，Symbol 等值降级为未知版本；能力数组只读取自有数据属性，最多检查128个索引、输出32项。
+- 缺失 capabilities 继续兼容早期 provider，但只要声明了非空能力列表，就必须满足 REQUIRED_CAPABILITIES；此次加固不改变协商策略。

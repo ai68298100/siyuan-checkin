@@ -48,6 +48,25 @@ interface DockTomatoHost extends Window {
 
 const REQUIRED_CAPABILITIES = ["status", "start", "pause", "completion-event"] as const;
 
+function finiteNumber(value: unknown): number | undefined {
+    try {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function projectCapabilities(value: unknown): string[] {
+    const capabilities: string[] = [];
+    if (!Array.isArray(value)) return capabilities;
+    for (let index = 0; index < Math.min(value.length, 128) && capabilities.length < 32; index += 1) {
+        const capability = ownDataValue(value, String(index));
+        if (typeof capability === "string") capabilities.push(capability.slice(0, 80));
+    }
+    return capabilities;
+}
+
 function getDockTomatoCandidate(host: unknown): DockTomatoFocusApi | undefined {
     const container = ownDataValue(host, "__dockTomato");
     const candidate = ownDataValue(container, "focus");
@@ -80,12 +99,8 @@ export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRunti
 export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockTomatoHost): DockTomatoProviderDiagnostics {
     const candidate = getDockTomatoCandidate(host);
     if (!candidate) return {state: "missing", available: false, ready: false, active: false, capabilities: []};
-    const parsedVersion = Number(ownDataValue(candidate, "version"));
-    const apiVersion = Number.isFinite(parsedVersion) ? parsedVersion : undefined;
-    const rawCapabilities = ownDataValue(candidate, "capabilities");
-    const capabilities = Array.isArray(rawCapabilities)
-        ? rawCapabilities.filter((value): value is string => typeof value === "string").slice(0, 32)
-        : [];
+    const apiVersion = finiteNumber(ownDataValue(candidate, "version"));
+    const capabilities = projectCapabilities(ownDataValue(candidate, "capabilities"));
     if (apiVersion !== 1) return {state: "incompatible-version", available: true, ready: false, active: false, apiVersion, capabilities};
     if (typeof ownDataValue(candidate, "getStatus") !== "function" || typeof ownDataValue(candidate, "start") !== "function" || typeof ownDataValue(candidate, "pause") !== "function") {
         return {state: "incomplete-api", available: true, ready: false, active: false, apiVersion, capabilities};
@@ -213,21 +228,8 @@ export function serializeDockTomatoCompletionIssues(): string {
 export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagnostics, exportedAt = new Date().toISOString()): string {
     const validStates: readonly DockTomatoProviderState[] = ["missing", "incompatible-version", "incomplete-api", "missing-capabilities", "not-ready", "ready", "running", "paused", "error"];
     const rawState = boundedText(ownDataValue(provider, "state"), 40) as DockTomatoProviderState;
-    const rawCapabilities = ownDataValue(provider, "capabilities");
-    const capabilities: string[] = [];
-    if (Array.isArray(rawCapabilities)) {
-        for (let index = 0; index < Math.min(rawCapabilities.length, 128) && capabilities.length < 32; index += 1) {
-            const capability = ownDataValue(rawCapabilities, String(index));
-            if (typeof capability === "string") capabilities.push(capability.slice(0, 80));
-        }
-    }
-    let apiVersion: number | undefined;
-    try {
-        const parsedVersion = Number(ownDataValue(provider, "apiVersion"));
-        if (Number.isFinite(parsedVersion)) apiVersion = parsedVersion;
-    } catch {
-        apiVersion = undefined;
-    }
+    const capabilities = projectCapabilities(ownDataValue(provider, "capabilities"));
+    const apiVersion = finiteNumber(ownDataValue(provider, "apiVersion"));
     const parsedExportedAt = typeof exportedAt === "string" ? Date.parse(exportedAt) : Number.NaN;
     const safeProvider: DockTomatoProviderDiagnostics = {
         state: validStates.includes(rawState) ? rawState : "error",
