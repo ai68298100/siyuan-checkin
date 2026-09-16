@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, detectStoreConflict, getEventById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, detectStoreConflict, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -582,7 +582,7 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.initializationState !== "ready" || !input || typeof input !== "object" || !this.storageReady) {
             return undefined;
         }
-        const item = this.store.items.find((candidate) => candidate.id === input.itemId && !candidate.archived);
+        const item = getActiveItemById(this.store, input.itemId);
         const actionDate = calendarDateFromKey(moment.localDate);
         if (!item || !isItemAvailableOnDate(item, actionDate)) {
             return undefined;
@@ -808,7 +808,7 @@ export default class CheckinPlugin extends Plugin {
         /* 外部适配器、番茄钟和撤销操作都可能带着非今天的 localDate 回来。
            Today 的卡片是当天投影，跨日强行局部改写会把历史事件错误显示到今天。 */
         if (localDate && localDate !== dateKey(date)) return false;
-        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        const item = getActiveItemById(this.store, itemId);
         if (!item || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) return false;
         const complete = isComplete(this.store, item, date);
         const query = this.todayQuery.trim().toLocaleLowerCase();
@@ -1353,7 +1353,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderInsights(): string {
-        const item = this.store.items.find((entry) => entry.id === this.insightsItemId && !entry.archived);
+        const item = getActiveItemById(this.store, this.insightsItemId);
         if (!item) return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}"><header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><h1 class="lc-checkin__title">${t("insights.title")}</h1></header><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${t("insights.empty")}</div></div></div>`;
         const report = buildHabitInsights(this.store, item.id, {days: 84, asOf: currentCalendarDate()});
         const suggestions = buildCoachingSuggestions(report);
@@ -1694,7 +1694,7 @@ export default class CheckinPlugin extends Plugin {
 
     private async setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean> {
         if (this.disposed || this.initializationState !== "ready" || typeof itemId !== "string" || typeof archived !== "boolean") return false;
-        const item = this.store.items.find((candidate) => candidate.id === itemId);
+        const item = getItemById(this.store, itemId);
         if (!item) return false;
         if (item.archived === archived) return true;
         if (!expectedFingerprint || this.itemFingerprint(item) !== expectedFingerprint) {
@@ -1872,7 +1872,7 @@ export default class CheckinPlugin extends Plugin {
         if (!this.editingId) {
             return;
         }
-        const current = this.store.items.find((item) => item.id === this.editingId);
+        const current = getItemById(this.store, this.editingId);
         if (!current) {
             return;
         }
@@ -1884,7 +1884,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private async toggleItem(itemId: string, moment: ActionMoment, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo: readonly CheckinEvent[] = []) {
-        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        const item = getActiveItemById(this.store, itemId);
         const actionDate = calendarDateFromKey(moment.localDate);
         if (!item || !isItemAvailableOnDate(item, actionDate)) {
             return;
@@ -1933,7 +1933,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private async recordEvent(item: CheckinItem, value: number, moment: ActionMoment, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<CheckinEvent | undefined> {
-        const current = this.store.items.find((candidate) => candidate.id === item.id && !candidate.archived);
+        const current = getActiveItemById(this.store, item.id);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
         if (!current || !revision || !isItemAvailableOnDate(current, actionDate) || revision.kind === "binary" && isComplete(this.store, current, actionDate)) {
@@ -2015,7 +2015,7 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.invalidateSummary();
-            this.broadcast({type: "event-deleted", item: this.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+            this.broadcast({type: "event-deleted", item: getItemById(this.store, event.itemId), deletedEvents: [event]});
             this.pendingLocalItemId = event.itemId;
             this.pendingLocalItemDate = event.localDate;
             this.renderBackgroundUpdate();

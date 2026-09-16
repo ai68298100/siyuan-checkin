@@ -1,6 +1,6 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, getEventsForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventsForDate, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
@@ -145,7 +145,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.emptyProjects")}</div>`;
     const groupMap = new Map<string, {name: string; completed: number; scheduled: number}>();
     for (const item of summary.items) {
-        const storeItem = ctx.store.items.find((candidate) => candidate.id === item.itemId);
+        const storeItem = getItemById(ctx.store, item.itemId);
         const group = storeItem?.group || t("review.ungrouped");
         const entry = groupMap.get(group) || {name: group, completed: 0, scheduled: 0};
         entry.completed += item.completedDays;

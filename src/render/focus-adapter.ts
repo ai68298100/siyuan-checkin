@@ -6,6 +6,7 @@ import {currentCalendarDate} from "../shared";
 import {showMessage} from "siyuan";
 import type {FocusAdapter} from "../integrations";
 import type {CheckinItem, CheckinStore} from "../types";
+import {getActiveItemById} from "../model";
 
 export interface FocusAdapterHost {
     store: CheckinStore;
@@ -40,7 +41,7 @@ export function focusStartErrorMessage(error: unknown): string {
 export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?: string): Promise<boolean> {
     if (!host.acceptingOperations || host.disposed || host.initializationState !== "ready" || host.focusBusy || host.activeFocusAdapter) return Promise.resolve(false);
     const startedAt = currentCalendarDate();
-    const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+    const item = getActiveItemById(host.store, itemId);
     if (!item || !isItemAvailableOnDate(item, startedAt) || getItemRevisionForDate(item, startedAt).kind === "binary") {
         return Promise.resolve(false);
     }
@@ -53,7 +54,7 @@ export function startFocusFor(host: FocusAdapterHost, itemId: string, adapterId?
     const operation = (async () => {
         try {
             await adapter.start(host.cloneItemForDate(item, startedAt));
-            const current = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+            const current = getActiveItemById(host.store, itemId);
             if (host.disposed || host.disposing || !host.acceptingOperations || host.focusAdapters.get(adapter.id) !== adapter || !current || !isItemAvailableOnDate(current, startedAt) || host.revisionFingerprint(current, startedAt) !== expectedRevisionFingerprint || !canStartWithAdapter(host, adapter, current, startedAt)) {
                 await stopAdapterSilently(adapter);
                 return false;

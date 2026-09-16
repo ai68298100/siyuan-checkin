@@ -2,7 +2,7 @@
    宿主成员经 BindTodayHost 结构化接口声明；index.ts 通过
    `bindTodayHandlers(root, this as unknown as BindTodayHost)` 接线。 */
 import {t} from "../i18n";
-import {getItemRevisionForDate, getEventsForDay} from "../model";
+import {getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay} from "../model";
 import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
@@ -82,7 +82,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     host.bindBulkMode(root);
     host.bindFocusTimerPanel(root);
     root.querySelectorAll<HTMLElement>("[data-streak-insights]").forEach((button) => button.addEventListener("click", () => {
-        const item = host.store.items.find((candidate) => candidate.id === button.dataset.streakInsights && !candidate.archived);
+        const item = getActiveItemById(host.store, button.dataset.streakInsights);
         if (item) { host.insightsReturnPage = "today"; host.showInsights(item); }
     }));
     root.querySelectorAll<HTMLElement>("[data-priority-reminder-action]").forEach((button) => button.addEventListener("click", (event) => {
@@ -124,7 +124,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         void host.retrySave();
     });
     root.querySelectorAll<HTMLElement>("[data-quick-recent]").forEach((button) => button.addEventListener("click", () => {
-        const item = host.store.items.find((candidate) => candidate.id === button.dataset.quickRecent && !candidate.archived);
+        const item = getActiveItemById(host.store, button.dataset.quickRecent);
         if (!item) return;
         const date = currentCalendarDate();
         const revision = getItemRevisionForDate(item, date);
@@ -195,26 +195,26 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             return;
         }
         element.querySelector<HTMLElement>("[data-action='edit']")?.addEventListener("click", () => {
-            const item = host.store.items.find((candidate) => candidate.id === itemId);
+            const item = getItemById(host.store, itemId);
             if (item) {
                 host.showEditor(item);
             }
         });
         element.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => {
-            const item = host.store.items.find((candidate) => candidate.id === itemId);
+            const item = getItemById(host.store, itemId);
             if (item) host.showInsights(item);
         });
         element.querySelector<HTMLElement>("[data-action='toggle']")?.addEventListener("click", () => {
             const moment = captureActionMoment();
             const desiredComplete = !element.classList.contains("is-complete");
-            const item = host.store.items.find((candidate) => candidate.id === itemId);
+            const item = getItemById(host.store, itemId);
             const actionDate = calendarDateFromKey(moment.localDate);
             const expectedRevisionFingerprint = item ? host.revisionFingerprint(item, actionDate) : undefined;
             const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, itemId, actionDate).map((event) => ({...event}));
             host.enqueueMutation(() => host.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
         });
         element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
-            const focusItem = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+            const focusItem = getActiveItemById(host.store, itemId);
             if (!focusItem) return;
             if (host.focusTimerProvider === "docktomato") {
                 if (!host.findFocusAdapter(focusItem, currentCalendarDate(), DOCK_TOMATO_ADAPTER_ID)) {
@@ -228,7 +228,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.openFocusTimer(itemId);
         });
         element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", () => {
-            const item = host.store.items.find((candidate) => candidate.id === itemId);
+            const item = getItemById(host.store, itemId);
             if (!item) return;
             const moment = captureActionMoment();
             const date = calendarDateFromKey(moment.localDate);
@@ -268,7 +268,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             reader.readAsDataURL(file);
         });
         element.querySelector<HTMLElement>("[data-action='record']")?.addEventListener("click", () => {
-            const item = host.store.items.find((candidate) => candidate.id === itemId);
+            const item = getItemById(host.store, itemId);
             const input = element.querySelector<HTMLInputElement>(".lc-checkin__amount");
             const amount = input ? input.valueAsNumber : 1;
             if (item) {

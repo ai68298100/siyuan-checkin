@@ -3,7 +3,7 @@
 import {t} from "../i18n";
 import {buildWeeklyReportMarkdown} from "../features/report";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
-import {getEventById, removeEvents, updateEventNote} from "../model";
+import {getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {Dialog, showMessage} from "siyuan";
@@ -129,7 +129,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived());
     root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => host.showOccasions());
     root.querySelectorAll<HTMLElement>("[data-review-insights-id]").forEach((button) => button.addEventListener("click", () => {
-        const item = host.store.items.find((candidate) => candidate.id === button.dataset.reviewInsightsId && !candidate.archived);
+        const item = getActiveItemById(host.store, button.dataset.reviewInsightsId);
         if (item) host.showInsights(item);
     }));
     root.querySelectorAll<HTMLElement>("[data-review-jump]").forEach((button) => button.addEventListener("click", () => {
@@ -139,7 +139,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (target instanceof HTMLDetailsElement) target.open = true;
     }));
     root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
-        const item = host.store.items.find((candidate) => candidate.id === button.dataset.historyInsightsId && !candidate.archived);
+        const item = getActiveItemById(host.store, button.dataset.historyInsightsId);
         if (item) host.showInsights(item);
     }));
     const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
@@ -208,7 +208,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.store = next;
             try { await host.persist(); } catch { host.store = previous; showMessage(t("msg.undoFail")); return; }
             host.invalidateSummary();
-            host.broadcast({type: "event-deleted", item: host.store.items.find((item) => item.id === event.itemId), deletedEvents: [event]});
+            host.broadcast({type: "event-deleted", item: getItemById(host.store, event.itemId), deletedEvents: [event]});
             host.renderBackgroundUpdate();
         });
     }));

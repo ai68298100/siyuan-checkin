@@ -7,6 +7,7 @@ import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
+import {getActiveItemById, getItemById} from "../model";
 
 export interface TodayBindingsHost {
     currentPage: string;
@@ -60,7 +61,7 @@ export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement):
         if (!cards.length) return;
         const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".lc-checkin__item[data-item-id]");
         if (key === "e") {
-            const item = host.store.items.find((candidate) => candidate.id === activeCard?.dataset.itemId);
+            const item = getItemById(host.store, activeCard?.dataset.itemId);
             if (!item) return;
             event.preventDefault();
             host.showEditor(item);
@@ -105,7 +106,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         if (!ids.length) return;
         const date = currentCalendarDate();
         for (const id of ids) {
-            const item = host.store.items.find((candidate) => candidate.id === id && !candidate.archived);
+            const item = getActiveItemById(host.store, id);
             if (!item || isComplete(host.store, item, date)) continue;
             const moment = captureActionMoment();
             const revision = getItemRevisionForDate(item, date);
@@ -122,7 +123,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
         for (const id of ids) {
-            const item = host.store.items.find((candidate) => candidate.id === id && !candidate.archived);
+            const item = getActiveItemById(host.store, id);
             if (!item) continue;
             void host.enqueueMutation(() => host.setItemArchived(id, true, captureActionMoment(), host.itemFingerprint(item)));
         }

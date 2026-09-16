@@ -1,7 +1,8 @@
 # 底栏番茄钟兼容 PR 草案（待用户确认，不创建 PR）
 
 目标仓库：`5kyfkr/siyuan-plugin-docktomato`  
-基线：`main@7863b58`（v2.2.7）  
+最新上游基线：`main@b43d6db`（v2.2.8，已于本轮从 GitHub fetch 确认）
+旧本地兼容分支基线：`main@7863b58`（v2.2.7）；正式提交前必须先把兼容提交重放到 v2.2.8，不能直接基于旧基线创建 PR。
 本地准备目录：`D:\AI\Codex\siyuan-plugin-docktomato-pr`
 
 ## 建议标题
@@ -30,6 +31,8 @@
 - context 进入同步语义签名，避免只有关联上下文变化时被同步去重误判为无变化。
 - 初始化恢复阶段与忙碌状态分别使用稳定错误码 `DOCK_TOMATO_NOT_READY`、`DOCK_TOMATO_TIMER_BUSY`；API 初次公开与真正 ready 会分别发送能力/可用性通知。
 - 卸载前广播 unavailable 并清理上下文。
+- 与 v2.2.8 新增的悬浮窗位置记忆、计时段记录和暂停恢复状态同步保持正交；本 PR 不修改这些功能，也不把悬浮窗位置或计时段私有字段暴露给消费方。
+- v2.2.8 的暂停后新计时段语义要求 completion 的 `durationMinutes` 只表示本次实际完成的专注时长，不得由消费方自行累加暂停前片段；如上游后续调整字段，必须先更新 v1 契约版本或增加明确字段。
 
 ### 明确不做什么
 
@@ -49,6 +52,7 @@
 - 完成持久化失败：不发送 completed，避免第三方产生幽灵记录。
 - 第三方监听器抛错：DOM event 隔离，不影响计时事务。
 - 多窗口/多端：context 随同步状态和历史草稿传播；消费方仍必须使用 sessionId 去重。completed 是实时事件而不是可靠消息队列，消费方重载或停用期间可能错过；本 PR 不宣称已提供补偿重放。
+- v2.2.8 多计时段恢复：暂停、继续、重置和悬浮窗状态同步不能改变外部 session 的身份；同一个 focus session 只有一次完成回写，分段记录不应被消费方误认为多个完成事件。
 - 停用/卸载任一插件：监听与适配器可独立释放，不保留跨插件函数引用。
 
 ### 验证
@@ -56,6 +60,8 @@
 - `node --check tomato.js`
 - `node scripts/external-focus-api-contract.test.js`
 - 全部现有 `scripts/*.test.js`
+- v2.2.8 回归：`node scripts/float-window-position-memory.test.js`、`node scripts/stopwatch-phase-preservation.test.js`、`node scripts/timer-journal-queue.test.js`。
+- 兼容 API 回归：v2.2.8 下开始/暂停/继续/完成、悬浮窗重载、暂停后分段、桌面/移动双端状态同步均不得改变原有计时结果；外部 context 不得进入位置记忆或计时段私有存储。
 - 手工矩阵：两种加载顺序、忙碌计时器、正常完成、暂停恢复、放弃、休息、短记录、桌面双窗口、移动端、同步开关、多端完成、消费插件中途停用、底栏番茄钟中途停用。
 
 ## 小飞驴打卡侧配套
@@ -80,5 +86,7 @@
 ## 提交前仍需确认
 
 - 由底栏番茄钟作者确认公开全局命名与事件名是否符合其长期规划。
+- 由于上游已从 v2.2.7 更新到 v2.2.8，必须先将本地分支 rebase/cherry-pick 到 `b43d6db`，解决 tomato.js、README 和测试脚本冲突后再请求审阅。
+- PR 正文应明确 v2.2.8 的新增计时段/悬浮窗能力不属于本兼容接口，避免维护者误以为该 PR 要重构现有计时状态机。
 - 真实思源桌面、移动端与双窗口测试仍需现场执行，自动化契约不能替代宿主时序验证。
 - 用户确认本草案和本地差异后，才 fork/推送并创建 PR；当前不得向对方仓库创建 PR。

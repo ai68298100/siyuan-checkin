@@ -397,6 +397,7 @@ interface StoreEventIndex {
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
     byDateOrdered?: Array<{date: string; event: CheckinEvent; ordinal: number}>;
+    itemById: Map<string, CheckinItem>;
 }
 
 const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
@@ -404,7 +405,10 @@ const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
 export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     let index = storeIndexes.get(store);
     if (!index) {
-        index = {byItemDate: new Map(), byDate: new Map(), byId: new Map()};
+        index = {byItemDate: new Map(), byDate: new Map(), byId: new Map(), itemById: new Map()};
+        for (const item of store.items) {
+            if (!index.itemById.has(item.id)) index.itemById.set(item.id, item);
+        }
         for (let ordinal = 0; ordinal < store.events.length; ordinal += 1) {
             const event = store.events[ordinal];
             const day = getEventDateKey(event);
@@ -434,6 +438,15 @@ export function getEventsForDate(store: CheckinStore, date: Date | string = new 
 
 export function getEventById(store: CheckinStore, eventId: string | undefined): CheckinEvent | undefined {
     return eventId ? getStoreIndex(store).byId.get(eventId) : undefined;
+}
+
+export function getItemById(store: CheckinStore, itemId: string | undefined): CheckinItem | undefined {
+    return itemId ? getStoreIndex(store).itemById.get(itemId) : undefined;
+}
+
+export function getActiveItemById(store: CheckinStore, itemId: string | undefined): CheckinItem | undefined {
+    const item = getItemById(store, itemId);
+    return item && !item.archived ? item : undefined;
 }
 
 export function getEventsInDateRange(store: CheckinStore, startDate: string, endDateExclusive: string): CheckinEvent[] {

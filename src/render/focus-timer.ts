@@ -4,6 +4,7 @@ import {t} from "../i18n";
 import {captureActionMoment, calendarDateFromKey, escapeHtml} from "../shared";
 import {showMessage} from "siyuan";
 import type {CheckinItem, CheckinStore} from "../types";
+import {getActiveItemById, getItemById} from "../model";
 
 export interface FocusTimerState {
     itemId: string;
@@ -26,7 +27,7 @@ export interface FocusTimerHost {
 }
 
 export function openFocusTimerFor(host: FocusTimerHost, itemId: string): void {
-    const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+    const item = getActiveItemById(host.store, itemId);
     if (!item) return;
     if (host.focusTimerInterval !== undefined) { window.clearInterval(host.focusTimerInterval); host.focusTimerInterval = undefined; }
     host.focusTimerState = {itemId, totalSec: host.focusTimerMinutes * 60, remainingSec: host.focusTimerMinutes * 60, running: true};
@@ -64,7 +65,7 @@ export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolea
     host.focusTimerRoot = undefined;
     const elapsedMinutes = Math.floor((state.totalSec - state.remainingSec) / 60);
     if (complete && elapsedMinutes >= 1) {
-        const item = host.store.items.find((candidate) => candidate.id === state.itemId && !candidate.archived);
+        const item = getActiveItemById(host.store, state.itemId);
         if (item) {
             const moment = captureActionMoment();
             const date = calendarDateFromKey(moment.localDate);
@@ -85,7 +86,7 @@ export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolea
 export function renderFocusTimerPanelFor(host: FocusTimerHost): string {
     const state = host.focusTimerState;
     if (!state) return "";
-    const item = host.store.items.find((candidate) => candidate.id === state.itemId);
+    const item = getItemById(host.store, state.itemId);
     const name = item ? item.name : "专注";
     const icon = item ? item.icon : "⏱";
     const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
