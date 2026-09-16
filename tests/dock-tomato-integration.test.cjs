@@ -92,6 +92,9 @@ assert.match(bridge, /\(existing\?\.count \|\| 0\) \+ \(issue\.count \|\| 1\)/, 
 assert.match(bridge, /ownDataValue\(provider, "state"\)/, "diagnostics export must not execute provider accessors");
 assert.match(bridge, /Math\.min\(rawCapabilities\.length, 128\)/, "diagnostics capability scanning must be bounded");
 assert.match(bridge, /Number\.isFinite\(parsedExportedAt\)/, "diagnostics export must repair invalid timestamps");
+assert.match(bridge, /itemId !== item\.id/, "focus start IDs must round-trip without silent trimming or truncation");
+assert.match(bridge, /itemUnit !== item\.unit/, "focus start units must round-trip without silent trimming or truncation");
+assert.match(bridge, /error\.code = "DOCK_TOMATO_INVALID_CONTEXT"/, "invalid start context must expose the stable recovery error code");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

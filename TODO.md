@@ -1689,3 +1689,15 @@
 - [x] T-1036 防御式导出 50+ 运行期验收
   - 验收：不少于25组 hostile provider，每组验证 getter 零执行、安全状态及有效时间，新增不少于50条检查。
   - 状态：done（25×3 共75条逐项断言，另覆盖 Symbol 版本、能力 getter、未知状态与扫描上限）。
+
+## 13.0 专注生态第十七批（T-1037~T-1039）
+
+- [x] T-1037 外部专注启动上下文可往返校验
+  - 验收：itemId 不超过160字符、unit 不超过80字符且均非空；首尾空白或截断风险在调用 provider 前拒绝。
+  - 状态：done（新增统一 `dockTomatoStartContext`，canStart 与 start 复用同一校验结果）。
+- [x] T-1038 启动竞态二次守门与稳定错误码
+  - 验收：即使调用方绕过 canStart 直接执行 start，非法上下文也不得到达外部插件，并返回已有 DOCK_TOMATO_INVALID_CONTEXT。
+  - 状态：done（start 在构造 payload 时重新验证，错误可复用现有本地化恢复提示）。
+- [x] T-1039 启动上下文 50+ 运行期验收
+  - 验收：25组空白、空值、超长 ID/单位分别验证 canStart=false 且 provider 零调用，新增不少于50条检查。
+  - 状态：done（25×2 共50条逐项断言，另覆盖最大合法边界、直接 start 拒绝和稳定错误码）。

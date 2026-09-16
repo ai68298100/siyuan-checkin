@@ -304,7 +304,19 @@ function getDockTomatoFocusApi(): DockTomatoFocusApi | undefined {
 }
 
 function canUseDockTomato(item: CheckinItem): boolean {
-    return item.kind !== "binary" && !item.archived;
+    return item.kind !== "binary" && !item.archived && Boolean(dockTomatoStartContext(item));
+}
+
+function dockTomatoStartContext(item: CheckinItem): Record<string, string> | undefined {
+    const itemId = boundedText(item.id, 160);
+    const itemUnit = boundedText(item.unit, 80);
+    if (!itemId || itemId !== item.id || !itemUnit || itemUnit !== item.unit) return undefined;
+    return {
+        consumer: CONSUMER_ID,
+        itemId,
+        itemUnit,
+        tomatoMode: item.tomatoMode === "sessions" ? "sessions" : "minutes",
+    };
 }
 
 function completedValue(item: CheckinItem, durationMinutes: number): number | undefined {
@@ -377,14 +389,15 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 return canUseDockTomato(item) && status.readable && status.ready && !status.active;
             },
             start: async (item) => {
+                const context = dockTomatoStartContext(item);
+                if (!context) {
+                    const error = new Error("DOCK_TOMATO_INVALID_CONTEXT") as Error & {code: string};
+                    error.code = "DOCK_TOMATO_INVALID_CONTEXT";
+                    throw error;
+                }
                 await facade.start({
                     confirm: true,
-                    context: {
-                        consumer: CONSUMER_ID,
-                        itemId: item.id,
-                        itemUnit: item.unit,
-                        tomatoMode: item.tomatoMode === "sessions" ? "sessions" : "minutes",
-                    },
+                    context,
                 });
             },
             stop: async () => { await facade.pause(); },

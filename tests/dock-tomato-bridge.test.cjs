@@ -87,6 +87,21 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     assert.equal(typeof adapters[0].start, "function");
     assert.equal(typeof adapters[0].stop, "function");
     for (const [candidate, expected] of [[{...items[0]}, true], [{...items[0], kind: "binary"}, false], [{...items[0], archived: true}, false], [{...items[0], kind: "count"}, true], [{...items[0], kind: "quantity"}, true]]) assert.equal(adapters[0].canStart(candidate), expected);
+    const invalidStartItems = Array.from({length: 25}, (_, index) => {
+        if (index % 6 === 0) return {...items[0], id: ""};
+        if (index % 6 === 1) return {...items[0], id: " padded-id "};
+        if (index % 6 === 2) return {...items[0], id: "i".repeat(161)};
+        if (index % 6 === 3) return {...items[0], unit: ""};
+        if (index % 6 === 4) return {...items[0], unit: " padded-unit "};
+        return {...items[0], unit: "u".repeat(81)};
+    });
+    for (let index = 0; index < invalidStartItems.length; index += 1) {
+        assert.equal(adapters[0].canStart(invalidStartItems[index]), false, `invalid start context ${index + 1} must be rejected`);
+        assert.equal(starts.length, 0, `invalid start context ${index + 1} must not call provider`);
+    }
+    assert.equal(adapters[0].canStart({...items[0], id: "i".repeat(160), unit: "u".repeat(80)}), true);
+    await assert.rejects(adapters[0].start(invalidStartItems[0]), (error) => error?.code === "DOCK_TOMATO_INVALID_CONTEXT");
+    assert.equal(starts.length, 0);
     for (const blocked of [{ready: false, active: false}, {ready: true, active: true}, {ready: false, active: true}]) { status = blocked; assert.equal(adapters[0].canStart(items[0]), false); }
     status = {ready: true, active: false};
     facade.getStatus = () => { throw new Error("unreadable"); };

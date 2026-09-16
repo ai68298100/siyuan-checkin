@@ -784,3 +784,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 诊断导出改为 own-data 防御读取，九种 provider 状态使用白名单，未知状态降级 error，Symbol 等异常版本值不会中断序列化。
 - 非法 exportedAt 自动生成有效 ISO 时间；能力数组最多扫描128项、输出32项且单项80字符，数组索引访问器不会执行。
 - 25组 hostile provider 新增75条逐项断言，另覆盖能力 getter、稀疏数组、Symbol 版本和未知状态；定向 completion/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 30ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第十七批（2026-09-17，T-1037~T-1039）
+
+- 外部专注启动新增可往返上下文构造器，itemId/unit 必须非空、无首尾空白且不超过 completion 侧160/80字符边界，避免完成后无法匹配项目。
+- canStart 提前关闭非法入口，start 再次守门并返回既有 DOCK_TOMATO_INVALID_CONTEXT，绕过资格检查也不会调用外部 provider。
+- 25组异常项目新增50条逐项断言，另覆盖合法最大边界、直接 start 拒绝和零 provider 调用；定向 bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 55ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
