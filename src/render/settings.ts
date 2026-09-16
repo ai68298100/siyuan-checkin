@@ -5,7 +5,7 @@ import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
 import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
-import type {DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
+import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 
 let settingsViewSequence = 0;
 
@@ -23,6 +23,7 @@ export interface SettingsViewContext {
     focusTimerAdapterIds?: readonly string[];
     focusTimerBusy?: boolean;
     dockTomatoDiagnostics?: DockTomatoProviderDiagnostics;
+    dockTomatoCompletionIssues?: readonly DockTomatoCompletionIssue[];
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -58,6 +59,24 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         : t("set.tomatoDiagnosticInstall");
     const tomatoFallback = ctx.focusTimerProvider === "docktomato" && !tomatoHealthy
         ? `<button class="lc-checkin__text-button" type="button" data-action="use-builtin-focus">${t("set.tomatoUseBuiltin")}</button>`
+        : "";
+    const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
+        "invalid-event": "set.tomatoIssueInvalidEvent",
+        "unsupported-version": "set.tomatoIssueVersion",
+        "invalid-context": "set.tomatoIssueContext",
+        "missing-item": "set.tomatoIssueMissingItem",
+        "archived-item": "set.tomatoIssueArchivedItem",
+        "mapping-changed": "set.tomatoIssueMapping",
+        "invalid-duration": "set.tomatoIssueDuration",
+        "missing-identity": "set.tomatoIssueIdentity",
+        duplicate: "set.tomatoIssueDuplicate",
+        "write-failed": "set.tomatoIssueWrite",
+    };
+    const latestCompletionIssue = ctx.dockTomatoCompletionIssues?.length
+        ? ctx.dockTomatoCompletionIssues[ctx.dockTomatoCompletionIssues.length - 1]
+        : undefined;
+    const completionIssueRow = latestCompletionIssue
+        ? `<div class="lc-checkin__settings-row" data-focus-completion-issue="${latestCompletionIssue.reason}"><span class="lc-checkin__settings-label"><span>${t("set.tomatoIssueTitle")}</span><small>${t(completionIssueKeys[latestCompletionIssue.reason])}</small><small>${escapeHtml(new Date(latestCompletionIssue.at).toLocaleString())}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value is-muted">${t("set.tomatoIssueCount", {n: ctx.dockTomatoCompletionIssues?.length || 0})}</span><button class="lc-checkin__text-button" type="button" data-action="clear-focus-issues">${t("set.tomatoIssueClear")}</button></span></div>`
         : "";
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
@@ -132,6 +151,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
                     <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
+                    ${completionIssueRow}
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },

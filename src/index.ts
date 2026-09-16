@@ -51,7 +51,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
-import {inspectDockTomatoProvider, installDockTomatoBridge} from "./dock-tomato";
+import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge} from "./dock-tomato";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -1141,6 +1141,7 @@ export default class CheckinPlugin extends Plugin {
             focusTimerProvider: this.focusTimerProvider,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
+            dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
@@ -1177,6 +1178,11 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='use-builtin-focus']")?.addEventListener("click", () => {
             this.focusTimerProvider = "builtin";
             void this.persistViewPreferences().then(() => showMessage(t("set.tomatoFallbackSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", () => {
+            clearDockTomatoCompletionIssues();
+            showMessage(t("set.tomatoIssuesCleared"));
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {

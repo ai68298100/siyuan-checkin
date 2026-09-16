@@ -1506,3 +1506,18 @@
 - [x] T-990 提供方生命周期刷新收口
   - 验收：availability/started/paused 触发状态刷新；重复刷新合并；卸载释放监听器并阻止已排队回调。
   - 状态：done（微任务合并、disposed 二次守门及 68 条专注集成契约断言通过）。
+
+## 13.0 专注生态第二批（T-991~T-994）
+
+- [x] T-991 completion 纯判定与 payload 防护
+  - 验收：版本、consumer、context、项目、映射、时长和身份逐层验证；不执行外部 getter；其它 consumer 安静忽略。
+  - 状态：done（新增 `evaluateDockTomatoCompletion` 与 descriptor-only 读取，行为测试覆盖合法和异常矩阵）。
+- [x] T-992 项目生命周期与映射漂移守门
+  - 验收：计时期间删除、归档、单位变化或 sessions/minutes 变化不得按新口径静默写入；原因可见。
+  - 状态：done（missing/archived/mapping-changed 独立原因并进入有界诊断）。
+- [x] T-993 completion 跨重载与并发幂等
+  - 验收：in-flight、运行期已完成和既有 externalRef 共同去重；无身份拒绝；写失败保留重试机会。
+  - 状态：done（500 身份内存窗口 + 持久事件 externalRef；空写入和异常均不标记成功）。
+- [x] T-994 回写问题可观察性
+  - 验收：最近问题有原因、时间和有界数量；设置页可读、可清除；返回值不可变；测试进入生态链。
+  - 状态：done（20 条运行期诊断、冻结快照、双语设置 UI、新增 completion 行为测试并接入 `test:ecosystem`）。

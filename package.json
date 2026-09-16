@@ -21,7 +21,7 @@
                     "test:mobile:visual":  "pnpm run test:mobile \u0026\u0026 node tests/mobile-preview-overflow.test.cjs \u0026\u0026 node tests/mobile-rotation-layout.test.cjs \u0026\u0026 node tests/mobile-visual-regression.test.cjs",
                     "test:mobile:visual:browser":  "node tests/mobile-visual-browser.cjs",
                     "test:visual:harness":  "node tests/mobile-qa-harness-status.cjs",
-                    "test:ecosystem":  "node tests/ecosystem.test.cjs \u0026\u0026 node tests/integration-events.test.cjs \u0026\u0026 node tests/ecosystem-docs.test.cjs \u0026\u0026 node tests/api-contract.test.cjs \u0026\u0026 node tests/preferences-docs.test.cjs \u0026\u0026 node tests/dock-tomato-integration.test.cjs",
+                    "test:ecosystem":  "node tests/ecosystem.test.cjs \u0026\u0026 node tests/integration-events.test.cjs \u0026\u0026 node tests/ecosystem-docs.test.cjs \u0026\u0026 node tests/api-contract.test.cjs \u0026\u0026 node tests/preferences-docs.test.cjs \u0026\u0026 node tests/dock-tomato-integration.test.cjs \u0026\u0026 node tests/dock-tomato-completion.test.cjs",
                     "test:perf":  "node tests/performance.test.cjs",
                     "test:backup":  "node tests/backup.test.cjs \u0026\u0026 node tests/restore-audit.test.cjs",
                     "test:conflict":  "node tests/conflict.test.cjs"

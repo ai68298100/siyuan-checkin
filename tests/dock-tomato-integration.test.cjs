@@ -14,10 +14,14 @@ assert.match(bridge, /\["status", "start", "pause", "completion-event"\]/, "decl
 assert.match(bridge, /tomato:focus-api-availability-changed/, "either plugin load order must be supported");
 assert.match(bridge, /tomato:focus-session-completed/, "durable completion events must be consumed");
 assert.match(bridge, /externalRef: `docktomato:\$\{identity\}`/, "session identity must make retries idempotent");
+assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must participate in deduplication after reload");
+assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
+assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
+assert.match(bridge, /if \(!recorded\) throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an empty write result must remain observable and retryable");
 assert.match(bridge, /item\.unit === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must convert to hour-based items");
 assert.match(bridge, /item\.tomatoMode === "sessions"\) return 1/, "session-mode items must record one completion");
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");
-assert.match(bridge, /Ignore forged or accessor-based cross-plugin events/, "malformed external events must not escape the listener");
+assert.match(bridge, /Object\.getOwnPropertyDescriptor\(object, key\)/, "foreign payload accessors must not execute during validation");
 assert.match(bridge, /removeEventListener\(DOCK_TOMATO_COMPLETED_EVENT/, "plugin unload must remove completion listeners");
 assert.match(bridge, /releaseWhenIdle\(remaining - 1\), 250/, "adapter state must only release after Dock Tomato becomes idle");
 assert.match(bridge, /tomato:focus-ended/, "manual completion or abandonment must also release the adapter state");
