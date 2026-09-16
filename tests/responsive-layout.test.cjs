@@ -33,6 +33,8 @@ assert.match(components, /@container\s+lc5\s*\(min-width:\s*720px\)[\s\S]*\.lc-c
     "desktop layout is a single full-width column (navigation lives in the top bar, T-032)");
 assert.match(components, /@container\s+lc5\s*\(min-width:\s*900px\)[\s\S]*\.lc-checkin--today \.lc-checkin__group-items\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(390px,\s*1fr\)\)/,
     "desktop today shelf auto-fills with cards wide enough for name plus actions");
+assert.match(components, /@container\s+lc5\s*\(min-width:\s*720px\)[\s\S]*?\.lc-checkin--today \.lc-checkin__group-items\s*> \.lc-checkin__item:last-child:nth-child\(odd\):not\(:only-child\)\s*\{\s*grid-column:\s*1 \/ -1;/,
+    "desktop today shelves give an odd final card the full row");
 
 /* Header discipline: compact, never sticky. */
 assert.match(components, /\.lc-checkin__header,\n\.lc-checkin__editor-header \{[^}]*position:\s*static;/,
@@ -51,9 +53,9 @@ assert.match(components, /\.lc-checkin--today \.lc-checkin__section-toggle/,
 /* Navigation: five destinations, shared by top nav and bottom bar, plus the add action. */
 const navEntries = source.includes(`const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;`);
 assert.ok(navEntries, "navigation must expose exactly today/review/occasions/settings in that order");
-assert.match(source, /private renderTopNav\(\): string/, "desktop surfaces need the labelled top navigation");
-assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/,
-    "bottom navigation keeps five destinations plus the add action (six equal cells)");
+assert.match(source, /private renderTopNav\(root: HTMLElement\): string/, "desktop surfaces need host-aware labelled top navigation");
+assert.match(components, /\.lc-checkin__mobile-nav \{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/,
+    "bottom navigation keeps five equal cells for four destinations plus the add action");
 assert.match(components, /\.lc-checkin__mobile-nav-add \{/,
     "the add action lives inside the bottom bar instead of floating over the list");
 assert.ok(!source.includes("lc-checkin__mobile-fab"),
@@ -101,5 +103,12 @@ assert.match(i18nSource, /"today\.pendingEmpty": "没有待处理的匹配项"/,
 assert.match(i18nSource, /"today\.queryCompleted": "匹配的项目都已完成"/, "search state must distinguish completed matches");
 assert.match(components, /Today card foundations[\s\S]*\.lc-checkin__item-tag\s*\{[^}]*max-width:\s*32%;/,
     "component layer guards metadata tag width");
+
+/* Review's jump rail is inside the scrolling surface; host chrome is a
+   sibling, so a legacy 58px offset would leave the rail floating over the
+   calendar/detail content.  The final component layer must reset it to the
+   scrollport edge and use an opaque surface. */
+assert.match(components, /Review jump rail:[\s\S]*\.lc-checkin--review \.lc-checkin__review-subnav\s*\{[\s\S]*top:\s*0\s*!important;[\s\S]*background:\s*var\(--lc-checkin-bg\);/,
+    "review jump rail must dock to the scrollport edge with an opaque background");
 
 console.log("Responsive surface layout checks passed.");

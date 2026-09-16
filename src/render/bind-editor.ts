@@ -384,6 +384,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     }));
     const templateQuery = root.querySelector<HTMLInputElement>("[data-template-query]");
     let activeTemplateGroup = "all";
+    const collapseTemplateDisclosure = () => {
+        const disclosure = root.querySelector<HTMLDetailsElement>("[data-template-disclosure]");
+        if (disclosure) disclosure.open = false;
+    };
     const applyTemplateFilter = () => {
         const query = templateQuery?.value || "";
         const hasQuery = Boolean(query.trim());
@@ -464,6 +468,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         updateAdvancedSummary();
         const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
         if (advanced) advanced.open = true;
+        collapseTemplateDisclosure();
         ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
         root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
     }));
@@ -478,6 +483,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
         root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
         selectIcon(template.icon); updateConditionalFields(false); root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); updateEditorPreview(); updateAdvancedSummary();
+        collapseTemplateDisclosure();
         ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-user-template-delete]").forEach((button) => button.addEventListener("click", () => {

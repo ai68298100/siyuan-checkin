@@ -9,8 +9,10 @@ const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render",
 const archivedSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "archived.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
 assert.ok(!styles.includes("2.0 visual foundation"), "visual foundation must not return to legacy index.scss");
-assert.match(liveStyles, /2\.0 visual foundation[\s\S]*\.lc-checkin__header,[\s\S]*\.lc-checkin__preview-card:hover/,
+assert.match(liveStyles, /2\.0 visual foundation[\s\S]*\.lc-checkin__section-heading,[\s\S]*\.lc-checkin__preview-card:hover/,
     "shared surface hierarchy belongs to the live component layer");
+assert.match(liveStyles, /\/\* ---------------- headers ---------------- \*\/[\s\S]*\.lc-checkin__header,[\s\S]*border-bottom: 1px solid var\(--lc-checkin-border\)/,
+    "header foundations belong to their final live component section");
 assert.match(liveStyles, /Semantic state tokens[\s\S]*data-status="missed"[\s\S]*data-status="partial"/,
     "semantic completion states belong to the live component layer");
 assert.match(liveStyles, /@container lc5 \(min-width: 900px\) \{[\s\S]*\.lc-checkin--editor \.lc-checkin__form-scroll \{[\s\S]*grid-template-columns: minmax\(260px, \.8fr\) minmax\(0, 1\.4fr\)/,
@@ -105,8 +107,10 @@ assert.ok(!styles.includes(".lc-checkin__insight-picker"),
     "insight picker foundations must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__insight-legend"),
     "insight legend foundations must not return to legacy index.scss");
-assert.match(liveStyles, /\.lc-checkin__coaching-list \{ display:grid; gap:8px; \}[\s\S]*\.lc-checkin__custom-range \{ display:flex;/,
-    "coaching and custom range foundations belong to the component layer");
+assert.match(liveStyles, /\.lc-checkin__custom-range \{ display:flex;/,
+    "custom range foundations belong to the component layer");
+assert.match(liveStyles, /\.lc-checkin__coaching-list \{ display: grid; gap: 7px; \}[\s\S]*\.lc-checkin__coaching-item \{ display: grid;/,
+    "coaching foundations belong to their final live component section");
 assert.match(liveStyles, /\.lc-checkin__insight-picker \{ display:flex;[\s\S]*\.lc-checkin__insight-legend \.is-off \{ opacity:\.45; \}/,
     "insight controls and legend foundations belong to the component layer");
 assert.ok(!styles.includes(".lc-checkin__occasion-manager-row {"),

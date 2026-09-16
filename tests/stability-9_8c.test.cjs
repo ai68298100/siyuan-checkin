@@ -48,6 +48,21 @@ check("quality chain starts with environment probing", () => assert(pkg.scripts[
 check("quality chain covers ecosystem contracts", () => assert.match(pkg.scripts["test:quality"], /pnpm run test:ecosystem/));
 check("quality chain covers performance", () => assert.match(pkg.scripts["test:quality"], /pnpm run test:perf/));
 check("quality chain covers release assets", () => assert.match(pkg.scripts["test:quality"], /pnpm run check:release/));
+check("quality chain builds before checking release assets", () => {
+    const quality = pkg.scripts["test:quality"];
+    const buildIndex = quality.indexOf("pnpm run build");
+    assert(buildIndex >= 0);
+    assert(buildIndex < quality.indexOf("pnpm run check:release"));
+});
+check("quality chain builds before performance tests", () => {
+    const quality = pkg.scripts["test:quality"];
+    const buildIndex = quality.indexOf("pnpm run build");
+    assert(buildIndex >= 0);
+    assert(buildIndex < quality.indexOf("pnpm run test:perf"));
+});
+check("UI suite does not inspect stale release artifacts", () => {
+    assert.doesNotMatch(pkg.scripts["test:ui"], /release-assets/);
+});
 check("CI verifies pushes to main", () => assert.match(ci, /push:\s*\n\s*branches: \[main\]/));
 check("CI verifies pull requests", () => assert.match(ci, /pull_request:/));
 check("CI pins Node 22", () => assert.equal((ci.match(/node-version: 22/g) || []).length, 2));
@@ -73,5 +88,5 @@ check("recovery acceptance covers failure rollback", () => assert.match(recovery
 check("recovery acceptance covers concurrent writes", () => assert.match(recovery, /\| Concurrent writes \|/));
 check("9.8 roadmap orders field validation before later majors", () => assert.match(roadmap, /9\.8 现场验收 → 10\.0 恢复兼容维护/));
 
-assert.equal(passed, 50, `expected 50 release-readiness checks, got ${passed}`);
+assert.equal(passed, 53, `expected 53 release-readiness checks, got ${passed}`);
 console.log(`9.8 stability batch C checks passed (${passed} checks).`);

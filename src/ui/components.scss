@@ -5,12 +5,6 @@
    ============================================================ */
 
 /* 2.0 visual foundation: layered surfaces and clearer interaction hierarchy. */
-.lc-checkin__header,
-.lc-checkin__editor-header {
-    padding-bottom: var(--lc-checkin-space-3);
-    border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent);
-}
-
 .lc-checkin__section-heading,
 .lc-checkin__organize,
 .lc-checkin__editor-preview {
@@ -286,7 +280,8 @@
 
     .lc-checkin,
     .lc-checkin__form-scroll {
-        overscroll-behavior: contain;
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: auto;
         -webkit-overflow-scrolling: touch;
     }
     .lc-checkin__form-scroll { scroll-padding: 12px 0 calc(72px + env(safe-area-inset-bottom)); }
@@ -300,8 +295,6 @@
     max-height: 100vh !important;
     inset: 0 !important;
 }
-
-.lc-checkin__dialog-close { display: none; }
 
 .lc-checkin-tab-host {
     width: 100%;
@@ -353,15 +346,6 @@
 .lc-checkin--editor {
     overflow: hidden;
     .lc-checkin__form { min-height: 0; flex: 1; gap: 0; }
-}
-
-.lc-checkin__mobile-nav { display: none; }
-.lc-checkin__header,
-.lc-checkin__editor-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
 }
 
 @media (max-width: 600px) {
@@ -420,7 +404,7 @@
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
     .lc-checkin__mobile-nav {
         position: fixed; z-index: 3; right: 0; bottom: 0; left: 0;
-        display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px;
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
         padding: 5px 5px calc(5px + env(safe-area-inset-bottom));
         border-top: 1px solid var(--lc-checkin-border-strong); background: var(--lc-checkin-bg);
         button { min-width: 0; min-height: 48px; padding: 3px 1px; border: 0; border-radius: 9px; color: var(--lc-checkin-muted); background: transparent; cursor: pointer; touch-action: manipulation;
@@ -475,8 +459,6 @@
  .lc-checkin-dock-host .lc-checkin__today-search { min-width: 0; }
  .lc-checkin-dock-host .lc-checkin__today-search input { width: 64px; }
  .lc-checkin-dock-host .lc-checkin__group-header { min-height: 24px; }
- .lc-checkin-dock-host .lc-checkin__group-title { font-size: 12px; }
- .lc-checkin-dock-host .lc-checkin__group-count { font-size: 10px; }
  .lc-checkin-dock-host .lc-checkin__empty { padding: 12px 8px; }
  .lc-checkin-dock-host .lc-checkin__empty-title { font-size: 15px; }
  .lc-checkin-dock-host .lc-checkin__empty-description { font-size: 10px; }
@@ -521,13 +503,8 @@
 .lc-checkin :where(button,input,select,textarea) { min-height:var(--lc-checkin-control-height); }
 .lc-checkin :where(button,input,select,textarea):focus-visible { outline:none; box-shadow:var(--lc-checkin-focus); }
 .lc-checkin__history-note-editor:focus { outline:2px solid color-mix(in srgb,var(--lc-checkin-accent) 35%,transparent); border-color:var(--lc-checkin-accent-text); }
-.lc-checkin__coaching-list { display:grid; gap:8px; }
-.lc-checkin__coaching-item { display:grid; gap:5px; padding:10px 11px; border-left:3px solid var(--lc-checkin-border); border-radius:6px; background:var(--lc-checkin-surface); }
 .lc-checkin__coaching-item div { display:grid; gap:3px; min-width:0; }
 .lc-checkin__coaching-item strong { color:var(--lc-checkin-text); font-size:12px; font-weight:600; }
-.lc-checkin__coaching-item span,.lc-checkin__coaching-item small { color:var(--lc-checkin-muted); }
-.lc-checkin__coaching-item span { font-size:11px; line-height:1.55; }
-.lc-checkin__coaching-item small { font-size:10px; }
 .lc-checkin__coaching-item.is-positive { border-left-color:var(--lc-checkin-success); }
 .lc-checkin__coaching-item.is-attention { border-left-color:var(--lc-checkin-warning); }
 .lc-checkin__coaching-item.is-neutral { border-left-color:var(--lc-checkin-accent-text); }
@@ -537,12 +514,8 @@
 .lc-checkin__custom-range-separator { padding-bottom:8px; color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__insight-picker { display:flex; align-items:center; gap:8px; margin-bottom:14px; color:var(--lc-checkin-muted); font-size:12px; }
 .lc-checkin__insight-picker select { min-width:0; flex:1; min-height:36px; }
-.lc-checkin__insight-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-.lc-checkin__insight-legend { display:flex; flex-wrap:wrap; gap:6px 10px; color:var(--lc-checkin-muted); font-size:10px; }
 .lc-checkin__insight-legend span { display:inline-flex; align-items:center; gap:4px; }
 .lc-checkin__insight-legend i { width:8px; height:8px; border-radius:2px; background:var(--lc-checkin-muted-surface); }
-.lc-checkin__insight-legend .is-complete { background:var(--lc-checkin-success); }
-.lc-checkin__insight-legend .is-partial { background:var(--lc-checkin-warning); }
 .lc-checkin__insight-legend .is-missed { background:color-mix(in srgb,var(--lc-checkin-accent) 52%,var(--lc-checkin-muted-surface)); }
 .lc-checkin__insight-legend .is-off { opacity:.45; }
 /* 10.0 foundation pass 7: form, history and occasion detail consistency. */
@@ -562,44 +535,35 @@
 .lc-checkin__history-result strong { font-variant-numeric:tabular-nums; }
 .lc-checkin__history-event-main { overflow:hidden; }
 .lc-checkin__history-event-main strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lc-checkin__history-event-main > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__history-event-actions button { flex:0 0 auto; }
 .lc-checkin__occasion-form-panel form { min-width:0; }
 .lc-checkin__occasion-list-panel { border-radius:var(--lc-checkin-radius); }
 .lc-checkin__occasion-form-panel,.lc-checkin__occasion-list-panel { border:1px solid var(--lc-checkin-border); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
-.lc-checkin__occasion,.lc-checkin__occasion-manager-row { border-color:var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-surface); transition:border-color var(--lc-checkin-motion),background-color var(--lc-checkin-motion),transform var(--lc-checkin-motion); }
-.lc-checkin__occasion:hover,.lc-checkin__occasion-manager-row:hover { border-color:color-mix(in srgb,var(--lc-checkin-accent) 36%,var(--lc-checkin-border)); transform:translateY(-1px); }
+.lc-checkin__occasion-manager-row { border-color:var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-surface); transition:border-color var(--lc-checkin-motion),background-color var(--lc-checkin-motion),transform var(--lc-checkin-motion); }
+.lc-checkin__occasion-manager-row:hover { border-color:color-mix(in srgb,var(--lc-checkin-accent) 36%,var(--lc-checkin-border)); transform:translateY(-1px); }
 .lc-checkin__occasion-icon { border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__occasion-form-panel form { gap:var(--lc-checkin-space-4); }
 .lc-checkin--occasions .lc-checkin__field textarea { min-height:88px; }
 .lc-checkin__history-tools,.lc-checkin__history-filter-row { padding:var(--lc-checkin-space-3); border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); }
-.lc-checkin__history-selected { border-radius:var(--lc-checkin-radius-lg); box-shadow:var(--lc-checkin-shadow-sm); }
-.lc-checkin__history-event { background:var(--lc-checkin-surface); }
 .lc-checkin__occasion-form-panel .lc-checkin__field > span { font-weight:650; }
 .lc-checkin__occasion-form-panel .lc-checkin__field input,.lc-checkin__occasion-form-panel .lc-checkin__field select { min-height:38px; }
 .lc-checkin__occasion-form-panel .lc-checkin__field textarea { min-height:84px; }
 .lc-checkin__occasion-manager-list { min-width:0; }
 .lc-checkin__occasion-manager-row { min-width:0; }
 .lc-checkin__occasion-row-body { min-width:0; overflow:hidden; }
-.lc-checkin__occasion-row-body strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__occasion-row-body small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__occasion-row-actions { flex:0 0 auto; }
 .lc-checkin__occasion-row-actions button { min-width:32px; }
-.lc-checkin__template-section { min-width:0; }
 .lc-checkin__templates { min-width:0; }
 .lc-checkin__template { min-width:0; overflow:hidden; }
-.lc-checkin__template strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lc-checkin__template small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__icon-grid { min-width:0; }
 .lc-checkin__icon-option { min-width:0; }
 .lc-checkin__icon-option span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .lc-checkin__settings-nav { min-width:0; }
 .lc-checkin__settings-nav button { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lc-checkin__settings-content { min-width:0; }
 /* 10.0 foundation pass 8: dialog, navigation, empty/loading and theme resilience. */
 .lc-checkin-dialog-host { min-width:0; min-height:0; }
 .lc-checkin-dialog-host .lc-checkin { isolation:isolate; }
-.lc-checkin-dialog-host .lc-checkin__content { min-width:0; }
 .lc-checkin-dialog-host .lc-checkin__layout { min-width:0; }
 .lc-checkin-dialog-host .lc-checkin__header { min-width:0; }
 .lc-checkin-dialog-host .lc-checkin__header > div { min-width:0; }
@@ -630,12 +594,9 @@
 .lc-checkin__focus-button:hover { color:var(--lc-checkin-accent-text); }
 .lc-checkin__drag-handle:hover { color:var(--lc-checkin-accent-text); }
 .lc-checkin__empty { min-width:0; overflow-wrap:anywhere; }
-.lc-checkin__empty-icon { display:flex; align-items:center; justify-content:center; }
 .lc-checkin__empty-title { overflow-wrap:anywhere; }
 .lc-checkin__empty-description { overflow-wrap:anywhere; }
 .lc-checkin__loading { display:flex; align-items:center; justify-content:center; min-height:80px; color:var(--lc-checkin-muted); }
-.lc-checkin__loading::before { content:""; width:16px; height:16px; margin-right:7px; border:2px solid var(--lc-checkin-border); border-top-color:var(--lc-checkin-accent); border-radius:50%; animation:lc-checkin-spin .8s linear infinite; }
-@keyframes lc-checkin-spin { to { transform:rotate(360deg); } }
 .lc-checkin[data-reduced-motion="true"] .lc-checkin__loading::before { animation:none; }
 .lc-checkin__skeleton { min-height:14px; border-radius:5px; background:linear-gradient(90deg,var(--lc-checkin-muted-surface),var(--lc-checkin-surface),var(--lc-checkin-muted-surface)); background-size:200% 100%; animation:lc-checkin-skeleton 1.2s ease-in-out infinite; }
 @keyframes lc-checkin-skeleton { from { background-position:200% 0; } to { background-position:-200% 0; } }
@@ -652,14 +613,6 @@
 .lc-checkin[data-appearance="light"] .lc-checkin__error { background:color-mix(in srgb,var(--lc-checkin-danger) 6%,transparent); }
 .lc-checkin[data-appearance="light"] .lc-checkin__warning { background:color-mix(in srgb,var(--lc-checkin-warning) 6%,transparent); }
 .lc-checkin[data-appearance="light"] .lc-checkin__success { background:color-mix(in srgb,var(--lc-checkin-success) 6%,transparent); }
-.lc-checkin__divider { height:1px; margin:8px 0; background:var(--lc-checkin-border); }
-.lc-checkin__muted { color:var(--lc-checkin-muted); }
-.lc-checkin__accent { color:var(--lc-checkin-accent-text); }
-.lc-checkin__nowrap { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.lc-checkin__wrap { overflow-wrap:anywhere; white-space:normal; }
-.lc-checkin__numeric { font-variant-numeric:tabular-nums; }
-.lc-checkin__inline-actions { display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.lc-checkin__inline-actions button { flex:0 0 auto; }
 .lc-checkin__badge { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); font-size:10px; font-weight:650; }
 .lc-checkin__badge.is-success { color:var(--lc-checkin-success-text); background:color-mix(in srgb,var(--lc-checkin-success) 12%,transparent); }
 .lc-checkin__badge.is-warning { color:var(--lc-checkin-warning-text); background:color-mix(in srgb,var(--lc-checkin-warning) 12%,transparent); }
@@ -674,47 +627,10 @@
 .lc-checkin [aria-expanded="false"] > .lc-checkin__chevron { transform:rotate(-90deg); }
 .lc-checkin__chevron { transition:transform var(--lc-checkin-motion-fast); }
 .lc-checkin__visually-hidden { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; border:0 !important; }
-.lc-checkin__focus-ring:focus-visible { outline:3px solid var(--lc-checkin-accent); outline-offset:3px; }
-.lc-checkin__skip-link { position:absolute; z-index:20; top:4px; left:4px; transform:translateY(-140%); padding:6px 10px; border-radius:6px; color:var(--lc-checkin-text); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-md); }
-.lc-checkin__skip-link:focus { transform:translateY(0); }
-.lc-checkin__status-region { min-height:1.2em; color:var(--lc-checkin-muted); font-size:11px; }
-.lc-checkin__status-region:empty { display:none; }
-.lc-checkin__validation { margin-top:4px; color:var(--lc-checkin-danger-text); font-size:10px; }
-.lc-checkin__validation:empty { display:none; }
 .lc-checkin__field[aria-invalid="true"] > span { color:var(--lc-checkin-danger-text); }
 .lc-checkin__field[aria-invalid="true"] input,.lc-checkin__field[aria-invalid="true"] select,.lc-checkin__field[aria-invalid="true"] textarea { border-color:var(--lc-checkin-danger) !important; }
 .lc-checkin__field[aria-invalid="false"] input,.lc-checkin__field[aria-invalid="false"] select,.lc-checkin__field[aria-invalid="false"] textarea { border-color:var(--lc-checkin-success); }
-.lc-checkin__toggle { display:inline-flex; align-items:center; gap:7px; min-height:34px; cursor:pointer; }
-.lc-checkin__toggle input { width:18px; height:18px; accent-color:var(--lc-checkin-accent); }
-.lc-checkin__toggle span { color:var(--lc-checkin-text); font-size:12px; }
-.lc-checkin__toggle small { color:var(--lc-checkin-muted); font-size:10px; }
-.lc-checkin__toggle:has(input:disabled) { cursor:not-allowed; opacity:.55; }
-.lc-checkin__radio-group { display:flex; gap:8px; flex-wrap:wrap; }
-.lc-checkin__radio-group label { display:inline-flex; align-items:center; gap:4px; min-height:34px; color:var(--lc-checkin-text); font-size:11px; }
-.lc-checkin__radio-group input { accent-color:var(--lc-checkin-accent); }
-.lc-checkin__checkbox-group { display:grid; gap:5px; }
-.lc-checkin__checkbox-group label { display:flex; align-items:center; gap:5px; min-height:30px; color:var(--lc-checkin-text); font-size:11px; }
-.lc-checkin__checkbox-group input { accent-color:var(--lc-checkin-accent); }
 .lc-checkin__kbd { display:inline-flex; align-items:center; min-height:20px; padding:0 5px; border:1px solid var(--lc-checkin-border); border-bottom-width:2px; border-radius:4px; color:var(--lc-checkin-muted); background:var(--lc-checkin-muted-surface); font:10px ui-monospace,monospace; }
-.lc-checkin__tooltip { position:relative; }
-.lc-checkin__tooltip::after { position:absolute; z-index:10; bottom:calc(100% + 6px); left:50%; display:none; max-width:220px; padding:5px 7px; transform:translateX(-50%); border-radius:5px; color:var(--lc-checkin-text); background:var(--lc-checkin-surface-raised); box-shadow:var(--lc-checkin-shadow-sm); content:attr(data-tooltip); font-size:10px; white-space:normal; }
-.lc-checkin__tooltip:hover::after,.lc-checkin__tooltip:focus-visible::after { display:block; }
-.lc-checkin__announce { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
-.lc-checkin__progress[role="progressbar"] { position:relative; }
-.lc-checkin__progress[role="progressbar"]::after { position:absolute; top:50%; right:0; transform:translateY(-50%); color:var(--lc-checkin-muted); content:attr(aria-valuenow) "%"; font-size:9px; }
-.lc-checkin__item[aria-selected="true"] { border-color:var(--lc-checkin-accent); box-shadow:0 0 0 2px var(--lc-checkin-accent-soft); }
-.lc-checkin__item[draggable="true"] { cursor:grab; }
-.lc-checkin__item[draggable="true"]:active { cursor:grabbing; }
-.lc-checkin__drop-target { border:2px dashed var(--lc-checkin-accent); background:var(--lc-checkin-accent-soft); }
-.lc-checkin__drop-target::before { content:""; display:block; min-height:2px; }
-.lc-checkin__modal-backdrop { position:fixed; inset:0; z-index:30; background:color-mix(in srgb,var(--lc-checkin-text) 20%,transparent); }
-.lc-checkin__modal { position:relative; z-index:31; max-width:min(560px,calc(100vw - 24px)); max-height:calc(100vh - 24px); overflow:auto; border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius-lg); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-md); }
-.lc-checkin__modal-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; border-bottom:1px solid var(--lc-checkin-border); }
-.lc-checkin__modal-header h2 { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; }
-.lc-checkin__modal-body { padding:12px 14px; overflow-wrap:anywhere; }
-.lc-checkin__modal-footer { display:flex; justify-content:flex-end; gap:7px; padding:10px 14px; border-top:1px solid var(--lc-checkin-border); }
-.lc-checkin__modal-footer button { min-height:34px; }
-@media (max-width:600px) { .lc-checkin__modal { max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); } .lc-checkin__modal-footer { flex-wrap:wrap; } .lc-checkin__modal-footer button { flex:1 1 120px; } }
 .lc-checkin__item.is-complete { opacity: .78; }
 .lc-checkin__item.is-complete .lc-checkin__item-progress { opacity: .72; }
 .lc-checkin__item.is-complete .lc-checkin__item-icon { filter: saturate(.82); }
@@ -738,11 +654,6 @@
 .lc-checkin__item-meta em { color: var(--lc-checkin-muted); font-style: normal; }
 .lc-checkin__progress[aria-hidden="true"] { visibility: hidden; }
 .lc-checkin__empty[hidden] { display: none; }
-.lc-checkin__empty-action { margin-top: 10px; }
-.lc-checkin__empty-action button { min-height: 36px; }
-.lc-checkin__filter-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lc-checkin__filter-chip.is-active { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-.lc-checkin__filter-chip:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
 .lc-checkin__search-field input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
 .lc-checkin__today-search input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
 .lc-checkin__history-search input::placeholder { color: color-mix(in srgb, var(--lc-checkin-muted) 72%, transparent); }
@@ -751,7 +662,6 @@
 .lc-checkin__group-header button { min-width: 28px; }
 .lc-checkin__group-header button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
 .lc-checkin__group-header [aria-expanded="false"] + * { visibility: hidden; }
-.lc-checkin__history-details > summary { min-height: 34px; }
 .lc-checkin__history-details > summary:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
 .lc-checkin__history-event.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__history-event-note a:hover { text-decoration: underline; }
@@ -759,7 +669,6 @@
 .lc-checkin__calendar-day[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
 .lc-checkin__calendar-day[aria-disabled="true"] { cursor: not-allowed; opacity: .45; }
 .lc-checkin__calendar-day:not([aria-disabled="true"]):hover { background: var(--lc-checkin-accent-soft); }
-.lc-checkin__month-nav button:disabled { opacity: .45; cursor: not-allowed; }
 .lc-checkin__occasion-manager-row.is-today { border-color: color-mix(in srgb, var(--lc-checkin-accent) 42%, var(--lc-checkin-border)); }
 .lc-checkin__occasion-manager-row.is-overdue { border-color: color-mix(in srgb, var(--lc-checkin-danger) 42%, var(--lc-checkin-border)); }
 .lc-checkin__occasion-manager-row.is-upcoming { border-color: color-mix(in srgb, var(--lc-checkin-warning) 34%, var(--lc-checkin-border)); }
@@ -784,10 +693,6 @@
 .lc-checkin__suggestion-workflow footer button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
 .lc-checkin__agent-preview-actions button { min-height: 34px; }
 .lc-checkin__agent-preview-actions button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
-.lc-checkin__toast[role="status"] { max-width: min(420px, calc(100vw - 24px)); overflow-wrap: anywhere; }
-.lc-checkin__toast.is-error { border-color: var(--lc-checkin-danger); }
-.lc-checkin__toast.is-success { border-color: var(--lc-checkin-success); }
-.lc-checkin__toast.is-info { border-color: var(--lc-checkin-accent); }
 .lc-checkin [aria-live="polite"] { min-width: 0; }
 .lc-checkin [aria-live="assertive"] { color: var(--lc-checkin-danger-text); }
 @media (prefers-reduced-motion: reduce) {
@@ -798,37 +703,24 @@
 .lc-checkin__organize select,.lc-checkin__today-search { height:var(--lc-checkin-control-height); }
 .lc-checkin__today-search { flex:1 1 150px; min-width:120px; border-radius:7px; }
 .lc-checkin__group { gap:7px; margin-top:var(--lc-checkin-section-gap); }
-.lc-checkin__group-header,.lc-checkin__section-toggle { min-height:30px; padding:0 2px; color:var(--lc-checkin-muted); font-size:12px; }
 .lc-checkin__group-header span:first-child { font-weight:650; }
 .lc-checkin__group-header em { min-width:20px; }
-.lc-checkin__group-items { gap:8px; }
-.lc-checkin__kind-grid { gap:8px; }
 .lc-checkin__kind-option span { min-height:56px; padding:8px 10px; border-radius:8px; }
 .lc-checkin__advanced { border-color:var(--lc-checkin-border-strong); border-radius:8px; background:var(--lc-checkin-muted-surface); }
 .lc-checkin__advanced summary { min-height:48px; padding:8px 11px; }
-.lc-checkin__advanced-content { padding:0 11px 12px; }
 .lc-checkin__save-button { min-height:42px; height:auto; border-radius:8px; font-weight:650; box-shadow:0 3px 8px color-mix(in srgb,var(--lc-checkin-accent) 22%,transparent); }
 .lc-checkin__editor-actions { padding-top:12px; }
 .lc-checkin__completed-section { margin-top:24px; padding-top:12px; border-top-color:var(--lc-checkin-border); }
 .lc-checkin__completed-section .lc-checkin__section-title { font-size:12px; }
 .lc-checkin--history .lc-checkin__editor-header { margin-bottom:22px; }
-.lc-checkin__history-list { gap:8px; }
 .lc-checkin__history-row { min-height:48px; padding:0 12px; border:1px solid var(--lc-checkin-border); border-radius:7px; background:var(--lc-checkin-surface); }
 .lc-checkin__history-event { min-height:48px; padding:7px 11px; border:1px solid transparent; box-shadow:var(--lc-checkin-shadow-sm); }
 .lc-checkin__history-event:hover { border-color:var(--lc-checkin-border); }
-.lc-checkin__calendar-day { border-radius:8px; }
-.lc-checkin__form { gap:18px; }
-.lc-checkin__form-scroll { gap:20px; padding:0 2px 24px; }
 .lc-checkin__kind-field legend { font-weight:600; }
 .lc-checkin__field input:not([type="checkbox"]),.lc-checkin__field select { height:var(--lc-checkin-control-height); border-radius:7px; }
-.lc-checkin__kind-grid + .lc-checkin__validation { margin-top:6px; }
 .lc-checkin__item { min-height:72px; padding:11px 12px; border-color:transparent; border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
 .lc-checkin__item:hover,.lc-checkin__item:focus-within { border-color:color-mix(in srgb,var(--lc-checkin-accent) 35%,var(--lc-checkin-border-strong)); }
 .lc-checkin__item-icon { flex-basis:40px; width:40px; height:40px; border-radius:10px; font-size:20px; }
-.lc-checkin__item-name { font-size:14px; font-weight:650; }
-.lc-checkin__item-meta { margin-top:3px; font-size:11px; }
-.lc-checkin__item-progress { height:3px; margin-top:7px; }
-.lc-checkin__item-action { gap:6px; }
 .lc-checkin__range-tabs { display:flex; align-self:flex-start; gap:3px; margin:-7px 0 14px 40px; padding:3px; border-radius:7px; background:var(--lc-checkin-muted-surface); }
 .lc-checkin__range-tabs button { min-width:30px; height:25px; padding:0 7px; border:0; border-radius:5px; color:var(--lc-checkin-muted); background:transparent; font-size:11px; }
 .lc-checkin__range-tabs button.is-selected { color:var(--lc-checkin-text); background:var(--lc-checkin-surface); box-shadow:var(--lc-checkin-shadow-sm); }
@@ -945,8 +837,6 @@
  .lc-checkin__section-heading { margin-bottom: 7px; }
  .lc-checkin__section-heading strong { font-size: 13px; }
  .lc-checkin__group-header { gap: 6px; }
- .lc-checkin__group-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
- .lc-checkin__group-count { flex: 0 0 auto; }
  .lc-checkin--today .lc-checkin__item { grid-template-columns: 36px minmax(0,1fr); gap: 7px; padding: 8px; }
  .lc-checkin--today .lc-checkin__item-icon { width: 36px; height: 36px; flex-basis: 36px; }
  .lc-checkin--today .lc-checkin__item-body { min-width: 0; }
@@ -1301,15 +1191,10 @@
 }
 .lc-checkin__item-action { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
 .lc-checkin__reminder-center { padding: 10px 12px; }
-.lc-checkin__reminder-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.lc-checkin__reminder-heading h2 { margin: 0; font-size: 15px; }
 .lc-checkin__reminder-heading select { min-height: 30px; padding: 0 24px 0 8px; }
 .lc-checkin__reminder-list { display: grid; gap: 4px; margin-top: 6px; }
-.lc-checkin__reminder-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 8px; min-height: 34px; padding: 5px 7px; border-radius: 7px; }
 .lc-checkin__reminder-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lc-checkin__reminder-row small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lc-checkin__reminder-actions { display: inline-flex; gap: 4px; }
-.lc-checkin__reminder-action { min-height: 28px; padding: 0 8px; border-radius: 999px; }
 .lc-checkin__overdue-history { margin-top: 8px; }
 .lc-checkin__overdue-history h3 { margin: 0 0 4px; font-size: 12px; }
 .lc-checkin__overdue-history [data-overdue-more] { display: grid; gap: 4px; }
@@ -1322,27 +1207,16 @@
 }
 
 /* Twenty-first visual-density pass: reclaim Today whitespace and right-align actions. */
-.lc-checkin--today .lc-checkin__item-action { margin-left: auto; padding-left: 12px; }
-.lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 96px; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__amount { min-width: 52px; }
-.lc-checkin--today .lc-checkin__item-body { background: transparent; }
 .lc-checkin--today .lc-checkin__item-topline { padding-right: 4px; }
 .lc-checkin--today .lc-checkin__item-meta { max-width: 100%; }
 .lc-checkin--today .lc-checkin__organize { margin-bottom: 6px; }
 .lc-checkin--today .lc-checkin__organize label { white-space: nowrap; }
 .lc-checkin--today .lc-checkin__organize select { max-width: 180px; }
-.lc-checkin--today .lc-checkin__today-search { flex: 1 1 180px; }
-.lc-checkin--today .lc-checkin__group { margin-top: 12px; }
-.lc-checkin--today .lc-checkin__group-header { min-height: 26px; }
-.lc-checkin--today .lc-checkin__group-items { gap: 8px; }
-.lc-checkin--today .lc-checkin__item { min-height: 62px; }
-.lc-checkin--today .lc-checkin__item-progress { margin-top: 5px; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { min-width: 30px; }
-.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 72px; }
 .lc-checkin--today .lc-checkin__item-action :where(button,input) { flex-shrink: 0; }
 .lc-checkin--today .lc-checkin__item-name { max-width: 100%; }
 .lc-checkin--today .lc-checkin__item-tag { flex-shrink: 0; }
-.lc-checkin--today .lc-checkin__organize { align-items: center; }
 .lc-checkin--today .lc-checkin__organize > label { min-height: 28px; }
 .lc-checkin--today .lc-checkin__organize input { max-width: 240px; }
 .lc-checkin--today .lc-checkin__organize + .lc-checkin__list { margin-top: 2px; }
@@ -1421,9 +1295,8 @@
 .lc-checkin__focus-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: 7px; color: var(--lc-checkin-muted); background: transparent; font-size: 14px; cursor: pointer;
     &:hover { border-color: var(--lc-checkin-accent-text); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
-.lc-checkin__empty { display: flex; align-items: center; justify-content: center; min-height: 230px; flex-direction: column; color: var(--lc-checkin-muted); text-align: center; }
+.lc-checkin__empty { display: flex; align-items: center; justify-content: center; flex-direction: column; color: var(--lc-checkin-muted); text-align: center; }
 .lc-checkin__empty-mark { margin-bottom: 12px; color: var(--lc-checkin-accent-text); font-size: 25px; }
-.lc-checkin__empty-title { color: var(--lc-checkin-text); font-size: 14px; font-weight: 550; }
 .lc-checkin__empty-description { max-width: 220px; margin-top: 6px; font-size: 12px; line-height: 1.6; }
 .lc-checkin__empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .lc-checkin__text-button { margin-top: 15px; padding: 4px 9px; border: 0; border-radius: 6px; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-size: 12px; cursor: pointer; }
@@ -1439,6 +1312,8 @@
     .lc-checkin__template[hidden] { display: none; }
 }
 .lc-checkin__template-section { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+.lc-checkin__template-summary { display: none; }
+.lc-checkin__template-browser { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
 .lc-checkin__search-field { position: relative; display: flex; align-items: center; min-width: 0;
     input { width: 100%; height: 32px; box-sizing: border-box; padding: 0 30px 0 28px; border: 1px solid var(--lc-checkin-border-strong); border-radius: 8px; outline: 0; color: var(--lc-checkin-text); background: var(--lc-checkin-surface); font: inherit; font-size: 12px;
         &:focus { border-color: var(--lc-checkin-accent-text); box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
@@ -1482,7 +1357,6 @@
         &:focus { border-color: var(--lc-checkin-accent-text); }
     }
 }
-.lc-checkin__form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .lc-checkin [hidden] { display: none !important; }
 .lc-checkin__icon-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; }
 .lc-checkin__kind-field { margin: 0; padding: 0; border: 0;
@@ -1577,7 +1451,6 @@
 .lc-checkin__history-selected { margin-top: 14px; padding-top: 5px; border-top: 1px solid var(--lc-checkin-border-strong); }
 .lc-checkin__template-wrap { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .lc-checkin__template-wrap .lc-checkin__template { width: 100%; }
-.lc-checkin__template-delete { min-height: 30px; padding: 3px 8px; border: 0; border-radius: 6px; color: var(--lc-checkin-muted); background: transparent; font-size: 11px; cursor: pointer; }
 .lc-checkin__template-delete:hover,
 .lc-checkin__template-delete:focus-visible { color: var(--lc-checkin-danger-text); background: color-mix(in srgb, var(--lc-checkin-danger) 12%, var(--lc-checkin-surface)); }
 .lc-checkin__quota-schedule { display: flex; gap: 8px; flex-direction: column; padding: 9px; border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, var(--lc-checkin-border-strong)); border-radius: 8px; background: color-mix(in srgb, var(--lc-checkin-accent-soft) 55%, var(--lc-checkin-surface)); }
@@ -1665,7 +1538,6 @@
     .lc-checkin__calendar-day.is-off,
     .lc-checkin__insight-grid span.is-off { background: var(--lc-checkin-muted-surface); }
     .lc-checkin__item-progress span { background: var(--lc-checkin-accent); }
-    .lc-checkin__item.is-complete .lc-checkin__item-progress span { background: var(--lc-checkin-success); }
     .lc-checkin--today .lc-checkin__group { min-width: 0; }
     .lc-checkin--today .lc-checkin__group-header { position: sticky; z-index: 2; top: 56px; background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent); backdrop-filter: blur(6px); }
     .lc-checkin--today .lc-checkin__group-items[hidden] { display: none; }
@@ -1690,7 +1562,6 @@
     .lc-checkin-dialog-host--mobile .lc-checkin { width: 100%; max-width: 100vw; min-width: 0; overflow-x: hidden; }
     .lc-checkin-dialog-host--mobile .lc-checkin { min-height: 100%; padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
     .lc-checkin--editor .lc-checkin__form-scroll { min-height: 0; overscroll-behavior-x: none; }
-    .lc-checkin__mobile-nav { padding-bottom: max(5px, calc(5px + env(safe-area-inset-bottom))); }
     @supports (height: 100svh) {
         .lc-checkin-dialog { height: 100svh !important; max-height: 100svh; }
     }
@@ -1861,7 +1732,6 @@
     .lc-checkin__history-selected { margin-right: 0; margin-left: 0; }
     .lc-checkin--today .lc-checkin__item-icon { align-self: start; line-height: 1; }
     .lc-checkin--today .lc-checkin__item-topline { min-height: 22px; }
-    .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
     .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
     .lc-checkin--history .lc-checkin__calendar-weekdays { margin-bottom: 2px; }
     .lc-checkin--history .lc-checkin__calendar + .lc-checkin__history-tools { margin-top: 6px; }
@@ -1910,7 +1780,6 @@
     .lc-checkin--today .lc-checkin__group-items { contain: layout; }
     .lc-checkin--today .lc-checkin__item { will-change: transform; }
     .lc-checkin--today .lc-checkin__item.is-complete { will-change: auto; }
-    .lc-checkin--today .lc-checkin__item-action { min-width: 0; }
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group + .lc-checkin__group { margin-top: 16px; }
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 6px; }
     .lc-checkin--today .lc-checkin__group-items + .lc-checkin__group-header { margin-top: 0; }
@@ -2217,7 +2086,6 @@
     .lc-checkin--insights .lc-checkin__empty,
     .lc-checkin--insights .lc-checkin__history-empty { margin-top: 8px; }
     .lc-checkin--insights .lc-checkin__insight-stats:has(strong:first-child:empty) { display: none; }
-    .lc-checkin--insights .lc-checkin__coaching:empty { display: none; }
     .lc-checkin--today .lc-checkin__item-topline { flex-wrap: wrap; row-gap: 2px; }
     .lc-checkin--today .lc-checkin__item-name { flex: 1 1 100%; order: 1; }
     .lc-checkin--today .lc-checkin__item-tag { order: 2; max-width: 46%; }
@@ -2324,8 +2192,6 @@
     .lc-checkin--today .lc-checkin__item-tag { line-height: 1.2; }
     .lc-checkin--today .lc-checkin__item-meta { color: var(--lc-checkin-muted); line-height: 1.4; }
     .lc-checkin--today .lc-checkin__item-progress span { display: block; height: 100%; background: var(--lc-checkin-accent); }
-    .lc-checkin--today .lc-checkin__group-title { color: var(--lc-checkin-text); }
-    .lc-checkin--today .lc-checkin__group-count { color: var(--lc-checkin-muted); }
     .lc-checkin--today .lc-checkin__organize label { color: var(--lc-checkin-muted); }
     .lc-checkin--today .lc-checkin__organize input { min-height: 36px; }
     .lc-checkin--today .lc-checkin__organize select { min-height: 36px; }
@@ -2334,7 +2200,6 @@
     .lc-checkin__mobile-nav button svg { flex: 0 0 auto; }
     .lc-checkin__mobile-nav button span { line-height: 1; }
     .lc-checkin__mobile-nav button small { line-height: 1.1; }
-    .lc-checkin--history .lc-checkin__calendar-header { color: var(--lc-checkin-text); }
     .lc-checkin--history .lc-checkin__calendar-day { color: var(--lc-checkin-text); }
     .lc-checkin--history .lc-checkin__calendar-day.is-muted { color: var(--lc-checkin-muted); }
     .lc-checkin--history .lc-checkin__calendar-day.is-selected { background: var(--lc-checkin-accent-soft); }
@@ -2490,7 +2355,6 @@
     .lc-checkin__item-topline button { min-width: 36px; }
     .lc-checkin__organize select { min-height: 40px; }
     .lc-checkin__today-search input { min-height: 40px; }
-    .lc-checkin__group-toggle { min-height: 36px; }
     .lc-checkin__text-button { touch-action: manipulation; }
     .lc-checkin__small-button { touch-action: manipulation; }
     .lc-checkin__record-button { touch-action: manipulation; }
@@ -2499,9 +2363,9 @@
 }
 /* Twentieth interaction pass: keyboard and print-friendly affordances. */
 @media print {
- .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__floating-action,.lc-checkin__text-button{display:none!important}
- .lc-checkin,.lc-checkin__layout,.lc-checkin__content{padding:0!important;box-shadow:none!important}
- .lc-checkin__item,.lc-checkin__section,.lc-checkin__history-event,.lc-checkin__insight-section{break-inside:avoid}
+ .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__text-button{display:none!important}
+ .lc-checkin,.lc-checkin__layout{padding:0!important;box-shadow:none!important}
+ .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__insight-section{break-inside:avoid}
  .lc-checkin__item-progress,.lc-checkin__progress{print-color-adjust:exact}
 }
 .lc-checkin :where(button,input,select,textarea):focus-visible{outline-offset:2px}
@@ -2519,17 +2383,13 @@
 .lc-checkin__today-search input:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__organize select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__insight-picker select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
-.lc-checkin__group-toggle:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__header-actions button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__dialog-close:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__settings-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__rail button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
-.lc-checkin__floating-action:focus-visible{outline:2px solid var(--lc-checkin-accent)}
-.lc-checkin__calendar-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__history-filter-row select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__history-result button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__coaching-item:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
-.lc-checkin__occasion-card:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
 .lc-checkin__summary-stats div:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
 .lc-checkin__insight-stats div:focus-within{outline:2px solid var(--lc-checkin-accent-soft)}
 @media (forced-colors: active) {
@@ -2565,7 +2425,6 @@
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-column: 2; margin-top: 2px; justify-content: stretch; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { flex: 1 1 auto; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__item-secondary-action { display: none; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-template-columns: 28px minmax(52px, 1fr) 28px; gap: 3px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button,
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; padding-inline: 7px; font-size: 11px; }
@@ -2582,7 +2441,6 @@
     .lc-checkin--review .lc-checkin__month-nav { min-width: 0; }
     .lc-checkin--review .lc-checkin__review-subnav { width: 100%; max-width: 100%; box-sizing: border-box; }
     .lc-checkin--review > * { max-width: 100%; box-sizing: border-box; }
-    .lc-checkin--review .lc-checkin__floating-action { max-width: calc(100vw - 24px); box-sizing: border-box; }
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-header,
     .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-header { position: static !important; top: auto; background: transparent; backdrop-filter: none; }
     .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
@@ -2781,7 +2639,7 @@
     bottom: 0;
     left: 0;
     display: none;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 2px;
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--lc-checkin-border);
@@ -2830,9 +2688,6 @@
         min-width: 0;
         max-width: 100%;
     }
-    .lc-checkin--review .lc-checkin__summary-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
     .lc-checkin--review .lc-checkin__calendar,
     .lc-checkin--review .lc-checkin__calendar-weekdays {
         min-width: 0;
@@ -2872,7 +2727,6 @@
         max-width: 100%;
         contain: inline-size;
     }
-    .lc-checkin--review .lc-checkin__top-actions,
     .lc-checkin--review .lc-checkin__header-actions {
         min-width: 0;
         max-width: 100%;
@@ -2940,24 +2794,7 @@
     box-shadow: var(--lc-checkin-shadow-sm);
     cursor: pointer;
 }
-.lc-checkin__dialog-fullscreen {
-    position: absolute;
-    z-index: var(--lc-checkin-z-popup);
-    top: 10px;
-    right: 54px;
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: 50%;
-    color: var(--lc-checkin-muted);
-    background: var(--lc-checkin-surface-raised);
-    box-shadow: var(--lc-checkin-shadow-sm);
-    cursor: pointer;
-}
-.lc-checkin__dialog-close:hover,
-.lc-checkin__dialog-fullscreen:hover { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); }
+.lc-checkin__dialog-close:hover { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); }
 
 /* ---------------- buttons ---------------- */
 .lc-checkin :is(.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button) {
@@ -3038,7 +2875,7 @@
 .lc-checkin__reminder-row .lc-checkin__reminder-timing { justify-self: end; }
 .lc-checkin__reminder-row:hover { background: var(--lc-checkin-muted-surface); }
 .lc-checkin__reminder-row small { grid-column: 2 / -1; color: var(--lc-checkin-muted); }
-.lc-checkin__reminder-source { font-size: 12px; color: var(--lc-checkin-accent); }
+.lc-checkin__reminder-source { font-size: 12px; color: var(--lc-checkin-accent-text); }
 .lc-checkin__reminder-timing { font-size: 12px; color: var(--lc-checkin-muted); white-space: nowrap; }
 @container lc5 (max-width: 560px) {
     .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr); min-height: 36px; padding: 7px 8px; }
@@ -3244,7 +3081,6 @@
 }
 .lc-checkin--today .lc-checkin__item-tag { flex: none; padding: 1px 7px; border-radius: 999px; color: var(--lc-checkin-muted); background: var(--lc-checkin-muted-surface); font-size: 9px; font-weight: 700; }
 .lc-checkin--today .lc-checkin__item-tag.is-high { color: var(--lc-checkin-warning-text); background: var(--lc-checkin-warm-soft); }
-.lc-checkin--today .lc-checkin__item-tag.is-tomato { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-lilac-soft); }
 .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button { width: 24px; height: 24px; opacity: .55; }
 .lc-checkin--today .lc-checkin__item-topline .lc-checkin__small-button:hover { opacity: 1; }
 .lc-checkin--today .lc-checkin__item-meta { overflow: hidden; margin-top: 2px; color: var(--lc-checkin-muted); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
@@ -3315,7 +3151,6 @@
     transition: color var(--lc-checkin-motion-fast), background-color var(--lc-checkin-motion-fast);
 }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button:hover { color: #fff; background: var(--card-accent); }
-.lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button span { font-weight: 500; }
 .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button,
 .lc-checkin--today .lc-checkin__focus-button {
     display: grid;
@@ -3421,6 +3256,7 @@
 
 /* 手机/窄面板给底部导航让出空间，toast 仍保持在窗口内而非顶部。 */
 .lc-checkin-dialog-host--mobile > .lc-checkin__recent-record,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__recent-record,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__recent-record,
 .lc-checkin-dock-host > .lc-checkin__recent-record {
     bottom: calc(var(--lc-checkin-nav-height) + env(safe-area-inset-bottom) + 10px);
@@ -3517,6 +3353,57 @@
 .lc-checkin__onboard-steps li > div { display: grid; gap: 2px; min-width: 0; }
 .lc-checkin__onboard-steps strong { color: var(--lc-checkin-text); font-size: 12.5px; }
 .lc-checkin__onboard-steps small { color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; }
+
+/* Onboarding is useful, but it should not turn an empty Today page into a
+   tall poster. Keep all three explanations visible while using the same
+   compact rhythm as the populated cards. */
+.lc-checkin--today .lc-checkin__empty--onboard {
+    gap: 6px;
+    padding: 20px 16px;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__empty-mark {
+    margin-bottom: 2px;
+    font-size: 22px;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__empty-description {
+    margin-top: 0;
+    line-height: 1.4;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps {
+    gap: 7px;
+    margin: 2px 0;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps li {
+    gap: 8px;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-num {
+    width: 20px;
+    height: 20px;
+    font-size: 10.5px;
+}
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps strong { font-size: 12px; }
+.lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps small {
+    font-size: 10.5px;
+    line-height: 1.35;
+}
+
+@container lc5 (max-width: 600px) {
+    .lc-checkin--today .lc-checkin__empty--onboard {
+        gap: 4px;
+        padding: 12px 10px;
+    }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__empty-mark { font-size: 20px; }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__empty-title { font-size: 14px; }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__empty-description { font-size: 10.5px; }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps {
+        gap: 5px;
+        margin-block: 1px;
+    }
+    .lc-checkin--today .lc-checkin__empty--onboard .lc-checkin__onboard-steps small {
+        font-size: 10px;
+        line-height: 1.3;
+    }
+}
 .lc-checkin__all-done span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 16px; }
 .lc-checkin__all-done strong { color: var(--lc-checkin-text); font-size: 14px; }
 .lc-checkin__today-search-empty span { color: var(--lc-checkin-muted); font-size: 20px; }
@@ -3575,13 +3462,9 @@
 .lc-checkin--review .lc-checkin__summary-stats > div:first-child strong { color: var(--lc-checkin-accent-text); }
 .lc-checkin--review .lc-checkin__summary-stats > div:nth-child(2) strong { color: var(--lc-checkin-success-text); }
 .lc-checkin--review .lc-checkin__summary-stats span { display: block; margin-top: 3px; color: var(--lc-checkin-muted); font-size: 10px; font-weight: 600; }
-.lc-checkin--review .lc-checkin__top-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.lc-checkin--review .lc-checkin__top-actions .lc-checkin__text-button[data-action="generate-summary"] { color: var(--lc-checkin-accent-text); border: 1px solid var(--lc-checkin-accent); border-radius: 999px; padding-inline: 10px; font-weight: 650; }
 .lc-checkin--review .lc-checkin__header-actions { align-items: center; gap: 6px; }
 .lc-checkin--review .lc-checkin__editor-header { min-height: 0; margin-bottom: 10px; }
 .lc-checkin--review .lc-checkin__header-actions { max-width: none; flex-wrap: nowrap; }
-.lc-checkin--review .lc-checkin__editor-header { position: relative; }
-.lc-checkin--review .lc-checkin__header-actions { position: absolute; top: 0; right: 0; }
 
 /* Final narrow-dock action layout: keep the primary action readable and prevent icon collisions. */
 @container lc-dock (max-width: 480px) {
@@ -3598,7 +3481,7 @@
         min-width: 0;
         width: 100%;
         padding-inline: 6px;
-        overflow: hidden;
+        overflow: visible;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -3606,10 +3489,8 @@
 }
 .lc-checkin--review .lc-checkin__range-tabs { flex: 0 0 auto; }
 .lc-checkin--review .lc-checkin__summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.lc-checkin--review .lc-checkin__summary-stats > div:has(.lc-checkin__analytics-badge) { grid-column: 1 / -1; min-height: 26px; justify-content: flex-end; padding: 2px 8px; }
 .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 32px; padding-inline: 11px; border-radius: 999px; }
 .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { font-size: 9px; letter-spacing: .01em; }
-.lc-checkin--review .lc-checkin__summary-stats > div:has(.lc-checkin__analytics-badge) { align-content: center; background: transparent; border-color: transparent; box-shadow: none; }
 .lc-checkin--review .lc-checkin__summary-agent { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); }
 .lc-checkin--review .lc-checkin__summary-agent > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -3730,18 +3611,11 @@
 .lc-agent-compare-summary { margin:8px 0 4px; color:var(--lc-checkin-muted); font-size:11px; font-weight:650; }
 @container lc5 (max-width: 520px) { .lc-agent-compare-diff { max-height:180px; margin-inline:0; font-size:10px; } }
 .lc-agent-suggestion-impact { margin:10px 0 6px; padding:7px 9px; border-radius:8px; color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); font-size:11px; font-weight:650; }
-.lc-agent-compare-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
-.lc-agent-compare-grid article { max-height:280px; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:9px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); scrollbar-width:thin; }
-.lc-agent-compare-grid h4 { margin:0 0 5px; color:var(--lc-checkin-accent-text); font-size:11px; }
-.lc-agent-compare-grid p { margin:0; white-space:pre-wrap; font-size:11px; }
 .lc-agent-compare-direction { margin:10px 0 0; color:var(--lc-checkin-accent-text); font-size:11px; font-weight:700; }
 .lc-agent-compare-meta { margin:6px 0; color:var(--lc-checkin-muted); font-size:10px; line-height:1.5; }
 .lc-agent-compare-select { display:flex; flex-wrap:wrap; align-items:end; gap:8px; padding:8px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-muted-surface); }
 .lc-agent-compare-select label { display:grid; gap:3px; min-width:120px; color:var(--lc-checkin-muted); font-size:10px; }
 .lc-agent-compare-select select { min-height:30px; }
-@container lc5 (max-width: 560px) {
-  .lc-agent-compare-grid { grid-template-columns:1fr; }
-}
 .lc-checkin__review-subnav { display:flex; gap:6px; position:sticky; top:0; z-index:2; padding:6px 0; background:var(--lc-checkin-canvas); overflow-x:auto; }
 .lc-checkin--review .lc-checkin__review-subnav {
     position: sticky;
@@ -3844,8 +3718,6 @@
 .lc-checkin__history-event-actions { display: flex; gap: 2px; }
 .lc-checkin__history-event-actions .lc-checkin__text-button { min-height: 26px; padding: 2px 8px; font-size: 11px; }
 .lc-checkin__history-empty { padding: 14px 4px; color: var(--lc-checkin-muted); font-size: 12px; }
-.lc-checkin__history-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-
 .lc-checkin__review-projects { margin-top: 16px; }
 .lc-checkin__review-projects h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 14px; font-weight: 720; }
 .lc-checkin__review-project-list { display: grid; gap: 6px; }
@@ -3893,19 +3765,17 @@
 .lc-checkin__summary-text small { display:block; margin-bottom:6px; color:var(--lc-checkin-accent-text); font-size:10px; font-weight:700; letter-spacing:.02em; }
 .lc-checkin__summary-text.is-local { border-style: dashed; background: var(--lc-checkin-muted-surface); }
 .lc-checkin__priority-reminder { display:flex; align-items:flex-start; gap:10px; margin:10px 0 12px; padding:9px 11px; border:1px solid color-mix(in srgb,var(--lc-checkin-accent) 26%,var(--lc-checkin-border)); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-lilac-soft); }
-.lc-checkin__priority-reminder-mark { display:grid; place-items:center; flex:0 0 24px; width:24px; height:24px; border-radius:50%; color:var(--lc-checkin-accent-contrast); background:var(--lc-checkin-accent); font-weight:800; }
 .lc-checkin__priority-reminder.is-overdue { border-color:color-mix(in srgb,var(--lc-checkin-danger) 38%,var(--lc-checkin-border)); background:color-mix(in srgb,var(--lc-checkin-danger) 7%,var(--lc-checkin-surface)); }
-.lc-checkin__priority-reminder.is-overdue .lc-checkin__priority-reminder-mark { background:var(--lc-checkin-danger); }
 .lc-checkin__priority-reminder > div { display:grid; min-width:0; flex:1; gap:1px; }
 .lc-checkin__priority-reminder small { color:var(--lc-checkin-muted); font-size:10px; }
 .lc-checkin__priority-reminder strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
-.lc-checkin__priority-reminder span:not(.lc-checkin__priority-reminder-mark) { color:var(--lc-checkin-muted); font-size:11px; }
+.lc-checkin__priority-reminder .lc-checkin__priority-reminder-row-text { color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__priority-reminder-row { display:flex; align-items:center; gap:8px; min-width:0; padding:7px 0; }
 .lc-checkin__priority-reminder > .lc-checkin__priority-reminder-row { display:flex; align-items:center; flex:1; gap:8px; }
 .lc-checkin__priority-reminder-row.is-primary { padding:0; }
 .lc-checkin__priority-reminder-row-mark { display:grid; place-items:center; flex:0 0 20px; width:20px; height:20px; border:1px solid var(--lc-checkin-border); border-radius:50%; color:var(--lc-checkin-accent-text); font-size:11px; font-weight:800; }
 .lc-checkin__priority-reminder .lc-checkin__priority-reminder-row-mark { color:var(--lc-checkin-accent-text); }
-.lc-checkin__priority-reminder-row.is-primary .lc-checkin__priority-reminder-row-mark { color:var(--lc-checkin-accent-contrast); border-color:transparent; background:var(--lc-checkin-accent); }
+.lc-checkin__priority-reminder-row.is-primary .lc-checkin__priority-reminder-row-mark { color:var(--lc-checkin-accent-contrast); border-color:transparent; background:var(--lc-checkin-accent-fill); }
 .lc-checkin__priority-reminder-row-text { display:grid; min-width:0; flex:1; gap:1px; }
 .lc-checkin__priority-reminder-row-text strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
 .lc-checkin__priority-reminder-row-text small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--lc-checkin-muted); font-size:10px; }
@@ -4044,8 +3914,6 @@
 .lc-checkin--editor .lc-checkin__custom-icon-tools small { flex: 1 1 180px; color: var(--lc-checkin-muted); font-size: 9px; line-height: 1.35; }
 .lc-checkin--editor .lc-checkin__custom-icon-tools button:hover,
 .lc-checkin__file-button:hover { border-color: var(--lc-checkin-accent-text); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-lilac-soft); }
-.lc-checkin--editor .lc-checkin__custom-library { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--lc-checkin-border); }
-.lc-checkin--editor .lc-checkin__custom-library > small { display: block; margin-bottom: 5px; color: var(--lc-checkin-muted); font-size: 9px; }
 .lc-checkin--editor .lc-checkin__integration-help { margin: 4px 0 0; color: var(--lc-checkin-muted); font-size: 10px; line-height: 1.45; }
 .lc-checkin__templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 7px; max-height: 300px; overflow: auto; scrollbar-width: thin; }
 .lc-checkin__template-wrap { position: relative; display: grid; }
@@ -4084,15 +3952,9 @@
 .lc-checkin__field-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 2px 0 7px; }
 .lc-checkin__field-heading span { color: var(--lc-checkin-muted); font-size: 11px; font-weight: 650; }
 .lc-checkin__field-heading small { color: var(--lc-checkin-muted); font-size: 10px; }
-.lc-checkin__icon-search { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; padding: 0 12px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; background: var(--lc-checkin-muted-surface); }
-.lc-checkin__icon-search input { flex: 1; min-width: 0; min-height: 32px; border: 0; background: transparent; }
-.lc-checkin__icon-search input:focus { box-shadow: none; }
 .lc-checkin__icon-results { max-height: 210px; overflow: auto; }
 
 /* weekday / interval / quota editors inside advanced */
-.lc-checkin__weekday-grid { display: flex; flex-wrap: wrap; gap: 5px; }
-.lc-checkin__weekday-grid button { min-width: 34px; min-height: 30px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; color: var(--lc-checkin-muted); background: var(--lc-checkin-surface); font-size: 11px; cursor: pointer; }
-.lc-checkin__weekday-grid button[aria-pressed="true"] { color: var(--lc-checkin-accent-contrast); border-color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-fill); }
 
 /* ---------------- settings ---------------- */
 .lc-checkin__settings-layout { display: grid; gap: 14px; }
@@ -4100,7 +3962,6 @@
     .lc-checkin__settings-layout { grid-template-columns: 172px minmax(0, 1fr); align-items: start; }
 }
 .lc-checkin__settings-nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-.lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
 @container lc5 (min-width: 820px) {
     .lc-checkin__settings-nav { position: sticky; top: 58px; flex-direction: column; overflow: hidden; overscroll-behavior: contain; padding: 4px; border: 1px solid var(--lc-checkin-border); border-radius: 12px; background: color-mix(in srgb, var(--lc-checkin-surface) 88%, transparent); box-shadow: var(--lc-checkin-shadow-sm); }
     .lc-checkin__settings-nav button { width: 100%; min-width: 0; box-sizing: border-box; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4133,7 +3994,6 @@
 .lc-checkin__settings-groups { display: grid; gap: 12px; min-width: 0; }
 .lc-checkin--settings .lc-checkin__settings-groups,
 .lc-checkin--settings .lc-checkin__settings-card { width: 100%; max-width: 100%; box-sizing: border-box; }
-.lc-checkin--settings .lc-checkin__settings-content { width: 100%; min-width: 0; }
 .lc-checkin__settings-card { padding: 4px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
 .lc-checkin__settings-card h2 { margin: 10px 0 4px; color: var(--lc-checkin-text); font-size: 14px; font-weight: 720; }
 .lc-checkin__settings-row {
@@ -4216,9 +4076,6 @@
     transition: background-color var(--lc-checkin-motion-fast);
 }
 .lc-checkin .lc-checkin__switch:checked { background: radial-gradient(circle 8px at 27px 11px, #fff 0 99%, transparent 100%), var(--lc-checkin-accent); }
-.lc-checkin__settings-summary { margin: 8px 0 10px; color: var(--lc-checkin-muted); font-size: 11px; }
-.lc-checkin__settings-help { color: var(--lc-checkin-muted); font-size: 10.5px; }
-
 /* ---------------- archive ---------------- */
 /* 工具行桌面态搜索左、计数右；窄容器按 lc5 堆叠（布局只认容器宽度，D-016/D-050）。 */
 .lc-checkin--archived .lc-checkin__archived-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 12px; }
@@ -4289,9 +4146,6 @@
 /* insights page uses the review surface class for rail theming */
 .lc-checkin--insights { background: var(--lc-checkin-bg); }
 
-/* ---------------- quick-recent removed; legacy classes stay inert ---------------- */
-.lc-checkin__quick-recent { display: none; }
-
 /* ---------------- misc legacy surfaces kept quiet ---------------- */
 .lc-checkin__sync-notice {
     position: fixed;
@@ -4358,8 +4212,6 @@
  .lc-checkin--occasions .lc-checkin__occasion-manager { gap: 10px; }
  .lc-checkin--occasions .lc-checkin__occasion-form-panel,.lc-checkin--occasions .lc-checkin__occasion-list-panel { padding: 11px 12px; }
 }
-.lc-checkin__upcoming { margin-top: 16px; padding: 12px 16px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-lg); background: var(--lc-checkin-surface); }
-.lc-checkin__upcoming h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 13.5px; font-weight: 720; }
 .lc-checkin__upcoming-row {
     display: grid;
     grid-template-columns: 24px minmax(0, 1fr) auto auto;
@@ -4613,7 +4465,7 @@
     .lc-checkin--review .lc-checkin__range-tabs { flex: 1 1 100%; justify-content: flex-end; }
     .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 30px; padding-inline: 9px; }
     .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 56px; display: grid; place-content: center; overflow: hidden; }
-    .lc-checkin--review .lc-checkin__summary-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin--review .lc-checkin__summary-stats { gap: 6px; }
     .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
     .lc-checkin--review .lc-checkin__summary-text,
     .lc-checkin--review .lc-checkin__summary-agent { max-width: 1180px; margin-inline: auto; }
@@ -4762,9 +4614,6 @@
 /* ============================================================
    7.0 回顾：趋势图表 + 成就墙 + 打卡日志
    ============================================================ */
-.lc-checkin__trend { margin-top: 16px; }
-.lc-checkin__trend h2,
-.lc-checkin__achievements h2 { margin: 0 0 8px; color: var(--lc-checkin-text); font-size: 14px; font-weight: 720; }
 .lc-checkin__trend-grid { display: grid; gap: 10px; }
 @container lc5 (min-width: 880px) {
     .lc-checkin__trend-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -4794,7 +4643,6 @@
 .lc-chart-area { fill: color-mix(in srgb, var(--lc-checkin-accent) 11%, transparent); }
 .lc-chart-value { fill: var(--lc-checkin-muted); font-size: 6px; font-weight: 550; }
 
-.lc-checkin__achievements { margin-top: 16px; }
 .lc-checkin__achievement-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
 .lc-checkin__achievement {
     display: grid;
@@ -4844,7 +4692,6 @@
 .lc-checkin__log-main { display: grid; gap: 2px; min-width: 0; }
 .lc-checkin__log-main strong { color: var(--lc-checkin-text); font-size: 12.5px; }
 .lc-checkin__log-main small { color: var(--lc-checkin-muted); font-size: 10.5px; }
-.lc-checkin__log-note { color: var(--lc-checkin-text); font-size: 11.5px; line-height: 1.5; }
 .lc-checkin__log-value { color: var(--lc-checkin-accent-text); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lc-checkin__log-group { margin-bottom: 7px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-surface); overflow: hidden; }
 .lc-checkin__log-group > summary { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 16px; gap: 10px; align-items: center; min-height: 50px; padding: 8px 12px; cursor: pointer; list-style: none; }
@@ -4925,8 +4772,6 @@
 .lc-checkin__yearheatmap-legend .is-level-2 { background: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
 .lc-checkin__yearheatmap-legend .is-level-3 { background: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
 .lc-checkin__yearheatmap-legend .is-level-4 { background: var(--lc-checkin-accent); }
-.lc-checkin__yearheatmap-total { display: block; margin-top: 8px; color: var(--lc-checkin-muted); font-size: 10.5px; }
-
 /* ============================================================
    8.2b 回顾页折叠区块（趋势/日志/近期事项/成就）
    ============================================================ */
@@ -4960,22 +4805,6 @@
     .lc-checkin--review .lc-checkin__review-fold-body { max-width: 1180px; margin-inline: auto; gap: 8px; }
     .lc-checkin--review .lc-checkin__review-fold[open] > summary { margin-bottom: 6px; }
 }
-
-/* 8.2 备份提醒横幅 */
-.lc-checkin__backup-reminder {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-    padding: 8px 12px;
-    border: 1px solid color-mix(in srgb, var(--lc-checkin-warm) 35%, var(--lc-checkin-border));
-    border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-warm-soft);
-    color: var(--lc-checkin-text);
-    font-size: 12px;
-}
-.lc-checkin__backup-reminder strong { color: var(--lc-checkin-warning-text); }
 
 /* ============================================================
    8.4 分类平衡
@@ -5247,18 +5076,8 @@
     background: transparent;
     cursor: pointer;
 }
-.lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button:hover,
-.lc-checkin--today .lc-checkin__focus-button:hover {
-    color: var(--lc-checkin-accent-text);
-    background: var(--lc-checkin-accent-soft);
-}
 
 /* 已完成态：打卡按钮变灰、名称划线 */
-.lc-checkin--today .lc-checkin__item.is-complete .lc-checkin__item-action .lc-checkin__record-button {
-    color: var(--lc-checkin-muted);
-    background: var(--lc-checkin-muted-surface);
-    box-shadow: none;
-}
 
 /* --- topline 减负：名称优先，只保留重要标签 --- */
 .lc-checkin--today .lc-checkin__item-tag { display: none; }
@@ -5343,9 +5162,13 @@
 
 
 /* 顶栏标题和右侧占位 */
-.lc-checkin__topbar-title { color: var(--lc-checkin-text); font-size: 15px; font-weight: 700; }
-.lc-checkin__topbar-spacer { width: 34px; flex: none; }
-
+.lc-checkin__topbar-title { min-width: 0; color: var(--lc-checkin-text); font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__topbar-leading,
+.lc-checkin__topbar-trailing { display: flex; align-items: center; gap: 3px; min-width: 34px; flex: 0 0 auto; }
+.lc-checkin__topbar-trailing { justify-content: flex-end; }
+.lc-checkin__topbar-context { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; color: var(--lc-checkin-muted); background: transparent; cursor: pointer; }
+.lc-checkin__topbar-context:hover,
+.lc-checkin__topbar-context:focus-visible { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 /* ============================================================
    8.6.1 图标砖精致化：白瓷画布 + 进度环 + 微影
    设计原则：留白展示任何 emoji，进度环提供色彩锚点
@@ -5439,9 +5262,7 @@
         border-radius: 11px;
         font-size: 17px;
     }
-    .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
     .lc-checkin--today .lc-checkin__item-meta { font-size: 10px; margin-top: 1px; }
-    .lc-checkin--today .lc-checkin__item-progress { height: 2px; margin-top: 3px; }
 
     /* 操作按钮：32px 高 */
     .lc-checkin--today .lc-checkin__item-action { gap: 4px; }
@@ -5464,7 +5285,7 @@
 
     /* 底部导航 4 项 + 44px 高 */
     .lc-checkin__mobile-nav {
-        grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
     }
     .lc-checkin__mobile-nav button { min-height: 40px; }
@@ -5549,6 +5370,7 @@
 /* 手机端最终形态：宿主自己是弹性列（顶栏 / 滚动区 / 底栏），
    滚动区占据中间剩余空间，两栏在流内 —— 几何上不可能错位，也不需要为栏高凑内边距。 */
 .lc-checkin-dialog-host--mobile,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
     display: flex;
     flex-direction: column;
@@ -5557,6 +5379,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar,
 .lc-checkin-dialog-host--mobile .lc-checkin__mobile-topbar {
     position: static;
@@ -5565,6 +5388,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin {
     flex: 1 1 auto;
     min-height: 0;
@@ -5575,6 +5399,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-nav,
 .lc-checkin-tab-host > .lc-checkin__mobile-nav {
     position: static;
     flex: none;
@@ -5587,6 +5412,7 @@
    反复覆盖（同或更高特异性），而这些是"结构正确性"依赖的属性，宁可显式压住。
    只压结构属性（display/flex/position/margin/padding/overflow），不压颜色与字号。 */
 .lc-checkin-dialog-host--mobile,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) {
     display: flex !important;
     flex-direction: column !important;
@@ -5595,6 +5421,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar {
     position: static !important;
     flex: none !important;
@@ -5602,6 +5429,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin {
     flex: 1 1 auto !important;
     min-height: 0 !important;
@@ -5611,18 +5439,23 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-nav,
 .lc-checkin-tab-host > .lc-checkin__mobile-nav {
     position: static !important;
     flex: none !important;
+    inset: auto !important;
+    width: 100% !important;
+    box-sizing: border-box;
     margin: 0 !important;
 }
 
 /* 底栏的 display 原本由 @container lc5 的规则打开（display:none → grid），
    底栏移出滚动容器后不再是 lc5 后代，必须在这里显式打开。 */
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-nav,
 .lc-checkin-tab-host > .lc-checkin__mobile-nav {
     display: grid !important;
-    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     align-items: stretch;
 }
 
@@ -5632,6 +5465,7 @@
 /* 栏高微调：宿主内存在少量无法消除的纵向偏移（多来源 padding/margin 规则叠加），
    把两栏压到 42/52 以保证任何情况下文字都完整可见。 */
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar {
     min-height: 42px !important;
     max-height: 50px;
@@ -5640,6 +5474,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-nav,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-nav,
 .lc-checkin-tab-host > .lc-checkin__mobile-nav {
     min-height: 52px !important;
     max-height: 56px;
@@ -5756,8 +5591,7 @@
     .lc-checkin-dock-host .lc-checkin__error { margin: 10px 0; padding: 12px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; text-align: center; }
     .lc-checkin-dock-host .lc-checkin__empty p,
     .lc-checkin-dock-host .lc-checkin__error p { overflow-wrap: anywhere; }
-    .lc-checkin-dock-host .lc-checkin__field-label,
-    .lc-checkin-dock-host .lc-checkin__field-help { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin__field-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host label > small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__layout,
     .lc-checkin-dock-host .lc-checkin__layout > * { min-width: 0; max-width: 100%; }
@@ -5774,19 +5608,10 @@
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 48%; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__count { font-size: 11px; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters { grid-template-columns: minmax(0, 1fr) auto; gap: 5px; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters > * { min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__progress,
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__progress-bar { max-width: 100%; min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__progress-bar { height: 4px; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filter-button { min-width: 56px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__progress { max-width: 100%; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-filter-row select { min-width: 0; max-width: 100%; }
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__theme-option { min-width: 0; padding: 7px; }
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__toggle-row { min-width: 0; gap: 6px; }
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__toggle-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates-fold { margin-bottom: 6px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates { max-height: 150px; overflow: auto; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-list { gap: 5px; }
@@ -5810,7 +5635,7 @@
     .lc-checkin-dock-host .lc-checkin__history-event-main > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host time { white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__header,
-    .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 38px 4px 0; align-items: center; }
+    .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 0; align-items: center; }
     .lc-checkin-dock-host .lc-checkin__dialog-close { position: absolute; top: 2px; right: 0; width: 34px; height: 34px; }
     .lc-checkin-dock-host .lc-checkin__dialog-close { border: 0; box-shadow: none; background: transparent; color: var(--lc-checkin-muted); }
     .lc-checkin-dock-host .lc-checkin__dialog-close:hover { color: var(--lc-checkin-text); background: var(--lc-checkin-accent-soft); }
@@ -5821,13 +5646,10 @@
     .lc-checkin-dock-host .lc-checkin__header h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin-dock-host .lc-checkin__search-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
     .lc-checkin-dock-host .lc-checkin__item-action button { min-width: 0; padding-inline: 6px; font-size: 12px; }
     .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 5px; }
-    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-body { min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-body strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host input, .lc-checkin-dock-host select, .lc-checkin-dock-host textarea { max-width: 100%; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr) minmax(110px, 42%); gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
@@ -5847,7 +5669,7 @@
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; flex: 1 1 auto; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav {
         display: grid;
-        grid-template-columns: repeat(6, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 0;
         padding: 2px 2px calc(2px + env(safe-area-inset-bottom));
     }
@@ -5865,9 +5687,8 @@
         background: var(--lc-checkin-accent-fill);
         cursor: pointer;
     }
-    /* 侧边栏空间宝贵：备份提醒常驻会占掉一整行，收进提示气泡 */
-    .lc-checkin-dock-host .lc-checkin__backup-reminder { display: none; }
 }
+
 @container lc-dock (min-width: 720px) and (max-width: 900px) {
     .lc-checkin-dock-host .lc-checkin__layout { padding-inline: 12px; }
     .lc-checkin-dock-host .lc-checkin__group-items { gap: 8px; }
@@ -5880,7 +5701,6 @@
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .lc-checkin-dock-host .lc-checkin__calendar { gap: 3px; }
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-height: 30px; padding: 4px 3px; }
-    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 7px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; max-height: 180px; overflow: auto; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -5891,17 +5711,13 @@
     .lc-checkin-dock-host .lc-checkin__insight-section { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-agent-compare-diff { max-height: 220px; }
     .lc-checkin-dock-host .lc-checkin__header,
-    .lc-checkin-dock-host .lc-checkin__editor-header { gap: 10px; padding-right: 42px; }
+    .lc-checkin-dock-host .lc-checkin__editor-header { gap: 10px; padding-right: 0; }
     .lc-checkin-dock-host .lc-checkin__header-actions { min-width: 0; max-width: 44%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin__header-actions > * { min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters { grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__filters > * { min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__multi-select { min-width: 48px; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__group-header { min-width: 0; gap: 6px; }
     .lc-checkin-dock-host .lc-checkin__group-header strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__group-header button { flex: 0 0 auto; min-width: 30px; }
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section,
-    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__quick-recent { max-height: 34vh; overflow: auto; overscroll-behavior: contain; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section { max-height: 34vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__completed-section .lc-checkin__group-items { gap: 6px; }
 }
 @container lc-dock (min-width: 901px) {
@@ -5951,7 +5767,6 @@
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 26px minmax(0, 1fr); }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: 1fr; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { max-height: 160px; gap: 4px; }
-    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-card { min-height: 64px; padding: 6px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-option span { min-height: 42px; padding: 6px; }
     .lc-checkin-dock-host .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -6015,8 +5830,8 @@
 }
 .lc-checkin--occasions .lc-checkin__occasion-templates-fold > summary .lc-checkin__fold-chevron { margin-left: auto; }
 .lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
-.lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-templates { margin-top: 8px; }
-.lc-checkin--occasions .lc-checkin__occasion-templates-fold:not([open]) > .lc-checkin__occasion-templates { display: none; }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser { margin-top: 8px; }
+.lc-checkin--occasions .lc-checkin__occasion-templates-fold:not([open]) > .lc-checkin__occasion-template-browser { display: none; }
 
 /* 列表行 = 卡片：图标 | 名称与元信息 | 操作列（4 个 30px 图标按钮，定宽不折行） */
 .lc-checkin--occasions .lc-checkin__occasion-manager-row {
@@ -6072,6 +5887,8 @@
     font-variant-numeric: tabular-nums;
 }
 .lc-checkin--occasions .lc-checkin__occasion-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 6px; align-items: end; }
+.lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary { display: none; }
+.lc-checkin--occasions .lc-checkin__occasion-filter-fold > .lc-checkin__occasion-filters { display: grid; }
 .lc-checkin--occasions .lc-checkin__occasion-filter { display: grid; gap: 3px; min-width: 0; }
 .lc-checkin--occasions .lc-checkin__occasion-filter > span { color: var(--lc-checkin-muted); font-size: 9.5px; }
 .lc-checkin--occasions .lc-checkin__occasion-filter select { width: 100%; min-width: 0; height: 32px; padding: 0 26px 0 9px; }
@@ -6124,6 +5941,343 @@
     }
 }
 
+/* -------------------------------------------------------------------------
+   Mobile density guard (T-035 follow-up)
+
+   The narrow-surface rules above grew over several releases and intentionally
+   keep their compatibility declarations.  This last, host-scoped layer is
+   the single geometry owner for the two areas that are most sensitive to
+   width: Today card actions and Review log rows.  It does not change the
+   desktop rail or the data/interaction markup.
+   ------------------------------------------------------------------------- */
+
+/* Today: keep the title/body readable and reserve one stable action rail.
+   Insight/edit and manual-sort controls are secondary on a phone; the timer,
+   primary record button and exact-value toggle remain available. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action {
+    --lc-mobile-action-slot: 28px;
+    --lc-mobile-action-primary: 92px;
+    display: grid;
+    grid-template-columns: var(--lc-mobile-action-slot) minmax(52px, var(--lc-mobile-action-primary)) var(--lc-mobile-action-slot);
+    grid-template-rows: 30px;
+    grid-auto-flow: column;
+    align-items: center;
+    justify-content: end;
+    gap: 4px;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__item-secondary-action,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle {
+    display: none !important;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__bulk-check {
+    grid-column: 1;
+    width: var(--lc-mobile-action-slot);
+    min-width: var(--lc-mobile-action-slot);
+    height: var(--lc-mobile-action-slot);
+    min-height: var(--lc-mobile-action-slot);
+    margin: 0;
+    padding: 0;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+    grid-column: 2;
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 30px;
+    height: 30px;
+    margin: 0;
+    padding-inline: 7px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button {
+    grid-column: 3;
+    justify-self: center;
+    display: grid;
+    place-items: center;
+    width: var(--lc-mobile-action-slot);
+    min-width: var(--lc-mobile-action-slot);
+    height: var(--lc-mobile-action-slot);
+    min-height: var(--lc-mobile-action-slot);
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+/* Keep the exact-value entry in the same card flow; only its trigger is
+   compacted, so keyboard and touch users do not lose the precise-record path. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__item:has(.lc-checkin__item-action) {
+    min-width: 0;
+}
+
+/* Today filters: closed state is one short row; opening filters deliberately
+   expands below it instead of reserving a second blank row all the time. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__organize {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    min-height: 0;
+    margin: 0 0 6px;
+    padding: 4px 6px;
+    border-radius: 10px;
+    box-shadow: none;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search {
+    flex: 1 1 120px;
+    width: auto;
+    min-width: 0;
+    height: 30px;
+    padding-inline: 8px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__organize .lc-checkin__today-search input {
+    width: 100%;
+    min-height: 28px;
+    height: 28px;
+    font-size: 11px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__today-filters {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__today-filters > summary {
+    min-height: 30px;
+    padding-inline: 9px;
+    font-size: 11px;
+    line-height: 28px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__organize > .lc-checkin__filter-toggle {
+    flex: 0 0 auto;
+    min-width: 0;
+    min-height: 30px;
+    padding-inline: 8px;
+    font-size: 11px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__today-filters[open] {
+    flex: 1 0 100%;
+    order: 3;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+    .lc-checkin--today .lc-checkin__today-filter-fields {
+    gap: 4px;
+    padding: 4px 0 0;
+}
+
+/* Review log: the value column is always the same track.  Optional photo
+   thumbnails are taken out of the grid flow, so adding a photo cannot shift
+   the number or the action buttons to a different column. */
+.lc-checkin--review .lc-checkin__history-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(72px, 84px) max-content;
+    grid-template-rows: auto;
+    align-items: start;
+    gap: 5px 10px;
+    min-width: 0;
+    padding: 7px 0;
+}
+
+.lc-checkin--review .lc-checkin__history-event:has(.lc-checkin__history-thumb) {
+    padding-left: 56px;
+}
+
+.lc-checkin--review .lc-checkin__history-event > .lc-checkin__history-thumb {
+    position: absolute;
+    top: 7px;
+    left: 0;
+    width: 46px;
+    height: 46px;
+    margin: 0;
+    object-fit: cover;
+}
+
+.lc-checkin--review .lc-checkin__history-event-main {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    width: auto;
+}
+
+.lc-checkin--review .lc-checkin__history-event-value {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    width: auto;
+    min-width: 72px;
+    padding-top: 1px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.lc-checkin--review .lc-checkin__history-event-actions {
+    grid-column: 3;
+    grid-row: 1;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+
+@container lc5 (max-width: 719px) {
+    /* On phones actions occupy a second row, while the numeric value keeps
+       the right-hand track and therefore lines up across every event. */
+    .lc-checkin--review .lc-checkin__history-event {
+        grid-template-columns: minmax(0, 1fr) minmax(64px, 72px);
+        gap: 4px 8px;
+        padding-block: 6px;
+    }
+    .lc-checkin--review .lc-checkin__history-event-value {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 64px;
+        font-size: 11.5px;
+    }
+    .lc-checkin--review .lc-checkin__history-event-actions {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-content: flex-start;
+        width: 100%;
+    }
+    .lc-checkin--review .lc-checkin__history-event-actions .lc-checkin__text-button {
+        min-height: 28px;
+        padding-inline: 7px;
+    }
+}
+
+@container lc-dock (max-width: 719px) {
+    /* Dock cards have a narrower body column; keep their action rail under the
+       body only when the panel is genuinely tiny, preserving the fixed tracks
+       at normal dock widths. */
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action {
+        display: grid;
+        grid-template-columns: 26px minmax(48px, 88px) 26px;
+        grid-template-rows: 30px;
+        align-items: center;
+        justify-content: end;
+        gap: 3px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin-top: 2px;
+        padding: 0;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__item-secondary-action,
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle { display: none !important; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button,
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__bulk-check {
+        grid-column: 1;
+        width: 26px;
+        min-width: 26px;
+        height: 26px;
+        min-height: 26px;
+        padding: 0;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        grid-column: 2;
+        width: 100%;
+        min-width: 0;
+        min-height: 30px;
+        height: 30px;
+        padding-inline: 6px;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button {
+        grid-column: 3;
+        width: 26px;
+        min-width: 26px;
+        height: 26px;
+        min-height: 26px;
+        padding: 0;
+    }
+}
+
+@container lc-dock (max-width: 340px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-column: 1 / -1; }
+}
+
+/* Final desktop/tablet density pass. Keep only declarations that change the
+   desktop cascade; inherited card/button geometry supplies the rest. */
+@container lc5 (min-width: 720px) {
+    .lc-checkin--editor .lc-checkin__template-section { display: block; padding: 0; gap: 0; }
+    .lc-checkin--editor .lc-checkin__template-section:not([open]) { grid-row: auto; }
+    .lc-checkin--editor .lc-checkin__template-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 8px;
+        min-height: 38px;
+        padding: 0 12px;
+        list-style: none;
+    }
+    .lc-checkin--editor .lc-checkin__template-summary::-webkit-details-marker { display: none; }
+    .lc-checkin--editor .lc-checkin__template-summary > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lc-checkin--editor .lc-checkin__template-summary small { display: none; }
+    .lc-checkin--editor .lc-checkin__template-summary em { min-width: 24px; padding: 1px 6px; border-radius: 999px; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-size: 10px; font-style: normal; font-variant-numeric: tabular-nums; text-align: center; }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-summary { border-bottom: 1px solid var(--lc-checkin-border); }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+    .lc-checkin--editor .lc-checkin__template-section:not([open]) > .lc-checkin__template-browser { display: none; }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-browser { padding: 9px 10px 10px; }
+
+    .lc-checkin--editor .lc-checkin__editor-actions { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; min-height: 52px; box-sizing: border-box; padding: 8px 0; box-shadow: none; }
+    .lc-checkin--editor .lc-checkin__editor-actions > :is(.lc-checkin__save-button, .lc-checkin__primary-button) { flex: 0 1 180px; min-width: 140px; margin: 0; }
+    .lc-checkin--editor .lc-checkin__editor-actions > :is(.lc-checkin__text-button, .lc-checkin__archive-button) { flex: 0 0 auto; margin: 0; }
+    .lc-checkin--editor .lc-checkin__editor-actions > .lc-checkin__save-status { flex: 1 1 180px; min-width: 0; margin: 0; padding: 5px 8px; }
+
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions { min-width: 0; max-width: 100%; }
+    .lc-checkin--review .lc-checkin__header-actions .lc-checkin__range-tabs { flex: 0 1 auto; width: auto; min-width: 0; max-width: 100%; margin: 0; flex-wrap: nowrap; overflow-x: auto; }
+}
+
+/* Middle settings breakpoint: keep labels readable and controls in a stable
+   second track instead of allowing flex children to collapse vertically. */
+@container lc5 (min-width: 720px) and (max-width: 819px) {
+    .lc-checkin--settings .lc-checkin__settings-nav { top: 58px; }
+    .lc-checkin--settings .lc-checkin__settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 42%); align-items: center; gap: 10px; min-width: 0; }
+    .lc-checkin--settings .lc-checkin__settings-row > :is(select, input, .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) { justify-self: end; min-width: 0; max-width: 100%; }
+    .lc-checkin--settings .lc-checkin__settings-row > select { min-width: 0; }
+    .lc-checkin--settings .lc-checkin__settings-inline { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+@container lc5 (min-width: 960px) { .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions { flex-wrap: nowrap; white-space: nowrap; } }
+
 @container lc5 (min-width: 1400px) {
     .lc-checkin--occasions .lc-checkin__occasion-manager {
         grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
@@ -6154,7 +6308,16 @@
     .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__field { gap: 4px; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel { padding-bottom: 16px; }
     .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions { margin-top: 4px; }
-    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions button { max-width: 220px; margin-inline: auto; }
+.lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions button { max-width: 220px; margin-inline: auto; }
+}
+
+/* Occasions use the panels as the only visual surfaces; remove the legacy
+   manager/heading shells that otherwise create a card inside a card. */
+.lc-checkin--occasions :is(.lc-checkin__occasion-manager, .lc-checkin__section-heading) {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 
@@ -6226,9 +6389,8 @@
     .lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
 
-/* 桌面弹窗：旧的悬浮 全屏/关闭 按钮已并入顶栏，彻底隐藏（移动端自己的关闭不受影响） */
-.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-close,
-.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-fullscreen { display: none !important; }
+/* 桌面弹窗：旧的悬浮关闭按钮已并入顶栏，彻底隐藏（移动端自己的关闭不受影响） */
+.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-close { display: none !important; }
 
 /* ============================================================
    T-032 桌面顶栏（应用栏式）：导航并入一条通栏顶栏，rail 退役。
@@ -6364,6 +6526,28 @@
 .lc-checkin-dock-host > .lc-checkin__topnav { display: none; }
 .lc-checkin__rail { display: none !important; }
 
+/* Wide docks use a slim persistent rail because the compact bottom bar is
+   intentionally hidden there.  Keeping the rail in the host's flex flow
+   makes navigation available without overlaying the scrolling page. */
+@container lc-dock (min-width: 720px) {
+    .lc-checkin-dock-host > .lc-checkin__rail {
+        display: flex !important;
+        flex: 0 0 auto;
+        flex-direction: row;
+        width: auto;
+        align-self: stretch;
+        box-sizing: border-box;
+        overflow-x: auto;
+        padding: 6px 10px;
+        border-right: 0;
+        border-bottom: 1px solid var(--lc-checkin-border);
+        background: color-mix(in srgb, var(--lc-checkin-surface) 72%, var(--lc-checkin-bg));
+    }
+    .lc-checkin-dock-host > .lc-checkin__rail button { min-width: 72px; min-height: 46px; }
+    .lc-checkin-dock-host > .lc-checkin { min-width: 0; }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav { display: none !important; }
+}
+
 /* ============================================================
    T-034 手机端紧凑终稿（≤719 容器，文件末尾最终层）
    背景：8.7 压缩层与 v8 走查遗留的「窄容器操作按钮竖排」叠加，
@@ -6373,16 +6557,13 @@
    ============================================================ */
 @container lc5 (max-width: 719px) {
     /* 顶栏（T-118）：导航归底栏，顶栏只留 关闭 + 标题 + 进度，尽量矮 */
-    .lc-checkin__mobile-topbar { gap: 10px; min-height: 40px; padding-top: calc(env(safe-area-inset-top) + 4px); padding-bottom: 4px; justify-content: flex-start; }
-    .lc-checkin__mobile-topbar .lc-checkin__topbar-close { width: 30px; height: 30px; }
-    .lc-checkin__topbar-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-    .lc-checkin__topbar-meta { flex: none; margin-left: auto; }
+    /* Mobile topbar sizing and title truncation are defined by the host layer. */
 
     /* 窄表面一律不显示桌面顶部导航（dock 用底部导航） */
     .lc-checkin__topnav { display: none !important; }
 
     /* 卡片：单行三段 —— 图标 / 文字 / 横排操作轨道 */
-    .lc-checkin--today .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr) auto; min-height: 44px; padding: 4px 8px; gap: 0 8px; }
+    .lc-checkin--today .lc-checkin__item { grid-template-columns: 34px minmax(0, 1fr) auto; padding: 4px 8px; gap: 0 8px; }
     .lc-checkin--today .lc-checkin__item-icon { width: 34px; height: 34px; border-radius: 10px; border-width: 2px; font-size: 16px; }
     .lc-checkin--today .lc-checkin__item-name { font-size: 13px; }
     .lc-checkin--today .lc-checkin__item-tag { padding: 1px 6px; font-size: 9px; }
@@ -6407,9 +6588,6 @@
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { order: 2; }
     .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button, .lc-checkin__quick-button) { order: 3; min-height: 30px; padding: 0 8px; font-size: 11.5px; }
     .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { width: 26px; height: 26px; flex: none; }
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__drag-handle { order: 0; }
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__focus-button { order: 1; }
-    .lc-checkin--today .lc-checkin__item-action .lc-checkin__more-button { order: 2; }
 
 
     /* 分组标题与卡片、卡片与卡片：间距压到最小 */
@@ -6418,8 +6596,6 @@
     .lc-checkin--today .lc-checkin__list { gap: 10px; }
 
     /* v8 走查遗留块已删，其中仍有效的两行窄屏微调移到这里 */
-    .lc-checkin__header-streak { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-    .lc-checkin__backup-reminder { padding: 6px 10px; font-size: 11px; }
 }
 
 /* ============================================================
@@ -6434,38 +6610,18 @@
 }
 @container lc5 (max-width: 719px) {
     /* 事项页：列表在前（户口本优先扫读），新建表单让位到后面；行高再压一档 */
-    .lc-checkin--occasions .lc-checkin__occasion-manager { display: flex; flex-direction: column; gap: 10px; }
-    .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
-    .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
-    .lc-checkin__occasion-manager-list { max-height: none; }
-    .lc-checkin--occasions .lc-checkin__occasion-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .lc-checkin--occasions .lc-checkin__occasion-filters > .lc-checkin__text-button { grid-column: 1 / -1; justify-self: start; }
-    .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 34px minmax(0, 1fr); min-height: 0; padding: 8px; }
-    .lc-checkin--occasions .lc-checkin__occasion-row-actions { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; padding-top: 6px; border-top: 1px solid var(--lc-checkin-border); }
-    .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button { display: flex; width: 100%; height: 30px; gap: 4px; border-radius: 8px; font-size: 12px; }
-    .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span { display: inline; font-size: 9.5px; white-space: nowrap; }
+    /* Legacy narrow occasions rules are superseded by the final host-scoped
+       mobile layer below; keep this container as a compatibility anchor. */
 
     /* 回顾页：头部三行化 —— 标题行 / 范围 tabs 横滚一行 / 复制周报+归档+导出 紧凑行；
        统计卡从 ~90px 压到 ~56px */
-    .lc-checkin--review .lc-checkin__editor-header { flex-wrap: wrap; row-gap: 6px; margin-bottom: 10px; }
-    .lc-checkin--review .lc-checkin__header-actions { display: contents; }
-    .lc-checkin--review .lc-checkin__editor-header > div:first-child { order: 0; flex: 1 1 100%; }
-    .lc-checkin--review .lc-checkin__range-tabs { order: 1; flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; }
-    .lc-checkin--review .lc-checkin__header-actions .lc-checkin__text-button { order: 2; min-height: 30px; padding: 0 10px; font-size: 11.5px; }
-    .lc-checkin--review .lc-checkin__header-actions .lc-checkin__small-button { order: 3; width: 30px; height: 30px; }
-    .lc-checkin--review .lc-checkin__summary-stats { gap: 6px; margin-bottom: 10px; }
-    .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 0; padding: 7px 9px; }
-    .lc-checkin--review .lc-checkin__summary-stats strong { font-size: 18px; }
-    .lc-checkin--review .lc-checkin__summary-stats span { margin-top: 2px; font-size: 9.5px; }
+    /* Review header/stat spacing is now defined by the final mobile layer. */
 
     /* 设置页：行高压掉说明文字（桌面保留），分区卡收紧 */
-    .lc-checkin--settings .lc-checkin__settings-card { padding: 12px 14px; }
-    .lc-checkin--settings .lc-checkin__settings-row { gap: 10px; padding: 7px 0; }
-    .lc-checkin--settings .lc-checkin__settings-label small { display: none; }
+    /* Settings density is inherited from the shared narrow-surface rules. */
 
     /* 编辑器：常用模板预览区限高、类型卡压扁 */
-    .lc-checkin--editor .lc-checkin__template-section { max-height: 210px; }
-    .lc-checkin--editor .lc-checkin__kind-option span { min-height: 44px; padding: 6px; }
+    /* Editor density is finalized in the host-scoped editor layer. */
 }
 
 /* 补记撤销提示条（T-110）：固定在底部导航上方，6 秒自动消失，点撤销回滚该次补记 */
@@ -6498,9 +6654,6 @@
     .lc-checkin--history .lc-checkin__calendar-day.is-selected { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
     .lc-checkin--history .lc-checkin__history-selected { scroll-margin-top: 72px; }
 }
-@container lc5 (max-width: 520px) {
-    .lc-checkin__quick-recent-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @container lc5 (max-width: 380px) {
     .lc-checkin__custom-range { align-items: stretch; flex-wrap: wrap; }
     .lc-checkin__custom-range-separator { display: none; }
@@ -6522,7 +6675,12 @@
 /* 宽屏货架留白收口：卡片不必拉伸到整行，减少两列中间和尾部的空旷感，
    同时保留 380px 最小宽度以确保名称与操作轨道可读。 */
 @container lc5 (min-width: 1500px) {
-    .lc-checkin--today .lc-checkin__group-items { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 8px; }
+    .lc-checkin--today .lc-checkin__group-items {
+        /* Keep a plain fallback for older WebViews, then clamp narrow containers. */
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
+        gap: 8px;
+    }
     .lc-checkin--today .lc-checkin__list { gap: 10px; }
 }
 
@@ -6603,9 +6761,10 @@
    38px，刘海屏只额外增加 safe-area inset，避免原先 min-height+padding
    叠加造成 60px 以上的空白。 */
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar {
     display: grid !important;
-    grid-template-columns: 28px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
     gap: 8px;
     width: 100%;
@@ -6634,6 +6793,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
 .lc-checkin-dialog-host--mobile .lc-checkin__mobile-topbar .lc-checkin__topbar-close {
     width: 28px;
@@ -6648,6 +6808,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-title,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-title,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-title {
     min-width: 0;
     overflow: hidden;
@@ -6660,6 +6821,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-meta,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-meta,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-meta {
     display: inline-flex;
     align-items: center;
@@ -6677,6 +6839,18 @@
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar :is(.lc-checkin__topbar-leading, .lc-checkin__topbar-trailing),
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar :is(.lc-checkin__topbar-leading, .lc-checkin__topbar-trailing),
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar :is(.lc-checkin__topbar-leading, .lc-checkin__topbar-trailing) { display: flex; align-items: center; min-width: 0; gap: 2px; }
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-leading,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-leading,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-leading { justify-self: start; }
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-trailing,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-trailing,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-trailing { justify-self: end; }
+.lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-context,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-context,
+.lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-context { width: 28px; height: 28px; }
 
 /* ================= 窄容器修正层(2026-09-14 真机截图核对) =================
    A) 今日操作轨道在 390px 向左溢出压到正文(flex-end 溢出规则)——主按钮可收缩省略,图标钮固定 26px;
@@ -6715,12 +6889,13 @@
     line-height: 22px;
 }
 @container lc5 (max-width: 719px) {
-    .lc-checkin--review .lc-checkin__editor-header .lc-checkin__title,
-    .lc-checkin--editor .lc-checkin__editor-header .lc-checkin__title,
-    .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
-    .lc-checkin--archived .lc-checkin__editor-header .lc-checkin__title,
-    .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
-    .lc-checkin__editor-header { min-height: 40px; }
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+        :is(.lc-checkin--review, .lc-checkin--editor, .lc-checkin--occasions, .lc-checkin--archived)
+        .lc-checkin__editor-header .lc-checkin__title,
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+        .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar))
+        .lc-checkin__editor-header { min-height: 40px; }
     .lc-checkin--review .lc-checkin__header-actions { flex-wrap: wrap; row-gap: 6px; }
     .lc-checkin--editor .lc-checkin__filter-row {
         height: auto;
@@ -6758,6 +6933,7 @@
 /* 手机端细节收口（截图反馈）：顶栏不重复计算宿主已占用的安全区，
    提醒卡更扁平且展开后保持稳定，底栏图标统一在固定轨道内居中。 */
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar {
     height: 40px !important;
     min-height: 40px !important;
@@ -6765,6 +6941,7 @@
 }
 
 .lc-checkin-dialog-host--mobile > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
+.lc-checkin-dialog-host--mobile .lc-checkin-dialog-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-close,
 .lc-checkin-tab-host > .lc-checkin__mobile-topbar .lc-checkin__topbar-close {
     width: 28px;
     height: 28px;
@@ -6855,72 +7032,6 @@
 /* 新建页移动端：模板区只保留短列表滚动，整张表单仍可上下滑动。
    之前 section 自身 max-height + overflow:auto 会吞掉触摸手势，展开模板后
    页面停在模板区；卡片改为图标/名称/摘要两行，降低首屏占用。 */
-@container lc5 (max-width: 719px) {
-    .lc-checkin--editor .lc-checkin__form-scroll {
-        min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior-y: auto;
-        touch-action: pan-y;
-    }
-    .lc-checkin--editor .lc-checkin__template-section {
-        max-height: none;
-        min-height: 0;
-        overflow: visible;
-        gap: 5px;
-        padding: 9px;
-    }
-    .lc-checkin--editor .lc-checkin__template-section > .lc-checkin__field-heading small { display: none; }
-    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__search-field input { height: 30px; font-size: 12px; }
-    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__filter-row { gap: 4px; }
-    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__filter-row button { min-height: 26px; padding: 0 8px; font-size: 10px; }
-    .lc-checkin--editor .lc-checkin__template-section .lc-checkin__result-line { min-height: 18px; font-size: 10px; }
-    .lc-checkin--editor .lc-checkin__templates {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 5px;
-        max-height: 186px;
-        min-height: 0;
-        overflow-y: auto;
-        overscroll-behavior-y: auto;
-        touch-action: pan-y;
-        padding-right: 1px;
-    }
-    .lc-checkin--editor .lc-checkin__template {
-        display: grid;
-        grid-template-columns: 23px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) auto;
-        align-content: center;
-        align-items: center;
-        column-gap: 5px;
-        row-gap: 0;
-        min-height: 48px;
-        padding: 5px 7px;
-        border-radius: 9px;
-    }
-    .lc-checkin--editor .lc-checkin__template span {
-        grid-row: 1 / span 2;
-        align-self: center;
-        font-size: 19px;
-        line-height: 1;
-    }
-    .lc-checkin--editor .lc-checkin__template strong {
-        min-width: 0;
-        overflow: hidden;
-        font-size: 11px;
-        line-height: 1.2;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .lc-checkin--editor .lc-checkin__template small {
-        min-width: 0;
-        overflow: hidden;
-        font-size: 9px;
-        line-height: 1.2;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-    .lc-checkin--editor .lc-checkin__template-delete { top: 2px; right: 2px; }
-}
-
 /* Shared loading and failure feedback belongs to the component layer. */
 .lc-checkin__loading,
 .lc-checkin__empty,
@@ -6976,9 +7087,11 @@
     .lc-checkin__error { min-height: 0; }
 }
 
-/* Final mobile review alignment layer (must follow all legacy container overrides). */
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__editor-header,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__editor-header {
+/* Final mobile review/occasions/editor layer. Keep one host prefix so the
+   same compact layout is emitted for mobile dialogs and mobile tabs. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    /* Final mobile review alignment (host-scoped and compact). */
+    .lc-checkin--review .lc-checkin__editor-header {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
@@ -6987,44 +7100,55 @@
     margin: 0 0 8px;
     padding: 0;
     position: static;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__editor-header > div:first-child,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__editor-header > div:first-child { display: none; }
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions {
-    display: contents;
-    position: static;
-    max-width: none;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__range-tabs,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__range-tabs {
+    }
+    .lc-checkin--review .lc-checkin__editor-header > div:first-child { display: none; }
+    .lc-checkin--review .lc-checkin__header-actions {
+        display: grid;
+        position: static;
+        grid-template-columns: minmax(0, 1fr) auto auto 32px 32px;
+        align-items: center;
+        justify-content: stretch;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        gap: 4px;
+        overflow: hidden;
+    }
+    .lc-checkin--review .lc-checkin__range-tabs {
     order: 1;
     grid-column: 1 / -1;
     width: 100%;
     min-width: 0;
     margin: 0;
+    padding: 3px;
     justify-content: flex-start;
     overflow-x: auto;
     scrollbar-width: none;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar { display: none; }
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button {
+    }
+    .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar { display: none; }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button {
     order: 2;
-    min-height: 32px;
-    padding-inline: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 30px;
+    margin: 0;
+    padding-inline: 7px;
+    overflow: hidden;
+    font-size: 10.5px;
+    text-overflow: ellipsis;
     white-space: nowrap;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button {
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button {
     order: 3;
     width: 32px;
     height: 32px;
-    flex: 0 0 32px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav {
+    min-width: 32px;
+    min-height: 32px;
+    margin: 0;
+    }
+    .lc-checkin--review .lc-checkin__review-subnav {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -7035,11 +7159,9 @@
     padding: 4px 2px 6px;
     overflow-x: auto;
     scrollbar-width: none;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav::-webkit-scrollbar,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav::-webkit-scrollbar { display: none; }
-.lc-checkin-dialog-host--mobile .lc-checkin--review .lc-checkin__review-subnav button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--review .lc-checkin__review-subnav button {
+    }
+    .lc-checkin--review .lc-checkin__review-subnav::-webkit-scrollbar { display: none; }
+    .lc-checkin--review .lc-checkin__review-subnav button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -7050,227 +7172,1383 @@
     font-size: 12px;
     line-height: 1.2;
     white-space: nowrap;
+    }
 }
 
-/* Mobile occasions final layer: host-scoped so device pixel ratio/container width cannot re-enable desktop spacing. */
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header {
-    height: 44px;
-    min-height: 44px;
-    margin: 0 0 6px;
-    padding: 0;
-    align-items: center;
-    position: static;
+/* Unified mobile surface density: the same host marker drives tab/dialog
+   layouts, preventing a page from picking up a different legacy spacing tier
+   merely because it was opened from another entry point. */
+:is(
+    .lc-checkin-host--mobile,
+    .lc-checkin-dialog-host--mobile,
+    .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar)
+) {
+    .lc-checkin__mobile-topbar {
+        min-height: 40px;
+        height: 40px;
+        padding-inline: 10px;
+    }
+    .lc-checkin__mobile-topbar .lc-checkin__topbar-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin__mobile-nav {
+        min-height: 52px;
+        height: calc(52px + env(safe-area-inset-bottom));
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 2px;
+        padding: 4px 5px env(safe-area-inset-bottom);
+    }
+    .lc-checkin__mobile-nav button {
+        min-width: 0;
+        min-height: 42px;
+        padding: 2px 1px;
+    }
+    .lc-checkin__mobile-nav button span { font-size: 16px; }
+    .lc-checkin__mobile-nav button small { font-size: 8px; }
+
+    .lc-checkin--today .lc-checkin__layout { padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .lc-checkin--today .lc-checkin__group { margin-top: 6px; }
+    .lc-checkin--today .lc-checkin__group-items { gap: 6px; }
+    .lc-checkin--today .lc-checkin__item { min-height: 44px; padding-block: 4px; }
+
+    .lc-checkin--review .lc-checkin__layout { padding: 4px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .lc-checkin--review .lc-checkin__review-hero { padding: 7px 10px; }
+    .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 44px; }
+    .lc-checkin--review .lc-checkin__review-subnav { margin-bottom: 4px; }
+
+    .lc-checkin--occasions .lc-checkin__layout { padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .lc-checkin--occasions :is(.lc-checkin__occasion-list-panel, .lc-checkin__occasion-form-panel) { padding: 6px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel form { gap: 5px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea { min-height: 72px; height: 72px; }
+
+    .lc-checkin--settings .lc-checkin__layout { padding: 4px 10px calc(8px + env(safe-area-inset-bottom)); }
+    .lc-checkin--settings .lc-checkin__settings-card { margin-bottom: 5px; padding: 7px 9px; }
+    .lc-checkin--settings .lc-checkin__settings-row { gap: 6px; padding-block: 6px; }
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__eyebrow,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__title,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__eyebrow { display: none; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__back-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__back-button {
-    display: inline-grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    padding: 0;
-    border-radius: 50%;
+
+/* Dock is not marked mobile by the runtime, but its narrow container uses the
+   same visual density contract as the mobile tab/dialog surfaces. */
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin__mobile-nav {
+        min-height: 50px;
+        height: 50px;
+        padding: 3px 4px;
+    }
+    .lc-checkin-dock-host .lc-checkin__mobile-nav button { min-height: 40px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group { margin-top: 5px; }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items { gap: 5px; }
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__icon-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__editor-header .lc-checkin__icon-button {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    margin-left: auto;
+
+/* Mobile occasions final layer: one compact host-scoped rule set. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--occasions .lc-checkin__editor-header {
+        display: none;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        margin: 0;
+    }
+    /* A closed native details element still inherits the legacy flex rule for
+       its form.  Hide the form explicitly so the collapsed tab never leaves
+       a phantom block or an off-screen “apply” button. */
+    .lc-checkin--review .lc-checkin__custom-range-disclosure:not([open]) > .lc-checkin__custom-range {
+        display: none !important;
+    }
+    .lc-checkin--review .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+        position: fixed;
+        z-index: 20;
+        top: calc(40px + env(safe-area-inset-top) + 8px);
+        right: 12px;
+        left: 12px;
+        width: auto;
+        min-width: 0;
+        box-sizing: border-box;
+        margin: 0;
+        padding: 10px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 12px;
+        background: var(--lc-checkin-surface);
+        box-shadow: var(--lc-checkin-shadow-lg);
+    }
+    .lc-checkin--occasions :is(.lc-checkin__occasion-list-panel, .lc-checkin__occasion-form-panel) {
+        width: 100%;
+        max-width: 100%;
+        min-height: 0;
+        padding: 8px;
+        border-radius: 11px;
+        overflow: visible;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
+    .lc-checkin--occasions .lc-checkin__section-heading {
+        min-height: 22px;
+        margin-bottom: 4px;
+        gap: 6px;
+    }
+    .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 13px; }
+    .lc-checkin--occasions .lc-checkin__section-heading .lc-checkin__section-kicker { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__section-heading strong { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__section-heading .lc-checkin__section-kicker {
+        display: block;
+        color: var(--lc-checkin-text);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: none;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-stats { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-search { margin-bottom: 4px; }
+    .lc-checkin--occasions .lc-checkin__occasion-search input {
+        min-height: 36px;
+        height: 36px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        box-sizing: border-box;
+        padding: 0 9px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 8px;
+        color: var(--lc-checkin-muted);
+        background: var(--lc-checkin-muted-surface);
+        font-size: 11px;
+        font-weight: 650;
+        list-style: none;
+        cursor: pointer;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary::-webkit-details-marker { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary em {
+        min-width: 19px;
+        padding: 1px 5px;
+        border-radius: 999px;
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+        font-size: 9px;
+        font-style: normal;
+        text-align: center;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold > summary .lc-checkin__fold-chevron { margin-left: auto; }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+    .lc-checkin--occasions .lc-checkin__occasion-filter-fold:not([open]) > .lc-checkin__occasion-filters { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-filters {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+        gap: 4px;
+        margin: 5px 0 4px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filter > span { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-filter select {
+        height: 34px;
+        padding-inline: 7px 22px;
+        font-size: 11px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-list {
+        display: grid;
+        gap: 5px;
+        max-height: none;
+        overflow: visible;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 30px minmax(0, 1fr) 118px;
+        min-height: 0;
+        gap: 5px;
+        padding: 6px 7px;
+        border-radius: 10px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-body { min-width: 0; }
+    .lc-checkin--occasions .lc-checkin__occasion-row-title { gap: 5px; }
+    .lc-checkin--occasions .lc-checkin__occasion-row-title strong {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button:first-of-type {
+        justify-self: end;
+        max-width: 112px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-meta {
+        gap: 1px 6px;
+        font-size: 10px;
+        line-height: 1.3;
+        max-height: 2.6em;
+        overflow: hidden;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-meta span + span::before { margin-right: 6px; }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+        grid-column: auto;
+        display: grid;
+        grid-template-columns: repeat(4, 28px);
+        width: 118px;
+        min-width: 118px;
+        gap: 2px;
+        padding-top: 0;
+        border-top: 0;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        min-height: 28px;
+        padding: 0;
+        border-radius: 7px;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span {
+        display: none;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filters > .lc-checkin__text-button {
+        grid-column: auto;
+        width: 30px;
+        min-width: 30px;
+        padding: 0;
+        overflow: hidden;
+        font-size: 0;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-filters > .lc-checkin__text-button::before { content: "×"; font-size: 16px; line-height: 1; }
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser {
+        max-height: 176px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .lc-checkin--occasions .lc-checkin__empty-description { min-height: 38px; padding: 5px 4px; line-height: 1.35; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel form { gap: 6px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row { gap: 6px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel :is(input, select) { min-height: 36px; height: 36px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea { min-height: 56px; height: 56px; }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        height: 47px;
+        max-height: 47px;
+        min-height: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 0;
+        padding: 6px 0 0;
+        border-top: 1px solid var(--lc-checkin-border);
+        background: transparent;
+        box-shadow: none;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__editor-actions .lc-checkin__primary-button {
+        flex: 0 1 220px;
+        align-self: center;
+        width: min(220px, 100%);
+        height: 40px;
+        max-height: 40px;
+        min-height: 40px;
+    }
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    margin: 0;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-list-panel,
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-list-panel,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel {
-    width: 100%;
-    max-width: 100%;
-    min-height: 0;
-    padding: 9px;
-    border-radius: 11px;
-    overflow: visible;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-list-panel { order: 1; }
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel { order: 2; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__section-heading,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__section-heading {
-    min-height: 34px;
-    margin-bottom: 7px;
-    gap: 6px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__section-heading strong,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__section-heading strong { font-size: 15px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-stats,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-stats { gap: 4px; margin-bottom: 6px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-stats span,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-stats span { padding: 3px 7px; font-size: 10px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-search,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-search { margin-bottom: 6px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-search input,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-search input {
-    min-height: 38px;
-    height: 38px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-filters,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
-    margin-bottom: 7px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-filter select,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-filter select {
-    height: 36px;
-    padding-inline: 7px 22px;
-    font-size: 11px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager-list,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager-list {
-    display: grid;
-    gap: 6px;
-    max-height: none;
-    overflow: visible;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-manager-row,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-manager-row {
-    grid-template-columns: 34px minmax(0, 1fr);
-    min-height: 0;
-    gap: 6px;
-    padding: 8px;
-    border-radius: 10px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-body,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-body { min-width: 0; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-title,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-title { gap: 5px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-title strong,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-title strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-meta,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-meta {
-    gap: 2px 6px;
-    font-size: 10px;
-    line-height: 1.3;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-meta span + span::before,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-meta span + span::before { margin-right: 6px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: 100%;
-    min-width: 0;
-    gap: 4px;
-    padding-top: 6px;
-    border-top: 1px solid var(--lc-checkin-border);
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
-    width: 100%;
-    min-width: 0;
-    height: 30px;
-    min-height: 30px;
-    border-radius: 8px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span {
-    display: inline;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 9px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel form,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel form { gap: 7px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel .lc-checkin__form-row { gap: 6px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel :is(input, select),
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel :is(input, select) { min-height: 38px; height: 38px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--occasions .lc-checkin__occasion-form-panel textarea { min-height: 64px; }
+
 
 /* Mobile editor density: reclaim the header/template/form dead space while preserving touch targets. */
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__editor-header,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__editor-header {
-    height: 44px;
-    min-height: 44px;
-    margin: 0 0 6px;
-    padding: 0;
-    align-items: center;
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--editor .lc-checkin__editor-header { display: none; }
+    .lc-checkin--editor .lc-checkin__layout {
+        padding-bottom: calc(64px + env(safe-area-inset-bottom));
+        scroll-padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    }
+    .lc-checkin--editor .lc-checkin__form-scroll {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        gap: 6px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0;
+        scroll-padding: 6px 0 calc(70px + env(safe-area-inset-bottom));
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+    }
+    .lc-checkin--editor .lc-checkin__template-section {
+        display: block;
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+        padding: 0;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 10px;
+        background: var(--lc-checkin-surface);
+    }
+    .lc-checkin--editor .lc-checkin__template-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 7px;
+        min-height: 40px;
+        box-sizing: border-box;
+        padding: 0 10px;
+        color: var(--lc-checkin-text);
+        font-size: 12px;
+        font-weight: 680;
+        list-style: none;
+        cursor: pointer;
+    }
+    .lc-checkin--editor .lc-checkin__template-summary::-webkit-details-marker { display: none; }
+    .lc-checkin--editor .lc-checkin__template-summary small { display: none; }
+    .lc-checkin--editor .lc-checkin__template-summary em {
+        min-width: 24px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+        font-size: 10px;
+        font-style: normal;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-summary {
+        border-bottom: 1px solid var(--lc-checkin-border);
+    }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+    .lc-checkin--editor .lc-checkin__template-section:not([open]) > .lc-checkin__template-browser { display: none; }
+    .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-browser {
+        display: flex;
+        gap: 5px;
+        padding: 8px;
+    }
+    .lc-checkin--editor .lc-checkin__template-browser > .lc-checkin__field-heading { display: none; }
+    .lc-checkin--editor .lc-checkin__template-browser .lc-checkin__filter-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .lc-checkin--editor .lc-checkin__template-browser .lc-checkin__filter-row::-webkit-scrollbar { display: none; }
+    .lc-checkin--editor .lc-checkin__templates {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 5px;
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+        padding: 0;
+    }
+    .lc-checkin--editor .lc-checkin__template {
+        grid-template-columns: 26px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        align-items: center;
+        justify-items: start;
+        gap: 1px 6px;
+        min-height: 44px;
+        padding: 4px 7px;
+    }
+    .lc-checkin--editor .lc-checkin__template > span { grid-row: 1 / 3; font-size: 17px; }
+    .lc-checkin--editor .lc-checkin__template > :is(strong, small) { grid-column: 2; }
+    .lc-checkin--editor :is(.lc-checkin__field--name, .lc-checkin__field--icons, .lc-checkin__kind-field) {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .lc-checkin--editor .lc-checkin__field--name { gap: 3px; }
+    .lc-checkin--editor .lc-checkin__field--name input {
+        min-height: 40px;
+        height: 40px;
+        padding-block: 6px;
+    }
+    .lc-checkin--editor .lc-checkin__field--icons { gap: 3px; }
+    .lc-checkin--editor .lc-checkin__icon-popup > summary {
+        min-height: 40px;
+        padding: 4px 8px;
+        border-radius: 9px;
+    }
+    .lc-checkin--editor .lc-checkin__popup-current { width: 32px; height: 32px; }
+    .lc-checkin--editor .lc-checkin__kind-field legend { margin-bottom: 4px; font-size: 11px; }
+    .lc-checkin--editor .lc-checkin__kind-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 3px;
+    }
+    .lc-checkin--editor .lc-checkin__kind-option:last-child { grid-column: auto; }
+    .lc-checkin--editor .lc-checkin__kind-option span {
+        display: grid;
+        min-height: 40px;
+        align-content: center;
+        justify-content: center;
+        padding: 3px 2px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .lc-checkin--editor .lc-checkin__kind-option span strong {
+        overflow: hidden;
+        font-size: 10.5px;
+        line-height: 1.2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--editor .lc-checkin__kind-option span small,
+    .lc-checkin--editor .lc-checkin__kind-help { display: none; }
+    .lc-checkin--editor .lc-checkin__form-row { gap: 6px; }
+    .lc-checkin--editor .lc-checkin__editor-side { display: grid; align-self: start; gap: 6px; }
+    .lc-checkin--editor .lc-checkin__editor-preview { padding: 6px; border-radius: 10px; }
+    .lc-checkin--editor .lc-checkin__editor-preview > .lc-checkin__field-heading { display: none; }
+    .lc-checkin--editor .lc-checkin__preview-card {
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 7px;
+        min-height: 52px;
+        padding: 5px 7px;
+    }
+    .lc-checkin--editor .lc-checkin__preview-icon {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: var(--lc-checkin-accent-soft);
+        font-size: 17px;
+        line-height: 1;
+    }
+    .lc-checkin--editor .lc-checkin__preview-body { display: grid; min-width: 0; gap: 1px; }
+    .lc-checkin--editor .lc-checkin__preview-body strong,
+    .lc-checkin--editor .lc-checkin__preview-body small {
+        display: block;
+        overflow: hidden;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--editor .lc-checkin__preview-body strong { font-size: 12.5px; }
+    .lc-checkin--editor .lc-checkin__preview-body small { color: var(--lc-checkin-muted); font-size: 10px; }
+    .lc-checkin--editor .lc-checkin__preview-progress {
+        display: block;
+        height: 3px;
+        margin-top: 2px;
+        overflow: hidden;
+        background: var(--lc-checkin-border);
+    }
+    .lc-checkin--editor .lc-checkin__preview-progress > i {
+        display: block;
+        width: 0;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--lc-checkin-accent-fill);
+    }
+    .lc-checkin--editor .lc-checkin__preview-action {
+        max-width: 88px;
+        overflow: hidden;
+        color: var(--lc-checkin-accent-text);
+        font-size: 10.5px;
+        font-weight: 680;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--editor .lc-checkin__advanced {
+        padding: 0;
+        overflow: hidden;
+        border-radius: 10px;
+    }
+    .lc-checkin--editor .lc-checkin__advanced > summary {
+        min-height: 40px;
+        padding: 5px 9px;
+    }
+    .lc-checkin--editor .lc-checkin__advanced[open] > summary {
+        margin: 0 0 8px;
+        padding-bottom: 5px;
+    }
+    .lc-checkin--editor .lc-checkin__editor-actions {
+        position: fixed;
+        right: 0;
+        bottom: calc(var(--lc-checkin-nav-height) + 10px + env(safe-area-inset-bottom));
+        left: 0;
+        z-index: 8;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding: 6px 12px;
+        border-top: 1px solid var(--lc-checkin-border);
+        background: color-mix(in srgb, var(--lc-checkin-bg) 96%, transparent);
+        box-shadow: 0 -4px 14px color-mix(in srgb, var(--lc-checkin-text) 8%, transparent);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        pointer-events: none;
+    }
+    .lc-checkin--editor .lc-checkin__editor-actions > * { pointer-events: auto; }
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__save-button,
+    .lc-checkin--editor .lc-checkin__editor-actions .lc-checkin__primary-button { flex: 1 1 auto; min-height: 40px; }
+    .lc-checkin--editor .lc-checkin__editor-actions :is(.lc-checkin__text-button, .lc-checkin__archive-button) {
+        flex: 0 1 auto;
+        min-width: 0;
+        min-height: 40px;
+        margin: 0;
+        padding: 0 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Compact mobile review/settings headers. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--settings .lc-checkin__editor-header { display: none; }
+}
+
+/* Final density guardrails for Today, Review and Settings. These selectors
+   intentionally sit after the legacy responsive layers so container rules
+   cannot reintroduce double columns, overlayed actions or oversized cards. */
+.lc-checkin--today .lc-checkin__group-items:not([hidden]):not(:has(> :nth-child(2))) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.lc-checkin--review .lc-checkin__editor-header {
     position: static;
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__back-button,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__back-button {
-    display: inline-grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+
+.lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+    position: static;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.lc-checkin--review .lc-checkin__summary-stats {
+    position: relative;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* The badge duplicates the detailed analytics exposed below. Keep its aria
+   label available without spending a fourth grid cell on terse raw numbers. */
+.lc-checkin--review .lc-checkin__summary-stats > .lc-checkin__analytics-badge {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
     padding: 0;
-    border-radius: 50%;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__title,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__title { display: none; }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__form-scroll,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__form-scroll {
-    gap: 8px;
-    padding-bottom: 84px;
-}
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__template-section,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__template-section {
-    max-height: 340px;
-    min-height: 0;
     overflow: hidden;
-    gap: 5px;
-    padding: 9px;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__templates,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__templates {
-    max-height: 224px;
-    min-height: 0;
-    overflow-y: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 5px;
+
+.lc-checkin--settings .lc-checkin__settings-row > input.lc-checkin__switch {
+    justify-self: end;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    height: 22px;
+    min-height: 22px;
+    max-height: 22px;
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__template,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__template {
-    min-height: 52px;
-    padding: 5px 7px;
+
+@container lc5 (min-width: 720px) {
+    .lc-checkin--review .lc-checkin__editor-header {
+        display: grid;
+        grid-template-columns: minmax(120px, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding-right: 0;
+    }
+
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 5px;
+    }
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name,
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--icons,
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__kind-field,
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__advanced,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--icons,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__kind-field,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__advanced {
-    padding: 9px 10px;
-    border-radius: 10px;
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--today .lc-checkin__group-items:not([hidden]) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lc-checkin--review .lc-checkin__editor-header {
+        margin-bottom: 6px;
+    }
+
+    .lc-checkin--review .lc-checkin__summary-stats {
+        gap: 6px;
+        margin-bottom: 8px;
+    }
+
+    .lc-checkin--review .lc-checkin__summary-stats > div {
+        min-height: 48px;
+        padding: 5px 8px;
+    }
+
+    .lc-checkin--review .lc-checkin__summary-stats strong {
+        font-size: 16px;
+    }
+
+    .lc-checkin--review .lc-checkin__summary-stats span:not(.lc-checkin__analytics-badge) {
+        margin-top: 2px;
+        font-size: 9.5px;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 0;
+        gap: 8px;
+        margin: 0 0 8px;
+        padding: 10px 12px;
+        border-radius: 12px;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero > div {
+        min-width: 0;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero h2 {
+        margin: 3px 0;
+        font-size: 17px;
+        line-height: 1.25;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero p {
+        display: -webkit-box;
+        margin: 0;
+        overflow: hidden;
+        font-size: 10.5px;
+        line-height: 1.35;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero :is(.lc-checkin__review-attention, .lc-checkin__review-advice) {
+        display: block;
+        margin-top: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__text-button {
+        min-height: 28px;
+        margin-top: 5px;
+        padding: 0 9px;
+        font-size: 10.5px;
+    }
+
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
+        font-size: 26px;
+    }
+
+    .lc-checkin--review .lc-checkin__review-subnav {
+        gap: 4px;
+        top: 0;
+        min-height: 38px;
+        margin-bottom: 6px;
+        padding: 4px 0;
+    }
+
+    .lc-checkin--review .lc-checkin__review-subnav button {
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 11px;
+    }
+
+    .lc-checkin--settings .lc-checkin__settings-layout,
+    .lc-checkin--settings .lc-checkin__settings-groups {
+        gap: 8px;
+    }
+
+    .lc-checkin--settings .lc-checkin__settings-groups > .lc-checkin__settings-card,
+    .lc-checkin--settings .lc-checkin__settings-groups > .lc-checkin__settings-card + .lc-checkin__settings-card,
+    .lc-checkin--settings .lc-checkin__settings-groups > .lc-checkin__settings-card:last-child {
+        margin: 0;
+    }
+
+    .lc-checkin--settings .lc-checkin__settings-card {
+        padding: 10px 12px;
+        border-radius: 10px;
+    }
+
+    .lc-checkin--settings .lc-checkin__settings-card h2 {
+        margin: 2px 0 3px;
+        font-size: 14px;
+        line-height: 1.3;
+    }
+
+    .lc-checkin--settings .lc-checkin__settings-row {
+        gap: 8px;
+        padding: 8px 0;
+    }
 }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name { gap: 4px; }
-.lc-checkin-dialog-host--mobile .lc-checkin--editor .lc-checkin__field--name input,
-.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--editor .lc-checkin__field--name input {
+
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__group-items:not([hidden]) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__editor-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        padding-right: 38px;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        width: 100%;
+    }
+}
+
+/* Keep wide review actions on one compact rail after all mobile layers. */
+@container lc5 (min-width: 960px) {
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions { flex-wrap: nowrap; }
+}
+
+/* Final narrow-surface density pass: reserve space for content instead of
+   letting controls wrap into a clipped second row. */
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty {
     min-height: 40px;
-    height: 40px;
-    padding-block: 6px;
+    margin-top: 6px;
+    padding: 5px 8px;
+    gap: 7px;
+}
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty .lc-checkin__occasion-banner-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+}
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty .lc-checkin__occasion-banner-body { gap: 2px 7px; }
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty .lc-checkin__occasion-banner-body > strong { font-size: 11px; }
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty .lc-checkin__occasion-banner-body > small { font-size: 10px; }
+.lc-checkin--today .lc-checkin__occasion-banner.is-empty > .lc-checkin__text-button {
+    min-height: 26px;
+    padding-inline: 6px;
+    font-size: 10px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--editor .lc-checkin__editor-columns {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        min-height: 0;
+    }
+    .lc-checkin--editor .lc-checkin__form-scroll { flex: 0 0 auto; min-height: 0; }
+    .lc-checkin--editor .lc-checkin__template-section:not([open]) {
+        display: block;
+        height: 36px;
+        min-height: 36px;
+        overflow: hidden;
+    }
+    .lc-checkin--editor .lc-checkin__template-section:not([open]) > .lc-checkin__template-summary {
+        display: grid !important;
+        min-height: 34px;
+        height: 34px;
+        color: var(--lc-checkin-text);
+        visibility: visible;
+        opacity: 1;
+    }
+    .lc-checkin--editor .lc-checkin__template-summary > span:first-child { display: block; min-width: 0; color: var(--lc-checkin-text); }
+    .lc-checkin--editor .lc-checkin__editor-side { display: grid; align-self: stretch; gap: 6px; min-height: 0; }
+    .lc-checkin--editor .lc-checkin__editor-preview { flex: 0 0 auto; min-height: 0; }
+
+    .lc-checkin--review .lc-checkin__review-sections,
+    .lc-checkin--review .lc-checkin__review-layout,
+    .lc-checkin--settings .lc-checkin__settings-groups,
+    .lc-checkin--occasions .lc-checkin__occasion-manager { gap: 6px; }
+    .lc-checkin--review .lc-checkin__review-fold { margin: 0; }
+    .lc-checkin--settings .lc-checkin__settings-card { margin: 0 0 6px; padding: 8px 10px; }
+    .lc-checkin--occasions :is(.lc-checkin__occasion-list-panel, .lc-checkin__occasion-form-panel) { padding: 7px; }
+}
+
+@container lc5 (max-width: 430px) {
+    .lc-checkin--today .lc-checkin__organize {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 78px 48px;
+        gap: 4px;
+        min-height: 0;
+        margin-bottom: 5px;
+        padding: 3px 4px;
+    }
+    .lc-checkin--today .lc-checkin__organize > .lc-checkin__today-search { grid-column: 1; width: auto; min-width: 0; height: 30px; }
+    .lc-checkin--today .lc-checkin__organize > .lc-checkin__today-filters { grid-column: 2; width: 78px; min-width: 0; }
+    .lc-checkin--today .lc-checkin__today-filters > summary {
+        width: 100%;
+        box-sizing: border-box;
+        overflow: hidden;
+        padding-inline: 5px;
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--today .lc-checkin__organize > [data-action="toggle-bulk"] {
+        grid-column: 3;
+        width: 48px;
+        min-width: 48px;
+        padding-inline: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin--today .lc-checkin__today-filters[open] { grid-column: 1 / -1; width: 100%; }
+    .lc-checkin--today .lc-checkin__today-filter-fields { grid-template-columns: repeat(2, minmax(0, 1fr)) auto; gap: 4px; min-width: 0; }
+    .lc-checkin--today .lc-checkin__occasion-banner.is-empty { min-height: 34px; margin-top: 5px; padding: 4px 7px; }
+}
+
+@container lc5 (max-width: 350px) {
+    .lc-checkin--today .lc-checkin__organize { grid-template-columns: minmax(0, 1fr) 72px 44px; }
+    .lc-checkin--today .lc-checkin__organize > .lc-checkin__today-filters { width: 72px; }
+    .lc-checkin--today .lc-checkin__organize > [data-action="toggle-bulk"] { width: 44px; min-width: 44px; }
+}
+
+/* Review mobile toolbar stays on one rail. Range tabs scroll inside their
+   track while report/archive/export remain visible touch targets. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--review .lc-checkin__editor-header { display: block; min-height: 0; margin-bottom: 5px; }
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto 28px 28px;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        display: flex;
+        grid-column: 1 / -1;
+        flex: none;
+        width: auto;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0;
+        padding: 2px;
+        gap: 2px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .lc-checkin--review .lc-checkin__range-tabs::-webkit-scrollbar { display: none; }
+    .lc-checkin--review .lc-checkin__range-tabs button { flex: 0 0 auto; min-width: 34px; height: 27px; padding-inline: 6px; font-size: 10.5px; }
+    /* Chinese action labels must remain a single readable phrase. Without an
+       explicit no-wrap rule, narrow flex cells fall back to one glyph per
+       line (复制\n周\n报), changing the toolbar height and making it look broken. */
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="copy-weekly-report"],
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="archived"] {
+        grid-column: auto;
+        flex: 0 0 auto;
+        min-height: 29px;
+        white-space: nowrap;
+        word-break: keep-all;
+        writing-mode: horizontal-tb;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="copy-weekly-report"] {
+        flex-basis: 64px;
+        min-width: 64px;
+        padding-inline: 3px;
+        font-size: 10px;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="archived"] {
+        flex-basis: 48px;
+        min-width: 48px;
+        padding-inline: 2px;
+        font-size: 10px;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__small-button { grid-column: auto; flex: 0 0 28px; width: 28px; min-width: 28px; height: 28px; min-height: 28px; }
+
+    .lc-checkin--review .lc-checkin__review-subnav { gap: 4px; min-height: 34px; margin: 0 0 5px; padding: 2px 0 4px; }
+    .lc-checkin--review .lc-checkin__review-subnav button { min-height: 29px; padding-inline: 9px; font-size: 10.5px; }
+    .lc-checkin--review .lc-checkin__review-calendar,
+    .lc-checkin--review .lc-checkin__review-detail { gap: 6px; }
+    .lc-checkin--review .lc-checkin__month-nav { min-height: 36px; padding: 2px 4px; }
+    .lc-checkin--review .lc-checkin__month-nav strong { font-size: 13px; }
+    .lc-checkin--review .lc-checkin__month-nav button { width: 28px; height: 28px; font-size: 14px; }
+    .lc-checkin--review .lc-checkin__calendar-weekdays { gap: 3px; }
+    .lc-checkin--review .lc-checkin__calendar { gap: 3px; }
+    .lc-checkin--review .lc-checkin__calendar-day { height: 40px; min-height: 40px; aspect-ratio: auto; padding: 2px; border-radius: 8px; font-size: 11px; }
+}
+
+/* The desktop-shim sweep also renders a 390px surface without the mobile
+   host class. Keep those narrow review labels horizontal so the fixture
+   catches the same regression as a real mobile dialog. */
+@container lc5 (max-width: 719px) {
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto 28px 28px;
+        align-items: center;
+        gap: 4px;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        display: flex;
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin: 0;
+        overflow-x: auto;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="copy-weekly-report"],
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="archived"] {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        word-break: keep-all;
+        writing-mode: horizontal-tb;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="copy-weekly-report"] { min-width: 64px; }
+    .lc-checkin--review .lc-checkin__header-actions > [data-action="archived"] { min-width: 48px; }
+}
+
+@container lc5 (min-width: 720px) {
+    .lc-checkin--review .lc-checkin__month-nav { min-height: 38px; padding: 2px 5px; }
+    .lc-checkin--review .lc-checkin__month-nav button { width: 30px; height: 30px; }
+    .lc-checkin--review .lc-checkin__calendar { gap: 4px; }
+    .lc-checkin--review .lc-checkin__calendar-day { height: 44px; min-height: 44px; aspect-ratio: auto; }
+
+}
+
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto 28px 28px;
+        align-items: center;
+        gap: 4px;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        display: flex;
+        grid-column: 1 / -1;
+        flex: none;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0;
+        overflow-x: auto;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__header-actions > [data-action="copy-weekly-report"] { min-width: 64px; flex: 0 0 auto; white-space: nowrap; word-break: keep-all; }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__header-actions > [data-action="archived"] { min-width: 48px; flex: 0 0 auto; white-space: nowrap; word-break: keep-all; }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__calendar-day { height: 40px; min-height: 40px; aspect-ratio: auto; }
+}
+
+/* Empty states and the fixed editor action rail should not reserve a second
+   hidden viewport.  The layout itself already owns the safe-area inset. */
+.lc-checkin__empty { min-height: 140px; }
+.lc-checkin--today .lc-checkin__item-body { background: transparent; }
+@container lc5 (max-width: 600px) {
+    .lc-checkin__empty { min-height: 88px; }
+    .lc-checkin--editor .lc-checkin__form-scroll { padding-bottom: 8px !important; }
+}
+
+/* Keep the mobile host background continuous behind the structural top/bottom
+   bars.  The bars themselves intentionally remain in normal flex flow (D-015)
+   so scrolling cannot make them drift or depend on a transformed dialog. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    background: var(--lc-checkin-bg);
+}
+
+/* 手机设置页分类栏：保持在内容流内吸顶，同时给横向标签一个独立的
+   不透明表面。窄屏不压缩/省略标签，手势在栏内横向滚动，避免 sticky
+   时下方卡片透出造成“浮在空中”的错觉。 */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-nav {
+    position: sticky;
+    top: 0;
+    z-index: var(--lc-checkin-z-header);
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    max-height: none;
+    margin: 0 0 8px;
+    padding: 4px;
+    box-sizing: border-box;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+    touch-action: pan-x pan-y;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 10px;
+    background: var(--lc-checkin-bg);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-text) 7%, transparent);
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-card {
+    scroll-margin-top: 52px;
+}
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
+
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-nav button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: max-content;
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+    scroll-snap-align: start;
+}
+
+/* ============================================================
+   桌面密度终稿（T-036）
+
+   这些规则只作用于 720px 以上的容器，并放在文件末尾作为唯一的
+   桌面几何收口：顶栏与内容列同一条基线、低内容页面不额外撑高、
+   事项主从面板按内容高度排列、设置行距统一。移动端由上方的宿主
+   规则继续接管，避免桌面修正回流到手机。
+   ============================================================ */
+
+/* 顶栏的可视内容应与 .lc-checkin__layout 的内侧边界重合。
+   48px 是布局左右 padding 的总和；max-width 与 1560px 档的内容列
+   一致，避免宽弹窗出现顶栏从 x=0 开始、主体从 x=143 开始的错位。 */
+@container lc-dialog (min-width: 720px) {
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav {
+        width: min(calc(100% - 48px), 1560px);
+        max-width: 1560px;
+        margin-inline: auto;
+        padding-inline: 24px;
+    }
+}
+
+/* 页签宿主没有 dialog container，因此使用同样的可用宽公式；在
+   2000px 以上再放宽到内容阶梯的 1780px 档。 */
+.lc-checkin-tab-host > .lc-checkin__topnav {
+    width: min(calc(100% - 48px), 1560px);
+    max-width: 1560px;
+    margin-inline: auto;
+    padding-inline: 24px;
+}
+@media (min-width: 2000px) {
+    .lc-checkin-tab-host > .lc-checkin__topnav { max-width: 1780px; }
+}
+@container lc-dialog (min-width: 2000px) {
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav { max-width: 1780px; }
+}
+
+@container lc5 (min-width: 720px) {
+    /* 低内容页：layout 不再以 flex-grow 把一张空画布拉满。
+       宿主仍保留自己的滚动高度，长列表不会被截断。 */
+    .lc-checkin__layout {
+        flex: 0 1 auto;
+        min-height: 0;
+    }
+    .lc-checkin:not(.lc-checkin--editor) {
+        align-content: start;
+    }
+
+    /* Review 的 hero、统计、跳转栏和主体共用一条 1180px 内容轨，
+       避免标题/hero 过宽而日历与提醒区缩在中间。 */
+    .lc-checkin--review :is(.lc-checkin__summary-stats,
+        .lc-checkin__review-hero,
+        .lc-checkin__review-subnav,
+        .lc-checkin__review-layout,
+        .lc-checkin__review-sections,
+        .lc-checkin__summary-text,
+        .lc-checkin__summary-agent) {
+        width: min(100%, 1180px);
+        max-width: 1180px;
+        margin-inline: auto;
+        box-sizing: border-box;
+    }
+    .lc-checkin--review .lc-checkin__review-hero {
+        min-height: 112px;
+        margin-top: 8px;
+        margin-bottom: 10px;
+        padding: 12px 16px;
+        border-radius: 14px;
+    }
+    .lc-checkin--review .lc-checkin__review-hero h2 {
+        margin: 2px 0;
+        font-size: 18px;
+        line-height: 1.2;
+    }
+    .lc-checkin--review .lc-checkin__review-hero p {
+        margin: 2px 0;
+        line-height: 1.35;
+    }
+    .lc-checkin--review .lc-checkin__review-hero :is(.lc-checkin__review-attention,
+        .lc-checkin__review-advice) {
+        display: inline-block;
+        max-width: 48%;
+        margin: 2px 8px 0 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__text-button {
+        min-height: 28px;
+        margin-top: 3px;
+        padding-inline: 9px;
+    }
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate { font-size: 28px; }
+
+    /* When only one fold has content, auto-fit lets it use the complete rail
+       instead of leaving an empty second half. */
+    .lc-checkin--review .lc-checkin__review-sections {
+        grid-template-columns: repeat(auto-fit, minmax(min(520px, 100%), 1fr));
+        align-items: start;
+    }
+    .lc-checkin--review .lc-checkin__review-sections > :only-child { grid-column: 1 / -1; }
+
+    /* Medium desktop cards: preserve two columns but reclaim ~32px from the
+       action rail so names and metadata have a useful minimum width. */
+    .lc-checkin--today .lc-checkin__item-action {
+        --lc-action-slot: 30px;
+        --lc-action-primary: 84px;
+        gap: 4px;
+    }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__more-button,
+        .lc-checkin__focus-button,
+        .lc-checkin__drag-handle) {
+        width: 30px;
+        height: 30px;
+    }
+    .lc-checkin--today .lc-checkin__item-action :is(.lc-checkin__record-button,
+        .lc-checkin__quick-button) {
+        min-height: 34px;
+        padding-inline: 10px;
+    }
+
+    /* Occasions master/detail panels should not stretch the empty list to the
+       form's height. max-content is deliberately limited to the desktop
+       container; mobile remains a normal one-column flow. */
+    .lc-checkin--occasions .lc-checkin__occasion-manager {
+        align-items: start;
+        grid-auto-rows: max-content;
+    }
+    .lc-checkin--occasions :is(.lc-checkin__occasion-list-panel,
+        .lc-checkin__occasion-form-panel) {
+        align-self: start;
+        height: max-content;
+        min-height: 0;
+    }
+
+    /* Settings uses the same compact rhythm in every card. */
+    .lc-checkin--settings .lc-checkin__settings-groups { gap: 10px; }
+    .lc-checkin--settings .lc-checkin__settings-card {
+        padding: 12px 16px;
+    }
+    .lc-checkin--settings .lc-checkin__settings-card h2 {
+        margin: 0 0 4px;
+        line-height: 1.3;
+    }
+    .lc-checkin--settings .lc-checkin__settings-row {
+        min-height: 40px;
+        padding: 8px 0;
+    }
+}
+
+/* Very wide settings windows can use the available rail without making the
+   labels or controls feel detached. */
+@container lc5 (min-width: 1400px) {
+    .lc-checkin--settings .lc-checkin__settings-layout { max-width: 1320px; }
+}
+
+/* At 720–1199px the action tracks above are the compact form; keep the
+   explicit value here so later component rules cannot restore 104px. */
+@container lc5 (min-width: 720px) and (max-width: 1199px) {
+    .lc-checkin--today .lc-checkin__item-action { --lc-action-primary: 84px; }
+}
+
+/* Desktop Today shelf: when a group has an odd number of visible cards, let
+   the final card use the whole row instead of leaving a dangling half-row.
+   The host-scoped desktop query deliberately leaves the mobile single-column
+   layout untouched; :not(:only-child) keeps the one-card guard above as the
+   single source of truth for that case. */
+@container lc5 (min-width: 720px) {
+    .lc-checkin--today .lc-checkin__group-items > .lc-checkin__item:last-child:nth-child(odd):not(:only-child) {
+        grid-column: 1 / -1;
+    }
+}
+
+/* Once the shelf is wide enough for three readable cards, keep the natural
+   auto-fill placement.  The compact two-column odd-item treatment above is
+   useful around tablet/medium desktop widths, but spanning the last card on
+   a wide canvas would manufacture an unnecessary second row and leave the
+   first row with an avoidable gap. */
+@container lc5 (min-width: 1220px) {
+    .lc-checkin--today .lc-checkin__group-items > .lc-checkin__item:last-child:nth-child(odd):not(:only-child) {
+        grid-column: auto;
+    }
+}
+
+/* Mobile editor final spacing pass: the editor keeps a full-height surface so
+   the action rail can stay visible, but its short-form content should not add
+   another artificial bottom cushion.  Scroll padding remains explicit on the
+   form scroller, so the fixed action rail still cannot cover the last field. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--editor .lc-checkin__layout {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+
+    .lc-checkin--editor .lc-checkin__form-scroll {
+        padding-bottom: 4px;
+        scroll-padding-bottom: calc(70px + env(safe-area-inset-bottom));
+    }
+
+    /* Preview and schedule panels share one rail: no legacy margin/padding
+       can make their summaries start on different x/y baselines. */
+    .lc-checkin--editor .lc-checkin__editor-side {
+        align-content: start;
+        gap: 6px;
+        min-width: 0;
+    }
+
+    .lc-checkin--editor .lc-checkin__editor-side > :is(.lc-checkin__editor-preview, .lc-checkin__advanced) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+    }
+
+    .lc-checkin--editor .lc-checkin__editor-preview {
+        min-height: 64px;
+        padding: 6px;
+    }
+
+    .lc-checkin--editor .lc-checkin__preview-card {
+        min-height: 52px;
+        align-items: center;
+    }
+
+    .lc-checkin--editor .lc-checkin__advanced > summary {
+        display: flex;
+        min-height: 40px;
+        align-items: center;
+    }
+}
+
+/* Review jump rail: it lives inside the .lc-checkin scrollport, while the
+   desktop/mobile top bars are siblings outside that scrollport.  Older
+   density layers used a 58px offset (appropriate only when a header was in
+   the same scrolling box), which made the rail float over the calendar and
+   detail cards after scrolling.  Keep one opaque, zero-offset surface so the
+   rail remains directly below the host chrome on every surface. */
+.lc-checkin--review .lc-checkin__review-subnav {
+    position: sticky;
+    top: 0 !important;
+    z-index: 6;
+    background: var(--lc-checkin-bg);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    isolation: isolate;
+    scroll-margin-top: 4px;
+}
+
+.lc-checkin--review :is(.lc-checkin__review-fold, .lc-checkin__year-heatmap) {
+    scroll-margin-top: 52px;
+}
+
+/* ============================================================
+   12.0 release geometry guard
+
+   Host chrome belongs to the surface that owns it: a wide SiYuan tab uses
+   the desktop top navigation only, while narrow split tabs and mobile tabs
+   use the five-cell bottom bar.  This prevents the wide-tab double-nav and
+   double-close regression without coupling the decision to the viewport.
+   ============================================================ */
+.lc-checkin-tab-host {
+    container: lc-tab / inline-size;
+}
+
+.lc-checkin-tab-host > .lc-checkin__mobile-nav {
+    display: none !important;
+}
+
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) > .lc-checkin__mobile-nav {
+    display: grid !important;
+}
+
+@container lc-tab (max-width: 719px) {
+    .lc-checkin-tab-host > .lc-checkin__mobile-nav {
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+}
+
+/* Editor page headers are navigation headers, not split action bars.  Keep
+   the title adjacent to Back and do not reserve space for the retired
+   floating close button on dock/tab surfaces. */
+.lc-checkin--editor .lc-checkin__editor-header {
+    justify-content: flex-start;
+}
+
+/* Narrow dock is a desktop surface (so it intentionally has no mobile
+   topbar), but it still needs the editor title and the collapsed template
+   entry point. */
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-section {
+        display: block;
+        min-height: 38px;
+        max-height: none;
+        padding: 0;
+        overflow: visible;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: 7px;
+        min-height: 38px;
+        padding: 0 10px;
+        color: var(--lc-checkin-text);
+        font-size: 12px;
+        font-weight: 680;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-summary::-webkit-details-marker {
+        display: none;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-summary small {
+        display: none;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-section:not([open]) > .lc-checkin__template-browser {
+        display: none;
+    }
+
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-section[open] > .lc-checkin__template-browser {
+        display: flex;
+        padding: 8px;
+    }
+}
+
+@container lc5 (max-width: 719px) {
+    /* The bottom bar already owns Create on compact surfaces. */
+    .lc-checkin--today .lc-checkin__header [data-action="add"] {
+        display: none !important;
+    }
+}
+
+/* On compact phone widths, reserve a complete second row for card
+   actions.  Badges and metadata therefore never share pixels with the timer,
+   record and exact-value controls. */
+@container lc5 (max-width: 430px) {
+    .lc-checkin--today .lc-checkin__item {
+        grid-template-columns: 34px minmax(0, 1fr);
+        grid-template-areas:
+            "icon body"
+            "icon action"
+            "exact exact";
+        row-gap: 3px;
+    }
+
+    .lc-checkin--today .lc-checkin__item-action {
+        grid-area: action;
+        justify-self: stretch;
+        width: 100%;
+        max-width: 100%;
+    }
 }

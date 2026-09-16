@@ -152,11 +152,12 @@ export default class CheckinPlugin extends Plugin {
     private quickDialog?: Dialog;
     private quickDialogElement?: HTMLElement;
     private quickDialogViewportCleanup?: () => void;
-    /* 每个表面（dock/tab/弹窗）一份「页面→滚动位置」表（T-112）；scrollCapturePage 记录当前 DOM 属于哪一页。
-       初始值须与 currentPage 的默认页一致（字段初始化按声明顺序执行）。 */
+    /* 每个表面（dock/tab/弹窗）分别记录「页面→滚动位置」和当前已渲染页。
+       不能用一个全局旧页标记：同一轮会依次渲染多个表面，首个表面切页后会
+       让后续表面把旧页面的 scrollTop 错记到新页面。 */
     private pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>();
+    private renderedPages = new WeakMap<HTMLElement, string>();
     private hostThemeSignatures = new WeakMap<HTMLElement, string>();
-    private scrollCapturePage = "today";
     private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
@@ -639,6 +640,14 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showEditor(item?: CheckinItem) {
+        /* 新建/编辑是一段新的表单会话，必须从标题和模板入口开始；表单内部
+           的普通重渲染仍由 pageScrollTops 保留当前位置。 */
+        [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
+            if (!root) return;
+            const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
+            tops.set("editor", 0);
+            this.pageScrollTops.set(root, tops);
+        });
         showEditorFor(this as unknown as NavigationHost, item);
     }
 
@@ -918,6 +927,11 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private renderInto(root: HTMLElement) {
+        /* A short, explicit mobile host marker keeps the final responsive
+           layer deterministic without repeating long :has() selectors for
+           every child rule.  Desktop docks remain on their container-query
+           layout even when they happen to be narrow. */
+        root.classList.toggle("lc-checkin-host--mobile", this.isMobileFrontend);
         if (this.initializationState !== "ready") {
             const message = this.initializationState === "failed" ? "打卡数据读取失败" : "正在加载打卡数据…";
             root.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
@@ -928,7 +942,7 @@ export default class CheckinPlugin extends Plugin {
         const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
         if (previousScroller) {
             const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
-            tops.set(this.scrollCapturePage, previousScroller.scrollTop);
+            tops.set(this.renderedPages.get(root) ?? "today", previousScroller.scrollTop);
             this.pageScrollTops.set(root, tops);
         }
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
@@ -954,20 +968,23 @@ export default class CheckinPlugin extends Plugin {
             while (surface.firstChild) layout.appendChild(surface.firstChild);
             surface.appendChild(layout);
         }
-        /* 桌面弹窗的 全屏/关闭 并入顶栏（renderTopNav），不再悬浮在角落 */
-        const isDesktopDialog = this.quickDialog && this.quickDialogElement === root && !this.isMobileFrontend;
-        if (!isDesktopDialog) {
-            root.insertAdjacentHTML("afterbegin", `<button class="lc-checkin__dialog-close" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button>`);
-        }
+        /* 桌面快速弹窗的 全屏/关闭 并入顶栏（renderTopNav）。页签和 dock
+           的生命周期由思源宿主管理，不在内容区伪造第二枚关闭按钮。 */
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
             root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar());
+        }
+        /* A wide dock hides the compact bottom bar to preserve vertical space.
+           Give that surface its own persistent rail instead of leaving the
+           navigation unreachable (the rail is hidden again below 720px). */
+        if (root === this.dockElement && !root.querySelector(".lc-checkin__rail")) {
+            root.insertAdjacentHTML("afterbegin", this.renderRail());
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
                窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。
                桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
-            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav());
+            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root));
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
@@ -1012,7 +1029,7 @@ export default class CheckinPlugin extends Plugin {
         }
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
         if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;
-        this.scrollCapturePage = this.currentPage;
+        this.renderedPages.set(root, this.currentPage);
     }
 
     private syncHostThemeTokens(root: HTMLElement, surface: HTMLElement) {
@@ -1272,7 +1289,18 @@ export default class CheckinPlugin extends Plugin {
        顶栏只保留 关闭 + 页面标题 + 今日进度，单行尽量矮。 */
     private renderMobileTopbar(): string {
         const progress = this.currentPage === "today" ? this.todayProgressLabel() : "";
-        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">✕</button><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong>${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}</div>`;
+        /* Root pages use one close action; nested pages replace it with Back.
+           Rendering both controls consumed the entire left rail on phones and
+           made the centred title look offset. */
+        const contextBackAction = this.currentPage === "editor" ? "back"
+            : this.currentPage === "insights" || this.currentPage === "archived" ? "back" : "";
+        const leadingAction = contextBackAction
+            ? `<button class="lc-checkin__topbar-context" type="button" data-action="${contextBackAction}" aria-label="${t("common.back")}" title="${t("common.back")}">${uiIcon("back")}</button>`
+            : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">${uiIcon("close")}</button>`;
+        const occasionAction = this.currentPage === "occasions"
+            ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("common.add")}">${uiIcon("add")}</button>`
+            : "";
+        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
 
     private renderMobileNav(): string {
@@ -1299,12 +1327,16 @@ export default class CheckinPlugin extends Plugin {
 
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
        窄容器由 CSS 隐藏（改用底部导航）。 */
-    private renderTopNav(): string {
+    private renderTopNav(root: HTMLElement): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        const fullscreen = this.quickDialog && this.quickDialogElement && !this.isMobileFrontend
+        const ownsDialogChrome = Boolean(this.quickDialog) && root === this.quickDialogElement && !this.isMobileFrontend;
+        const fullscreen = ownsDialogChrome
             ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}" title="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}">${uiIcon("expand")}</button>`
             : "";
-        return `<nav class="lc-checkin__topnav" aria-label="打卡导航"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div><div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button></div></nav>`;
+        const dialogActions = ownsDialogChrome
+            ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button></div>`
+            : "";
+        return `<nav class="lc-checkin__topnav" aria-label="打卡导航"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */

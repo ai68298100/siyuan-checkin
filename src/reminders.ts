@@ -136,7 +136,58 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
 }
 
 export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): ReminderEntry[] {
-    return applyReminderActions(sortReminderEntries([...projectOverdueOccasionReminders(occasions, date), ...projectCheckinReminders(store, date), ...projectOccasionReminders(occasions, date)]), userActions, dateKey(date));
+    /*
+     * Keep the reminder-center hot path linear over occasions.  The previous
+     * implementation projected overdue occasions, visible occasions, and
+     * check-ins independently, sorting the occasion arrays twice and then
+     * sorting their concatenation a third time.  That was harmless for a
+     * handful of entries, but made the 2,000-item reminder benchmark highly
+     * sensitive to host load.  One pass can classify a one-off past date as
+     * overdue and all other dates through the normal visible-occurrence
+     * resolver, followed by one stable sort.
+     */
+    const today = dateKey(date);
+    const occasionEntries: ReminderEntry[] = [];
+    for (const occasion of occasions.occasions) {
+        if (occasion.enabled === false) continue;
+        if (occasion.recurrence === "once" && occasion.date < today) {
+            if (!isOccasionCompleted(occasion, occasion.date)) {
+                const overdueDays = Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${occasion.date}T00:00:00`).getTime()) / 86400000);
+                occasionEntries.push({
+                    id: `occasion:${occasion.id}:${occasion.date}`,
+                    source: "occasion",
+                    sourceId: occasion.id,
+                    title: occasion.name,
+                    dueDate: occasion.date,
+                    daysUntil: -overdueDays,
+                    status: "overdue",
+                    note: occasion.note,
+                });
+            }
+            continue;
+        }
+        const occurrenceDate = getOccurrenceDate(occasion, today);
+        if (!occurrenceDate) continue;
+        const daysUntil = differenceInLocalDays(today, occurrenceDate);
+        if (daysUntil < 0 || daysUntil > occasion.remindBeforeDays) continue;
+        const completed = isOccasionCompleted(occasion, occurrenceDate);
+        occasionEntries.push({
+            id: `occasion:${occasion.id}:${occurrenceDate}`,
+            source: "occasion",
+            sourceId: occasion.id,
+            title: occasion.name,
+            dueDate: occurrenceDate,
+            daysUntil,
+            status: completed ? "completed" : daysUntil === 0 ? "today" : "upcoming",
+            note: occasion.note,
+        });
+    }
+    const entries = [...occasionEntries, ...projectCheckinReminders(store, date)];
+    return applyReminderActions(sortReminderEntries(entries), userActions, today);
+}
+
+function differenceInLocalDays(from: string, to: string): number {
+    return Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000);
 }
 
 /* 11.0-C 延期与跳过：用户动作按稳定实例 ID 记录在独立存储里，投影只读地应用，

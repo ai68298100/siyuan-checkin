@@ -20,6 +20,7 @@ const outputRoot = path.resolve(process.env.CHECKIN_QA_OUTPUT_ROOT || path.join(
 fs.mkdirSync(outputRoot, {recursive: true});
 const initialWidth = Number(process.env.CHECKIN_QA_INITIAL_WIDTH || 420);
 const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
+const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
 
 (async () => {
     const browser = await chromium.launch({
@@ -37,7 +38,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         : "--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb";
     await page.setContent(`<style>:root{${themeTokens};--b3-font-family:Arial,sans-serif}body{margin:8px;background:${darkTheme ? "#1e1e1e" : "#fff"}}</style><main id="frame" style="width:340px;height:720px;border:1px solid ${darkTheme ? "#3a3a3a" : "#ddd"}"><div id="dock" style="width:100%;height:100%"></div></main>`);
     await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
-    await page.evaluate((hostMode) => {
+    await page.evaluate(({hostMode, frontend}) => {
         const now = new Date();
         const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 10);
         const today = (hour, minute) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute).toISOString();
@@ -75,7 +76,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
                         }, 10));
                     }
                 },
-                getFrontend() { return "desktop"; },
+                getFrontend() { return frontend; },
                 openTab(options) {
                     window.__openTabOptions = options;
                     return Promise.resolve({close() { window.__tabClosed = true; }});
@@ -83,7 +84,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
                 showMessage(message) { window.__messages = [...(window.__messages || []), message]; },
             };
         };
-    }, darkTheme ? 1 : 0);
+    }, {hostMode: darkTheme ? 1 : 0, frontend: qaFrontend});
     await page.addScriptTag({path: path.join(projectRoot, "dist", "index.js")});
     await page.evaluate(async () => {
         const PluginClass = window.module.exports.default || window.module.exports;
@@ -147,7 +148,7 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         if (!count) return {handles: 0};
         const before = await page.evaluate(() => [...document.querySelectorAll(".lc-checkin__group-items .lc-checkin__item")].map((el) => el.dataset.itemId));
         const box = await handles.nth(0).boundingBox();
-        if (!box) return {handles: count, error: "no box"};
+        if (!box) return {handles: count, skipped: "hidden-at-narrow-width"};
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
         await page.mouse.down();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 90, {steps: 8});
@@ -236,39 +237,65 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
         targetStep: document.querySelector("input[name='target']")?.getAttribute("step"),
     }));
     await goToday();
-    await page.locator("[data-action='open-tab']").evaluate((button) => button.click());
-    await page.waitForTimeout(30);
-    results.tab = await page.evaluate(() => ({
-        opened: Boolean(window.__openTabOptions),
-        stableId: window.__openTabOptions?.custom?.id,
-        title: window.__openTabOptions?.custom?.title,
-        registered: Boolean(window.__tabOptions),
-    }));
-    await page.setViewportSize({width: 1180, height: 760});
-    await page.evaluate(() => {
-        document.querySelector("#frame").style.display = "none";
-        const tabFrame = document.createElement("main");
-        tabFrame.id = "tab-frame";
-        tabFrame.style.cssText = "width:1140px;height:720px;border:1px solid #ddd";
-        tabFrame.innerHTML = '<div id="tab" style="width:100%;height:100%"></div>';
-        document.body.append(tabFrame);
-        const context = {element: tabFrame.querySelector("#tab"), tab: {close() {}}};
-        window.__qaTabContext = context;
-        window.__tabOptions.init.call(context);
-    });
-    results.wideTab = await page.locator("#tab").evaluate((element) => ({
-        clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-        clientHeight: element.clientHeight,
-        scrollHeight: element.scrollHeight,
-        itemColumns: getComputedStyle(element.querySelector(".lc-checkin__group-items")).gridTemplateColumns,
-    }));
-    await page.screenshot({path: path.join(outputRoot, "wide-tab.png"), fullPage: true});
-    await page.evaluate(() => {
-        window.__tabOptions.destroy.call(window.__qaTabContext);
-        document.querySelector("#tab-frame").remove();
-        document.querySelector("#frame").style.display = "block";
-    });
+    if (qaFrontend !== "mobile" && qaFrontend !== "browser-mobile") {
+        await page.locator("[data-action='open-tab']").evaluate((button) => button.click());
+        await page.waitForTimeout(30);
+        results.tab = await page.evaluate(() => ({
+            opened: Boolean(window.__openTabOptions),
+            stableId: window.__openTabOptions?.custom?.id,
+            title: window.__openTabOptions?.custom?.title,
+            registered: Boolean(window.__tabOptions),
+        }));
+        await page.setViewportSize({width: 1180, height: 760});
+        await page.evaluate(() => {
+            document.querySelector("#frame").style.display = "none";
+            const tabFrame = document.createElement("main");
+            tabFrame.id = "tab-frame";
+            tabFrame.style.cssText = "width:1140px;height:720px;border:1px solid #ddd";
+            tabFrame.innerHTML = '<div id="tab" style="width:100%;height:100%"></div>';
+            document.body.append(tabFrame);
+            const context = {element: tabFrame.querySelector("#tab"), tab: {close() {}}};
+            window.__qaTabContext = context;
+            window.__tabOptions.init.call(context);
+        });
+        results.wideTab = await page.locator("#tab").evaluate((element) => ({
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            clientHeight: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+            itemColumns: getComputedStyle(element.querySelector(".lc-checkin__group-items")).gridTemplateColumns,
+            mobileNavDisplay: getComputedStyle(element.querySelector(".lc-checkin__mobile-nav")).display,
+            mobileNavHeight: element.querySelector(".lc-checkin__mobile-nav").getBoundingClientRect().height,
+            topnavCloseCount: element.querySelectorAll(".lc-checkin__topnav [data-action='close-dialog']").length,
+            floatingCloseCount: element.querySelectorAll(":scope > .lc-checkin__dialog-close").length,
+            visibleDragHandles: [...element.querySelectorAll("[data-drag-handle]")]
+                .filter((handle) => handle.getBoundingClientRect().width > 0 && handle.getBoundingClientRect().height > 0).length,
+        }));
+        await page.screenshot({path: path.join(outputRoot, "wide-tab.png"), fullPage: true});
+        await page.evaluate(() => {
+            window.__tabOptions.destroy.call(window.__qaTabContext);
+            document.querySelector("#tab-frame").remove();
+            document.querySelector("#frame").style.display = "block";
+        });
+        /* A dock wider than the compact threshold hides the bottom bar and
+           must expose the persistent rail instead of losing navigation. */
+        await page.locator("#frame").evaluate((element) => { element.style.width = "1200px"; });
+        await page.waitForTimeout(40);
+        await page.screenshot({path: path.join(outputRoot, "wide-dock.png"), fullPage: true});
+        results.wideDock = await page.locator("#dock").evaluate((element) => {
+            const rail = element.querySelector(".lc-checkin__rail");
+            const nav = element.querySelector(".lc-checkin__mobile-nav");
+            const railBox = rail?.getBoundingClientRect();
+            return {
+                clientWidth: element.clientWidth,
+                scrollWidth: element.scrollWidth,
+                railDisplay: rail ? getComputedStyle(rail).display : "none",
+                visibleRailButtons: rail ? [...rail.querySelectorAll("button")].filter((button) => button.getBoundingClientRect().height > 0).length : 0,
+                mobileNavDisplay: nav ? getComputedStyle(nav).display : "none",
+                railWidth: railBox?.width || 0,
+            };
+        });
+    }
     await page.setViewportSize({width: narrowWidth, height: 700});
     await page.locator("#frame").evaluate((element) => {
         element.style.width = "300px";
@@ -283,6 +310,24 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     await goToday();
     await openSurface("add", "[data-action='add']");
     results.narrowEditor = await inspect("narrow-editor");
+    results.narrowEditorChrome = await page.locator("#dock").evaluate((element) => {
+        const visible = (target) => Boolean(target && getComputedStyle(target).display !== "none" && target.getBoundingClientRect().height > 0);
+        const header = element.querySelector(".lc-checkin--editor .lc-checkin__editor-header");
+        const title = element.querySelector(".lc-checkin--editor .lc-checkin__editor-header .lc-checkin__title");
+        const summary = element.querySelector(".lc-checkin--editor .lc-checkin__template-summary");
+        const mobileTopbar = element.querySelector(".lc-checkin__mobile-topbar");
+        const mobileTopbarTitle = element.querySelector(".lc-checkin__mobile-topbar .lc-checkin__topbar-title");
+        return {
+            headerVisible: visible(header),
+            titleVisible: visible(title),
+            title: title?.textContent?.trim() || "",
+            templateSummaryVisible: visible(summary),
+            templateSummary: summary?.textContent?.replace(/\s+/g, " ").trim() || "",
+            mobileTopbarVisible: visible(mobileTopbar),
+            mobileTopbarTitle: mobileTopbarTitle?.textContent?.trim() || "",
+            scrollTop: element.querySelector(".lc-checkin")?.scrollTop ?? -1,
+        };
+    });
     await goToday();
     results.mobileMatrix = {};
     for (const width of [320, 360, 390, 430]) {
@@ -297,6 +342,18 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
             if (!nav) return {found: false};
             const box = nav.getBoundingClientRect();
             return {found: true, display: getComputedStyle(nav).display, visible: box.height > 0 && box.bottom > innerHeight - 90};
+        });
+        results.mobileMatrix[width].cardGeometry = await page.evaluate(() => {
+            const intersects = (left, right) => Math.min(left.right, right.right) > Math.max(left.left, right.left)
+                && Math.min(left.bottom, right.bottom) > Math.max(left.top, right.top);
+            return [...document.querySelectorAll(".lc-checkin--today .lc-checkin__item")].map((card) => {
+                const action = card.querySelector(".lc-checkin__item-action")?.getBoundingClientRect();
+                const topline = card.querySelector(".lc-checkin__item-topline")?.getBoundingClientRect();
+                return {
+                    itemId: card.dataset.itemId,
+                    actionToplineOverlap: Boolean(action && topline && intersects(action, topline)),
+                };
+            });
         });
     }
     await openSurface("add", "[data-action='add']");
@@ -646,10 +703,51 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     /* T-116 组件商店：全部 + 9 个内置分组 + 我的图标 = 11 个页签 */
     assert.equal(results.editorCatalog.iconGroupCount, 11);
     assert.deepEqual(results.templateApplied, {name: "阅读", kind: "duration", unit: "小时", group: "学习", iconPanel: true, targetStep: "0.25"});
-    assert.equal(results.tab.opened && results.tab.registered && results.tab.title, "小驴打卡");
-    assert.match(results.tab.stableId, /checkin$/);
-    assert.equal(results.wideTab.scrollWidth, results.wideTab.clientWidth);
-    assert.match(results.wideTab.itemColumns, /px .*px/);
+    if (qaFrontend !== "mobile" && qaFrontend !== "browser-mobile") {
+        assert.equal(results.tab.opened && results.tab.registered && results.tab.title, "小驴打卡");
+        assert.match(results.tab.stableId, /checkin$/);
+        assert.equal(results.wideTab.scrollWidth, results.wideTab.clientWidth);
+        assert.equal(results.wideTab.mobileNavDisplay, "none");
+        assert.equal(results.wideTab.mobileNavHeight, 0);
+        assert.equal(results.wideTab.topnavCloseCount, 0);
+        assert.equal(results.wideTab.floatingCloseCount, 0);
+        /* The fixture's first group can contain one item after sorting.  In
+           that case the responsive shelf legitimately resolves to one track;
+           with two items it resolves to two.  Validate the actual invariant
+           (positive, pixel-sized tracks and no more than the supported two
+           desktop columns) instead of requiring a whitespace-separated pair. */
+        const wideTracks = results.wideTab.itemColumns.trim().split(/\s+/).filter(Boolean);
+        assert.ok(
+            wideTracks.length >= 1 && wideTracks.length <= 2 &&
+            wideTracks.every((track) => /^\d+(?:\.\d+)?px$/.test(track) && Number.parseFloat(track) > 0),
+            `Unexpected wide-tab grid tracks: ${results.wideTab.itemColumns}`,
+        );
+        assert.equal(results.wideDock.scrollWidth, results.wideDock.clientWidth);
+        assert.equal(results.wideDock.railDisplay, "flex");
+        assert.equal(results.wideDock.visibleRailButtons, 4);
+        assert.equal(results.wideDock.mobileNavDisplay, "none");
+        assert.ok(results.wideDock.railWidth > 0);
+    }
+    if (qaFrontend === "mobile" || qaFrontend === "browser-mobile") {
+        /* Mobile hosts intentionally move the title into the fixed topbar and
+           hide the duplicate in-page editor header. */
+        assert.equal(results.narrowEditorChrome.headerVisible, false);
+        assert.equal(results.narrowEditorChrome.titleVisible, false);
+        assert.equal(results.narrowEditorChrome.mobileTopbarVisible, true);
+        assert.equal(results.narrowEditorChrome.mobileTopbarTitle, "新建打卡项");
+    } else {
+        assert.equal(results.narrowEditorChrome.headerVisible, true);
+        assert.equal(results.narrowEditorChrome.titleVisible, true);
+        assert.equal(results.narrowEditorChrome.title, "新建打卡项");
+    }
+    assert.equal(results.narrowEditorChrome.templateSummaryVisible, true);
+    assert.match(results.narrowEditorChrome.templateSummary, /^从常用打卡开始24/);
+    assert.equal(results.narrowEditorChrome.scrollTop, 0);
+    for (const width of [320, 360, 390, 430]) {
+        assert.ok(results.mobileMatrix[width].cardGeometry.length > 0);
+        assert.equal(results.mobileMatrix[width].cardGeometry.some((entry) => entry.actionToplineOverlap), false,
+            `${width}px Today cards must keep badges and actions on separate geometry`);
+    }
     assert.notEqual(results.calendar.currentMonthLabel, results.calendar.previousMonthLabel);
     assert.equal(results.calendar.currentMonthLabel, results.calendar.restoredMonthLabel);
     assert.equal(results.calendar.nextMonthDisabled, true);
@@ -711,5 +809,3 @@ const narrowWidth = Number(process.env.CHECKIN_QA_NARROW_WIDTH || 320);
     console.error(error);
     process.exit(1);
 });
-
-

@@ -12,7 +12,7 @@ const i18n = read("src", "i18n.ts");
 const occasions = read("src", "render", "occasions.ts");
 const packageJson = JSON.parse(read("package.json"));
 
-assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
     "desktop top navigation must stay outside the scrolling layout");
 assert.match(settings, /set\.showOlderSnapshots/,
     "settings must disclose older restore points instead of rendering all rows expanded");

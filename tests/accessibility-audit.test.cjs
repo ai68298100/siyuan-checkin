@@ -177,11 +177,14 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
         };
 
         const clickNav = async (target) => {
-            const rail = page.locator(`.lc-checkin__topnav [data-mobile-nav="${target}"]`);
-            if (await rail.count() && await rail.isVisible().catch(() => false)) { await rail.click(); return; }
-            const mobile = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="${target}"]`);
-            if (await mobile.count() && await mobile.isVisible().catch(() => false)) { await mobile.click(); return; }
-            await page.locator(`[data-action='${target}']`).first().evaluate((b) => b.click());
+            /* The dock intentionally hides its top navigation at every width;
+               use a DOM click instead of Playwright's visibility-gated click
+               so the same audit can exercise dock, tab and mobile hosts. */
+            const navigation = page.locator(`[data-mobile-nav="${target}"]`).first();
+            if (await navigation.count()) { await navigation.evaluate((button) => button.click()); return; }
+            const fallback = page.locator(`[data-action='${target}']`).first();
+            if (!await fallback.count()) throw new Error(`navigation target ${target} missing`);
+            await fallback.evaluate((button) => button.click());
         };
 
         for (const target of ["today", "review", "occasions", "settings"]) {

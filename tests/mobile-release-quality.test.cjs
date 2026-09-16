@@ -40,6 +40,17 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobil
     "mobile top bar must include padding inside its measured height");
 assert.match(components, /\.lc-checkin-dialog-host--mobile > \.lc-checkin__mobile-topbar[\s\S]*?background:\s*var\(--lc-checkin-bg\)/,
     "mobile top bar must share the canvas background instead of an unrelated color");
+const mobileSettingsNavLayer = components.slice(components.lastIndexOf("/* 手机设置页分类栏"));
+assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-nav[\s\S]*?position:\s*sticky;[\s\S]*?overflow-x:\s*auto;/,
+    "mobile settings navigation must stay in flow and scroll horizontally when labels do not fit");
+assert.match(mobileSettingsNavLayer, /touch-action:\s*pan-x(?:\s+pan-y)?;[\s\S]*?scroll-snap-type:\s*x proximity;/,
+    "mobile settings navigation must expose a deliberate horizontal touch rail without blocking vertical page scroll");
+assert.match(mobileSettingsNavLayer, /background:\s*var\(--lc-checkin-bg\)/,
+    "mobile settings navigation must use an opaque canvas background while sticky");
+assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-nav button[\s\S]*?min-width:\s*max-content;/,
+    "mobile settings navigation labels must not be ellipsized into unavailable sections");
+assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-card[\s\S]*?scroll-margin-top:\s*52px;/,
+    "mobile settings category targets must remain visible below the sticky rail");
 assert.match(plugin, /root\.dataset\.appearance\s*=\s*appearance/,
     "window host must carry the resolved independent appearance");
 assert.match(plugin, /this\.syncHostThemeTokens\(root, surface\)/,
@@ -76,8 +87,8 @@ assert.match(components, /:is\(\.lc-checkin__focus-button, \.lc-checkin__more-bu
 assert.match(components, /\.lc-checkin__item-topline \.lc-checkin__streak-badge \{\s*height: 22px;/,
     "streak badge must stay inline height");
 /* 移动端页内标题与顶栏重复:窄档隐藏文字保留按钮 */
-assert.match(components, /\.lc-checkin--review \.lc-checkin__editor-header \.lc-checkin__title,[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__eyebrow \{ display: none; \}/,
-    "duplicate in-page titles must hide at narrow widths");
+assert.match(components, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile, \.lc-checkin-tab-host:has\(\.lc-checkin__mobile-topbar\)\)[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__title,[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__eyebrow \{ display: none; \}/,
+    "duplicate in-page titles must hide only on hosts that provide a mobile topbar");
 /* hero 零记录门控 */
 assert.match(review, /hasPeriodRecords = summary\.totalEvents > 0/, "hero extras must gate on actual records");
 assert.match(review, /topSummaryItem && hasPeriodRecords/, "best item must hide at zero records");
@@ -92,6 +103,8 @@ assert.match(components, /\.lc-checkin--editor \.lc-checkin__template-section \{
 /* 自定义范围 chip 未激活降权 */
 assert.match(components, /\.lc-checkin__custom-range-disclosure > summary \{\s*color: var\(--lc-checkin-muted\);/,
     "custom range chip must look neutral when inactive");
+assert.match(components, /data-action="copy-weekly-report"[\s\S]*?white-space:\s*nowrap;[\s\S]*?word-break:\s*keep-all;/,
+    "mobile review toolbar labels must stay horizontal instead of wrapping one glyph per line");
 /* 死 FAB 样式不得回潮 */
 assert.ok(!components.includes("lc-checkin__mobile-fab"), "dead mobile-fab styles must stay removed");
 

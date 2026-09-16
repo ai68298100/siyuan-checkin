@@ -36,21 +36,6 @@
 /* 内容布局按 surface 容器宽度收敛；保留上面的 surface 自身内边距视口回退，
    因为容器查询无法匹配容器元素自身。这样窄 dock 与窄弹窗也能获得同一套
    卡片、编辑器和历史布局，而不会被设备视口宽度绑死。 */
-@media (max-height: 520px) and (orientation: landscape) {
-    .lc-checkin-dialog {
-        height: calc(100vh - 12px) !important;
-        max-height: calc(100vh - 12px);
-    }
-    .lc-checkin-dialog-host .lc-checkin {
-        padding-top: var(--lc-checkin-space-3);
-        padding-bottom: var(--lc-checkin-space-3);
-    }
-    .lc-checkin__mobile-nav {
-        position: sticky;
-    }
-}
-
-
 @media (hover: none), (pointer: coarse) {
     .lc-checkin--history .lc-checkin__history-search input,
     .lc-checkin--history .lc-checkin__history-filter-row select {
@@ -95,7 +80,6 @@
         height: 36px;
     }
 
-    .lc-checkin__item-icon,
     .lc-checkin__record-button,
     .lc-checkin__focus-button {
         min-height: 36px;
@@ -148,10 +132,6 @@
         -webkit-tap-highlight-color: transparent;
     }
 
-    .lc-checkin__item-icon {
-        min-width: 40px;
-        min-height: 40px;
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -187,12 +167,6 @@
 
 .lc-checkin > * { max-width: 1080px; }
 
-.lc-checkin__count {
-    padding: 0 4px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
 .lc-checkin__icon-button,
 .lc-checkin__back-button {
     width: 34px;
@@ -206,12 +180,6 @@
 .lc-checkin__back-button:hover {
     transform: none;
     box-shadow: 0 0 0 3px var(--lc-checkin-accent-soft);
-}
-
-.lc-checkin__progress {
-    height: 4px;
-    margin: 16px 0 18px;
-    background: color-mix(in srgb, var(--b3-theme-on-background) 12%, var(--b3-theme-background));
 }
 
 .lc-checkin__organize {
@@ -239,15 +207,6 @@
     font-weight: 600;
 }
 
-.lc-checkin__completed-section {
-    margin-top: 24px;
-    padding-top: 12px;
-    border-top-color: color-mix(in srgb, var(--b3-border-color) 90%, transparent);
-}
-
-.lc-checkin__completed-section .lc-checkin__section-title { font-size: 12px; }
-
-.lc-checkin--history .lc-checkin__editor-header { margin-bottom: 22px; }
 .lc-checkin__range-tabs {
     margin: -7px 0 16px 0;
     border: 1px solid var(--b3-border-color);
@@ -256,14 +215,9 @@
 }
 
 .lc-checkin__range-tabs button { min-height: 28px; }
-.lc-checkin__form { gap: 18px; }
-.lc-checkin__form-scroll { gap: 20px; padding: 0 2px 24px; }
 .lc-checkin__field { gap: 6px; font-size: 11px; }
 .lc-checkin__field > span:first-child,
 .lc-checkin__kind-field legend { font-weight: 600; }
-.lc-checkin__field input:not([type="checkbox"]),
-.lc-checkin__field select { height: var(--lc-checkin-control-height); border-radius: 7px; }
-
 /* Secondary pages keep the same visual rhythm as the today view while remaining readable in a dock. */
 .lc-checkin__summary-stats {
     display: grid;
@@ -321,13 +275,6 @@
     padding: var(--lc-checkin-space-4);
     border: 1px solid var(--lc-checkin-border);
     background: var(--lc-checkin-surface);
-}
-
-.lc-checkin__section-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--lc-checkin-space-3);
 }
 
 .lc-checkin__section-heading h2,
@@ -409,42 +356,6 @@
     }
 }
 
-.lc-checkin__summary-text {
-    padding: var(--lc-checkin-space-4);
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-surface);
-    line-height: 1.65;
-}
-
-.lc-checkin__history-tools,
-.lc-checkin__history-filter-row {
-    padding: var(--lc-checkin-space-3);
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-surface);
-}
-
-.lc-checkin__history-selected {
-    border-radius: var(--lc-checkin-radius-lg);
-    box-shadow: var(--lc-checkin-shadow-sm);
-}
-
-.lc-checkin__history-event {
-    background: var(--lc-checkin-surface);
-}
-
-.lc-checkin__insight-section {
-    padding: var(--lc-checkin-space-4);
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-surface);
-}
-
-.lc-checkin__insight-heading {
-    margin-bottom: var(--lc-checkin-space-3);
-}
-
 .lc-checkin__form-scroll > .lc-checkin__field,
 .lc-checkin__form-scroll > .lc-checkin__advanced,
 .lc-checkin__form-scroll > .lc-checkin__template-section,
@@ -458,12 +369,6 @@
 .lc-checkin__form-scroll > .lc-checkin__advanced {
     background: color-mix(in srgb, var(--lc-checkin-surface) 82%, var(--lc-checkin-bg));
 }
-
-.lc-checkin__editor-actions {
-    padding-top: var(--lc-checkin-space-3);
-    border-top: 1px solid var(--lc-checkin-border);
-}
-
 
 .lc-checkin--archived .lc-checkin__history-list { margin-top: 2px; }
 

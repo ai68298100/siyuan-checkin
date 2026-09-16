@@ -119,13 +119,23 @@ assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobile
     assert.ok(!topbarFn.includes("data-mobile-nav"),
         "the mobile top bar must not embed navigation tabs (navigation lives in the bottom bar)");
     assert.ok(topbarFn.includes("getPageTitle()"), "the mobile top bar must show the page title");
+    assert.ok(topbarFn.includes('this.currentPage === "editor" ? "back"'),
+        "the mobile editor back action must live in the fixed top bar");
 }
-assert.match(plugin, /renderTopNav\(\)\);/,
+assert.match(components, /\.lc-checkin--editor \.lc-checkin__editor-header \{ display: none; \}/,
+    "the mobile editor must not reserve a duplicate internal header row");
+assert.match(plugin, /renderTopNav\(root\)\);/,
     "the desktop top nav keeps its render path");
-assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
     "the top nav must not render unconditionally (mobile now owns its own top bar)");
-assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(\)\)/,
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
     "the desktop top nav must be attached to the host, outside the scrolling layout");
+assert.match(plugin, /private renderTopNav\(root: HTMLElement\): string/,
+    "top navigation must know which host owns dialog chrome");
+assert.match(plugin, /ownsDialogChrome = Boolean\(this\.quickDialog\) && root === this\.quickDialogElement/,
+    "only the quick dialog may render fullscreen and close actions");
+assert.doesNotMatch(plugin, /root\.insertAdjacentHTML\("afterbegin", `<button class="lc-checkin__dialog-close"/,
+    "tabs and docks must not receive a second floating close button");
 assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
     "the mobile bottom bar must be attached to the host as well");
 assert.match(plugin, /private todayProgressLabel\(\): string \{/,
@@ -149,6 +159,16 @@ assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/
     "the dock host must be a sized container and a flex column so its bars can be pinned");
 assert.match(components, /@container lc-dock \(max-width: 719px\) \{[\s\S]*?\.lc-checkin-dock-host > \.lc-checkin__mobile-nav \{[\s\S]*?display: grid;/,
     "narrow dock panels must show the bottom navigation");
+assert.match(components, /\.lc-checkin-tab-host \{\s*container: lc-tab \/ inline-size;/,
+    "tab navigation must respond to the tab host width rather than the viewport");
+assert.match(components, /\.lc-checkin-tab-host > \.lc-checkin__mobile-nav \{\s*display: none !important;/,
+    "wide tabs must not render the mobile bottom navigation");
+assert.match(components, /@container lc-tab \(max-width: 719px\)[\s\S]*?\.lc-checkin-tab-host > \.lc-checkin__mobile-nav[\s\S]*?display: grid !important;/,
+    "narrow split tabs must recover the bottom navigation");
+assert.match(components, /12\.0 release geometry guard[\s\S]*?@container lc5 \(max-width: 430px\)[\s\S]*?grid-template-areas:[\s\S]*?"icon action"/,
+    "compact Today cards must give actions their own row");
+assert.match(components, /@container lc-dock \(max-width: 719px\)[\s\S]*?\.lc-checkin-dock-host \.lc-checkin--editor \.lc-checkin__template-summary[\s\S]*?display: grid;/,
+    "narrow dock editors must keep the collapsed template entry visible");
 assert.match(read("src", "render", "review.ts"), /data-action="archived"/, "archived entry button stays in the review page header");
 assert.doesNotMatch(plugin, /\["archived", t\("nav\.archived"\), "archive"\]/, "archived stays out of the top navigation (reached from review, T-032 user feedback)");
 
@@ -248,8 +268,10 @@ assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-che
 const pluginSource = read("src", "index.ts");
 assert.match(pluginSource, /pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>\(\)/,
     "scroll memory must be per-surface and garbage-collected with it");
-assert.match(pluginSource, /tops\.set\(this\.scrollCapturePage, previousScroller\.scrollTop\)/,
-    "the pre-render scroll position must be captured under the old page key");
+assert.match(pluginSource, /tops\.set\(this\.renderedPages\.get\(root\) \?\? "today", previousScroller\.scrollTop\)/,
+    "each surface must capture its own previously rendered page before restoring the destination page");
+assert.match(pluginSource, /tops\.set\("editor", 0\)/,
+    "opening a new editor session must start at the title and template entry point");
 assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(this\.currentPage\) \?\? 0/,
     "the post-render scroll position must be restored for the new page");
 

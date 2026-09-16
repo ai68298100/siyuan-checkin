@@ -61,6 +61,7 @@ export function renderRecentRecordView(record: RecentRecordView | undefined, red
 
 export function renderOccasionBannerView(occasionStore: OccasionStore, date: Date): string {
     const items = getVisibleOccasions(occasionStore, date).slice(0, 3);
+    const stateClass = items.length ? "" : " is-empty";
     const chips = items.map((item) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
         const timing = item.status === "today" ? t("review.today") : t("review.daysLater", {n: item.daysUntil});
@@ -68,7 +69,7 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
         const action = item.status === "today" ? (completed ? t("today.occasionUndo") : t("today.occasionComplete")) : timing;
         return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="${item.status === "today" ? "toggle-occasion" : "occasions"}" data-occasion-id="${escapeHtml(item.id)}" data-occasion-date="${escapeHtml(item.occurrenceDate)}" aria-pressed="${completed}" title="${escapeHtml(item.name)} · ${action}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(action)}</small></button>`;
     }).join("");
-    return `<section class="lc-checkin__occasion-banner" aria-label="${t("today.occasionTitle")}">
+    return `<section class="lc-checkin__occasion-banner${stateClass}" aria-label="${t("today.occasionTitle")}">
             <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
             <div class="lc-checkin__occasion-banner-body">
                 <strong>${t("today.occasionTitle")}</strong>

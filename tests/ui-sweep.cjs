@@ -14,8 +14,8 @@ function loadPlaywright() {
     throw new Error("Playwright is unavailable.");
 }
 const {chromium} = loadPlaywright();
-const projectRoot = "D:/AI/Codex/siyuan-checkin";
-const outDir = path.join(projectRoot, ".artifacts", "ui-sweep");
+const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirname, "..");
+const outDir = path.resolve(process.env.CHECKIN_QA_OUTPUT_ROOT || path.join(projectRoot, ".artifacts", "ui-sweep"));
 fs.mkdirSync(outDir, {recursive: true});
 
 const now = new Date();

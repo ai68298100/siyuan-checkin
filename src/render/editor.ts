@@ -58,7 +58,9 @@ export function renderEditorView(ctx: EditorViewContext): string {
         initialCompletionSource === "tomato" ? t("source.tomato") : t("source.manual"),
         formatScheduleLabel(schedule),
     ].filter(Boolean).join(" · ");
-    const templates = !item ? `<section class="lc-checkin__template-section">
+    const templates = !item ? `<details class="lc-checkin__template-section" data-template-disclosure>
+            <summary class="lc-checkin__template-summary"><span>${t("editor.templateHeading")}</span><em>${CHECKIN_TEMPLATES.length}</em><small>${t("editor.templateHint")}</small><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
+            <div class="lc-checkin__template-browser">
             <div class="lc-checkin__field-heading"><span>${t("editor.templateHeading")}</span><small>${t("editor.templateHint")}</small></div>
             <label class="lc-checkin__search-field">
                 <span class="lc-checkin__visually-hidden">${t("editor.templateSearchAria")}</span>
@@ -76,7 +78,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
         return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(templateNote(template))}" aria-label="${t("item.useTemplate", {name: templateName(template)})}" aria-pressed="false"><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(templateName(template))}</strong><small>${escapeHtml(template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit}`)}</small></button>`;
     }).join("")}</div>${userTemplateMarkup}
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>${t("editor.templateEmpty")}</strong><span>${t("editor.templateEmptyHint")}</span><button type="button" data-action="clear-template-filter">${t("editor.viewAll")}</button></div>
-        </section>` : "";
+            </div>
+        </details>` : "";
     return `<div class="lc-checkin lc-checkin--editor" data-appearance="${ctx.appearance}">
             <header class="lc-checkin__editor-header">
                 <button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button>
@@ -167,7 +170,6 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? t("editor.restore") : t("editor.archive")}</button>` : ""}
             ${renderSaveStatusView(ctx.saveState)}
             ${renderSyncNoticeView(ctx.syncNoticeActive)}
-                </aside>
                 </div>
             </form>
         </div>`;

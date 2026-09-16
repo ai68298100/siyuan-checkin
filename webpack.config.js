@@ -66,6 +66,10 @@ module.exports = (env, argv) => {
         plugins.push(
             new webpack.BannerPlugin({
                 banner: fs.existsSync("LICENSE") ? fs.readFileSync("LICENSE").toString() : "小驴打卡",
+                // Keep the full license banner on executable output only. The
+                // package already ships LICENSE.txt, so duplicating it in CSS
+                // needlessly adds about 1 KiB to every build.
+                include: /\.js$/,
             }),
             new PackageZipPlugin(),
         );
@@ -87,7 +91,13 @@ module.exports = (env, argv) => {
         entry: "./src/index.ts",
         optimization: {
             minimize: production,
-            minimizer: [new EsbuildPlugin()],
+            /* The extracted stylesheet is the largest release asset.  Sass
+               already emits compressed CSS, but css-loader still preserves
+               selector/value whitespace and duplicate-safe formatting.  The
+               existing esbuild minimizer can process CSS assets as well;
+               enabling it here keeps the hard release budget meaningful
+               without changing source-level cascade or layout semantics. */
+            minimizer: [new EsbuildPlugin({css: production})],
         },
         resolve: {
             extensions: [".ts", ".scss", ".js", ".json"],
@@ -105,7 +115,17 @@ module.exports = (env, argv) => {
                     use: [
                         MiniCssExtractPlugin.loader,
                         "css-loader",
-                        "sass-loader",
+                        {
+                            loader: "sass-loader",
+                            options: {
+                                /* Production CSS is shipped as a single asset. Sass's
+                                   compressed emitter removes comments/whitespace without
+                                   changing selectors or runtime layout, keeping the release
+                                   budget focused on actual UI rules. Development stays
+                                   expanded so visual debugging remains readable. */
+                                sassOptions: {outputStyle: production ? "compressed" : "expanded"},
+                            },
+                        },
                     ],
                 },
             ],

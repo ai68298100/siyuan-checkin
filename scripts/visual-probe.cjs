@@ -90,6 +90,89 @@ fs.mkdirSync(outputDir, {recursive: true});
             await page.evaluate((sel) => { document.querySelector(sel)?.dispatchEvent(new MouseEvent("click", {bubbles: true})); }, selector);
             await new Promise((resolve) => setTimeout(resolve, 250));
         }
+        const metrics = await page.evaluate((surface) => {
+            const box = (selector) => {
+                const element = document.querySelector(selector);
+                if (!element) return undefined;
+                const rect = element.getBoundingClientRect();
+                const style = getComputedStyle(element);
+                const flexRules = [];
+                const positionRules = [];
+                const walkRules = (rules) => {
+                    for (const rule of rules || []) {
+                        if (rule.cssRules) walkRules(rule.cssRules);
+                        if (rule.selectorText && rule.style?.flex && (rule.selectorText.includes("lc-checkin--editor") || rule.selectorText.includes("lc-checkin-dialog-host")) && element.matches(rule.selectorText)) {
+                            flexRules.push(`${rule.selectorText} => ${rule.style.flex}${rule.style.getPropertyPriority("flex") ? " !important" : ""}`);
+                        }
+                        if (rule.selectorText && rule.style?.position && rule.selectorText.includes("lc-checkin__mobile-nav") && element.matches(rule.selectorText)) {
+                            positionRules.push(`${rule.selectorText} => ${rule.style.position}${rule.style.getPropertyPriority("position") ? " !important" : ""}`);
+                        }
+                    }
+                };
+                for (const sheet of document.styleSheets) {
+                    try { walkRules(sheet.cssRules); } catch (_) { /* ignore inaccessible sheets */ }
+                }
+                return {
+                    selector,
+                    tag: element.tagName,
+                    className: element.className,
+                    inlineStyle: element.getAttribute("style") || "",
+                    parentClass: element.parentElement?.className || "",
+                    x: Math.round(rect.x),
+                    y: Math.round(rect.y),
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                    display: style.display,
+                    position: style.position,
+                    bottom: style.bottom,
+                    offsetParent: element.offsetParent?.className || null,
+                    flex: style.flex,
+                    height: style.height,
+                    minHeight: style.minHeight,
+                    flexRules: flexRules.slice(-12),
+                    positionRules: positionRules.slice(-12),
+                    overflowY: style.overflowY,
+                };
+            };
+            const scroller = document.querySelector(".lc-checkin");
+            return {
+                surface,
+                viewport: {width: innerWidth, height: innerHeight},
+                scroll: scroller ? {
+                    clientHeight: scroller.clientHeight,
+                    scrollHeight: scroller.scrollHeight,
+                    scrollTop: scroller.scrollTop,
+                } : undefined,
+                boxes: [
+                    box(".lc-checkin__mobile-topbar"),
+                    box(".lc-checkin__topbar-leading"),
+                    box(".lc-checkin__topbar-title"),
+                    box(".lc-checkin__topbar-trailing"),
+                    box(".lc-checkin__layout"),
+                    box(".lc-checkin__editor-header"),
+                    box(".lc-checkin__template-section"),
+                    box(".lc-checkin__field--name"),
+                    box(".lc-checkin__field--icons"),
+                    box(".lc-checkin__kind-field"),
+                    box(".lc-checkin__occasion-list-panel"),
+                    box(".lc-checkin__occasion-form-panel"),
+                    box(".lc-checkin__mobile-nav"),
+                ].filter(Boolean),
+                details: surface === "editor" ? [
+                    ".lc-checkin-host--mobile",
+                    ".lc-checkin-dialog-host",
+                    ".lc-checkin--editor",
+                    ".lc-checkin--editor > .lc-checkin__form",
+                    ".lc-checkin--editor .lc-checkin__editor-columns",
+                    ".lc-checkin--editor .lc-checkin__form-scroll",
+                    ".lc-checkin--editor .lc-checkin__editor-side",
+                    ".lc-checkin--editor .lc-checkin__editor-preview",
+                    ".lc-checkin--editor .lc-checkin__advanced",
+                    ".lc-checkin--editor .lc-checkin__editor-actions",
+                ].map((selector) => box(selector)).filter(Boolean) : undefined,
+            };
+        }, name);
+        console.log(`probe: ${name} metrics = ${JSON.stringify(metrics)}`);
         await page.screenshot({path: path.join(outputDir, `${name}-${theme}.png`), fullPage: false});
         /* 长页面再截一张全页，便于看折叠区以下的内容 */
         if (name === "review") await page.screenshot({path: path.join(outputDir, `${name}-${theme}-full.png`), fullPage: true});

@@ -84,7 +84,14 @@ run(`git push origin v${version}`);
 const sha = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, "package.zip"))).digest("hex");
 const notesFile = process.argv[4] || `release-notes-${version}.md`;
 let notes = fs.readFileSync(notesFile, "utf8");
-notes = notes.replace(/SHA-256\*\*: `[a-f0-9]+`/, `SHA-256**: \`${sha}\``);
+/* Accept both the historical Markdown-bold label and the current bilingual
+   release-note label.  A release must never silently publish an all-zero or
+   stale digest when the notes template changes its punctuation. */
+const hashLine = /(^\s*-\s*SHA-256(?:\*\*)?\s*[:：]\s*`)[0-9a-fA-F]{64}(`)/mi;
+if (!hashLine.test(notes)) {
+    throw new Error(`发布说明缺少可替换的 SHA-256 行: ${notesFile}`);
+}
+notes = notes.replace(hashLine, `$1${sha}$2`);
 const tmpNotes = path.join(root, ".artifacts", `notes-${version}.md`);
 fs.mkdirSync(path.dirname(tmpNotes), {recursive: true});
 fs.writeFileSync(tmpNotes, notes, "utf8");
