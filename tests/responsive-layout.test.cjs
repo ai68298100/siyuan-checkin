@@ -111,4 +111,26 @@ assert.match(components, /Today card foundations[\s\S]*\.lc-checkin__item-tag\s*
 assert.match(components, /Review jump rail:[\s\S]*\.lc-checkin--review \.lc-checkin__review-subnav\s*\{[\s\S]*top:\s*0\s*!important;[\s\S]*background:\s*var\(--lc-checkin-bg\);/,
     "review jump rail must dock to the scrollport edge with an opaque background");
 
+/* Native details elements expose their descendants in static DOM snapshots.
+   Keep explicit closed-state guards so menus and help panels cannot consume
+   layout space before the user opens them. */
+assert.match(components, /\.lc-checkin__review-more:not\(\[open\]\)\s*>\s*\.lc-checkin__review-more-menu\s*\{\s*display:\s*none;/,
+    "the review more-tools menu must stay hidden while its details element is closed");
+assert.match(components, /:is\(\.lc-checkin__occasion-help,\s*\.lc-checkin__occasion-actions-help\):not\(\[open\]\)\s*>\s*div\s*\{\s*display:\s*none;/,
+    "occasion help content must stay hidden while its details element is closed");
+assert.match(components, /details:not\(\[open\]\)\s*>\s*:not\(summary\)\s*\{\s*display:\s*none\s*!important;/,
+    "all closed details bodies must stay out of layout in embedded WebViews");
+assert.match(source, /replaceOccasionIcon[\s\S]*data-occasion-edit/, "icon normalization must preserve occasion action labels");
+assert.match(source, /data-occasion-toggle.*classList\.contains\("is-on"\)/, "occasion toggle icon state must come from its stable state class");
+
+/* Compact editors use the surface as the only page scroll owner.  The icon
+   catalogue is a bounded in-flow panel, so expanding templates or icons does
+   not create a nested full-page scroller or clip the save controls. */
+assert.match(components, /@container\s+lc-dock\s*\(max-width:\s*719px\)[\s\S]*\.lc-checkin-dock-host \.lc-checkin--editor \.lc-checkin__form-scroll\s*\{[^}]*max-height:\s*none;[^}]*overflow:\s*visible;/,
+    "narrow dock editors must delegate page scrolling to their outer surface");
+assert.match(components, /@container\s+lc5\s*\(max-width:\s*719px\)[\s\S]*\.lc-checkin__icon-popup\[open\] \.lc-checkin__popup-body\s*\{[^}]*position:\s*static;[^}]*max-height:\s*min\(52dvh,\s*420px\);[^}]*overflow:\s*auto;/,
+    "compact icon catalogues must open in flow with their own bounded scrolling area");
+assert.match(components, /@container\s+lc5\s*\(max-width:\s*340px\)[\s\S]*\.lc-checkin--today \.lc-checkin__header-actions\s*\{[^}]*flex-wrap:\s*nowrap;[^}]*overflow:\s*hidden;/,
+    "the 320px Today header must keep streak and progress badges on one compact row");
+
 console.log("Responsive surface layout checks passed.");

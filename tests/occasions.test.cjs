@@ -17,6 +17,7 @@ assert.match(viewSource, /data-occasion-filter="\$\{key\}"/, "occasion manager e
 assert.match(viewSource, /data-occasion-clear-filters/, "occasion manager can return to the full list");
 assert.match(viewSource, /occ\.remindSummary/, "occasion rows show reminder lead time");
 assert.match(viewSource, /data-occasion-toitem/, "occasion rows retain the explicit check-in conversion action");
+assert.match(viewSource, /lc-checkin__action-icon[\s\S]*lc-checkin__action-label/, "occasion actions keep icon and label nodes separate");
 assert.doesNotMatch(viewSource, /lc-checkin__item(?:\s|\")/, "occasion manager does not masquerade as a Today check-in card");
 assert.match(bindSource, /occasionStatusFilter/);
 assert.match(bindSource, /occasionKindFilter/);

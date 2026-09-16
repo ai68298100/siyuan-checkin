@@ -40,7 +40,9 @@ assert.match(stylesSource, /\.lc-checkin__priority-reminder/);
 assert.match(stylesSource, /\.lc-checkin__priority-reminder\.is-overdue/);
 assert.match(stylesSource, /\.lc-checkin__priority-reminder-more summary/);
 assert.match(stylesSource, /@container lc5 \(max-width: 520px\)/);
-assert.match(stylesSource, /grid-template-rows: 24px 14px/);
+assert.match(stylesSource, /grid-template-rows: 24px 13px/);
+assert.match(stylesSource, /@container lc5 \(max-width: 719px\)[\s\S]*?\.lc-checkin__mobile-nav button small \{ font-size: 9px; \}/,
+    "the final compact navigation layer must keep labels readable");
 assert.match(stylesSource, /priority-reminder-row-mark/);
 assert.match(i18nSource, /"today\.priorityTitle"/);
 assert.match(i18nSource, /"today\.priorityActionAria"/);

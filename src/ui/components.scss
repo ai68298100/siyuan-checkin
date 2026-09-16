@@ -1819,7 +1819,7 @@
     .lc-checkin__mobile-nav { min-height: 48px; }
     .lc-checkin__mobile-nav button { min-height: 40px; }
     .lc-checkin__mobile-nav button span { height: 15px; font-size: 15px; }
-    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin__mobile-nav button small { font-size: 9px; }
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
     .lc-checkin--today [data-action="add"] { width: 44px; height: 44px; min-width: 44px; bottom: calc(58px + env(safe-area-inset-bottom)); }
     .lc-checkin-dialog-host--mobile .lc-checkin__header,
@@ -2110,7 +2110,7 @@
     .lc-checkin__mobile-nav { min-height: 50px; }
     .lc-checkin__mobile-nav button { min-height: 42px; }
     .lc-checkin__mobile-nav button span { height: 16px; font-size: 15px; }
-    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin__mobile-nav button small { font-size: 9px; }
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
     .lc-checkin--today [data-action="add"] { bottom: calc(60px + env(safe-area-inset-bottom)); }
     .lc-checkin--today .lc-checkin__group { margin-top: 12px; }
@@ -2142,7 +2142,7 @@
     .lc-checkin__summary-stats div { min-height: 58px; }
     .lc-checkin__insight-stats strong,
     .lc-checkin__summary-stats strong { font-size: 16px; }
-    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin__mobile-nav button small { font-size: 9px; }
 }
 /* History event foundation and mobile entrance motion. */
 @keyframes lc-checkin-mobile-enter { from { opacity: .92; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -5865,6 +5865,13 @@
     font-size: 14px;
 }
 .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > span { display: none; }
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > .lc-checkin__action-icon {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+}
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > .lc-checkin__action-label { display: none; }
 .lc-checkin--occasions .lc-checkin__occasion-row-title { display: flex; align-items: center; gap: 7px; }
 .lc-checkin--occasions .lc-checkin__occasion-row-meta { gap: 4px 8px; line-height: 1.3; }
 .lc-checkin--occasions .lc-checkin__occasion-status {
@@ -6694,8 +6701,22 @@
 .lc-checkin--editor .lc-checkin__icon-results { max-height: 430px; }
 .lc-checkin--editor .lc-checkin__icon-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
 @container lc5 (max-width: 719px) {
-    .lc-checkin__icon-popup[open] .lc-checkin__popup-body { max-height: min(64vh, 520px); }
-    .lc-checkin--editor .lc-checkin__icon-results { max-height: 380px; }
+    /* 窄端把图标目录作为流内大面板展开。绝对定位的旧面板会被
+       form-scroll 的 overflow 裁掉，手机上实际只剩约一行可见内容；
+       流内面板由自身承担目录滚动，也不会覆盖后续表单。 */
+    .lc-checkin__icon-popup[open] .lc-checkin__popup-body {
+        position: static;
+        inset: auto;
+        width: 100%;
+        max-width: 100%;
+        max-height: min(52dvh, 420px);
+        box-sizing: border-box;
+        margin-top: 6px;
+        overflow: auto;
+        transform: none;
+    }
+    .lc-checkin--editor .lc-checkin__icon-results { max-height: none; overflow: visible; }
+    .lc-checkin--editor .lc-checkin__icon-grid { grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); }
 }
 
 /* 尺寸预览条：选中图标按 列表16/标签20/卡片28/大图40 四档同屏呈现 */
@@ -6949,10 +6970,13 @@
 
 .lc-checkin__mobile-nav button {
     display: grid !important;
-    grid-template-rows: 24px 14px;
+    grid-template-rows: 24px 13px;
     align-content: center;
     justify-items: center;
     gap: 1px;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 .lc-checkin__mobile-nav button span {
     display: grid;
@@ -6969,14 +6993,41 @@
 }
 .lc-checkin__mobile-nav button small {
     width: 100%;
-    height: 14px;
-    line-height: 14px;
+    height: 13px;
+    overflow: hidden;
+    line-height: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     text-align: center;
 }
 .lc-checkin__mobile-nav .lc-checkin__mobile-nav-add {
-    grid-template-rows: 24px 14px;
+    grid-template-rows: 24px 13px;
     align-content: center;
     justify-items: center;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    min-height: 42px;
+    margin: 0;
+    border: 0;
+    border-radius: 10px;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    box-shadow: none;
+}
+.lc-checkin__mobile-nav .lc-checkin__mobile-nav-add > span {
+    width: 32px;
+    height: 24px;
+    color: var(--lc-checkin-accent-contrast);
+    background: var(--lc-checkin-accent-fill);
+    border-radius: 999px;
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
+}
+.lc-checkin__mobile-nav .lc-checkin__mobile-nav-add > small {
+    color: var(--lc-checkin-muted);
+}
+.lc-checkin__mobile-nav .lc-checkin__mobile-nav-add.is-selected > small {
+    color: var(--lc-checkin-accent-text);
 }
 
 .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav {
@@ -6990,15 +7041,21 @@
 
 @container lc5 (max-width: 719px) {
     .lc-checkin--today .lc-checkin__priority-reminder {
+        display: block;
         gap: 6px;
         margin: 4px 0 6px;
         padding: 5px 8px;
         border-radius: 12px;
     }
     .lc-checkin--today .lc-checkin__priority-reminder-row {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr) max-content;
+        align-items: center;
         gap: 6px;
+        min-width: 0;
         padding: 3px 0;
     }
+    .lc-checkin--today .lc-checkin__priority-reminder > .lc-checkin__priority-reminder-row { display: grid; }
     .lc-checkin--today .lc-checkin__priority-reminder-row.is-primary { padding: 0; }
     .lc-checkin--today .lc-checkin__priority-reminder-row-mark {
         flex-basis: 18px;
@@ -7006,9 +7063,21 @@
         height: 18px;
         font-size: 10px;
     }
-    .lc-checkin--today .lc-checkin__priority-reminder-row-text strong { font-size: 11px; }
+    .lc-checkin--today .lc-checkin__priority-reminder-row-text strong {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 11px;
+        line-height: 1.25;
+        overflow-wrap: normal;
+        word-break: keep-all;
+        white-space: normal;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
     .lc-checkin--today .lc-checkin__priority-reminder-row-text small { font-size: 9px; }
     .lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__text-button {
+        justify-self: end;
+        min-width: 54px;
         min-height: 26px;
         padding-inline: 6px;
         font-size: 10px;
@@ -7207,7 +7276,7 @@
         padding: 2px 1px;
     }
     .lc-checkin__mobile-nav button span { font-size: 16px; }
-    .lc-checkin__mobile-nav button small { font-size: 8px; }
+    .lc-checkin__mobile-nav button small { font-size: 9px; }
 
     .lc-checkin--today .lc-checkin__layout { padding: 6px 10px calc(8px + env(safe-area-inset-bottom)); }
     .lc-checkin--today .lc-checkin__group { margin-top: 6px; }
@@ -7452,8 +7521,10 @@
 
 /* Mobile editor density: reclaim the header/template/form dead space while preserving touch targets. */
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
+    .lc-checkin--editor { position: static; contain: none; }
     .lc-checkin--editor .lc-checkin__editor-header { display: none; }
     .lc-checkin--editor .lc-checkin__layout {
+        position: static;
         padding-bottom: calc(64px + env(safe-area-inset-bottom));
         scroll-padding-bottom: calc(70px + env(safe-area-inset-bottom));
     }
@@ -7462,11 +7533,9 @@
         min-height: 0;
         flex-direction: column;
         gap: 6px;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: visible;
         padding: 0;
         scroll-padding: 6px 0 calc(70px + env(safe-area-inset-bottom));
-        overscroll-behavior: contain;
         touch-action: pan-y;
     }
     .lc-checkin--editor .lc-checkin__template-section {
@@ -7656,7 +7725,7 @@
         padding-bottom: 5px;
     }
     .lc-checkin--editor .lc-checkin__editor-actions {
-        position: fixed;
+        position: absolute;
         right: 0;
         bottom: calc(var(--lc-checkin-nav-height) + 10px + env(safe-area-inset-bottom));
         left: 0;
@@ -8218,6 +8287,257 @@
     }
 }
 
+/* Review action rail and hero clarity pass.
+   Range selection is navigation state; report/archive/export are actions. Keep
+   those concerns in separate visual groups so the desktop header no longer
+   looks like a wrapped pile of unrelated buttons. The same rail collapses to
+   two compact rows on a phone, while the overflow menu keeps all actions
+   reachable without stealing the summary width. */
+.lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    justify-items: end;
+    gap: 6px;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
+}
+.lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+    grid-column: 1;
+    grid-row: 1;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+}
+.lc-checkin--review .lc-checkin__review-tools {
+    position: relative;
+    z-index: 4;
+    display: flex;
+    grid-column: 1;
+    grid-row: 2;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+@container lc5 (min-width: 960px) {
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .lc-checkin--review .lc-checkin__review-tools {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+.lc-checkin--review .lc-checkin__review-tool-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding: 2px 4px 2px 8px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 999px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin--review .lc-checkin__review-tool-button,
+.lc-checkin--review .lc-checkin__review-more > summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 999px;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.lc-checkin--review .lc-checkin__review-tool-button:hover,
+.lc-checkin--review .lc-checkin__review-more > summary:hover,
+.lc-checkin--review .lc-checkin__review-more[open] > summary {
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin--review .lc-checkin__review-more {
+    position: relative;
+    flex: 0 0 auto;
+}
+.lc-checkin--review .lc-checkin__review-more > summary {
+    gap: 4px;
+    padding-inline: 10px;
+    border: 1px solid var(--lc-checkin-border);
+    background: var(--lc-checkin-surface);
+    list-style: none;
+}
+.lc-checkin--review .lc-checkin__review-more > summary::-webkit-details-marker { display: none; }
+.lc-checkin--review .lc-checkin__review-more > summary > span {
+    color: currentColor;
+    font-size: 12px;
+    line-height: 1;
+    transition: transform var(--lc-checkin-motion-fast);
+}
+.lc-checkin--review .lc-checkin__review-more[open] > summary > span { transform: rotate(180deg); }
+.lc-checkin--review .lc-checkin__review-more-menu {
+    position: absolute;
+    z-index: var(--lc-checkin-z-popup);
+    top: calc(100% + 5px);
+    right: 0;
+    display: grid;
+    min-width: 156px;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-surface);
+    box-shadow: var(--lc-checkin-shadow-md);
+}
+.lc-checkin--review .lc-checkin__review-more:not([open]) > .lc-checkin__review-more-menu {
+    display: none;
+}
+.lc-checkin--review .lc-checkin__review-more-menu .lc-checkin__text-button {
+    display: block;
+    min-height: 30px;
+    padding: 0 9px;
+    border-radius: var(--lc-checkin-radius-sm);
+    color: var(--lc-checkin-text);
+    text-align: left;
+    white-space: nowrap;
+}
+.lc-checkin--review .lc-checkin__review-more-menu .lc-checkin__text-button:hover {
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
+
+/* The hero is a two-track card: copy may grow and wrap, while the percentage
+   keeps a stable numeric column. Guidance is intentionally not ellipsized;
+   users should be able to read the complete recommendation on every surface. */
+.lc-checkin--review .lc-checkin__review-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    overflow: visible;
+}
+.lc-checkin--review .lc-checkin__review-hero-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+.lc-checkin--review .lc-checkin__review-hero-copy > h2,
+.lc-checkin--review .lc-checkin__review-hero-copy > p,
+.lc-checkin--review .lc-checkin__review-hero-copy > small {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.lc-checkin--review .lc-checkin__review-hero-copy > p {
+    margin: 0;
+    white-space: normal;
+}
+.lc-checkin--review .lc-checkin__review-guidance {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    margin-top: 2px;
+}
+.lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-guidance > :is(.lc-checkin__review-attention, .lc-checkin__review-advice) {
+    display: block;
+    max-width: none;
+    margin: 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.45;
+}
+.lc-checkin--review .lc-checkin__review-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+}
+.lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
+    min-width: 3ch;
+    align-self: center;
+    text-align: right;
+    white-space: nowrap;
+}
+
+@container lc5 (max-width: 719px) {
+    .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        justify-items: stretch;
+        gap: 4px;
+        overflow: visible;
+    }
+    .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .lc-checkin--review .lc-checkin__review-tools {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .lc-checkin--review .lc-checkin__review-tool-button,
+    .lc-checkin--review .lc-checkin__review-more > summary {
+        min-height: 27px;
+        padding-inline: 8px;
+        font-size: 10.5px;
+    }
+    .lc-checkin--review .lc-checkin__review-more-menu {
+        right: 0;
+        min-width: min(190px, calc(100vw - 28px));
+    }
+    .lc-checkin--review .lc-checkin__review-hero {
+        grid-template-columns: minmax(0, 1fr) max-content;
+        gap: 8px;
+        padding: 9px 10px;
+    }
+    .lc-checkin--review .lc-checkin__review-hero-copy { gap: 1px; }
+    .lc-checkin--review .lc-checkin__review-hero-copy > p {
+        display: block;
+        max-width: none;
+        overflow: visible;
+        -webkit-line-clamp: unset;
+        white-space: normal;
+    }
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-guidance > :is(.lc-checkin__review-attention, .lc-checkin__review-advice) {
+        display: block;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+    }
+    .lc-checkin--review .lc-checkin__review-hero-actions { margin-top: 2px; }
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
+        align-self: start;
+        font-size: 26px;
+    }
+}
+
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        justify-items: stretch;
+        overflow: visible;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs { width: 100%; justify-content: flex-start; }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-tools { width: 100%; justify-content: space-between; }
+}
+
 /* 页签宿主没有 dialog container，因此使用同样的可用宽公式；在
    2000px 以上再放宽到内容阶梯的 1780px 档。 */
 .lc-checkin-tab-host > .lc-checkin__topnav {
@@ -8274,15 +8594,15 @@
         margin: 2px 0;
         line-height: 1.35;
     }
-    .lc-checkin--review .lc-checkin__review-hero :is(.lc-checkin__review-attention,
+    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-guidance > :is(.lc-checkin__review-attention,
         .lc-checkin__review-advice) {
-        display: inline-block;
-        max-width: 48%;
-        margin: 2px 8px 0 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        vertical-align: middle;
-        white-space: nowrap;
+        display: block;
+        max-width: none;
+        margin: 0;
+        overflow: visible;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+        white-space: normal;
     }
     .lc-checkin--review .lc-checkin__review-hero .lc-checkin__text-button {
         min-height: 28px;
@@ -8381,13 +8701,78 @@
     }
 }
 
-/* Mobile editor final spacing pass: the editor keeps a full-height surface so
-   the action rail can stay visible, but its short-form content should not add
-   another artificial bottom cushion.  Scroll padding remains explicit on the
-   form scroller, so the fixed action rail still cannot cover the last field. */
+/* Settings narrow-control guard: labels and controls share a bounded grid so
+   long translated hints, selects, and snapshot buttons cannot push the card
+   wider than the mobile surface.  The final host-scoped layer intentionally
+   follows older flex rules; dock gets the same contract through its own query. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(96px, min(44%, 180px));
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row > :is(select, input[type="number"], input[type="range"], .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) {
+    justify-self: end;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row > select,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row > input[type="number"],
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row > input[type="range"] {
+    width: 100%;
+}
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-inline {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    overflow: hidden;
+}
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-inline > * {
+    min-width: 0;
+    max-width: 100%;
+}
+@container lc5 (max-width: 360px) {
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row {
+        grid-template-columns: minmax(0, 1fr) minmax(84px, 42%);
+        gap: 6px;
+    }
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-label small {
+        overflow-wrap: anywhere;
+    }
+}
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(96px, min(44%, 180px));
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > :is(select, input[type="number"], input[type="range"], .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) {
+        justify-self: end;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > select,
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > input[type="number"],
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > input[type="range"] { width: 100%; }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-inline { flex-wrap: wrap; justify-content: flex-end; overflow: hidden; }
+}
+@container lc-dock (max-width: 340px) {
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row > :is(select, input[type="number"], input[type="range"], .lc-checkin__settings-inline, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-value) { justify-self: stretch; }
+}
+
+/* Mobile editor final spacing pass: the editor keeps a full-height surface and
+   reserves exactly one action-rail height.  The rail is anchored to the plugin
+   host (not the browser viewport), so dialog/dock containment cannot make it
+   drift with the scrolling document. */
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {
     .lc-checkin--editor .lc-checkin__layout {
-        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        position: static;
+        padding-bottom: calc(64px + env(safe-area-inset-bottom));
     }
 
     .lc-checkin--editor .lc-checkin__form-scroll {
@@ -8485,6 +8870,11 @@
    topbar), but it still needs the editor title and the collapsed template
    entry point. */
 @container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__form-scroll {
+        max-height: none;
+        overflow: visible;
+    }
+
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__template-section {
         display: block;
         min-height: 38px;
@@ -8552,3 +8942,378 @@
         max-width: 100%;
     }
 }
+
+/* ============================================================
+   T-120 事项/宿主几何收口
+
+   事项模板在窄列中改为两列网格，分类胶囊只承担筛选，不再把一长串
+   文本挤成横向溢出；新增/操作按钮提供原生说明入口。桌面宿主把滚动
+   面与顶栏拆成明确的 flex 轨道，避免 child height:100% 与顶栏叠加后
+   出现顶栏上移或底部空白。
+   ============================================================ */
+
+/* 事项模板与按钮说明（所有容器共享）。 */
+.lc-checkin--occasions .lc-checkin__section-heading:has(:is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+}
+.lc-checkin--occasions .lc-checkin__occasion-list-panel .lc-checkin__section-heading {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.lc-checkin--occasions .lc-checkin__occasion-form-hint {
+    display: block;
+    overflow: hidden;
+    margin-top: 2px;
+    color: var(--lc-checkin-muted);
+    font-size: 10px;
+    font-weight: 450;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    box-sizing: border-box;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 50%;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+    font-size: 12px;
+    font-weight: 750;
+    line-height: 1;
+    list-style: none;
+    cursor: pointer;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary::-webkit-details-marker { display: none; }
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary:hover,
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help)[open] > summary {
+    border-color: var(--lc-checkin-accent-text);
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > div {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    margin-top: 6px;
+    padding: 7px 9px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 8px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-surface);
+    font-size: 10px;
+    line-height: 1.35;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help):not([open]) > div {
+    display: none;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help)[open] {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help)[open] > summary {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+}
+.lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help)[open] > div {
+    grid-column: 1 / -1;
+    grid-row: 2;
+}
+
+.lc-checkin--occasions .lc-checkin__occasion-template-browser-head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 18px;
+    margin-bottom: 4px;
+    color: var(--lc-checkin-muted);
+    font-size: 10px;
+    line-height: 1.3;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-browser-head > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-browser-head > em {
+    flex: 0 0 auto;
+    color: var(--lc-checkin-accent-text);
+    font-size: 9px;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-categories {
+    gap: 4px;
+    padding: 1px 1px 3px;
+    scrollbar-width: none;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-categories::-webkit-scrollbar { display: none; }
+.lc-checkin--occasions .lc-checkin__occasion-template-categories button {
+    display: inline-flex;
+    min-height: 26px;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-categories button em {
+    min-width: 14px;
+    padding: 1px 3px;
+    border-radius: 999px;
+    color: var(--lc-checkin-muted);
+    background: var(--lc-checkin-muted-surface);
+    font-size: 8px;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-categories button.is-active em {
+    color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin--occasions .lc-checkin__occasion-templates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+    gap: 5px;
+    margin: 0;
+    padding: 0 0 2px;
+    border-bottom: 0;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template {
+    width: 100%;
+    min-width: 0;
+    min-height: 30px;
+    justify-content: flex-start;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 9px;
+    text-align: left;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-icon {
+    display: grid;
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    font-size: 14px;
+    line-height: 1;
+}
+.lc-checkin--occasions .lc-checkin__occasion-template-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Wide surfaces: the list/form height follows content, not the sibling's
+   100% height.  The direct child is the only scroll owner below the topbar. */
+@container lc-dialog (min-width: 720px) {
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin {
+        flex: 1 1 0%;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow: auto;
+        box-sizing: border-box;
+    }
+}
+@container lc-tab (min-width: 720px) {
+    .lc-checkin-tab-host > .lc-checkin {
+        flex: 1 1 0%;
+        height: auto;
+        min-height: 0;
+        max-height: none;
+        overflow: auto;
+        box-sizing: border-box;
+    }
+}
+
+/* Mobile/tight dock templates: category tabs stay one horizontal strip and
+   template cards use a two-column grid, so long names no longer push the form
+   below an unexplained blank area. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar)) {
+    .lc-checkin--occasions .lc-checkin__occasion-form-hint { display: none; }
+    .lc-checkin--occasions .lc-checkin__occasion-template-browser-head { font-size: 9px; }
+    .lc-checkin--occasions .lc-checkin__occasion-template-categories button { min-height: 25px; padding-inline: 7px; }
+    .lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser {
+        max-height: 190px;
+        overflow: hidden;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-templates {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: 144px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-template { min-height: 29px; padding-inline: 6px; font-size: 10.5px; }
+    .lc-checkin--occasions :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary { width: 24px; height: 24px; }
+}
+
+/* Dock: five bottom actions always share equal tracks; item actions may shrink
+   inside a narrow sidebar but never force a horizontal scrollbar. */
+@container lc-dock (max-width: 719px) {
+    /* The narrow-dock column override must also replace the three-column
+       template-area from the desktop card.  Leaving the old area map in
+       place makes it invalid (two tracks vs three names), so Chromium falls
+       back to auto-placement; at ~460px the action row then paints over the
+       item body.  Use an explicit two-row map for every compact dock width. */
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item {
+        grid-template-columns: 34px minmax(0, 1fr);
+        grid-template-areas:
+            "icon body"
+            "icon action"
+            "exact exact";
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action {
+        grid-area: action;
+    }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        align-items: stretch;
+    }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > button {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        justify-items: center;
+        align-content: center;
+        overflow: hidden;
+    }
+    .lc-checkin-dock-host > .lc-checkin__mobile-nav > .lc-checkin__mobile-nav-add {
+        width: 100%;
+        max-width: none;
+        justify-self: stretch;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action {
+        display: flex;
+        flex-wrap: nowrap;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        gap: 3px;
+        overflow: hidden;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action > :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) {
+        flex: 0 0 28px;
+        width: 28px;
+        min-width: 28px;
+        padding: 0;
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action > :is(.lc-checkin__record-button, .lc-checkin__quick-button) {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        padding-inline: 6px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-template-browser-head { font-size: 9px; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser {
+        max-height: 180px;
+        overflow: hidden;
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: 136px;
+        overflow-y: auto;
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-template { min-height: 28px; padding-inline: 5px; font-size: 10px; }
+}
+@container lc-dock (max-width: 340px) {
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item {
+        grid-template-areas:
+            "icon body"
+            "action action"
+            "exact exact";
+    }
+    .lc-checkin-dock-host .lc-checkin--today .lc-checkin__item-action { grid-area: action; }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 28px minmax(0, 1fr);
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+        grid-column: 2;
+        justify-self: stretch;
+        width: 100%;
+        min-width: 0;
+        justify-content: start;
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* At the 320px phone baseline the Today title and streak/count badges must
+   share one compact row.  Letting the badges wrap creates an otherwise empty
+   second header line before the progress bar; the streak keeps its meaning via
+   ellipsis while the numeric completion count remains fully visible. */
+@container lc5 (max-width: 340px) {
+    .lc-checkin--today .lc-checkin__header {
+        flex-wrap: nowrap;
+        gap: 6px;
+        min-height: 40px;
+        margin-bottom: 4px;
+        padding-bottom: 6px;
+    }
+    .lc-checkin--today .lc-checkin__header-titles {
+        flex: 1 1 auto;
+        gap: 5px;
+        min-width: 0;
+        overflow: hidden;
+    }
+    .lc-checkin--today .lc-checkin__header-titles > .lc-checkin__title {
+        flex: 0 0 auto;
+        min-width: 2.4em;
+        max-width: none;
+        overflow: visible;
+        text-overflow: clip;
+        white-space: nowrap;
+        font-size: 24px;
+    }
+    .lc-checkin--today .lc-checkin__header-date { flex: 1 1 auto; min-width: 0; }
+    .lc-checkin--today .lc-checkin__header-actions {
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: 48%;
+        flex-wrap: nowrap;
+        gap: 3px;
+        overflow: hidden;
+    }
+    .lc-checkin--today .lc-checkin__header-streak {
+        min-width: 0;
+        max-width: 78px;
+        overflow: hidden;
+        padding-inline: 6px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10px;
+    }
+    .lc-checkin--today .lc-checkin__header-actions .lc-checkin__count {
+        flex: 0 0 auto;
+        padding: 3px 7px;
+        font-size: 10px;
+    }
+}
+
+/* Native <details> hides its body while closed, but a few embedded WebViews
+   still honour an author-level display rule on a direct child.  Keep the
+   closed state explicit so a folded filter, menu, audit list or template
+   browser can never leak height into the surrounding layout. */
+details:not([open]) > :not(summary) { display: none !important; }

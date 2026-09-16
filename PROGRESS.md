@@ -622,3 +622,22 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 发布提交：`6c35296`；标签：`v12.0.0`；`package.zip`：349,404 bytes。
 - 资产 SHA-256：`4b4dd41976f8a5828005005fd98296025c3531b5965108e5ccd721a5b2364703`；GitHub 资产 API 摘要与本地计算一致。
 - 推送后的 GitHub Actions CI 已成功（run 35055278439）。本轮未同步 `D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin`；真实思源客户端验收仍记录为 B-007。
+
+### 12.0.0 发布后跨端 UI 收口（2026-09-16，T-962~T-969）
+
+- 完成桌面、手机、页签与 dock 的统一维护：设置页增加真实滚动容器导航同步、生命周期清理和每表面唯一 ARIA id；回顾页重组范围/报告/更多工具并解除摘要截断；事项页补足可见帮助、分类数量和代表模板信息。
+- 手机 Today 的提醒行与底栏按 320px 下限收口：提醒正文保持可读，底栏固定五等分，中间新建入口的图标与标签分轨；窄 dock 使用同一语义导航但独立密度规则，宽 dock 保留紧凑 rail。
+- 新建/编辑页改为“表面单滚动所有权”：form-scroll 不再成为第二个整页滚动层，模板/高级项展开后由页面继续滚动；图标目录在窄端改为流内限高面板。手机保存栏锚定宿主并通过点击命中验证，dock 尾部操作可随页面完整滚入。
+- 新增 tests/settings-navigation.test.cjs，扩展响应式结构与 tests/visual-qa.cjs 的关闭 details、真实滚轮、图标面板、保存栏和移动底栏断言。pnpm run test:quality、系统 Chrome 宽度走查、桌面浅/深色视觉 QA 与 mobile frontend 视觉 QA 均通过；10k 事件完整渲染 49ms、横向溢出 0px。
+- 生产 CSS 为 424120 bytes，超过 420KB 告警线但低于 450KB 硬阻断线；Webpack 244KiB 仍是通用性能提示，不是本项目发布失败条件。
+- 参考 royc01/pinch 与 HaoCeans/siyuan-points-reward 后采用同一语义骨架 + 表面密度变体、320px 下限、等分导航和单滚动所有权；未照搬其品牌视觉或双根滚动风险结构。
+- 本轮未 push、未发版、未同步 D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin；真实思源桌面/手机、dock 安全区、软键盘及番茄钟双窗口仍按 B-007 现场复核。
+
+### 12.0.0 发布后回归加固（2026-09-16，T-970~T-974）
+
+- 320px Today 顶栏完成最终几何收口：标题保留最小可读轨道，日期可收缩，连续天数与完成计数保持单行；视觉脚本新增标题宽度、操作行高度和卡片操作不重叠断言。
+- 设置导航补充旧 WebView 兼容：`Element` 全局缺失时安全退出，`scrollTo` options 不被宿主接受时回退到直接 scrollLeft/scrollTop；现代浏览器仍使用平滑定位。
+- 组件层增加闭合 `<details>` 的统一零占位规则，覆盖回顾更多菜单、提醒筛选、事项帮助/模板、设置折叠和审计列表，打开态布局与独立面板滚动保持不变。
+- 事项操作按钮拆分图标与标签节点，归一化过程只替换图标，重绘/停用切换后不丢失 label、title 和 ARIA 语义；窄栏继续隐藏标签以保持固定操作列。
+- 验证：`pnpm run check`、`pnpm run build`、`pnpm run test:quality`、系统 Chrome `width-walkthrough`、桌面浅色/深色 visual QA、mobile frontend visual QA 均通过；10k 事件完整渲染 33ms，横向溢出 0px。
+- 最终生产 CSS 为 425364 bytes，超过 420KB 告警线但低于 450000-byte 硬线；本轮仍未 push、未发版、未同步 `D:\小飞驴的SIYUAN\data\plugins\siyuan-checkin`，B-007 真宿主复核继续开放。

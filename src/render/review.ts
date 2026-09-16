@@ -7,7 +7,6 @@ import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from 
 import {buildYearHeatmap, buildWeeklyCompletionTrend, buildMonthlyEventTrend, renderBarChart, renderLineChart, renderYearHeatmap, summarizeTrend} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
-import {uiIcon} from "../ui/icons";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderCenter, type ReminderFilter, type ReminderUserAction} from "../reminders";
@@ -131,8 +130,23 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const topSummaryItem = rankedSummaryItems[0];
     const attentionSummaryItem = rankedSummaryItems.length > 1 ? rankedSummaryItems[rankedSummaryItems.length - 1] : undefined;
     const hasPeriodRecords = summary.totalEvents > 0;
-    const summaryAdvice = hasPeriodRecords ? (attentionSummaryItem ? t("review.heroAdviceLower", {name: escapeHtml(attentionSummaryItem.name)}) : t("review.heroAdviceKeep")) : "";
-    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div><small>${t("review.heroUntil", {date: escapeHtml(summary.endDate)})}</small><h2>${summaryRate >= 80 ? t("review.heroHigh") : summaryRate >= 50 ? t("review.heroMid") : t("review.heroLow")}</h2><p>${t("review.heroBody", {done: summary.completedItems, scheduled: summary.scheduledItems || 0, events: summary.totalEvents})}${topSummaryItem && hasPeriodRecords ? ` · ${t("review.heroBest", {name: escapeHtml(topSummaryItem.name)})}` : ""}</p>${hasPeriodRecords && attentionSummaryItem ? `<small class="lc-checkin__review-attention">${t("review.heroAttention", {name: escapeHtml(attentionSummaryItem.name), rate: attentionSummaryItem.completionRate})}</small>` : ""}${hasPeriodRecords ? `<small class="lc-checkin__review-advice">${t("review.heroAdviceLabel", {advice: summaryAdvice})}</small>` : ""}<button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item="${escapeHtml(attentionSummaryItem?.name || "")}" data-suggestion-rate="${attentionSummaryItem?.completionRate ?? ""}">${t("review.heroPreview")}</button></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
+    /* Keep each sentence as a real text value and escape it once at the HTML
+       boundary.  The previous inline interpolation escaped project names
+       before composing the sentence, which made it difficult for the UI to
+       expose the complete advice in a tooltip or a wrapped mobile layout. */
+    const summaryAdvice = hasPeriodRecords
+        ? (attentionSummaryItem ? t("review.heroAdviceLower", {name: attentionSummaryItem.name}) : t("review.heroAdviceKeep"))
+        : "";
+    const summaryAttention = hasPeriodRecords && attentionSummaryItem
+        ? t("review.heroAttention", {name: attentionSummaryItem.name, rate: attentionSummaryItem.completionRate})
+        : "";
+    const summaryHeadline = summaryRate >= 80 ? t("review.heroHigh") : summaryRate >= 50 ? t("review.heroMid") : t("review.heroLow");
+    const summaryBody = t("review.heroBody", {done: summary.completedItems, scheduled: summary.scheduledItems || 0, events: summary.totalEvents});
+    const summaryBest = topSummaryItem && hasPeriodRecords ? t("review.heroBest", {name: topSummaryItem.name}) : "";
+    const summaryGuidance = summaryAttention || summaryAdvice
+        ? `<div class="lc-checkin__review-guidance">${summaryAttention ? `<small class="lc-checkin__review-attention" title="${escapeHtml(summaryAttention)}">${escapeHtml(summaryAttention)}</small>` : ""}${summaryAdvice ? `<small class="lc-checkin__review-advice" title="${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}">${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}</small>` : ""}</div>`
+        : "";
+    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div class="lc-checkin__review-hero-copy"><small class="lc-checkin__review-hero-cutoff">${escapeHtml(t("review.heroUntil", {date: summary.endDate}))}</small><h2>${escapeHtml(summaryHeadline)}</h2><p>${escapeHtml(summaryBody)}${summaryBest ? ` · ${escapeHtml(summaryBest)}` : ""}</p>${summaryGuidance}<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item="${escapeHtml(attentionSummaryItem?.name || "")}" data-suggestion-rate="${attentionSummaryItem?.completionRate ?? ""}">${t("review.heroPreview")}</button></div></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
     const projectRows = summary.items.length ? summary.items.map((item) => {
         const quotaMeta = item.quota
             ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
@@ -231,15 +245,13 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const open = ctx.reviewFoldSections.has(id) || (wideDefaultOpen && (id === "trend" || id === "log" || id === "projects" || id === "reminders"));
         return `<details class="lc-checkin__review-fold" data-review-fold="${id}"${open ? " open" : ""}><summary><span>${title}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-fold-body">${body}</div></details>`;
     };
+    const reviewTools = `<div class="lc-checkin__review-tools" role="toolbar" aria-label="${t("review.toolsAria")}"><div class="lc-checkin__review-tool-group" role="group" aria-label="${t("review.reportToolsAria")}"><button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="copy-weekly-report" aria-label="${t("review.copyReportAria")}" title="${t("review.copyReportAria")}">${t("review.copyReport")}</button></div><details class="lc-checkin__review-more"><summary aria-label="${t("review.moreToolsAria")}" title="${t("review.moreToolsAria")}">${t("review.moreTools")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu" role="group" aria-label="${t("review.moreToolsAria")}"><button class="lc-checkin__text-button" type="button" data-action="archived" aria-label="${t("review.archivedAria")}">${t("review.archived")}</button><button class="lc-checkin__text-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}">${t("review.exportJson")}</button><button class="lc-checkin__text-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}">${t("review.exportCsv")}</button></div></details></div>`;
     return `<div class="lc-checkin lc-checkin--review" data-appearance="${ctx.appearance}">
             <header class="lc-checkin__editor-header">
                 <div><div class="lc-checkin__eyebrow">${t("review.eyebrow")}</div><h1 class="lc-checkin__title">${t("review.title")}</h1></div>
                 <div class="lc-checkin__header-actions">
                     <div class="lc-checkin__range-tabs" role="tablist" aria-label="${t("review.rangeAria")}">${tabs}${custom}</div>
-                    <button class="lc-checkin__text-button" type="button" data-action="copy-weekly-report">${t("review.copyReport")}</button>
-                    <button class="lc-checkin__text-button" type="button" data-action="archived">${t("review.archived")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}" title="${t("review.exportJson")}">${uiIcon("summary")}</button>
-                    <button class="lc-checkin__small-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}" title="${t("review.exportCsv")}">${uiIcon("history")}</button>
+                    ${reviewTools}
                 </div>
             </header>
             <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div>${analyticsBadge}</section>

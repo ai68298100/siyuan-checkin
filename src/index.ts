@@ -37,6 +37,7 @@ import {renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
+import {bindSettingsNavigationFor} from "./render/settings-navigation";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
@@ -158,6 +159,9 @@ export default class CheckinPlugin extends Plugin {
     private pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>();
     private renderedPages = new WeakMap<HTMLElement, string>();
     private hostThemeSignatures = new WeakMap<HTMLElement, string>();
+    /* 设置页分类导航监听随宿主表面生命周期清理，避免重渲染后旧滚动回调
+       继续引用已替换的 DOM。 */
+    private settingsNavigationCleanups = new WeakMap<HTMLElement, () => void>();
     private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
@@ -490,6 +494,12 @@ export default class CheckinPlugin extends Plugin {
         this.disposing = true;
         this.settleReady(false);
         this.stopHostThemeWatcher();
+        [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
+            if (!root) return;
+            const cleanup = this.settingsNavigationCleanups.get(root);
+            cleanup?.();
+            this.settingsNavigationCleanups.delete(root);
+        });
         window.removeEventListener("focus", this.handleWindowFocus);
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
@@ -932,6 +942,13 @@ export default class CheckinPlugin extends Plugin {
            every child rule.  Desktop docks remain on their container-query
            layout even when they happen to be narrow. */
         root.classList.toggle("lc-checkin-host--mobile", this.isMobileFrontend);
+        /* 页面重绘会替换 .lc-checkin 内容；先释放设置分类栏的 scroll/
+           observer 监听，避免旧 root 被异步回调短暂保活。 */
+        const cleanupSettingsNavigation = this.settingsNavigationCleanups.get(root);
+        if (cleanupSettingsNavigation) {
+            cleanupSettingsNavigation();
+            this.settingsNavigationCleanups.delete(root);
+        }
         if (this.initializationState !== "ready") {
             const message = this.initializationState === "failed" ? "打卡数据读取失败" : "正在加载打卡数据…";
             root.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
@@ -1045,17 +1062,34 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private normalizeUiIcons(root: HTMLElement) {
+        const replaceOccasionIcon = (button: HTMLElement, name: UiIconName) => {
+            const icon = button.querySelector<HTMLElement>(".lc-checkin__action-icon");
+            if (icon) {
+                icon.replaceChildren(this.iconNode(name));
+                return;
+            }
+            /* Keep compatibility with older markup while migrating only the
+               glyph node; a visible/assistive action label must survive. */
+            const label = button.querySelector<HTMLElement>(".lc-checkin__action-label");
+            const wrapper = document.createElement("span");
+            wrapper.className = "lc-checkin__action-icon";
+            wrapper.setAttribute("aria-hidden", "true");
+            wrapper.appendChild(this.iconNode(name));
+            if (label) button.insertBefore(wrapper, label);
+            else button.replaceChildren(wrapper);
+        };
         root.querySelectorAll<HTMLElement>(".lc-checkin__back-button").forEach((button) => { button.innerHTML = uiIcon("back"); });
         root.querySelector<HTMLElement>("[data-history-month='-1']")?.replaceChildren(this.iconNode("back"));
         root.querySelector<HTMLElement>("[data-history-month='1']")?.replaceChildren(this.iconNode("forward"));
         root.querySelectorAll<HTMLElement>(".lc-checkin__search-symbol, .lc-checkin__today-search > span").forEach((node) => { node.innerHTML = uiIcon("search"); });
         root.querySelectorAll<HTMLElement>("[data-action='clear-search'], [data-action='clear-history-query'], [data-action='clear-template-query'], [data-action='clear-icon-query']").forEach((button) => { button.innerHTML = uiIcon("close"); });
         root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { button.innerHTML = uiIcon("insight"); });
-        root.querySelectorAll<HTMLElement>("[data-action='edit'], [data-occasion-edit]").forEach((button) => { button.innerHTML = uiIcon("edit"); });
+        root.querySelectorAll<HTMLElement>("[data-action='edit']").forEach((button) => { button.innerHTML = uiIcon("edit"); });
+        root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => replaceOccasionIcon(button, "edit"));
         root.querySelectorAll<HTMLElement>("[data-action='focus']").forEach((button) => { button.innerHTML = uiIcon("timer"); });
         root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']").forEach((button) => { button.innerHTML = uiIcon("more"); });
-        root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => { button.innerHTML = uiIcon("trash"); });
-        root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => { button.innerHTML = button.textContent?.includes("✓") ? uiIcon("check") : uiIcon("circle"); });
+        root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => replaceOccasionIcon(button, "trash"));
+        root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => replaceOccasionIcon(button, button.classList.contains("is-on") ? "check" : "circle"));
         root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { button.innerHTML = uiIcon("add"); });
         root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { node.innerHTML = uiIcon("calendar"); });
     }
@@ -1254,12 +1288,9 @@ export default class CheckinPlugin extends Plugin {
         bindFixedInput("[data-setting-dialog-width]", "width");
         bindFixedInput("[data-setting-dialog-height]", "height");
 
-        // Category nav: scroll the requested group into view (sticky rail on wide containers).
-        root.querySelectorAll<HTMLElement>("[data-settings-nav]").forEach((button) => button.addEventListener("click", () => {
-            const target = root.querySelector<HTMLElement>(`[data-settings-group="${button.dataset.settingsNav}"]`);
-            target?.scrollIntoView({behavior: this.reducedMotion ? "auto" : "smooth", block: "start"});
-            root.querySelectorAll("[data-settings-nav]").forEach((entry) => { entry.classList.toggle("is-active", entry === button); entry.setAttribute("aria-current", entry === button ? "true" : "false"); });
-        }));
+        /* 分类栏与右侧卡片双向同步：桌面纵向 rail、移动端横向 sticky
+           rail 共用同一绑定，并在下次重渲染前由 renderInto 释放。 */
+        this.settingsNavigationCleanups.set(root, bindSettingsNavigationFor(root, {reducedMotion: this.reducedMotion}));
     }
 
     /* 方法体外置于 render/today-bindings.ts（T-022 可选收尾）。 */
@@ -1298,7 +1329,7 @@ export default class CheckinPlugin extends Plugin {
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="${contextBackAction}" aria-label="${t("common.back")}" title="${t("common.back")}">${uiIcon("back")}</button>`
             : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">${uiIcon("close")}</button>`;
         const occasionAction = this.currentPage === "occasions"
-            ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("common.add")}">${uiIcon("add")}</button>`
+            ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">${uiIcon("add")}</button>`
             : "";
         return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
@@ -1306,8 +1337,9 @@ export default class CheckinPlugin extends Plugin {
     private renderMobileNav(): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const buttons = entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
-        const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="新建打卡项" title="新建打卡项"><span>${uiIcon("add")}</span><small>${t("nav.add")}</small></button>`;
-        return `<nav class="lc-checkin__mobile-nav" aria-label="打卡导航">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
+        /* 底栏需要短标签保持五列等宽；完整动作名称继续用于辅助名称与 tooltip。 */
+        const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
+        return `<nav class="lc-checkin__mobile-nav" aria-label="${t("app.navAria")}">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
     }
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
     private todayProgressLabel(): string {
@@ -1322,7 +1354,7 @@ export default class CheckinPlugin extends Plugin {
        Both use data-mobile-nav so one binding covers them. */
     private renderRail(): string {
         const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["settings", "设置", "settings"]] as const;
-        return `<nav class="lc-checkin__rail" aria-label="打卡导航">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
@@ -1336,7 +1368,7 @@ export default class CheckinPlugin extends Plugin {
         const dialogActions = ownsDialogChrome
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button></div>`
             : "";
-        return `<nav class="lc-checkin__topnav" aria-label="打卡导航"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */

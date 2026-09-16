@@ -142,6 +142,24 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
 
     const goToday = async () => { const btn = page.locator(`.lc-checkin__mobile-nav [data-mobile-nav="today"]`); if (await btn.count() && await btn.isVisible().catch(() => false)) await btn.click(); else await page.locator(`.lc-checkin__topnav [data-mobile-nav="today"]`).evaluate((b) => b.click()); };
     const results = {today: await inspect("today")};
+    results.todayHeader = await page.locator(".lc-checkin--today").evaluate((surface) => {
+        const header = surface.querySelector(".lc-checkin__header");
+        const titles = surface.querySelector(".lc-checkin__header-titles");
+        const title = surface.querySelector(".lc-checkin__title");
+        const date = surface.querySelector(".lc-checkin__header-date");
+        const actions = surface.querySelector(".lc-checkin__header-actions");
+        const box = (element) => {
+            const rect = element?.getBoundingClientRect();
+            return rect ? {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height} : undefined;
+        };
+        return {
+            flexWrap: header ? getComputedStyle(header).flexWrap : "",
+            titles: box(titles),
+            title: box(title),
+            date: box(date),
+            actions: box(actions),
+        };
+    });
     results.dragSort = await (async () => {
         const handles = page.locator("[data-drag-handle]");
         const count = await handles.count();
@@ -310,6 +328,66 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     await goToday();
     await openSurface("add", "[data-action='add']");
     results.narrowEditor = await inspect("narrow-editor");
+    await page.locator(".lc-checkin__template-section").evaluate((element) => { element.open = true; });
+    await page.locator("[data-advanced]").evaluate((element) => { element.open = true; });
+    await page.waitForTimeout(30);
+    const editorHostBox = await page.locator("#dock").boundingBox();
+    const formScrollBox = await page.locator(".lc-checkin__form-scroll").boundingBox();
+    const actionTopBeforeGesture = await page.locator(".lc-checkin__editor-actions").evaluate((element) => element.getBoundingClientRect().top);
+    assert.ok(editorHostBox && formScrollBox, "expanded editor gesture target must be measurable");
+    await page.mouse.move(
+        Math.max(editorHostBox.x + 20, Math.min(formScrollBox.x + formScrollBox.width / 2, editorHostBox.x + editorHostBox.width - 20)),
+        Math.max(editorHostBox.y + 80, Math.min(formScrollBox.y + 80, editorHostBox.y + editorHostBox.height - 120)),
+    );
+    for (let index = 0; index < 4; index += 1) await page.mouse.wheel(0, 500);
+    await page.waitForTimeout(30);
+    const gestureScrollTop = await page.locator(".lc-checkin--editor").evaluate((element) => element.scrollTop);
+    const actionTopAfterGesture = await page.locator(".lc-checkin__editor-actions").evaluate((element) => element.getBoundingClientRect().top);
+    await page.locator(".lc-checkin--editor").evaluate((element) => { element.scrollTop = 0; });
+    await page.locator("[data-icon-popup]").evaluate((element) => { element.open = true; });
+    await page.waitForTimeout(30);
+    results.narrowEditorExpanded = await page.evaluate(() => {
+        const surface = document.querySelector(".lc-checkin--editor");
+        const formScroll = surface?.querySelector(".lc-checkin__form-scroll");
+        const popup = surface?.querySelector(".lc-checkin__popup-body");
+        const actions = surface?.querySelector(".lc-checkin__editor-actions");
+        const nav = document.querySelector(".lc-checkin__mobile-nav");
+        const metric = (element) => element ? {
+            clientHeight: element.clientHeight,
+            scrollHeight: element.scrollHeight,
+            overflowY: getComputedStyle(element).overflowY,
+        } : undefined;
+        const popupBox = popup?.getBoundingClientRect();
+        const actionBefore = actions?.getBoundingClientRect();
+        const saveButton = actions?.querySelector("button[type='submit']");
+        const saveBox = saveButton?.getBoundingClientRect();
+        const navBox = nav?.getBoundingClientRect();
+        return {
+            surface: metric(surface),
+            formScroll: metric(formScroll),
+            popup: popup && popupBox ? {
+                position: getComputedStyle(popup).position,
+                clientHeight: popup.clientHeight,
+                scrollHeight: popup.scrollHeight,
+                width: popupBox.width,
+                maxWidth: surface?.clientWidth || 0,
+            } : undefined,
+            actions: actions && actionBefore ? {
+                position: getComputedStyle(actions).position,
+                navGap: navBox ? navBox.top - actionBefore.bottom : undefined,
+                saveVisible: Boolean(saveButton && saveBox && saveBox.width > 0 && saveBox.height > 0
+                    && saveButton.contains(document.elementFromPoint(saveBox.left + saveBox.width / 2, saveBox.top + saveBox.height / 2))),
+            } : undefined,
+        };
+    });
+    results.narrowEditorExpanded.gestureScrollTop = gestureScrollTop;
+    results.narrowEditorExpanded.actions.topBefore = actionTopBeforeGesture;
+    results.narrowEditorExpanded.actions.topAfter = actionTopAfterGesture;
+    await page.locator("[data-icon-popup] > summary").evaluate((element) => element.scrollIntoView({block: "start"}));
+    await page.waitForTimeout(30);
+    await page.screenshot({path: path.join(outputRoot, "narrow-icon-popup.png")});
+    await page.locator(".lc-checkin--editor").evaluate((element) => { element.scrollTop = 0; });
+    await inspect("narrow-editor-expanded");
     results.narrowEditorChrome = await page.locator("#dock").evaluate((element) => {
         const visible = (target) => Boolean(target && getComputedStyle(target).display !== "none" && target.getBoundingClientRect().height > 0);
         const header = element.querySelector(".lc-checkin--editor .lc-checkin__editor-header");
@@ -342,6 +420,17 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
             if (!nav) return {found: false};
             const box = nav.getBoundingClientRect();
             return {found: true, display: getComputedStyle(nav).display, visible: box.height > 0 && box.bottom > innerHeight - 90};
+        });
+        results.mobileMatrix[width].header = await page.evaluate(() => {
+            const surface = document.querySelector(".lc-checkin--today");
+            const header = surface?.querySelector(".lc-checkin__header");
+            const title = surface?.querySelector(".lc-checkin__title");
+            const actions = surface?.querySelector(".lc-checkin__header-actions");
+            return {
+                flexWrap: header ? getComputedStyle(header).flexWrap : "",
+                titleFits: Boolean(title && title.scrollWidth <= title.clientWidth + 1),
+                actionsSingleRow: Boolean(actions && actions.scrollHeight <= actions.clientHeight + 1),
+            };
         });
         results.mobileMatrix[width].cardGeometry = await page.evaluate(() => {
             const intersects = (left, right) => Math.min(left.right, right.right) > Math.max(left.left, right.left)
@@ -702,6 +791,30 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     assert.ok(results.editorCatalog.iconCount >= 100);
     /* T-116 组件商店：全部 + 9 个内置分组 + 我的图标 = 11 个页签 */
     assert.equal(results.editorCatalog.iconGroupCount, 11);
+    assert.ok(results.narrowEditorExpanded.surface.scrollHeight > results.narrowEditorExpanded.surface.clientHeight,
+        "expanded narrow editor content must overflow its outer scroll owner");
+    assert.ok(results.narrowEditorExpanded.gestureScrollTop > 0,
+        "a wheel gesture over the expanded form must scroll the outer editor");
+    assert.equal(results.narrowEditorExpanded.formScroll.overflowY, "visible",
+        "the compact form must not create a competing vertical scroll owner");
+    assert.ok(Math.abs(results.narrowEditorExpanded.formScroll.scrollHeight - results.narrowEditorExpanded.formScroll.clientHeight) <= 1,
+        "the compact form must grow with its content instead of clipping it");
+    assert.equal(results.narrowEditorExpanded.popup.position, "static",
+        "the narrow icon catalog must stay in flow instead of being clipped by the form scroller");
+    assert.ok(results.narrowEditorExpanded.popup.clientHeight >= 240,
+        "the narrow icon catalog must expose a useful browsing viewport");
+    assert.ok(results.narrowEditorExpanded.popup.width <= results.narrowEditorExpanded.popup.maxWidth,
+        "the narrow icon catalog must fit its editor surface");
+    if (qaFrontend === "mobile" || qaFrontend === "browser-mobile") {
+        assert.equal(results.narrowEditorExpanded.actions.position, "absolute",
+            "the mobile editor action rail must be anchored to the plugin host");
+        assert.ok(Math.abs(results.narrowEditorExpanded.actions.topAfter - results.narrowEditorExpanded.actions.topBefore) < 1,
+            "the mobile editor action rail must not move with document scrolling");
+        assert.ok(results.narrowEditorExpanded.actions.navGap >= 0 && results.narrowEditorExpanded.actions.navGap <= 24,
+            "the mobile editor action rail must sit directly above the bottom navigation");
+        assert.equal(results.narrowEditorExpanded.actions.saveVisible, true,
+            "the mobile editor save action must remain visibly interactive above the scrolling surface");
+    }
     assert.deepEqual(results.templateApplied, {name: "阅读", kind: "duration", unit: "小时", group: "学习", iconPanel: true, targetStep: "0.25"});
     if (qaFrontend !== "mobile" && qaFrontend !== "browser-mobile") {
         assert.equal(results.tab.opened && results.tab.registered && results.tab.title, "小驴打卡");
@@ -747,6 +860,10 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         assert.ok(results.mobileMatrix[width].cardGeometry.length > 0);
         assert.equal(results.mobileMatrix[width].cardGeometry.some((entry) => entry.actionToplineOverlap), false,
             `${width}px Today cards must keep badges and actions on separate geometry`);
+        assert.equal(results.mobileMatrix[width].header.titleFits, true,
+            `${width}px Today title must fit its measured header track`);
+        assert.equal(results.mobileMatrix[width].header.actionsSingleRow, true,
+            `${width}px Today header actions must stay on one row`);
     }
     assert.notEqual(results.calendar.currentMonthLabel, results.calendar.previousMonthLabel);
     assert.equal(results.calendar.currentMonthLabel, results.calendar.restoredMonthLabel);
