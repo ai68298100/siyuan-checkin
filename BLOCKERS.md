@@ -39,3 +39,4 @@ B-003 resolved: migration audit persistence is now isolated after successful sto
 - 13.0 第十七批（2026-09-17）：T-1037~T-1039 已确保外部专注启动上下文可被 completion 无损匹配；真实 Dock Tomato 对最大长度 context 的保存与事件回传仍需 B-007 联调验证。
 - 13.0 第十八批（2026-09-17）：T-1040~T-1042 已消除 sessionId/recordId 截断碰撞并统一历史幂等边界；真实上游身份字符集与最大长度仍需 B-007 联调确认。
 - 13.0 第十九批（2026-09-17）：T-1043~T-1045 已让实时 provider 检测与诊断导出共享安全版本/能力投影；真实上游热重载期间 facade 字段变化仍需 B-007 现场观察。
+- 13.0 第二十批（2026-09-17）：T-1046~T-1048 已统一 runtime status、completion、历史幂等和诊断关联键的无损身份规则；真实上游是否始终提供无空白身份仍需 B-007 联调确认。

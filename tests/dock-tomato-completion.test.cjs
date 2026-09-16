@@ -69,7 +69,7 @@ assert.deepEqual(getDockTomatoCompletionIssues(), []);
 assert.ok(Object.isFrozen(getDockTomatoCompletionIssues()));
 
 const reasons = ["invalid-event", "unsupported-version", "invalid-context", "missing-item", "archived-item", "mapping-changed", "invalid-duration", "missing-identity", "duplicate", "write-failed"];
-const persisted = reasons.map((reason, index) => ({reason, at: `2026-09-17T00:${String(index).padStart(2, "0")}:00.000Z`, itemId: ` item-${index} `, identity: ` session-${index} `}));
+const persisted = reasons.map((reason, index) => ({reason, at: `2026-09-17T00:${String(index).padStart(2, "0")}:00.000Z`, itemId: `item-${index}`, identity: `session-${index}`}));
 const restored = restoreDockTomatoCompletionIssues(JSON.stringify({schemaVersion: 1, issues: persisted}));
 assert.equal(restored.length, 10);
 for (let index = 0; index < reasons.length; index += 1) {
@@ -87,7 +87,7 @@ assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "write-failed", at: "not-a-date"}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues(null), []);
 
-const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(300), identity: `${String(index).padStart(2, "0")}-${"y".repeat(400)}`}));
+const oversized = Array.from({length: 27}, (_, index) => ({reason: "write-failed", at: `2026-09-17T01:${String(index).padStart(2, "0")}:00.000Z`, itemId: "x".repeat(160), identity: `${String(index).padStart(2, "0")}-${"y".repeat(237)}`}));
 const bounded = restoreDockTomatoCompletionIssues(oversized);
 assert.equal(bounded.length, 20);
 assert.equal(bounded[0].at, "2026-09-17T01:07:00.000Z");
@@ -139,6 +139,18 @@ assert.equal(JSON.parse(serializeDockTomatoDiagnostics({...diagnostics.provider,
 clearDockTomatoCompletionIssues();
 assert.equal(JSON.parse(serializeDockTomatoCompletionIssues()).issues.length, 0);
 
+for (let index = 0; index < 25; index += 1) {
+    const malformed = index % 3 === 0 ? ` bad-${index}` : index % 3 === 1 ? `bad-${index} ` : `${index}-${"z".repeat(240)}`;
+    const restoredMalformed = restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{
+        reason: "write-failed",
+        at: "2026-09-17T08:00:00.000Z",
+        itemId: malformed,
+        identity: malformed,
+    }]});
+    assert.equal(restoredMalformed[0].itemId, undefined, `diagnostic ${index + 1} must not normalize item identity`);
+    assert.equal(restoredMalformed[0].identity, undefined, `diagnostic ${index + 1} must not normalize provider identity`);
+}
+
 const falseStatus = {readable: false, ready: false, active: false, running: false, paused: false};
 assert.deepEqual(readDockTomatoRuntimeStatus(null), falseStatus);
 assert.deepEqual(readDockTomatoRuntimeStatus({}), falseStatus);
@@ -174,8 +186,16 @@ for (const field of ["ready", "active", "running", "paused", "sessionId"]) {
     assert.equal(safe.paused, false);
 }
 
+for (let index = 0; index < 25; index += 1) {
+    const malformed = index % 3 === 0 ? ` runtime-${index}` : index % 3 === 1 ? `runtime-${index} ` : `${index}-${"r".repeat(240)}`;
+    const safe = readDockTomatoRuntimeStatus({getStatus() { return {ready: true, sessionId: malformed}; }});
+    assert.equal(safe.readable, true, `runtime identity ${index + 1} must not corrupt status readability`);
+    assert.equal(safe.sessionId, undefined, `runtime identity ${index + 1} must not be truncated`);
+}
+assert.equal(readDockTomatoRuntimeStatus({getStatus() { return {sessionId: "r".repeat(240)}; }}).sessionId, "r".repeat(240));
+
 let receiver;
-const provider = {getStatus() { receiver = this; return {sessionId: `  ${"s".repeat(300)}  `}; }};
+const provider = {getStatus() { receiver = this; return {sessionId: "s".repeat(240)}; }};
 const receiverStatus = readDockTomatoRuntimeStatus(provider);
 assert.equal(receiver, provider);
 assert.equal(receiverStatus.sessionId.length, 240);

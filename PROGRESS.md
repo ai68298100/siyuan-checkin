@@ -802,3 +802,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 实时 provider 检测不再直接 Number 转换版本或 filter 能力数组；新增安全有限数值与有界能力投影，并与诊断导出复用。
 - Symbol 版本安全降级，能力索引 getter 零执行；最多扫描128项、输出32项、单项截断80字符，百万长度稀疏数组不会被完整遍历。
 - 25组污染 provider 新增50条逐项断言，另覆盖稀疏数组边界及缺少必要能力状态；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 59ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十批（2026-09-17，T-1046~T-1048）
+
+- runtime status 的 sessionId 改为无损读取，非法身份仅被省略，不降低 ready/active 等其它状态的可读性；合法240字符身份保持原样。
+- 运行期诊断追加、持久诊断恢复及 completion 失败采集统一对 itemId/identity 使用 exactBoundedText，不再以截断伪键折叠不同故障。
+- 25组异常运行状态与25组异常持久诊断共新增100条逐项断言，容量用例改用合法唯一身份；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 31ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

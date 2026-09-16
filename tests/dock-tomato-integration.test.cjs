@@ -100,6 +100,9 @@ assert.match(bridge, /error\.code = "DOCK_TOMATO_INVALID_CONTEXT"/, "invalid sta
 assert.match(bridge, /exactBoundedText\(ownDataValue\(detail, "sessionId"\), 240\)/, "completion identities must not be silently truncated");
 assert.match(bridge, /exactBoundedText\(ownDataValue\(entry, "externalRef"\), 251\)/, "persisted focus references must round-trip exactly");
 assert.match(bridge, /exactBoundedText\(identity, 240\)/, "persisted focus identities must share the completion boundary");
+assert.match(bridge, /sessionId: exactBoundedText\(ownDataValue\(status, "sessionId"\), 240\)/, "runtime status identities must not be silently normalized");
+assert.match(bridge, /const safeIdentity = exactBoundedText\(identity, 240\)/, "diagnostic identity keys must not be silently normalized");
+assert.match(bridge, /const itemId = exactBoundedText\(ownDataValue\(value, "itemId"\), 160\)/, "restored diagnostic item identities must remain lossless");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

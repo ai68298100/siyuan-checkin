@@ -89,7 +89,7 @@ export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRunti
             active,
             running,
             paused,
-            sessionId: boundedText(ownDataValue(status, "sessionId"), 240) || undefined,
+            sessionId: exactBoundedText(ownDataValue(status, "sessionId"), 240) || undefined,
         };
     } catch {
         return {readable: false, ready: false, active: false, running: false, paused: false};
@@ -191,8 +191,8 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
     if (!validReasons.includes(reason)) return undefined;
     const at = boundedText(ownDataValue(value, "at"), 40);
     if (!at || !Number.isFinite(Date.parse(at))) return undefined;
-    const itemId = boundedText(ownDataValue(value, "itemId"), 160) || undefined;
-    const identity = boundedText(ownDataValue(value, "identity"), 240) || undefined;
+    const itemId = exactBoundedText(ownDataValue(value, "itemId"), 160) || undefined;
+    const identity = exactBoundedText(ownDataValue(value, "identity"), 240) || undefined;
     const rawCount = Number(ownDataValue(value, "count"));
     const count = Number.isInteger(rawCount) && rawCount > 0 ? Math.min(rawCount, 9999) : 1;
     return {reason, at: new Date(at).toISOString(), itemId, identity, count};
@@ -244,8 +244,8 @@ export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagn
 }
 
 function appendCompletionIssue(reason: DockTomatoCompletionIssueReason, itemId?: string, identity?: string): void {
-    const safeItemId = boundedText(itemId, 160) || undefined;
-    const safeIdentity = boundedText(identity, 240) || undefined;
+    const safeItemId = exactBoundedText(itemId, 160) || undefined;
+    const safeIdentity = exactBoundedText(identity, 240) || undefined;
     const existingIndex = completionIssues.findIndex((issue) => issue.reason === reason && issue.itemId === safeItemId && issue.identity === safeIdentity);
     const existing = existingIndex >= 0 ? completionIssues.splice(existingIndex, 1)[0] : undefined;
     completionIssues.push({reason, at: new Date().toISOString(), itemId: safeItemId, identity: safeIdentity, count: Math.min((existing?.count || 1) + (existing ? 1 : 0), 9999)});
@@ -430,7 +430,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             if (!decision.accepted || !decision.item || decision.value === undefined || !decision.identity) {
                 if (decision.reason && decision.reason !== "duplicate") {
                     const context = ownDataValue(detail, "context");
-                    appendCompletionIssue(decision.reason, boundedText(ownDataValue(context, "itemId"), 160), boundedText(ownDataValue(detail, "sessionId"), 240));
+                    appendCompletionIssue(decision.reason, exactBoundedText(ownDataValue(context, "itemId"), 160), exactBoundedText(ownDataValue(detail, "sessionId"), 240));
                     scheduleProviderRefresh();
                 }
                 return;
