@@ -820,3 +820,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 诊断字符串恢复在 JSON.parse 前增加512KiB字符上限，超限数据直接返回冻结空快照，避免损坏文件触发高成本解析。
 - 恰好512KiB的合法 JSON 仍可恢复，超过一个字符即拒绝；对象输入继续使用上一批的512项尾窗扫描。
 - 25个不同超限长度新增50条逐项断言，另覆盖精确边界长度和合法 identity 恢复；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 28ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十三批（2026-09-17，T-1055~T-1057）
+
+- completion 项目匹配新增 `findCompletionItem`，使用 ownDataValue 读取数组位置和项目 id，污染 getter 不执行且稳定返回 missing-item。
+- archived、unit、tomatoMode 以及分钟/小时/次数换算改为自有数据读取，损坏字段不会进入第三方代码或被误报成写入失败。
+- 25组污染数组与25组污染项目新增100条逐项断言，另覆盖匹配项目字段 getter；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 36ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

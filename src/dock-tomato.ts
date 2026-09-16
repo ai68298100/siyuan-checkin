@@ -277,11 +277,11 @@ export function evaluateDockTomatoCompletion(detail: unknown, items: readonly Ch
     const startUnit = boundedText(ownDataValue(context, "itemUnit"), 80);
     const startMode = boundedText(ownDataValue(context, "tomatoMode"), 24);
     if (!itemId || !startUnit || (startMode !== "sessions" && startMode !== "minutes")) return {accepted: false, reason: "invalid-context"};
-    const item = items.find((candidate) => candidate.id === itemId);
+    const item = findCompletionItem(items, itemId);
     if (!item) return {accepted: false, reason: "missing-item"};
-    if (item.archived) return {accepted: false, reason: "archived-item", item};
-    const currentMode = item.tomatoMode === "sessions" ? "sessions" : "minutes";
-    if (item.unit !== startUnit || currentMode !== startMode) return {accepted: false, reason: "mapping-changed", item};
+    if (ownDataValue(item, "archived") === true) return {accepted: false, reason: "archived-item", item};
+    const currentMode = ownDataValue(item, "tomatoMode") === "sessions" ? "sessions" : "minutes";
+    if (ownDataValue(item, "unit") !== startUnit || currentMode !== startMode) return {accepted: false, reason: "mapping-changed", item};
     const durationMinutes = Number(ownDataValue(detail, "durationMinutes"));
     const value = completedValue(item, durationMinutes);
     if (value === undefined) return {accepted: false, reason: "invalid-duration", item};
@@ -336,8 +336,17 @@ function dockTomatoStartContext(item: CheckinItem): Record<string, string> | und
 
 function completedValue(item: CheckinItem, durationMinutes: number): number | undefined {
     if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) return undefined;
-    if (item.tomatoMode === "sessions") return 1;
-    return item.unit === "小时" ? durationMinutes / 60 : durationMinutes;
+    if (ownDataValue(item, "tomatoMode") === "sessions") return 1;
+    return ownDataValue(item, "unit") === "小时" ? durationMinutes / 60 : durationMinutes;
+}
+
+function findCompletionItem(items: readonly CheckinItem[], itemId: string): CheckinItem | undefined {
+    if (!Array.isArray(items)) return undefined;
+    for (let index = 0; index < items.length; index += 1) {
+        const candidate = ownDataValue(items, String(index));
+        if (candidate && typeof candidate === "object" && ownDataValue(candidate, "id") === itemId) return candidate as CheckinItem;
+    }
+    return undefined;
 }
 
 /**

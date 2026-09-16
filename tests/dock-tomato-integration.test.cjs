@@ -32,8 +32,8 @@ assert.match(bridge, /resolveCompletionWriteIssue\(identity\)/, "successful retr
 assert.match(bridge, /issue\.reason === "write-failed" && issue\.identity === identity/, "retry resolution must be scoped by reason and identity");
 assert.match(bridge, /if \(bridgeDisposed\) return;[\s\S]*completedIdentities\.add/, "late writes must not recreate completion state after disposal");
 assert.match(bridge, /if \(!bridgeDisposed\) \{[\s\S]*appendCompletionIssue\("write-failed"/, "late failures must not recreate diagnostics after disposal");
-assert.match(bridge, /item\.unit === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must convert to hour-based items");
-assert.match(bridge, /item\.tomatoMode === "sessions"\) return 1/, "session-mode items must record one completion");
+assert.match(bridge, /ownDataValue\(item, "unit"\) === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must safely convert to hour-based items");
+assert.match(bridge, /ownDataValue\(item, "tomatoMode"\) === "sessions"\) return 1/, "session-mode items must safely record one completion");
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");
 assert.match(bridge, /Object\.getOwnPropertyDescriptor\(object, key\)/, "foreign payload accessors must not execute during validation");
 assert.match(bridge, /export function readDockTomatoRuntimeStatus/, "provider status reads must share one defensive boundary");
@@ -108,6 +108,9 @@ assert.match(bridge, /normalizeCompletionIssue\(ownDataValue\(entries, String\(i
 assert.match(bridge, /const rawCount = finiteNumber\(ownDataValue\(value, "count"\)\)/, "diagnostic count coercion must isolate hostile values");
 assert.match(bridge, /COMPLETION_ISSUE_ARCHIVE_MAX_CHARS = 512 \* 1024/, "diagnostic JSON input must have an explicit size ceiling");
 assert.match(bridge, /value\.length <= COMPLETION_ISSUE_ARCHIVE_MAX_CHARS/, "oversized diagnostic JSON must be rejected before parsing");
+assert.match(bridge, /function findCompletionItem/, "completion item lookup must use one defensive boundary");
+assert.match(bridge, /const candidate = ownDataValue\(items, String\(index\)\)/, "completion item lookup must not execute array accessors");
+assert.match(bridge, /ownDataValue\(candidate, "id"\) === itemId/, "completion item lookup must not execute item identity accessors");
 assert.match(plugin, /downloadDockTomatoDiagnosticsFor\(inspectDockTomatoProvider\(\)\)/, "exports must capture a current provider snapshot");
 assert.match(i18n, /"set\.tomatoIssueExport": "导出诊断"/, "Chinese diagnostics export copy must exist");
 assert.match(i18n, /"set\.tomatoIssueExport": "Export diagnostics"/, "English diagnostics export copy must exist");

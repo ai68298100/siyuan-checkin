@@ -57,6 +57,28 @@ assert.equal(evaluateDockTomatoCompletion(detail({}, {tomatoMode: "sessions"}), 
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 0}, {tomatoMode: "sessions"}), [{...item, tomatoMode: "sessions"}]).reason, "invalid-duration");
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 30}, {itemUnit: "小时"}), [{...item, unit: "小时"}]).value, 0.5);
 
+for (let index = 0; index < 25; index += 1) {
+    let arrayGetterReads = 0;
+    const hostileItems = [];
+    Object.defineProperty(hostileItems, "0", {get() { arrayGetterReads += 1; throw new Error("must not execute"); }});
+    const arrayDecision = evaluateDockTomatoCompletion(detail(), hostileItems);
+    assert.equal(arrayGetterReads, 0, `item array ${index + 1} must not execute index getters`);
+    assert.equal(arrayDecision.reason, "missing-item", `item array ${index + 1} must fail closed`);
+}
+for (let index = 0; index < 25; index += 1) {
+    let itemGetterReads = 0;
+    const hostileItem = {};
+    Object.defineProperty(hostileItem, "id", {get() { itemGetterReads += 1; throw new Error("must not execute"); }});
+    const itemDecision = evaluateDockTomatoCompletion(detail(), [hostileItem]);
+    assert.equal(itemGetterReads, 0, `item ${index + 1} must not execute identity getters`);
+    assert.equal(itemDecision.reason, "missing-item", `item ${index + 1} must fail closed`);
+}
+let matchedItemGetterReads = 0;
+const hostileMatchedItem = {id: "read", kind: "count"};
+for (const field of ["archived", "unit", "tomatoMode"]) Object.defineProperty(hostileMatchedItem, field, {get() { matchedItemGetterReads += 1; throw new Error("must not execute"); }});
+assert.equal(evaluateDockTomatoCompletion(detail(), [hostileMatchedItem]).reason, "mapping-changed");
+assert.equal(matchedItemGetterReads, 0);
+
 const accessorDetail = {};
 Object.defineProperty(accessorDetail, "apiVersion", {get() { throw new Error("must not execute"); }});
 assert.equal(evaluateDockTomatoCompletion(accessorDetail, [item]).reason, "unsupported-version");
