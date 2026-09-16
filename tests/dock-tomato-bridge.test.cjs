@@ -47,6 +47,7 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     ];
     const events = [], writes = [], adapters = [];
     let writeBehavior = "success";
+    let deferredWriteResolve;
     let adapterDisposals = 0, stopCalls = 0, refreshes = 0;
     const api = {
         getItems: () => items,
@@ -55,6 +56,15 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
             writes.push(input);
             if (writeBehavior === "empty") return undefined;
             if (writeBehavior === "throw") throw new Error("storage unavailable");
+            if (writeBehavior === "deferred") {
+                return new Promise((resolve) => {
+                    deferredWriteResolve = () => {
+                        const record = {...input, id: `event-${writes.length}`};
+                        events.push(record);
+                        resolve(record);
+                    };
+                });
+            }
             const record = {...input, id: `event-${writes.length}`}; events.push(record); return record;
         },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
@@ -139,6 +149,31 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-throw"})); await flush(); await flush();
     assert.equal(writes.length, writesAfterThrow + 1);
     assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-throw"));
+
+    clearDockTomatoCompletionIssues();
+    writeBehavior = "deferred";
+    const concurrentBaseline = writes.length;
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
+    await flush();
+    assert.equal(writes.length, concurrentBaseline + 1);
+    assert.equal(typeof deferredWriteResolve, "function");
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
+        await flush();
+        assert.equal(writes.length, concurrentBaseline + 1, `in-flight replay ${index + 1} must not write`);
+        assert.equal(getDockTomatoCompletionIssues().length, 0, `in-flight replay ${index + 1} must stay quiet`);
+    }
+    deferredWriteResolve();
+    await flush(); await flush();
+    assert.equal(events.filter((entry) => entry.externalRef === "docktomato:concurrent-session").length, 1);
+    writeBehavior = "success";
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
+        await flush();
+        assert.equal(writes.length, concurrentBaseline + 1, `persisted replay ${index + 1} must not write`);
+        assert.equal(getDockTomatoCompletionIssues().length, 0, `persisted replay ${index + 1} must stay quiet`);
+    }
+    assert.equal(events.filter((entry) => entry.externalRef === "docktomato:concurrent-session").length, 1);
 
     const beforeLifecycleRefresh = refreshes;
     fakeWindow.dispatch("tomato:focus-session-started"); fakeWindow.dispatch("tomato:focus-session-paused"); await flush();

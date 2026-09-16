@@ -17,6 +17,9 @@ assert.match(bridge, /externalRef: `docktomato:\$\{identity\}`/, "session identi
 assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must participate in deduplication after reload");
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
 assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
+assert.match(bridge, /inFlightIdentities\.add\(identity\)[\s\S]*await api\.recordEvent/, "identity must enter the in-flight set before persistence starts");
+assert.match(bridge, /claimedIdentity = identity/, "only the handler that starts persistence may claim the in-flight identity");
+assert.match(bridge, /if \(claimedIdentity\) inFlightIdentities\.delete\(claimedIdentity\)/, "only the owning handler may release the in-flight identity");
 assert.match(bridge, /if \(!recorded\) throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an empty write result must remain observable and retryable");
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");

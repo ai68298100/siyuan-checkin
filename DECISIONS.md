@@ -232,3 +232,9 @@
 - write-failed 仅保留有界 itemId 和 provider identity，帮助用户定位并由提供方重试；不保存项目名称、备注或 payload 全文。
 - 空返回与抛错具有相同幂等语义：都不标记完成、不吞掉 session，后续同身份完成通知仍可重试；只有真实记录返回后才进入完成集合。
 - 插件卸载是异步任务的最终边界。已发出的存储调用无法撤销，但其迟到结果不能重建 bridge 内存、诊断或 UI 刷新状态。
+
+## D-108：in-flight 身份采用 handler 所有权，duplicate 无权释放（2026-09-17）
+
+- `inFlightIdentities` 不只是集合，也是并发写锁。只有实际把 identity 加入集合并开始持久化的 handler 才拥有释放权；观察到 duplicate 后提前返回的 handler 不得在 finally 删除共享锁。
+- 幂等验证分为写入中与写入后两阶段：前者由 owner-held in-flight identity 阻断，后者由 store 的 externalRef 阻断；运行期 completed 集合只是加速层，不是唯一正确性来源。
+- duplicate 属于预期重放而非用户故障，不进入诊断列表、不产生提示；只有格式、映射或持久化问题才需要可见处理。

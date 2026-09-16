@@ -724,3 +724,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 回写失败诊断现在保留有界 itemId/session identity；写接口空返回和抛错都不加入完成集合，同一身份随后可成功重试并生成唯一 externalRef。
 - recordEvent 等待期间若插件卸载，迟到成功不再重建运行期完成状态，迟到失败不再追加诊断或触发界面刷新。
 - bridge harness 增加 20 组非法时长的 80 条字段级断言，以及空返回、抛错和成功重试验证；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 36ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第七批（2026-09-17，T-1007~T-1009）
+
+- deferred write 测试复现真实竞态：第二个 duplicate handler 的 finally 会误删首个 handler 的 in-flight identity，使第三个事件穿透。改为只有执行 `inFlightIdentities.add` 的 handler 记录 `claimedIdentity` 并负责释放。
+- 写入悬挂期间连续重放 25 次、写入完成并进入持久 externalRef 后再重放 25 次，始终只有一条记录且不产生 duplicate 诊断噪音。
+- 新增 100 条逐次运行期断言和最终唯一记录检查；最终 `pnpm run test:quality` 与差异检查通过，10k 事件完整渲染 32ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

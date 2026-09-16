@@ -338,6 +338,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         void (async () => {
         let failureItemId: string | undefined;
         let failureIdentity: string | undefined;
+        let claimedIdentity: string | undefined;
         try {
             const detail = customEventDetail(event);
             const storedIdentities = api.getEvents()
@@ -357,6 +358,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             failureItemId = item.id;
             failureIdentity = identity;
             inFlightIdentities.add(identity);
+            claimedIdentity = identity;
             const recorded = await api.recordEvent({
                 itemId: item.id,
                 value,
@@ -381,9 +383,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 scheduleProviderRefresh();
             }
         } finally {
-            const detail = customEventDetail(event);
-            const identity = boundedText(ownDataValue(detail, "sessionId"), 240) || boundedText(ownDataValue(detail, "recordId"), 240);
-            if (identity) inFlightIdentities.delete(identity);
+            if (claimedIdentity) inFlightIdentities.delete(claimedIdentity);
         }
         })();
     };
