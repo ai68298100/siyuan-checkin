@@ -832,3 +832,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - completion 的 itemId/itemUnit/tomatoMode 改为无损文本校验，带空白或超长字段不再经 trim/slice 后匹配本地项目。
 - durationMinutes 仅接受有限 number，不再执行 Number 隐式转换；Symbol、字符串及恶意 valueOf 对象稳定返回 invalid-duration。
 - 25组异常上下文与25组异常时长共新增100条逐项断言，另覆盖数值字符串和零 coercion 调用；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 42ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。
+
+### 13.0 专注生态第二十五批（2026-09-17，T-1061~T-1063）
+
+- 持久 externalRef 扫描从 for-of 改为普通索引循环，数组元素通过 ownDataValue 读取，不再触发索引 getter 或自定义 Symbol.iterator。
+- 扫描仍覆盖完整 events.length，不用固定窗口牺牲旧 session 幂等；10,000项稀疏数组的尾部合法身份可正常识别。
+- 25组污染数组新增75条逐项断言，另覆盖大型稀疏历史完整性；定向 completion/bridge/integration、类型检查及完整 `pnpm run test:quality` 通过，10k 事件完整渲染 37ms、横向溢出 0px，CSS 427260 bytes（低于 450000 硬线）。

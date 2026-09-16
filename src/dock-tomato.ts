@@ -295,7 +295,8 @@ export function evaluateDockTomatoCompletion(detail: unknown, items: readonly Ch
 export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<string> {
     const identities = new Set<string>();
     if (!Array.isArray(events)) return identities;
-    for (const entry of events) {
+    for (let index = 0; index < events.length; index += 1) {
+        const entry = ownDataValue(events, String(index));
         const reference = exactBoundedText(ownDataValue(entry, "externalRef"), 251);
         if (!reference.startsWith("docktomato:")) continue;
         const identity = reference.slice("docktomato:".length);

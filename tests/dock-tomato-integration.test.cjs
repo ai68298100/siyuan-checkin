@@ -16,7 +16,8 @@ assert.match(bridge, /tomato:focus-session-completed/, "durable completion event
 assert.match(bridge, /externalRef: `docktomato:\$\{identity\}`/, "session identity must make retries idempotent");
 assert.match(bridge, /api\.getEvents\(\)/, "persistent check-in events must participate in deduplication after reload");
 assert.match(bridge, /export function collectDockTomatoStoredIdentities/, "persistent identities must use one reusable projection boundary");
-assert.match(bridge, /for \(const entry of events\)/, "persistent identities must be collected in one pass");
+assert.match(bridge, /for \(let index = 0; index < events\.length; index \+= 1\)/, "persistent identities must be collected in one complete pass");
+assert.match(bridge, /const entry = ownDataValue\(events, String\(index\)\)/, "persistent identity scans must not execute array accessors or iterators");
 assert.match(bridge, /exactBoundedText\(ownDataValue\(entry, "externalRef"\), 251\)/, "persisted identities must not execute corrupted record getters or accept lossy values");
 assert.match(bridge, /if \(exactBoundedText\(identity, 240\)\) identities\.add\(identity\)/, "empty or oversized provider identities must not enter the dedupe set");
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");

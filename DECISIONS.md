@@ -340,3 +340,9 @@
 - itemId、itemUnit、tomatoMode 是启动时签名的一部分，消费端不能通过 trim/slice 接受被修改的回调；任何不可无损往返字段均按 invalid-context 拒绝。
 - durationMinutes 的公共契约是 number，不接受数值字符串或对象隐式转换；这既避免执行第三方 valueOf/toString，也避免不同 provider 对字符串格式产生歧义。
 - 严格校验位于项目匹配和持久写入之前，因此异常 payload 不调用 recordEvent，也不会污染幂等身份集合。
+
+## D-126：历史幂等扫描绕过数组迭代协议但保持全量（2026-09-17）
+
+- `for...of` 会读取数组 Symbol.iterator 并通过迭代器访问元素，即使 entry.externalRef 使用 ownDataValue，污染数组仍可在进入边界前执行代码。
+- 改用长度索引循环并以 ownDataValue 获取每个位置，访问器和空洞视为空项；externalRef 继续使用无损身份校验。
+- 不设历史数量上限，因为任何被漏掉的旧 externalRef 都可能造成重复记账；大型索引优化必须由14.0可重建索引解决。

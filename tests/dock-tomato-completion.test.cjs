@@ -275,6 +275,21 @@ for (let index = 0; index < 50; index += 1) {
 }
 assert.equal(collected.has(""), false);
 assert.equal(collected.has("stored-0"), true);
+for (let index = 0; index < 25; index += 1) {
+    let eventIndexReads = 0;
+    let iteratorReads = 0;
+    const hostileEvents = [];
+    Object.defineProperty(hostileEvents, "0", {get() { eventIndexReads += 1; throw new Error("must not execute"); }});
+    Object.defineProperty(hostileEvents, Symbol.iterator, {get() { iteratorReads += 1; throw new Error("must not execute"); }});
+    const hostileIdentities = collectDockTomatoStoredIdentities(hostileEvents);
+    assert.equal(eventIndexReads, 0, `event history ${index + 1} must not execute index getters`);
+    assert.equal(iteratorReads, 0, `event history ${index + 1} must not execute iterator getters`);
+    assert.equal(hostileIdentities.size, 0, `event history ${index + 1} must ignore accessor entries`);
+}
+const sparseEvents = [];
+sparseEvents.length = 10000;
+sparseEvents[9999] = {externalRef: "docktomato:sparse-history"};
+assert.equal(collectDockTomatoStoredIdentities(sparseEvents).has("sparse-history"), true);
 const malformedReferences = Array.from({length: 25}, (_, index) => index % 3 === 0
     ? {externalRef: ` docktomato:bad-${index}`}
     : index % 3 === 1
