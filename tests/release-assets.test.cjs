@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const RELEASE_VERSION = "12.0.0";
+const RELEASE_VERSION = "12.0.1";
 const escapedReleaseVersion = RELEASE_VERSION.replaceAll(".", "\\.");
 const readText = (filename) => fs.readFileSync(path.join(root, filename), "utf8");
 for (const filename of ["package.json", "plugin.json", path.join("dist", "plugin.json")]) {
