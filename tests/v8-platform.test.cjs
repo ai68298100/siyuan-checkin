@@ -7,6 +7,8 @@ const ts = require("typescript");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+const navigationSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 const reportSource = fs.readFileSync(path.join(root, "src", "features", "report.ts"), "utf8");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 
@@ -15,8 +17,8 @@ assert.match(source, /private bindQuickKeyboard\(root: HTMLElement\)/);
 assert.match(source, /this\.bindQuickKeyboard\(root\);/, "main today page also binds number shortcuts");
 
 /* Markdown 周报 */
-assert.match(source, /data-action="copy-weekly-report"/, "review exposes a copy-weekly-report action");
-assert.match(source, /navigator\.clipboard\.writeText/, "weekly report copies via clipboard");
+assert.match(reviewSource, /data-action="copy-weekly-report"/, "review exposes a copy-weekly-report action");
+assert.match(navigationSource, /navigator\.clipboard\.writeText/, "weekly report copies via clipboard");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-report-"));
 const reportJs = path.join(outputRoot, "report.js");
 fs.writeFileSync(reportJs, ts.transpileModule(reportSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);

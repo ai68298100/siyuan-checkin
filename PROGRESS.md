@@ -862,3 +862,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 修正孤立的移动编辑器结构测试，将底部留白断言从过期12px更新为当前单一64px操作栏高度。
 - 将 `mobile-editor-structure.test.cjs` 纳入标准 `test:mobile`，320/360/390/430px 的模板、图标、滚动、安全区与操作栏约束进入完整质量链。
 - `pnpm run test:mobile` 与完整 `pnpm run test:quality` 通过；10k 事件完整渲染 74ms、横向溢出 0px，CSS 419910 bytes。
+
+### 13.0 测试资产治理（2026-09-17，T-1070~T-1076）
+
+- 审计后测试资产增至73个 `.test.cjs`（含覆盖守门本身），发现13个原本未接入脚本的测试；现已统一加入 `test:extended` 和完整质量链。
+- 将记录/历史、Today、6.0效率、8.3平台四组旧单体断言迁移到当前 fragments、review、bind、focus timer 与 occasions 模块。
+- 新增逐文件覆盖守门：73项测试资产均必须由 package scripts 执行；当前显式退役数为0，后续新增孤立测试会直接失败。
+- `pnpm run test:extended` 通过，覆盖辅助功能、历史结构、建议工作流、模板模型、Today查询、效率功能、洞察和平台能力。
+- 完整 `pnpm run test:quality` 通过：类型检查、生产构建、主/UI/移动端/生态/扩展测试、性能和发布资源检查全绿；10k事件完整渲染37ms、横向溢出0px，CSS 419910 bytes（低于420000提示线）。
