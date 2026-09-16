@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
 const tokens = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8");
 const components = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
@@ -11,11 +10,10 @@ assert.match(source, /size: \{width: 420, height: 0\}/, "dock opens at the recom
 assert.match(components, /@container lc-dock \(max-width: 480px\)[\s\S]*?\.lc-checkin-dock-host \.lc-checkin--today \.lc-checkin__item-action \{ grid-column: 2;/, "narrow dock actions move below item content");
 assert.match(components, /@container lc-dock \(max-width: 340px\)[\s\S]*?grid-column: 1 \/ -1;/, "extremely narrow dock actions use the full card width");
 
-/* Style system wiring: legacy floor loads first, then the v5 token and
-   component layers; the v4 patch layers are gone. */
-assert.ok(source.includes('import "./index.scss";'), "legacy floor stylesheet must stay imported");
-assert.ok(source.indexOf('import "./ui/tokens.scss";') > source.indexOf('import "./index.scss";'),
-    "token layer must load after the legacy floor");
+/* Style system wiring: the retired legacy floor is absent; tokens load before
+   components and the v4 patch layers remain gone. */
+assert.ok(!source.includes('import "./index.scss";'), "retired legacy stylesheet must stay out of production");
+assert.ok(source.includes('import "./ui/tokens.scss";'), "token layer must remain imported");
 assert.ok(source.indexOf('import "./ui/components.scss";') > source.indexOf('import "./ui/tokens.scss";'),
     "component layer must load after tokens");
 for (const name of ["today", "history", "summary", "settings", "occasions", "insights", "archived", "modern"]) {

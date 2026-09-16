@@ -358,3 +358,9 @@
 - coarse-pointer、reduced-motion 与 print 都描述跨页面交互能力，不应继续在 legacy 与组件层各保留一份并依赖加载顺序覆盖。
 - 将 legacy 独有声明并入组件层已有的同类 media block，再删除旧块；触控目标、安全区、编辑器控件和打印隐藏语义保持不变。
 - 相关移动测试改为锁定 `ui/components.scss` 的现行真值，并新增 legacy 禁止回流守门；这属于样式归属迁移，不改变业务行为。
+
+## D-129：Legacy 样式以零生产引用方式退役（2026-09-17）
+
+- `index.scss` 剩余主题、页面和表单规则均已有 tokens/components 后置真值；继续打包只会增加重复 CSS 与加载顺序耦合。
+- 缺失的 control-height、density-scale、section-gap 正式归入 token 层；模板管理器的必要规则迁入组件层并改用插件语义色。
+- 入口移除 legacy import，文件暂保留一行退役说明供历史测试和迁移审计读取；任何 active selector、media block 或 root token 回流都由 legacy audit 阻止。

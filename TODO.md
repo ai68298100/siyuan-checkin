@@ -273,10 +273,10 @@
   - 验收：@media 视口规则与 lc5 容器规则的职责边界收敛；迁移或删除前先走查比对（@media 按 viewport 触发，≠容器宽度，需运行时验证）
   - 依赖：无
   - 状态：done（内容布局均已迁到 `@container lc5`；删除窄屏+减弱动画重复规则。保留的 viewport 规则仅负责无法由子容器查询表达的弹窗外壳尺寸/圆角、屏幕高度与方向，以及 prefers/forced-colors/reduced-motion/pointer/hover/print 等设备和无障碍能力）
-- [ ] T-105 legacy index.scss 退役 Phase 3：无条件存量规则迁移 + 文件退役
+- [x] T-105 legacy index.scss 退役 Phase 3：无条件存量规则迁移 + 文件退役
   - 验收：剩余无条件规则逐条判定（迁移到 components/tokens 或删除），index.scss 缩到可删或删空；每迁一批跑全链路+走查比对
   - 依赖：T-104
-  - 进度：第三十一批已迁移 coarse-pointer、reduced-motion 与 print 三组设备能力规则，legacy 减少135行；剩余281行继续按职责逐段迁移。
+  - 状态：done（第三十一批迁移设备能力规则135行；第三十二批清理主题/页面重复规则254行并迁移模板管理器，生产入口已移除 legacy import，文件仅保留退役说明）。
 
 ## P2 想法池（UI/体验/性能，随时认领）
 

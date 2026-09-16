@@ -850,3 +850,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 将 coarse-pointer 触控目标、安全区、编辑器控件、tap highlight，以及 reduced-motion 和 print 职责统一迁入组件层；删除 legacy 中对应135行。
 - 更新7组移动/发布验收的样式归属，并增加触控、减弱动态和打印规则不得回流 legacy 的静态守门；`index.scss` 从416行降至281行。
 - 类型检查、构建、移动矩阵、主题、legacy audit、宽度走查和完整 `pnpm run test:quality` 通过；10k 事件完整渲染 40ms、横向溢出 0px，生产 CSS 426185 bytes（较本批前减少1075 bytes）。
+
+### T-105 legacy 样式退役第三十二批（2026-09-17，254项）
+
+- 删除109行旧 root token/基础控件规则和145行回顾、事项、编辑器、移动导航重复规则；缺失的3个几何 token 归入 tokens 层。
+- 最后25行模板管理器规则迁入组件层并替换宿主色引用；`index.scss` 从281行缩为一行退役说明，生产入口移除 legacy import，T-105 完成。
+- UI、移动矩阵、模板管理器、legacy audit、宽度走查和完整 `pnpm run test:quality` 通过；10k 事件完整渲染 30ms、横向溢出 0px，生产 CSS 419910 bytes，已回到420000 bytes 告警线以内。

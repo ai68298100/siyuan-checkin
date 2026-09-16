@@ -1,5 +1,4 @@
 import {Dialog, getFrontend, Plugin, showMessage} from "siyuan";
-import "./index.scss";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";

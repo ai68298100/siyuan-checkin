@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const styles = fs.readFileSync(path.join(__dirname, "..", "src", "index.scss"), "utf8");
 const liveStyles = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
+const tokens = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8");
 const source = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
 const archivedSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "archived.ts"), "utf8");
@@ -24,9 +25,9 @@ assert.match(liveStyles, /@media \(prefers-contrast: more\) \{\s*\.lc-checkin \{
 assert.ok(!styles.includes("lc-checkin-dialog__resize-handle"), "dialog frame controls must not return to legacy index.scss");
 assert.match(liveStyles, /Base plugin canvas and compact mobile shell[\s\S]*\.lc-checkin__progress/,
     "the base canvas, mobile shell and progress feedback belong to the component layer");
-assert.match(styles, /--lc-checkin-control-height:\s*36px/);
-assert.match(styles, /--lc-checkin-muted-surface:/);
-assert.match(styles, /--lc-checkin-shadow:/);
+assert.match(tokens, /--lc-checkin-control-height:\s*36px/);
+assert.match(tokens, /--lc-checkin-muted-surface:/);
+assert.match(tokens, /--lc-checkin-shadow:/);
 assert.match(liveStyles, /\.lc-checkin__organize[\s\S]*background:\s*var\(--lc-checkin-muted-surface\)/);
 assert.ok(!styles.includes("display: inline-flex !important"), "today search base primitive must not return to legacy index.scss");
 assert.match(liveStyles, /Today organization, search, feedback and grouping primitives[\s\S]*\.lc-checkin__all-done/,
@@ -142,8 +143,8 @@ assert.match(liveStyles, /\.lc-checkin--today \.lc-checkin__item-name \{[^}]*ove
 assert.match(liveStyles, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-checkin--today \.lc-checkin__item \{ grid-template-columns: 34px minmax\(0, 1fr\) auto;/,
     "narrow containers must use the width-safe compact card grid");
 assert.match(liveStyles, /backdrop-filter:\s*blur\(12px\)|backdrop-filter:\s*blur\(14px\)/);
-assert.match(styles, /\.lc-checkin__summary-stats[\s\S]*grid-template-columns:\s*repeat\(3/);
-assert.match(styles, /\.lc-checkin--history \.lc-checkin__history-event \.lc-checkin__text-button[\s\S]*min-width:\s*36px/);
+assert.match(liveStyles, /\.lc-checkin--review \.lc-checkin__summary-stats[^}]*grid-template-columns:\s*repeat\(3/);
+assert.match(liveStyles, /\.lc-checkin__history-event-actions \.lc-checkin__text-button[^}]*min-height:\s*26px/);
 assert.match(reviewSource, /lc-checkin--review[\s\S]*lc-checkin__summary-stats/);
 /* 归档视图外置到 render/archived.ts（15.0-A）：结构断言跟文件走，文案断言跟 i18n 走。 */
 assert.match(archivedSource, /lc-checkin--archived[\s\S]*t\("archived\.eyebrow"\)/);
