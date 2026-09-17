@@ -30,7 +30,25 @@ interface AchievementsContext {
 
 function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
     const activeDays = new Set<string>();
-    for (const event of store.events) activeDays.add(event.localDate);
+    const usedItems = new Set<string>();
+    const usedSources = new Set<string>();
+    const itemsById = new Map(store.items.map((item) => [item.id, item]));
+    let morningCompletions = 0;
+    let eveningCompletions = 0;
+    let notedEvents = 0;
+    let photoEvents = 0;
+    let tomatoEvents = 0;
+    for (const event of store.events) {
+        activeDays.add(event.localDate);
+        usedItems.add(event.itemId);
+        usedSources.add(event.source);
+        const item = itemsById.get(event.itemId);
+        if (item?.timeSlot === "morning") morningCompletions += 1;
+        if (item?.timeSlot === "evening") eveningCompletions += 1;
+        if (event.note?.trim()) notedEvents += 1;
+        if (event.attachment) photoEvents += 1;
+        if (event.source === "tomato") tomatoEvents += 1;
+    }
 
     const dayStatus = new Map<string, {scheduled: number; completed: number}>();
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
@@ -65,14 +83,6 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         }
     }
 
-    let morningCompletions = 0;
-    let eveningCompletions = 0;
-    for (const event of store.events) {
-        const item = store.items.find((candidate) => candidate.id === event.itemId);
-        if (item?.timeSlot === "morning") morningCompletions += 1;
-        if (item?.timeSlot === "evening") eveningCompletions += 1;
-    }
-
     return {
         totalEvents: store.events.length,
         activeDays: activeDays.size,
@@ -80,11 +90,11 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         bestPerfectStreak: bestStreak,
         morningCompletions,
         eveningCompletions,
-        notedEvents: store.events.filter((event) => Boolean(event.note?.trim())).length,
-        photoEvents: store.events.filter((event) => Boolean(event.attachment)).length,
-        tomatoEvents: store.events.filter((event) => event.source === "tomato").length,
-        usedItems: new Set(store.events.map((event) => event.itemId)).size,
-        usedSources: new Set(store.events.map((event) => event.source)).size,
+        notedEvents,
+        photoEvents,
+        tomatoEvents,
+        usedItems: usedItems.size,
+        usedSources: usedSources.size,
     };
 }
 
