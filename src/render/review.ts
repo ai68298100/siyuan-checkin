@@ -1,7 +1,7 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventsForDate, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
-import {escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
+import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
 import {buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
@@ -43,13 +43,14 @@ export interface ReviewViewContext {
 
 export function renderReviewView(ctx: ReviewViewContext): string {
     const analyticsSummary = summarizeAnalyticsSnapshot(ctx.analyticsSnapshot);
+    const asOf = calendarDateFromKey(ctx.analyticsSnapshot.asOf);
     const itemNames = new Map(ctx.store.items.map((item) => [item.id, item.name]));
     const year = ctx.historyMonth.getFullYear();
     const month = ctx.historyMonth.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const leadingDays = (new Date(year, month, 1).getDay() + 6) % 7;
     const activeItems = ctx.store.items;
-    const today = dateKey(new Date());
+    const today = ctx.analyticsSnapshot.asOf;
     const calendarCells = [
         ...Array.from({length: leadingDays}, () => `<span class="lc-checkin__calendar-empty"></span>`),
         ...Array.from({length: daysInMonth}, (_, index) => {
@@ -106,14 +107,14 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const eventDetails = filteredRecords.length ? `<details class="lc-checkin__history-details"><summary><span>${t("review.historyDetails")}</span><em>${t("review.recordsCount", {n: filteredRecords.length})}</em><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__history-events">${eventRows.slice(0, 5).join("")}${eventRows.length > 5 ? `<div data-history-extra hidden>${eventRows.slice(5).join("")}</div><button class="lc-checkin__text-button lc-checkin__history-expand" type="button" data-history-expand>${t("review.historyExpand", {n: eventRows.length - 5})}</button>` : ""}</div></details>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
     const details = aggregateDetails + eventDetails;
     const analyticsBadge = analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}" title="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : "";
-    const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const currentMonth = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
     const nextDisabled = ctx.historyMonth >= currentMonth;
     const historySourceOptions = (["all", "manual", "tomato", "import", "api"] as HistorySourceFilter[]).map((value) => `<option value="${value}" ${ctx.historySource === value ? "selected" : ""}>${escapeHtml(t(`source.${value}`))}</option>`).join("");
     const historyOrderOptions = [["newest", "review.orderNewest"], ["oldest", "review.orderOldest"]] as const;
     const resultLabel = hasHistoryFilter ? t("review.historyResultFiltered", {shown: filteredEvents.length, total: selectedEvents.length}) : t("review.historyResultAll", {total: selectedEvents.length});
     const historyTools = `<details class="lc-checkin__history-filter-disclosure" ${hasHistoryFilter ? "open" : ""}><summary>${hasHistoryFilter ? t("review.searchOn") : t("review.searchTitle")}</summary><section class="lc-checkin__history-tools" role="search" aria-label="${t("review.searchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(ctx.historyQuery)}" placeholder="${t("review.searchAria")}" aria-label="${t("review.searchAria")}" enterkeyhint="search" />${ctx.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><div class="lc-checkin__history-filter-row"><label><span>${t("review.sourceLabel")}</span><select data-history-source aria-label="${t("review.sourceAria")}">${historySourceOptions}</select></label><label><span>${t("review.orderLabel")}</span><select data-history-order aria-label="${t("review.orderAria")}">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${ctx.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></section></details>`;
 
-    const summary = ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange) : buildSummaryContext(ctx.store, ctx.summaryRange);
+    const summary = ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange, asOf) : buildSummaryContext(ctx.store, ctx.summaryRange, asOf);
     const iconsById = new Map(ctx.store.items.map((item) => [item.id, item.icon]));
     const summaryRate = summary.scheduledItems ? Math.round(summary.completedItems / summary.scheduledItems * 100) : 0;
     const rankedSummaryItems = [...summary.items].sort((a, b) => b.completionRate - a.completionRate);
@@ -168,8 +169,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";
         return `<div class="lc-checkin__trend-card"><header><div><h3>${escapeHtml(series.title)}</h3><small>${t("review.trendCompared")}</small></div><strong>${stats.current}${escapeHtml(series.unit)}</strong></header><div class="lc-checkin__trend-stats"><span><small>${t("review.trendAverage")}</small><b>${stats.average}${escapeHtml(series.unit)}</b></span><span><small>${t("review.trendBest")}</small><b>${stats.best}${escapeHtml(series.unit)}</b></span><span class="is-${stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "flat"}"><small>${t("review.trendChange")}</small><b>${direction} ${Math.abs(stats.delta)}${escapeHtml(series.unit)}</b></span></div>${chart}</div>`;
     };
-    const achievements = buildAchievements(ctx.store);
-    const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, new Date(), ctx.reminderUserActions), ctx.reminderFilter);
+    const achievements = buildAchievements(ctx.store, asOf);
+    const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions), ctx.reminderFilter);
     /* 同一打卡只保留最新实例，累计次数以内联摘要展示，避免提醒列表纵向膨胀。 */
     const reminderByTitle = new Map<string, (typeof rawReminders)[number] & {occurrenceCount?: number}>();
     rawReminders.forEach((entry) => {
@@ -202,7 +203,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}${count}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
     /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */
-    const overdueHistory = projectOverdueOccurrenceHistory(ctx.occasionStore, new Date()).slice(0, 12);
+    const overdueHistory = projectOverdueOccurrenceHistory(ctx.occasionStore, asOf).slice(0, 12);
     /* 逾期历史折叠（T-117）：默认只展示前 4 条，其余折叠进「展开全部」。 */
     const OVERDUE_VISIBLE = 4;
     const overdueRow = (entry: {occasionId: string; occurrenceDate: string; name: string; overdueDays: number}) => `<article class="lc-checkin__reminder-row is-overdue" data-overdue-occasion="${escapeHtml(entry.occasionId)}" data-overdue-date="${escapeHtml(entry.occurrenceDate)}"><span class="lc-checkin__reminder-source">${escapeHtml(t("review.remindersOccasion"))}</span><strong>${escapeHtml(entry.name)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(entry.occurrenceDate)} · ${t("review.overdueDays", {n: entry.overdueDays})}</span><button class="lc-checkin__small-button" type="button" data-occasion-complete data-occasion-id="${escapeHtml(entry.occasionId)}" data-occasion-date="${escapeHtml(entry.occurrenceDate)}" aria-label="${t("review.catchUpAria", {name: entry.name, date: entry.occurrenceDate})}">${t("review.catchUp")}</button></article>`;

@@ -28,16 +28,16 @@ interface AchievementsContext {
     usedSources: number;
 }
 
-function buildContext(store: CheckinStore): AchievementsContext {
+function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
     const activeDays = new Set<string>();
     for (const event of store.events) activeDays.add(event.localDate);
 
     const dayStatus = new Map<string, {scheduled: number; completed: number}>();
-    const today = new Date();
+    const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
     const earliest = store.items.reduce((minimum, item) => {
         const created = Date.parse(item.createdAt);
         return Number.isNaN(created) ? minimum : Math.min(minimum, created);
-    }, Date.now());
+    }, today.getTime());
     const start = new Date(new Date(earliest).getFullYear(), new Date(earliest).getMonth(), new Date(earliest).getDate());
     for (let date = new Date(start); dateKey(date) <= dateKey(today); date = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)) {
         let scheduled = 0;
@@ -88,8 +88,8 @@ function buildContext(store: CheckinStore): AchievementsContext {
     };
 }
 
-export function buildAchievements(store: CheckinStore): Achievement[] {
-    const context = buildContext(store);
+export function buildAchievements(store: CheckinStore, asOf = new Date()): Achievement[] {
+    const context = buildContext(store, asOf);
     const definition: Array<Omit<Achievement, "achieved">> = [
         {id: "first", name: "第一次打卡", description: "迈出坚持的第一步", icon: "🎯", progress: context.totalEvents, target: 1, category: "milestone"},
         {id: "events-10", name: "初露锋芒", description: "累计记录 10 条", icon: "🌱", progress: context.totalEvents, target: 10, category: "milestone"},
