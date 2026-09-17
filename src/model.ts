@@ -397,12 +397,33 @@ export function isItemAvailableOnDate(item: CheckinItem, date: Date): boolean {
     return !(item.archivePeriods || []).some((period) => period.startDate <= key && (!period.endDate || key < period.endDate));
 }
 
+const orderedRevisionCache = new WeakMap<CheckinItemRevision[], readonly CheckinItemRevision[]>();
+
+function getOrderedItemRevisions(item: CheckinItem): readonly CheckinItemRevision[] {
+    const revisions = item.revisions || [];
+    const cached = orderedRevisionCache.get(revisions);
+    if (cached) return cached;
+    let ordered: readonly CheckinItemRevision[] = revisions;
+    for (let index = 1; index < revisions.length; index += 1) {
+        if (revisions[index - 1].effectiveDate <= revisions[index].effectiveDate) continue;
+        ordered = [...revisions].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate));
+        break;
+    }
+    orderedRevisionCache.set(revisions, ordered);
+    return ordered;
+}
+
 export function getItemRevisionForDate(item: CheckinItem, date = new Date()): CheckinItemRevision {
     const key = dateKey(date);
-    const revisions = [...(item.revisions || [])]
-        .filter((candidate) => candidate.effectiveDate <= key)
-        .sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate));
-    const revision = revisions[revisions.length - 1];
+    const revisions = getOrderedItemRevisions(item);
+    let low = 0;
+    let high = revisions.length;
+    while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (revisions[middle].effectiveDate <= key) low = middle + 1;
+        else high = middle;
+    }
+    const revision = low > 0 ? revisions[low - 1] : undefined;
     return revision ? cloneRevision(revision) : {
         effectiveDate: isValidDateKey(item.createdDate) ? item.createdDate : key,
         kind: item.kind,
