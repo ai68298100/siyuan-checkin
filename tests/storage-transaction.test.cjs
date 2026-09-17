@@ -32,9 +32,10 @@ assert.equal(unchanged.conflict.conflicted,false); assert.equal(unchanged.localC
 const newerItem = {...baseItem,name:"阅读新名称",updatedAt:"2026-09-18T00:00:00.000Z"};
 const itemMerge = reconcileStoreSnapshots(makeStore(),makeStore([],baseItem),makeStore([],newerItem));
 assert.equal(itemMerge.merged.items[0].name,"阅读新名称"); assert.equal(itemMerge.localChanged,true); assert.equal(itemMerge.remoteNeedsWrite,false);
-assert.match(indexSource, /withStorageLock\(async \(\) => \{[\s\S]*?loadData\(STORAGE_NAME\)[\s\S]*?reconcileStoreSnapshots/, "remote refresh and reconciliation must run inside the exclusive lock");
+assert.match(indexSource, /withStorageLock\(async \(\) => \{[\s\S]*?loadData\(STORAGE_NAME\)[\s\S]*?reconcileNormalizedStoreSnapshots\(this\.lastPersistedStore, this\.store, normalizeStore\(stored\)\)/, "remote input must be normalized once and trusted snapshots reconciled inside the exclusive lock");
 assert.match(indexSource, /if \(reconciliation\.remoteNeedsWrite\) \{[\s\S]*?await this\.persist\(\)/, "a merged local projection must converge back to storage before the user mutation");
 assert.match(indexSource, /this\.lastPersistedStore = this\.cloneStore\(persistedSnapshot\);[\s\S]*?if \(this\.saveState === "saving"\)/, "every successful verified store write must advance the conflict baseline independently of UI save state");
+assert.match(indexSource, /persistNormalizedStoreWithVerification\([\s\S]*?snapshot,[\s\S]*?loadData\(STORAGE_NAME\)/, "trusted mutation snapshots must use the normalized verification fast path");
 (async () => {
     for (let index = 1; index <= 25; index += 1) {
         const expected = makeStore([makeEvent(index)]);

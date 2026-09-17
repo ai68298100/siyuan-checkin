@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -25,7 +25,7 @@ import {bindEditorHandlers, type BindEditorHost} from "./render/bind-editor";
 import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/bind-page-navigation";
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
-import {persistStoreWithVerification, reconcileStoreSnapshots} from "./storage-transaction";
+import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -2087,13 +2087,13 @@ export default class CheckinPlugin extends Plugin {
             const history = appendStoreSnapshotHistory(await this.loadData(BACKUP_STORAGE_NAME), createStoreSnapshotEnvelope(previous));
             await this.saveData(BACKUP_STORAGE_NAME, history);
             this.snapshotHistory = readStoreSnapshotHistory(history);
-            const verified = await persistStoreWithVerification(
+            const verified = await persistNormalizedStoreWithVerification(
                 snapshot,
                 () => this.loadData(STORAGE_NAME),
                 (candidate) => this.saveData(STORAGE_NAME, candidate),
             );
             persistedSnapshot = verified.store;
-            this.store = mergeStores(this.store, verified.store);
+            this.store = mergeNormalizedStores(this.store, verified.store);
         });
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
@@ -2404,7 +2404,7 @@ export default class CheckinPlugin extends Plugin {
             if (this.initializationState === "ready" && this.storageReady) {
                 try {
                     const stored = await this.loadData(STORAGE_NAME);
-                    const reconciliation = reconcileStoreSnapshots(this.lastPersistedStore, this.store, stored);
+                    const reconciliation = reconcileNormalizedStoreSnapshots(this.lastPersistedStore, this.store, normalizeStore(stored));
                     const {remote, merged: latest, conflict} = reconciliation;
                     if (conflict.conflicted) {
                         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "conflict", at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}});

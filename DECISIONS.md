@@ -472,3 +472,9 @@
 - buildSummaryForBounds 已同时服务预设范围和自定义范围，不能再根据 range + asOf 二次推导事件窗口；否则历史自定义区间会显示正确标签却统计今天的数据。
 - 入口先按最终 elapsed bounds 读取半开事件区间，再一次按 itemId 分桶；项目摘要只消费自身事件，不重复扫描共享区间数组。
 - asOf 只负责裁剪尚未结束的当前范围，不能替代用户明确选择的历史起止日期。
+
+## D-148：严格规范化留在不可信边界，锁内可信快照使用显式快路径（2026-09-17）
+
+- normalizeStore 继续负责 load/import/API 等 unknown 输入，不能用性能理由跳过损坏字段、墓碑和外部身份清洗；插件自己通过不可变模型产生的 store 则不应在同一事务重复规范化。
+- normalized 函数名明确调用前提，只在内部事务链使用；公共 mergeStores、detectStoreConflict 和 persistStoreWithVerification 仍保留严格包装层。
+- 指纹只缓存到 WeakMap，不持久化；调用约束与既有事件索引相同，生命周期内的 store 及嵌套集合必须采用不可变替换。相同指纹用于短路无变化合并和写后修复，指纹不同仍逐项生成冲突ID并执行确定性合并。

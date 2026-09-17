@@ -126,29 +126,48 @@ export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: Sto
     return normalizeStoreAudit([...entries, entry], limit);
 }
 
-function storeFingerprint(store: CheckinStore): string {
-    return JSON.stringify({items: store.items, events: store.events, eventTombstones: store.eventTombstones, templates: store.templates || []});
+const normalizedStoreFingerprints = new WeakMap<CheckinStore, string>();
+
+/** Cache only lifecycle-owned snapshots whose identity and nested collections stay immutable. */
+function fingerprintNormalizedStore(store: CheckinStore): string {
+    let fingerprint = normalizedStoreFingerprints.get(store);
+    if (!fingerprint) {
+        fingerprint = JSON.stringify({items: store.items, events: store.events, eventTombstones: store.eventTombstones, templates: store.templates || []});
+        normalizedStoreFingerprints.set(store, fingerprint);
+    }
+    return fingerprint;
 }
 
-/** Compare a saved baseline with the latest store to detect another window's write. */
-export function detectStoreConflict(baseline: unknown, current: unknown): StoreConflictReport {
-    const before = normalizeStore(baseline);
-    const after = normalizeStore(current);
+export function areNormalizedStoresEqual(left: CheckinStore, right: CheckinStore): boolean {
+    return left === right || fingerprintNormalizedStore(left) === fingerprintNormalizedStore(right);
+}
+
+export function detectNormalizedStoreConflict(before: CheckinStore, after: CheckinStore): StoreConflictReport {
+    const baselineFingerprint = fingerprintNormalizedStore(before);
+    const currentFingerprint = fingerprintNormalizedStore(after);
+    if (baselineFingerprint === currentFingerprint) {
+        return {conflicted: false, baselineFingerprint, currentFingerprint, changedItemIds: [], changedEventIds: []};
+    }
     const beforeItems = new Map(before.items.map((item) => [item.id, JSON.stringify(item)]));
     const afterItems = new Map(after.items.map((item) => [item.id, JSON.stringify(item)]));
     const beforeEvents = new Map(before.events.map((event) => [event.id, JSON.stringify(event)]));
     const afterEvents = new Map(after.events.map((event) => [event.id, JSON.stringify(event)]));
     const changedItemIds = [...new Set([...beforeItems.keys(), ...afterItems.keys()])].filter((id) => beforeItems.get(id) !== afterItems.get(id)).sort();
     const changedEventIds = [...new Set([...beforeEvents.keys(), ...afterEvents.keys()])].filter((id) => beforeEvents.get(id) !== afterEvents.get(id)).sort();
-    const baselineFingerprint = storeFingerprint(before);
-    const currentFingerprint = storeFingerprint(after);
-    return {conflicted: baselineFingerprint !== currentFingerprint, baselineFingerprint, currentFingerprint, changedItemIds, changedEventIds};
+    return {conflicted: true, baselineFingerprint, currentFingerprint, changedItemIds, changedEventIds};
+}
+
+/** Compare a saved baseline with the latest store to detect another window's write. */
+export function detectStoreConflict(baseline: unknown, current: unknown): StoreConflictReport {
+    const before = normalizeStore(baseline);
+    const after = normalizeStore(current);
+    return detectNormalizedStoreConflict(before, after);
 }
 export function resolveStoreConflict(baseline: unknown, local: unknown, remote: unknown, strategy: StoreConflictStrategy = "merge"): StoreConflictResolution {
     const report = detectStoreConflict(baseline, remote);
     const localStore = normalizeStore(local);
     const remoteStore = normalizeStore(remote);
-    const store = strategy === "local" ? localStore : strategy === "remote" ? remoteStore : mergeStores(localStore, remoteStore);
+    const store = strategy === "local" ? localStore : strategy === "remote" ? remoteStore : mergeNormalizedStores(localStore, remoteStore);
     return {strategy, store, report};
 }
 
@@ -289,6 +308,10 @@ export function groupCheckinItems(items: readonly CheckinItem[], mode: CheckinIt
 export function mergeStores(local: unknown, remote: unknown): CheckinStore {
     const localStore = normalizeStore(local);
     const remoteStore = normalizeStore(remote);
+    return mergeNormalizedStores(localStore, remoteStore);
+}
+
+export function mergeNormalizedStores(localStore: CheckinStore, remoteStore: CheckinStore): CheckinStore {
     const itemsById = new Map<string, CheckinItem>();
     [...localStore.items, ...remoteStore.items].forEach((item) => {
         const existing = itemsById.get(item.id);
