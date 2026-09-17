@@ -523,7 +523,8 @@ export function removeEventsForDay(store: CheckinStore, itemId: string, date = n
 export function removeEvents(store: CheckinStore, removals: readonly (string | CheckinEvent)[], deletedAt = new Date().toISOString()): CheckinStore {
     if (!removals.length) return store;
     const eventSnapshots = removals.filter((removal): removal is CheckinEvent => typeof removal !== "string");
-    const ids = new Set(removals.map((removal) => typeof removal === "string" ? removal : removal.id));
+    const ids = new Set(removals.map((removal) => typeof removal === "string" ? removal.trim() : removal.id).filter(Boolean));
+    if (!ids.size && !eventSnapshots.length) return store;
     const externalIdentities = new Set(eventSnapshots.map(getExternalRefIdentity).filter((identity): identity is string => Boolean(identity)));
     const matchesSnapshot = (event: CheckinEvent) => ids.has(event.id)
         || Boolean(getExternalRefIdentity(event) && externalIdentities.has(getExternalRefIdentity(event)!));
@@ -543,6 +544,13 @@ export function removeEvents(store: CheckinStore, removals: readonly (string | C
         };
         const existing = tombstonesByEventId.get(event.id);
         tombstonesByEventId.set(event.id, existing ? selectTombstoneWinner(existing, tombstone) : tombstone);
+    });
+    // A queued undo can reach this store after another window has temporarily
+    // removed the event. Keep an ID-only tombstone so a stale replay cannot
+    // resurrect it merely because its full snapshot was no longer available.
+    ids.forEach((eventId) => {
+        if (tombstonesByEventId.has(eventId)) return;
+        tombstonesByEventId.set(eventId, {eventId, deletedAt: normalizedDeletedAt});
     });
     return {
         ...store,
