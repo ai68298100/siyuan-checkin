@@ -92,8 +92,15 @@ export function buildCustomSummaryContext(store: CheckinStore, range: CustomSumm
 function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds: DateRange, date: Date): SummaryContext {
     const elapsedBounds = {...bounds, end: getElapsedEnd(bounds, date)};
     const itemIds = new Set(store.items.map((item) => item.id));
-    const events = getEventsInRange(store, range, date).filter((event) => itemIds.has(event.itemId));
-    const items = store.items.map((item) => summarizeItem(store, item, elapsedBounds, events))
+    const events = getEventsInDateRange(store, dateKey(elapsedBounds.start), dateKey(elapsedBounds.end))
+        .filter((event) => itemIds.has(event.itemId));
+    const eventsByItem = new Map<string, CheckinEvent[]>();
+    events.forEach((event) => {
+        const bucket = eventsByItem.get(event.itemId);
+        if (bucket) bucket.push(event);
+        else eventsByItem.set(event.itemId, [event]);
+    });
+    const items = store.items.map((item) => summarizeItem(store, item, elapsedBounds, eventsByItem.get(item.id) || EMPTY_EVENTS))
         .filter((item) => item.scheduledDays > 0 || item.eventCount > 0 || Boolean(item.quota));
     return {
         range,
@@ -126,9 +133,8 @@ function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange
             completedDays += 1;
         }
     }
-    const itemEvents = events.filter((event) => event.itemId === item.id);
     const totals = new Map<string, {unit: string; totalValue: number; eventCount: number}>();
-    itemEvents.forEach((event) => {
+    events.forEach((event) => {
         const current = totals.get(event.unit);
         totals.set(event.unit, {
             unit: event.unit,
@@ -139,7 +145,7 @@ function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange
     return {
         itemId: item.id,
         name: item.name,
-        eventCount: itemEvents.length,
+        eventCount: events.length,
         totalsByUnit: [...totals.values()],
         scheduledDays,
         completedDays,
@@ -147,6 +153,8 @@ function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange
         ...(quota ? {quota} : {}),
     };
 }
+
+const EMPTY_EVENTS: CheckinEvent[] = [];
 
 function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): QuotaSummary | undefined {
     const asOf = new Date(bounds.end.getTime() - 86400000);
