@@ -582,3 +582,11 @@
 - 删除语义：移除 item + 其全部事件，并写事件墓碑（复用批次 8 基础设施，防多窗口旧数据复活）；删除前自动落恢复点，确认层展示记录条数——保证可恢复路径。
 - 字段：autoArchive = { afterDays } 挂 item 级（不进日期修订），normalizeItem 显式放行，随主存储备份协议持久化。
 - UI 原则：卡片零常驻空间——配置在编辑器高级区、操作在上下文菜单/批量模式、结果用 toast；归档页承担浏览与批量管理。
+
+## D-166：Task Horizon 合作契约与扩展位规划（2026-09-18）
+
+- 调研结论：Task Horizon 已与底栏番茄钟建立跨插件范式（globalThis.__dockTomato.stats.queryFocus + 能力检测/超时/AbortSignal + 契约测试），并有原生复选框完成触发的积分联动——打卡侧直接复用该范式。
+- 显示合作（L1）：对方日历经 window.siyuanCheckin 的 analytics.read/events.read 读打卡数据 + 订阅 checkin:analytics-updated/event-recorded 刷新；未授权即降级隐藏。
+- 写入合作（L2）：任务完成回写经 events.record，externalRef 契约为 "taskhorizon:<blockId>:<localDate>"（幂等防重放）；打卡项目用配额按记录数目标 N，达成即当天完成，可与自动归档（T-1161）组合。
+- 责任边界：打卡侧只维护 siyuanCheckin 公共面（v4 已就绪）+ 文档 + 预设模板；日历图层与完成回写在对方侧实现；不读取对方私有文件、不做文档污染式同步。
+- 外部软件通道：短期导出 JSON/CSV；中期评估每日摘要写驻留文档（经内核 API 供外部工具读取，需隐私评估，另立项）。
