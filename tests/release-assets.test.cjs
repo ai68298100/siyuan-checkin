@@ -3,8 +3,6 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.join(__dirname, "..");
-const RELEASE_VERSION = "12.0.1";
-const escapedReleaseVersion = RELEASE_VERSION.replaceAll(".", "\\.");
 const readText = (filename) => fs.readFileSync(path.join(root, filename), "utf8");
 for (const filename of ["package.json", "plugin.json", path.join("dist", "plugin.json")]) {
     const bytes = fs.readFileSync(path.join(root, filename));
@@ -12,6 +10,9 @@ for (const filename of ["package.json", "plugin.json", path.join("dist", "plugin
 }
 const plugin = JSON.parse(fs.readFileSync(path.join(root, "plugin.json"), "utf8"));
 const packageManifest = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+const RELEASE_VERSION = packageManifest.version;
+assert.match(RELEASE_VERSION, /^\d+\.\d+\.\d+$/, "package.json must declare a semantic release version");
+const escapedReleaseVersion = RELEASE_VERSION.replaceAll(".", "\\.");
 const distPlugin = JSON.parse(fs.readFileSync(path.join(root, "dist", "plugin.json"), "utf8"));
 const versionSource = readText(path.join("src", "version.ts"));
 const versionMatch = versionSource.match(/export\s+const\s+PLUGIN_VERSION\s*=\s*["']([^"']+)["']\s*;/);
