@@ -50,13 +50,15 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         if (event.source === "tomato") tomatoEvents += 1;
     }
 
-    const dayStatus = new Map<string, {scheduled: number; completed: number}>();
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
     const earliest = store.items.reduce((minimum, item) => {
         const created = Date.parse(item.createdAt);
         return Number.isNaN(created) ? minimum : Math.min(minimum, created);
     }, today.getTime());
     const start = new Date(new Date(earliest).getFullYear(), new Date(earliest).getMonth(), new Date(earliest).getDate());
+    let perfectDays = 0;
+    let bestStreak = 0;
+    let streak = 0;
     for (let date = new Date(start); dateKey(date) <= dateKey(today); date = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)) {
         let scheduled = 0;
         let completed = 0;
@@ -65,16 +67,8 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
             scheduled += 1;
             if (isComplete(store, item, date)) completed += 1;
         }
-        if (scheduled > 0) dayStatus.set(dateKey(date), {scheduled, completed});
-    }
-
-    let perfectDays = 0;
-    let bestStreak = 0;
-    let streak = 0;
-    const sortedDays = [...dayStatus.keys()].sort();
-    for (const day of sortedDays) {
-        const status = dayStatus.get(day)!;
-        if (status.completed >= status.scheduled) {
+        if (scheduled === 0) continue;
+        if (completed >= scheduled) {
             perfectDays += 1;
             streak += 1;
             bestStreak = Math.max(bestStreak, streak);
