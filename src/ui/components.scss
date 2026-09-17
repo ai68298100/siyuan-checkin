@@ -9560,3 +9560,37 @@ details:not([open]) > :not(summary) { display: none !important; }
         min-height: 26px !important;
     }
 }
+
+/* 13.0.2 真机收口：优先提醒条纵向列表化（用户反馈 2026-09-18）。
+   桌面宽容器此前为 flex 双列（主行与展开区并排），「定位打卡」悬在中间、
+   两列行错位。统一为主行整行、展开区整行在下，操作按钮右对齐成胶囊，
+   移动端既有紧凑规则不受影响。 */
+.lc-checkin--today .lc-checkin__priority-reminder {
+    display: block;
+}
+.lc-checkin--today .lc-checkin__priority-reminder > .lc-checkin__priority-reminder-row,
+.lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__priority-reminder-more .lc-checkin__priority-reminder-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+}
+.lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__priority-reminder-more {
+    margin-top: 4px;
+    padding-top: 4px;
+}
+.lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__text-button {
+    justify-self: end;
+    min-height: 26px;
+    padding-inline: 10px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 999px;
+    background: var(--lc-checkin-surface);
+    white-space: nowrap;
+}
+.lc-checkin--today .lc-checkin__priority-reminder .lc-checkin__text-button:hover {
+    color: var(--lc-checkin-accent-text);
+    border-color: var(--lc-checkin-accent-text);
+    background: var(--lc-checkin-accent-soft);
+}
