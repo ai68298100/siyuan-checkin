@@ -1024,3 +1024,8 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 定位 v13.0.0 发布后 CI browser-audit 失败的两类问题：① visual-qa 对"阅读"模板 targetStep 期望过时（T-1091 步长分离后目标输入统一 0.01）；② 真实产品缺陷——写后校验指纹对"缺省 archived"与"物化 false"不等价，编辑器新建条目保存被误判并发覆盖、重试后回滚（14.0 第六批引入，真实宿主同样复现）。
 - 修复：save-form 构造条目物化 archived 缺省值 + cloneItemValue 快照防御性物化（D-157）；QA 宿主存储按名分槽并克隆失败 reject；双击提交等待卡片渲染后再点击。
 - 证据：完整质量链 test:quality exit 0；Edge 浏览器 visual-qa 全链通过（results.json 输出完整、pageErrors 为空）。
+
+### 13.0.1 发布执行（2026-09-17）
+
+- 版本真值同步 13.0.1（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.1-change-log.md / release-notes-13.0.1.md）。
+- scripts/release.cjs 执行构建、测试链、提交、推送、标签与 GitHub Release（package.zip）；远端资产与发布说明 SHA-256 一致，仓库内发布说明回填最终摘要（zip 元数据非字节确定，以上传时流水线计算值为准）。
