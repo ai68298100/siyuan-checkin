@@ -420,6 +420,7 @@ export function getItemRevisionForDate(item: CheckinItem, date = new Date()): Ch
 
 interface StoreEventIndex {
     byItem: Map<string, CheckinEvent[]>;
+    eventDatesByItem: Map<string, Set<string>>;
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
@@ -437,6 +438,7 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     if (!index) {
         index = {
             byItem: new Map(),
+            eventDatesByItem: new Map(),
             byItemDate: new Map(),
             byDate: new Map(),
             byId: new Map(),
@@ -453,6 +455,9 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
             const itemEvents = index.byItem.get(event.itemId);
             if (itemEvents) itemEvents.push(event);
             else index.byItem.set(event.itemId, [event]);
+            const itemDates = index.eventDatesByItem.get(event.itemId);
+            if (itemDates) itemDates.add(event.localDate);
+            else index.eventDatesByItem.set(event.itemId, new Set([event.localDate]));
             const day = getEventDateKey(event);
             const itemDateKey = event.itemId + ":" + day;
             const itemDateEvents = index.byItemDate.get(itemDateKey);
@@ -482,6 +487,10 @@ export function getEventsForItem(store: CheckinStore, itemId: string): CheckinEv
     return getStoreIndex(store).byItem.get(itemId) || EMPTY_EVENTS;
 }
 
+export function getEventDatesForItem(store: CheckinStore, itemId: string): ReadonlySet<string> {
+    return getStoreIndex(store).eventDatesByItem.get(itemId) || EMPTY_EVENT_DATES;
+}
+
 export function getEventsForDate(store: CheckinStore, date: Date | string = new Date()): CheckinEvent[] {
     const key = typeof date === "string" ? date : dateKey(date);
     return getStoreIndex(store).byDate.get(key) || EMPTY_EVENTS;
@@ -493,6 +502,39 @@ export function getEventById(store: CheckinStore, eventId: string | undefined): 
 
 export function getItemById(store: CheckinStore, itemId: string | undefined): CheckinItem | undefined {
     return itemId ? getStoreIndex(store).itemById.get(itemId) : undefined;
+}
+
+/** Current natural-day recording streaks; an absent today may continue from yesterday. */
+export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map<string, number> {
+    const streaks = new Map<string, number>();
+    const todayDate = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
+    const today = dateKey(todayDate);
+    const yesterdayDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() - 1, 12);
+    const yesterday = dateKey(yesterdayDate);
+    for (const item of store.items) {
+        if (item.archived) {
+            streaks.set(item.id, 0);
+            continue;
+        }
+        const days = getEventDatesForItem(store, item.id);
+        if (!days.size) {
+            streaks.set(item.id, 0);
+            continue;
+        }
+        const startKey = days.has(today) ? today : yesterday;
+        if (!days.has(startKey)) {
+            streaks.set(item.id, 0);
+            continue;
+        }
+        let streak = 0;
+        const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)), 12);
+        while (days.has(dateKey(check))) {
+            streak += 1;
+            check.setDate(check.getDate() - 1);
+        }
+        streaks.set(item.id, streak);
+    }
+    return streaks;
 }
 
 export function getActiveItemById(store: CheckinStore, itemId: string | undefined): CheckinItem | undefined {
@@ -525,6 +567,7 @@ export function getEventsInDateRange(store: CheckinStore, startDate: string, end
 }
 
 const EMPTY_EVENTS: CheckinEvent[] = [];
+const EMPTY_EVENT_DATES: ReadonlySet<string> = new Set<string>();
 
 export function getProgress(store: CheckinStore, item: CheckinItem, date = new Date()): number {
     const revision = getItemRevisionForDate(item, date);
