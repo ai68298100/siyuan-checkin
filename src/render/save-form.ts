@@ -62,6 +62,7 @@ export async function saveEditorForm(
     const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
     const unit = kind === "binary" ? "次" : String(data.get("unit") || kindOption.defaultUnit).trim().slice(0, 16) || kindOption.defaultUnit;
     const recordStep = normalizeRecordStep(kind, data.get("recordStep"));
+    const autoArchiveDays = Math.max(0, Math.round(Number(data.get("autoArchiveDays")) || 0));
     const group = String(data.get("group") || "").trim().slice(0, 32);
     const priority = normalizePriorityInput(data.get("priority"));
     const timeSlot = normalizeTimeSlotInput(data.get("timeSlot"));
@@ -104,6 +105,7 @@ export async function saveEditorForm(
         /* 与 normalizeStore 的规范条目保持同一字段集合：缺省 archived 会被
            规范化物化为 false，写后校验按 JSON 指纹比较，两侧必须逐键一致。 */
         archived: existing?.archived ?? false,
+        ...(autoArchiveDays > 0 ? {autoArchive: {afterDays: autoArchiveDays}} : {}),
         group,
         priority,
         sortOrder,

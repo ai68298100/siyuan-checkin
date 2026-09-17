@@ -76,6 +76,8 @@ export interface CheckinItem {
     completionSource?: CompletionSource;
     /** Whether tomato completion contributes minutes or completed sessions. */
     tomatoMode?: TomatoValueMode;
+    /** 自动归档（D-165/T-1161）：达成天数达到 afterDays 后自动归档；缺省或 0 表示关闭。 */
+    autoArchive?: {afterDays: number};
 }
 
 export interface CheckinEvent {

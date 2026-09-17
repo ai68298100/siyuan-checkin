@@ -214,6 +214,21 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "冥想", icon: "🕯", kind: "duration", target: 10, unit: "分钟", schedule: daily, group: "专注", priority: "medium", timeSlot: "morning", note: "安静坐下，关注呼吸和身体感受。"},
     {name: "情绪记录", icon: "😌", kind: "binary", target: 1, unit: "次", schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "写下一句当下感受和一个触发因素。"},
     {name: "周复盘", icon: "🧭", kind: "duration", target: 30, unit: "分钟", schedule: monday, group: "专注", priority: "low", timeSlot: "morning", note: "回顾上周进展并确定本周重点。"},
+    {name: "晨间补水", icon: "🥛", kind: "quantity", target: 300, unit: "毫升", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "起床后先喝一杯温水。"},
+    {name: "维生素", icon: "💊", kind: "count", target: 1, unit: "次", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "随餐或早餐后服用。"},
+    {name: "眼保健操", icon: "👀", kind: "count", target: 1, unit: "次", schedule: workdays, group: "健康", priority: "medium", timeSlot: "afternoon", note: "长时间用眼后给眼睛放个假。"},
+    {name: "早睡", icon: "🌙", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "medium", timeSlot: "evening", note: "比昨天早一点上床就算赢。"},
+    {name: "散步", icon: "🚶", kind: "duration", target: 20, unit: "分钟", schedule: daily, group: "运动", priority: "low", timeSlot: "evening", note: "饭后慢走，不用追求配速。"},
+    {name: "力量训练", icon: "🏋️", kind: "duration", target: 30, unit: "分钟", schedule: workdays, group: "运动", priority: "high", timeSlot: "any", note: "力量或自重训练均可计入。"},
+    {name: "朗读", icon: "🗣️", kind: "duration", target: 15, unit: "分钟", schedule: daily, group: "学习", priority: "low", timeSlot: "morning", note: "出声朗读，保持语感和表达。"},
+    {name: "不刷手机", icon: "📵", kind: "binary", target: 1, unit: "次", schedule: daily, group: "专注", priority: "medium", timeSlot: "evening", note: "睡前一段时间远离屏幕。"},
+    {name: "喝茶", icon: "🍵", kind: "count", target: 2, unit: "杯", schedule: daily, group: "生活", priority: "low", timeSlot: "any", note: "淡茶为宜，下午四点后少喝。"},
+    {name: "陪家人", icon: "👨‍👩‍👧", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "生活", priority: "high", timeSlot: "any", note: "放下手机，专心陪伴。"},
+    {name: "八段锦", icon: "🤸", kind: "count", target: 1, unit: "套", schedule: daily, group: "运动", priority: "low", timeSlot: "morning", note: "完整练一遍八段锦或等效体操。"},
+    {name: "泡脚", icon: "🛀", kind: "binary", target: 1, unit: "次", schedule: daily, group: "生活", priority: "low", timeSlot: "evening", note: "睡前泡脚 10-15 分钟有助放松。"},
+    {name: "早餐", icon: "🍞", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "按时吃早餐，开启稳定的一天。"},
+    {name: "午休", icon: "😴", kind: "duration", target: 20, unit: "分钟", schedule: workdays, group: "健康", priority: "low", timeSlot: "any", note: "午间小憩，20 分钟左右即可。"},
+    {name: "颈部放松", icon: "🙆", kind: "duration", target: 5, unit: "分钟", schedule: workdays, group: "健康", priority: "low", timeSlot: "afternoon", note: "每小时起身活动，缓解颈肩僵硬。"},
 ] as const;
 
 /* 模板显示名/备注的字典键映射：zh 名作为数据锚点，渲染与套用时经 t() 翻译。 */
@@ -242,6 +257,18 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "冥想": "tpl.meditate",
     "情绪记录": "tpl.moodLog",
     "周复盘": "tpl.weeklyReview",
+    "晨间补水": "tpl.morningWater",
+    "维生素": "tpl.vitamins",
+    "眼保健操": "tpl.eyeExercise",
+    "早睡": "tpl.earlyBed",
+    "散步": "tpl.stroll",
+    "力量训练": "tpl.strength",
+    "朗读": "tpl.readAloud",
+    "不刷手机": "tpl.noPhone",
+    "喝茶": "tpl.tea",
+    "陪家人": "tpl.familyTime",
+    "八段锦": "tpl.baduanjin",
+    "泡脚": "tpl.footSoak",
 };
 
 const TEMPLATE_GROUP_KEYS: Record<string, string> = {

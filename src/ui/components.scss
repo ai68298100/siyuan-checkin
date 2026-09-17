@@ -9665,3 +9665,33 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__delete-button:hover {
     color: var(--lc-checkin-danger-text);
 }
+
+/* dock 各页窄面板收口：设置行单列、卡片内距、审计限高、统计三列、hero 换行、
+   快捷键换行、模板 chips 自适应换行（用户反馈 2026-09-18 dock 巡检）。 */
+@container lc-dock (max-width: 559px) {
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__settings-card {
+        padding: 10px 12px;
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__audit-list {
+        max-height: 40vh;
+        overflow: auto;
+    }
+    .lc-checkin-dock-host .lc-checkin__summary-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-hero p {
+        overflow-wrap: anywhere;
+    }
+    .lc-checkin-dock-host .lc-checkin__kbd-group {
+        flex-wrap: wrap;
+    }
+    .lc-checkin-dock-host .lc-checkin__occasion-templates {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    }
+}

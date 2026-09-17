@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, deleteItemCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -630,7 +630,21 @@ export default class CheckinPlugin extends Plugin {
         this.pendingLocalItemId = item.id;
         this.pendingLocalItemDate = event.localDate;
         this.renderBackgroundUpdate();
+        this.maybeAutoArchiveAfterRecord(item);
         return {...event};
+    }
+
+    /** 自动归档检查（D-165/T-1161）：达成天数 ≥ afterDays 时自动归档并提示。
+        撤销导致天数回落不自动恢复（归档是显式状态，恢复走归档页）。 */
+    private maybeAutoArchiveAfterRecord(item: CheckinItem): void {
+        const target = item.autoArchive?.afterDays;
+        if (!target || item.archived || this.disposed || this.disposing) return;
+        if (countCompletedDays(this.store, item, currentCalendarDate()) < target) return;
+        const moment = captureActionMoment();
+        const fingerprint = this.itemFingerprint(item);
+        void this.enqueueMutation(() => this.setItemArchived(item.id, true, moment, fingerprint)).then((archived) => {
+            if (archived) showMessage(t("msg.autoArchived", {name: item.name, n: target}));
+        });
     }
 
     private showToday() {

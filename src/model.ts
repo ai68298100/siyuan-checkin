@@ -698,7 +698,36 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         completionSource,
         tomatoMode,
         linkedOccasionId: typeof value.linkedOccasionId === "string" && value.linkedOccasionId.trim() ? value.linkedOccasionId.trim().slice(0, 64) : undefined,
+        ...(normalizeAutoArchive(value.autoArchive) ? {autoArchive: normalizeAutoArchive(value.autoArchive)} : {}),
     };
+}
+
+/** 自动归档口径（D-165）：仅 when afterDays ≥ 1 视为启用，其余一律视为关闭；
+    规范字段集合必须与插件侧构造的条目完全一致（写后校验指纹按 JSON 比较）。 */
+function normalizeAutoArchive(value: unknown): {afterDays: number} | undefined {
+    const days = value && typeof value === "object" ? Math.round(Number((value as {afterDays?: unknown}).afterDays)) : 0;
+    return Number.isFinite(days) && days >= 1 ? {afterDays: Math.min(1_000_000, days)} : undefined;
+}
+
+/** 达成天数（自动归档口径）：从可考最早日期逐自然日到 today，按 isComplete 计数。
+    封顶 3660 天防异常日期；多记录同日只计 1。 */
+export function countCompletedDays(store: CheckinStore, item: CheckinItem, today: Date): number {
+    const startCandidates = [item.createdDate, ...item.revisions.map((revision) => revision.effectiveDate)]
+        .filter((key) => isValidDateKey(key))
+        .sort(compareText);
+    const startKey = startCandidates[0];
+    if (!startKey) return 0;
+    const [year, month, day] = startKey.split("-").map(Number);
+    const cursor = new Date(year, month - 1, day);
+    const endKey = dateKey(today);
+    let count = 0;
+    for (let guard = 0; guard < 3660; guard += 1) {
+        const key = dateKey(cursor);
+        if (key > endKey) break;
+        if (isComplete(store, item, cursor)) count += 1;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return count;
 }
 
 function normalizeEvent(value: unknown): CheckinEvent | undefined {
