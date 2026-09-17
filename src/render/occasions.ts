@@ -16,7 +16,7 @@ export interface OccasionsViewContext {
     appearance: "light" | "dark";
     /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
     occasionTemplatesOpen: boolean;
-    occasionTemplateCategory: "all" | OccasionTemplateCategory;
+    occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext): string {
@@ -69,16 +69,18 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const monthlySubtype: MonthlySubtype = editing?.monthlySubtype || "byday";
     const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
     const templateDescription = (template: typeof OCCASION_TEMPLATES[number]): string => describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as Occasion);
-    const visibleTemplates = OCCASION_TEMPLATES.map((template, index) => ({template, index})).filter(({template}) => ctx.occasionTemplateCategory === "all" || template.category === ctx.occasionTemplateCategory);
+    /* 模板量增大后不再提供「全部」视图：默认与首档为「推荐」精选分组，
+       其余按类别浏览（D-161）。 */
+    const visibleTemplates = OCCASION_TEMPLATES.map((template, index) => ({template, index})).filter(({template}) => ctx.occasionTemplateCategory === "recommended" ? Boolean(template.recommended) : template.category === ctx.occasionTemplateCategory);
     const templateChips = visibleTemplates.map(({template, index}) => {
         const name = occasionTemplateName(template);
         const recurrenceDescription = templateDescription(template);
         const accessibleName = `${name} · ${recurrenceDescription}`;
         return `<button type="button" class="lc-checkin__occasion-template" data-occasion-template="${index}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"><span class="lc-checkin__occasion-template-icon" aria-hidden="true">${escapeHtml(template.icon)}</span><span class="lc-checkin__occasion-template-name">${escapeHtml(name)}</span></button>`;
     }).join("");
-    const templateCategories: Array<["all" | OccasionTemplateCategory, string]> = [["all", t("occ.tplCategoryAll")], ["birthday", t("occ.tplCategoryBirthday")], ["anniversary", t("occ.tplCategoryAnniversary")], ["expense", t("occ.tplCategoryExpense")], ["renewal", t("occ.tplCategoryRenewal")], ["health", t("occ.tplCategoryHealth")], ["festival", t("occ.tplCategoryFestival")]];
+    const templateCategories: Array<["recommended" | OccasionTemplateCategory, string]> = [["recommended", t("occ.tplCategoryRecommended")], ["birthday", t("occ.tplCategoryBirthday")], ["anniversary", t("occ.tplCategoryAnniversary")], ["expense", t("occ.tplCategoryExpense")], ["renewal", t("occ.tplCategoryRenewal")], ["health", t("occ.tplCategoryHealth")], ["festival", t("occ.tplCategoryFestival")]];
     const templateCategoryTabs = templateCategories.map(([value, label]) => {
-        const count = value === "all" ? OCCASION_TEMPLATES.length : OCCASION_TEMPLATES.filter((template) => template.category === value).length;
+        const count = value === "recommended" ? OCCASION_TEMPLATES.filter((template) => template.recommended).length : OCCASION_TEMPLATES.filter((template) => template.category === value).length;
         const selected = value === ctx.occasionTemplateCategory;
         return `<button type="button" class="${selected ? "is-active" : ""}" data-occasion-template-category="${value}" aria-label="${escapeHtml(`${label}（${count}）`)}" aria-pressed="${selected}"><span class="lc-checkin__occasion-template-category-label">${escapeHtml(label)}</span><em aria-hidden="true">${count}</em></button>`;
     }).join("");

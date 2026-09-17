@@ -254,7 +254,7 @@ export default class CheckinPlugin extends Plugin {
     private occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled" = "all";
     private occasionTimeFilter: "all" | "today" | "upcoming" | "ended" = "all";
     private occasionTemplatesOpen = false;
-    private occasionTemplateCategory: "all" | import("./occasions").OccasionTemplateCategory = "all";
+    private occasionTemplateCategory: "recommended" | import("./occasions").OccasionTemplateCategory = "recommended";
     private celebration?: {message: string; itemName: string};
     private lastExportAt?: string;
     private pendingAttachments = new Map<string, string>();

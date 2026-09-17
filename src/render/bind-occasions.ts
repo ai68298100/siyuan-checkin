@@ -16,7 +16,7 @@ export interface BindOccasionsHost {
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
     occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
     occasionTemplatesOpen: boolean;
-    occasionTemplateCategory: "all" | OccasionTemplateCategory;
+    occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showToday(): void;
@@ -121,7 +121,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         syncBlocks();
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template-category]").forEach((button) => button.addEventListener("click", () => {
-        host.occasionTemplateCategory = (button.dataset.occasionTemplateCategory || "all") as BindOccasionsHost["occasionTemplateCategory"];
+        host.occasionTemplateCategory = (button.dataset.occasionTemplateCategory || "recommended") as BindOccasionsHost["occasionTemplateCategory"];
         host.occasionTemplatesOpen = true;
         host.render();
     }));
