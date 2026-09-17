@@ -399,6 +399,8 @@ interface StoreEventIndex {
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
+    byExternalIdentity: Set<string>;
+    tombstones: TombstoneLookup;
     byDateOrdered?: Array<{date: string; event: CheckinEvent; ordinal: number}>;
     itemById: Map<string, CheckinItem>;
 }
@@ -408,7 +410,14 @@ const storeIndexes = new WeakMap<CheckinStore, StoreEventIndex>();
 export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     let index = storeIndexes.get(store);
     if (!index) {
-        index = {byItemDate: new Map(), byDate: new Map(), byId: new Map(), itemById: new Map()};
+        index = {
+            byItemDate: new Map(),
+            byDate: new Map(),
+            byId: new Map(),
+            byExternalIdentity: new Set(),
+            tombstones: buildTombstoneLookup(store.eventTombstones || []),
+            itemById: new Map(),
+        };
         for (const item of store.items) {
             if (!index.itemById.has(item.id)) index.itemById.set(item.id, item);
         }
@@ -423,6 +432,8 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
             if (dateEvents) dateEvents.push(event);
             else index.byDate.set(day, [event]);
             if (!index.byId.has(event.id)) index.byId.set(event.id, event);
+            const externalIdentity = getExternalRefIdentity(event);
+            if (externalIdentity) index.byExternalIdentity.add(externalIdentity);
         }
         storeIndexes.set(store, index);
     }
@@ -494,10 +505,10 @@ export function isComplete(store: CheckinStore, item: CheckinItem, date = new Da
 }
 
 export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinStore {
-    if (isEventTombstoned(event, store.eventTombstones || [])) {
-        return store;
-    }
-    if (store.events.some((candidate) => candidate.id === event.id || hasSameExternalRef(candidate, event))) return store;
+    const index = getStoreIndex(store);
+    if (isEventTombstonedByLookup(event, index.tombstones)) return store;
+    const externalIdentity = getExternalRefIdentity(event);
+    if (index.byId.has(event.id) || Boolean(externalIdentity && index.byExternalIdentity.has(externalIdentity))) return store;
     return {
         ...store,
         events: [...store.events, event],
@@ -831,10 +842,6 @@ function deduplicateExternalRefs(events: CheckinEvent[]): CheckinEvent[] {
     return [...withoutExternalRef, ...eventsByExternalRef.values()];
 }
 
-function isEventTombstoned(event: CheckinEvent, tombstones: CheckinEventTombstone[]): boolean {
-    return isEventTombstonedByLookup(event, buildTombstoneLookup(tombstones));
-}
-
 interface TombstoneLookup {
     eventIds: Set<string>;
     externalIdentities: Set<string>;
@@ -860,11 +867,6 @@ function isEventTombstonedByLookup(event: CheckinEvent, lookup: TombstoneLookup)
 
 function hasTombstoneIdentity(tombstone: CheckinEventTombstone): boolean {
     return Boolean(tombstone.itemId && tombstone.source && tombstone.externalRef);
-}
-
-function hasSameExternalRef(left: CheckinEvent, right: CheckinEvent): boolean {
-    const leftIdentity = getExternalRefIdentity(left);
-    return Boolean(leftIdentity && leftIdentity === getExternalRefIdentity(right));
 }
 
 function getExternalRefIdentity(event: CheckinEvent): string | undefined {
