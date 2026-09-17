@@ -1029,3 +1029,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 - 版本真值同步 13.0.1（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.1-change-log.md / release-notes-13.0.1.md）。
 - scripts/release.cjs 执行构建、测试链、提交、推送、标签与 GitHub Release（package.zip）；远端资产与发布说明 SHA-256 一致，仓库内发布说明回填最终摘要（zip 元数据非字节确定，以上传时流水线计算值为准）。
+
+### 回顾页打卡日志优化（2026-09-18，T-1153）
+
+- 用户桌面截图指出日志行右侧大面积留白。定位：行网格 `30px | 1fr | auto` 在全宽/半宽折叠体下中段皆空；回顾区块在 ≥1180px 已是双列，日志折叠体宽约 575px。
+- 变更：lc5 ≥960px 下 `.lc-checkin__log-day` 改双列网格（标题跨两列、行距走 gap）；删除 `[data-log-extra]` 属性级 display:none，额外天数统一由 [hidden] 门控——修复"展开其余 N 天"点击无效的既有缺陷。
+- 证据：.artifacts/review-log-probe.cjs 宽/窄容器截图与展开探针（1500px 双列 271px×2；700px 展开后 display:block）；cross-surface/ui-theme/responsive-layout/review-summary-refresh 通过；Edge visual-qa 全链通过 0 页面错误；测试包 siyuan-checkin-v13.0.2-test.zip 供真机复验。

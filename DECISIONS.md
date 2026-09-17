@@ -532,3 +532,9 @@
 - 写后校验以 JSON 指纹比较期望快照与回读快照；normalizeStore 将缺省 archived 物化为 false，插件侧构造条目若省略该字段，指纹永不等价，保存被误判失败并回滚。该缺陷随 14.0 数据内核第六批引入、v13.0.0 发布，被 CI browser-audit 的 visual-qa 双击提交步骤拦截，v13.0.1 修复。
 - 新增条目/事件的构造点必须物化 normalize 的全部非 undefined 默认值；cloneItemValue 作为快照边界保留防御性物化（archived === true）。
 - 浏览器 QA 宿主的存储模拟必须按存储名分槽且克隆失败时 reject，与真实思源 loadData/saveData 契约一致；单槽模拟会让偏好写入串进主存储，制造伪失败并掩盖真实缺陷。
+
+## D-158：回顾日志宽容器双列，额外天数仅由 hidden 门控（2026-09-18）
+
+- 打卡日志行在 1180px 限宽（或双列区块的半宽折叠体）下名称与数值之间大面积留白；日志按天分组在 lc5 ≥960px 改双列网格，日期标题跨两列，行距由网格 gap 接管，窄容器保持单列。双列只影响行排布，行内结构、缩略图与多记录 details 不变。
+- `data-log-extra` 的隐藏一律由 `[hidden]` 属性承担（`.lc-checkin__log-day[data-log-extra][hidden]`）；展开按钮把 hidden 置 false 即显示。属性级 `display:none` 与 hidden 切换逻辑脱节，曾使"展开其余 N 天"在所有宽度下点击无效（探针证实后删除）。
+- 新布局规则放在回顾区块容器查询层，与既有 720px/1180px 层并列；不引入第二个容器名，继续走 lc5 体系。

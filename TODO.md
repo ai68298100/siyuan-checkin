@@ -2073,3 +2073,10 @@
   - 验收：QA 宿主存储按名分槽（主 store 与偏好/备份/审计互不覆盖）、structuredClone 失败 reject；"阅读"模板 targetStep 期望同步 T-1091 的 0.01；双击提交在卡片渲染后再点击，消除活跃 store 乐观可见与表面重渲染的竞态。
   - 依赖：T-1151
   - 状态：done（Edge 跑通 visual-qa 全链，pageErrors 为空）
+
+## 回顾页日志优化（T-1153，用户桌面截图反馈 2026-09-18）
+
+- [x] T-1153 打卡日志宽容器双列与展开修复
+  - 验收：宽容器下日志按天双列、日期标题跨两列、无中段大面积留白；"展开其余 N 天"点击后实际可见；既有 UI 测试与浏览器走查全绿。
+  - 依赖：无
+  - 状态：done（components.scss 新增 lc5 ≥960px 双列层；删除与 hidden 脱节的 [data-log-extra] 属性级 display:none——探针证实该按钮此前在所有宽度下失效；Edge 跑 visual-qa 全链 0 页面错误，cross-surface/ui-theme/responsive/review-refresh 测试通过）
