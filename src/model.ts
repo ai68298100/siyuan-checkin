@@ -399,6 +399,7 @@ interface StoreEventIndex {
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
+    ordinalById: Map<string, number>;
     byExternalIdentity: Set<string>;
     tombstones: TombstoneLookup;
     byDateOrdered?: Array<{date: string; event: CheckinEvent; ordinal: number}>;
@@ -414,6 +415,7 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
             byItemDate: new Map(),
             byDate: new Map(),
             byId: new Map(),
+            ordinalById: new Map(),
             byExternalIdentity: new Set(),
             tombstones: buildTombstoneLookup(store.eventTombstones || []),
             itemById: new Map(),
@@ -431,7 +433,10 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
             const dateEvents = index.byDate.get(day);
             if (dateEvents) dateEvents.push(event);
             else index.byDate.set(day, [event]);
-            if (!index.byId.has(event.id)) index.byId.set(event.id, event);
+            if (!index.byId.has(event.id)) {
+                index.byId.set(event.id, event);
+                index.ordinalById.set(event.id, ordinal);
+            }
             const externalIdentity = getExternalRefIdentity(event);
             if (externalIdentity) index.byExternalIdentity.add(externalIdentity);
         }
@@ -517,12 +522,15 @@ export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinSt
 
 /** Replace only the user-editable note while preserving event identity and time. */
 export function updateEventNote(store: CheckinStore, eventId: string, note: string | undefined): CheckinStore {
-    const index = store.events.findIndex((event) => event.id === eventId);
-    if (index < 0) return store;
+    const eventIndex = getStoreIndex(store).ordinalById.get(eventId);
+    if (eventIndex === undefined) return store;
+    const current = store.events[eventIndex];
+    if (!current) return store;
+    const normalized = typeof note === "string" ? note.trim().slice(0, 2000) || undefined : undefined;
+    const currentNote = current.note?.trim() || undefined;
+    if (normalized === currentNote) return store;
     const events = [...store.events];
-    const current = events[index];
-    const normalized = typeof note === "string" ? note.trim().slice(0, 2000) : undefined;
-    events[index] = normalized ? {...current, note: normalized} : (() => {
+    events[eventIndex] = normalized ? {...current, note: normalized} : (() => {
         const {note: _note, ...withoutNote} = current;
         return withoutNote;
     })();
