@@ -815,7 +815,9 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         assert.equal(results.narrowEditorExpanded.actions.saveVisible, true,
             "the mobile editor save action must remain visibly interactive above the scrolling surface");
     }
-    assert.deepEqual(results.templateApplied, {name: "阅读", kind: "duration", unit: "小时", group: "学习", iconPanel: true, targetStep: "0.25"});
+    /* T-1091 分离了目标值与快捷增量的步长：目标输入统一接受两位小数，
+       时长/数量的快捷动作默认值（0.5 小时 / 5 分钟）不受影响。 */
+    assert.deepEqual(results.templateApplied, {name: "阅读", kind: "duration", unit: "小时", group: "学习", iconPanel: true, targetStep: "0.01"});
     if (qaFrontend !== "mobile" && qaFrontend !== "browser-mobile") {
         assert.equal(results.tab.opened && results.tab.registered && results.tab.title, "小驴打卡");
         assert.match(results.tab.stableId, /checkin$/);
