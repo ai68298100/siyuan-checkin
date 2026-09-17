@@ -1043,3 +1043,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - ② 宿主 zoom 子树内合成器滚动不重定位 position:sticky（Chromium 缺陷）：二级导航退为 relative，由滚动同步 transform 主动钉住（pinReviewSubnavRail，WeakMap 防重复绑定）；滚轮、程序化滚动、跳转三路径真机验证全部跟随且复位正常。
 - ③ 跳转按钮按下标取 details 整体错位一位（年度热力图 details 插在列表中间），"趋势"会跳到"提醒"；改按 data-review-fold id 定位；scrollIntoView 落地异步导致钉住同步拿旧位置（transform 滞后 1058px 实测），改为同步直写 scroller.scrollTop + 显式同步。
 - 证据：真机思源实测截图三组（同行头部/滚轮钉住/跳转+钉住）；test:quality 全链 exit 0；测试包 siyuan-checkin-v13.0.2-test.zip 更新。
+
+### 事项页操作列与弹窗四角修复（2026-09-18，T-1155）
+
+- 真机 Console 实测：操作按钮存在于 DOM（4×32px、SVG 图标齐全）但被多层网格档位交叠盖住不可见；弹窗圆角缺口处透出背后白色文档。
+- 修复：480-959px 容器档（弹窗/页签宿主）最终层 !important 强制三列网格与操作列可见；框式快速弹窗遮罩加半透明暗色底（rgba(16,18,43,.38)），圆角缺口不再透白（D-160）。
+- 证据：真机思源重启后验证——事项行操作按钮（+/编辑/启用停用/删除）全部显示；弹窗四角无白色缺口；test:quality exit 0（CSS 422,403 bytes 低于 450K 硬线）；visual-qa exit 0；测试包 siyuan-checkin-v13.0.2-test.zip 已更新并同步到用户工作区。
