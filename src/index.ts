@@ -2,7 +2,7 @@ import {Dialog, getFrontend, Plugin, showMessage} from "siyuan";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
-import {buildAnalyticsSnapshot, summarizeAnalyticsSnapshot} from "./charts";
+import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -967,10 +967,13 @@ export default class CheckinPlugin extends Plugin {
             return;
         }
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
-        roots.forEach((root) => this.renderInto(root));
+        const reviewAnalyticsSnapshot = roots.length && this.currentPage === "review" && this.initializationState === "ready"
+            ? buildAnalyticsSnapshot(this.store, currentCalendarDate())
+            : undefined;
+        roots.forEach((root) => this.renderInto(root, reviewAnalyticsSnapshot));
     }
 
-    private renderInto(root: HTMLElement) {
+    private renderInto(root: HTMLElement, reviewAnalyticsSnapshot?: AnalyticsSnapshot) {
         /* A short, explicit mobile host marker keeps the final responsive
            layer deterministic without repeating long :has() selectors for
            every child rule.  Desktop docks remain on their container-query
@@ -997,7 +1000,7 @@ export default class CheckinPlugin extends Plugin {
             this.pageScrollTops.set(root, tops);
         }
         root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
-            : this.currentPage === "review" ? this.renderReview()
+            : this.currentPage === "review" ? this.renderReview(reviewAnalyticsSnapshot!)
                 : this.currentPage === "insights" ? this.renderInsights()
             : this.currentPage === "archived" ? this.renderArchived()
                     : this.currentPage === "occasions" ? this.renderOccasions()
@@ -1519,8 +1522,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 方法体外置于 render/review.ts（T-022）。 */
-    private renderReview(): string {
-        const analyticsSummary = summarizeAnalyticsSnapshot(buildAnalyticsSnapshot(this.store));
+    private renderReview(analyticsSnapshot: AnalyticsSnapshot): string {
         return renderReviewView({
             store: this.store,
             occasionStore: this.occasionStore,
@@ -1544,7 +1546,7 @@ export default class CheckinPlugin extends Plugin {
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
             reminderUserActions: this.reminderUserActions,
-            analyticsSummary,
+            analyticsSnapshot,
         });
     }
 

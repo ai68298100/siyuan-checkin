@@ -4,7 +4,7 @@ import {dateKey, getEventsForDate, getItemById, isComplete, isItemAvailableOnDat
 import {escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
-import {buildYearHeatmap, buildWeeklyCompletionTrend, buildMonthlyEventTrend, renderBarChart, renderLineChart, renderYearHeatmap, summarizeTrend} from "../charts";
+import {buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
@@ -38,11 +38,11 @@ export interface ReviewViewContext {
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
     reminderUserActions: ReminderUserAction[];
-    analyticsSummary?: {asOf: string; weeklyCurrent: number; monthlyCurrent: number; yearlyCurrent: number; activeDays: number};
+    analyticsSnapshot: AnalyticsSnapshot;
 }
 
 export function renderReviewView(ctx: ReviewViewContext): string {
-    const analyticsSummary = ctx.analyticsSummary;
+    const analyticsSummary = summarizeAnalyticsSnapshot(ctx.analyticsSnapshot);
     const itemNames = new Map(ctx.store.items.map((item) => [item.id, item.name]));
     const year = ctx.historyMonth.getFullYear();
     const month = ctx.historyMonth.getMonth();
@@ -159,10 +159,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             const rate = Math.round((entry.completed / entry.scheduled) * 100);
             return `<div class="lc-checkin__balance-row"><strong>${escapeHtml(entry.name)}</strong><span>${entry.completed}/${entry.scheduled}</span><i class="lc-checkin__balance-bar"><span style="width:${Math.min(100, Math.round((entry.completed / Math.max(1, entry.scheduled)) * 100))}%"></span></i><em>${rate}%</em></div>`;
         }).join("");
-    const heatmapYear = new Date().getFullYear() + ctx.heatmapYearOffset;
+    const heatmapYear = Number(ctx.analyticsSnapshot.asOf.slice(0, 4)) + ctx.heatmapYearOffset;
     const heatmap = buildYearHeatmap(ctx.store, heatmapYear);
-    const weeklyTrend = buildWeeklyCompletionTrend(ctx.store, 12);
-    const monthlyTrend = buildMonthlyEventTrend(ctx.store, 6);
+    const weeklyTrend = ctx.analyticsSnapshot.weekly;
+    const monthlyTrend = ctx.analyticsSnapshot.monthly;
     const trendCard = (series: typeof weeklyTrend, chart: string) => {
         const stats = summarizeTrend(series);
         const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";

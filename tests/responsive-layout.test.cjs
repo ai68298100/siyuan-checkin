@@ -62,7 +62,7 @@ assert.match(components, /\.lc-checkin__mobile-nav button\.is-selected span \{[^
     "the selected destination uses the solid accent disc");
 
 /* Review fusion: one surface for calendar, day details, stats and projects. */
-assert.match(source, /private renderReview\(\): string/, "review page must exist");
+assert.match(source, /private renderReview\(analyticsSnapshot: AnalyticsSnapshot\): string/, "review page must consume the shared analytics projection");
 assert.ok(!source.includes("private renderHistory(): string") && !source.includes("private renderSummary(): string"),
     "history and summary pages must be retired into review");
 assert.match(reviewSource, /lc-checkin__review-projects/, "review must include the project summary table");
