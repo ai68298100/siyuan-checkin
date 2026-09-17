@@ -3,6 +3,7 @@
 import {t} from "../i18n";
 import {makeId} from "../model";
 import {nextItemUpdatedAt, isValidLocalDateInput, normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
+import {normalizeRecordStep} from "../record-step";
 import {KIND_OPTIONS} from "../catalog";
 import {validateEditorInput} from "../editor-validation";
 import {showMessage} from "siyuan";
@@ -60,10 +61,7 @@ export async function saveEditorForm(
     const target = kind === "binary" ? 1 : Math.max(0.1, Number(data.get("target")) || 1);
     const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
     const unit = kind === "binary" ? "次" : String(data.get("unit") || kindOption.defaultUnit).trim().slice(0, 16) || kindOption.defaultUnit;
-    const requestedRecordStep = Number(data.get("recordStep"));
-    const recordStep = kind === "binary" ? undefined : Number.isFinite(requestedRecordStep) && requestedRecordStep > 0
-        ? Math.min(1_000_000_000, Math.round(requestedRecordStep * 100) / 100)
-        : undefined;
+    const recordStep = normalizeRecordStep(kind, data.get("recordStep"));
     const group = String(data.get("group") || "").trim().slice(0, 32);
     const priority = normalizePriorityInput(data.get("priority"));
     const timeSlot = normalizeTimeSlotInput(data.get("timeSlot"));

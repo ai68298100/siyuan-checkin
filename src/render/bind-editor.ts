@@ -4,6 +4,7 @@
 import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary, isValidLocalDateInput} from "../shared";
+import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateName} from "../catalog";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {validateEditorInput} from "../editor-validation";
@@ -321,7 +322,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const targetLabel = root.querySelector<HTMLElement>("[data-target-label]");
         if (targetLabel) targetLabel.textContent = getTargetLabel(kind);
         if (targetInput) {
-            const step = getEditorStep(kind, unitInput?.value || kindOption.defaultUnit);
+            const step = getRecordStepInputStep(kind, unitInput?.value || kindOption.defaultUnit);
             targetInput.min = String(step);
             targetInput.step = String(step);
             const current = Number(targetInput.value);
@@ -523,7 +524,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const scheduleType = String(data.get("schedule") || "daily") as ScheduleType;
         const target = kind === "binary" ? 1 : Number(data.get("target"));
         const unit = kind === "binary" ? "次" : String(data.get("unit") || "").trim();
-        const requestedRecordStep = Number(data.get("recordStep"));
+        const recordStep = normalizeRecordStep(kind, data.get("recordStep"));
         const validation = validateEditorInput({name, kind, target, unit, schedule: scheduleType, weekdays: data.getAll("weekday").map(Number), quotaAmount: Number(data.get("quotaAmount"))});
         if (!validation.valid) {
             showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
@@ -545,7 +546,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const template: UserTemplate = {
             id: existing?.id || makeId("template"), name, icon: String(data.get("icon") || "✓"), kind,
             target: kind === "binary" ? 1 : Math.max(0.1, target || 1), unit: unit || "次",
-            ...(kind !== "binary" && Number.isFinite(requestedRecordStep) && requestedRecordStep > 0 ? {recordStep: Math.round(requestedRecordStep * 100) / 100} : {}),
+            ...(recordStep ? {recordStep} : {}),
             schedule, group: String(data.get("group") || "").trim(),
             priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), completionSource: data.get("completionSource") === "tomato" ? "tomato" : "manual", tomatoMode: data.get("tomatoMode") === "sessions" ? "sessions" : "minutes", note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
         };

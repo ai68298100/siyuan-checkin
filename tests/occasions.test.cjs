@@ -27,7 +27,7 @@ const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.C
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions}).outputText);
 fs.writeFileSync(path.join(path.dirname(output), "lunar.js"), ts.transpileModule(fs.readFileSync("src/lunar.ts", "utf8"), {compilerOptions}).outputText);
 fs.writeFileSync(path.join(path.dirname(output), "i18n.js"), ts.transpileModule(fs.readFileSync("src/i18n.ts", "utf8"), {compilerOptions}).outputText);
-for (const filename of ["model.ts", "quota.ts", "rules.ts", "types.ts"]) {
+for (const filename of ["model.ts", "record-step.ts", "quota.ts", "rules.ts", "types.ts"]) {
     fs.writeFileSync(
         path.join(path.dirname(output), filename.replace(/\.ts$/, ".js")),
         ts.transpileModule(fs.readFileSync(`src/${filename}`, "utf8"), {compilerOptions}).outputText

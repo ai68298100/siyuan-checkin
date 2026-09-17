@@ -6,6 +6,7 @@ import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {SCHEDULE_LABELS} from "./ui/labels";
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore} from "./types";
 import type {SummaryRange} from "./analytics";
+import {normalizeRecordStep} from "./record-step";
 
 export const MAX_CUSTOM_ICON_BYTES = 240_000;
 export const MAX_CUSTOM_LIBRARY_ITEMS = 128;
@@ -122,14 +123,14 @@ export function getTargetLabel(kind: CheckinKind): string {
 }
 
 export function getRecordStep(kind: CheckinKind, unit: string, configuredStep?: number): number {
-    if (kind !== "binary" && Number.isFinite(configuredStep) && Number(configuredStep) > 0) {
-        return Math.round(Number(configuredStep) * 100) / 100;
-    }
+    const normalizedStep = normalizeRecordStep(kind, configuredStep);
+    if (normalizedStep !== undefined) return normalizedStep;
     if (kind === "duration") return unit === "小时" ? 0.5 : 5;
     if (kind === "quantity" && unit === "毫升") return 250;
     if (kind === "quantity" && unit === "克") return 50;
     return kind === "custom" ? 0.1 : 1;
 }
+
 
 export function getEditorStep(kind: CheckinKind, unit: string): number {
     if (kind === "duration") return unit === "小时" ? 0.25 : 1;

@@ -8,7 +8,7 @@ const todaySource = fs.readFileSync(path.join(sourceRoot, "render", "fragments.t
 assert.match(todaySource, /data-today-filters/);
 assert.match(todaySource, /t\("today\.filter"\)/);
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-today-view-"));
-for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts"]) {
+for (const filename of ["model.ts", "record-step.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts"]) {
   const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
   fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js"),), ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText);
 }

@@ -130,7 +130,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const revision = getItemRevisionForDate(item, date);
         host.pendingFocusItemId = item.id;
         host.pulseHaptic();
-        host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
     root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
         host.pendingOnly = !host.pendingOnly;
@@ -243,7 +243,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
             host.pendingFocusItemId = item.id;
             host.pulseHaptic();
-            host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep), moment, expectedRevisionFingerprint));
+            host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit, revision.recordStep), moment, expectedRevisionFingerprint));
         });
         element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
             const button = event.currentTarget as HTMLElement;

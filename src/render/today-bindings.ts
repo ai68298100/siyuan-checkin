@@ -41,7 +41,7 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
         event.preventDefault();
         const date = calendarDateFromKey(dateKey(currentCalendarDate()));
         const revision = getItemRevisionForDate(item, date);
-        void host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
+        void host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     });
 }
 

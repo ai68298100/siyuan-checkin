@@ -8,7 +8,7 @@ const ts = require("typescript");
 /* 转译执行 src/reminders.ts（依赖集与 occasions.test.cjs 一致，尽量不引入新依赖）。 */
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-reminder-actions-"));
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};
-for (const filename of ["occasions.ts", "model.ts", "quota.ts", "rules.ts", "types.ts", "lunar.ts", "i18n.ts", "reminders.ts"]) {
+for (const filename of ["occasions.ts", "model.ts", "record-step.ts", "quota.ts", "rules.ts", "types.ts", "lunar.ts", "i18n.ts", "reminders.ts"]) {
     fs.writeFileSync(path.join(dir, filename.replace(/\.ts$/, ".js")), ts.transpileModule(fs.readFileSync(`src/${filename}`, "utf8"), {compilerOptions}).outputText);
 }
 const reminders = require(path.join(dir, "reminders.js"));

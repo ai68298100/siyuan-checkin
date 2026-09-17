@@ -9,7 +9,7 @@ process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-core-"));
 
-for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts", "i18n.ts", "lunar.ts", "occasions.ts", "reminders.ts"]) {
+for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts", "record-step.ts", "i18n.ts", "lunar.ts", "occasions.ts", "reminders.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {
@@ -21,6 +21,24 @@ for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "ru
 }
 
 const model = require(path.join(outputRoot, "model.js"));
+const recordSteps = require(path.join(outputRoot, "record-step.js"));
+[
+    ["binary", 1, undefined],
+    ["binary", 99, undefined],
+    ["count", 3, 3],
+    ["duration", 5, 5],
+    ["duration", 0.5, 0.5],
+    ["quantity", 250, 250],
+    ["quantity", 333.333, 333.33],
+    ["custom", "0.25", 0.25],
+    ["custom", 0, undefined],
+    ["custom", -1, undefined],
+    ["custom", Number.POSITIVE_INFINITY, undefined],
+    ["custom", Number.MAX_VALUE, 1_000_000_000],
+].forEach(([kind, input, expected]) => assert.equal(recordSteps.normalizeRecordStep(kind, input), expected, `${kind}:${String(input)} quick-record normalization`));
+assert.equal(recordSteps.getRecordStepInputStep("count", "次"), 1);
+assert.equal(recordSteps.getRecordStepInputStep("duration", "分钟"), 0.01);
+assert.equal(recordSteps.getRecordStepInputStep("quantity", "升"), 0.01);
 const recordStepItem = model.normalizeItem({id: "step-item", name: "喝水", kind: "quantity", target: 2000, unit: "毫升", recordStep: 320, schedule: {type: "daily"}, createdAt: "2026-09-17T00:00:00Z", createdDate: "2026-09-17", revisions: [{effectiveDate: "2026-09-17", kind: "quantity", target: 2000, unit: "毫升", recordStep: 320, schedule: {type: "daily"}}]});
 assert.equal(recordStepItem.recordStep, 320, "custom quick-record amount must survive store normalization");
 assert.equal(recordStepItem.revisions[0].recordStep, 320, "custom quick-record amount must survive revision normalization");

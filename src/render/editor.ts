@@ -2,6 +2,7 @@
 import {t} from "../i18n";
 import {dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup} from "../shared";
+import {getRecordStepInputStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateGroupLabel, templateName, templateNote} from "../catalog";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import type {TodayGroupMode} from "../view-preferences";
@@ -126,7 +127,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     <div class="lc-checkin__form-row" data-value-fields>
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
                         <label class="lc-checkin__field"><span>${t("occ.unit")}</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
-                        <label class="lc-checkin__field" data-record-step-field><span>${t("editor.recordStepLabel")}</span><input name="recordStep" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${formatNumber(selectedRecordStep)}" /><small>${t("editor.recordStepHint")}</small></label>
+                        <label class="lc-checkin__field" data-record-step-field><span>${t("editor.recordStepLabel")}</span><input name="recordStep" type="number" min="${getRecordStepInputStep(selectedKind, selectedUnit)}" step="${getRecordStepInputStep(selectedKind, selectedUnit)}" required value="${formatNumber(selectedRecordStep)}" /><small>${t("editor.recordStepHint")}</small></label>
                     </div>
                 </div>
                 <aside class="lc-checkin__editor-side">

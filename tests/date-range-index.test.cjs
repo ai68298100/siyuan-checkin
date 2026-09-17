@@ -6,7 +6,7 @@ const ts = require("typescript");
 
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-range-index-"));
-for (const filename of ["model.ts", "quota.ts", "rules.ts", "types.ts"]) {
+for (const filename of ["model.ts", "record-step.ts", "quota.ts", "rules.ts", "types.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},

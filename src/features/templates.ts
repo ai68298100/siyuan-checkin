@@ -1,5 +1,6 @@
 import type {CheckinTemplate,} from "../catalog";
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, UserTemplate} from "../types";
+import {normalizeRecordStep} from "../record-step";
 
 export function normalizeUserTemplate(value: unknown, now = new Date().toISOString()): UserTemplate | undefined {
     if (!value || typeof value !== "object") return undefined;
@@ -15,8 +16,7 @@ export function normalizeUserTemplate(value: unknown, now = new Date().toISOStri
     if (!id || !name) return undefined;
     const completionSource = raw.completionSource === "tomato" ? "tomato" as const : "manual" as const;
     const tomatoMode = raw.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
-    const numericRecordStep = Number(raw.recordStep);
-    const recordStep = kind !== "binary" && Number.isFinite(numericRecordStep) && numericRecordStep > 0 ? Math.round(numericRecordStep * 100) / 100 : undefined;
+    const recordStep = normalizeRecordStep(kind, raw.recordStep);
     return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), ...(recordStep ? {recordStep} : {}), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), completionSource, tomatoMode, note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
 }
 
