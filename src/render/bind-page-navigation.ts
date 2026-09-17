@@ -49,6 +49,7 @@ export interface BindPageNavigationHost {
     broadcast(event: unknown): void;
     renderBackgroundUpdate(): void;
     restoreItem(itemId: string): Promise<void>;
+    deleteArchivedItem(itemId: string): Promise<boolean> | void;
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
     reminderFilter: import("../reminders").ReminderFilter;
@@ -314,6 +315,10 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
         void host.restoreItem(button.dataset.restoreId || "");
+    }));
+    root.querySelectorAll<HTMLButtonElement>("[data-archived-delete]").forEach((button) => button.addEventListener("click", () => {
+        button.disabled = true;
+        void host.deleteArchivedItem(button.dataset.archivedDelete || "");
     }));
     root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
         const range = button.dataset.summaryRange;

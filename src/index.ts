@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, dateKey, deleteItemCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange} from "./analytics";
@@ -1884,6 +1884,45 @@ export default class CheckinPlugin extends Plugin {
         if (await this.enqueueMutation(() => this.setItemArchived(current.id, !current.archived, moment, expectedFingerprint))) {
             this.showToday();
         }
+    }
+
+    /** 删除打卡项及其全部记录（D-165）：确认层展示影响，persist 链自动写入删除前恢复点，
+        事件墓碑防多窗口旧数据重放复活。 */
+    private async deleteItemWithRecords(itemId: string): Promise<boolean> {
+        const item = getItemById(this.store, itemId);
+        if (!item || this.disposed || this.disposing) return false;
+        const recordCount = this.store.events.filter((event) => event.itemId === itemId).length;
+        if (!window.confirm(t("editor.deleteItemConfirm", {name: item.name, n: recordCount}))) return false;
+        const previous = this.store;
+        const moment = captureActionMoment();
+        this.store = deleteItemCascade(this.store, itemId, moment.occurredAt);
+        try {
+            await this.persist();
+        } catch {
+            this.store = previous;
+            showMessage(t("msg.saveFail"));
+            this.renderBackgroundUpdate();
+            return false;
+        }
+        this.invalidateSummary();
+        this.broadcast({type: "item-deleted", item});
+        if (this.editingId === itemId) {
+            this.editingId = undefined;
+            this.editingFingerprint = undefined;
+        }
+        showMessage(t("msg.itemDeleted", {name: item.name}));
+        return true;
+    }
+
+    private async deleteEditingItem(): Promise<boolean> {
+        if (!this.editingId) return false;
+        const deleted = await this.deleteItemWithRecords(this.editingId);
+        if (deleted) this.showToday();
+        return deleted;
+    }
+
+    private async deleteArchivedItem(itemId: string): Promise<boolean> {
+        return this.deleteItemWithRecords(itemId);
     }
 
     private async toggleItem(itemId: string, moment: ActionMoment, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo: readonly CheckinEvent[] = []) {

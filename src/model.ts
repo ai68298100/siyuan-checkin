@@ -835,6 +835,25 @@ function migrateArchivedItem(item: CheckinItem): CheckinItem {
     };
 }
 
+/** 删除打卡项：连同其全部事件一并移除，并写事件墓碑防多窗口旧数据重放复活（D-165）。
+    幂等：项目不存在时原样返回。调用方负责确认层与删除前的恢复点。 */
+export function deleteItemCascade(store: CheckinStore, itemId: string, deletedAt: string): CheckinStore {
+    const removed = store.events.filter((event) => event.itemId === itemId);
+    if (!store.items.some((candidate) => candidate.id === itemId) && !removed.length) return store;
+    return {
+        ...store,
+        items: store.items.filter((candidate) => candidate.id !== itemId),
+        events: store.events.filter((event) => event.itemId !== itemId),
+        eventTombstones: [...store.eventTombstones, ...removed.map((event) => ({
+            eventId: event.id,
+            deletedAt,
+            itemId: event.itemId,
+            source: event.source,
+            ...(event.externalRef ? {externalRef: event.externalRef} : {}),
+        }))],
+    };
+}
+
 function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
     return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined, ...(schedule.quota ? {quota: {...schedule.quota}} : {})};
 }

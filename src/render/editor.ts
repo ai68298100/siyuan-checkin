@@ -170,7 +170,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? t("editor.save") : t("editor.saveNew")}</button>
                     <button class="lc-checkin__text-button" type="button" data-action="save-template">${t("editor.saveTemplate")}</button>
-                    ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? t("editor.restore") : t("editor.archive")}</button>` : ""}
+                    ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? t("editor.restore") : t("editor.archive")}</button><button class="lc-checkin__delete-button" type="button" data-action="delete-item" aria-label="${t("editor.deleteItemAria")}" title="${t("editor.deleteItemAria")}">${t("editor.deleteItem")}</button>` : ""}
             ${renderSaveStatusView(ctx.saveState)}
             ${renderSyncNoticeView(ctx.syncNoticeActive)}
                 </div>

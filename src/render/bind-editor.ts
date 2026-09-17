@@ -35,6 +35,7 @@ export interface BindEditorHost {
     retrySave(): Promise<void> | void;
     showToday(): void;
     archiveEditingItem(): Promise<void> | void;
+    deleteEditingItem(): Promise<boolean> | void;
     saveData(name: string, value: unknown): Promise<void>;
     render(): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
@@ -145,6 +146,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showToday());
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
+    root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
     const targetInput = root.querySelector<HTMLInputElement>("input[name='target']");

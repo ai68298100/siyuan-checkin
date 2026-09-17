@@ -9652,3 +9652,16 @@ details:not([open]) > :not(summary) { display: none !important; }
         margin-bottom: 8px;
     }
 }
+
+/* 删除入口：危险动作但低频，弱化为文字按钮，hover 才转危险色（14.0 生命周期）。 */
+.lc-checkin__delete-button {
+    height: 30px;
+    border: 0;
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 11px;
+    cursor: pointer;
+}
+.lc-checkin__delete-button:hover {
+    color: var(--lc-checkin-danger-text);
+}

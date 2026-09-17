@@ -6,6 +6,7 @@ import {CHECKIN_INTEGRATION_EVENTS} from "./api-contract";
 export const CHECKIN_EVENT_NAMES = {
     itemCreated: "checkin:item-created",
     itemUpdated: "checkin:item-updated",
+    itemDeleted: "checkin:item-deleted",
     eventRecorded: "checkin:event-recorded",
     eventDeleted: "checkin:event-deleted",
     suggestionWorkflowUpdated: "checkin:suggestion-workflow-updated",
@@ -60,7 +61,7 @@ export function cloneIntegrationEvent(event: CheckinIntegrationEvent): CheckinIn
     if (event.type === "analytics-updated") {
         return {type: event.type, analyticsAsOf: typeof event.analyticsAsOf === "string" ? event.analyticsAsOf.slice(0, 32) : undefined};
     }
-    if (event.type === "item-created" || event.type === "item-updated") {
+    if (event.type === "item-created" || event.type === "item-updated" || event.type === "item-deleted") {
         return {...event, item: event.item ? {...event.item, archivePeriods: event.item.archivePeriods?.map((period) => ({...period})), schedule: event.item.schedule ? {...event.item.schedule} : event.item.schedule} : undefined};
     }
     if (event.type === "event-recorded" || event.type === "event-deleted") {
@@ -84,6 +85,8 @@ export function toExternalEventName(event: CheckinIntegrationEvent): string {
             return CHECKIN_EVENT_NAMES.itemCreated;
         case "item-updated":
             return CHECKIN_EVENT_NAMES.itemUpdated;
+        case "item-deleted":
+            return CHECKIN_EVENT_NAMES.itemDeleted;
         case "event-recorded":
             return CHECKIN_EVENT_NAMES.eventRecorded;
         case "event-deleted":
