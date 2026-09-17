@@ -7,12 +7,15 @@ const ts = require("typescript");
 
 const sourceRoot = path.join(__dirname, "..", "src");
 const modelSource = fs.readFileSync(path.join(sourceRoot, "model.ts"), "utf8");
-assert.match(modelSource, /orderedRevisionCache = new WeakMap/,
+const rulesSource = fs.readFileSync(path.join(sourceRoot, "rules.ts"), "utf8");
+assert.match(rulesSource, /orderedRevisionCache = new WeakMap/,
     "revision ordering must be cached by immutable revisions-array identity");
-assert.match(modelSource, /const middle = \(low \+ high\) >>> 1/,
+assert.match(rulesSource, /const middle = \(low \+ high\) >>> 1/,
     "revision lookup must use an upper-bound binary search");
-assert.doesNotMatch(modelSource, /const revisions = \[\.\.\.\(item\.revisions \|\| \[\]\)\][\s\S]{0,160}\.filter/,
+assert.doesNotMatch(rulesSource, /const revisions = \[\.\.\.\(item\.revisions \|\| \[\]\)\][\s\S]{0,160}\.filter/,
     "each lookup must not copy and filter the complete revision history");
+assert.match(modelSource, /export \{getItemRevisionForDate\} from "\.\/rules"/,
+    "model must preserve its public revision helper through a compatible re-export");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-revision-index-"));
 for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts"]) {

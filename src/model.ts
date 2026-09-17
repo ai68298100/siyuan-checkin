@@ -1,7 +1,9 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
-import {evaluateQuotaSchedule, evaluateRule, type RuleProgress} from "./rules";
+import {evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
+
+export {getItemRevisionForDate} from "./rules";
 
 export const STORE_VERSION = 2 as const;
 export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
@@ -395,42 +397,6 @@ export function isItemAvailableOnDate(item: CheckinItem, date: Date): boolean {
         return false;
     }
     return !(item.archivePeriods || []).some((period) => period.startDate <= key && (!period.endDate || key < period.endDate));
-}
-
-const orderedRevisionCache = new WeakMap<CheckinItemRevision[], readonly CheckinItemRevision[]>();
-
-function getOrderedItemRevisions(item: CheckinItem): readonly CheckinItemRevision[] {
-    const revisions = item.revisions || [];
-    const cached = orderedRevisionCache.get(revisions);
-    if (cached) return cached;
-    let ordered: readonly CheckinItemRevision[] = revisions;
-    for (let index = 1; index < revisions.length; index += 1) {
-        if (revisions[index - 1].effectiveDate <= revisions[index].effectiveDate) continue;
-        ordered = [...revisions].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate));
-        break;
-    }
-    orderedRevisionCache.set(revisions, ordered);
-    return ordered;
-}
-
-export function getItemRevisionForDate(item: CheckinItem, date = new Date()): CheckinItemRevision {
-    const key = dateKey(date);
-    const revisions = getOrderedItemRevisions(item);
-    let low = 0;
-    let high = revisions.length;
-    while (low < high) {
-        const middle = (low + high) >>> 1;
-        if (revisions[middle].effectiveDate <= key) low = middle + 1;
-        else high = middle;
-    }
-    const revision = low > 0 ? revisions[low - 1] : undefined;
-    return revision ? cloneRevision(revision) : {
-        effectiveDate: isValidDateKey(item.createdDate) ? item.createdDate : key,
-        kind: item.kind,
-        target: item.target,
-        unit: item.unit,
-        schedule: cloneSchedule(item.schedule),
-    };
 }
 
 /* ============================================================

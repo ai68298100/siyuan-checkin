@@ -1,4 +1,45 @@
-import type {CheckinEvent, CheckinItem, CheckinSchedule} from "./types";
+import type {CheckinEvent, CheckinItem, CheckinItemRevision, CheckinSchedule} from "./types";
+
+const orderedRevisionCache = new WeakMap<CheckinItemRevision[], readonly CheckinItemRevision[]>();
+
+function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
+    return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined, ...(schedule.quota ? {quota: {...schedule.quota}} : {})};
+}
+
+function getOrderedItemRevisions(item: CheckinItem): readonly CheckinItemRevision[] {
+    const revisions = item.revisions || [];
+    const cached = orderedRevisionCache.get(revisions);
+    if (cached) return cached;
+    let ordered: readonly CheckinItemRevision[] = revisions;
+    for (let index = 1; index < revisions.length; index += 1) {
+        if (revisions[index - 1].effectiveDate <= revisions[index].effectiveDate) continue;
+        ordered = [...revisions].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate));
+        break;
+    }
+    orderedRevisionCache.set(revisions, ordered);
+    return ordered;
+}
+
+/** Resolve the effective item revision through a cached, ordered projection. */
+export function getItemRevisionForDate(item: CheckinItem, date = new Date()): CheckinItemRevision {
+    const key = localDateKey(date);
+    const revisions = getOrderedItemRevisions(item);
+    let low = 0;
+    let high = revisions.length;
+    while (low < high) {
+        const middle = (low + high) >>> 1;
+        if (revisions[middle].effectiveDate <= key) low = middle + 1;
+        else high = middle;
+    }
+    const revision = low > 0 ? revisions[low - 1] : undefined;
+    return revision ? {...revision, schedule: cloneSchedule(revision.schedule)} : {
+        effectiveDate: /^\d{4}-\d{2}-\d{2}$/.test(item.createdDate) ? item.createdDate : key,
+        kind: item.kind,
+        target: item.target,
+        unit: item.unit,
+        schedule: cloneSchedule(item.schedule),
+    };
+}
 
 export type RuleStatus = "scheduled" | "off" | "unavailable";
 
@@ -17,11 +58,14 @@ export interface RuleProgress extends RuleWindow {
 
 /** Pure schedule helpers kept separate so UI and future insights share one contract. */
 export function getRuleStatus(item: CheckinItem, date: Date): RuleStatus {
+    return getRuleStatusForRevision(item, date, getItemRevisionForDate(item, date));
+}
+
+function getRuleStatusForRevision(item: CheckinItem, date: Date, revision: ReturnType<typeof getItemRevisionForDate>): RuleStatus {
     const key = localDateKey(date);
     const created = item.createdDate || localDateKey(new Date(item.createdAt));
     if (created > key || (item.archivePeriods || []).some((period) => period.startDate <= key && (!period.endDate || key < period.endDate))) return "unavailable";
-    const revision = [...(item.revisions || [])].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate)).reverse().find((candidate) => candidate.effectiveDate <= key);
-    return isScheduled(revision?.schedule ?? item.schedule, date, revision?.effectiveDate ?? item.createdDate) ? "scheduled" : "off";
+    return isScheduled(revision.schedule, date, revision.effectiveDate) ? "scheduled" : "off";
 }
 
 export type QuotaPeriod = "week" | "month";
@@ -83,11 +127,11 @@ function calendarDayNumber(key: string): number {
 
 /** Evaluate one item's current period using only immutable item and event data. */
 export function evaluateRule(item: CheckinItem, events: readonly CheckinEvent[], date: Date): RuleProgress {
-    const status = getRuleStatus(item, date);
-    const revision = [...(item.revisions || [])].sort((left, right) => left.effectiveDate.localeCompare(right.effectiveDate)).reverse().find((candidate) => candidate.effectiveDate <= localDateKey(date));
-    const target = revision?.target ?? item.target;
-    const unit = revision?.unit ?? item.unit;
-    const schedule = revision?.schedule ?? item.schedule;
+    const revision = getItemRevisionForDate(item, date);
+    const status = getRuleStatusForRevision(item, date, revision);
+    const target = revision.target;
+    const unit = revision.unit;
+    const schedule = revision.schedule;
     const periodKey = periodKeyForSchedule(schedule, date);
     const quotaProgress = status === "scheduled" ? evaluateQuotaSchedule(schedule, events, item.id, date, schedule.type === "quota" && schedule.quota?.countMode === "value" ? unit : undefined) : undefined;
     const progress = quotaProgress?.progress ?? (status === "scheduled" ? events.filter((event) => event.itemId === item.id && event.unit === unit && localDateKey(new Date(event.localDate || event.occurredAt)) === localDateKey(date)).reduce((total, event) => total + event.value, 0) : 0);
