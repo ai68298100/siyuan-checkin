@@ -396,6 +396,7 @@ export function getItemRevisionForDate(item: CheckinItem, date = new Date()): Ch
    ============================================================ */
 
 interface StoreEventIndex {
+    byItem: Map<string, CheckinEvent[]>;
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
@@ -412,6 +413,7 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
     let index = storeIndexes.get(store);
     if (!index) {
         index = {
+            byItem: new Map(),
             byItemDate: new Map(),
             byDate: new Map(),
             byId: new Map(),
@@ -425,6 +427,9 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
         }
         for (let ordinal = 0; ordinal < store.events.length; ordinal += 1) {
             const event = store.events[ordinal];
+            const itemEvents = index.byItem.get(event.itemId);
+            if (itemEvents) itemEvents.push(event);
+            else index.byItem.set(event.itemId, [event]);
             const day = getEventDateKey(event);
             const itemDateKey = event.itemId + ":" + day;
             const itemDateEvents = index.byItemDate.get(itemDateKey);
@@ -448,6 +453,10 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
 export function getEventsForDay(store: CheckinStore, itemId: string, date = new Date()): CheckinEvent[] {
     const index = getStoreIndex(store);
     return index.byItemDate.get(itemId + ":" + dateKey(date)) || EMPTY_EVENTS;
+}
+
+export function getEventsForItem(store: CheckinStore, itemId: string): CheckinEvent[] {
+    return getStoreIndex(store).byItem.get(itemId) || EMPTY_EVENTS;
 }
 
 export function getEventsForDate(store: CheckinStore, date: Date | string = new Date()): CheckinEvent[] {
@@ -497,7 +506,7 @@ const EMPTY_EVENTS: CheckinEvent[] = [];
 export function getProgress(store: CheckinStore, item: CheckinItem, date = new Date()): number {
     const revision = getItemRevisionForDate(item, date);
     if (revision.schedule.type === "quota") {
-        return evaluateQuotaSchedule(revision.schedule, store.events, item.id, date, revision.schedule.quota?.countMode === "value" ? revision.unit : undefined)?.progress || 0;
+        return evaluateQuotaSchedule(revision.schedule, getEventsForItem(store, item.id), item.id, date, revision.schedule.quota?.countMode === "value" ? revision.unit : undefined)?.progress || 0;
     }
     const unit = revision.unit;
     return getEventsForDay(store, item.id, date).filter((event) => event.unit === unit).reduce((total, event) => total + event.value, 0);
