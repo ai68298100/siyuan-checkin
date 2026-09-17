@@ -545,3 +545,10 @@
 - 二级导航条定位退为 relative，由 bind-page-navigation 的滚动同步（passive scroll 监听 + transform translateY）主动钉在滚动区顶部；滚动事件可能缺失的场景（跳转点击）在处理器内显式调用同步。wheel、程序化 scrollTop 与跳转三条路径均已真机验证。
 - 跳转一律按 data-review-fold id 定位并同步直写 scroller.scrollTop：区块列表混有年度热力图 details，按下标取整体错位一位；scrollIntoView 的滚动落地是异步的，钉住同步会拿到旧位置。
 - 桌面弹窗/页签宿主在 480-959px 档（缩放后实际容器常落此区间）范围页签与工具区并为一行；dock 与移动宿主维持原布局。
+
+## D-160：事项行操作列可见性与弹窗遮罩兜底（2026-09-18）
+
+- 用户真机截图：事项行右侧操作按钮整体不可见、弹窗四角透出白色文档。真机 Console 实测：按钮存在于 DOM（4×32px、SVG 齐全）但被多层网格档位交叠覆盖不可见；圆角缺口处 elementFromPoint 命中 b3-dialog__container 本身（透出背后白色文档）。
+- 操作列在 480-959px 容器档（弹窗/页签宿主，排除移动）用最终层 !important 强制三列网格与可见性；不再依赖与中间档位的优先级竞争。
+- 框式快速弹窗的遮罩（b3-dialog__scroller）加半透明暗色底：圆角缺口不再透白，悬浮窗口层次成立；移动端全屏宿主不受影响。
+- 真机调试经验：思源 Ctrl+Shift+I 可开 DevTools，Console 跑 JS 用 document.title/clipboard 回传结果；reloadUI 后渲染器样式表可能仍是旧缓存（版本号未变），重大样式改动后必须完整重启思源验证。

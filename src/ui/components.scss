@@ -9517,3 +9517,46 @@ details:not([open]) > :not(summary) { display: none !important; }
         white-space: nowrap;
     }
 }
+
+/* ============================================================
+   13.0.2 真机收口：弹窗圆角缺口与事项行操作列（用户反馈 2026-09-18）
+   ============================================================ */
+/* 框式弹窗四角的圆角缺口会透出背后的白色文档（缩放下格外明显）。
+   给快速弹窗遮罩加一层半透明暗色底，圆角缺口与悬浮窗口层次同时解决；
+   移动端全屏宿主不受影响。 */
+.b3-dialog__scroller:has(.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile)) {
+    background: rgba(16, 18, 43, 0.38);
+}
+/* 事项行操作列兜底：界面缩放后的弹窗/页签容器（480-959px）落在多层网格
+   规则的交叠区，操作列会被塞进正文列被文字盖住（真机实测按钮不可见）。
+   最终层用 !important 统一三列网格与操作列可见性，任何中间档位都不再覆盖。 */
+@container lc5 (min-width: 480px) and (max-width: 959px) {
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--occasions .lc-checkin__occasion-manager-row,
+    .lc-checkin-tab-host .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        display: grid !important;
+        grid-template-columns: 34px minmax(0, 1fr) auto !important;
+    }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--occasions .lc-checkin__occasion-row-actions,
+    .lc-checkin-tab-host .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+        display: grid !important;
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+        justify-self: end !important;
+        align-self: center !important;
+        grid-template-columns: repeat(4, 26px) !important;
+        gap: 2px !important;
+        min-width: 0 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button,
+    .lc-checkin-tab-host .lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
+        display: grid !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 26px !important;
+        min-width: 26px !important;
+        height: 26px !important;
+        min-height: 26px !important;
+    }
+}
