@@ -1067,3 +1067,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 用户真机截图：dock 侧边栏设置页恢复点卡片文字竖排、审计条目错乱、原生文件控件外露。定位：恢复点/审计列表网格规则只写在 @media ≤600px 视口断点内，桌面宽视口下 dock 窄容器（约 280-560 CSS px）无样式可用，默认 flex 被压缩。
 - 变更：dock 宿主设置页列表行改容器级两列网格（文案 1fr + 按钮 auto，min-width 0 + anywhere 换行）；原生文件输入全局隐藏、保留胶囊标签。
 - 证据：.artifacts/dock-settings-probe.cjs 300px dock 复现（修复前 li 380px 高竖排 → 修复后 71px 两列网格）；真机思源 dock 实测正常；test:quality exit 0；visual-qa exit 0；测试包已更新。
+
+### dock 回顾页头部紧凑化（2026-09-18，T-1159）
+
+- 用户真机截图：dock 侧边栏回顾页范围页签偏大、工具行（复制报告/更多）两端分散。
+- 变更：lc-dock ≤479px 档压缩范围页签与工具按钮密度（28px 高），工具行成对右对齐，头部边距收紧。
+- 证据：dock 探针 380px/300px 双宽度截图正常（subnav 无溢出）；responsive-layout/mobile-release-quality 通过；visual-qa exit 0；测试包 siyuan-checkin-v13.0.2-test.zip 更新并同步用户工作区。

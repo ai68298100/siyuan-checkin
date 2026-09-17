@@ -9630,3 +9630,25 @@ details:not([open]) > :not(summary) { display: none !important; }
     opacity: 0;
     pointer-events: none;
 }
+
+/* dock 回顾页头部紧凑化（用户反馈 2026-09-18）：窄面板下范围页签与工具行
+   占用过大、工具行两端分散。压缩页签/按钮密度并让工具成对右对齐。 */
+@container lc-dock (max-width: 479px) {
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__range-tabs button {
+        min-height: 28px;
+        padding-inline: 9px;
+        font-size: 10.5px;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-tool-button,
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-more > summary {
+        min-height: 28px;
+        padding-inline: 9px;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-tools {
+        justify-content: flex-end;
+        gap: 6px;
+    }
+    .lc-checkin-dock-host .lc-checkin--review .lc-checkin__editor-header {
+        margin-bottom: 8px;
+    }
+}
