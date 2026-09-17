@@ -178,11 +178,12 @@ export function normalizeStore(value: unknown): CheckinStore {
     let items = [...itemsById.values()].sort(compareItems);
     const itemIds = new Set(items.map((item) => item.id));
     const eventTombstones = normalizeEventTombstones(candidate.eventTombstones);
+    const tombstoneLookup = buildTombstoneLookup(eventTombstones);
     const eventsById = new Map<string, CheckinEvent>();
     if (Array.isArray(candidate.events)) {
         candidate.events.forEach((value) => {
             const event = normalizeEvent(value);
-            if (!event || !itemIds.has(event.itemId) || isEventTombstoned(event, eventTombstones)) return;
+            if (!event || !itemIds.has(event.itemId) || isEventTombstonedByLookup(event, tombstoneLookup)) return;
             const existing = eventsById.get(event.id);
             eventsById.set(event.id, existing ? selectCanonical(existing, event) : event);
         });
@@ -300,10 +301,11 @@ export function mergeStores(local: unknown, remote: unknown): CheckinStore {
         tombstonesByEventId.set(tombstone.eventId, existing ? selectTombstoneWinner(existing, tombstone) : tombstone);
     });
     const eventTombstones = [...tombstonesByEventId.values()].sort(compareTombstones);
+    const tombstoneLookup = buildTombstoneLookup(eventTombstones);
     const itemIds = new Set(itemsById.keys());
     const eventsById = new Map<string, CheckinEvent>();
     [...localStore.events, ...remoteStore.events].forEach((event) => {
-        if (!itemIds.has(event.itemId) || isEventTombstoned(event, eventTombstones)) return;
+        if (!itemIds.has(event.itemId) || isEventTombstonedByLookup(event, tombstoneLookup)) return;
         const existing = eventsById.get(event.id);
         eventsById.set(event.id, existing ? selectCanonical(existing, event) : event);
     });
@@ -830,11 +832,30 @@ function deduplicateExternalRefs(events: CheckinEvent[]): CheckinEvent[] {
 }
 
 function isEventTombstoned(event: CheckinEvent, tombstones: CheckinEventTombstone[]): boolean {
-    return tombstones.some((tombstone) => tombstone.eventId === event.id
-        || Boolean(tombstone.externalRef
-            && tombstone.itemId === event.itemId
-            && tombstone.source === event.source
-            && tombstone.externalRef === event.externalRef));
+    return isEventTombstonedByLookup(event, buildTombstoneLookup(tombstones));
+}
+
+interface TombstoneLookup {
+    eventIds: Set<string>;
+    externalIdentities: Set<string>;
+}
+
+function buildTombstoneLookup(tombstones: readonly CheckinEventTombstone[]): TombstoneLookup {
+    const eventIds = new Set<string>();
+    const externalIdentities = new Set<string>();
+    tombstones.forEach((tombstone) => {
+        eventIds.add(tombstone.eventId);
+        if (hasTombstoneIdentity(tombstone)) {
+            externalIdentities.add(stableSerialize([tombstone.itemId, tombstone.source, tombstone.externalRef]));
+        }
+    });
+    return {eventIds, externalIdentities};
+}
+
+function isEventTombstonedByLookup(event: CheckinEvent, lookup: TombstoneLookup): boolean {
+    if (lookup.eventIds.has(event.id)) return true;
+    const identity = getExternalRefIdentity(event);
+    return Boolean(identity && lookup.externalIdentities.has(identity));
 }
 
 function hasTombstoneIdentity(tombstone: CheckinEventTombstone): boolean {
