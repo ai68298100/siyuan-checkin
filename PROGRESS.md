@@ -1035,3 +1035,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 用户桌面截图指出日志行右侧大面积留白。定位：行网格 `30px | 1fr | auto` 在全宽/半宽折叠体下中段皆空；回顾区块在 ≥1180px 已是双列，日志折叠体宽约 575px。
 - 变更：lc5 ≥960px 下 `.lc-checkin__log-day` 改双列网格（标题跨两列、行距走 gap）；删除 `[data-log-extra]` 属性级 display:none，额外天数统一由 [hidden] 门控——修复"展开其余 N 天"点击无效的既有缺陷。
 - 证据：.artifacts/review-log-probe.cjs 宽/窄容器截图与展开探针（1500px 双列 271px×2；700px 展开后 display:block）；cross-surface/ui-theme/responsive-layout/review-summary-refresh 通过；Edge visual-qa 全链通过 0 页面错误；测试包 siyuan-checkin-v13.0.2-test.zip 供真机复验。
+
+### 回顾页二级导航与头部优化（2026-09-18，T-1154）
+
+- 用户桌面截图指出 ①头部工具区（复制报告/更多）显示需优化、②二级导航条下滑不跟随。真机（思源 v3.8.4-beta.5 + 界面缩放）复现并定位三个问题：
+- ① 缩放后容器有效宽仅 725/582 CSS px，落在 <960 档导致工具区换行堆叠；新增 480-959px 弹窗/页签宿主层级，范围页签与工具区并为一行（排除移动宿主与 dock）。
+- ② 宿主 zoom 子树内合成器滚动不重定位 position:sticky（Chromium 缺陷）：二级导航退为 relative，由滚动同步 transform 主动钉住（pinReviewSubnavRail，WeakMap 防重复绑定）；滚轮、程序化滚动、跳转三路径真机验证全部跟随且复位正常。
+- ③ 跳转按钮按下标取 details 整体错位一位（年度热力图 details 插在列表中间），"趋势"会跳到"提醒"；改按 data-review-fold id 定位；scrollIntoView 落地异步导致钉住同步拿旧位置（transform 滞后 1058px 实测），改为同步直写 scroller.scrollTop + 显式同步。
+- 证据：真机思源实测截图三组（同行头部/滚轮钉住/跳转+钉住）；test:quality 全链 exit 0；测试包 siyuan-checkin-v13.0.2-test.zip 更新。

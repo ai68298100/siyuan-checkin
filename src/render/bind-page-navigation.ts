@@ -56,6 +56,32 @@ export interface BindPageNavigationHost {
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
 
+const pinnedSubnavScrollers = new WeakSet<HTMLElement>();
+
+/** 回顾二级导航滚动钉住（D-159）：宿主界面缩放形成 zoom 子树后，合成器滚动
+    不会重定位 position:sticky（Chromium 已知缺陷，真机实测滚动后导航条消失）。
+    导航条因此保持 relative 布局，由滚动同步用 transform 主动钉在滚动区顶部，
+    缩放与非缩放环境行为一致。返回同步函数供跳转点击在 scrollIntoView 后
+    显式调用（其滚动事件可能不触发本监听）。 */
+function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): () => void {
+    const subnav = root.querySelector<HTMLElement>(".lc-checkin__review-subnav");
+    const scroller = subnav?.closest<HTMLElement>(".lc-checkin");
+    const sync = () => {
+        if (host.disposed || host.disposing || !subnav || !subnav.isConnected || !scroller) return;
+        subnav.style.transform = "";
+        const anchor = subnav.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
+        const offset = scroller.scrollTop - anchor;
+        if (offset > 0.5) subnav.style.transform = `translateY(${offset}px)`;
+    };
+    if (!subnav || !scroller) return sync;
+    sync();
+    if (!pinnedSubnavScrollers.has(scroller)) {
+        pinnedSubnavScrollers.add(scroller);
+        scroller.addEventListener("scroll", sync, {passive: true});
+    }
+    return sync;
+}
+
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
@@ -132,11 +158,22 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const item = getActiveItemById(host.store, button.dataset.reviewInsightsId);
         if (item) host.showInsights(item);
     }));
+    /* 跳转按 fold id 定位：区块列表里混有年度热力图 details，按下标取会整体
+       错位一位（真机实测"趋势"跳到提醒）。瞬时滚动确保钉住同步立即生效。 */
+    /* 跳转按 fold id 定位：区块列表里混有年度热力图 details，按下标取会整体
+       错位一位（真机实测"趋势"跳到提醒）。不用 scrollIntoView——其滚动落地
+       是异步的，钉住同步会拿到旧位置（真机实测 transform 滞后 1058px）；
+       这里同步直写 scroller.scrollTop，随后显式同步钉住。 */
+    const syncSubnavPin = pinReviewSubnavRail(root, host);
     root.querySelectorAll<HTMLElement>("[data-review-jump]").forEach((button) => button.addEventListener("click", () => {
-        const sections = root.querySelectorAll<HTMLElement>(".lc-checkin__review-sections > details");
-        const target = sections[Number(button.dataset.reviewJump)];
-        target?.scrollIntoView({behavior: "smooth", block: "start"});
+        const foldId = button.dataset.reviewJump || "";
+        const target = root.querySelector<HTMLElement>(`.lc-checkin__review-sections > details[data-review-fold="${foldId}"]`);
+        const scroller = target?.closest<HTMLElement>(".lc-checkin");
+        if (!target || !scroller) return;
         if (target instanceof HTMLDetailsElement) target.open = true;
+        const margin = Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
+        scroller.scrollTop = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - margin;
+        syncSubnavPin();
     }));
     root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
         const item = getActiveItemById(host.store, button.dataset.historyInsightsId);

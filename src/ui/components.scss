@@ -8870,9 +8870,12 @@
    density layers used a 58px offset (appropriate only when a header was in
    the same scrolling box), which made the rail float over the calendar and
    detail cards after scrolling.  Keep one opaque, zero-offset surface so the
-   rail remains directly below the host chrome on every surface. */
+   rail remains directly below the host chrome on every surface.
+   真机实测（思源界面缩放下，2026-09-18）：zoom 子树内合成器滚动不会重定位
+   sticky（Chromium 缺陷，重排后才短暂恢复），因此定位退为 relative，由
+   bind-page-navigation 的滚动同步用 transform 主动钉住，缩放树下同样可靠。 */
 .lc-checkin--review .lc-checkin__review-subnav {
-    position: sticky;
+    position: relative;
     top: 0 !important;
     z-index: 6;
     background: var(--lc-checkin-bg);
@@ -8880,6 +8883,30 @@
     backdrop-filter: none;
     isolation: isolate;
     scroll-margin-top: 4px;
+}
+
+/* 桌面弹窗/页签宿主在 480-959px 档（思源界面缩放后实际容器常落在此区间，
+   真机实测 725px 甚至 582px）：范围页签与工具区一行可容纳，提前并入同一行，
+   不再让工具区独占第二行；更窄容器与 dock、移动宿主维持原堆叠布局。 */
+@container lc5 (min-width: 480px) and (max-width: 959px) {
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions,
+    .lc-checkin-tab-host .lc-checkin--review .lc-checkin__editor-header > .lc-checkin__header-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs,
+    .lc-checkin-tab-host .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__review-tools,
+    .lc-checkin-tab-host .lc-checkin--review .lc-checkin__review-tools {
+        grid-column: 2;
+        grid-row: 1;
+    }
 }
 
 .lc-checkin--review :is(.lc-checkin__review-fold, .lc-checkin__year-heatmap) {

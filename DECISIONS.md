@@ -538,3 +538,10 @@
 - 打卡日志行在 1180px 限宽（或双列区块的半宽折叠体）下名称与数值之间大面积留白；日志按天分组在 lc5 ≥960px 改双列网格，日期标题跨两列，行距由网格 gap 接管，窄容器保持单列。双列只影响行排布，行内结构、缩略图与多记录 details 不变。
 - `data-log-extra` 的隐藏一律由 `[hidden]` 属性承担（`.lc-checkin__log-day[data-log-extra][hidden]`）；展开按钮把 hidden 置 false 即显示。属性级 `display:none` 与 hidden 切换逻辑脱节，曾使"展开其余 N 天"在所有宽度下点击无效（探针证实后删除）。
 - 新布局规则放在回顾区块容器查询层，与既有 720px/1180px 层并列；不引入第二个容器名，继续走 lc5 体系。
+
+## D-159：回顾二级导航 JS 钉住与跳转按 fold id 定位（2026-09-18）
+
+- 真机实测（思源界面缩放，容器有效宽 725/582px）：宿主 zoom 子树内合成器滚动不会重定位 position:sticky（Chromium 缺陷，重排后才短暂恢复），二级导航条滚动时不跟随。
+- 二级导航条定位退为 relative，由 bind-page-navigation 的滚动同步（passive scroll 监听 + transform translateY）主动钉在滚动区顶部；滚动事件可能缺失的场景（跳转点击）在处理器内显式调用同步。wheel、程序化 scrollTop 与跳转三条路径均已真机验证。
+- 跳转一律按 data-review-fold id 定位并同步直写 scroller.scrollTop：区块列表混有年度热力图 details，按下标取整体错位一位；scrollIntoView 的滚动落地是异步的，钉住同步会拿到旧位置。
+- 桌面弹窗/页签宿主在 480-959px 档（缩放后实际容器常落此区间）范围页签与工具区并为一行；dock 与移动宿主维持原布局。
