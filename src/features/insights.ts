@@ -1,4 +1,4 @@
-import {dateKey, getEventDateKey, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
 
@@ -78,6 +78,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
     const endDate = dateKey(end);
     const originalItem = store.items.find((candidate) => candidate.id === itemId);
     const item = originalItem ? cloneItem(originalItem) : null;
+    const itemEvents = getEventsForItem(store, itemId);
     const eventsByDate = indexEvents(store, itemId, startDate, endDate);
     const days: HabitDayObservation[] = [];
 
@@ -90,7 +91,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const unit = revision?.unit || "";
         const quotaSchedule: CheckinSchedule | undefined = revision?.schedule.type === "quota" ? revision.schedule : undefined;
         const quotaProgress = quotaSchedule && item
-            ? evaluateQuotaSchedule(quotaSchedule, store.events, item.id, date, quotaSchedule.quota?.countMode === "value" ? unit : undefined)
+            ? evaluateQuotaSchedule(quotaSchedule, itemEvents, item.id, date, quotaSchedule.quota?.countMode === "value" ? unit : undefined)
             : undefined;
         const scheduled = Boolean(available && item && (quotaSchedule ? isQuotaOpportunityDay(quotaSchedule, date, endDate) : isScheduledToday(item, date)));
         const target = revision?.target || 1;
@@ -154,8 +155,8 @@ function indexEvents(store: CheckinStore, itemId: string, startDate: string, end
         .filter((entry) => entry.itemId && entry.source && entry.externalRef)
         .map((entry) => JSON.stringify([entry.itemId, entry.source, entry.externalRef])));
     const byDate = new Map<string, CheckinEvent[]>();
-    for (const event of store.events) {
-        if (event.itemId !== itemId || deletedIds.has(event.id)) continue;
+    for (const event of getEventsForItem(store, itemId)) {
+        if (deletedIds.has(event.id)) continue;
         if (event.externalRef && deletedIdentities.has(JSON.stringify([event.itemId, event.source, event.externalRef]))) continue;
         const key = getEventDateKey(event);
         if (key < startDate || key > endDate) continue;

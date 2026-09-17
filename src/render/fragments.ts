@@ -1,8 +1,7 @@
 /* 回顾页碎片渲染：近期事项 / 打卡日志。
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, getEventDateKey, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, sortCheckinItems} from "../model";
-import {evaluateRule} from "../rules";
+import {dateKey, evaluateItemRule, getEventDateKey, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, getEditorStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
 import {uiIcon} from "../ui/icons";
@@ -112,7 +111,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
     const canFocus = revision.kind === "duration";
     const recordStep = getRecordStep(revision.kind, revision.unit, revision.recordStep);
-    const rule = evaluateRule(item, ctx.store.events, date);
+    const rule = evaluateItemRule(ctx.store, item, date);
     const inputStep = getEditorStep(revision.kind, revision.unit);
     const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
     const meta = (isBinary ? t(KIND_LABELS[revision.kind]) : `${t(KIND_LABELS[revision.kind])} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;

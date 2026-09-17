@@ -1,8 +1,7 @@
 /* 今日页三个小绑定器：快捷数字键（8.6）、批量模式（6.0 P1）、拖拽排序（6.0 P0）。
    从 index.ts 外置（T-022 可选收尾）；宿主成员经 TodayBindingsHost 结构化接口声明，
    index.ts 以薄壳委托 `bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root)` 接线。 */
-import {evaluateRule} from "../rules";
-import {getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
+import {evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
@@ -111,7 +110,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
             const moment = captureActionMoment();
             const revision = getItemRevisionForDate(item, date);
             const fingerprint = host.revisionFingerprint(item, date);
-            const remaining = evaluateRule(item, host.store.events, date).remaining ?? 0;
+            const remaining = evaluateItemRule(host.store, item, date).remaining ?? 0;
             const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
             if (value <= 0) continue;
             void host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint));

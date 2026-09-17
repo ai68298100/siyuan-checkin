@@ -1,7 +1,7 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
-import {evaluateQuotaSchedule} from "./rules";
+import {evaluateQuotaSchedule, evaluateRule, type RuleProgress} from "./rules";
 
 export const STORE_VERSION = 2 as const;
 export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
@@ -510,6 +510,10 @@ export function getProgress(store: CheckinStore, item: CheckinItem, date = new D
     }
     const unit = revision.unit;
     return getEventsForDay(store, item.id, date).filter((event) => event.unit === unit).reduce((total, event) => total + event.value, 0);
+}
+
+export function evaluateItemRule(store: CheckinStore, item: CheckinItem, date = new Date()): RuleProgress {
+    return evaluateRule(item, getEventsForItem(store, item.id), date);
 }
 
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {
