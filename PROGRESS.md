@@ -1018,3 +1018,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 版本真值同步 13.0.0（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.0-change-log.md / release-notes-13.0.0.md）；完整质量链 test:quality exit 0（92 项测试资产零退役，a11y 双主题 0 违规，10k 渲染 34ms/溢出 0px，发布资源检查通过，CSS 419,910 bytes 告警区但低于 450,000 硬线）。
 - scripts/release.cjs 执行构建、测试链、提交、推送、标签与 GitHub Release（package.zip）；远端资产与发布说明 SHA-256 一致，仓库内发布说明回填最终摘要（webpack 产物 zip 元数据非字节确定，摘要以流水线上传时计算值为准）。
 - 路线图基线更新：官方集市 PR #2248 已合并；13.0 专注生态消费端与 14.0 数据内核可自动化范围已随 12.0.x/13.0.0 落地；主线下一步 15.0 UI 系统（版本决策 D-156：semver 连续递增，工作流标签不等于发布版本号）。
+
+### 13.0.1 修复版准备（2026-09-17，T-1151~T-1152）
+
+- 定位 v13.0.0 发布后 CI browser-audit 失败的两类问题：① visual-qa 对"阅读"模板 targetStep 期望过时（T-1091 步长分离后目标输入统一 0.01）；② 真实产品缺陷——写后校验指纹对"缺省 archived"与"物化 false"不等价，编辑器新建条目保存被误判并发覆盖、重试后回滚（14.0 第六批引入，真实宿主同样复现）。
+- 修复：save-form 构造条目物化 archived 缺省值 + cloneItemValue 快照防御性物化（D-157）；QA 宿主存储按名分槽并克隆失败 reject；双击提交等待卡片渲染后再点击。
+- 证据：完整质量链 test:quality exit 0；Edge 浏览器 visual-qa 全链通过（results.json 输出完整、pageErrors 为空）。

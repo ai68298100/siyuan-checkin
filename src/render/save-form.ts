@@ -101,7 +101,9 @@ export async function saveEditorForm(
         createdDate,
         revisions,
         archivePeriods: existing?.archivePeriods.map((period) => ({...period})) || [],
-        archived: existing?.archived,
+        /* 与 normalizeStore 的规范条目保持同一字段集合：缺省 archived 会被
+           规范化物化为 false，写后校验按 JSON 指纹比较，两侧必须逐键一致。 */
+        archived: existing?.archived ?? false,
         group,
         priority,
         sortOrder,

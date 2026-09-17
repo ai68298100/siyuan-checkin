@@ -23,6 +23,9 @@ export function cloneItemValue(item: CheckinItem): CheckinItem {
             schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
         })),
         archivePeriods: item.archivePeriods.map((period) => ({...period})),
+        /* 快照必须与 normalizeStore 同一字段集合（archived 缺省物化为 false），
+           写后校验的 JSON 指纹对"缺键"与"值为 false"不等价。 */
+        archived: item.archived === true,
     };
 }
 

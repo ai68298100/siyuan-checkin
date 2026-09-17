@@ -68,11 +68,30 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
                     addTab(options) { window.__tabOptions = options; }
                     addTopBar(options) { window.__topBarOptions = options; }
                     addCommand() {}
-                    loadData() { return Promise.resolve(structuredClone(window.__store)); }
-                    saveData(_name, value) {
-                        return new Promise((resolve) => setTimeout(() => {
-                            window.__store = structuredClone(value);
-                            resolve();
+                    /* 思源宿主按存储名隔离文件：主打卡 store 与偏好/备份/审计等
+                       各自独立读写，互不覆盖。单槽模拟会让偏好写入覆盖主存储，
+                       触发写后校验误报（store-write-verification-failed）。 */
+                    loadData(name) {
+                        const key = String(name || "");
+                        if (key === "checkin-store") return Promise.resolve(structuredClone(window.__store));
+                        const others = window.__otherStores || {};
+                        return Promise.resolve(others[key] === undefined ? "" : structuredClone(others[key]));
+                    }
+                    saveData(name, value) {
+                        const key = String(name || "");
+                        return new Promise((resolve, reject) => setTimeout(() => {
+                            try {
+                                const clone = structuredClone(value);
+                                if (key === "checkin-store") {
+                                    window.__store = clone;
+                                } else {
+                                    window.__otherStores = window.__otherStores || {};
+                                    window.__otherStores[key] = clone;
+                                }
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
                         }, 10));
                     }
                 },
@@ -102,7 +121,10 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
             queuePending += 1;
             const wrapped = async () => {
                 window.__queueLog.push({id, event: "start"});
-                try { return await operation(); } finally { queuePending -= 1; window.__queueLog.push({id, event: "end", pending: queuePending}); }
+                try { return await operation(); } catch (error) {
+                    window.__queueLog.push({id, event: "error", message: String(error), stack: String(error && error.stack || "").split("\n").slice(0, 5).join(" | ")});
+                    throw error;
+                } finally { queuePending -= 1; window.__queueLog.push({id, event: "end", pending: queuePending}); }
             };
             const p = rawEnqueue(wrapped);
             p.finally(() => window.__queueLog.push({id, event: "settled", pending: queuePending})).catch(() => {});
@@ -477,6 +499,11 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
                 new Promise((resolve) => setTimeout(() => resolve("PENDING-FOREVER"), 600)),
             ]);
             return {stalled: true, acceptingOperations: window.__plugin.acceptingOperations, mutationQueue: mqState, messages: window.__messages || [], names: api.getItems().map((item) => item.name), page: document.querySelector(".lc-checkin")?.className || "none", submitBound: document.querySelector("form")?.dataset.submitBound || "no-form", nameValue: document.querySelector("input[name='name']")?.value || "", queueTail: log.slice(-14), survivedExternalRecord: false, survivedAdapterRegistration: false, survivedAdapterDisposal: false, survivedDataChanged: false, remoteEditPreserved: false, conflictReported: false};
+        }
+        /* 保存经变更队列异步落盘，Today 表面重渲染晚于条目入库（API 读活跃 store，
+           乐观更新即时可见）：必须等卡片渲染后再点击，否则拿到 null。 */
+        for (let i = 0; i < 100 && !document.querySelector(`[data-item-id='${draftItem.id}'] [data-action='edit']`); i++) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
         }
         document.querySelector(`[data-item-id='${draftItem.id}'] [data-action='edit']`).click();
         const form = document.querySelector("form");

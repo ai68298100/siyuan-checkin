@@ -2062,3 +2062,14 @@
   - 验收：scripts/release.cjs 完成提交、推送、标签与 GitHub Release；远端 package.zip 资产 SHA-256 与发布说明一致；仓库内发布说明回填最终摘要（构建非字节确定，zip 元数据导致两次构建摘要不同，上传时由流水线写入真实值）。
   - 依赖：T-1149
   - 状态：done（Release https://github.com/ai68298100/siyuan-checkin/releases/tag/v13.0.0）
+
+## 13.0.1 修复版（T-1151~T-1152）
+
+- [x] T-1151 编辑器新建条目保存回滚修复
+  - 验收：save-form 构造条目物化 archived 缺省值，cloneItemValue 快照防御性物化；浏览器 QA 双击提交步骤保存成功且无回滚；真实思源新建条目不再触发 store-write-verification-failed。
+  - 依赖：D-157
+  - 状态：done
+- [x] T-1152 visual-qa 宿主保真与期望同步
+  - 验收：QA 宿主存储按名分槽（主 store 与偏好/备份/审计互不覆盖）、structuredClone 失败 reject；"阅读"模板 targetStep 期望同步 T-1091 的 0.01；双击提交在卡片渲染后再点击，消除活跃 store 乐观可见与表面重渲染的竞态。
+  - 依赖：T-1151
+  - 状态：done（Edge 跑通 visual-qa 全链，pageErrors 为空）
