@@ -46,6 +46,7 @@ export function cloneItemForDateValue(item: CheckinItem, date: Date): CheckinIte
         kind: revision.kind,
         target: revision.target,
         unit: revision.unit,
+        recordStep: revision.recordStep ?? clone.recordStep,
         schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined},
     };
 }

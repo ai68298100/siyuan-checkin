@@ -121,7 +121,10 @@ export function getTargetLabel(kind: CheckinKind): string {
     return kind === "duration" ? t("editor.targetDuration") : kind === "quantity" ? t("editor.targetQuantity") : kind === "count" ? t("editor.targetCount") : t("editor.targetDefault");
 }
 
-export function getRecordStep(kind: CheckinKind, unit: string): number {
+export function getRecordStep(kind: CheckinKind, unit: string, configuredStep?: number): number {
+    if (kind !== "binary" && Number.isFinite(configuredStep) && Number(configuredStep) > 0) {
+        return Math.round(Number(configuredStep) * 100) / 100;
+    }
     if (kind === "duration") return unit === "小时" ? 0.5 : 5;
     if (kind === "quantity" && unit === "毫升") return 250;
     if (kind === "quantity" && unit === "克") return 50;

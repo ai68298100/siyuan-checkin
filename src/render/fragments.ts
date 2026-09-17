@@ -111,7 +111,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
     const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
     const canFocus = revision.kind === "duration";
-    const recordStep = getRecordStep(revision.kind, revision.unit);
+    const recordStep = getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep);
     const rule = evaluateRule(item, ctx.store.events, date);
     const inputStep = getEditorStep(revision.kind, revision.unit);
     const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
@@ -317,7 +317,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             </div>` : `${pendingItems.length
             ? renderTodayGroupsView(pendingItems, now, ctx)
             : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
-            ${completedItems.length ? `<section class="lc-checkin__completed-section">
+            ${completedItems.length ? `<section class="lc-checkin__completed-section" aria-expanded="${!ctx.completedCollapsed}">
                 <button class="lc-checkin__section-toggle" type="button" data-action="toggle-completed" aria-expanded="${!ctx.completedCollapsed}">
                     <span class="lc-checkin__section-title"><i>✓</i> ${t("today.completed")}</span>
                     <span class="lc-checkin__section-count">${completedItems.length}</span>

@@ -5,6 +5,8 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const editorSource = fs.readFileSync(path.join(root, "src", "render", "editor.ts"), "utf8");
+const editorBindings = fs.readFileSync(path.join(root, "src", "render", "bind-editor.ts"), "utf8");
+const saveForm = fs.readFileSync(path.join(root, "src", "render", "save-form.ts"), "utf8");
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
@@ -17,6 +19,11 @@ assert.match(i18n, /"editor\.templateEmpty": "没有匹配的模板"/, "template
 assert.match(editorSource, /data-icon-query[\s\S]*data-icon-group[\s\S]*data-icon-results/, "icon picker must expose searchable grouped results");
 assert.match(editorSource, /data-advanced[\s\S]*data-advanced-summary/, "advanced editor fields must have a collapsible summary");
 assert.match(editorSource, /lc-checkin__editor-actions[\s\S]*data-action="archive"/, "editor actions must stay in a dedicated action bar");
+assert.match(editorSource, /name="recordStep"/, "non-binary items need a configurable quick-record amount");
+assert.match(editorSource, /editor\.recordStepHint/, "the quick-record amount needs an explicit explanation");
+assert.match(editorBindings, /getRecordStep\(kind, unit, configuredRecordStep\)/, "the live preview must use the configured amount");
+assert.match(editorBindings, /recordStepField\.hidden = kind === "binary"/, "binary items must not show an irrelevant amount control");
+assert.match(saveForm, /requestedRecordStep[\s\S]*?recordStep[\s\S]*?CheckinItemRevision/, "the configured amount must be persisted with the effective revision");
 
 // The editor has a form scroll region and a fixed action bar that can be checked at all mobile widths.
 assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__form-scroll\s*\{[^}]*overflow-y:\s*auto;/, "editor fields must scroll independently");

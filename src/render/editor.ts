@@ -40,6 +40,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
     const selectedKind = item?.kind || "binary";
     const selectedKindOption = KIND_OPTIONS.find((option) => option.kind === selectedKind) || KIND_OPTIONS[0];
     const selectedUnit = item?.unit || selectedKindOption.defaultUnit;
+    const selectedRecordStep = getRecordStep(selectedKind, selectedUnit, item?.recordStep);
     const editorTarget = item?.target || (selectedKind === "duration" && selectedUnit === "小时" ? 0.5 : selectedKindOption.step);
     const groupSuggestions = [...new Set([
         ...ctx.store.items.map((candidate) => candidate.group || ""),
@@ -125,6 +126,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     <div class="lc-checkin__form-row" data-value-fields>
                         <label class="lc-checkin__field"><span data-target-label>${escapeHtml(getTargetLabel(selectedKind))}</span><input name="target" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${escapeHtml(editorTarget.toString())}" /></label>
                         <label class="lc-checkin__field"><span>${t("occ.unit")}</span><input name="unit" type="text" maxlength="12" placeholder="${escapeHtml(selectedKindOption.defaultUnit)}" value="${escapeHtml(selectedUnit)}" /><span class="lc-checkin__unit-options" data-unit-options>${selectedKindOption.units.map((unit) => `<button type="button" data-unit="${escapeHtml(unit)}" aria-pressed="${selectedUnit === unit ? "true" : "false"}" class="${selectedUnit === unit ? "is-selected" : ""}">${escapeHtml(unit)}</button>`).join("")}</span></label>
+                        <label class="lc-checkin__field" data-record-step-field><span>${t("editor.recordStepLabel")}</span><input name="recordStep" type="number" min="${getEditorStep(selectedKind, selectedUnit)}" step="${getEditorStep(selectedKind, selectedUnit)}" required value="${formatNumber(selectedRecordStep)}" /><small>${t("editor.recordStepHint")}</small></label>
                     </div>
                 </div>
                 <aside class="lc-checkin__editor-side">
@@ -133,7 +135,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <article class="lc-checkin__preview-card" data-editor-preview>
                             <span class="lc-checkin__preview-icon" data-preview-icon>${renderIconMarkup(selectedIcon)}</span>
                             <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || t("editor.unnamed"))}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? `${t("kind.binary")} · ` + formatScheduleLabel(schedule) : `${t(KIND_LABELS[selectedKind])} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
-                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? t("item.checkin") : `+${formatNumber(getRecordStep(selectedKind, selectedUnit))} ${escapeHtml(selectedUnit)}`}</span>
+                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? t("item.checkin") : `+${formatNumber(selectedRecordStep)} ${escapeHtml(selectedUnit)}`}</span>
                         </article>
                     </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>

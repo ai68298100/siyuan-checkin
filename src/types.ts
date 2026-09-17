@@ -36,6 +36,8 @@ export interface CheckinItemRevision {
     kind: CheckinKind;
     target: number;
     unit: string;
+    /** Amount recorded by the quick action for this revision. */
+    recordStep?: number;
     schedule: CheckinSchedule;
 }
 
@@ -51,6 +53,8 @@ export interface CheckinItem {
     kind: CheckinKind;
     target: number;
     unit: string;
+    /** Amount recorded by one quick check-in. */
+    recordStep?: number;
     schedule: CheckinSchedule;
     createdAt: string;
     updatedAt: string;
@@ -111,6 +115,7 @@ export interface UserTemplate {
     kind: CheckinKind;
     target: number;
     unit: string;
+    recordStep?: number;
     schedule: CheckinSchedule;
     group: string;
     priority: CheckinPriority;

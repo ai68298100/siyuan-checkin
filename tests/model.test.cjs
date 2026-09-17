@@ -21,6 +21,12 @@ for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "ru
 }
 
 const model = require(path.join(outputRoot, "model.js"));
+const recordStepItem = model.normalizeItem({id: "step-item", name: "喝水", kind: "quantity", target: 2000, unit: "毫升", recordStep: 320, schedule: {type: "daily"}, createdAt: "2026-09-17T00:00:00Z", createdDate: "2026-09-17", revisions: [{effectiveDate: "2026-09-17", kind: "quantity", target: 2000, unit: "毫升", recordStep: 320, schedule: {type: "daily"}}]});
+assert.equal(recordStepItem.recordStep, 320, "custom quick-record amount must survive store normalization");
+assert.equal(recordStepItem.revisions[0].recordStep, 320, "custom quick-record amount must survive revision normalization");
+const invalidStepItem = model.normalizeItem({...recordStepItem, id: "invalid-step", recordStep: -5, revisions: [{...recordStepItem.revisions[0], recordStep: 0}]});
+assert.equal(invalidStepItem.recordStep, undefined, "invalid quick-record amounts must fall back to kind defaults");
+assert.equal(invalidStepItem.revisions[0].recordStep, undefined, "invalid revision amounts must not enter persisted state");
 const analytics = require(path.join(outputRoot, "analytics.js"));
 const exporter = require(path.join(outputRoot, "export.js"));
 const quota = require(path.join(outputRoot, "quota.js"));

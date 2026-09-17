@@ -147,6 +147,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
     const targetInput = root.querySelector<HTMLInputElement>("input[name='target']");
+    const recordStepInput = root.querySelector<HTMLInputElement>("input[name='recordStep']");
     const getKind = () => (root.querySelector<HTMLInputElement>("input[name='kind']:checked")?.value || "binary") as CheckinKind;
     const updateEditorPreview = () => {
         const kind = getKind();
@@ -155,6 +156,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const icon = root.querySelector<HTMLInputElement>("input[name='icon']")?.value || "✓";
         const unit = unitInput?.value.trim() || option.defaultUnit;
         const target = Number(targetInput?.value || option.step);
+        const configuredRecordStep = Number(recordStepInput?.value);
         const scheduleType = (scheduleSelect?.value || "daily") as ScheduleType;
         let scheduleLabel = t(SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily);
         if (scheduleType === "interval") {
@@ -174,7 +176,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (previewName) previewName.textContent = name;
         if (previewIcon) previewIcon.innerHTML = renderIconMarkup(icon);
         if (previewMeta) previewMeta.textContent = kind === "binary" ? `${t("kind.binary")} · ${scheduleLabel}` : `${t(KIND_LABELS[kind])} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
-        if (previewAction) previewAction.textContent = kind === "binary" ? t("editor.recordBinary") : t("editor.recordStep", {n: formatNumber(getRecordStep(kind, unit)), unit});
+        if (previewAction) previewAction.textContent = kind === "binary" ? t("editor.recordBinary") : t("editor.recordStep", {n: formatNumber(getRecordStep(kind, unit, configuredRecordStep)), unit});
         if (previewProgress) previewProgress.hidden = kind === "binary";
     };
     const applyCustomIcon = () => {
@@ -267,6 +269,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 const currentTarget = Number(targetInput.value);
                 if (Number.isFinite(currentTarget) && previousUnit === "分钟" && nextUnit === "小时") targetInput.value = formatNumber(currentTarget / 60);
                 if (Number.isFinite(currentTarget) && previousUnit === "小时" && nextUnit === "分钟") targetInput.value = formatNumber(currentTarget * 60);
+                const currentRecordStep = Number(recordStepInput?.value);
+                if (recordStepInput && Number.isFinite(currentRecordStep) && previousUnit === "分钟" && nextUnit === "小时") recordStepInput.value = formatNumber(currentRecordStep / 60);
+                if (recordStepInput && Number.isFinite(currentRecordStep) && previousUnit === "小时" && nextUnit === "分钟") recordStepInput.value = formatNumber(currentRecordStep * 60);
             }
             if (unitInput) unitInput.value = nextUnit;
             root.querySelectorAll<HTMLButtonElement>("[data-unit]").forEach((candidate) => {
@@ -280,6 +285,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     const updateConditionalFields = (useKindDefault = false) => {
         const kind = getKind();
         const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
+        const oldDefaultUnit = KIND_OPTIONS.find((option) => option.kind === previousKind)?.defaultUnit;
+        if (unitInput && useKindDefault && (!unitInput.value.trim() || unitInput.value === oldDefaultUnit)) {
+            unitInput.value = kindOption.defaultUnit;
+        }
         const valueFields = root.querySelector<HTMLElement>("[data-value-fields]");
         const weekdays = root.querySelector<HTMLElement>("[data-weekdays]");
         const intervalSchedule = root.querySelector<HTMLElement>("[data-interval-schedule]");
@@ -324,11 +333,17 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 targetInput.value = String(Number(aligned.toFixed(precision)));
             }
         }
-        if (unitInput) {
-            const oldDefault = KIND_OPTIONS.find((option) => option.kind === previousKind)?.defaultUnit;
-            if (useKindDefault && (!unitInput.value.trim() || unitInput.value === oldDefault)) {
-                unitInput.value = kindOption.defaultUnit;
+        const recordStepField = root.querySelector<HTMLElement>("[data-record-step-field]");
+        if (recordStepField) recordStepField.hidden = kind === "binary";
+        if (recordStepInput && kind !== "binary") {
+            const step = getEditorStep(kind, unitInput?.value || kindOption.defaultUnit);
+            recordStepInput.min = String(step);
+            recordStepInput.step = String(step);
+            if (useKindDefault || !Number.isFinite(Number(recordStepInput.value)) || Number(recordStepInput.value) <= 0) {
+                recordStepInput.value = String(getRecordStep(kind, unitInput?.value || kindOption.defaultUnit));
             }
+        }
+        if (unitInput) {
             unitInput.placeholder = kindOption.defaultUnit;
         }
         const unitOptions = root.querySelector<HTMLElement>("[data-unit-options]");
@@ -364,6 +379,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     unitInput?.addEventListener("change", () => updateConditionalFields(false));
     root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", updateEditorPreview);
     root.querySelector<HTMLInputElement>("input[name='target']")?.addEventListener("input", updateEditorPreview);
+    recordStepInput?.addEventListener("input", updateEditorPreview);
     root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.addEventListener("input", updateEditorPreview);
     root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.addEventListener("input", updateEditorPreview);
     root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.addEventListener("change", () => updateConditionalFields(false));
@@ -447,6 +463,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         setInput("name", templateName(template));
         setInput("target", String(template.target));
         setInput("unit", template.unit);
+        setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep)));
         setInput("group", template.group);
         setInput("priority", template.priority);
         setInput("timeSlot", template.timeSlot || "any");
@@ -479,7 +496,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
             if (control) control.value = value;
         };
-        setInput("name", templateName(template)); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
+        setInput("name", templateName(template)); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep))); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
         const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
         root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
         selectIcon(template.icon); updateConditionalFields(false); root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); updateEditorPreview(); updateAdvancedSummary();
@@ -506,6 +523,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const scheduleType = String(data.get("schedule") || "daily") as ScheduleType;
         const target = kind === "binary" ? 1 : Number(data.get("target"));
         const unit = kind === "binary" ? "次" : String(data.get("unit") || "").trim();
+        const requestedRecordStep = Number(data.get("recordStep"));
         const validation = validateEditorInput({name, kind, target, unit, schedule: scheduleType, weekdays: data.getAll("weekday").map(Number), quotaAmount: Number(data.get("quotaAmount"))});
         if (!validation.valid) {
             showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
@@ -527,6 +545,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const template: UserTemplate = {
             id: existing?.id || makeId("template"), name, icon: String(data.get("icon") || "✓"), kind,
             target: kind === "binary" ? 1 : Math.max(0.1, target || 1), unit: unit || "次",
+            ...(kind !== "binary" && Number.isFinite(requestedRecordStep) && requestedRecordStep > 0 ? {recordStep: Math.round(requestedRecordStep * 100) / 100} : {}),
             schedule, group: String(data.get("group") || "").trim(),
             priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), completionSource: data.get("completionSource") === "tomato" ? "tomato" : "manual", tomatoMode: data.get("tomatoMode") === "sessions" ? "sessions" : "minutes", note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
         };

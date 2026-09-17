@@ -181,7 +181,7 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             const revision = getItemRevisionForDate(item, actionDate);
             if (revision.kind === "binary" && isComplete(deps.getStore(), item, actionDate)) return {error: "该打卡项目今天已经完成。"};
             const value = args.value === undefined
-                ? (revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? 1 : revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit))
+                ? (revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? 1 : revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep))
                 : args.value;
             if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return {error: "记录数值必须是大于或等于 0 的有限数字。"};
             if (args.unit !== undefined && (typeof args.unit !== "string" || args.unit.trim() !== revision.unit)) return {error: `单位不匹配，该项目当前单位为“${revision.unit || "次"}”。`};

@@ -575,7 +575,11 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
     const timeSlot = normalizeCheckinTimeSlot(value.timeSlot ?? value.timeOfDay);
     const completionSource = value.completionSource === "tomato" ? "tomato" as const : "manual" as const;
     const tomatoMode = value.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
-    const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, schedule: cloneSchedule(schedule)};
+    const rawRecordStep = Number(value.recordStep);
+    const recordStep = kind !== "binary" && Number.isFinite(rawRecordStep) && rawRecordStep > 0
+        ? Math.round(rawRecordStep * 100) / 100
+        : undefined;
+    const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, ...(recordStep ? {recordStep} : {}), schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
         || compareText(left.endDate || "", right.endDate || ""));
@@ -586,6 +590,7 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         kind,
         target,
         unit,
+        ...(recordStep ? {recordStep} : {}),
         schedule,
         createdAt,
         updatedAt,
@@ -686,11 +691,16 @@ function normalizeRevisions(value: unknown, fallback: CheckinItemRevision): Chec
             const numericTarget = Number(candidate.target);
             const target = kind === "binary" ? 1 : Number.isFinite(numericTarget) && numericTarget > 0 ? numericTarget : 1;
             const unit = typeof candidate.unit === "string" && candidate.unit.trim() ? candidate.unit.trim().slice(0, 16) : "次";
+            const numericRecordStep = Number(candidate.recordStep);
+            const recordStep = kind !== "binary" && Number.isFinite(numericRecordStep) && numericRecordStep > 0
+                ? Math.round(numericRecordStep * 100) / 100
+                : undefined;
             const revision: CheckinItemRevision = {
                 effectiveDate: candidate.effectiveDate,
                 kind,
                 target,
                 unit,
+                ...(recordStep ? {recordStep} : {}),
                 schedule: normalizeSchedule(candidate.schedule),
             };
             const existing = revisions.get(revision.effectiveDate);

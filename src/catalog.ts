@@ -28,6 +28,7 @@ export interface CheckinTemplate {
     kind: CheckinKind;
     target: number;
     unit: string;
+    recordStep?: number;
     schedule: CheckinSchedule;
     group: string;
     priority: CheckinPriority;

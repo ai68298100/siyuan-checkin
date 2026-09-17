@@ -15,7 +15,9 @@ export function normalizeUserTemplate(value: unknown, now = new Date().toISOStri
     if (!id || !name) return undefined;
     const completionSource = raw.completionSource === "tomato" ? "tomato" as const : "manual" as const;
     const tomatoMode = raw.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
-    return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), completionSource, tomatoMode, note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
+    const numericRecordStep = Number(raw.recordStep);
+    const recordStep = kind !== "binary" && Number.isFinite(numericRecordStep) && numericRecordStep > 0 ? Math.round(numericRecordStep * 100) / 100 : undefined;
+    return {id, name, icon: String(raw.icon || "✓"), kind, target: Number.isFinite(raw.target) ? Math.max(0, Number(raw.target)) : 1, unit: String(raw.unit || "次"), ...(recordStep ? {recordStep} : {}), schedule, group: String(raw.group || ""), priority, ...(raw.timeSlot ? {timeSlot: raw.timeSlot as CheckinTimeSlot} : {}), completionSource, tomatoMode, note: String(raw.note || ""), createdAt: String(raw.createdAt || now), updatedAt: String(raw.updatedAt || now)};
 }
 
 export function mergeTemplates(builtins: readonly CheckinTemplate[], users: readonly unknown[] = []): Array<CheckinTemplate | UserTemplate> {

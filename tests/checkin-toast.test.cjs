@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+const todayBindings = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");
 
 assert.doesNotMatch(fragments, /state === "saving"[\s\S]{0,180}lc-checkin__save-status is-saving/, "saving must not insert a layout-shifting block");
 assert.match(fragments, /state === "error"[\s\S]{0,180}role="alert"/, "save errors remain visible and retryable");
@@ -31,5 +32,9 @@ assert.match(components, /\.lc-checkin-dialog-host,[\s\S]*?\.lc-checkin-tab-host
 assert.match(components, /\.lc-checkin__recent-record \{[\s\S]*?position: absolute;[\s\S]*?bottom: 18px;[\s\S]*?width: min\(360px, calc\(100% - 24px\)\);[\s\S]*?animation: lc-checkin-toast-in 120ms ease-out both;/, "check-in feedback should be a compact toast bounded by the plugin window");
 assert.match(components, /@keyframes lc-checkin-toast-in[\s\S]*?translate\(-50%, 4px\)[\s\S]*?translate\(-50%, 0\)/, "check-in feedback animation should be subtle");
 assert.match(components, /prefers-reduced-motion: reduce[\s\S]*?animation: none;/, "check-in feedback must respect reduced motion");
+assert.match(fragments, /completed-section" aria-expanded="\$\{!ctx\.completedCollapsed\}"/, "completed section must expose its expanded state");
+assert.match(todayBindings, /items\?\.toggleAttribute\("hidden", host\.completedCollapsed\)/, "completed cards must collapse immediately on the active mobile surface");
+assert.match(todayBindings, /toggle\.setAttribute\("aria-expanded", String\(!host\.completedCollapsed\)\)/, "completed toggle accessibility state must update without a full render");
+assert.doesNotMatch(todayBindings, /toggle-completed'[\s\S]{0,700}host\.render\(\)/, "completed collapse must not depend on a layout-shifting full render");
 
 console.log("Check-in toast checks passed.");

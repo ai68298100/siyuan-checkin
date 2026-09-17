@@ -130,7 +130,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const revision = getItemRevisionForDate(item, date);
         host.pendingFocusItemId = item.id;
         host.pulseHaptic();
-        host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit), captureActionMoment(), host.revisionFingerprint(item, date)));
+        host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
     root.querySelector<HTMLElement>("[data-action='toggle-pending-only']")?.addEventListener("click", () => {
         host.pendingOnly = !host.pendingOnly;
@@ -175,10 +175,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.render();
         }
     });
-    root.querySelector<HTMLElement>("[data-action='toggle-completed']")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-action='toggle-completed']")?.addEventListener("click", (event) => {
         host.completedCollapsed = !host.completedCollapsed;
+        const toggle = event.currentTarget as HTMLElement;
+        const section = toggle.closest<HTMLElement>(".lc-checkin__completed-section");
+        const items = section?.querySelector<HTMLElement>(":scope > .lc-checkin__group-items");
+        toggle.setAttribute("aria-expanded", String(!host.completedCollapsed));
+        section?.setAttribute("aria-expanded", String(!host.completedCollapsed));
+        items?.toggleAttribute("hidden", host.completedCollapsed);
+        const chevron = toggle.querySelector<HTMLElement>(".lc-checkin__chevron");
+        if (chevron) chevron.textContent = host.completedCollapsed ? "⌄" : "⌃";
         void host.persistViewPreferences();
-        host.render();
     });
     root.querySelectorAll<HTMLElement>("[data-group-toggle]").forEach((button) => button.addEventListener("click", () => {
         const key = button.dataset.groupToggle;
@@ -236,7 +243,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
             host.pendingFocusItemId = item.id;
             host.pulseHaptic();
-            host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit), moment, expectedRevisionFingerprint));
+            host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit, revision.recordStep ?? item.recordStep), moment, expectedRevisionFingerprint));
         });
         element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
             const button = event.currentTarget as HTMLElement;
