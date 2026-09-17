@@ -1061,3 +1061,9 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 用户截图指出今日页顶部优先提醒条显示需优化。定位：宽容器下该区为 flex 双列（主行+展开区并排），「定位打卡」文字按钮悬在中间，两列行错位不对称。
 - 变更：最终层统一为纵向列表——主行整行、展开区整行在下，行内 20px/1fr/max-content 三列网格，「定位打卡」右对齐胶囊按钮（描边+hover 强调）。移动端 ≤719px 紧凑规则不变。
 - 证据：真机思源验证折叠/展开两态；today-view/responsive-layout/priority-reminder/mobile-release-quality 通过；visual-qa exit 0；测试包 siyuan-checkin-v13.0.2-test.zip 更新。
+
+### dock 设置页布局修复（2026-09-18，T-1158）
+
+- 用户真机截图：dock 侧边栏设置页恢复点卡片文字竖排、审计条目错乱、原生文件控件外露。定位：恢复点/审计列表网格规则只写在 @media ≤600px 视口断点内，桌面宽视口下 dock 窄容器（约 280-560 CSS px）无样式可用，默认 flex 被压缩。
+- 变更：dock 宿主设置页列表行改容器级两列网格（文案 1fr + 按钮 auto，min-width 0 + anywhere 换行）；原生文件输入全局隐藏、保留胶囊标签。
+- 证据：.artifacts/dock-settings-probe.cjs 300px dock 复现（修复前 li 380px 高竖排 → 修复后 71px 两列网格）；真机思源 dock 实测正常；test:quality exit 0；visual-qa exit 0；测试包已更新。
