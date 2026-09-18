@@ -16,7 +16,7 @@ async function setupTomatoBridge() {
 
     // 4. 订阅事件示例：每次有记录时打一条日志
     const unsubscribe = checkin.subscribe((event) => {
-        if (event.type === "checkin:event-recorded") console.log("[tomato-bridge] 检测到新记录", event.detail);
+        if (event.type === "checkin:event-recorded") console.log("[tomato-bridge] 检测到新记录", event);
     });
 
     // 5. 写入一个番茄会话（25 分钟）。externalRef 用会话 ID，重复推送会自动去重。

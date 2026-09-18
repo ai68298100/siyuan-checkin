@@ -2166,6 +2166,11 @@
   - 验收：提供版本化 JSON 清单，固定 API/能力/方法/单位/刷新事件白名单/摘要限制；运行时快照与 JSON、合作文档、契约测试互相校验。
   - 依赖：T-1168
   - 状态：done（`docs/contracts/task-horizon-v1.json` 已接入契约测试）
+
+- [x] T-1170 Task Horizon 公开 API bridge 示例（P1 前置）
+  - 验收：提供只依赖 `window.siyuanCheckin` 的能力探测、摘要刷新、真实完成回写、失败可重试和卸载清理示例；不读取对方私有数据；示例测试纳入生态链。
+  - 依赖：T-1169
+  - 状态：done（`examples/task-horizon-bridge` 与运行时 fixture 已接入 `test:ecosystem`）
 - [ ] T-1166 外部软件摘要通道（P3，远期评估）
   - 验收：每日摘要写入驻留文档的方案设计与隐私评估；外部工具（手机/桌面）经内核 API 读取的最小可用形态。
   - 依赖：T-1164；用户隐私决策

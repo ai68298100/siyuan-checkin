@@ -698,3 +698,9 @@
 - 契约 JSON 固定协议版本、能力、方法、单位、externalRef 前缀、刷新事件白名单和摘要限制；运行时导出同形快照，测试阻止两者漂移。
 - 日历消费者只对四类刷新事件重查：新记录、分析刷新、自动归档和手动更新；创建/删除等事件不直接触发聚合重算。
 - 清单只描述公开 API，不承诺 Task Horizon 私有块监听、配置存储或 UI 实现。
+
+## D-185：Task Horizon 示例只实现公开 facade 消费（2026-09-18）
+
+- 示例负责能力协商、日期摘要读取、公开刷新事件订阅、`recordEvent` 写入和注销；块发现、原生复选框触发与日历渲染由对方插件保留。
+- 示例失败时返回明确的 `unavailable` / `not-ready` / `capability-missing` / `target-missing` 状态；重试必须复用同一 blockId+localDate，不创建随机 externalRef。
+- 订阅回调接收 `checkin.subscribe` 传出的事件详情对象本身，不再误读 DOM `CustomEvent.detail`。

@@ -6,6 +6,8 @@
 
 ## 记录同步
 
+Task Horizon 的公开 API 消费示例见 [examples/task-horizon-bridge](../examples/task-horizon-bridge/plugin.js)，包含能力探测、摘要刷新、完成回写和卸载清理；它不读取任务插件私有数据。
+
 ```js
 await window.siyuanCheckin.recordEvent({
   itemId: "checkin-item-id",
