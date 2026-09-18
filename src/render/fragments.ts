@@ -361,6 +361,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-all">${t("today.bulkAll")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">${t("today.bulkComplete")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-archive">${t("today.bulkArchive")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-delete">${t("today.bulkDelete")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}

@@ -1,7 +1,9 @@
 /* 今日页三个小绑定器：快捷数字键（8.6）、批量模式（6.0 P1）、拖拽排序（6.0 P0）。
    从 index.ts 外置（T-022 可选收尾）；宿主成员经 TodayBindingsHost 结构化接口声明，
    index.ts 以薄壳委托 `bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root)` 接线。 */
-import {evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
+import {t} from "../i18n";
+import {showMessage} from "siyuan";
+import {deleteItemCascade, evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
@@ -18,7 +20,9 @@ export interface TodayBindingsHost {
     revisionFingerprint(item: CheckinItem, date: Date): string;
     reorderItems(orderedIds: string[]): Promise<boolean>;
     setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean>;
+    deleteItemWithRecords(itemId: string): Promise<boolean>;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
+    persist(): Promise<void>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(): void;
     showEditor(item?: CheckinItem): void;
@@ -129,6 +133,56 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         host.bulkMode = false;
         host.bulkSelected.clear();
     });
+    root.querySelector<HTMLElement>("[data-action='bulk-delete']")?.addEventListener("click", () => {
+        const ids = [...host.bulkSelected];
+        if (!ids.length) return;
+        const recordCount = ids.reduce((sum, id) => sum + host.store.events.filter((event) => event.itemId === id).length, 0);
+        if (!window.confirm(t("today.bulkDeleteConfirm", {n: ids.length, records: recordCount}))) return;
+        const moment = captureActionMoment();
+        for (const id of ids) {
+            host.store = deleteItemCascade(host.store, id, moment.occurredAt);
+        }
+        host.bulkMode = false;
+        host.bulkSelected.clear();
+        void host.enqueueMutation(async () => { await host.persist(); });
+        showMessage(t("msg.itemsDeleted", {n: ids.length}));
+    });
+}
+
+/** 卡片右键上下文菜单（T-1162）：编辑/归档/删除，零常驻空间。 */
+export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElement): void {
+    if (root.dataset.itemContextMenuBound === "true") return;
+    root.dataset.itemContextMenuBound = "true";
+    const closeMenus = () => root.querySelectorAll(".lc-checkin__item-context-menu").forEach((node) => node.remove());
+    root.addEventListener("contextmenu", (event) => {
+        const card = (event.target as HTMLElement).closest<HTMLElement>(".lc-checkin__item");
+        if (!card) return;
+        const item = getActiveItemById(host.store, card.dataset.itemId || "");
+        if (!item) return;
+        event.preventDefault();
+        closeMenus();
+        const menu = document.createElement("div");
+        menu.className = "lc-checkin__item-context-menu";
+        menu.innerHTML = [
+            `<button type="button" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
+            `<button type="button" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
+            `<button type="button" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
+        ].join("");
+        menu.style.left = `${event.clientX}px`;
+        menu.style.top = `${event.clientY}px`;
+        root.appendChild(menu);
+        menu.addEventListener("click", (ev) => {
+            const action = (ev.target as HTMLElement).dataset?.menuAction;
+            ev.stopPropagation();
+            closeMenus();
+            const moment = captureActionMoment();
+            const fingerprint = host.itemFingerprint(item);
+            if (action === "edit") host.showEditor(item);
+            else if (action === "archive") void host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint));
+            else if (action === "delete") void host.deleteItemWithRecords(item.id);
+        });
+    });
+    root.addEventListener("click", closeMenus);
 }
 
 /* 手柄拖拽重排 + Alt+↑/↓ 键盘重排；落点持久化组内 sortOrder（仅手动排序模式）。 */
