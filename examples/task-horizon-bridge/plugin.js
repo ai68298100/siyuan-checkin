@@ -88,10 +88,23 @@
                 try { ready = await checkin.whenReady(); } catch (error) { reportError("ready", error); return {ready: false, reason: "ready-error"}; }
                 if (stopped) return {ready: false, reason: "stopped"};
                 if (!ready) return {ready: false, reason: "not-ready"};
-                if (typeof checkin.hasCapability !== "function" || !checkin.hasCapability("analytics.read") || !checkin.hasCapability("events.record")) {
+                let capabilities;
+                try {
+                    capabilities = typeof checkin.hasCapability === "function"
+                        && checkin.hasCapability("analytics.read")
+                        && checkin.hasCapability("events.record");
+                } catch (error) {
+                    reportError("capability", error);
+                    return {ready: false, reason: "capability-error"};
+                }
+                if (!capabilities) {
                     return {ready: false, reason: "capability-missing"};
                 }
-                const candidates = typeof checkin.getItems === "function" ? checkin.getItems() : [];
+                let candidates;
+                try { candidates = typeof checkin.getItems === "function" ? checkin.getItems() : []; } catch (error) {
+                    reportError("items", error);
+                    return {ready: false, reason: "items-error"};
+                }
                 targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
                 if (!targetItemId) return {ready: false, reason: "target-missing"};
                 if (typeof checkin.subscribe === "function") {

@@ -135,6 +135,10 @@ const checkin = {
     assert.equal((await invalidVersion.start()).reason, "protocol-mismatch");
     const readyFailure = createTaskHorizonBridge({checkin: {...checkin, whenReady: async () => { throw new Error("facade unavailable"); }}});
     assert.equal((await readyFailure.start()).reason, "ready-error");
+    const capabilityFailure = createTaskHorizonBridge({checkin: {...checkin, hasCapability: () => { throw new Error("capability getter failed"); }}});
+    assert.equal((await capabilityFailure.start()).reason, "capability-error");
+    const itemsFailure = createTaskHorizonBridge({checkin: {...checkin, getItems: () => { throw new Error("items getter failed"); }}});
+    assert.equal((await itemsFailure.start()).reason, "items-error");
     let cleaned = false;
     const readFailure = createTaskHorizonBridge({checkin: {...checkin,
         getEventRangeSummary: () => { throw new Error("summary unavailable"); },

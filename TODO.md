@@ -2208,6 +2208,9 @@
 - [x] T-1196 Task Horizon 停止竞态刷新收口（P1）
   - 验收：摘要读取进行中调用 `stop()` 后，迟到结果不再触发 `onRefresh`，且不会被后续消费者误用；停止后新刷新继续返回空结果。
   - 状态：done（刷新完成点增加 stopped 守门，fixture 覆盖 stop-before-summary-resolve）
+- [x] T-1197 Task Horizon facade 探测异常诊断（P1）
+  - 验收：能力探测或事项枚举 getter 抛错时，`start()` 返回稳定诊断状态而不产生未处理 Promise 拒绝；正常缺失能力仍返回 `capability-missing`。
+  - 状态：done（新增 `capability-error`/`items-error` 分支与恶意 facade fixture）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

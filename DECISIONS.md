@@ -761,3 +761,8 @@
 
 - `stop()` 与进行中的摘要读取竞态时，读取结果仍可自然完成，但不得调用 `onRefresh`，并向调用方返回 `undefined`。
 - 停止后的新 `refresh()` 继续短路为空结果，避免卸载后重新建立读取活动。
+
+## D-197：facade 探测 getter 异常转稳定启动状态（2026-09-18）
+
+- `hasCapability()` 抛错返回 `capability-error`，`getItems()` 抛错返回 `items-error`，并通过统一 `onError` 诊断通道报告。
+- 只有返回正常但能力不足时才使用 `capability-missing`；不把宿主 getter 异常伪装成用户配置缺失。
