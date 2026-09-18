@@ -2256,6 +2256,9 @@
 - [x] T-1212 Task Horizon 第十批 30 项复合身份并发矩阵（P1）
   - 验收：单飞与 pending 按 `itemId + source + externalRef` 建键；同身份并发合并，不同 itemId 即使 externalRef 相同也独立写入；新增不少于 30 个并发项目。
   - 状态：done（15 组同身份合并 + 15 组跨事项隔离，共 30 项 identity-key matrix）
+- [x] T-1213 Task Horizon 300 项生成式输入压力批次（P1）
+  - 验收：新增不少于 300 个真实 bridge 项目，包含 100 个合法日期/身份、100 个非法日期、100 个非法 blockId；逐项验证 externalRef 或 `undefined`，并确认仅 100 个合法输入抵达 `recordEvent`。
+  - 状态：done（300-case generated stress matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

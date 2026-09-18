@@ -453,5 +453,30 @@ const checkin = {
     }
     for (const [label, passed] of identityKeyMatrix) assert.equal(passed, true, `identity-key matrix case: ${label}`);
     assert.equal(identityKeyMatrix.length, 30, "tenth 30-case identity-key matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and ten 30-case contract matrices.");
+    const stressCalls = [];
+    const stressBridge = createTaskHorizonBridge({checkin: {...checkin,
+        recordEvent: async (payload) => { stressCalls.push(payload); return {id: `stress-${stressCalls.length}`, ...payload}; },
+    }});
+    const stressMatrix = [];
+    for (let index = 0; index < 100; index += 1) {
+        const month = String((index % 12) + 1).padStart(2, "0");
+        const day = String((index % 28) + 1).padStart(2, "0");
+        const blockId = `stress-valid-${index}`;
+        const localDate = `2026-${month}-${day}`;
+        const result = await stressBridge.recordTaskCompletion({blockId, localDate, itemId: `stress-item-${index}`});
+        stressMatrix.push(result && result.externalRef === `taskhorizon:${blockId}:${localDate}`);
+    }
+    for (let index = 0; index < 100; index += 1) {
+        const blockId = `stress-invalid-date-${index}`;
+        const localDate = `2026-${String((index % 12) + 1).padStart(2, "0")}-00`;
+        stressMatrix.push(await stressBridge.recordTaskCompletion({blockId, localDate, itemId: "stress-item"}) === undefined);
+    }
+    for (let index = 0; index < 100; index += 1) {
+        const blockId = `stress:invalid:${index}`;
+        stressMatrix.push(await stressBridge.recordTaskCompletion({blockId, localDate: "2026-09-18", itemId: "stress-item"}) === undefined);
+    }
+    assert.equal(stressMatrix.length, 300, "300-case generated stress matrix remains complete");
+    assert.equal(stressMatrix.every(Boolean), true, "all generated stress matrix cases pass");
+    assert.equal(stressCalls.length, 100, "only valid stress inputs reach recordEvent");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup, ten 30-case matrices and 300-case generated stress matrix.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

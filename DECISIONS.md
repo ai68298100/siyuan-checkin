@@ -841,3 +841,8 @@
 
 - `recordInFlight` 与 pending map 使用 `[itemId, source, externalRef]` 复合键；externalRef 相同但 itemId 不同不属于同一幂等写入。
 - 当前 bridge source 固定为 `api`，但仍纳入键以保持与内核幂等身份契约一致，避免未来扩展来源时再次误合并。
+
+## D-213：300 项压力批次使用生成式而非重复手写（2026-09-18）
+
+- 300 项由确定性循环生成：100 个合法日期/身份、100 个日期日值为 00 的非法输入、100 个含冒号的非法 blockId。
+- 每项都经过真实 bridge 入口；矩阵断言总数、全量通过和实际 transport 次数，避免只扩大日志而没有覆盖证明。
