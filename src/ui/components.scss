@@ -9764,3 +9764,24 @@ details:not([open]) > :not(summary) { display: none !important; }
     min-width: 0;
     overflow-wrap: anywhere;
 }
+
+/* 事项操作帮助：富文本说明（图标+标题+描述） */
+.lc-checkin--occasions .lc-checkin__occasion-actions-help > div {
+    display: grid;
+    gap: 6px;
+    text-align: left;
+}
+.lc-checkin--occasions .lc-checkin__occasion-actions-help > div > span {
+    display: grid;
+    gap: 2px;
+}
+.lc-checkin--occasions .lc-checkin__occasion-actions-help > div > span > strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+    font-weight: 700;
+}
+.lc-checkin--occasions .lc-checkin__occasion-actions-help > div > span {
+    color: var(--lc-checkin-muted);
+    font-size: 10.5px;
+    line-height: 1.45;
+}
