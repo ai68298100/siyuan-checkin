@@ -1116,3 +1116,10 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 新增 1k/10k/100k 事件基线，覆盖月范围事件选择、汇总上下文、分析快照和导出序列化，并校验范围结果与摘要事件数一致。
 - 当前 100k 事件在本机约为：范围 429ms、汇总 3ms、分析快照 335ms、导出序列化 50ms；门槛用于发现灾难性退化，不把单机毫秒数当作产品承诺。
 - `review-performance-baseline.test.cjs` 已纳入 `test:extended`；定向基线、扩展测试和类型检查通过。
+
+### v15.0 Today 交互连续性批次（2026-09-18）
+
+- 批量工具栏增加 `[data-bulk-toolbar]` 协调边界，完成/归档/删除任一动作执行期间整组按钮禁用并暴露 `aria-busy`，完成或失败后恢复原 disabled 状态。
+- Today 上下文菜单补充 `role=menu/menuitem`、上下方向键循环和关闭后焦点恢复；删除卡片后若原主按钮已离开 DOM，则安全跳过聚焦。
+- 菜单动作同步抛错统一进入 Promise rejection 边界；新增结构断言锁定 toolbar 互斥、菜单语义、键盘导航和焦点恢复。
+- 证据：`pnpm run check`、`pnpm run test:ui`、`pnpm run test:extended` 与完整 `pnpm run test:quality` 已通过；真实思源宿主焦点/滚动仍归 T-1173 与 B-007 现场验收。

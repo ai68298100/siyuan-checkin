@@ -14,14 +14,20 @@ assert.match(source, /suppressContextMenuUntil = Date\.now\(\) \+ 800/, "native 
 assert.match(source, /Math\.min\(Math\.max\(margin, clientX\), maxX\)/, "menu is clamped to the horizontal viewport");
 assert.match(source, /Math\.min\(Math\.max\(margin, clientY\), maxY\)/, "menu is clamped to the vertical viewport");
 assert.match(source, /menu\.querySelector<HTMLElement>\("\[data-menu-action\]"\)\?\.focus\(\)/, "opening the menu moves focus to its first action");
-assert.match(source, /event\.key === "Escape"[\s\S]*?closeMenus\(\)/, "Escape closes an open menu");
+assert.match(source, /event\.key === "Escape"[\s\S]*?closeMenus\(true\)/, "Escape closes an open menu");
+assert.match(source, /closeMenus\(true\)/, "closing the menu restores focus to the card action");
+assert.match(source, /menu\.setAttribute\("role", "menu"\)/, "context menu exposes menu semantics");
+assert.match(source, /role="menuitem"/, "context menu actions expose menuitem semantics");
+assert.match(source, /\["ArrowDown", "ArrowUp"\]/, "context menu supports keyboard traversal");
 assert.match(source, /function runExclusiveAction\(/, "bulk actions share an exclusive execution guard");
+assert.match(source, /button\.closest<HTMLElement>\("\[data-bulk-toolbar\]"\)/, "bulk action guard coordinates the whole toolbar");
 assert.match(source, /Promise\.resolve\(\)\.then\(operation\)/, "synchronous action failures also release the busy guard");
 assert.match(source, /button\.dataset\.actionBusy === "true"/, "repeated action clicks are ignored while a mutation is pending");
 assert.match(source, /button\.setAttribute\("aria-busy", "true"\)/, "pending actions expose busy state");
 assert.match(source, /await host\.enqueueMutation\(async \(\) => \{[\s\S]*?await host\.persist\(\);/, "bulk deletion persists inside the mutation queue");
 assert.match(source, /const previous = host\.store;[\s\S]*?host\.store = previous;/, "bulk deletion restores the in-memory snapshot after persistence failure");
 assert.match(source, /menu\.dataset\.actionBusy === "true"/, "context-menu actions ignore duplicate clicks");
+assert.match(fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8"), /data-bulk-toolbar/, "bulk toolbar exposes a coordination boundary");
 assert.match(styles, /\.lc-checkin__item-context-menu \{[\s\S]*?position: fixed;/, "context menu is positioned against the viewport");
 
 console.log("Today context-menu checks passed.");

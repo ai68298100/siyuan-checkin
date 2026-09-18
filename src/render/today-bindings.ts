@@ -30,14 +30,19 @@ export interface TodayBindingsHost {
 
 function runExclusiveAction(button: HTMLElement | null, operation: () => Promise<unknown> | unknown): void {
     if (!button || button.dataset.actionBusy === "true") return;
+    const toolbar = button.closest<HTMLElement>("[data-bulk-toolbar]");
+    const controls = toolbar ? [...toolbar.querySelectorAll<HTMLButtonElement>("button")] : [button as HTMLButtonElement];
+    const previousDisabled = controls.map((control) => control.disabled);
     button.dataset.actionBusy = "true";
     button.setAttribute("aria-busy", "true");
-    if (button instanceof HTMLButtonElement) button.disabled = true;
+    toolbar?.setAttribute("aria-busy", "true");
+    controls.forEach((control) => { control.disabled = true; });
     void Promise.resolve().then(operation).catch(() => undefined).finally(() => {
         if (!button.isConnected) return;
         delete button.dataset.actionBusy;
         button.removeAttribute("aria-busy");
-        if (button instanceof HTMLButtonElement) button.disabled = false;
+        toolbar?.removeAttribute("aria-busy");
+        controls.forEach((control, index) => { if (control.isConnected) control.disabled = previousDisabled[index]; });
     });
 }
 
@@ -185,7 +190,13 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
 export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.itemContextMenuBound === "true") return;
     root.dataset.itemContextMenuBound = "true";
-    const closeMenus = () => root.querySelectorAll(".lc-checkin__item-context-menu").forEach((node) => node.remove());
+    let menuTrigger: HTMLElement | undefined;
+    const closeMenus = (restoreFocus = false) => {
+        root.querySelectorAll(".lc-checkin__item-context-menu").forEach((node) => node.remove());
+        const trigger = menuTrigger;
+        menuTrigger = undefined;
+        if (restoreFocus && trigger?.isConnected) trigger.focus();
+    };
     let suppressContextMenuUntil = 0;
     let longPressTimer: number | undefined;
     let longPressPointerId: number | undefined;
@@ -201,12 +212,15 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         const item = getActiveItemById(host.store, card.dataset.itemId || "");
         if (!item) return;
         closeMenus();
+        menuTrigger = card.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']") || undefined;
         const menu = document.createElement("div");
         menu.className = "lc-checkin__item-context-menu";
+        menu.setAttribute("role", "menu");
+        menu.setAttribute("aria-label", t("today.bulkAria"));
         menu.innerHTML = [
-            `<button type="button" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
-            `<button type="button" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
-            `<button type="button" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
         ].join("");
         menu.style.left = "0px";
         menu.style.top = "0px";
@@ -232,7 +246,15 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
                 : action === "archive"
                     ? () => host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint))
                     : () => host.deleteItemWithRecords(item.id);
-            void Promise.resolve().then(operation).catch(() => undefined).finally(closeMenus);
+            void Promise.resolve().then(operation).catch(() => undefined).finally(() => closeMenus(true));
+        });
+        menu.addEventListener("keydown", (event) => {
+            const actions = [...menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]")];
+            const current = actions.indexOf(document.activeElement as HTMLButtonElement);
+            if (!actions.length || !["ArrowDown", "ArrowUp"].includes(event.key)) return;
+            event.preventDefault();
+            const offset = event.key === "ArrowDown" ? 1 : -1;
+            actions[(current + offset + actions.length) % actions.length]?.focus();
         });
     };
     root.addEventListener("contextmenu", (event) => {
@@ -271,7 +293,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
     root.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && root.querySelector(".lc-checkin__item-context-menu")) {
             event.preventDefault();
-            closeMenus();
+            closeMenus(true);
         }
     });
 }

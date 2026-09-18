@@ -356,7 +356,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 </select></label><label><span>${t("today.sortLabel")}</span><select data-sort-mode aria-label="${t("today.sortAria")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${ctx.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label><button class="lc-checkin__filter-toggle ${ctx.pendingOnly ? "is-active" : ""}" type="button" data-action="toggle-pending-only" aria-pressed="${ctx.pendingOnly}">${t("today.pendingOnly")}</button></div></details>
                 <button class="lc-checkin__filter-toggle ${ctx.bulkMode ? "is-active" : ""}" type="button" data-action="toggle-bulk" aria-pressed="${ctx.bulkMode}">${t("today.bulk")}</button>
             </div>` : ""}
-            ${ctx.bulkMode ? `<div class="lc-checkin__bulk-bar" role="toolbar" aria-label="${t("today.bulkAria")}">
+            ${ctx.bulkMode ? `<div class="lc-checkin__bulk-bar" data-bulk-toolbar role="toolbar" aria-label="${t("today.bulkAria")}">
                 <strong>${t("today.bulkSelectedCount", {n: ctx.bulkSelected.size})}</strong>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-all">${t("today.bulkAll")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-complete">${t("today.bulkComplete")}</button>
