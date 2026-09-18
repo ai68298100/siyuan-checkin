@@ -1169,3 +1169,8 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 发布视觉走查发现模板摘要仍写死旧的 24 项基线；已改为动态核对实际渲染目录数量，并将 README 当前内置模板数量校正为 40，避免后续扩充再次产生假失败。
 - T-1187：`pnpm run test:quality`、`width-walkthrough`、浅/深主题 `visual-qa` 和最终 `release-assets` 全部通过；98 个测试文件零退役，无障碍 0 违规，CSS 429,056 bytes 低于 450,000-byte 硬线。
 - 最终待发布 `package.zip` 为 376,186 bytes，SHA-256 `6328c7b073bae5704d5b0fa8dd2cfbec576010e7d1ea4365e3864f4f28628c1d`。
+
+### v15.0.0 正式发布（2026-09-18）
+
+- T-1188：发布提交 `f7086dd` 已推送至 `main`，注释标签 `v15.0.0` 指向同一提交，GitHub Release 已公开：https://github.com/ai68298100/siyuan-checkin/releases/tag/v15.0.0
+- 远端 `package.zip` 为 376,186 bytes，GitHub 资产摘要 `sha256:6328c7b073bae5704d5b0fa8dd2cfbec576010e7d1ea4365e3864f4f28628c1d`，与本地安装包及发布说明完全一致。

@@ -2220,9 +2220,10 @@
 - [x] T-1187 v15.0.0 发布质量验收
   - 验收：完整 test:quality、宽度走查和发布资源检查通过，package.zip 版本与 SHA-256 可复核。
   - 状态：done（test:quality、宽度矩阵、浅/深主题 visual-qa 与最终 release-assets 全部通过；package.zip 376,186 bytes）
-- [ ] T-1188 v15.0.0 正式发布
+- [x] T-1188 v15.0.0 正式发布
   - 验收：main、v15.0.0 标签和 GitHub Release 推送成功；远端 package.zip 摘要与发布说明一致。
   - 依赖：T-1187
+  - 状态：done（Release https://github.com/ai68298100/siyuan-checkin/releases/tag/v15.0.0；远端资产 376,186 bytes，SHA-256 与本地一致）
 
 - [x] T-1160 打卡项删除能力（两步确认 + 删除前自动恢复点 + 事件墓碑）
   - 验收：编辑器与归档页提供「删除」入口；删除前自动写入恢复点并在确认层展示影响（将删除 N 条记录）；删除后写事件墓碑，多窗口旧数据重放不复活；完整质量链通过。
