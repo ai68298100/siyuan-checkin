@@ -317,7 +317,10 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
        重复派发也必须被吞掉；完成后尽量把焦点留在原动作上。 */
     const archivedBusy = new WeakSet<HTMLElement>();
     const runArchivedAction = (button: HTMLButtonElement, operation: () => Promise<unknown> | unknown) => {
-        const boundary = button.closest<HTMLElement>("[data-archived-bulk-toolbar]") || button;
+        const row = button.closest<HTMLElement>(".lc-checkin__history-row");
+        const rowIndex = row ? [...root.querySelectorAll<HTMLElement>(".lc-checkin__history-row")].indexOf(row) : -1;
+        const action = row ? button.dataset.action : undefined;
+        const boundary = button.closest<HTMLElement>("[data-archived-bulk-toolbar]") || row || button;
         if (archivedBusy.has(boundary)) return;
         archivedBusy.add(boundary);
         const controls = boundary === button ? [button] : [...boundary.querySelectorAll<HTMLButtonElement>("button")];
@@ -328,7 +331,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             archivedBusy.delete(boundary);
             boundary.removeAttribute("aria-busy");
             if (!button.isConnected) {
-                root.querySelector<HTMLElement>("[data-archived-search], [data-action='back']")?.focus();
+                const candidates = action ? [...root.querySelectorAll<HTMLButtonElement>(`[data-action="${action}"]`)] : [];
+                candidates[Math.min(Math.max(rowIndex, 0), candidates.length - 1)]?.focus();
+                if (!candidates.length) root.querySelector<HTMLElement>("[data-archived-search], [data-action='back']")?.focus();
                 return;
             }
             controls.forEach((control, index) => control.disabled = disabledStates[index]);

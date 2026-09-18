@@ -4,6 +4,7 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "render", "today-bindings.ts"), "utf8");
+const index = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(source, /export function bindItemContextMenuFor\(/, "Today cards expose a context-menu binding");
@@ -19,13 +20,20 @@ assert.match(source, /closeMenus\(true\)/, "closing the menu restores focus to t
 assert.match(source, /menu\.setAttribute\("role", "menu"\)/, "context menu exposes menu semantics");
 assert.match(source, /role="menuitem"/, "context menu actions expose menuitem semantics");
 assert.match(source, /\["ArrowDown", "ArrowUp"\]/, "context menu supports keyboard traversal");
+assert.match(source, /event\.key === "Home" \|\| event\.key === "End"/, "context menu supports first/last keyboard navigation");
+assert.match(source, /event\.key === "Tab"[\s\S]*?closeMenus\(true\)/, "Tab closes the menu and restores a stable focus target");
+assert.match(source, /menu\.setAttribute\("aria-busy", "true"\)/, "context menu exposes its pending state");
+assert.match(source, /querySelectorAll<HTMLButtonElement>\("\[data-menu-action\]"\)[\s\S]*?button\.disabled = true/, "one menu mutation disables every competing action");
 assert.match(source, /function runExclusiveAction\(/, "bulk actions share an exclusive execution guard");
 assert.match(source, /button\.closest<HTMLElement>\("\[data-bulk-toolbar\]"\)/, "bulk action guard coordinates the whole toolbar");
 assert.match(source, /Promise\.resolve\(\)\.then\(operation\)/, "synchronous action failures also release the busy guard");
 assert.match(source, /button\.dataset\.actionBusy === "true"/, "repeated action clicks are ignored while a mutation is pending");
 assert.match(source, /button\.setAttribute\("aria-busy", "true"\)/, "pending actions expose busy state");
-assert.match(source, /await host\.enqueueMutation\(async \(\) => \{[\s\S]*?await host\.persist\(\);/, "bulk deletion persists inside the mutation queue");
-assert.match(source, /const previous = host\.store;[\s\S]*?host\.store = previous;/, "bulk deletion restores the in-memory snapshot after persistence failure");
+assert.match(source, /await host\.archiveItems\(ids\)/, "bulk archive delegates to one host transaction");
+assert.match(source, /await host\.deleteItemsWithRecords\(ids\)/, "bulk delete delegates to one host transaction");
+assert.match(index, /private async archiveItems[\s\S]*?return this\.enqueueMutation[\s\S]*?await this\.persist\(\)/, "bulk archive persists once inside the mutation queue");
+assert.match(index, /private async deleteItemsWithRecords[\s\S]*?deleteItemsCascade[\s\S]*?await this\.persist\(\)/, "bulk deletion uses the linear cascade and persists once");
+assert.match(index, /private async recordEvent[\s\S]*?this\.maybeAutoArchiveAfterRecord\(current\)/, "manual records participate in automatic archiving");
 assert.match(source, /menu\.dataset\.actionBusy === "true"/, "context-menu actions ignore duplicate clicks");
 assert.match(fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8"), /data-bulk-toolbar/, "bulk toolbar exposes a coordination boundary");
 assert.match(styles, /\.lc-checkin__item-context-menu \{[\s\S]*?position: fixed;/, "context menu is positioned against the viewport");

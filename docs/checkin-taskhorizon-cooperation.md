@@ -14,7 +14,7 @@
 - 公共 API：`window.siyuanCheckin`，协议 `siyuan-checkin`，版本 4，能力协商（14 项能力，含 items.read / events.read / events.record / occasions.* / summary.* / analytics.read / integrations.events / export.* / focus.adapters）。
 - 集成事件（window 广播）：`checkin:item-created|item-updated|item-deleted|item-archived|event-recorded|event-deleted|analytics-updated|suggestion-workflow-updated`。其中 `item-archived` 仅在自动归档成功后广播，携带项目快照；手动归档保持 `item-updated` 兼容行为。
 - 记录写入：`recordEvent({itemId, value, unit, source:"api", note, externalRef})`——**externalRef 幂等**，重复投递返回 undefined，多窗口/重放安全。
-- 项目模型：配额型项目（按记录数或按达成天数，目标 N），当天达到目标即"完成"；另有农历、提醒、成就、统计、自动归档（规划中，T-1161）。
+- 项目模型：配额型项目（按记录数或按达成天数，目标 N），当天达到目标即"完成"；另有农历、提醒、成就、统计和已落地的自动归档（T-1161）。
 
 ## 二、合作空间（三层）
 

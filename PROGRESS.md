@@ -1138,3 +1138,10 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 编辑已有项目时在高级区显示累计达成天数；新建项目不计算历史，继续复用 `countCompletedDays`/`isComplete` 业务口径。
 - 新增 `checkin:item-archived` 生态事件，仅真实自动归档状态转换成功后广播；手动归档仍使用 `item-updated`。项目、修订、周期、quota、归档区间和自动归档配置均作防御性克隆。
 - 验证：`pnpm run test:quality` 全链与 `node tests/width-walkthrough.cjs` 通过；100k 事件/3,650 天自动归档投影约 199ms，10k Today 完整渲染 35ms、横向溢出 0px；无障碍 0 缺名/0 正向 tabindex/0 对比度违规。生产 CSS 429,056 bytes，低于 450,000-byte 硬线。
+# v15.0 自动归档闭环与批量生命周期性能批次（2026-09-18）
+
+- T-1174：修复手动打卡成功后未进入自动归档检查的问题；现在手动/API 写入复用同一阈值判断，仍保持“保存成功后检查、撤销不自动恢复”的既有语义。
+- T-1175：Today 批量归档与批量删除从逐项 mutation/逐项持久化收敛为单事务；取消确认或保存失败时不退出批量选择，成功后继续逐项目广播 `item-updated`/`item-deleted`。
+- T-1176：新增 `deleteItemsCascade`，项目、事件和墓碑单次线性投影；单项目删除继续委托该兼容入口。新增 100 项/100,000 事件性能与墓碑完整性测试，并纳入 `test:perf`。
+- T-1177：Today 上下文菜单补 Home/End/Tab、整组禁用和 `aria-busy`；归档行恢复/删除共享行级互斥，成功移除当前行后优先聚焦相邻同类动作，没有候选时回到搜索框。
+- 验证：`pnpm run test:quality` exit 0，98 个测试文件零退役；10k Today 完整渲染约 38ms、批量删除 100k 事件约 16.6ms、回顾 100k 范围查询约 393ms/快照约 350ms；无障碍 0 缺名/0 正向 tabindex/0 对比度违规；CSS 429,056 bytes，低于 450KB 硬线。`node tests/width-walkthrough.cjs` 全矩阵无横向溢出。

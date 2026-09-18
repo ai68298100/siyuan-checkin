@@ -2,8 +2,7 @@
    从 index.ts 外置（T-022 可选收尾）；宿主成员经 TodayBindingsHost 结构化接口声明，
    index.ts 以薄壳委托 `bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root)` 接线。 */
 import {t} from "../i18n";
-import {showMessage} from "siyuan";
-import {deleteItemCascade, evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
+import {evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
@@ -20,9 +19,10 @@ export interface TodayBindingsHost {
     revisionFingerprint(item: CheckinItem, date: Date): string;
     reorderItems(orderedIds: string[]): Promise<boolean>;
     setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean>;
+    archiveItems(itemIds: string[]): Promise<boolean>;
     deleteItemWithRecords(itemId: string): Promise<boolean>;
+    deleteItemsWithRecords(itemIds: string[]): Promise<boolean>;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    persist(): Promise<void>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(): void;
     showEditor(item?: CheckinItem): void;
@@ -149,11 +149,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
-            for (const id of ids) {
-                const item = getActiveItemById(host.store, id);
-                if (!item) continue;
-                await host.enqueueMutation(() => host.setItemArchived(id, true, captureActionMoment(), host.itemFingerprint(item)));
-            }
+            if (!await host.archiveItems(ids)) return;
             host.bulkMode = false;
             host.bulkSelected.clear();
             host.render();
@@ -163,25 +159,11 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
-        const recordCount = ids.reduce((sum, id) => sum + host.store.events.filter((event) => event.itemId === id).length, 0);
-        if (!window.confirm(t("today.bulkDeleteConfirm", {n: ids.length, records: recordCount}))) return;
         runExclusiveAction(button, async () => {
-            const previous = host.store;
-            try {
-                await host.enqueueMutation(async () => {
-                    const moment = captureActionMoment();
-                    for (const id of ids) host.store = deleteItemCascade(host.store, id, moment.occurredAt);
-                    await host.persist();
-                });
-                showMessage(t("msg.itemsDeleted", {n: ids.length}));
-            } catch {
-                host.store = previous;
-                showMessage(t("msg.saveFailedShort"));
-            } finally {
-                host.bulkMode = false;
-                host.bulkSelected.clear();
-                host.render();
-            }
+            if (!await host.deleteItemsWithRecords(ids)) return;
+            host.bulkMode = false;
+            host.bulkSelected.clear();
+            host.render();
         });
     });
 }
@@ -240,7 +222,8 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             const moment = captureActionMoment();
             const fingerprint = host.itemFingerprint(item);
             menu.dataset.actionBusy = "true";
-            actionButton.disabled = true;
+            menu.setAttribute("aria-busy", "true");
+            menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]").forEach((button) => button.disabled = true);
             const operation = action === "edit"
                 ? () => host.showEditor(item)
                 : action === "archive"
@@ -251,7 +234,18 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         menu.addEventListener("keydown", (event) => {
             const actions = [...menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]")];
             const current = actions.indexOf(document.activeElement as HTMLButtonElement);
-            if (!actions.length || !["ArrowDown", "ArrowUp"].includes(event.key)) return;
+            if (!actions.length) return;
+            if (event.key === "Tab") {
+                event.preventDefault();
+                closeMenus(true);
+                return;
+            }
+            if (event.key === "Home" || event.key === "End") {
+                event.preventDefault();
+                actions[event.key === "Home" ? 0 : actions.length - 1]?.focus();
+                return;
+            }
+            if (!["ArrowDown", "ArrowUp"].includes(event.key)) return;
             event.preventDefault();
             const offset = event.key === "ArrowDown" ? 1 : -1;
             actions[(current + offset + actions.length) % actions.length]?.focus();

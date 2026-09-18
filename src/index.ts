@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -1805,6 +1805,40 @@ export default class CheckinPlugin extends Plugin {
         return true;
     }
 
+    /** Today 批量归档：一次构造快照、一次持久化，避免逐项保存和中间态重渲染。 */
+    private async archiveItems(itemIds: string[]): Promise<boolean> {
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        if (!requestedIds.size || this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const moment = captureActionMoment();
+            const today = calendarDateFromKey(moment.localDate);
+            const startDate = dateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+            const archived: CheckinItem[] = [];
+            const items = this.store.items.map((item) => {
+                if (!requestedIds.has(item.id) || item.archived) return item;
+                const archivePeriods = item.archivePeriods.map((period) => ({...period}));
+                if (!archivePeriods.some((period) => !period.endDate)) archivePeriods.push({startDate});
+                const updated = {...item, archived: true, archivePeriods, updatedAt: nextItemUpdatedAt(item.updatedAt, moment.occurredAt)};
+                archived.push(updated);
+                return updated;
+            });
+            if (!archived.length) return false;
+            this.store = {...this.store, items};
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                return false;
+            }
+            this.invalidateSummary();
+            for (const item of archived) this.broadcast({type: "item-updated", item});
+            showMessage(t("msg.itemsArchived", {n: archived.length}));
+            return true;
+        });
+    }
+
     private async generateSummary() {
         const provider = this.summaryProviders.values().next().value as SummaryProvider | undefined;
         if (!provider) return;
@@ -1981,6 +2015,33 @@ export default class CheckinPlugin extends Plugin {
         return true;
     }
 
+    /** Today 批量删除：确认统计与删除投影均为单次线性扫描，整批只持久化一次。 */
+    private async deleteItemsWithRecords(itemIds: string[]): Promise<boolean> {
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        const items = this.store.items.filter((item) => requestedIds.has(item.id) && !item.archived);
+        if (!items.length || this.disposed || this.disposing) return false;
+        const ids = new Set(items.map((item) => item.id));
+        let recordCount = 0;
+        for (const event of this.store.events) if (ids.has(event.itemId)) recordCount += 1;
+        if (!window.confirm(t("today.bulkDeleteConfirm", {n: items.length, records: recordCount}))) return false;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const moment = captureActionMoment();
+            this.store = deleteItemsCascade(this.store, [...ids], moment.occurredAt);
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFailedShort"));
+                return false;
+            }
+            this.invalidateSummary();
+            for (const item of items) this.broadcast({type: "item-deleted", item});
+            showMessage(t("msg.itemsDeleted", {n: items.length}));
+            return true;
+        });
+    }
+
     private async deleteEditingItem(): Promise<boolean> {
         if (!this.editingId) return false;
         const deleted = await this.deleteItemWithRecords(this.editingId);
@@ -2032,15 +2093,17 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private async deleteArchivedItems(itemIds: string[]): Promise<boolean> {
-        const ids = [...new Set(itemIds)].filter((id) => typeof id === "string" && this.store.items.some((item) => item.id === id && item.archived));
-        if (!ids.length || this.disposed || this.disposing) return false;
-        const items = this.store.items.filter((item) => ids.includes(item.id));
-        const recordCount = this.store.events.filter((event) => ids.includes(event.itemId)).length;
-        if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.length, records: recordCount}))) return false;
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        const items = this.store.items.filter((item) => requestedIds.has(item.id) && item.archived);
+        if (!items.length || this.disposed || this.disposing) return false;
+        const ids = new Set(items.map((item) => item.id));
+        let recordCount = 0;
+        for (const event of this.store.events) if (ids.has(event.itemId)) recordCount += 1;
+        if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.size, records: recordCount}))) return false;
         return this.enqueueMutation(async () => {
             const previous = this.store;
             const moment = captureActionMoment();
-            for (const id of ids) this.store = deleteItemCascade(this.store, id, moment.occurredAt);
+            this.store = deleteItemsCascade(this.store, [...ids], moment.occurredAt);
             try {
                 await this.persist();
             } catch {
@@ -2051,7 +2114,7 @@ export default class CheckinPlugin extends Plugin {
             }
             this.invalidateSummary();
             for (const item of items) this.broadcast({type: "item-deleted", item});
-            showMessage(t("msg.itemsDeleted", {n: ids.length}));
+            showMessage(t("msg.itemsDeleted", {n: ids.size}));
             this.renderBackgroundUpdate();
             return true;
         });
@@ -2149,6 +2212,7 @@ export default class CheckinPlugin extends Plugin {
         this.pendingLocalItemId = current.id;
         this.pendingLocalItemDate = moment.localDate;
         this.renderBackgroundUpdate();
+        this.maybeAutoArchiveAfterRecord(current);
         return {...event};
     }
 

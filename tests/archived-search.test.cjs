@@ -33,7 +33,10 @@ assert.match(view, /data-archived-bulk-toolbar/, "archive page must expose a ded
 assert.match(bindings, /restoreArchivedItems\(ids\)/, "bulk restore must use one host transaction instead of N row actions");
 assert.match(source, /private async restoreArchivedItems[\s\S]*?await this\.persist\(\)/, "bulk restore must persist once through the mutation queue");
 assert.match(source, /private async deleteArchivedItems[\s\S]*?bulkDeleteConfirm/, "bulk delete must retain an impact confirmation");
-assert.match(source, /private async deleteArchivedItems[\s\S]*?deleteItemCascade/, "bulk delete must retain event tombstones");
+assert.match(source, /private async deleteArchivedItems[\s\S]*?deleteItemsCascade/, "bulk delete must retain event tombstones through the linear batch projection");
+assert.match(source, /for \(const event of this\.store\.events\) if \(ids\.has\(event\.itemId\)\) recordCount \+= 1;/, "bulk impact counting must scan history once");
+assert.match(bindings, /data-archived-bulk-toolbar[\s\S]*?\|\| row \|\| button/, "row actions must share one mutual-exclusion boundary");
+assert.match(bindings, /const candidates = action[\s\S]*?data-action/, "removed rows must restore focus to the nearest equivalent action");
 /* 布局守门锁现行活规则（D-051）；宽度决策只认 lc5 容器，不认视口（D-016）。 */
 assert.match(styles, /\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[^}]*justify-content:\s*space-between;/, "archive tools must have a stable desktop layout");
 assert.match(styles, /@container lc5 \(max-width:\s*560px\)\s*\{[\s\S]*?\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[^}]*display:\s*grid;/, "archive tools must stack compactly in narrow containers");

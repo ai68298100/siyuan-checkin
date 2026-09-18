@@ -864,15 +864,17 @@ function migrateArchivedItem(item: CheckinItem): CheckinItem {
     };
 }
 
-/** 删除打卡项：连同其全部事件一并移除，并写事件墓碑防多窗口旧数据重放复活（D-165）。
-    幂等：项目不存在时原样返回。调用方负责确认层与删除前的恢复点。 */
-export function deleteItemCascade(store: CheckinStore, itemId: string, deletedAt: string): CheckinStore {
-    const removed = store.events.filter((event) => event.itemId === itemId);
-    if (!store.items.some((candidate) => candidate.id === itemId) && !removed.length) return store;
+/** 批量删除打卡项：项目、事件和墓碑都只扫描/构造一次，避免逐项删除在长历史上退化为 O(I×E)。
+    幂等：没有匹配项目或事件时原样返回。调用方负责确认层与删除前的恢复点。 */
+export function deleteItemsCascade(store: CheckinStore, itemIds: readonly string[], deletedAt: string): CheckinStore {
+    const ids = new Set(itemIds.filter((itemId) => typeof itemId === "string" && itemId.trim()).map((itemId) => itemId.trim()));
+    if (!ids.size) return store;
+    const removed = store.events.filter((event) => ids.has(event.itemId));
+    if (!store.items.some((candidate) => ids.has(candidate.id)) && !removed.length) return store;
     return {
         ...store,
-        items: store.items.filter((candidate) => candidate.id !== itemId),
-        events: store.events.filter((event) => event.itemId !== itemId),
+        items: store.items.filter((candidate) => !ids.has(candidate.id)),
+        events: store.events.filter((event) => !ids.has(event.itemId)),
         eventTombstones: [...store.eventTombstones, ...removed.map((event) => ({
             eventId: event.id,
             deletedAt,
@@ -881,6 +883,11 @@ export function deleteItemCascade(store: CheckinStore, itemId: string, deletedAt
             ...(event.externalRef ? {externalRef: event.externalRef} : {}),
         }))],
     };
+}
+
+/** 单项目兼容入口继续复用批量线性实现。 */
+export function deleteItemCascade(store: CheckinStore, itemId: string, deletedAt: string): CheckinStore {
+    return deleteItemsCascade(store, [itemId], deletedAt);
 }
 
 function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
