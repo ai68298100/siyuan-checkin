@@ -29,6 +29,12 @@
         let unsubscribe;
         let targetItemId;
         let stopped = false;
+        const pending = new Map();
+
+        const reportError = (phase, error) => {
+            if (typeof options.onError !== "function") return;
+            try { options.onError({phase, error: String(error instanceof Error ? error.message : error)}); } catch { /* diagnostics must not break the bridge */ }
+        };
 
         const refresh = async (range) => {
             if (stopped || !checkin || typeof checkin.getEventRangeSummary !== "function") return undefined;
@@ -50,18 +56,52 @@
             if (!targetItemId) return {ready: false, reason: "target-missing"};
             if (typeof checkin.subscribe === "function") {
                 unsubscribe = checkin.subscribe((event) => {
-                    if (event && REFRESH_EVENTS.has(event.type)) void refresh();
+                    if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
                 });
             }
-            await refresh();
+            try {
+                await refresh();
+            } catch (error) {
+                reportError("refresh", error);
+                return {ready: false, reason: "read-failed", error: String(error instanceof Error ? error.message : error)};
+            }
             return {ready: true, itemId: targetItemId};
         };
 
         const recordTaskCompletion = async ({blockId, localDate, itemId = targetItemId} = {}) => {
             const externalRef = canonicalExternalRef(blockId, localDate);
             if (!externalRef || !itemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return undefined;
-            return checkin.recordEvent({itemId, value: 1, unit: "个", source: "api", externalRef});
+            const payload = {itemId, value: 1, unit: "个", source: "api", externalRef};
+            try {
+                const result = await checkin.recordEvent(payload);
+                // undefined is the public duplicate/rejected result, not a transport failure.
+                pending.delete(externalRef);
+                return result;
+            } catch (error) {
+                pending.set(externalRef, payload);
+                reportError("record", error);
+                return undefined;
+            }
         };
+
+        const retryPending = async () => {
+            if (stopped || !checkin || typeof checkin.recordEvent !== "function") return {attempted: 0, succeeded: 0, remaining: pending.size};
+            let attempted = 0;
+            let succeeded = 0;
+            for (const [externalRef, payload] of [...pending.entries()]) {
+                attempted += 1;
+                try {
+                    await checkin.recordEvent(payload);
+                    pending.delete(externalRef);
+                    succeeded += 1;
+                } catch (error) {
+                    reportError("retry", error);
+                }
+            }
+            return {attempted, succeeded, remaining: pending.size};
+        };
+
+        const getPendingCompletions = () => [...pending.values()].map((payload) => ({...payload}));
 
         const stop = () => {
             stopped = true;
@@ -69,7 +109,7 @@
             unsubscribe = undefined;
         };
 
-        return {start, refresh, recordTaskCompletion, stop};
+        return {start, refresh, recordTaskCompletion, retryPending, getPendingCompletions, stop};
     }
 
     return {createTaskHorizonBridge};

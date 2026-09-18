@@ -704,3 +704,9 @@
 - 示例负责能力协商、日期摘要读取、公开刷新事件订阅、`recordEvent` 写入和注销；块发现、原生复选框触发与日历渲染由对方插件保留。
 - 示例失败时返回明确的 `unavailable` / `not-ready` / `capability-missing` / `target-missing` 状态；重试必须复用同一 blockId+localDate，不创建随机 externalRef。
 - 订阅回调接收 `checkin.subscribe` 传出的事件详情对象本身，不再误读 DOM `CustomEvent.detail`。
+
+## D-186：bridge 只为抛错保留待重试写入（2026-09-18）
+
+- `recordEvent` 返回 `undefined` 的语义同时覆盖重复和拒绝，示例不能把它当作网络失败自动堆积；只有 Promise 抛错才进入 pending 队列。
+- pending payload 保存原始 `itemId`、单位和 canonical externalRef，重试不生成新身份；重试统计与队列快照均为防御性副本。
+- 刷新和诊断回调的异常不应形成未处理 rejection，也不能阻断 bridge 的注销流程。

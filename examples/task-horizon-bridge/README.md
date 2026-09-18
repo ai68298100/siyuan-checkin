@@ -15,9 +15,13 @@ const status = await bridge.start();
 if (status.ready) {
   await bridge.recordTaskCompletion({blockId, localDate});
 }
+// A thrown write is retained with the same externalRef for a later retry.
+await bridge.retryPending();
 // On plugin unload:
 bridge.stop();
 ```
 
 The bridge retries by reusing the same `blockId` and `localDate`; the canonical
-`taskhorizon:<blockId>:<localDate>` reference makes replay idempotent.
+`taskhorizon:<blockId>:<localDate>` reference makes replay idempotent. A public
+`undefined` result is treated as duplicate/rejected, not as a transport failure;
+only thrown writes enter `getPendingCompletions()`.

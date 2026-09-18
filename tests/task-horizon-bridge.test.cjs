@@ -12,13 +12,18 @@ assert.equal(typeof createTaskHorizonBridge, "function");
 const calls = [];
 let listener;
 let refreshCount = 0;
+let failNextRecord = false;
 const checkin = {
     whenReady: async () => true,
     hasCapability: (name) => name === "analytics.read" || name === "events.record",
     getItems: () => [{id: "task-item", name: "任务打卡"}],
     getEventRangeSummary: (range) => { calls.push({type: "summary", range}); return {points: []}; },
     subscribe: (callback) => { listener = callback; return () => { listener = undefined; }; },
-    recordEvent: async (input) => { calls.push({type: "record", input}); return {id: "event-1", ...input}; },
+    recordEvent: async (input) => {
+        calls.push({type: "record", input});
+        if (failNextRecord) { failNextRecord = false; throw new Error("temporary write failure"); }
+        return {id: "event-1", ...input};
+    },
 };
 
 (async () => {
@@ -36,9 +41,14 @@ const checkin = {
     assert.equal(refreshCount, 2, "allowed refresh events trigger a summary refresh");
     const recorded = await bridge.recordTaskCompletion({blockId: "block-1", localDate: "2026-09-18"});
     assert.equal(recorded.externalRef, "taskhorizon:block-1:2026-09-18");
+    failNextRecord = true;
+    assert.equal(await bridge.recordTaskCompletion({blockId: "block-2", localDate: "2026-09-18"}), undefined);
+    assert.equal(bridge.getPendingCompletions().length, 1, "thrown writes are retained for retry");
+    const retry = await bridge.retryPending();
+    assert.deepEqual({attempted: retry.attempted, succeeded: retry.succeeded, remaining: retry.remaining}, {attempted: 1, succeeded: 1, remaining: 0});
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);
-    assert.equal(calls.filter((entry) => entry.type === "record").length, 1);
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, validation and cleanup.");
+    assert.equal(calls.filter((entry) => entry.type === "record").length, 3);
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation and cleanup.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
