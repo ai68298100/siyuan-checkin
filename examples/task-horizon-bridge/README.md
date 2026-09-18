@@ -39,8 +39,9 @@ Refresh calls are single-flight as well, so an event burst performs one summary
 read and shares its result with concurrent callers. The single-flight key
 includes the requested range and summary options, so different ranges never
 receive a mismatched cached result.
-Writes for the same canonical external reference are also single-flight;
-different tasks or dates can still write concurrently. If `stop()` wins while
+Writes for the same `itemId + source + externalRef` identity are also
+single-flight; different items, tasks, or dates can still write concurrently.
+If `stop()` wins while
 a summary read is pending, the late read is discarded without invoking
 `onRefresh`.
 Facade capability and item-enumeration exceptions return diagnostic startup

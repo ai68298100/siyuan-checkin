@@ -427,5 +427,31 @@ const checkin = {
     }
     for (const [label, passed] of payloadMatrix) assert.equal(passed, true, `payload matrix case: ${label}`);
     assert.equal(payloadMatrix.length, 30, "ninth 30-case payload matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and nine 30-case contract matrices.");
+    let identityWrites = 0;
+    const identityKeyBridge = createTaskHorizonBridge({checkin: {...checkin,
+        recordEvent: async (payload) => {
+            identityWrites += 1;
+            await new Promise((resolve) => setImmediate(resolve));
+            return {id: `identity-${identityWrites}`, ...payload};
+        },
+    }});
+    const identityKeyMatrix = [];
+    for (let index = 0; index < 15; index += 1) {
+        const before = identityWrites;
+        const input = {blockId: `same-identity-${index}`, localDate: "2026-09-20", itemId: `same-item-${index}`};
+        const [first, second] = await Promise.all([identityKeyBridge.recordTaskCompletion(input), identityKeyBridge.recordTaskCompletion(input)]);
+        identityKeyMatrix.push([`same identity ${index}`, identityWrites === before + 1 && first.id === second.id]);
+    }
+    for (let index = 0; index < 15; index += 1) {
+        const before = identityWrites;
+        const shared = {blockId: `cross-item-${index}`, localDate: "2026-09-21"};
+        const [first, second] = await Promise.all([
+            identityKeyBridge.recordTaskCompletion({...shared, itemId: `left-${index}`}),
+            identityKeyBridge.recordTaskCompletion({...shared, itemId: `right-${index}`}),
+        ]);
+        identityKeyMatrix.push([`cross item ${index}`, identityWrites === before + 2 && first.itemId !== second.itemId && first.externalRef === second.externalRef]);
+    }
+    for (const [label, passed] of identityKeyMatrix) assert.equal(passed, true, `identity-key matrix case: ${label}`);
+    assert.equal(identityKeyMatrix.length, 30, "tenth 30-case identity-key matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and ten 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

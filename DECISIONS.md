@@ -836,3 +836,8 @@
 
 - bridge 写入只发送 `itemId`、`value`、`unit`、`source`、`externalRef` 五个字段；固定值为 `1`、`个`、`api`。
 - 不附加 Task Horizon 私有块数据、标题或完成原因，externalRef 是双方唯一共享的任务完成身份。
+
+## D-212：第十批按完整写入身份做单飞（2026-09-18）
+
+- `recordInFlight` 与 pending map 使用 `[itemId, source, externalRef]` 复合键；externalRef 相同但 itemId 不同不属于同一幂等写入。
+- 当前 bridge source 固定为 `api`，但仍纳入键以保持与内核幂等身份契约一致，避免未来扩展来源时再次误合并。

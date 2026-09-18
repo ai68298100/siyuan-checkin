@@ -41,6 +41,8 @@
             try { options.onError({phase, error: String(error instanceof Error ? error.message : error)}); } catch { /* diagnostics must not break the bridge */ }
         };
 
+        const completionKey = (itemId, externalRef) => JSON.stringify([itemId, "api", externalRef]);
+
         const cleanupSubscription = () => {
             if (typeof unsubscribe === "function") {
                 try { unsubscribe(); } catch (error) { reportError("unsubscribe", error); }
@@ -154,26 +156,27 @@
         const recordTaskCompletion = ({blockId, localDate, itemId = targetItemId} = {}) => {
             const externalRef = canonicalExternalRef(blockId, localDate);
             if (!externalRef || !itemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return Promise.resolve(undefined);
-            const existing = recordInFlight.get(externalRef);
+            const key = completionKey(itemId, externalRef);
+            const existing = recordInFlight.get(key);
             if (existing) return existing;
             const payload = {itemId, value: 1, unit: "个", source: "api", externalRef};
             const run = (async () => {
                 try {
                     const result = await checkin.recordEvent(payload);
                     // A returned event means new or idempotent-existing; undefined means rejected.
-                    pending.delete(externalRef);
+                    pending.delete(key);
                     return result;
                 } catch (error) {
-                    pending.set(externalRef, payload);
+                    pending.set(key, payload);
                     reportError("record", error);
                     return undefined;
                 }
             })();
             let recordPromise;
             recordPromise = run.finally(() => {
-                if (recordInFlight.get(externalRef) === recordPromise) recordInFlight.delete(externalRef);
+                if (recordInFlight.get(key) === recordPromise) recordInFlight.delete(key);
             });
-            recordInFlight.set(externalRef, recordPromise);
+            recordInFlight.set(key, recordPromise);
             return recordPromise;
         };
 
@@ -187,12 +190,12 @@
                 let succeeded = 0;
                 let rejected = 0;
                 let failed = 0;
-                for (const [externalRef, payload] of [...pending.entries()]) {
+                for (const [key, payload] of [...pending.entries()]) {
                     if (stopped) break;
                     attempted += 1;
                     try {
                         const result = await checkin.recordEvent(payload);
-                        pending.delete(externalRef);
+                        pending.delete(key);
                         if (result === undefined) rejected += 1;
                         else succeeded += 1;
                     } catch (error) {

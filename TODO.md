@@ -2253,6 +2253,9 @@
 - [x] T-1211 Task Horizon 第九批 30 项写入 payload 矩阵（P1）
   - 验收：新增不少于 30 个真实写入项目，逐项验证 `itemId/value/unit/source/externalRef` 五字段完整、值稳定且无额外字段或变形。
   - 状态：done（15 个 itemId + 15 个 blockId，共 30 项 payload matrix，生态质量链通过）
+- [x] T-1212 Task Horizon 第十批 30 项复合身份并发矩阵（P1）
+  - 验收：单飞与 pending 按 `itemId + source + externalRef` 建键；同身份并发合并，不同 itemId 即使 externalRef 相同也独立写入；新增不少于 30 个并发项目。
+  - 状态：done（15 组同身份合并 + 15 组跨事项隔离，共 30 项 identity-key matrix）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
