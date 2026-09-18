@@ -679,3 +679,9 @@
 - v15 的发布门槛是完整 `test:quality`、宽度走查、发布资源校验、版本真值一致和远端资产摘要一致；CSS 继续执行 450,000-byte 硬线，不以压缩体积牺牲交互质量。
 - 用户明确要求发版，因此不因 B-007 的真实思源现场证据缺失阻断 GitHub 正式发布；发布说明必须明确页签、dock、软键盘和多窗口仍建议目标设备复核。
 - 标签只指向通过门禁的发布提交；GitHub Release 上传的 `package.zip` SHA-256 作为最终产物真值，发布后回填仓库说明并再次核对远端资产。
+
+## D-182：Task Horizon 联调先固化打卡侧身份与删除语义（2026-09-18）
+
+- 在对方尚未排期前，打卡侧只增加可执行契约夹具，不臆造 Task Horizon 的原生复选框监听或日历消费实现。
+- 合作身份继续使用 `taskhorizon:<blockId>:<localDate>`；同一项目、来源和 externalRef 的重放由 `appendEvents`/`normalizeStore` 去重，事件墓碑优先阻止删除后的旧回调复活。
+- 契约测试纳入 `test:ecosystem`，但 T-1165 仍保持未完成，直到双方对齐真实回调、刷新事件和双仓库 contract test。

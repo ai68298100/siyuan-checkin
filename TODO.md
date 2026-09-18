@@ -2151,6 +2151,11 @@
 - [ ] T-1165 任务完成回写联调准备（P1，依赖对方）
   - 验收：与 Task Horizon 作者对齐 recordEvent externalRef 契约（taskhorizon:<blockId>:<localDate>）与触发纪律（仅原生复选框真实完成）；对方日历「打卡」图层读取与刷新事件联调；双方 contract test 落地。
   - 依赖：T-1164 + 对方排期（QQ 群 758666272 / 赞助者渠道）
+
+- [x] T-1167 打卡侧 Task Horizon 契约测试夹具（P1 前置）
+  - 验收：本地测试固定 `taskhorizon:<blockId>:<localDate>` 身份格式、同任务同日重放幂等、删除墓碑不可复活，并明确原生复选框触发由对方负责。
+  - 依赖：T-1164
+  - 状态：done（`tests/task-horizon-contract.test.cjs` 已接入 `test:ecosystem`；双方联调仍待 T-1165 对方排期）
 - [ ] T-1166 外部软件摘要通道（P3，远期评估）
   - 验收：每日摘要写入驻留文档的方案设计与隐私评估；外部工具（手机/桌面）经内核 API 读取的最小可用形态。
   - 依赖：T-1164；用户隐私决策
