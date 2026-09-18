@@ -28,7 +28,8 @@ transport failure. The bridge also checks the `siyuan-checkin` protocol and API
 version before writing. Only thrown writes enter `getPendingCompletions()`. A
 retry result reports rejected writes separately from successful writes, so a
 definitive API rejection is removed from the transport queue without being
-counted as a success. Overlapping `retryPending()` calls share one in-flight
+counted as a success. Results also expose `failed` for transport exceptions;
+those payloads remain queued. Overlapping `retryPending()` calls share one in-flight
 attempt and result, preventing duplicate transport writes from concurrent
 refresh handlers. `start()` is likewise single-flight and idempotent; calling
 `stop()` while readiness is pending prevents late subscription or refresh work.

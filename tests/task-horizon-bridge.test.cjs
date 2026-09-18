@@ -93,12 +93,17 @@ const checkin = {
     assert.equal(await bridge.recordTaskCompletion({blockId: "block-2", localDate: "2026-09-18"}), undefined);
     assert.equal(bridge.getPendingCompletions().length, 1, "thrown writes are retained for retry");
     const retry = await bridge.retryPending();
-    assert.deepEqual({attempted: retry.attempted, succeeded: retry.succeeded, rejected: retry.rejected, remaining: retry.remaining}, {attempted: 1, succeeded: 1, rejected: 0, remaining: 0});
+    assert.deepEqual({attempted: retry.attempted, succeeded: retry.succeeded, rejected: retry.rejected, failed: retry.failed, remaining: retry.remaining}, {attempted: 1, succeeded: 1, rejected: 0, failed: 0, remaining: 0});
     failNextRecord = true;
     assert.equal(await bridge.recordTaskCompletion({blockId: "block-3", localDate: "2026-09-18"}), undefined);
     rejectNextRecord = true;
     const rejectedRetry = await bridge.retryPending();
-    assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, remaining: 0});
+    assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, failed: rejectedRetry.failed, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, failed: 0, remaining: 0});
+    failNextRecord = true;
+    assert.equal(await bridge.recordTaskCompletion({blockId: "block-4", localDate: "2026-09-18"}), undefined);
+    failNextRecord = true;
+    const failedRetry = await bridge.retryPending();
+    assert.deepEqual({attempted: failedRetry.attempted, succeeded: failedRetry.succeeded, rejected: failedRetry.rejected, failed: failedRetry.failed, remaining: failedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 0, failed: 1, remaining: 1});
     let concurrentWrites = 0;
     let failConcurrent = true;
     const concurrentCheckin = {...checkin, recordEvent: async (input) => {
@@ -128,7 +133,7 @@ const checkin = {
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);
-    assert.equal(calls.filter((entry) => entry.type === "record").length, 5);
+    assert.equal(calls.filter((entry) => entry.type === "record").length, 7);
     const protocolMismatch = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}});
     assert.equal((await protocolMismatch.start()).reason, "protocol-mismatch");
     const invalidVersion = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "siyuan-checkin", version: "unknown"})}});

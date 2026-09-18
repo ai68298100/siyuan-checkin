@@ -2220,6 +2220,9 @@
 - [x] T-1200 Task Horizon 订阅异常矩阵（P1）
   - 验收：`subscribe()` 抛错返回 `subscribe-error`；事件 payload getter 抛错进入 `event` 诊断，不阻断 bridge 已建立生命周期。
   - 状态：done（新增订阅失败与恶意事件 fixture，验证错误状态和诊断回调）
+- [x] T-1201 Task Horizon 重试失败计数（P1）
+  - 验收：`retryPending()` 显式返回 `failed` 传输异常数量；失败 payload 保留在队列，`succeeded`/`rejected`/`failed` 统计互斥且可加总到 attempted。
+  - 状态：done（新增 failed 计数与抛错重试 fixture，文档同步统计语义）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

@@ -180,12 +180,13 @@
         const retryPending = () => {
             if (retryInFlight) return retryInFlight;
             if (stopped || !checkin || typeof checkin.recordEvent !== "function") {
-                return Promise.resolve({attempted: 0, succeeded: 0, rejected: 0, remaining: pending.size});
+                return Promise.resolve({attempted: 0, succeeded: 0, rejected: 0, failed: 0, remaining: pending.size});
             }
             const run = (async () => {
                 let attempted = 0;
                 let succeeded = 0;
                 let rejected = 0;
+                let failed = 0;
                 for (const [externalRef, payload] of [...pending.entries()]) {
                     attempted += 1;
                     try {
@@ -194,10 +195,11 @@
                         if (result === undefined) rejected += 1;
                         else succeeded += 1;
                     } catch (error) {
+                        failed += 1;
                         reportError("retry", error);
                     }
                 }
-                return {attempted, succeeded, rejected, remaining: pending.size};
+                return {attempted, succeeded, rejected, failed, remaining: pending.size};
             })();
             retryInFlight = run.finally(() => {
                 if (retryInFlight === retryPromise) retryInFlight = undefined;

@@ -46,6 +46,8 @@
 
 2026-09-18 Task Horizon 订阅异常矩阵（T-1200）：补齐 `subscribe-error` 与恶意事件 getter 的可执行 fixture；事件异常只进入 `event` 诊断，不破坏已建立 bridge 的停止与清理能力。
 
+2026-09-18 Task Horizon 重试失败计数（T-1201）：`retryPending()` 新增显式 `failed` 统计，传输异常项继续保留在 pending；成功、拒绝、失败三类结果互斥，fixture 已覆盖抛错重试。
+
 2026-09-16 T-925~T-927 CSS 发布体积护栏受控放宽：应用户明确授权，将原 380KB 硬阻断调整为 420KB 告警、450KB 硬阻断，保留 318KB 历史软线并新增阈值递增断言；`test:quality` 同步改为先生产构建、后发布资源检查，避免读取旧 `dist`。当前生产 `dist/index.css` 为 404,587 bytes，位于告警区；完整质量链、宽度走查、70 张 UI 截图扫描及浅/深色视觉探针均通过。
 
 2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。

@@ -781,3 +781,8 @@
 
 - `subscribe()` 建立阶段抛错返回 `subscribe-error`，不进入首读或伪装成读取失败。
 - 订阅后的单个事件 payload 异常只报告 `event`，不自动停止 bridge；后续事件仍可继续处理，卸载仍由 `stop()` 负责。
+
+## D-201：重试结果显式区分传输失败（2026-09-18）
+
+- `retryPending()` 返回 `succeeded`、`rejected`、`failed` 三个互斥计数；三者之和等于本轮 `attempted`。
+- `failed` 仅表示 transport 抛错，payload 留在队列；`rejected` 表示 API 确定拒绝并从队列移除。
