@@ -2244,6 +2244,9 @@
 - [x] T-1208 Task Horizon 第六批 30 项协议能力矩阵（P1）
   - 验收：新增不少于 30 个协议版本/能力返回项目，覆盖 API v4 边界、字符串/NaN/Infinity/null 与真假/非布尔 capability；稳定区分 protocol-mismatch、capability-missing 和 ready。
   - 状态：done（15 个版本 + 15 个能力值，共 30 项 protocol/capability matrix，生态质量链通过）
+- [x] T-1209 Task Horizon 第七批 30 项摘要透传矩阵（P1）
+  - 验收：新增不少于 30 个摘要读取项目，覆盖 15 个日期区间与 15 个 summaryOptions 组合；范围和选项按原引用透传，不跨请求串用结果。
+  - 状态：done（15 个 range + 15 个 options，共 30 项 summary matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

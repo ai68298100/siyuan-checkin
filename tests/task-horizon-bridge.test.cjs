@@ -341,5 +341,42 @@ const checkin = {
     }
     for (const [label, passed] of [...protocolMatrix, ...capabilityMatrix]) assert.equal(passed, true, `protocol/capability matrix case: ${label}`);
     assert.equal(protocolMatrix.length + capabilityMatrix.length, 30, "sixth 30-case protocol matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and six 30-case contract matrices.");
+    const summaryCalls = [];
+    const rangeOptions = {localOnly: true, itemIds: ["task-item"]};
+    const summaryBridge = createTaskHorizonBridge({checkin: {...checkin,
+        getEventRangeSummary: (range, summaryOptions) => {
+            summaryCalls.push({range, summaryOptions});
+            return {points: [], range};
+        },
+    }, summaryOptions: rangeOptions});
+    const summaryRanges = [
+        ["2026-01-01", "2026-01-02"], ["2026-01-31", "2026-02-01"], ["2026-02-28", "2026-03-01"],
+        ["2028-02-29", "2028-03-01"], ["2026-03-01", "2026-04-01"], ["2026-04-01", "2026-05-01"],
+        ["2026-05-01", "2026-06-01"], ["2026-06-01", "2026-07-01"], ["2026-07-01", "2026-08-01"],
+        ["2026-08-01", "2026-09-01"], ["2026-09-01", "2026-10-01"], ["2026-10-01", "2026-11-01"],
+        ["2026-11-01", "2026-12-01"], ["2026-12-01", "2027-01-01"], ["2026-01-01", "2027-01-01"],
+    ];
+    const summaryMatrix = [];
+    for (const [index, [startDate, endDateExclusive]] of summaryRanges.entries()) {
+        const range = {startDate, endDateExclusive};
+        const result = await summaryBridge.refresh(range);
+        const call = summaryCalls.at(-1);
+        summaryMatrix.push([`summary range ${index}`, result.range === range && call.range === range && call.summaryOptions === rangeOptions]);
+    }
+    const summaryOptionSets = [
+        undefined, {}, {localOnly: true}, {localOnly: false}, {itemIds: []}, {itemIds: ["a"]}, {itemIds: ["a", "b"]},
+        {includeEmpty: true}, {includeEmpty: false}, {maxEvents: 1}, {maxEvents: 5000}, {tag: "one"},
+        {tag: "two", localOnly: true}, {itemIds: ["task-item"], includeEmpty: true}, {custom: {nested: true}},
+    ];
+    for (const [index, summaryOptions] of summaryOptionSets.entries()) {
+        let received;
+        const optionBridge = createTaskHorizonBridge({checkin: {...checkin,
+            getEventRangeSummary: (_range, options) => { received = options; return {points: []}; },
+        }, summaryOptions});
+        await optionBridge.refresh({startDate: "2026-09-01", endDateExclusive: "2026-09-02"});
+        summaryMatrix.push([`summary options ${index}`, received === summaryOptions]);
+    }
+    for (const [label, passed] of summaryMatrix) assert.equal(passed, true, `summary matrix case: ${label}`);
+    assert.equal(summaryMatrix.length, 30, "seventh 30-case summary matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and seven 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
