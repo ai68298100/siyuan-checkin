@@ -26,7 +26,8 @@ import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -1400,6 +1401,38 @@ export default class CheckinPlugin extends Plugin {
             }
         });
 
+        root.querySelector<HTMLInputElement>("[data-import-loop]")?.addEventListener("change", async (event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            const files = [...(input.files || [])];
+            if (!files.length) return;
+            if (settingsBusy.has(input)) return;
+            settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            try {
+                const texts = await Promise.all(files.map((file) => file.text()));
+                const firstCell = (text: string) => (text.replace(/^\uFEFF/, "").split(/\r?\n/)[0] || "").split(",")[0].trim().toUpperCase();
+                const habitsCsv = texts.find((text) => firstCell(text) === "POSITION");
+                const checkmarksCsv = texts.find((text) => firstCell(text) === "DATE");
+                if (!checkmarksCsv && !habitsCsv) { showMessage(t("msg.loopBadHeader")); return; }
+                const plan = buildLoopImportPlan(habitsCsv, checkmarksCsv || "");
+                if (!plan.habits.length) { showMessage(t("msg.loopNoItems")); return; }
+                if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}))) { input.value = ""; return; }
+                const report = this.importLoopPlan(plan);
+                await this.persist();
+                showMessage(t("msg.loopDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
+                this.render();
+            } catch (error) {
+                showMessage(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t("msg.importFail", {error: String(error)}));
+            } finally {
+                input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
+                (root.querySelector<HTMLInputElement>("[data-import-loop]") || input).focus();
+            }
+        });
+
+        root.querySelector<HTMLElement>("[data-action='export-loop']")?.addEventListener("click", (event) => {
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.downloadLoopExport());
+        });
+
         const modeSelect = root.querySelector<HTMLSelectElement>("[data-setting-dialog-mode]");
         const scaleRow = root.querySelector<HTMLElement>("[data-dialog-scale-row]");
         const fixedRow = root.querySelector<HTMLElement>("[data-dialog-fixed-row]");
@@ -2506,6 +2539,17 @@ export default class CheckinPlugin extends Plugin {
         const result = importCsvRowsInto(this.store, rows);
         this.store = result.store;
         return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates};
+    }
+
+    /* T-1218 Loop 导入：计划落库 + 持久化前自动快照（persist 管线）；导出为两个同构 CSV。 */
+    private importLoopPlan(plan: LoopImportPlan): {itemsCreated: number; eventsCreated: number; duplicates: number} {
+        const result = importLoopPlanInto(this.store, plan);
+        this.store = result.store;
+        return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates};
+    }
+
+    private downloadLoopExport() {
+        downloadLoopExportFor(this.cloneStore());
     }
 
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;

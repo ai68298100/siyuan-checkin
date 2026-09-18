@@ -3,6 +3,7 @@
 import {t} from "./i18n";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
+import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
@@ -147,6 +148,23 @@ export function downloadReportMarkdownFor(markdown: string): void {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+/* T-1218：Loop 同构导出是两个文件（Habits.csv + Checkmarks.csv），顺序触发下载。 */
+export function downloadLoopExportFor(store: CheckinStore): void {
+    const files: Array<{name: string; content: string}> = [
+        {name: `siyuan-checkin-loop-Habits-${dateKey(new Date())}.csv`, content: serializeLoopHabitsCsv(store)},
+        {name: `siyuan-checkin-loop-Checkmarks-${dateKey(new Date())}.csv`, content: serializeLoopCheckmarksCsv(store)},
+    ];
+    for (const file of files) {
+        const blob = new Blob([file.content], {type: "text/csv;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+}
+
 export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void {
     const blob = new Blob([serializeStoreAudit(entries)], {type: "application/json;charset=utf-8"});
     const url = URL.createObjectURL(blob);
@@ -259,4 +277,55 @@ export function importCsvRowsInto(store: CheckinStore, rows: Array<{name: string
         eventsCreated,
         duplicates,
     };
+}
+
+/* T-1218：按 Loop 导入计划落库——MEASURABLE 只建项目（历史数值降级不导入），
+   YES_NO 完成日写 source=import 事件并按 (item,date,value,unit) 去重；
+   上层在 persist 前调用，恢复点由既有持久化管线自动生成。 */
+export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number} {
+    const now = new Date().toISOString();
+    const today = dateKey(new Date());
+    const items = [...store.items];
+    const itemByName = new Map<string, CheckinItem>();
+    let itemsCreated = 0;
+    for (const habit of plan.habits) {
+        const existing = items.find((candidate) => candidate.name === habit.name && !candidate.archived) || itemByName.get(habit.name);
+        if (existing) { itemByName.set(habit.name, existing); continue; }
+        const created = normalizeCheckinItem({
+            id: makeId("item"),
+            name: habit.name,
+            icon: "✓",
+            kind: habit.measurable ? "quantity" : "binary",
+            target: habit.target > 0 ? habit.target : 1,
+            unit: habit.measurable ? (habit.unit || "次") : "次",
+            schedule: habit.schedule || {type: "daily"},
+            createdDate: today,
+            createdAt: now,
+            updatedAt: now,
+            archived: habit.archived ? true : undefined,
+        })!;
+        items.push(created);
+        itemByName.set(habit.name, created);
+        itemsCreated += 1;
+    }
+    const events = [...store.events];
+    let eventsCreated = 0;
+    let duplicates = 0;
+    for (const row of plan.rows) {
+        const item = itemByName.get(row.name);
+        if (!item) continue;
+        const duplicate = events.some((event) => event.itemId === item.id && event.localDate === row.date && event.value === row.value && event.unit === item.unit);
+        if (duplicate) { duplicates += 1; continue; }
+        events.push({
+            id: makeId("event"),
+            itemId: item.id,
+            occurredAt: new Date(Number(row.date.slice(0, 4)), Number(row.date.slice(5, 7)) - 1, Number(row.date.slice(8, 10)), 12, 0).toISOString(),
+            localDate: row.date,
+            value: row.value,
+            unit: item.unit,
+            source: "import",
+        });
+        eventsCreated += 1;
+    }
+    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
 }

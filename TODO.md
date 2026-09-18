@@ -2386,8 +2386,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1217 周报/月报模板与导出
   - 验收：周/月报视图可配置指标与基线，异常说明本地生成（数据不足时明说）；导出 Markdown 走既有安全导出路径。
   - 状态：done（重写 `src/features/report.ts`：`buildWeeklyReportMarkdown(summary, title, sections?, comparison?)` 五区块开关（记录条数/完成概览/项目明细/上一周期对比/亮点与说明），基线消费 buildReviewComparison 带符号 delta，数据不足输出 insufficient/singleItem/baselineMissing 明确说明；文案全部 i18n（report.* 中英 21 键+review.reportSettings/exportReport 4 键），标题组合走 titleWithRange；`CheckinViewPreferences.reportSections` 归一化（缺省全开、非法回落）并接入 apply/persist；回顾工具区新增「导出报告」按钮 + 「报告设置」弹层（复用 review-more 容器，勾选即持久化不重渲染）；plugin-ops 新增 `downloadReportMarkdownFor` 与 JSON/CSV 同构的 Blob 下载。验证：`pnpm run check`、新增 `tests/report-sections.test.cjs` 纳入 test:ui、v8-platform 测试闭包扩为 i18n+view-preferences，完整 `test:quality` exit 0（CSS 431,796B 告警区低于硬线））
-- [ ] T-1218 Loop Habit Tracker CSV 导入与导出
+- [x] T-1218 Loop Habit Tracker CSV 导入与导出
   - 验收：兼容 HabitsCSVExporter 格式，映射到现有类型/排期（不可映射项明确降级）；source=import、幂等、导入前自动恢复点；导出同构 CSV。
+  - 状态：done（新增 `src/features/loop-csv.ts` 纯函数模块：解析 Loop 官方 Habits.csv 12 列头与组合版 Checkmarks.csv（`Date,<习惯名...>`，YES_MANUAL/YES_AUTO/NO/SKIP/UNKNOWN，含引号转义与尾随分隔符）；频率 N/D 映射 1/1→daily、D=7→每周配额、D=30/31→每月配额、1/D→interval，2/14 类不可映射明确降级；YES_NO 的 YES_*/SKIP/UNKNOWN 边界：YES_* 迁入完成行、SKIP 计数不迁移（v16.2 跳过态落地后可回补）、MEASURABLE 只建 quantity 项目（单位/目标保留、历史数值降级说明）；同构导出 serializeLoopHabitsCsv/serializeLoopCheckmarksCsv（仅记录日+今天、防长区间膨胀；quota>7 钳 7/7）；plugin-ops `importLoopPlanInto`（item+date+value+unit 去重幂等，source=import）与 `downloadLoopExportFor`（双文件下载）；设置页数据组新增「从 Loop 导入」（多选文件）与「导出 Loop CSV」；恢复点由 persist 管线写前快照自动保证。验证：新增 `tests/loop-csv.test.cjs`（解析/映射/降级边界/同构导出/回环）纳入 test:ui，`pnpm run check`、完整 `test:quality` exit 0）
 - [ ] T-1219 宽容提醒一期
   - 验收：当日已录入后取消剩余提醒；snooze 持久化、过期丢弃；数据写命令后重排提醒（打卡类除外）。
 
