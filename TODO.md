@@ -2223,6 +2223,9 @@
 - [x] T-1201 Task Horizon 重试失败计数（P1）
   - 验收：`retryPending()` 显式返回 `failed` 传输异常数量；失败 payload 保留在队列，`succeeded`/`rejected`/`failed` 统计互斥且可加总到 attempted。
   - 状态：done（新增 failed 计数与抛错重试 fixture，文档同步统计语义）
+- [x] T-1202 Task Horizon 停止中断重试批次（P1）
+  - 验收：重试批次中调用 `stop()` 时允许当前 transport 完成，但不再启动后续 payload；未尝试项保留在 pending，可由新 bridge 实例接管。
+  - 状态：done（循环边界增加 stopped 守门，fixture 覆盖两项 pending 中途停止）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

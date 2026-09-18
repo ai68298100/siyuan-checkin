@@ -33,6 +33,8 @@ those payloads remain queued. Overlapping `retryPending()` calls share one in-fl
 attempt and result, preventing duplicate transport writes from concurrent
 refresh handlers. `start()` is likewise single-flight and idempotent; calling
 `stop()` while readiness is pending prevents late subscription or refresh work.
+Stopping during a retry batch lets the current transport call finish but skips
+starting any later pending payloads.
 Refresh calls are single-flight as well, so an event burst performs one summary
 read and shares its result with concurrent callers. The single-flight key
 includes the requested range and summary options, so different ranges never

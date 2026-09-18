@@ -130,6 +130,26 @@ const checkin = {
     ]);
     assert.deepEqual(directA, directB, "overlapping writes share one result");
     assert.equal(directWrites, 1, "same externalRef performs one transport write");
+    let retryRaceWrites = 0;
+    let seedFailures = 2;
+    let releaseRetryRace;
+    const retryRaceGate = new Promise((resolve) => { releaseRetryRace = resolve; });
+    const retryRaceCheckin = {...checkin, recordEvent: async (input) => {
+        retryRaceWrites += 1;
+        if (seedFailures > 0) { seedFailures -= 1; throw new Error("seed failure"); }
+        if (retryRaceWrites === 3) await retryRaceGate;
+        return {id: `event-race-${retryRaceWrites}`, ...input};
+    }};
+    const retryRaceBridge = createTaskHorizonBridge({checkin: retryRaceCheckin});
+    await retryRaceBridge.recordTaskCompletion({blockId: "race-1", localDate: "2026-09-18", itemId: "task-item"});
+    await retryRaceBridge.recordTaskCompletion({blockId: "race-2", localDate: "2026-09-18", itemId: "task-item"});
+    const retryRacePromise = retryRaceBridge.retryPending();
+    retryRaceBridge.stop();
+    releaseRetryRace();
+    const retryRaceResult = await retryRacePromise;
+    assert.equal(retryRaceResult.attempted, 1, "stop prevents later retry attempts");
+    assert.equal(retryRaceResult.remaining, 1, "unattempted payload remains queued");
+    assert.equal(retryRaceWrites, 3, "stop does not cancel the already in-flight write");
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);

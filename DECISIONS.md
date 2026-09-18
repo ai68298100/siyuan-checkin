@@ -786,3 +786,8 @@
 
 - `retryPending()` 返回 `succeeded`、`rejected`、`failed` 三个互斥计数；三者之和等于本轮 `attempted`。
 - `failed` 仅表示 transport 抛错，payload 留在队列；`rejected` 表示 API 确定拒绝并从队列移除。
+
+## D-202：停止只截断未开始的重试项（2026-09-18）
+
+- 重试循环每次发起前检查 stopped；停止时当前已发起的 Promise 不强行取消，避免留下不确定的外部写入状态。
+- 尚未开始的 payload 保持 pending，后续由新的 bridge 生命周期显式接管重试。

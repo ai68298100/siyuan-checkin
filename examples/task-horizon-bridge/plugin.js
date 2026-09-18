@@ -188,6 +188,7 @@
                 let rejected = 0;
                 let failed = 0;
                 for (const [externalRef, payload] of [...pending.entries()]) {
+                    if (stopped) break;
                     attempted += 1;
                     try {
                         const result = await checkin.recordEvent(payload);
