@@ -109,7 +109,12 @@
                     reportError("items", new TypeError("getItems() must return an array"));
                     return {ready: false, reason: "items-invalid"};
                 }
-                targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
+                try {
+                    targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
+                } catch (error) {
+                    reportError("items", error);
+                    return {ready: false, reason: "items-error"};
+                }
                 if (!targetItemId) return {ready: false, reason: "target-missing"};
                 if (typeof checkin.subscribe === "function") {
                     try {

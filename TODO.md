@@ -2214,6 +2214,9 @@
 - [x] T-1198 Task Horizon facade 返回形状防御（P1）
   - 验收：`getItems()` 非数组返回 `items-invalid`；订阅事件对象的恶意 getter 不得逃逸为未处理异常，统一进入诊断通道。
   - 状态：done（启动阶段增加数组形状校验，事件回调增加 try/catch 防护与 fixture）
+- [x] T-1199 Task Horizon 事项字段访问防御（P1）
+  - 验收：事项数组中单项字段 getter 抛错时返回 `items-error`，不产生未处理 Promise 拒绝；正常项选择与目标缺失语义保持不变。
+  - 状态：done（目标事项筛选包裹字段访问边界，fixture 覆盖恶意事项对象）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
