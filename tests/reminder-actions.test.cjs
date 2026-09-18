@@ -42,9 +42,11 @@ assert.equal(apply([{id: "r3", action: "skip", at: `${today}T01:00:00.000Z`}])[2
 assert.deepEqual(apply([{id: "zz", action: "skip", at: `${today}T01:00:00.000Z`}]).map((entry) => entry.status), ["today", "overdue", "completed"], "unknown ids are ignored");
 assert.equal(apply([{id: "r1", action: "skip", at: `${today}T01:00:00.000Z`}, {id: "r1", action: "snooze", at: `${today}T02:00:00.000Z`}])[0].status, "snoozed", "the latest action per id wins");
 
-/* —— 排序契约：已延期/已跳过不挤占待办，已完成仍收尾 —— */
+/* —— 排序契约：已延期/已跳过不挤占待办；T-1219 起已完成不再进入「全部」待办视图 —— */
 const ranked = reminders.filterReminderEntries(apply([{id: "r1", action: "skip", at: `${today}T01:00:00.000Z`}, {id: "r2", action: "snooze", at: `${today}T01:00:00.000Z`}]), "all");
-assert.deepEqual(ranked.map((entry) => entry.status), ["snoozed", "skipped", "completed"]);
+assert.deepEqual(ranked.map((entry) => entry.status), ["snoozed", "skipped"]);
+assert.ok(!ranked.some((entry) => entry.id === "r3"), "completed entries stay out of the all view");
+assert.deepEqual(reminders.filterReminderEntries(entries, "completed").map((entry) => entry.id), ["r3"], "completed filter remains the place to see them");
 
 /* —— 恢复 = 清除该实例动作，回到计算状态 —— */
 const cleared = reminders.clearReminderUserActions([{id: "r1", action: "skip", at: "x"}, {id: "r2", action: "snooze", at: "y"}], "r1");

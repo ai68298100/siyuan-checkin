@@ -2389,8 +2389,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1218 Loop Habit Tracker CSV 导入与导出
   - 验收：兼容 HabitsCSVExporter 格式，映射到现有类型/排期（不可映射项明确降级）；source=import、幂等、导入前自动恢复点；导出同构 CSV。
   - 状态：done（新增 `src/features/loop-csv.ts` 纯函数模块：解析 Loop 官方 Habits.csv 12 列头与组合版 Checkmarks.csv（`Date,<习惯名...>`，YES_MANUAL/YES_AUTO/NO/SKIP/UNKNOWN，含引号转义与尾随分隔符）；频率 N/D 映射 1/1→daily、D=7→每周配额、D=30/31→每月配额、1/D→interval，2/14 类不可映射明确降级；YES_NO 的 YES_*/SKIP/UNKNOWN 边界：YES_* 迁入完成行、SKIP 计数不迁移（v16.2 跳过态落地后可回补）、MEASURABLE 只建 quantity 项目（单位/目标保留、历史数值降级说明）；同构导出 serializeLoopHabitsCsv/serializeLoopCheckmarksCsv（仅记录日+今天、防长区间膨胀；quota>7 钳 7/7）；plugin-ops `importLoopPlanInto`（item+date+value+unit 去重幂等，source=import）与 `downloadLoopExportFor`（双文件下载）；设置页数据组新增「从 Loop 导入」（多选文件）与「导出 Loop CSV」；恢复点由 persist 管线写前快照自动保证。验证：新增 `tests/loop-csv.test.cjs`（解析/映射/降级边界/同构导出/回环）纳入 test:ui，`pnpm run check`、完整 `test:quality` exit 0）
-- [ ] T-1219 宽容提醒一期
-  - 验收：当日已录入后取消剩余提醒；snooze 持久化、过期丢弃；数据写命令后重排提醒（打卡类除外）。
+- [x] T-1219 宽容提醒一期
+  - 验收：当日已录入（手动/番茄/API）后取消该日剩余提醒，不弹「已打卡仍提醒」；snooze 持久化、过期 snooze 丢弃；数据写命令后重排提醒计划，打卡/改色类命令除外。
+  - 状态：done（现状盘点：本插件提醒是投影制——Today 优先横幅经 selectPriorityReminders 只取 overdue/today，已录入即从横幅消失；snooze 持久化与跨日过期已有；提醒计划随数据写命令的渲染周期自动重排，无需独立调度器。本轮增量：①`filterReminderEntries`「全部」改为待办视图——已完成不再作为提醒列出（uhabits #1573 教训：已录入后继续提示只制造内疚），「已完成」过滤仍可查看，snoozed/skipped 保留恢复入口；②`normalizeReminderUserActions` 持久层清理——超过 7 天的 snooze 物理丢弃（投影层已不可能生效），skip 持续生效不受时效清理；③回顾页提醒中心计数随之只数待办。验证：新增 `tests/reminder-tolerance.test.cjs` 纳入 test:ui；按新契约更新 `tests/reminder-actions.test.cjs` 排序断言；`pnpm run check`、完整 `test:quality` exit 0）
 
 ### v16.2 跳过态（唯一 store 结构扩展，version 2→3）
 

@@ -38,7 +38,13 @@ function sortReminderEntries(entries: ReminderEntry[]): ReminderEntry[] {
 }
 
 export function filterReminderEntries(entries: readonly ReminderEntry[], filter: ReminderFilter = "all"): ReminderEntry[] {
-    return sortReminderEntries(entries.filter((entry) => filter === "all" || entry.status === filter).map((entry) => ({...entry})));
+    /* T-1219 宽容提醒：「全部」是待办视图——已完成是终态、没有可执行动作，
+       不再作为提醒列出（uhabits #1573 的教训：已录入后继续提示只会制造内疚）。
+       「已完成」过滤仍可查看；snoozed/skipped 保留恢复入口。 */
+    const visible = filter === "all"
+        ? entries.filter((entry) => entry.status !== "completed")
+        : entries.filter((entry) => entry.status === filter);
+    return sortReminderEntries(visible.map((entry) => ({...entry})));
 }
 
 export function projectOccasionReminders(store: OccasionStore, date: Date): ReminderEntry[] {
@@ -196,16 +202,21 @@ function differenceInLocalDays(from: string, to: string): number {
 export type ReminderUserActionType = "snooze" | "skip";
 export interface ReminderUserAction { id: string; action: ReminderUserActionType; at: string; }
 
-export function normalizeReminderUserActions(value: unknown, limit = 200): ReminderUserAction[] {
+export function normalizeReminderUserActions(value: unknown, limit = 200, now: Date = new Date()): ReminderUserAction[] {
     if (!Array.isArray(value)) return [];
     const max = Math.max(1, Math.min(500, Math.floor(limit)));
+    /* T-1219：snooze 只在记录当日的本地日期内生效（applyReminderActions），
+       超过 7 天的 snooze 已不可能再被投影到，物理清理防止历史堆积；
+       skip 对该次实例持续生效，不受时效清理。 */
+    const snoozeCutoff = now.getTime() - 7 * 86400000;
     return value.filter((entry): entry is ReminderUserAction => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<ReminderUserAction>;
         return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
             && (candidate.action === "snooze" || candidate.action === "skip")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
-    }).slice(-max).map((entry) => ({id: entry.id, action: entry.action, at: entry.at}));
+    }).filter((entry) => entry.action === "skip" || Date.parse(entry.at) >= snoozeCutoff)
+        .slice(-max).map((entry) => ({id: entry.id, action: entry.action, at: entry.at}));
 }
 
 export function serializeReminderUserActions(actions: readonly ReminderUserAction[]): string {
