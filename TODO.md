@@ -2168,7 +2168,7 @@
   - 状态：done（`docs/contracts/task-horizon-v1.json` 已接入契约测试）
 
 - [x] T-1170 Task Horizon 公开 API bridge 示例（P1 前置）
-  - 验收：提供只依赖 `window.siyuanCheckin` 的能力探测、摘要刷新、真实完成回写、失败可重试和卸载清理示例；不读取对方私有数据；示例测试纳入生态链。
+  - 验收：提供只依赖 `window.siyuanCheckin` 的协议/能力探测、摘要刷新、真实完成回写、失败可重试和卸载清理示例；不读取对方私有数据；示例测试纳入生态链。
   - 依赖：T-1169
   - 状态：done（`examples/task-horizon-bridge` 与运行时 fixture 已接入 `test:ecosystem`）
 

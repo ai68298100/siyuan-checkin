@@ -47,6 +47,13 @@
 
         const start = async () => {
             if (!checkin || typeof checkin.whenReady !== "function") return {ready: false, reason: "unavailable"};
+            if (typeof checkin.describe === "function") {
+                let descriptor;
+                try { descriptor = checkin.describe(); } catch (error) { reportError("describe", error); return {ready: false, reason: "protocol-error"}; }
+                if (!descriptor || descriptor.protocol !== "siyuan-checkin" || Number(descriptor.version) < 4) {
+                    return {ready: false, reason: "protocol-mismatch"};
+                }
+            }
             if (!(await checkin.whenReady())) return {ready: false, reason: "not-ready"};
             if (typeof checkin.hasCapability !== "function" || !checkin.hasCapability("analytics.read") || !checkin.hasCapability("events.record")) {
                 return {ready: false, reason: "capability-missing"};

@@ -15,6 +15,7 @@ let refreshCount = 0;
 let failNextRecord = false;
 const checkin = {
     whenReady: async () => true,
+    describe: () => ({protocol: "siyuan-checkin", version: 4}),
     hasCapability: (name) => name === "analytics.read" || name === "events.record",
     getItems: () => [{id: "task-item", name: "任务打卡"}],
     getEventRangeSummary: (range) => { calls.push({type: "summary", range}); return {points: []}; },
@@ -39,6 +40,11 @@ const checkin = {
     listener({type: "checkin:event-recorded"});
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(refreshCount, 2, "allowed refresh events trigger a summary refresh");
+    for (const type of ["checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated"]) {
+        listener({type});
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(refreshCount, 5, "all manifest refresh events trigger a summary refresh");
     const recorded = await bridge.recordTaskCompletion({blockId: "block-1", localDate: "2026-09-18"});
     assert.equal(recorded.externalRef, "taskhorizon:block-1:2026-09-18");
     failNextRecord = true;
@@ -50,5 +56,7 @@ const checkin = {
     bridge.stop();
     assert.equal(listener, undefined);
     assert.equal(calls.filter((entry) => entry.type === "record").length, 3);
+    const protocolMismatch = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}});
+    assert.equal((await protocolMismatch.start()).reason, "protocol-mismatch");
     console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation and cleanup.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

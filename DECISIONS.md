@@ -716,3 +716,8 @@
 - 现有实现检测到相同 `itemId + source + externalRef` 时返回已有事件的防御性副本；这不是新写入，但也不是拒绝。
 - 合作消费者只在返回 `undefined` 时停止处理；重复结果沿用原 externalRef，不创建随机替代身份。
 - 本轮只修正文档、机器清单、示例和测试，避免为契约文字变更破坏已有消费者。
+
+## D-188：bridge 先验协议再协商能力（2026-09-18）
+
+- 公开消费示例先检查 `describe().protocol === "siyuan-checkin"` 与 `version >= 4`，再等待就绪和检查能力，避免把其它 facade 当成兼容 API。
+- `describe()` 抛错或协议不匹配只返回诊断状态，不订阅、不读取、不写入；缺少 `describe()` 的旧兼容 facade 仍可按既有能力检查流程工作。

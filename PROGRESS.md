@@ -20,6 +20,8 @@
 
 2026-09-18 Task Horizon 写入结果语义批次（T-1172）：核对 `recordEvent` 实际实现后修正文档漂移：新事件返回新事件，重复 externalRef 返回已有防御性副本，非法/拒绝才返回 `undefined`；同步更新机器清单、合作文档、README、bridge 示例和契约断言。运行时行为保持兼容不变。
 
+2026-09-18 Task Horizon bridge 协议探测批次：bridge 启动前新增 `siyuan-checkin` 协议名和 API v4 最低版本检查；fixture 覆盖协议不匹配及四类刷新事件，避免错误版本半初始化后继续写入。下一步：等待真实宿主联调。
+
 2026-09-16 T-925~T-927 CSS 发布体积护栏受控放宽：应用户明确授权，将原 380KB 硬阻断调整为 420KB 告警、450KB 硬阻断，保留 318KB 历史软线并新增阈值递增断言；`test:quality` 同步改为先生产构建、后发布资源检查，避免读取旧 `dist`。当前生产 `dist/index.css` 为 404,587 bytes，位于告警区；完整质量链、宽度走查、70 张 UI 截图扫描及浅/深色视觉探针均通过。
 
 2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。
