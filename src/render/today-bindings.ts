@@ -154,12 +154,20 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
     if (root.dataset.itemContextMenuBound === "true") return;
     root.dataset.itemContextMenuBound = "true";
     const closeMenus = () => root.querySelectorAll(".lc-checkin__item-context-menu").forEach((node) => node.remove());
-    root.addEventListener("contextmenu", (event) => {
-        const card = (event.target as HTMLElement).closest<HTMLElement>(".lc-checkin__item");
+    let suppressContextMenuUntil = 0;
+    let longPressTimer: number | undefined;
+    let longPressPointerId: number | undefined;
+    let longPressStartX = 0;
+    let longPressStartY = 0;
+    const cancelLongPress = () => {
+        if (longPressTimer !== undefined) window.clearTimeout(longPressTimer);
+        longPressTimer = undefined;
+        longPressPointerId = undefined;
+    };
+    const openMenu = (card: HTMLElement, clientX: number, clientY: number) => {
         if (!card) return;
         const item = getActiveItemById(host.store, card.dataset.itemId || "");
         if (!item) return;
-        event.preventDefault();
         closeMenus();
         const menu = document.createElement("div");
         menu.className = "lc-checkin__item-context-menu";
@@ -168,9 +176,16 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             `<button type="button" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
             `<button type="button" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
         ].join("");
-        menu.style.left = `${event.clientX}px`;
-        menu.style.top = `${event.clientY}px`;
+        menu.style.left = "0px";
+        menu.style.top = "0px";
         root.appendChild(menu);
+        const margin = 8;
+        const rect = menu.getBoundingClientRect();
+        const maxX = Math.max(margin, window.innerWidth - rect.width - margin);
+        const maxY = Math.max(margin, window.innerHeight - rect.height - margin);
+        menu.style.left = `${Math.min(Math.max(margin, clientX), maxX)}px`;
+        menu.style.top = `${Math.min(Math.max(margin, clientY), maxY)}px`;
+        menu.querySelector<HTMLElement>("[data-menu-action]")?.focus();
         menu.addEventListener("click", (ev) => {
             const action = (ev.target as HTMLElement).dataset?.menuAction;
             ev.stopPropagation();
@@ -181,8 +196,46 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             else if (action === "archive") void host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint));
             else if (action === "delete") void host.deleteItemWithRecords(item.id);
         });
+    };
+    root.addEventListener("contextmenu", (event) => {
+        if (Date.now() < suppressContextMenuUntil) {
+            event.preventDefault();
+            return;
+        }
+        const card = (event.target as HTMLElement).closest<HTMLElement>(".lc-checkin__item");
+        if (!card) return;
+        event.preventDefault();
+        openMenu(card, event.clientX, event.clientY);
     });
-    root.addEventListener("click", closeMenus);
+    root.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+        const card = (event.target as HTMLElement).closest<HTMLElement>(".lc-checkin__item");
+        if (!card || (event.target as HTMLElement).closest("button, input, textarea, select, a")) return;
+        cancelLongPress();
+        longPressPointerId = event.pointerId;
+        longPressStartX = event.clientX;
+        longPressStartY = event.clientY;
+        longPressTimer = window.setTimeout(() => {
+            longPressTimer = undefined;
+            suppressContextMenuUntil = Date.now() + 800;
+            openMenu(card, event.clientX, event.clientY);
+        }, 520);
+    });
+    root.addEventListener("pointermove", (event) => {
+        if (event.pointerId !== longPressPointerId) return;
+        if (Math.hypot(event.clientX - longPressStartX, event.clientY - longPressStartY) > 10) cancelLongPress();
+    });
+    root.addEventListener("pointerup", cancelLongPress);
+    root.addEventListener("pointercancel", cancelLongPress);
+    root.addEventListener("click", (event) => {
+        if (!(event.target as HTMLElement).closest(".lc-checkin__item-context-menu")) closeMenus();
+    });
+    root.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && root.querySelector(".lc-checkin__item-context-menu")) {
+            event.preventDefault();
+            closeMenus();
+        }
+    });
 }
 
 /* 手柄拖拽重排 + Alt+↑/↓ 键盘重排；落点持久化组内 sortOrder（仅手动排序模式）。 */
