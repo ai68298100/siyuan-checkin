@@ -721,3 +721,8 @@
 
 - 公开消费示例先检查 `describe().protocol === "siyuan-checkin"` 与 `version >= 4`，再等待就绪和检查能力，避免把其它 facade 当成兼容 API。
 - `describe()` 抛错或协议不匹配只返回诊断状态，不订阅、不读取、不写入；缺少 `describe()` 的旧兼容 facade 仍可按既有能力检查流程工作。
+
+## D-189：bridge 初始化失败必须撤销已注册监听（2026-09-18）
+
+- `whenReady()` 异常返回 `ready-error`，协议版本非有限数值视为不匹配；这些失败均不进入订阅阶段。
+- 摘要首读发生异常时主动调用已返回的 unsubscribe，再返回 `read-failed`，避免消费者重试后叠加重复刷新监听。

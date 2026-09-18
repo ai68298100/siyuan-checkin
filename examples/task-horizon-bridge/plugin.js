@@ -36,6 +36,13 @@
             try { options.onError({phase, error: String(error instanceof Error ? error.message : error)}); } catch { /* diagnostics must not break the bridge */ }
         };
 
+        const cleanupSubscription = () => {
+            if (typeof unsubscribe === "function") {
+                try { unsubscribe(); } catch (error) { reportError("unsubscribe", error); }
+            }
+            unsubscribe = undefined;
+        };
+
         const refresh = async (range) => {
             if (stopped || !checkin || typeof checkin.getEventRangeSummary !== "function") return undefined;
             const requested = range || options.range;
@@ -50,11 +57,14 @@
             if (typeof checkin.describe === "function") {
                 let descriptor;
                 try { descriptor = checkin.describe(); } catch (error) { reportError("describe", error); return {ready: false, reason: "protocol-error"}; }
-                if (!descriptor || descriptor.protocol !== "siyuan-checkin" || Number(descriptor.version) < 4) {
+                const version = descriptor && Number(descriptor.version);
+                if (!descriptor || descriptor.protocol !== "siyuan-checkin" || !Number.isFinite(version) || version < 4) {
                     return {ready: false, reason: "protocol-mismatch"};
                 }
             }
-            if (!(await checkin.whenReady())) return {ready: false, reason: "not-ready"};
+            let ready;
+            try { ready = await checkin.whenReady(); } catch (error) { reportError("ready", error); return {ready: false, reason: "ready-error"}; }
+            if (!ready) return {ready: false, reason: "not-ready"};
             if (typeof checkin.hasCapability !== "function" || !checkin.hasCapability("analytics.read") || !checkin.hasCapability("events.record")) {
                 return {ready: false, reason: "capability-missing"};
             }
@@ -69,6 +79,7 @@
             try {
                 await refresh();
             } catch (error) {
+                cleanupSubscription();
                 reportError("refresh", error);
                 return {ready: false, reason: "read-failed", error: String(error instanceof Error ? error.message : error)};
             }
@@ -112,8 +123,7 @@
 
         const stop = () => {
             stopped = true;
-            if (typeof unsubscribe === "function") unsubscribe();
-            unsubscribe = undefined;
+            cleanupSubscription();
         };
 
         return {start, refresh, recordTaskCompletion, retryPending, getPendingCompletions, stop};

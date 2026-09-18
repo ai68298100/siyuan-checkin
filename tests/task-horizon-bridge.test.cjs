@@ -58,5 +58,16 @@ const checkin = {
     assert.equal(calls.filter((entry) => entry.type === "record").length, 3);
     const protocolMismatch = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}});
     assert.equal((await protocolMismatch.start()).reason, "protocol-mismatch");
+    const invalidVersion = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "siyuan-checkin", version: "unknown"})}});
+    assert.equal((await invalidVersion.start()).reason, "protocol-mismatch");
+    const readyFailure = createTaskHorizonBridge({checkin: {...checkin, whenReady: async () => { throw new Error("facade unavailable"); }}});
+    assert.equal((await readyFailure.start()).reason, "ready-error");
+    let cleaned = false;
+    const readFailure = createTaskHorizonBridge({checkin: {...checkin,
+        getEventRangeSummary: () => { throw new Error("summary unavailable"); },
+        subscribe: () => () => { cleaned = true; },
+    }, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}});
+    assert.equal((await readFailure.start()).reason, "read-failed");
+    assert.equal(cleaned, true, "failed initialization cleans up event subscription");
     console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation and cleanup.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
