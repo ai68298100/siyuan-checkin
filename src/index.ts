@@ -35,7 +35,7 @@ import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboa
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
-import {renderCheckinBlocksIn} from "./render/block-renderer";
+import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
 import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
@@ -248,28 +248,35 @@ export default class CheckinPlugin extends Plugin {
     private suspendedAnchors = new Set<string>();
     /* T-1234/T-1236 渲染块监听器清理。 */
     private renderBlocksUnsubscribers: Array<() => void> = [];
+    private renderBlockObservers = new Map<HTMLElement, () => void>();
 
     private handleProtyleLoaded = (event: {detail: {protyle: IProtyle}}) => {
-        this.activateRenderBlocks(event.detail.protyle);
+        this.observeRenderBlocks(event.detail.protyle);
     };
 
     private handleRenderBlocksRefresh = () => {
         this.refreshAllRenderBlocks();
     };
 
-    private activateRenderBlocks(protyle: IProtyle) {
-        renderCheckinBlocksIn(protyle.element, {
+    private renderBlockDeps() {
+        return {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
-            onJumpDate: (date) => this.jumpToHistoryDate(date),
-        });
+            onJumpDate: (date: string) => this.jumpToHistoryDate(date),
+        };
+    }
+
+    private observeRenderBlocks(protyle: IProtyle) {
+        const existing = this.renderBlockObservers.get(protyle.element);
+        if (existing) return;
+        this.renderBlockObservers.set(protyle.element, observeCheckinBlocks(protyle.element, this.renderBlockDeps()));
     }
 
     private refreshAllRenderBlocks() {
         /* app.protyles 为运行时成员（typings 未声明），防御式访问；主驱动是事件总线。 */
         const app = this.app as unknown as {protyles?: IProtyle[]} | undefined;
         const protyles = app?.protyles || [];
-        protyles.forEach((protyle) => this.activateRenderBlocks(protyle));
+        protyles.forEach((protyle) => renderCheckinBlocksIn(protyle.element, this.renderBlockDeps(), {force: true}));
     }
 
     /* T-1235：点击渲染块日期 → 跳回顾页并定位该日（无效日期拒绝）。 */
@@ -530,6 +537,8 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.disposing) return;
         this.render();
         this.scheduleMidnightRefresh();
+        /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新。 */
+        this.refreshAllRenderBlocks();
     }
 
     async onDataChanged() {
@@ -581,6 +590,8 @@ export default class CheckinPlugin extends Plugin {
         this.disposing = true;
         this.settleReady(false);
         this.renderBlocksUnsubscribers.splice(0).forEach((dispose) => dispose());
+        this.renderBlockObservers.forEach((disconnect) => disconnect());
+        this.renderBlockObservers.clear();
         this.stopHostThemeWatcher();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
             if (!root) return;

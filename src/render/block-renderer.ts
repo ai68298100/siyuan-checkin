@@ -19,13 +19,31 @@ export interface BlockRendererDeps {
 }
 
 const PREVIEW_FLAG = "data-checkin-preview";
+const BLOCK_LANGUAGE = "checkin";
+
+/** 思源 3.8.4 实测 DOM：语言名在 `.protyle-action__language` 文本里，
+    代码块容器无 data-subtype；同时兼容旧版 `.language-checkin` 类。 */
+function isCheckinCodeBlock(block: HTMLElement): boolean {
+    const subtype = block.dataset.subtype || "";
+    if (subtype === BLOCK_LANGUAGE) return true;
+    if (block.querySelector(".language-checkin")) return true;
+    const lang = block.querySelector<HTMLElement>(".protyle-action__language");
+    return (lang?.textContent || "").trim().toLowerCase() === BLOCK_LANGUAGE;
+}
+
+function readBlockConfigText(block: HTMLElement): string {
+    /* 思源 3.8.4：代码内容在 .hljs 下的 contenteditable div（行号是同级空 div，
+       不能先匹配到）；再回退 .hljs 全文。零宽字符一并清理。 */
+    const editable = block.querySelector<HTMLElement>(".hljs [contenteditable='true']");
+    const fallback = block.querySelector<HTMLElement>(".hljs");
+    const raw = (editable || fallback)?.textContent || "";
+    return raw.replace(/\u200B/g, "").trim();
+}
 
 function findCodeBlocks(root: HTMLElement): HTMLElement[] {
     const candidates = new Set<HTMLElement>();
-    root.querySelectorAll<HTMLElement>(".code-block[data-subtype='checkin']").forEach((block) => candidates.add(block));
-    root.querySelectorAll<HTMLElement>(".language-checkin").forEach((span) => {
-        const block = span.closest<HTMLElement>(".code-block");
-        if (block) candidates.add(block);
+    root.querySelectorAll<HTMLElement>(".code-block").forEach((block) => {
+        if (isCheckinCodeBlock(block)) candidates.add(block);
     });
     return [...candidates];
 }
@@ -38,11 +56,17 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps): 
     return buildSummaryViewHtml(store, config, asOf);
 }
 
-export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps): void {
+/* 记录每个代码块上次渲染的配置文本：观察回调里仅在配置变化时重渲染，
+   避免预览自身 DOM 改动触发观察风暴。 */
+const lastRenderedConfig = new WeakMap<HTMLElement, string>();
+
+export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps, options: {force?: boolean} = {}): void {
     for (const block of findCodeBlocks(protyleElement)) {
+        const configText = readBlockConfigText(block).trim();
         const previous = block.nextElementSibling;
-        if (previous?.getAttribute(PREVIEW_FLAG) === "true") previous.remove();
-        const configText = (block.querySelector("code")?.textContent || "").trim();
+        const existing = previous?.getAttribute(PREVIEW_FLAG) === "true";
+        if (existing && !options?.force && lastRenderedConfig.get(block) === configText) continue;
+        previous?.remove();
         const parsed = parseCheckinBlockConfig(configText);
         const preview = document.createElement("div");
         preview.setAttribute(PREVIEW_FLAG, "true");
@@ -56,6 +80,30 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             const target = (event.target as HTMLElement).closest("[data-jump-date]");
             if (target) deps.onJumpDate?.(target.getAttribute("data-jump-date") || "");
         });
+        lastRenderedConfig.set(block, configText);
         block.insertAdjacentElement("afterend", preview);
     }
+}
+
+/* loaded-protyle-static 触发时语法高亮/编辑器可能尚未就绪——用 MutationObserver
+   兜底观察 protyle 子树，代码块出现后补渲染。幂等：已有预览的块跳过，
+   观察回调 200ms 防抖，避免渲染自身改动 DOM 造成风暴。返回断开函数。 */
+export function observeCheckinBlocks(protyleElement: HTMLElement, deps: BlockRendererDeps): () => void {
+    renderCheckinBlocksIn(protyleElement, deps);
+    let timer: number | undefined;
+    let disposed = false;
+    const observer = new MutationObserver(() => {
+        if (disposed) return;
+        if (timer !== undefined) window.clearTimeout(timer);
+        timer = window.setTimeout(() => {
+            timer = undefined;
+            if (!disposed) renderCheckinBlocksIn(protyleElement, deps);
+        }, 200);
+    });
+    observer.observe(protyleElement, {childList: true, subtree: true});
+    return () => {
+        disposed = true;
+        if (timer !== undefined) window.clearTimeout(timer);
+        observer.disconnect();
+    };
 }
