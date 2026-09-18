@@ -25,4 +25,7 @@ The bridge retries by reusing the same `blockId` and `localDate`; the canonical
 `taskhorizon:<blockId>:<localDate>` reference makes replay idempotent. A returned
 event means new or idempotent-existing; `undefined` means rejected and is not a
 transport failure. The bridge also checks the `siyuan-checkin` protocol and API
-version before writing. Only thrown writes enter `getPendingCompletions()`.
+version before writing. Only thrown writes enter `getPendingCompletions()`. A
+retry result reports rejected writes separately from successful writes, so a
+definitive API rejection is removed from the transport queue without being
+counted as a success.

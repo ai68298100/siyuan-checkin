@@ -726,3 +726,8 @@
 
 - `whenReady()` 异常返回 `ready-error`，协议版本非有限数值视为不匹配；这些失败均不进入订阅阶段。
 - 摘要首读发生异常时主动调用已返回的 unsubscribe，再返回 `read-failed`，避免消费者重试后叠加重复刷新监听。
+
+## D-190：重试统计不把明确拒绝伪装成成功（2026-09-18）
+
+- `recordEvent` 返回 `undefined` 表示确定性拒绝：从 pending 传输队列移除，但 `retryPending()` 只增加 `rejected`，不增加 `succeeded`。
+- 只有返回事件对象才计入成功；再次抛错的 payload 保留在队列，便于后续恢复后重试。

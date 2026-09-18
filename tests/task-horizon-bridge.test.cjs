@@ -13,6 +13,7 @@ const calls = [];
 let listener;
 let refreshCount = 0;
 let failNextRecord = false;
+let rejectNextRecord = false;
 const checkin = {
     whenReady: async () => true,
     describe: () => ({protocol: "siyuan-checkin", version: 4}),
@@ -23,6 +24,7 @@ const checkin = {
     recordEvent: async (input) => {
         calls.push({type: "record", input});
         if (failNextRecord) { failNextRecord = false; throw new Error("temporary write failure"); }
+        if (rejectNextRecord) { rejectNextRecord = false; return undefined; }
         return {id: "event-1", ...input};
     },
 };
@@ -51,11 +53,16 @@ const checkin = {
     assert.equal(await bridge.recordTaskCompletion({blockId: "block-2", localDate: "2026-09-18"}), undefined);
     assert.equal(bridge.getPendingCompletions().length, 1, "thrown writes are retained for retry");
     const retry = await bridge.retryPending();
-    assert.deepEqual({attempted: retry.attempted, succeeded: retry.succeeded, remaining: retry.remaining}, {attempted: 1, succeeded: 1, remaining: 0});
+    assert.deepEqual({attempted: retry.attempted, succeeded: retry.succeeded, rejected: retry.rejected, remaining: retry.remaining}, {attempted: 1, succeeded: 1, rejected: 0, remaining: 0});
+    failNextRecord = true;
+    assert.equal(await bridge.recordTaskCompletion({blockId: "block-3", localDate: "2026-09-18"}), undefined);
+    rejectNextRecord = true;
+    const rejectedRetry = await bridge.retryPending();
+    assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, remaining: 0});
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);
-    assert.equal(calls.filter((entry) => entry.type === "record").length, 3);
+    assert.equal(calls.filter((entry) => entry.type === "record").length, 5);
     const protocolMismatch = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}});
     assert.equal((await protocolMismatch.start()).reason, "protocol-mismatch");
     const invalidVersion = createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "siyuan-checkin", version: "unknown"})}});

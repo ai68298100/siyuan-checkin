@@ -103,20 +103,22 @@
         };
 
         const retryPending = async () => {
-            if (stopped || !checkin || typeof checkin.recordEvent !== "function") return {attempted: 0, succeeded: 0, remaining: pending.size};
+            if (stopped || !checkin || typeof checkin.recordEvent !== "function") return {attempted: 0, succeeded: 0, rejected: 0, remaining: pending.size};
             let attempted = 0;
             let succeeded = 0;
+            let rejected = 0;
             for (const [externalRef, payload] of [...pending.entries()]) {
                 attempted += 1;
                 try {
-                    await checkin.recordEvent(payload);
+                    const result = await checkin.recordEvent(payload);
                     pending.delete(externalRef);
-                    succeeded += 1;
+                    if (result === undefined) rejected += 1;
+                    else succeeded += 1;
                 } catch (error) {
                     reportError("retry", error);
                 }
             }
-            return {attempted, succeeded, remaining: pending.size};
+            return {attempted, succeeded, rejected, remaining: pending.size};
         };
 
         const getPendingCompletions = () => [...pending.values()].map((payload) => ({...payload}));
