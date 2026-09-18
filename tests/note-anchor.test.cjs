@@ -29,6 +29,17 @@ assert.match(indexSource, /appendNoteToAnchor\(current, buildAnchorNoteMarkdown\
 assert.match(indexSource, /private async appendNoteToAnchor\(/, "index implements the append bypass");
 assert.match(indexSource, /noteAnchor\?\.appendNotes/, "append honors the opt-in switch");
 assert.match(indexSource, /channel: "append"/, "append failures are audited distinctly");
+assert.match(indexSource, /const resolved = await resolveAnchorBlock\(/, "writeback pre-checks block existence (suspension detection)");
+assert.match(indexSource, /channel: "resolve"/, "suspension failures are audited with the resolve channel");
+assert.match(indexSource, /anchorSuspended: \(\(\) =>/, "editor render surfaces the suspension flag");
+assert.match(read("render", "editor.ts"), /editor\.anchorSuspended/, "editor shows a suspension warning");
+
+/* 只用已验证内核端点：note-anchor 模块内的 /api/ 调用必须全部在白名单内。 */
+const anchorSource = read("features", "note-anchor.ts");
+const endpoints = [...anchorSource.matchAll(/"\/api\/[A-Za-z/-]+"/g)].map((match) => match[0].replace(/"/g, ""));
+const allowed = new Set(["/api/block/getBlockInfo", "/api/attr/setBlockAttrs", "/api/block/appendBlock"]);
+for (const endpoint of endpoints) assert.ok(allowed.has(endpoint), `unverified kernel endpoint: ${endpoint}`);
+assert.ok(endpoints.length >= 3, "expected the verified endpoints to be present");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-note-anchor-"));
 for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "i18n.ts", "features/note-anchor.ts"]) {

@@ -28,7 +28,7 @@ import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksVa
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
-import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
+import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -1759,6 +1759,10 @@ export default class CheckinPlugin extends Plugin {
             todayGroupMode: this.todayGroupMode,
             saveState: this.saveState,
             syncNoticeActive: this.syncNoticeTimer !== undefined,
+            anchorSuspended: (() => {
+                const anchor = this.store.items.find((candidate) => candidate.id === this.editingId)?.noteAnchor;
+                return Boolean(anchor && this.suspendedAnchors.has(`${this.editingId}:${anchor.blockId}`));
+            })(),
         });
     }
 
@@ -2703,13 +2707,21 @@ export default class CheckinPlugin extends Plugin {
             ? (info.value !== undefined && info.unit ? `${t("anchor.stateDone")} ${formatNumber(info.value)} ${info.unit}` : t("anchor.stateDone"))
             : info.state === "skip" ? t("anchor.stateSkip") : t("anchor.stateUnskip");
         const value = buildAnchorAttrValue(dateKey(now), `${stateText}${streak > 1 ? ` · ${t("anchor.streakSuffix", {n: streak})}` : ""}`);
+        /* T-1233 悬挂检测：块已被删除/不可达时重试无意义——直接挂起并审计。 */
+        const resolved = await resolveAnchorBlock((url, payload) => this.kernelPost(url, payload), blockId);
+        if (!resolved.ok) {
+            this.suspendedAnchors.add(suspendKey);
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, channel: "resolve", reason: resolved.reason || "unknown"}});
+            void this.persistAuditBestEffort();
+            return;
+        }
         const result = await withBoundedRetry(
             () => writeAnchorAttr((url, payload) => this.kernelPost(url, payload), blockId, value),
             {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},
         );
         if (!result.ok) {
             this.suspendedAnchors.add(suspendKey);
-            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, reason: result.reason || "unknown"}});
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, channel: "write", reason: result.reason || "unknown"}});
             void this.persistAuditBestEffort();
         }
     }

@@ -20,6 +20,8 @@ export interface EditorViewContext {
     todayGroupMode: TodayGroupMode;
     saveState: SaveState;
     syncNoticeActive: boolean;
+    /** T-1233：当前编辑项的锚点块回写被挂起（内核不可达/块不存在）。 */
+    anchorSuspended?: boolean;
 }
 
 export function renderEditorView(ctx: EditorViewContext): string {
@@ -154,6 +156,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>${t("editor.tomatoModeLabel")}</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>${t("editor.tomatoMinutesOpt")}</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>${t("editor.tomatoSessionsOpt")}</option></select></label>
                                 <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>${t("editor.tomatoHelp")}</p>
                                 <label class="lc-checkin__field"><span>${t("editor.anchorTitle")}</span><input name="anchorBlockId" type="text" maxlength="64" placeholder="${t("editor.anchorPlaceholder")}" value="${escapeHtml(item?.noteAnchor?.blockId || "")}" /><small>${t("editor.anchorHint")}</small></label>
+                                ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
                                 <label class="lc-checkin__field lc-checkin__field-check"><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} /><span>${t("editor.anchorAppend")}</span></label>
                             </div>
                             <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>

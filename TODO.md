@@ -2437,8 +2437,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1232 打卡即笔记（备注锚定）
   - 验收：备注/跳过原因可追加到锚点日记（带日期戳可检索）；只写用户绑定位置；撤销同步策略记 DECISIONS。
   - 状态：done（note-anchor 新增 `buildAnchorNoteMarkdown`（`- 日期 状态 **项目**：备注` 单行块，换行折叠防断块，空备注省略冒号）+ `appendAnchorNote`（/api/block/appendBlock markdown 追加为锚点子块）；index.ts `appendNoteToAnchor` 旁路（opt-in `appendNotes` 开关、失败入 anchor 审计 channel=append）；打点：recordEvent（备注非空）与 skipItemToday（跳过原因非空）；撤销策略已在 D-218 记录——追加块属用户文档内容，撤销不删除；只写用户绑定块（appendNotes 关闭或未绑定即完全不写）。验证：`tests/note-anchor.test.cjs` 扩展 markdown/打点/开关断言；`pnpm run check`、完整 `test:quality` exit 0）
-- [ ] T-1233 回写一致性守门
+- [x] T-1233 回写一致性守门
   - 验收：绑定块删除/移动的悬挂检测；重载恢复；多窗口回写合并（存储锁内复核）；只用已验证内核 API。
+  - 状态：done（①悬挂检测：`writebackNoteAnchor` 回写前先 `resolveAnchorBlock`（/api/block/getBlockInfo）预检——块不存在/不可达时重试无意义，直接挂起 + 审计（channel=resolve）；瞬时失败（写阶段）才走有界重试（channel=write）；②挂起标志为内存态：重载自然重置恢复重试，锚点绑定本身在 store 持久化天然跨重载；③编辑器渲染锚点挂起告警（role=alert + i18n editor.anchorSuspended 中英），重新保存有效块 ID 即恢复；④多窗口：打卡数据写入仍经存储锁，锚点属性经内核 API last-writer-wins（D-218 已记录）；⑤端点白名单守门：note-anchor.ts 内 /api/ 调用仅限 getBlockInfo/setBlockAttrs/appendBlock 三个已验证端点，测试逐端点断言。验证：`tests/note-anchor.test.cjs` 扩展悬挂/挂起/白名单断言；`pnpm run check`、完整 `test:quality` exit 0）
 
 ### v17.2 声明式渲染块
 
