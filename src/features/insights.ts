@@ -66,6 +66,10 @@ export interface HabitInsights {
     streakScope: "window";
     /** T-1223：以窗口末尾收尾的连续跳过计划日数（0 = 最近没有连续跳过）。 */
     recentSkipDays: number;
+    /** T-1241：习惯成熟度百分比——sigmoid(计划机会日)，以 66 天参考线为半程（mhabit 成熟曲线的参考实现）。 */
+    maturity: number;
+    /** T-1240：窗口内超额日（完成量 ≥ 目标 150% 的数值型天数）。 */
+    overachievedDays: number;
     /** T-1227：30 天强度分数现值与相对两周前的变化（数据不足时为 null）。 */
     strengthScore: number | null;
     strengthDelta: number | null;
@@ -154,6 +158,16 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         break;
     }
     const records = days.flatMap((day) => day.events);
+    /* T-1240：超额日（数值型完成量 ≥ 目标 150%）。 */
+    const overachievedDays = days.reduce((total, day) => {
+        if (day.status !== "complete") return total;
+        const progress = day.events.filter((event) => !isSkipEvent(event)).reduce((sum, event) => sum + event.value, 0);
+        const target = day.target > 0 ? day.target * 1.5 : Number.POSITIVE_INFINITY;
+        return total + (day.kind !== "binary" && progress >= target ? 1 : 0);
+    }, 0);
+    /* T-1241：成熟度 sigmoid——66 天参考线为半程（习惯养成的常用参考周期）。 */
+    const eligibleDays = countsForDays(days).eligibleScheduledDays;
+    const maturity = eligibleDays > 0 ? Math.round((1 / (1 + Math.exp(-0.2 * (eligibleDays - 33)))) * 1000) / 10 : 0;
     /* T-1227：30 天强度分数——与回顾页强度曲线共用 habit-score 单一实现。 */
     let strengthScore: number | null = null;
     let strengthDelta: number | null = null;
@@ -179,6 +193,8 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         longestStreak,
         streakScope: "window",
         recentSkipDays,
+        maturity,
+        overachievedDays,
         strengthScore,
         strengthDelta,
         weeklyTrend: buildWeeklyTrend(days),

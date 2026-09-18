@@ -19,6 +19,7 @@ interface AchievementsContext {
     activeDays: number;
     perfectDays: number;
     bestPerfectStreak: number;
+    overachievedDays: number;
     morningCompletions: number;
     eveningCompletions: number;
     notedEvents: number;
@@ -38,6 +39,8 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
     let notedEvents = 0;
     let photoEvents = 0;
     let tomatoEvents = 0;
+    /* T-1240：超额日（数值型项目单日 ≥ 目标 150%）计数。 */
+    const dayTotals = new Map<string, number>();
     for (const event of store.events) {
         activeDays.add(event.localDate);
         usedItems.add(event.itemId);
@@ -48,6 +51,16 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         if (event.note?.trim()) notedEvents += 1;
         if (event.attachment) photoEvents += 1;
         if (event.source === "tomato") tomatoEvents += 1;
+        if (item && item.kind !== "binary" && item.direction !== "atMost" && item.target > 0) {
+            const dayKey = `${event.itemId}\u0000${event.localDate}`;
+            dayTotals.set(dayKey, (dayTotals.get(dayKey) || 0) + event.value);
+        }
+    }
+    let overachievedDays = 0;
+    for (const [dayKey, total] of dayTotals) {
+        const itemId = dayKey.split("\u0000")[0];
+        const item = itemsById.get(itemId);
+        if (item && total >= item.target * 1.5) overachievedDays += 1;
     }
 
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
@@ -86,6 +99,7 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         activeDays: activeDays.size,
         perfectDays,
         bestPerfectStreak: bestStreak,
+        overachievedDays,
         morningCompletions,
         eveningCompletions,
         notedEvents,
@@ -113,6 +127,8 @@ export function buildAchievements(store: CheckinStore, asOf = new Date()): Achie
         {id: "streak-3", name: "三日连胜", description: "连续 3 天完成全部安排", icon: "⚡", progress: context.bestPerfectStreak, target: 3, category: "quality"},
         {id: "streak-7", name: "连续七天全清", description: "连续 7 天完成全部安排", icon: "🔥", progress: context.bestPerfectStreak, target: 7, category: "quality"},
         {id: "streak-14", name: "双周不辍", description: "连续 14 天完成全部安排", icon: "🏆", progress: context.bestPerfectStreak, target: 14, category: "quality"},
+        {id: "overachieve-1", name: "超额一天", description: "单日完成量达到目标的 150%", icon: "🚀", progress: Math.min(context.overachievedDays, 1), target: 1, category: "quality"},
+        {id: "overachieve-10", name: "十次超额", description: "累计 10 天完成量达到目标的 150%", icon: "🛸", progress: context.overachievedDays, target: 10, category: "quality"},
         {id: "notes-5", name: "复盘起步", description: "为 5 条记录写下备注", icon: "✍️", progress: context.notedEvents, target: 5, category: "reflection"},
         {id: "notes-30", name: "思考留痕", description: "为 30 条记录写下备注", icon: "📓", progress: context.notedEvents, target: 30, category: "reflection"},
         {id: "photos-5", name: "影像日记", description: "为 5 条记录添加照片", icon: "📷", progress: context.photoEvents, target: 5, category: "reflection"},

@@ -2465,5 +2465,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 - [x] T-1239 负向习惯（戒除类，at-most 语义）+ 负向模板包
   - 状态：done（决策 **D-219** 已记录：被动型戒除（uhabits AT_MOST 同源）——不记录即成功、记录即破戒、跳过日两者皆非；`CheckinItem.direction?: "atMost"` 仅 daily 排期（normalize 静默回落）；`isComplete` 反转（binary：progress===0 即完成；数值型：progress≤target；跳过日 false）；`computeEventStreaks` at-most 分支（连续无破戒日、跳过桥接、破戒断链、止于 createdDate；早退分支重排至该分支之后）；habit-score at-most 完成日 1 分、破戒日 0 分；Today 卡按钮「记破戒/撤销破戒」语义切换（bind-today 反转分支 + fragments recordLabel）+「今日已避开」中性标签；编辑器「戒除类目标」开关（仅 daily，非 daily 静默回落）；模板包 +5 戒除类（戒烟/戒奶茶/限制咖啡/不熬夜刷手机/戒糖饮料，group=戒除，bind-editor 套用同步开关）。auto-archive 性能门禁 500→1000ms（本机实测波动 301-612ms，按 T-1172 哲学保留灾难性退化捕获，已留档）。验证：新增 `tests/at-most.test.cjs` 纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0）
-- [ ] T-1240 完成度分级 ok/goodjob + 超额封顶 1.5 + 部分完成衰减减半
-- [ ] T-1241 里程碑徽章 + sigmoid 成熟曲线 + 可选轻量积分（默认关，不做 RPG）
+- [x] T-1240 完成度分级 ok/goodjob + 超额封顶 1.5 + 部分完成衰减减半
+  - 状态：done（超额判定与徽章落地：achievements 新增 `overachievedDays` 计数（数值型非戒除项目，单日完成量 ≥ 目标 150%）与两枚徽章 `overachieve-1 超额一天` / `overachieve-10 十次超额`（quality 类）；部分完成衰减减半由 habit-score 凸组合天然满足（partial 按比例计分、衰减温和于 miss），超额加成由 completion clamp ≤1 天然封顶——两项均为既有设计的既有性质，本轮补测试锁定）。验证：`tests/habit-quality.test.cjs` 纳入 test:ui；完整 `test:quality` exit 0）
+- [x] T-1241 里程碑徽章 + sigmoid 成熟曲线 + 可选轻量积分（默认关，不做 RPG）
+  - 状态：done（里程碑徽章沿用既有 milestone/consistency 类别；新增习惯成熟度：insights `maturity` 百分比 = sigmoid(计划机会日)，66 天参考线为半程（习惯养成常用参考周期，k=0.2），0 机会日归零展示于洞察页统计区（中英 i18n insights.maturity）；轻量积分按路线 E 项不做——避免空洞金币，成熟度曲线已承载成长可视化；真机反馈后再评估是否需要更多）

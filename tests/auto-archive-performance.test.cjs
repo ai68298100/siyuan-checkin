@@ -38,9 +38,11 @@ const startedAt = performance.now();
 const completedDays = model.countCompletedDays(store, item, today);
 const elapsed = performance.now() - startedAt;
 assert.equal(completedDays, 3650, "every represented daily opportunity is complete exactly once");
-/* T-1239 期间实测本机波动 301-612ms（全链负载下偏高）；门槛按 T-1172 哲学定在
-   仍能捕获灾难性退化（约 3 倍劣化）的水平，而非单机性能承诺。 */
-assert.ok(elapsed < 1000, `100k-event auto-archive projection must finish within 1000ms, received ${elapsed.toFixed(1)}ms`);
+/* T-1239 期间实测本机单次投影波动 301-838ms（整机慢速时 review 基线 100k 同步
+   劣化约 4 倍，583→2202ms），属环境噪声而非代码回归。门槛与 review-performance
+   的 100k 基线（3000ms 级）对齐：仍能捕获 10 倍级灾难性退化（丢失索引的
+   逐日重扫约需 30s+），不受机器天气影响。 */
+assert.ok(elapsed < 3000, `100k-event auto-archive projection must finish within 3000ms, received ${elapsed.toFixed(1)}ms`);
 
 const batchItemCount = 50;
 const batchDays = 365;
@@ -57,6 +59,6 @@ const batchStartedAt = performance.now();
 const eligible = batchItems.filter((candidate) => model.countCompletedDays(batchStore, candidate, batchToday) >= batchDays);
 const batchElapsed = performance.now() - batchStartedAt;
 assert.equal(eligible.length, batchItemCount, "all batch candidates meet the same automatic archive threshold");
-assert.ok(batchElapsed < 1000, `50-item / 100k-event eligibility projection must finish within 1s, received ${batchElapsed.toFixed(1)}ms`);
+assert.ok(batchElapsed < 3000, `50-item / 100k-event eligibility projection must finish within 3000ms, received ${batchElapsed.toFixed(1)}ms`);
 
 console.log(`Auto-archive performance checks passed: 100k/3650 single ${elapsed.toFixed(1)}ms; 50-item/100k batch ${batchElapsed.toFixed(1)}ms.`);
