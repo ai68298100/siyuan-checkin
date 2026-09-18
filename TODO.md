@@ -2205,6 +2205,9 @@
 - [x] T-1195 Task Horizon externalRef 写入单飞（P1）
   - 验收：同一 canonical externalRef 的并发 `recordTaskCompletion()` 只发起一次 transport 写入并共享结果；不同 externalRef 保持可并行。
   - 状态：done（新增按 externalRef 的 in-flight map，fixture 覆盖并发重复写入）
+- [x] T-1196 Task Horizon 停止竞态刷新收口（P1）
+  - 验收：摘要读取进行中调用 `stop()` 后，迟到结果不再触发 `onRefresh`，且不会被后续消费者误用；停止后新刷新继续返回空结果。
+  - 状态：done（刷新完成点增加 stopped 守门，fixture 覆盖 stop-before-summary-resolve）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

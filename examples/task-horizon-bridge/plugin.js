@@ -58,6 +58,7 @@
             if (existing) return existing;
             const run = (async () => {
                 const summary = await checkin.getEventRangeSummary(requested, options.summaryOptions);
+                if (stopped) return undefined;
                 if (typeof options.onRefresh === "function") await options.onRefresh(summary);
                 return summary;
             })();

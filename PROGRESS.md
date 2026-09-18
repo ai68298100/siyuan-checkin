@@ -36,6 +36,8 @@
 
 2026-09-18 Task Horizon externalRef 写入单飞（T-1195）：同一 canonical externalRef 的并发 `recordTaskCompletion()` 复用进行中 Promise，避免重复 transport 写入；不同任务/日期仍可并行。生态链与类型检查待本轮完成。
 
+2026-09-18 Task Horizon 停止竞态刷新收口（T-1196）：摘要读取完成后再次检查 stopped；停止获胜时丢弃迟到摘要并跳过 `onRefresh`，避免卸载后的消费者副作用。
+
 2026-09-16 T-925~T-927 CSS 发布体积护栏受控放宽：应用户明确授权，将原 380KB 硬阻断调整为 420KB 告警、450KB 硬阻断，保留 318KB 历史软线并新增阈值递增断言；`test:quality` 同步改为先生产构建、后发布资源检查，避免读取旧 `dist`。当前生产 `dist/index.css` 为 404,587 bytes，位于告警区；完整质量链、宽度走查、70 张 UI 截图扫描及浅/深色视觉探针均通过。
 
 2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。

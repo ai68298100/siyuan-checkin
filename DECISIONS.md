@@ -756,3 +756,8 @@
 
 - 同一 `taskhorizon:<blockId>:<localDate>` 的并发写入共享 Promise，确保重复回调不会制造多次 transport 请求。
 - 不同 externalRef 使用独立 map 条目，保持多个任务完成事件的并行吞吐。
+
+## D-196：停止优先于迟到摘要副作用（2026-09-18）
+
+- `stop()` 与进行中的摘要读取竞态时，读取结果仍可自然完成，但不得调用 `onRefresh`，并向调用方返回 `undefined`。
+- 停止后的新 `refresh()` 继续短路为空结果，避免卸载后重新建立读取活动。

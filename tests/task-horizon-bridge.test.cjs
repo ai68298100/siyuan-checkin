@@ -58,6 +58,19 @@ const checkin = {
     stoppedDuringStart.stop();
     releaseSlowReady();
     assert.equal((await stoppedStartPromise).reason, "stopped", "stop during readiness prevents late initialization");
+    let releaseSlowSummary;
+    const slowSummary = new Promise((resolve) => { releaseSlowSummary = resolve; });
+    let lateRefreshes = 0;
+    const refreshStopBridge = createTaskHorizonBridge({
+        checkin: {...checkin, getEventRangeSummary: async () => slowSummary},
+        range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"},
+        onRefresh: () => { lateRefreshes += 1; },
+    });
+    const lateRefreshPromise = refreshStopBridge.refresh();
+    refreshStopBridge.stop();
+    releaseSlowSummary({points: []});
+    assert.equal(await lateRefreshPromise, undefined, "stopped refresh does not publish a late result");
+    assert.equal(lateRefreshes, 0, "stopped refresh skips consumer callback");
     listener({type: "checkin:event-recorded"});
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(refreshCount, 2, "allowed refresh events trigger a summary refresh");
