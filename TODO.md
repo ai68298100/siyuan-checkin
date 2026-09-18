@@ -2263,6 +2263,12 @@
   - 验收：新增 150 个完整身份各执行首次写入+重放，共 300 项；两次结果 externalRef/itemId 稳定、pending 始终为空，验证幂等交给公开 facade 而非 bridge 私自吞写。
   - 状态：done（300-case replay matrix，生态质量链通过）
 
+## v16.0 复盘计划与洞察增强（首批）
+
+- [x] T-1215 复盘范围基线比较模型（P0）
+  - 验收：提供纯函数比较当前/基线 `SummaryContext`，输出总事件、完成项目、计划项目及逐项目标的 current/baseline/delta；两侧缺失项目补零，结果脱离输入对象；提供同跨度前置范围推导并校验非法日期/逆序输入。
+  - 状态：done（新增 `src/features/review-comparison.ts` 与 `tests/review-comparison.test.cjs`，已接入质量链）
+
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
 - [x] T-1170 Today 卡片跨端上下文菜单
