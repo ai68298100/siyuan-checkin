@@ -143,6 +143,16 @@ const checkin = {
     assert.equal((await invalidItems.start()).reason, "items-invalid");
     const maliciousItem = createTaskHorizonBridge({checkin: {...checkin, getItems: () => [{get name() { throw new Error("item getter failed"); }}]}});
     assert.equal((await maliciousItem.start()).reason, "items-error");
+    const subscribeFailure = createTaskHorizonBridge({checkin: {...checkin, subscribe: () => { throw new Error("subscribe failed"); }}});
+    assert.equal((await subscribeFailure.start()).reason, "subscribe-error");
+    let eventError;
+    let eventListener;
+    const eventFailure = createTaskHorizonBridge({checkin: {...checkin,
+        subscribe: (callback) => { eventListener = callback; return () => {}; },
+    }, onError: ({phase}) => { eventError = phase; }});
+    assert.equal((await eventFailure.start()).ready, true);
+    eventListener({get type() { throw new Error("event getter failed"); }});
+    assert.equal(eventError, "event", "malformed events stay within diagnostics");
     let cleaned = false;
     const readFailure = createTaskHorizonBridge({checkin: {...checkin,
         getEventRangeSummary: () => { throw new Error("summary unavailable"); },

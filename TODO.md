@@ -2217,6 +2217,9 @@
 - [x] T-1199 Task Horizon 事项字段访问防御（P1）
   - 验收：事项数组中单项字段 getter 抛错时返回 `items-error`，不产生未处理 Promise 拒绝；正常项选择与目标缺失语义保持不变。
   - 状态：done（目标事项筛选包裹字段访问边界，fixture 覆盖恶意事项对象）
+- [x] T-1200 Task Horizon 订阅异常矩阵（P1）
+  - 验收：`subscribe()` 抛错返回 `subscribe-error`；事件 payload getter 抛错进入 `event` 诊断，不阻断 bridge 已建立生命周期。
+  - 状态：done（新增订阅失败与恶意事件 fixture，验证错误状态和诊断回调）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

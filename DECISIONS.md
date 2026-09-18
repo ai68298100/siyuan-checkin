@@ -776,3 +776,8 @@
 
 - `archived`、`name`、`id` 等目标选择字段由宿主对象提供，任一 getter 抛错均返回 `items-error`。
 - 不改变正常目标缺失的 `target-missing` 语义，避免把数据异常误报为用户没有配置事项。
+
+## D-200：订阅建立与事件消费分别隔离异常（2026-09-18）
+
+- `subscribe()` 建立阶段抛错返回 `subscribe-error`，不进入首读或伪装成读取失败。
+- 订阅后的单个事件 payload 异常只报告 `event`，不自动停止 bridge；后续事件仍可继续处理，卸载仍由 `stop()` 负责。
