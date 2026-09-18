@@ -1,11 +1,11 @@
 # 进度
-当前任务：9.7.0 GitHub Release 已发布；T-023/T-129 真实客户端验收仍待用户现场完成
-上次检查点：v9.5.1 发布（tag v9.5.1、release Latest、package.zip 302921B、SHA-256 0cd3601e…7ff5）
-已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032
-未提交变更：发布状态回写（待本地提交后推送）
-上次提交：feat(api): advertise suggestion read capability（本地里程碑）
-下一步：按 `docs/integration-smoke-checklist.md` 复测 T-023/T-129；集市审核与 15.0 工作待真实客户端证据。统一质量门禁使用 `pnpm run test:quality`，大版本路线见 `docs/development-roadmap.md`。
-上下文备注：v9.7.0 GitHub Release 已发布（https://github.com/ai68298100/siyuan-checkin/releases/tag/v9.7.0），发布包 SHA-256 为 `17DA1F5192D9046855618D517E18E12768E41006E19C8235245B1504B70A6E14`；集市审核暂缓。
+当前任务：习惯体系融合路线已定稿（v16.1 复盘呈现与数据入口为下一步主线，任务 T-1216 起）
+上次检查点：本地已同步 GitHub v16.0.0（cc17593），叠加调研与规划文档提交
+已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032、T-105、T-1167~T-1215
+未提交变更：无
+上次提交：docs: habit apps benchmark research（含融合路线）
+下一步：按 `docs/roadmap-habit-evolution-2026-09.md` 推进 v16.1（T-1216 范围对比 UI 起步）；v17.0 Task Horizon 联调继续等对方排期。真机项 T-023/T-033/T-129/T-1173 与 B-007 保持开放。
+上下文备注：竞品调研见 `docs/benchmark-habit-apps-2026-09.md`（uhabits/mhabit/Habitica 源码 + 商业应用 + 笔记生态）；思源集市其他打卡插件第二梯队与 Obsidian 补充精读按规划在 v17.1/17.2 启动前补做。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
 
 2026-09-18 远端同步与 Task Horizon 联调前置批次（T-1167）：本地 `main` 从 `5b98be3` 快进到 GitHub `origin/main` 的 `b01063c`（工作区原先干净，无本地提交被覆盖）。新增 `tests/task-horizon-contract.test.cjs`，固定 `taskhorizon:<blockId>:<localDate>` externalRef 的构造样例、同任务同日重放幂等、删除墓碑不可复活，并在测试注释与合作文档边界中明确“仅原生复选框真实点击”由 Task Horizon 侧负责；已接入 `pnpm run test:ecosystem`。验证：`pnpm run check`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`pnpm run check:release` 均通过；扩展测试使用系统 Chrome（`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`）补足 Playwright 浏览器环境。发布资源 CSS 429,056 bytes，处于 420KB 告警区内但低于 450KB 硬线。下一步：等待 Task Horizon 对方联调排期；T-023/T-129/T-1173 仍需真实宿主证据。
@@ -75,6 +75,8 @@
 2026-09-18 Task Horizon 第二个 300 项 replay 矩阵（T-1214）：150 个完整写入身份各执行首次写入与重放，共 300 项；结果身份稳定、pending 保持为空，幂等判定继续由公开 facade 负责。
 
 2026-09-18 v16.0 首批（T-1215）：新增 `buildReviewComparison()` 纯函数，比较当前/基线 SummaryContext 的范围级与逐项目标 delta；新增 `getPreviousReviewRange()` 推导同跨度前置本地日期范围，非法/逆序输入返回 undefined。结果只含标量和防御性数组，不读取或修改 store；定向测试、类型检查通过，并接入 test:quality。
+
+2026-09-18 习惯体系融合路线定稿：拉取 GitHub 最新 v16.0.0（cc17593，37+ 提交：Task Horizon bridge 协议探测/重试/并发单飞矩阵 + 复盘范围比较模型）并完成竞品调研到开发规划的转化。新文档 `docs/roadmap-habit-evolution-2026-09.md` 定义 v16.1 复盘呈现与数据入口（T-1216 对比 UI/T-1217 周报/T-1218 Loop CSV 迁移/T-1219 宽容提醒）→ v16.2 跳过态（T-1220 store v2→3 + 口径 + 交互 + 反内疚）→ v16.3 习惯内核（T-1224 强度分数/T-1225 AUTO 补全/T-1226 streak 重构/T-1227 强度曲线）→ v17.0 Task Horizon 联调 → v17.1 打卡回写笔记块 → v17.2 声明式渲染块 → v18 开放生态扩展 → v19 习惯内核二期；TODO.md 追加 T-1216~T-1241；`development-roadmap-2026.md` 顶部加指针。总原则：事件=原始记录、推导=计算层；计分单一代码路径；不推翻现有五类型/六排期/复盘管道。下一步：v16.1 从 T-1216 起步。
 
 2026-09-18 竞品调研完成：三路并行调研已沉淀至 `docs/benchmark-habit-apps-2026-09.md`——①开源源码深读（uhabits 五态模型/半衰期分数/弹性频率补全、mhabit sigmoid 成熟曲线/超额封顶、Habitica 自平衡积分与内疚感教训）；②商业竞品（Habitify/Streaks/Forest/滴答/小日常/Atoms 等 11 款优劣与行为设计 10 机制）；③笔记生态（思源集市仅 2 个打卡插件、Obsidian Tracker/Heatmap Calendar、Logseq、Notion HabitLog schema）。产出 17 条可执行借鉴清单（A 算法/B 笔记联动/C 行为设计/D 架构/E 不做），最高优先级：SKIP 一等态、强度分数、打卡回写笔记块、声明式渲染块、Loop CSV 导入。
 
