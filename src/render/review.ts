@@ -164,6 +164,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const heatmap = buildYearHeatmap(ctx.store, heatmapYear);
     const weeklyTrend = ctx.analyticsSnapshot.weekly;
     const monthlyTrend = ctx.analyticsSnapshot.monthly;
+    const dailyTrend = ctx.analyticsSnapshot.daily;
+    const yearlyTrend = ctx.analyticsSnapshot.yearly;
     const trendCard = (series: typeof weeklyTrend, chart: string) => {
         const stats = summarizeTrend(series);
         const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";
@@ -267,7 +269,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
                 <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
             </details>
-            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}</div>`)}
+            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
             ${fold("projects", `${t("review.foldProjects")} ${countBadge(summary.items.length)}`, `<section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>`)}
             ${fold("log", `${t("review.foldLog")} · ${ctx.store.events.length} 条`, renderCheckinLogView(ctx.store.events, ctx.store.items))}
             ${groupBars ? fold("balance", `${t("review.balanceTitle")} ${countBadge(groupBars.match(/lc-checkin__balance-row/g)?.length || 0)}`, `<section class="lc-checkin__balance" aria-label="${t("review.balanceTitle")}">${groupBars}</section>`) : ""}
