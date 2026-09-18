@@ -9947,3 +9947,37 @@ details:not([open]) > :not(summary) { display: none !important; }
     accent-color: var(--lc-checkin-accent);
     margin: 0;
 }
+
+/* T-1221 跳过态（D-216）：中性视觉——不算热度也不算失败，双主题 muted 复用。 */
+.lc-yearheatmap .is-skip {
+    fill: var(--lc-checkin-muted-surface);
+    stroke: var(--lc-checkin-muted);
+    stroke-width: 1;
+    stroke-dasharray: 2 1.5;
+}
+.lc-checkin__yearheatmap-legend .is-skip {
+    border-style: dashed;
+    border-color: var(--lc-checkin-muted);
+}
+.lc-checkin__calendar-day.is-skip {
+    background: var(--lc-checkin-muted-surface);
+    border: 1px dashed var(--lc-checkin-muted);
+    color: var(--lc-checkin-muted);
+}
+.lc-checkin__calendar-day .is-skip-mark {
+    color: var(--lc-checkin-muted);
+    font-weight: 400;
+}
+.lc-checkin__history-event.is-skip .lc-checkin__history-event-main strong {
+    color: var(--lc-checkin-muted);
+}
+.lc-checkin__history-skip-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px dashed var(--lc-checkin-muted);
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    line-height: 1.4;
+}

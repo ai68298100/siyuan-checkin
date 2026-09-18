@@ -2398,8 +2398,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1220 跳过事件模型与存储迁移（先记 DECISIONS：推荐 CheckinEvent.kind?: "checkin"|"skip"）
   - 验收：迁移幂等、损坏输入隔离、tombstone 兼容 skip、api-contract 同步、恢复点可回滚 v2 表达。
   - 状态：done（决策 D-216 已记录：`CheckinEvent.kind?: "checkin"|"skip"` 可选字段，缺省不物化（避免 10 万级存储膨胀且符合 D-157 指纹纪律）；`STORE_VERSION` 2→3 由 normalizeStore 读入重打版本号的既有机制自动迁移，v2 数据无损升级；旧插件读 v3 逐字段构造自然丢弃 kind（已记录的跨版本限制，恢复点可回滚）；新增唯一判定入口 `model.isSkipEvent()`；墓碑以 eventId 标识天然兼容；生态写入边界不变（recordEvent 五字段 payload 不含 kind，跳过是用户显式行为）。`export.ts` 备份版本警告更新为接受 v2/v3；`insight-records.ts` 改用 STORE_VERSION 常量修复类型错误。验证：新增 `tests/skip-model.test.cjs`（词表规约/幂等/损坏隔离/v2 升级/墓碑/指纹稳定）纳入 test:ui；model.test.cjs 两处版本断言按 D-216 更新；`pnpm run check`、完整 `test:quality` exit 0）
-- [ ] T-1221 跳过统计口径
+- [x] T-1221 跳过统计口径
   - 验收：streak 跳过日中性不断链；完成率分母剔除跳过；热力图中性色双主题 4.5:1；日志显示跳过行；quota 跳过不吃配额。
+  - 状态：done（计算层口径，不改写历史事件：①model 索引新增 `skipDatesByItem` + `getSkipDatesForItem`；②`getProgress`/`evaluateItemRule` 全部排除 skip 事件——跳过日不完成、quota 不吃量（单一代码路径，isComplete 自动跟随）；③`computeEventStreaks` 重写为「真实完成日 + 跳过日中性桥接」遍历（锚点含跳过、纯跳过链为 0、真实空缺仍断链、36,500 步护栏；无跳过数据行为与旧版完全一致）；④analytics `summarizeItem` 跳过日剔除完成率分母（同日有真实完成则按完成计）；⑤charts 年度热力图仅跳过日标 `skip:true` → `is-skip` 中性虚线格（含图例）；⑥回顾页月历仅跳过日中性 `is-skip` + ✕ 标记 + aria 跳过计数；日志跳过行显示「跳过」徽章（备注=原因可见）且不进当日聚合合计。i18n 3 键；样式全部 muted 语义 token。验证：新增 `tests/skip-semantics.test.cjs` 纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0，100k 索引/投影基线持平）
 - [ ] T-1222 跳过交互
   - 验收：Today 卡上下文菜单（复用 T-1170 通道）可跳过、可写原因、可撤销；批量模式支持跳过。
 - [ ] T-1223 宽容提醒二期与反内疚建议

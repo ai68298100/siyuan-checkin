@@ -1,6 +1,6 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, getEventsForDate, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventsForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
@@ -61,18 +61,22 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             const key = dateKey(date);
             const scheduled = activeItems.filter((item) => isItemAvailableOnDate(item, date) && isScheduledToday(item, date));
             const completed = scheduled.filter((item) => isComplete(ctx.store, item, date)).length;
-            const eventCount = getEventsForDate(ctx.store, key).length;
+            const dayEvents = getEventsForDate(ctx.store, key);
+            const skipCount = dayEvents.filter((event) => isSkipEvent(event)).length;
+            const eventCount = dayEvents.length - skipCount;
+            /* T-1221：仅跳过（无任何真实完成）的日子用中性色，不算热度也不算空白。 */
+            const skipOnly = skipCount > 0 && completed === 0 && eventCount === 0;
             const rate = scheduled.length ? completed / scheduled.length : 0;
             const level = rate >= 1 ? 4 : rate >= .66 ? 3 : rate > 0 ? 2 : eventCount ? 1 : 0;
             const future = key > today;
             const classes = [
                 "lc-checkin__calendar-day",
-                `is-level-${level}`,
+                skipOnly ? "is-skip" : `is-level-${level}`,
                 ctx.selectedHistoryDate === key ? "is-selected" : "",
                 key === today ? "is-today" : "",
             ].filter(Boolean).join(" ");
-            const label = t("review.calendarDayAria", {date: formatHistoryDate(key), done: completed, total: scheduled.length, events: eventCount});
-            return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${eventCount ? `<b>${eventCount > 999 ? "999+" : eventCount}</b>` : ""}</button>`;
+            const label = t("review.calendarDayAria", {date: formatHistoryDate(key), done: completed, total: scheduled.length, events: eventCount}) + (skipCount ? ` · ${t("review.calendarSkipAria", {n: skipCount})}` : "");
+            return `<button class="${classes}" type="button" data-history-date="${key}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" ${future ? "disabled" : ""}><span>${index + 1}</span>${skipCount && !eventCount ? `<b class="is-skip-mark">✕</b>` : eventCount ? `<b>${eventCount > 999 ? "999+" : eventCount}</b>` : ""}</button>`;
         }),
     ].join("");
     const selectedEvents = getEventsForDate(ctx.store, ctx.selectedHistoryDate);
@@ -88,6 +92,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const filteredEvents = filteredRecords.map((record) => record.event);
     const totals = new Map<string, {name: string; unit: string; value: number}>();
     filteredEvents.forEach((event) => {
+        if (isSkipEvent(event)) return;
         const key = `${event.itemId}\u0000${event.unit}`;
         const current = totals.get(key);
         totals.set(key, {
@@ -104,7 +109,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const noteEditor = ctx.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">${t("review.saveNote")}</button>` : "";
         const photoThumb = event.attachment ? `<img class="lc-checkin__history-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
         const sourceLabel = t(`source.${event.source}`) || event.source;
-        return `<div class="lc-checkin__history-event">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}</span>${note}${noteEditor}</div><span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span><div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
+        /* T-1221：跳过行显示中性徽章而非数值列。 */
+        const skipBadge = isSkipEvent(event) ? `<span class="lc-checkin__history-skip-badge">${escapeHtml(t("review.skipBadge"))}</span>` : "";
+        const valueLabel = isSkipEvent(event) ? "" : `<span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span>`;
+        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}${skipBadge}</span>${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
     };
     const eventRows = filteredRecords.map(renderEvent);
     const eventDetails = filteredRecords.length ? `<details class="lc-checkin__history-details"><summary><span>${t("review.historyDetails")}</span><em>${t("review.recordsCount", {n: filteredRecords.length})}</em><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__history-events">${eventRows.slice(0, 5).join("")}${eventRows.length > 5 ? `<div data-history-extra hidden>${eventRows.slice(5).join("")}</div><button class="lc-checkin__text-button lc-checkin__history-expand" type="button" data-history-expand>${t("review.historyExpand", {n: eventRows.length - 5})}</button>` : ""}</div></details>` : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
@@ -281,7 +289,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             <details class="lc-checkin__year-heatmap" aria-label="${t("review.heatmapTitle")}">
                 <summary><span class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></span>${t("review.heatmapTitle")}</summary>
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
-                <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
+                <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em><i class="is-skip" aria-hidden="true"></i><em>${t("review.heatmapSkip")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
             </details>
             ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
             ${compareHasItems ? fold("compare", `${t("review.compareTitle")} ${countBadge(comparison!.items.length)}`, compareFoldBody) : ""}

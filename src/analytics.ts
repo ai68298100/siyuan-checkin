@@ -1,6 +1,6 @@
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
-import {dateKey, getEventsInDateRange, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+import {dateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
 const EVENT_RANGE_LIMITS = {maxDays: 366, maxPoints: 366, maxEvents: 5000} as const;
 
 export type SummaryRange = "day" | "week" | "month";
@@ -219,10 +219,15 @@ function dateFromKey(value: string): Date | undefined {
 
 function summarizeItem(store: CheckinStore, item: CheckinItem, bounds: DateRange, events: CheckinEvent[]): ItemSummary {
     const quota = summarizeQuota(store, item, bounds, events);
+    const skipDates = getSkipDatesForItem(store, item.id);
     let scheduledDays = 0;
     let completedDays = 0;
     for (let day = new Date(bounds.start); day < bounds.end && !quota; day.setDate(day.getDate() + 1)) {
         if (!isItemAvailableOnDate(item, day) || !isScheduledToday(item, day)) {
+            continue;
+        }
+        /* T-1221：跳过日不计入完成率分母（跳过 ≠ 缺席）；若同日也有真实完成则按完成计。 */
+        if (skipDates.has(dateKey(day)) && !isComplete(store, item, day)) {
             continue;
         }
         scheduledDays += 1;

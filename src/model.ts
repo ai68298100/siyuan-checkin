@@ -410,6 +410,8 @@ export function isItemAvailableOnDate(item: CheckinItem, date: Date): boolean {
 interface StoreEventIndex {
     byItem: Map<string, CheckinEvent[]>;
     eventDatesByItem: Map<string, Set<string>>;
+    /** D-216：每个项目存在跳过事件的本地日期集（T-1221 统计口径使用）。 */
+    skipDatesByItem: Map<string, Set<string>>;
     byItemDate: Map<string, CheckinEvent[]>;
     byDate: Map<string, CheckinEvent[]>;
     byId: Map<string, CheckinEvent>;
@@ -428,6 +430,7 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
         index = {
             byItem: new Map(),
             eventDatesByItem: new Map(),
+            skipDatesByItem: new Map(),
             byItemDate: new Map(),
             byDate: new Map(),
             byId: new Map(),
@@ -447,6 +450,11 @@ export function getStoreIndex(store: CheckinStore): StoreEventIndex {
             const itemDates = index.eventDatesByItem.get(event.itemId);
             if (itemDates) itemDates.add(event.localDate);
             else index.eventDatesByItem.set(event.itemId, new Set([event.localDate]));
+            if (isSkipEvent(event)) {
+                const skipDates = index.skipDatesByItem.get(event.itemId);
+                if (skipDates) skipDates.add(event.localDate);
+                else index.skipDatesByItem.set(event.itemId, new Set([event.localDate]));
+            }
             const day = getEventDateKey(event);
             const itemDateKey = event.itemId + ":" + day;
             const itemDateEvents = index.byItemDate.get(itemDateKey);
@@ -480,6 +488,11 @@ export function getEventDatesForItem(store: CheckinStore, itemId: string): Reado
     return getStoreIndex(store).eventDatesByItem.get(itemId) || EMPTY_EVENT_DATES;
 }
 
+/** D-216/T-1221：项目存在跳过事件的本地日期集（跳过态统计口径的唯一来源）。 */
+export function getSkipDatesForItem(store: CheckinStore, itemId: string): ReadonlySet<string> {
+    return getStoreIndex(store).skipDatesByItem.get(itemId) || EMPTY_EVENT_DATES;
+}
+
 export function getEventsForDate(store: CheckinStore, date: Date | string = new Date()): CheckinEvent[] {
     const key = typeof date === "string" ? date : dateKey(date);
     return getStoreIndex(store).byDate.get(key) || EMPTY_EVENTS;
@@ -511,19 +524,28 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             continue;
         }
         const days = getEventDatesForItem(store, item.id);
-        if (!days.size) {
+        const skipDays = getSkipDatesForItem(store, item.id);
+        if (!days.size && !skipDays.size) {
             streaks.set(item.id, 0);
             continue;
         }
-        const startKey = days.has(today) ? today : yesterday;
-        if (!days.has(startKey)) {
+        /* T-1221：跳过日中性——不算完成也不断链，作为桥接日穿越。
+           eventDates 含跳过日，真实完成日需剔除跳过日（同日并存按完成计）。
+           锚点从「今天有完成或跳过」开始；全部由跳过组成的链条 streak 为 0。 */
+        const realDays = new Set([...days].filter((key) => !skipDays.has(key)));
+        const startKey = realDays.has(today) || skipDays.has(today) ? today : yesterday;
+        if (!realDays.has(startKey) && !skipDays.has(startKey)) {
             streaks.set(item.id, 0);
             continue;
         }
         let streak = 0;
+        let guard = 0;
         const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)), 12);
-        while (days.has(dateKey(check))) {
-            streak += 1;
+        while (guard < 36500) {
+            guard += 1;
+            const key = dateKey(check);
+            if (realDays.has(key)) streak += 1;
+            else if (!skipDays.has(key)) break;
             check.setDate(check.getDate() - 1);
         }
         streaks.set(item.id, streak);
@@ -565,15 +587,16 @@ const EMPTY_EVENT_DATES: ReadonlySet<string> = new Set<string>();
 
 export function getProgress(store: CheckinStore, item: CheckinItem, date = new Date()): number {
     const revision = getItemRevisionForDate(item, date);
+    /* D-216/T-1221：跳过事件不贡献进度——跳过日不完成、配额不吃量（计算层口径）。 */
     if (revision.schedule.type === "quota") {
-        return evaluateQuotaSchedule(revision.schedule, getEventsForItem(store, item.id), item.id, date, revision.schedule.quota?.countMode === "value" ? revision.unit : undefined)?.progress || 0;
+        return evaluateQuotaSchedule(revision.schedule, getEventsForItem(store, item.id).filter((event) => !isSkipEvent(event)), item.id, date, revision.schedule.quota?.countMode === "value" ? revision.unit : undefined)?.progress || 0;
     }
     const unit = revision.unit;
-    return getEventsForDay(store, item.id, date).filter((event) => event.unit === unit).reduce((total, event) => total + event.value, 0);
+    return getEventsForDay(store, item.id, date).filter((event) => event.unit === unit && !isSkipEvent(event)).reduce((total, event) => total + event.value, 0);
 }
 
 export function evaluateItemRule(store: CheckinStore, item: CheckinItem, date = new Date()): RuleProgress {
-    return evaluateRule(item, getEventsForItem(store, item.id), date);
+    return evaluateRule(item, getEventsForItem(store, item.id).filter((event) => !isSkipEvent(event)), date);
 }
 
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {

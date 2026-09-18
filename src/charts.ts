@@ -1,7 +1,7 @@
 /* 7.0 趋势图表：纯函数聚合 + 零依赖 SVG 渲染。
    所有统计可从事件与项目配置推导，不引入第三方图表库。 */
 
-import {isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "./model";
+import {isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, dateKey} from "./model";
 import type {CheckinStore} from "./types";
 
 export interface TrendPoint {
@@ -270,6 +270,8 @@ export interface YearHeatmapDay {
     date: string;
     count: number;
     level: number;
+    /** T-1221：当日只有跳过记录（无真实完成）时为 true，渲染为中性色。 */
+    skip?: boolean;
 }
 
 export interface YearHeatmap {
@@ -282,14 +284,20 @@ export interface YearHeatmap {
 export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap {
     const prefix = `${year}-`;
     const counts = new Map<string, number>();
+    const skips = new Set<string>();
     let total = 0;
     let max = 0;
     for (const event of store.events) {
         if (!event.localDate.startsWith(prefix)) continue;
+        total += 1;
+        /* T-1221：跳过记录不参与热度层级；仅跳过的日子标记为中性 skip 格。 */
+        if (isSkipEvent(event)) {
+            skips.add(event.localDate);
+            continue;
+        }
         const count = (counts.get(event.localDate) || 0) + 1;
         counts.set(event.localDate, count);
         max = Math.max(max, count);
-        total += 1;
     }
     const days: YearHeatmapDay[] = [];
     const cursor = new Date(year, 0, 1);
@@ -298,7 +306,7 @@ export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap
         const count = counts.get(key) || 0;
         let level = 0;
         if (count > 0) level = count >= Math.max(6, Math.ceil(max * 0.75)) ? 4 : count >= Math.max(3, Math.ceil(max * 0.5)) ? 3 : count >= 2 ? 2 : 1;
-        days.push({date: key, count, level});
+        days.push({date: key, count, level, ...(level === 0 && skips.has(key) ? {skip: true} : {})});
         cursor.setDate(cursor.getDate() + 1);
     }
     return {year, days, max, total};
@@ -323,12 +331,13 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
     const labelTop = 18;
     const width = labelLeft + weeks.length * (cell + gap) + gap;
     const height = labelTop + 7 * (cell + gap) + gap;
-    const levelClass = (level: number): string => level <= 0 ? "is-empty" : `is-level-${level}`;
+    const levelClass = (level: number, skip?: boolean): string => skip ? "is-skip" : level <= 0 ? "is-empty" : `is-level-${level}`;
     const cells = weeks.map((week, weekIndex) => week.map((day, dayIndex) => {
         if (day.count < 0) return "";
         const x = labelLeft + gap + weekIndex * (cell + gap);
         const y = labelTop + gap + dayIndex * (cell + gap);
-        return `<rect class="${levelClass(day.level)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${day.date}：${day.count} 条记录</title></rect>`;
+        const title = day.skip ? `${day.date}：跳过` : `${day.date}：${day.count} 条记录`;
+        return `<rect class="${levelClass(day.level, day.skip)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${title}</title></rect>`;
     }).join("")).join("");
     const monthLabels = Array.from({length: 12}, (_, month) => {
         const first = new Date(heatmap.year, month, 1);
