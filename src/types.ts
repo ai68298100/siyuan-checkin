@@ -92,6 +92,8 @@ export interface CheckinEvent {
     /** Optional photo attachment as a data URL (\u2264 ~500KB binary). */
     attachment?: string;
     externalRef?: string;
+    /** D-216/T-1220：跳过是一等记录态。缺省与 "checkin" 同义（历史数据零迁移）。 */
+    kind?: "checkin" | "skip";
 }
 
 export interface CheckinEventTombstone {
@@ -103,7 +105,7 @@ export interface CheckinEventTombstone {
 }
 
 export interface CheckinStore {
-    version: 2;
+    version: 3;
     items: CheckinItem[];
     events: CheckinEvent[];
     eventTombstones: CheckinEventTombstone[];

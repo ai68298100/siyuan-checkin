@@ -2395,8 +2395,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v16.2 跳过态（唯一 store 结构扩展，version 2→3）
 
-- [ ] T-1220 跳过事件模型与迁移（先记 DECISIONS：推荐 CheckinEvent.kind?: "checkin"|"skip"）
+- [x] T-1220 跳过事件模型与存储迁移（先记 DECISIONS：推荐 CheckinEvent.kind?: "checkin"|"skip"）
   - 验收：迁移幂等、损坏输入隔离、tombstone 兼容 skip、api-contract 同步、恢复点可回滚 v2 表达。
+  - 状态：done（决策 D-216 已记录：`CheckinEvent.kind?: "checkin"|"skip"` 可选字段，缺省不物化（避免 10 万级存储膨胀且符合 D-157 指纹纪律）；`STORE_VERSION` 2→3 由 normalizeStore 读入重打版本号的既有机制自动迁移，v2 数据无损升级；旧插件读 v3 逐字段构造自然丢弃 kind（已记录的跨版本限制，恢复点可回滚）；新增唯一判定入口 `model.isSkipEvent()`；墓碑以 eventId 标识天然兼容；生态写入边界不变（recordEvent 五字段 payload 不含 kind，跳过是用户显式行为）。`export.ts` 备份版本警告更新为接受 v2/v3；`insight-records.ts` 改用 STORE_VERSION 常量修复类型错误。验证：新增 `tests/skip-model.test.cjs`（词表规约/幂等/损坏隔离/v2 升级/墓碑/指纹稳定）纳入 test:ui；model.test.cjs 两处版本断言按 D-216 更新；`pnpm run check`、完整 `test:quality` exit 0）
 - [ ] T-1221 跳过统计口径
   - 验收：streak 跳过日中性不断链；完成率分母剔除跳过；热力图中性色双主题 4.5:1；日志显示跳过行；quota 跳过不吃配额。
 - [ ] T-1222 跳过交互

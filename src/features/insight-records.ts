@@ -1,4 +1,5 @@
 import {serializeCsv} from "../export";
+import {STORE_VERSION} from "../model";
 import type {CheckinEvent, CheckinItem} from "../types";
 
 export interface InsightRecordOptions {
@@ -33,7 +34,7 @@ export function selectInsightRecords(records: readonly CheckinEvent[], options: 
 
 export function serializeInsightRecordsCsv(item: CheckinItem, records: readonly CheckinEvent[]): string {
     return serializeCsv({
-        version: 2,
+        version: STORE_VERSION,
         items: [{...item, id: spreadsheetText(item.id), name: spreadsheetText(item.name)}],
         events: records.map((record) => ({
             ...record,

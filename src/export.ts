@@ -121,7 +121,8 @@ export function parseJsonBackup(text: string, normalize: (value: unknown) => Che
     const candidate = parsed as Record<string, unknown>;
     if (!Array.isArray(candidate.items)) warnings.push("缺少项目列表，已按空列表处理");
     if (!Array.isArray(candidate.events)) warnings.push("缺少记录列表，已按空列表处理");
-    if (candidate.version !== 2) warnings.push(`备份数据版本 ${String(candidate.version ?? "未知")} 将自动迁移到当前版本`);
+    /* D-216：v3 起为当前版本；v2 及更早的备份自动迁移到当前版本。 */
+    if (candidate.version !== 2 && candidate.version !== 3) warnings.push(`备份数据版本 ${String(candidate.version ?? "未知")} 将自动迁移到当前版本`);
     const store = normalize(parsed);
     return {store, repaired: JSON.stringify(parsed) !== JSON.stringify(store), summary: summarizeJsonBackup(store), warnings};
 }

@@ -197,7 +197,7 @@ const normalized = model.normalizeStore({
     items: [{...item, target: "bad"}, {...item, name: "重复项目"}, {id: "invalid", name: ""}],
     events: [event, {...event}, {...event, id: "orphan", itemId: "missing"}, {...event, id: "negative", value: -1}, {...event, id: "bad-date", occurredAt: "not-a-date"}],
 });
-assert.equal(normalized.version, 2);
+assert.equal(normalized.version, 3, "normalization always stamps the current schema version (D-216)");
 assert.equal(normalized.items.length, 1);
 assert.equal(normalized.items[0].target, 1);
 assert.equal(normalized.items[0].updatedAt, normalized.items[0].createdAt);
@@ -309,7 +309,7 @@ delete legacyEvent.id;
 const legacyStore = {version: 1, items: [{...item, updatedAt: undefined}], events: [legacyEvent]};
 const migratedLegacyA = model.normalizeStore(legacyStore);
 const migratedLegacyB = model.normalizeStore(legacyStore);
-assert.equal(migratedLegacyA.version, 2);
+assert.equal(migratedLegacyA.version, 3, "legacy v1 stores migrate to the current schema (D-216)");
 assert.equal(migratedLegacyA.items[0].updatedAt, item.createdAt);
 assert.equal(migratedLegacyA.events[0].id, migratedLegacyB.events[0].id);
 assert.match(migratedLegacyA.events[0].id, /^event-legacy-/);

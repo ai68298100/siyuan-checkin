@@ -856,3 +856,13 @@
 
 - 复盘对比先消费已经构建好的 `SummaryContext`，不在比较层重新扫描 store，确保指标沿用现有日期、修订和配额口径。
 - 比较结果只输出范围元数据、标量 delta 和逐项目标并集；缺失侧补零，输入对象不被修改，为后续 UI/周报/预测复用提供稳定基线。
+
+## D-216：跳过态以可选事件字段表达，store 版本 2→3（2026-09-19）
+
+- `CheckinEvent` 新增可选 `kind?: "checkin" | "skip"`；缺省（undefined）与 `"checkin"` 同义，历史数据零迁移、语义不变。不采用「value=0 的完成」也不复用 `source`——跳过不是完成值，来源（手动/番茄/导入/API）与记录形态正交。
+- `normalizeEvent` 只接受精确的 `"skip"`/`"checkin"`，其他值一律规约为 undefined（不物化缺省值）：既满足 D-157 指纹纪律，又避免 10 万级事件每条多存 `"kind":"checkin"` 的存储膨胀。统一判断入口为 `isSkipEvent(event)`（`event.kind === "skip"`），禁止散布字符串比较。
+- `STORE_VERSION` 2→3：normalizeStore 在读入时本就重打当前版本号，迁移由「加载→归一→下次持久化」自动完成，不做独立迁移器；v2 数据升级无损（全部缺省 kind 等价于 checkin）。
+- 前向兼容（旧插件读 v3 数据）：旧版本 normalizeEvent 逐字段构造事件，自然丢弃 kind——旧版本回写会使跳过标记丢失，属已记录的跨版本限制，恢复点可回滚；不做双向写兼容。
+- 墓碑兼容：`CheckinEventTombstone` 以 eventId 标识，skip 事件删除走同一墓碑通道，无结构变化。
+- 智能体 API 边界（D-211 五字段写入 payload）不变：生态不能写入跳过（跳过是用户显式行为），`recordEvent` 返回的防御性事件副本携带 kind 只读字段。
+- SKIP 的统计口径（streak 中性、完成率分母剔除、热力图中性色、配额不吃量）在计算层落地（T-1221），不改写任何历史事件。

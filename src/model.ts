@@ -5,7 +5,9 @@ import {evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RulePr
 
 export {getItemRevisionForDate} from "./rules";
 
-export const STORE_VERSION = 2 as const;
+/* D-216：v3 引入跳过事件（CheckinEvent.kind）。normalizeStore 读入时重打当前
+   版本号，v2 数据在「加载→归一→下次持久化」中自动升级，无需独立迁移器。 */
+export const STORE_VERSION = 3 as const;
 export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
 export const STORE_SNAPSHOT_HISTORY_FORMAT = "siyuan-checkin-snapshot-history" as const;
 
@@ -483,6 +485,11 @@ export function getEventsForDate(store: CheckinStore, date: Date | string = new 
     return getStoreIndex(store).byDate.get(key) || EMPTY_EVENTS;
 }
 
+/** D-216：跳过判定的唯一入口——kind 缺省与 "checkin" 同义，历史数据不受影响。 */
+export function isSkipEvent(event: Pick<CheckinEvent, "kind"> | undefined): boolean {
+    return event?.kind === "skip";
+}
+
 export function getEventById(store: CheckinStore, eventId: string | undefined): CheckinEvent | undefined {
     return eventId ? getStoreIndex(store).byId.get(eventId) : undefined;
 }
@@ -773,6 +780,8 @@ function normalizeEvent(value: unknown): CheckinEvent | undefined {
         note: typeof value.note === "string" ? value.note : undefined,
         externalRef: typeof value.externalRef === "string" ? value.externalRef : undefined,
         attachment: typeof value.attachment === "string" && value.attachment.startsWith("data:image/") && value.attachment.length <= 700000 ? value.attachment : undefined,
+        /* D-216：kind 只接受精确词表，缺省不物化（checkin 语义由 isSkipEvent 统一判定）。 */
+        kind: value.kind === "skip" || value.kind === "checkin" ? value.kind : undefined,
     };
     const legacyIdentity = isValidDateKey(value.localDate) ? eventWithoutId : {...eventWithoutId, localDate: undefined};
     return {
