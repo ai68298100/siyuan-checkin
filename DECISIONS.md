@@ -751,3 +751,8 @@
 
 - in-flight map 使用请求日期区间与 `summaryOptions` 的序列化组合键；只有完全相同的读取才共享 Promise。
 - 不同区间或选项允许并行读取，避免性能优化改变调用方请求的语义范围。
+
+## D-195：写入单飞按 canonical externalRef 隔离（2026-09-18）
+
+- 同一 `taskhorizon:<blockId>:<localDate>` 的并发写入共享 Promise，确保重复回调不会制造多次 transport 请求。
+- 不同 externalRef 使用独立 map 条目，保持多个任务完成事件的并行吞吐。

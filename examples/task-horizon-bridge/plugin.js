@@ -32,6 +32,7 @@
         let started = false;
         let startInFlight;
         const pending = new Map();
+        const recordInFlight = new Map();
         let retryInFlight;
         const refreshInFlight = new Map();
 
@@ -123,20 +124,30 @@
             return startPromise;
         };
 
-        const recordTaskCompletion = async ({blockId, localDate, itemId = targetItemId} = {}) => {
+        const recordTaskCompletion = ({blockId, localDate, itemId = targetItemId} = {}) => {
             const externalRef = canonicalExternalRef(blockId, localDate);
-            if (!externalRef || !itemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return undefined;
+            if (!externalRef || !itemId || stopped || !checkin || typeof checkin.recordEvent !== "function") return Promise.resolve(undefined);
+            const existing = recordInFlight.get(externalRef);
+            if (existing) return existing;
             const payload = {itemId, value: 1, unit: "个", source: "api", externalRef};
-            try {
-                const result = await checkin.recordEvent(payload);
-                // A returned event means new or idempotent-existing; undefined means rejected.
-                pending.delete(externalRef);
-                return result;
-            } catch (error) {
-                pending.set(externalRef, payload);
-                reportError("record", error);
-                return undefined;
-            }
+            const run = (async () => {
+                try {
+                    const result = await checkin.recordEvent(payload);
+                    // A returned event means new or idempotent-existing; undefined means rejected.
+                    pending.delete(externalRef);
+                    return result;
+                } catch (error) {
+                    pending.set(externalRef, payload);
+                    reportError("record", error);
+                    return undefined;
+                }
+            })();
+            let recordPromise;
+            recordPromise = run.finally(() => {
+                if (recordInFlight.get(externalRef) === recordPromise) recordInFlight.delete(externalRef);
+            });
+            recordInFlight.set(externalRef, recordPromise);
+            return recordPromise;
         };
 
         const retryPending = () => {

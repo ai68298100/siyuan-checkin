@@ -36,3 +36,5 @@ Refresh calls are single-flight as well, so an event burst performs one summary
 read and shares its result with concurrent callers. The single-flight key
 includes the requested range and summary options, so different ranges never
 receive a mismatched cached result.
+Writes for the same canonical external reference are also single-flight;
+different tasks or dates can still write concurrently.

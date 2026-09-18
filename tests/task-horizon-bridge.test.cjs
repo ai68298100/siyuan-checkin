@@ -99,6 +99,19 @@ const checkin = {
     const [retryA, retryB] = await Promise.all([concurrentBridge.retryPending(), concurrentBridge.retryPending()]);
     assert.deepEqual(retryA, retryB, "overlapping retries share one result");
     assert.equal(concurrentWrites, 2, "single-flight retry performs one transport attempt");
+    let directWrites = 0;
+    const directCheckin = {...checkin, recordEvent: async (input) => {
+        directWrites += 1;
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        return {id: "event-direct", ...input};
+    }};
+    const directBridge = createTaskHorizonBridge({checkin: directCheckin});
+    const [directA, directB] = await Promise.all([
+        directBridge.recordTaskCompletion({blockId: "same-block", localDate: "2026-09-18", itemId: "task-item"}),
+        directBridge.recordTaskCompletion({blockId: "same-block", localDate: "2026-09-18", itemId: "task-item"}),
+    ]);
+    assert.deepEqual(directA, directB, "overlapping writes share one result");
+    assert.equal(directWrites, 1, "same externalRef performs one transport write");
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);

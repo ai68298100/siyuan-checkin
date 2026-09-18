@@ -2202,6 +2202,9 @@
 - [x] T-1194 Task Horizon 摘要刷新键隔离（P1）
   - 验收：相同日期区间/选项的刷新请求合并；不同区间或摘要选项独立读取，不得把一个区间的结果返回给另一个调用方。
   - 状态：done（in-flight map 以请求区间与选项序列化键隔离，fixture 覆盖同键合并与跨区间并行）
+- [x] T-1195 Task Horizon externalRef 写入单飞（P1）
+  - 验收：同一 canonical externalRef 的并发 `recordTaskCompletion()` 只发起一次 transport 写入并共享结果；不同 externalRef 保持可并行。
+  - 状态：done（新增按 externalRef 的 in-flight map，fixture 覆盖并发重复写入）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
