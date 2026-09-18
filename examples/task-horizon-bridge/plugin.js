@@ -33,6 +33,7 @@
         let startInFlight;
         const pending = new Map();
         let retryInFlight;
+        let refreshInFlight;
 
         const reportError = (phase, error) => {
             if (typeof options.onError !== "function") return;
@@ -46,13 +47,21 @@
             unsubscribe = undefined;
         };
 
-        const refresh = async (range) => {
-            if (stopped || !checkin || typeof checkin.getEventRangeSummary !== "function") return undefined;
+        const refresh = (range) => {
+            if (refreshInFlight) return refreshInFlight;
+            if (stopped || !checkin || typeof checkin.getEventRangeSummary !== "function") return Promise.resolve(undefined);
             const requested = range || options.range;
-            if (!requested) return undefined;
-            const summary = checkin.getEventRangeSummary(requested, options.summaryOptions);
-            if (typeof options.onRefresh === "function") await options.onRefresh(summary);
-            return summary;
+            if (!requested) return Promise.resolve(undefined);
+            const run = (async () => {
+                const summary = await checkin.getEventRangeSummary(requested, options.summaryOptions);
+                if (typeof options.onRefresh === "function") await options.onRefresh(summary);
+                return summary;
+            })();
+            let refreshPromise;
+            refreshInFlight = refreshPromise = run.finally(() => {
+                if (refreshInFlight === refreshPromise) refreshInFlight = undefined;
+            });
+            return refreshPromise;
         };
 
         const start = () => {

@@ -32,3 +32,5 @@ counted as a success. Overlapping `retryPending()` calls share one in-flight
 attempt and result, preventing duplicate transport writes from concurrent
 refresh handlers. `start()` is likewise single-flight and idempotent; calling
 `stop()` while readiness is pending prevents late subscription or refresh work.
+Refresh calls are single-flight as well, so an event burst performs one summary
+read and shares its result with concurrent callers.

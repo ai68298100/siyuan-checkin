@@ -65,7 +65,9 @@ const checkin = {
         listener({type});
     }
     await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(refreshCount, 5, "all manifest refresh events trigger a summary refresh");
+    assert.equal(refreshCount, 3, "refresh bursts coalesce across manifest events");
+    const [refreshA, refreshB] = await Promise.all([bridge.refresh(), bridge.refresh()]);
+    assert.deepEqual(refreshA, refreshB, "overlapping refresh calls share one read");
     const recorded = await bridge.recordTaskCompletion({blockId: "block-1", localDate: "2026-09-18"});
     assert.equal(recorded.externalRef, "taskhorizon:block-1:2026-09-18");
     failNextRecord = true;

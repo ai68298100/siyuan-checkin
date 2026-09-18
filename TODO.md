@@ -2196,6 +2196,9 @@
 - [x] T-1192 Task Horizon bridge 启动生命周期单飞（P1）
   - 验收：并发/重复 `start()` 只等待同一初始化结果并注册一次订阅；`stop()` 与异步就绪探测交错时不得晚到订阅或刷新。
   - 状态：done（新增 start promise 复用、幂等启动、停止竞态检查与 subscribe 异常诊断，fixture 覆盖并发启动和 stop-before-ready）
+- [x] T-1193 Task Horizon 摘要刷新单飞（P1）
+  - 验收：短时间多条刷新事件只产生一次进行中的摘要读取；并发显式 `refresh()` 共享同一结果，读取异常仍可诊断且后续可重试。
+  - 状态：done（refresh promise 复用并在 settle 后释放；事件风暴与并发调用 fixture 已覆盖）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
