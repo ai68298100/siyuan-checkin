@@ -1,4 +1,4 @@
-import {dateKey, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
 
@@ -23,6 +23,8 @@ export interface HabitDayObservation {
     available: boolean;
     scheduled: boolean;
     closed: boolean;
+    /** T-1223：仅跳过（有跳过记录且无真实进度）的计划日；streak 中性处理。 */
+    skipped?: boolean;
     kind: CheckinKind;
     progress: number;
     target: number;
@@ -61,6 +63,8 @@ export interface HabitInsights {
     currentStreak: number;
     longestStreak: number;
     streakScope: "window";
+    /** T-1223：以最后一天收尾的连续跳过计划日数（0 = 最近没有连续跳过）。 */
+    recentSkipDays: number;
     weeklyTrend: HabitWeekTrend[];
     totalsByUnit: HabitUnitTotal[];
     records: CheckinEvent[];
@@ -79,6 +83,8 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
     const originalItem = store.items.find((candidate) => candidate.id === itemId);
     const item = originalItem ? cloneItem(originalItem) : null;
     const itemEvents = getEventsForItem(store, itemId);
+    /* T-1223：跳过事件不贡献进度（与 getProgress 的计算层口径一致）。 */
+    const activeItemEvents = itemEvents.filter((event) => !isSkipEvent(event));
     const eventsByDate = indexEvents(store, itemId, startDate, endDate);
     const days: HabitDayObservation[] = [];
 
@@ -91,14 +97,15 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const unit = revision?.unit || "";
         const quotaSchedule: CheckinSchedule | undefined = revision?.schedule.type === "quota" ? revision.schedule : undefined;
         const quotaProgress = quotaSchedule && item
-            ? evaluateQuotaSchedule(quotaSchedule, itemEvents, item.id, date, quotaSchedule.quota?.countMode === "value" ? unit : undefined)
+            ? evaluateQuotaSchedule(quotaSchedule, activeItemEvents, item.id, date, quotaSchedule.quota?.countMode === "value" ? unit : undefined)
             : undefined;
         const scheduled = Boolean(available && item && (quotaSchedule ? isQuotaOpportunityDay(quotaSchedule, date, endDate) : isScheduledToday(item, date)));
         const target = revision?.target || 1;
-        const progress = quotaProgress?.progress ?? sumValues(events.filter((event) => event.unit === unit).map((event) => event.value));
+        const progress = quotaProgress?.progress ?? sumValues(events.filter((event) => event.unit === unit && !isSkipEvent(event)).map((event) => event.value));
         const isToday = key === endDate;
         const effectiveTarget = quotaProgress?.quota ?? target;
         const complete = progress > 0 && effectiveTarget > 0 && atLeast(progress, effectiveTarget);
+        const skipped = scheduled && !complete && progress === 0 && events.some((event) => isSkipEvent(event));
         const status: HabitDayStatus = !available ? "unavailable"
             : !scheduled ? "off"
                 : complete ? "complete"
@@ -112,6 +119,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
             available,
             scheduled,
             closed: key < endDate,
+            ...(skipped ? {skipped: true} : {}),
             kind: revision?.kind || "binary",
             progress,
             target: effectiveTarget,
@@ -128,9 +136,18 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         if (day.status === "complete") {
             currentStreak += 1;
             longestStreak = Math.max(longestStreak, currentStreak);
-        } else if (day.closed) {
+        } else if (day.closed && !day.skipped) {
+            /* T-1223：跳过日中性——不断开洞察窗口内的当前连续。 */
             currentStreak = 0;
         }
+    }
+    /* 以窗口末尾收尾的连续跳过计划日数（供教练建议判断是否下调频率）。 */
+    let recentSkipDays = 0;
+    for (let index = days.length - 1; index >= 0; index -= 1) {
+        const day = days[index];
+        if (!day.scheduled) continue;
+        if (day.skipped) { recentSkipDays += 1; continue; }
+        break;
     }
     const records = days.flatMap((day) => day.events);
     return {
@@ -143,6 +160,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         currentStreak,
         longestStreak,
         streakScope: "window",
+        recentSkipDays,
         weeklyTrend: buildWeeklyTrend(days),
         totalsByUnit: unitTotals(records),
         records,

@@ -1,5 +1,5 @@
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
-import {dateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+import {dateKey, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
@@ -83,7 +83,10 @@ export function projectOverdueOccasionReminders(store: OccasionStore, date: Date
 
 export function projectCheckinReminders(store: CheckinStore, date: Date): ReminderEntry[] {
     const dueDate = dateKey(date);
+    /* T-1223：跳过日不再提醒——用户显式跳过（且未完成）的当日机会不进入提醒中心。 */
     const reminders = store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date))
+        .filter((item) => isComplete(store, item, date)
+            || !getEventsForDay(store, item.id, date).some((event) => isSkipEvent(event)))
         .map((item): ReminderEntry => ({
             id: `checkin:${item.id}:${dueDate}`,
             source: "checkin",

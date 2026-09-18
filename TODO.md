@@ -2404,8 +2404,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1222 跳过交互
   - 验收：Today 卡上下文菜单（复用 T-1170 通道）可跳过、可写原因、可撤销；批量模式支持跳过。
   - 状态：done（TodayBindingsHost 新增 skipItemToday/unskipItemToday/skipItems 三宿主边界；index.ts 实现：跳过创建 kind=skip、value=0 事件（仅当日排期且未完成项；已完成/未排期不提供；重复跳过幂等），取消跳过经 removeEvents 墓碑通道，批量跳过 appendEvents 单事务单持久化并逐项目广播 event-recorded + analytics-updated，恢复点由 persist 管线保证；卡片菜单在 skip/unskip 间切换（原因 window.prompt 可选，取消 prompt 无副作用，busy 守门复用）；批量工具栏新增「跳过」（runExclusiveAction 防重复提交，完成后退出批量并重渲染）；今日卡跳过态显示中性虚线「已跳过」标签（is-skip-tag），卡片仍可正常打卡（完成优先于跳过）。i18n 中英 8 键（today.skipToday/unskipToday/skipBadge/skipPrompt/bulkSkip + msg.skipDone/unskipDone/skipBatchDone）。验证：新增 `tests/skip-interaction.test.cjs` 纳入 test:ui；today-context-menu/today-view/cross-surface/i18n-hygiene 回归通过；`pnpm run check`、完整 `test:quality` exit 0、Edge 宽度走查 12/12 无溢出）
-- [ ] T-1223 宽容提醒二期与反内疚建议
+- [x] T-1223 宽容提醒二期与反内疚建议
   - 验收：跳过日不再提醒；连续跳过/强度下滑触发「下调排期」建议（只建议不自动改）；断链文案统一「重新开始」（中英 i18n）。
+  - 状态：done（①提醒投影：`projectCheckinReminders` 排除「跳过且未完成」的当日机会——跳过日不再提醒（已完成仍正常投影，T-1219 的待办视图语义不变）；②insights：进度排除 skip 事件、跳过日标 `skipped:true` 且**不重置窗口内当前连续**、新增 `recentSkipDays`（以窗口末尾收尾的连续跳过计划日数，完成即截断）；③coaching 新规则 `skip-streak`：recentSkipDays≥2 → 「连续跳过了 N 天」attention 建议——改弹性配额/调低目标，明确告知跳过不断链不计完成率，只建议不自动改排期；④反内疚文案：洞察页 currentStreak=0 且有历史最佳时显示「已重新开始：跳过和中断不会清掉你的记录。」（中英 i18n insights.streakRestart，role=note，muted 样式）。验证：新增 `tests/skip-tolerance.test.cjs` 纳入 test:ui；reminder/coaching 全系回归通过；`pnpm run check`、完整 `test:quality` exit 0（109 测试文件全覆盖））
 
 ### v16.3 习惯内核一期
 

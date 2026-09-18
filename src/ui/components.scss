@@ -9991,3 +9991,12 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__item.is-skip .lc-checkin__item-icon {
     opacity: .72;
 }
+
+/* T-1223 反内疚：连续重新开始的温和说明（洞察页）。 */
+.lc-checkin__insight-restart {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    color: var(--lc-checkin-muted);
+    font-size: 10.5px;
+    line-height: 1.5;
+}

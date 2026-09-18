@@ -53,6 +53,17 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
     }
 
     const trend = comparableWeeklyTrend(report);
+    /* T-1223：连续跳过是最直接的「频率偏高」信号——只建议下调，不自动修改排期。
+       跳过日不断链、不入完成率分母（T-1221），因此该建议只在真实连续跳过时出现。 */
+    if (report.recentSkipDays >= 2) {
+        suggestions.push({
+            id: "skip-streak",
+            tone: "attention",
+            title: `连续跳过了 ${report.recentSkipDays} 天`,
+            detail: "连续跳过通常意味着频率偏高：可以把排期改为弹性目标（例如每周 N 次）或调低单次目标。跳过不会断开连续记录，也不计入完成率。",
+            evidence: `最近连续跳过 ${report.recentSkipDays} 个计划日`,
+        });
+    }
     if (trend && trend.latestRate <= trend.previousRate - 20) {
         suggestions.push({
             id: "trend-decline",
