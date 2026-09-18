@@ -220,5 +220,41 @@ const checkin = {
     ];
     for (const [label, passed] of matrix) assert.equal(passed, true, `matrix case: ${label}`);
     assert.equal(matrix.length, 30, "30-case bridge contract matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and 30-case contract matrix.");
+    const stabilityBridge = createTaskHorizonBridge({checkin, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}});
+    const stabilityStart = await stabilityBridge.start();
+    const stabilityMatrix = [
+        ["start ready", stabilityStart.ready === true],
+        ["start item", stabilityStart.itemId === "task-item"],
+        ["start repeat", (await stabilityBridge.start()).ready === true],
+        ["refresh default", (await stabilityBridge.refresh()).points.length === 0],
+        ["refresh explicit", (await stabilityBridge.refresh({startDate: "2026-09-01", endDateExclusive: "2026-09-02"})).points.length === 0],
+        ["refresh same key", (await Promise.all([stabilityBridge.refresh(), stabilityBridge.refresh()])).length === 2],
+        ["refresh range A", (await stabilityBridge.refresh({startDate: "2026-09-03", endDateExclusive: "2026-09-04"})).points.length === 0],
+        ["refresh range B", (await stabilityBridge.refresh({startDate: "2026-09-04", endDateExclusive: "2026-09-05"})).points.length === 0],
+        ["record valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-1", localDate: "2026-09-18"})).itemId === "task-item"],
+        ["record duplicate", (await stabilityBridge.recordTaskCompletion({blockId: "stability-1", localDate: "2026-09-18"})).itemId === "task-item"],
+        ["pending array", Array.isArray(stabilityBridge.getPendingCompletions())],
+        ["pending detached", stabilityBridge.getPendingCompletions() !== stabilityBridge.getPendingCompletions()],
+        ["retry attempted", (await stabilityBridge.retryPending()).attempted === 0],
+        ["retry succeeded field", typeof (await stabilityBridge.retryPending()).succeeded === "number"],
+        ["retry rejected field", typeof (await stabilityBridge.retryPending()).rejected === "number"],
+        ["retry failed field", typeof (await stabilityBridge.retryPending()).failed === "number"],
+        ["refresh no range", (await createTaskHorizonBridge({checkin}).refresh()) === undefined],
+        ["record missing item", (await stabilityBridge.recordTaskCompletion({blockId: "stability-2", localDate: "2026-09-18", itemId: ""})) === undefined],
+        ["record bad type", (await stabilityBridge.recordTaskCompletion({blockId: 7, localDate: "2026-09-18"})) === undefined],
+        ["record bad date type", (await stabilityBridge.recordTaskCompletion({blockId: "stability-3", localDate: 7})) === undefined],
+        ["record future valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-4", localDate: "2099-12-31"})).itemId === "task-item"],
+        ["record leap valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-5", localDate: "2028-02-29"})).itemId === "task-item"],
+        ["record leap invalid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-6", localDate: "2027-02-29"})) === undefined],
+        ["record boundary valid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-7", localDate: "2026-01-01"})).itemId === "task-item"],
+        ["record boundary invalid", (await stabilityBridge.recordTaskCompletion({blockId: "stability-8", localDate: "2026-13-01"})) === undefined],
+        ["stop returns", stabilityBridge.stop() === undefined],
+        ["stop repeat", stabilityBridge.stop() === undefined],
+        ["stopped start", (await stabilityBridge.start()).reason === "stopped"],
+        ["stopped refresh", (await stabilityBridge.refresh()) === undefined],
+        ["stopped retry", (await stabilityBridge.retryPending()).attempted === 0],
+    ];
+    for (const [label, passed] of stabilityMatrix) assert.equal(passed, true, `stability matrix case: ${label}`);
+    assert.equal(stabilityMatrix.length, 30, "second 30-case stability matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and two 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
