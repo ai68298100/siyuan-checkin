@@ -278,5 +278,19 @@ const checkin = {
     }
     for (const [label, passed] of calendarMatrix) assert.equal(passed, true, `calendar matrix case: ${label}`);
     assert.equal(calendarMatrix.length, 30, "third 30-case calendar matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and three 30-case contract matrices.");
+    const identityBridge = createTaskHorizonBridge({checkin});
+    const validBlocks = ["a", "123", "block-1", "Block_1", "中文块", "任务-001", "a_b-c", "0", "x.y", "task#1", "é", "块001", "daily-2026", "A.B_C", "final-block"];
+    const invalidBlocks = ["", " ", "a b", "a:b", "a:b:c", "a\tb", "a\nb", "a\u0000b", "a\u001fb", "a\u007fb", "x".repeat(129), "a b c", "a:b:c:d", "a\tb\tc", "a\rb\nb"];
+    const identityMatrix = [];
+    for (const [index, blockId] of validBlocks.entries()) {
+        const result = await identityBridge.recordTaskCompletion({blockId, localDate: "2026-09-18", itemId: "task-item"});
+        identityMatrix.push([`valid block ${index}`, result && result.externalRef === `taskhorizon:${blockId.trim()}:2026-09-18`]);
+    }
+    for (const [index, blockId] of invalidBlocks.entries()) {
+        const result = await identityBridge.recordTaskCompletion({blockId, localDate: "2026-09-18", itemId: "task-item"});
+        identityMatrix.push([`invalid block ${index}`, result === undefined]);
+    }
+    for (const [label, passed] of identityMatrix) assert.equal(passed, true, `identity matrix case: ${label}`);
+    assert.equal(identityMatrix.length, 30, "fourth 30-case identity matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and four 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
