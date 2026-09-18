@@ -76,6 +76,8 @@
 
 2026-09-18 v16.0 首批（T-1215）：新增 `buildReviewComparison()` 纯函数，比较当前/基线 SummaryContext 的范围级与逐项目标 delta；新增 `getPreviousReviewRange()` 推导同跨度前置本地日期范围，非法/逆序输入返回 undefined。结果只含标量和防御性数组，不读取或修改 store；定向测试、类型检查通过，并接入 test:quality。
 
+2026-09-18 竞品调研完成：三路并行调研已沉淀至 `docs/benchmark-habit-apps-2026-09.md`——①开源源码深读（uhabits 五态模型/半衰期分数/弹性频率补全、mhabit sigmoid 成熟曲线/超额封顶、Habitica 自平衡积分与内疚感教训）；②商业竞品（Habitify/Streaks/Forest/滴答/小日常/Atoms 等 11 款优劣与行为设计 10 机制）；③笔记生态（思源集市仅 2 个打卡插件、Obsidian Tracker/Heatmap Calendar、Logseq、Notion HabitLog schema）。产出 17 条可执行借鉴清单（A 算法/B 笔记联动/C 行为设计/D 架构/E 不做），最高优先级：SKIP 一等态、强度分数、打卡回写笔记块、声明式渲染块、Loop CSV 导入。
+
 2026-09-16 T-925~T-927 CSS 发布体积护栏受控放宽：应用户明确授权，将原 380KB 硬阻断调整为 420KB 告警、450KB 硬阻断，保留 318KB 历史软线并新增阈值递增断言；`test:quality` 同步改为先生产构建、后发布资源检查，避免读取旧 `dist`。当前生产 `dist/index.css` 为 404,587 bytes，位于告警区；完整质量链、宽度走查、70 张 UI 截图扫描及浅/深色视觉探针均通过。
 
 2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。
