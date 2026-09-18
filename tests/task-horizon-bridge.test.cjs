@@ -139,6 +139,8 @@ const checkin = {
     assert.equal((await capabilityFailure.start()).reason, "capability-error");
     const itemsFailure = createTaskHorizonBridge({checkin: {...checkin, getItems: () => { throw new Error("items getter failed"); }}});
     assert.equal((await itemsFailure.start()).reason, "items-error");
+    const invalidItems = createTaskHorizonBridge({checkin: {...checkin, getItems: () => ({})}});
+    assert.equal((await invalidItems.start()).reason, "items-invalid");
     let cleaned = false;
     const readFailure = createTaskHorizonBridge({checkin: {...checkin,
         getEventRangeSummary: () => { throw new Error("summary unavailable"); },

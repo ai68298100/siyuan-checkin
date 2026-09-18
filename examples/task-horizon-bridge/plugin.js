@@ -105,12 +105,20 @@
                     reportError("items", error);
                     return {ready: false, reason: "items-error"};
                 }
+                if (!Array.isArray(candidates)) {
+                    reportError("items", new TypeError("getItems() must return an array"));
+                    return {ready: false, reason: "items-invalid"};
+                }
                 targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
                 if (!targetItemId) return {ready: false, reason: "target-missing"};
                 if (typeof checkin.subscribe === "function") {
                     try {
                         unsubscribe = checkin.subscribe((event) => {
-                            if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
+                            try {
+                                if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
+                            } catch (error) {
+                                reportError("event", error);
+                            }
                         });
                     } catch (error) {
                         reportError("subscribe", error);

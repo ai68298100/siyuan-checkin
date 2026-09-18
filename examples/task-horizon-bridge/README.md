@@ -41,4 +41,6 @@ different tasks or dates can still write concurrently. If `stop()` wins while
 a summary read is pending, the late read is discarded without invoking
 `onRefresh`.
 Facade capability and item-enumeration exceptions return diagnostic startup
-reasons instead of escaping as unhandled Promise rejections.
+reasons instead of escaping as unhandled Promise rejections. Non-array item
+responses are rejected explicitly, and malformed subscription events are
+contained by the diagnostic boundary.

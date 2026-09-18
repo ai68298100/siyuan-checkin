@@ -2211,6 +2211,9 @@
 - [x] T-1197 Task Horizon facade 探测异常诊断（P1）
   - 验收：能力探测或事项枚举 getter 抛错时，`start()` 返回稳定诊断状态而不产生未处理 Promise 拒绝；正常缺失能力仍返回 `capability-missing`。
   - 状态：done（新增 `capability-error`/`items-error` 分支与恶意 facade fixture）
+- [x] T-1198 Task Horizon facade 返回形状防御（P1）
+  - 验收：`getItems()` 非数组返回 `items-invalid`；订阅事件对象的恶意 getter 不得逃逸为未处理异常，统一进入诊断通道。
+  - 状态：done（启动阶段增加数组形状校验，事件回调增加 try/catch 防护与 fixture）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

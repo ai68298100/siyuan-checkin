@@ -766,3 +766,8 @@
 
 - `hasCapability()` 抛错返回 `capability-error`，`getItems()` 抛错返回 `items-error`，并通过统一 `onError` 诊断通道报告。
 - 只有返回正常但能力不足时才使用 `capability-missing`；不把宿主 getter 异常伪装成用户配置缺失。
+
+## D-198：生态 facade 返回形状先校验再消费（2026-09-18）
+
+- `getItems()` 必须返回数组；其它形状返回 `items-invalid`，避免在消费端调用 `.find` 产生未处理异常。
+- 订阅事件的字段访问也处于诊断边界内，恶意 getter 不得阻断宿主事件分发。
