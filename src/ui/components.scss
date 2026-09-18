@@ -9801,3 +9801,130 @@ details:not([open]) > :not(summary) { display: none !important; }
     font-size: 10.5px;
     line-height: 1.45;
 }
+
+/* T-1216 较上一周期：hero 下的紧凑 delta 条带 + 折叠区逐项目差值。
+   语义 token 复用双主题；上期基线用 accent-soft 底条、本期用 accent 实条。 */
+.lc-checkin__compare {
+    display: grid;
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__compare.is-empty {
+    color: var(--lc-checkin-muted);
+    font-size: 10.5px;
+}
+.lc-checkin__compare > header {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+}
+.lc-checkin__compare > header strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+}
+.lc-checkin__compare > header span {
+    color: var(--lc-checkin-muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+.lc-checkin__compare-stat {
+    display: grid;
+    gap: 1px;
+    padding: 6px 8px;
+    border-radius: 9px;
+    background: var(--lc-checkin-surface);
+    min-width: 0;
+}
+.lc-checkin__compare-stat small {
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin__compare-stat b {
+    color: var(--lc-checkin-text);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-stat em,
+.lc-checkin__compare-item em {
+    font-style: normal;
+    color: var(--lc-checkin-muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-stat.is-up em,
+.lc-checkin__compare-item.is-up em {
+    color: var(--lc-checkin-success-text);
+}
+.lc-checkin__compare-stat.is-down em,
+.lc-checkin__compare-item.is-down em {
+    color: var(--lc-checkin-danger-text);
+}
+.lc-checkin__compare-stat span {
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-item-list {
+    display: grid;
+    gap: 6px;
+}
+.lc-checkin__compare-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 2px 8px;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 9px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__compare-item strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin__compare-item-rate {
+    color: var(--lc-checkin-muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-item small {
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__compare-item-bar {
+    position: relative;
+    grid-column: 1 / -1;
+    display: block;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--lc-checkin-surface);
+    overflow: hidden;
+}
+.lc-checkin__compare-item-bar span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 3px;
+}
+.lc-checkin__compare-item-bar .is-base {
+    background: var(--lc-checkin-accent-soft);
+}
+.lc-checkin__compare-item-bar span:not(.is-base) {
+    background: var(--lc-checkin-accent);
+}

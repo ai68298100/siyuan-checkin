@@ -1,0 +1,118 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+
+const sourceRoot = path.join(__dirname, "..", "src");
+const reviewSource = fs.readFileSync(path.join(sourceRoot, "render", "review.ts"), "utf8");
+
+/* 结构守门：比较必须消费共享 asOf 推导的基线上下文，不得另取当前时刻。 */
+assert.match(reviewSource, /getPreviousReviewRange\(\{startDate: summary\.startDate, endDate: summary\.endDate\}\)/,
+    "review must derive the baseline range from the active summary range");
+assert.match(reviewSource, /buildReviewComparison\(summary, buildCustomSummaryContext\(ctx\.store, previousRange, asOf\)\)/,
+    "comparison must consume the shared cutoff when projecting the baseline context");
+assert.match(reviewSource, /renderReviewCompareSection\(comparison\)/,
+    "review must render the comparison strip through the shared view module");
+assert.match(reviewSource, /data-review-jump="compare"/,
+    "subnav must expose the compare fold only when item deltas exist");
+assert.doesNotMatch(reviewSource, /new Date\(\)/,
+    "review must not capture independent current instants");
+
+const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-review-compare-"));
+const plainFiles = ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "shared.ts"];
+for (const filename of plainFiles) {
+    const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
+    fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js")), ts.transpileModule(source, {
+        compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+    }).outputText);
+}
+for (const filename of ["features/record-notes.ts", "features/review-comparison.ts", "ui/labels.ts", "render/review-compare.ts"]) {
+    const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
+    const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
+    fs.writeFileSync(target, ts.transpileModule(source, {
+        compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+    }).outputText);
+}
+const {setPluginLanguage, t} = require(path.join(outputRoot, "i18n.js"));
+const {buildReviewComparison} = require(path.join(outputRoot, "features", "review-comparison.js"));
+const {renderReviewCompareSection, renderReviewCompareItems} = require(path.join(outputRoot, "render", "review-compare.js"));
+
+const item = (itemId, name) => ({itemId, name, eventCount: 0, scheduledDays: 0, completedDays: 0, completionRate: 0});
+const context = (overrides = {}) => ({
+    range: "week", startDate: "2026-09-01", endDate: "2026-09-07", items: [], totalEvents: 0, completedItems: 0, scheduledItems: 0, ...overrides,
+});
+
+/* 空数据：两侧均无记录时给明确空态，而不是一排零。 */
+const emptySection = renderReviewCompareSection(buildReviewComparison(context(), context()));
+assert.match(emptySection, /lc-checkin__compare is-empty/);
+assert.ok(emptySection.includes(t("review.compareEmpty")));
+assert.ok(!emptySection.includes("lc-checkin__compare-stat"), "empty comparison must not render stat blocks");
+assert.equal(renderReviewCompareItems(buildReviewComparison(context(), context())), "");
+
+const current = context({
+    totalEvents: 9,
+    completedItems: 2,
+    scheduledItems: 3,
+    items: [
+        {...item("a", "Alpha"), eventCount: 4, scheduledDays: 5, completedDays: 3, completionRate: 60},
+        {...item("new", "New"), eventCount: 2, scheduledDays: 2, completedDays: 1, completionRate: 50},
+        {...item("same", "Same"), eventCount: 1, scheduledDays: 2, completedDays: 1, completionRate: 50},
+    ],
+});
+const baseline = context({
+    startDate: "2026-08-25",
+    endDate: "2026-08-31",
+    totalEvents: 5,
+    completedItems: 3,
+    scheduledItems: 2,
+    items: [
+        {...item("a", "Alpha old"), eventCount: 1, scheduledDays: 4, completedDays: 1, completionRate: 25},
+        {...item("old", "Old"), eventCount: 3, scheduledDays: 6, completedDays: 2, completionRate: 33},
+        {...item("same", "Same"), eventCount: 1, scheduledDays: 2, completedDays: 1, completionRate: 50},
+    ],
+});
+const comparison = buildReviewComparison(current, baseline);
+
+const section = renderReviewCompareSection(comparison);
+assert.ok(section.includes(t("review.compareTitle")), "section must carry the compare title");
+assert.ok(section.includes("2026-08-25 ~ 2026-08-31"), "section must show the concrete baseline range");
+assert.ok(section.includes(`>${t("review.statEvents")}</small>`), "stats reuse the range-stat labels");
+assert.match(section, /lc-checkin__compare-stat is-up/, "event growth must be marked up");
+assert.match(section, /lc-checkin__compare-stat is-down/, "item drop must be marked down");
+assert.match(section, /lc-checkin__compare-stat is-flat/, "scheduled delta must stay neutral");
+assert.ok(section.includes(">+4</em>"), "event delta must be signed");
+assert.ok(section.includes(`>${t("review.compareBaselineLabel")} 5</span>`), "baseline value must be labelled");
+
+const rows = renderReviewCompareItems(comparison);
+const rowOrder = [...rows.matchAll(/<strong>([^<]+)<\/strong>/g)].map((match) => match[1]);
+assert.deepEqual(rowOrder, ["New", "Alpha", "Old", "Same"], "items sort by absolute rate delta first");
+assert.match(rows, /lc-checkin__compare-item is-up[^>]*><strong>Alpha<\/strong>/, "improving item must be marked up");
+assert.ok(rows.includes("+35pp"), "rate delta renders as signed percentage points");
+assert.ok(rows.includes("-33pp"), "negative rate delta renders signed");
+assert.ok(rows.includes(">±0</em>"), "zero rate delta renders neutral without pp");
+assert.ok(rows.includes("+3 条记录"), "event delta line keeps the shared record label");
+assert.match(rows, /class="is-base" style="width:25%"/, "baseline bar mirrors the previous completion rate");
+assert.match(rows, /style="width:60%"/, "current bar mirrors the current completion rate");
+assert.ok(!rows.includes("<script>"), "item names must be html-escaped");
+
+/* 嵌入名字的恶意输入必须转义后再进入 title/aria。 */
+const hostile = context({
+    totalEvents: 1,
+    items: [{...item("x", '<script>alert("x")</script>'), eventCount: 1, scheduledDays: 1, completedDays: 1, completionRate: 100}],
+});
+const hostileRows = renderReviewCompareItems(buildReviewComparison(hostile, context({items: []})));
+assert.ok(!hostileRows.includes("<script>"), "hostile names must be escaped in item rows");
+assert.ok(hostileRows.includes("&lt;script&gt;"), "escaped name is rendered as text");
+
+/* en-US 字典键齐全。 */
+setPluginLanguage("en-US");
+const enSection = renderReviewCompareSection(buildReviewComparison(current, baseline));
+assert.ok(enSection.includes("vs previous period"), "en dictionary must cover the compare title");
+assert.ok(enSection.includes("prev 5"), "en baseline label must render");
+const enRows = renderReviewCompareItems(comparison);
+assert.ok(enRows.includes("+3 records"), "en event delta keeps its label");
+setPluginLanguage("zh-CN");
+
+console.log("Review compare view checks passed: shared-cutoff baseline, delta tones, union sorting, empty state and i18n coverage.");

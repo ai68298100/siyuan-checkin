@@ -2379,9 +2379,10 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v16.1 复盘呈现与数据入口
 
-- [ ] T-1216 回顾页范围对比区块
+- [x] T-1216 回顾页范围对比区块
   - 验收：消费 buildReviewComparison 渲染「较上一周期」delta 与逐项目标差值条；空数据/单日/跨时区表达清晰；双主题对比度达标；回顾性能基线不回退。
   - 依赖：T-1215（done）
+  - 状态：done（新增 `src/render/review-compare.ts` 双导出：hero 下的统计条带（事件/有完成/有安排 当前-上期-带符号 delta，计划数恒中性色）+ 折叠区逐项目差值行（按 |完成率 delta| 排序并集，基线 accent-soft 底条 + 本期 accent 实条，±0 不带 pp）；review.ts 以共享 asOf 经 getPreviousReviewRange+buildCustomSummaryContext 推导基线，空两侧显示明确空态，subnav 仅在有逐项差值时出现「较上期」跳转；i18n 中英 8 键；CSS 语义 token 复用双主题。验证：`pnpm run check`、新增 `tests/review-compare-view.test.cjs`（结构守门+功能断言：delta 色调/排序/转义/空态/en 字典）纳入 test:ui，完整 `test:quality` 链 exit 0，CSS 431,514B 告警区低于硬线，Edge 宽度走查 2000/1180/640/360 无溢出，100k 回顾性能基线持平）
 - [ ] T-1217 周报/月报模板与导出
   - 验收：周/月报视图可配置指标与基线，异常说明本地生成（数据不足时明说）；导出 Markdown 走既有安全导出路径。
 - [ ] T-1218 Loop Habit Tracker CSV 导入与导出

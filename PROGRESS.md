@@ -76,6 +76,8 @@
 
 2026-09-18 v16.0 首批（T-1215）：新增 `buildReviewComparison()` 纯函数，比较当前/基线 SummaryContext 的范围级与逐项目标 delta；新增 `getPreviousReviewRange()` 推导同跨度前置本地日期范围，非法/逆序输入返回 undefined。结果只含标量和防御性数组，不读取或修改 store；定向测试、类型检查通过，并接入 test:quality。
 
+2026-09-19 v16.1 首批（T-1216 完成）：回顾页新增「较上一周期」区块。新增 `src/render/review-compare.ts`（统计条带+逐项目差值行双导出），review.ts 以共享 asOf 经 `getPreviousReviewRange` + `buildCustomSummaryContext` 推导同跨度基线并消费 `buildReviewComparison`；空两侧显示空态而非零排；计划项目 delta 恒中性色；逐项按 |完成率 delta| 排序并集渲染，基线 accent-soft 底条+本期 accent 实条；subnav 条件出现「较上期」跳转（fold id=compare）。i18n 中英 8 键；components.scss 语义 token 新增约 100 行。验证：`pnpm run check`、新增 `tests/review-compare-view.test.cjs` 纳入 test:ui、完整 `test:quality` exit 0（CSS 431,514B 告警区、低于 450K 硬线）、Edge 宽度走查 2000/1180/640/360 无溢出、100k 回顾性能基线持平（summary 6ms）。下一步：T-1217 周报/月报模板与导出。
+
 2026-09-18 习惯体系融合路线定稿：拉取 GitHub 最新 v16.0.0（cc17593，37+ 提交：Task Horizon bridge 协议探测/重试/并发单飞矩阵 + 复盘范围比较模型）并完成竞品调研到开发规划的转化。新文档 `docs/roadmap-habit-evolution-2026-09.md` 定义 v16.1 复盘呈现与数据入口（T-1216 对比 UI/T-1217 周报/T-1218 Loop CSV 迁移/T-1219 宽容提醒）→ v16.2 跳过态（T-1220 store v2→3 + 口径 + 交互 + 反内疚）→ v16.3 习惯内核（T-1224 强度分数/T-1225 AUTO 补全/T-1226 streak 重构/T-1227 强度曲线）→ v17.0 Task Horizon 联调 → v17.1 打卡回写笔记块 → v17.2 声明式渲染块 → v18 开放生态扩展 → v19 习惯内核二期；TODO.md 追加 T-1216~T-1241；`development-roadmap-2026.md` 顶部加指针。总原则：事件=原始记录、推导=计算层；计分单一代码路径；不推翻现有五类型/六排期/复盘管道。下一步：v16.1 从 T-1216 起步。
 
 2026-09-18 竞品调研完成：三路并行调研已沉淀至 `docs/benchmark-habit-apps-2026-09.md`——①开源源码深读（uhabits 五态模型/半衰期分数/弹性频率补全、mhabit sigmoid 成熟曲线/超额封顶、Habitica 自平衡积分与内疚感教训）；②商业竞品（Habitify/Streaks/Forest/滴答/小日常/Atoms 等 11 款优劣与行为设计 10 机制）；③笔记生态（思源集市仅 2 个打卡插件、Obsidian Tracker/Heatmap Calendar、Logseq、Notion HabitLog schema）。产出 17 条可执行借鉴清单（A 算法/B 笔记联动/C 行为设计/D 架构/E 不做），最高优先级：SKIP 一等态、强度分数、打卡回写笔记块、声明式渲染块、Loop CSV 导入。

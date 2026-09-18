@@ -4,6 +4,8 @@ import {dateKey, getEventsForDate, getItemById, isComplete, isItemAvailableOnDat
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
+import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
+import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
 import {buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView, renderCheckinLogView} from "./fragments";
@@ -138,6 +140,12 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         ? `<div class="lc-checkin__review-guidance">${summaryAttention ? `<small class="lc-checkin__review-attention" title="${escapeHtml(summaryAttention)}">${escapeHtml(summaryAttention)}</small>` : ""}${summaryAdvice ? `<small class="lc-checkin__review-advice" title="${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}">${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}</small>` : ""}</div>`
         : "";
     const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div class="lc-checkin__review-hero-copy"><small class="lc-checkin__review-hero-cutoff">${escapeHtml(t("review.heroUntil", {date: summary.endDate}))}</small><h2>${escapeHtml(summaryHeadline)}</h2><p>${escapeHtml(summaryBody)}${summaryBest ? ` · ${escapeHtml(summaryBest)}` : ""}</p>${summaryGuidance}<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item="${escapeHtml(attentionSummaryItem?.name || "")}" data-suggestion-rate="${attentionSummaryItem?.completionRate ?? ""}">${t("review.heroPreview")}</button></div></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
+    /* T-1216 较上一周期：基线上下文与当前共享同一 asOf，比较只消费已投影的 SummaryContext。 */
+    const previousRange = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
+    const comparison = previousRange ? buildReviewComparison(summary, buildCustomSummaryContext(ctx.store, previousRange, asOf)) : undefined;
+    const compareSection = comparison ? renderReviewCompareSection(comparison) : "";
+    const compareHasItems = Boolean(comparison?.items.length);
+    const compareFoldBody = comparison && compareHasItems ? `<div class="lc-checkin__compare-item-list">${renderReviewCompareItems(comparison)}</div>` : "";
     const projectRows = summary.items.length ? summary.items.map((item) => {
         const quotaMeta = item.quota
             ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
@@ -249,7 +257,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             </header>
             <section class="lc-checkin__summary-stats" aria-label="范围统计"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.statCompleted")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div>${analyticsBadge}</section>
             ${summaryHero}
-            <nav class="lc-checkin__review-subnav" aria-label="${t("review.subnavAria")}"><button type="button" data-review-jump="reminders">${t("review.subnavReminders")}</button><button type="button" data-review-jump="trend">${t("review.subnavTrend")}</button><button type="button" data-review-jump="projects">${t("review.subnavProjects")}</button><button type="button" data-review-jump="log">${t("review.subnavLog")}</button><button type="button" data-review-jump="balance">${t("review.subnavBalance")}</button><button type="button" data-review-jump="achievements">${t("review.subnavAchievements")}</button><button type="button" data-review-jump="upcoming">${t("review.subnavPlans")}</button></nav>
+            ${compareSection}
+            <nav class="lc-checkin__review-subnav" aria-label="${t("review.subnavAria")}"><button type="button" data-review-jump="reminders">${t("review.subnavReminders")}</button><button type="button" data-review-jump="trend">${t("review.subnavTrend")}</button>${compareHasItems ? `<button type="button" data-review-jump="compare">${t("review.subnavCompare")}</button>` : ""}<button type="button" data-review-jump="projects">${t("review.subnavProjects")}</button><button type="button" data-review-jump="log">${t("review.subnavLog")}</button><button type="button" data-review-jump="balance">${t("review.subnavBalance")}</button><button type="button" data-review-jump="achievements">${t("review.subnavAchievements")}</button><button type="button" data-review-jump="upcoming">${t("review.subnavPlans")}</button></nav>
             <div class="lc-checkin__review-layout">
                 <div class="lc-checkin__review-calendar">
                     <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}" title="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" title="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
@@ -270,6 +279,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
             </details>
             ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
+            ${compareHasItems ? fold("compare", `${t("review.compareTitle")} ${countBadge(comparison!.items.length)}`, compareFoldBody) : ""}
             ${fold("projects", `${t("review.foldProjects")} ${countBadge(summary.items.length)}`, `<section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>`)}
             ${fold("log", `${t("review.foldLog")} · ${ctx.store.events.length} 条`, renderCheckinLogView(ctx.store.events, ctx.store.items))}
             ${groupBars ? fold("balance", `${t("review.balanceTitle")} ${countBadge(groupBars.match(/lc-checkin__balance-row/g)?.length || 0)}`, `<section class="lc-checkin__balance" aria-label="${t("review.balanceTitle")}">${groupBars}</section>`) : ""}
