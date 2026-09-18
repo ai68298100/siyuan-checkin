@@ -2250,6 +2250,9 @@
 - [x] T-1210 Task Horizon 第八批 30 项目标选择矩阵（P1）
   - 验收：新增不少于 30 个目标事项项目，覆盖自动候选筛选、归档跳过、精确名称、首个匹配、目标缺失与显式 itemId 覆盖优先级。
   - 状态：done（15 个自动候选 + 15 个显式绑定，共 30 项 target matrix，生态质量链通过）
+- [x] T-1211 Task Horizon 第九批 30 项写入 payload 矩阵（P1）
+  - 验收：新增不少于 30 个真实写入项目，逐项验证 `itemId/value/unit/source/externalRef` 五字段完整、值稳定且无额外字段或变形。
+  - 状态：done（15 个 itemId + 15 个 blockId，共 30 项 payload matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

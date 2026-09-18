@@ -407,5 +407,25 @@ const checkin = {
     }
     for (const [label, passed] of targetMatrix) assert.equal(passed, true, `target matrix case: ${label}`);
     assert.equal(targetMatrix.length, 30, "eighth 30-case target matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and eight 30-case contract matrices.");
+    const payloadCalls = [];
+    const payloadBridge = createTaskHorizonBridge({checkin: {...checkin,
+        recordEvent: async (payload) => { payloadCalls.push(payload); return {id: `payload-${payloadCalls.length}`, ...payload}; },
+    }});
+    const payloadItemIds = ["item-1", "item_2", "item.3", "中文事项", "4", "A", "z", "task#8", "item/9", "item:10", " spaced ", "é-12", "ITEM-13", "long-item-14", "final-item"];
+    const payloadBlocks = ["block-1", "block_2", "block.3", "中文块", "4", "A", "z", "task#8", "é-9", "BLOCK-10", "daily-11", "x_y-z", "node.13", "long-block-14", "final-block"];
+    const payloadMatrix = [];
+    for (const [index, itemId] of payloadItemIds.entries()) {
+        const blockId = `payload-item-${index}`;
+        await payloadBridge.recordTaskCompletion({blockId, localDate: "2026-09-18", itemId});
+        const payload = payloadCalls.at(-1);
+        payloadMatrix.push([`payload item ${index}`, payload.itemId === itemId && payload.value === 1 && payload.unit === "个" && payload.source === "api" && payload.externalRef === `taskhorizon:${blockId}:2026-09-18` && Object.keys(payload).length === 5]);
+    }
+    for (const [index, blockId] of payloadBlocks.entries()) {
+        await payloadBridge.recordTaskCompletion({blockId, localDate: "2026-09-19", itemId: "task-item"});
+        const payload = payloadCalls.at(-1);
+        payloadMatrix.push([`payload block ${index}`, payload.itemId === "task-item" && payload.value === 1 && payload.unit === "个" && payload.source === "api" && payload.externalRef === `taskhorizon:${blockId}:2026-09-19` && Object.keys(payload).length === 5]);
+    }
+    for (const [label, passed] of payloadMatrix) assert.equal(passed, true, `payload matrix case: ${label}`);
+    assert.equal(payloadMatrix.length, 30, "ninth 30-case payload matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and nine 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

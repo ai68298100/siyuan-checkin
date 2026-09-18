@@ -831,3 +831,8 @@
 
 - 未指定 `options.itemId` 时只自动选择首个未归档且名称精确等于“任务打卡”的事项；不做模糊匹配或多语言猜测。
 - 显式 `itemId` 优先于自动候选，并原样交给公开写入 API；bridge 示例不读取对方私有映射。
+
+## D-211：第九批锁定最小五字段写入 payload（2026-09-18）
+
+- bridge 写入只发送 `itemId`、`value`、`unit`、`source`、`externalRef` 五个字段；固定值为 `1`、`个`、`api`。
+- 不附加 Task Horizon 私有块数据、标题或完成原因，externalRef 是双方唯一共享的任务完成身份。
