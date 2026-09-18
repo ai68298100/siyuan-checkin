@@ -2193,6 +2193,9 @@
 - [x] T-1191 Task Horizon 重试单飞守门（P1）
   - 验收：并发触发多个 `retryPending()` 时只产生一次外部写入，调用方共享同一结果；失败后仍可再次发起重试。
   - 状态：done（bridge 增加 in-flight promise 复用，fixture 覆盖并发调用与单次传输计数）
+- [x] T-1192 Task Horizon bridge 启动生命周期单飞（P1）
+  - 验收：并发/重复 `start()` 只等待同一初始化结果并注册一次订阅；`stop()` 与异步就绪探测交错时不得晚到订阅或刷新。
+  - 状态：done（新增 start promise 复用、幂等启动、停止竞态检查与 subscribe 异常诊断，fixture 覆盖并发启动和 stop-before-ready）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

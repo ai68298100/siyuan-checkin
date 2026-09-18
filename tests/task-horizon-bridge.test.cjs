@@ -39,6 +39,25 @@ const checkin = {
     assert.equal(status.ready, true);
     assert.equal(status.itemId, "task-item");
     assert.equal(refreshCount, 1);
+    let raceSubscribeCount = 0;
+    const raceCheckin = {...checkin,
+        whenReady: async () => { await new Promise((resolve) => setTimeout(resolve, 10)); return true; },
+        subscribe: (callback) => { raceSubscribeCount += 1; return () => { void callback; }; },
+    };
+    const raceBridge = createTaskHorizonBridge({checkin: raceCheckin, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}});
+    const [raceA, raceB] = await Promise.all([raceBridge.start(), raceBridge.start()]);
+    assert.deepEqual(raceA, raceB, "overlapping starts share one result");
+    assert.equal(raceSubscribeCount, 1, "overlapping starts register one subscription");
+    const repeatStart = await raceBridge.start();
+    assert.deepEqual(repeatStart, raceA, "completed start is idempotent");
+    raceBridge.stop();
+    let releaseSlowReady;
+    const slowReady = new Promise((resolve) => { releaseSlowReady = resolve; });
+    const stoppedDuringStart = createTaskHorizonBridge({checkin: {...checkin, whenReady: async () => { await slowReady; return true; }}, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}});
+    const stoppedStartPromise = stoppedDuringStart.start();
+    stoppedDuringStart.stop();
+    releaseSlowReady();
+    assert.equal((await stoppedStartPromise).reason, "stopped", "stop during readiness prevents late initialization");
     listener({type: "checkin:event-recorded"});
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(refreshCount, 2, "allowed refresh events trigger a summary refresh");

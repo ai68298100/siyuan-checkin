@@ -29,6 +29,8 @@
         let unsubscribe;
         let targetItemId;
         let stopped = false;
+        let started = false;
+        let startInFlight;
         const pending = new Map();
         let retryInFlight;
 
@@ -53,38 +55,59 @@
             return summary;
         };
 
-        const start = async () => {
-            if (!checkin || typeof checkin.whenReady !== "function") return {ready: false, reason: "unavailable"};
-            if (typeof checkin.describe === "function") {
-                let descriptor;
-                try { descriptor = checkin.describe(); } catch (error) { reportError("describe", error); return {ready: false, reason: "protocol-error"}; }
-                const version = descriptor && Number(descriptor.version);
-                if (!descriptor || descriptor.protocol !== "siyuan-checkin" || !Number.isFinite(version) || version < 4) {
-                    return {ready: false, reason: "protocol-mismatch"};
+        const start = () => {
+            if (stopped) return Promise.resolve({ready: false, reason: "stopped"});
+            if (started) return Promise.resolve({ready: true, itemId: targetItemId});
+            if (startInFlight) return startInFlight;
+            const run = (async () => {
+                if (!checkin || typeof checkin.whenReady !== "function") return {ready: false, reason: "unavailable"};
+                if (typeof checkin.describe === "function") {
+                    let descriptor;
+                    try { descriptor = checkin.describe(); } catch (error) { reportError("describe", error); return {ready: false, reason: "protocol-error"}; }
+                    const version = descriptor && Number(descriptor.version);
+                    if (!descriptor || descriptor.protocol !== "siyuan-checkin" || !Number.isFinite(version) || version < 4) {
+                        return {ready: false, reason: "protocol-mismatch"};
+                    }
                 }
-            }
-            let ready;
-            try { ready = await checkin.whenReady(); } catch (error) { reportError("ready", error); return {ready: false, reason: "ready-error"}; }
-            if (!ready) return {ready: false, reason: "not-ready"};
-            if (typeof checkin.hasCapability !== "function" || !checkin.hasCapability("analytics.read") || !checkin.hasCapability("events.record")) {
-                return {ready: false, reason: "capability-missing"};
-            }
-            const candidates = typeof checkin.getItems === "function" ? checkin.getItems() : [];
-            targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
-            if (!targetItemId) return {ready: false, reason: "target-missing"};
-            if (typeof checkin.subscribe === "function") {
-                unsubscribe = checkin.subscribe((event) => {
-                    if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
-                });
-            }
-            try {
-                await refresh();
-            } catch (error) {
-                cleanupSubscription();
-                reportError("refresh", error);
-                return {ready: false, reason: "read-failed", error: String(error instanceof Error ? error.message : error)};
-            }
-            return {ready: true, itemId: targetItemId};
+                let ready;
+                try { ready = await checkin.whenReady(); } catch (error) { reportError("ready", error); return {ready: false, reason: "ready-error"}; }
+                if (stopped) return {ready: false, reason: "stopped"};
+                if (!ready) return {ready: false, reason: "not-ready"};
+                if (typeof checkin.hasCapability !== "function" || !checkin.hasCapability("analytics.read") || !checkin.hasCapability("events.record")) {
+                    return {ready: false, reason: "capability-missing"};
+                }
+                const candidates = typeof checkin.getItems === "function" ? checkin.getItems() : [];
+                targetItemId = options.itemId || candidates.find((item) => item && !item.archived && item.name === "任务打卡")?.id;
+                if (!targetItemId) return {ready: false, reason: "target-missing"};
+                if (typeof checkin.subscribe === "function") {
+                    try {
+                        unsubscribe = checkin.subscribe((event) => {
+                            if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
+                        });
+                    } catch (error) {
+                        reportError("subscribe", error);
+                        return {ready: false, reason: "subscribe-error"};
+                    }
+                }
+                try {
+                    await refresh();
+                } catch (error) {
+                    cleanupSubscription();
+                    reportError("refresh", error);
+                    return {ready: false, reason: "read-failed", error: String(error instanceof Error ? error.message : error)};
+                }
+                if (stopped) {
+                    cleanupSubscription();
+                    return {ready: false, reason: "stopped"};
+                }
+                started = true;
+                return {ready: true, itemId: targetItemId};
+            })();
+            let startPromise;
+            startInFlight = startPromise = run.finally(() => {
+                if (startInFlight === startPromise) startInFlight = undefined;
+            });
+            return startPromise;
         };
 
         const recordTaskCompletion = async ({blockId, localDate, itemId = targetItemId} = {}) => {
@@ -136,6 +159,7 @@
 
         const stop = () => {
             stopped = true;
+            started = false;
             cleanupSubscription();
         };
 
