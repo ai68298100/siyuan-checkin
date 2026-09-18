@@ -74,7 +74,7 @@
             const payload = {itemId, value: 1, unit: "个", source: "api", externalRef};
             try {
                 const result = await checkin.recordEvent(payload);
-                // undefined is the public duplicate/rejected result, not a transport failure.
+                // A returned event means new or idempotent-existing; undefined means rejected.
                 pending.delete(externalRef);
                 return result;
             } catch (error) {

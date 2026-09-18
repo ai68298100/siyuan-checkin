@@ -710,3 +710,9 @@
 - `recordEvent` 返回 `undefined` 的语义同时覆盖重复和拒绝，示例不能把它当作网络失败自动堆积；只有 Promise 抛错才进入 pending 队列。
 - pending payload 保存原始 `itemId`、单位和 canonical externalRef，重试不生成新身份；重试统计与队列快照均为防御性副本。
 - 刷新和诊断回调的异常不应形成未处理 rejection，也不能阻断 bridge 的注销流程。
+
+## D-187：recordEvent 重复结果按现有运行时语义记录（2026-09-18）
+
+- 现有实现检测到相同 `itemId + source + externalRef` 时返回已有事件的防御性副本；这不是新写入，但也不是拒绝。
+- 合作消费者只在返回 `undefined` 时停止处理；重复结果沿用原 externalRef，不创建随机替代身份。
+- 本轮只修正文档、机器清单、示例和测试，避免为契约文字变更破坏已有消费者。

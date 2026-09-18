@@ -56,6 +56,7 @@ assert.deepEqual(ecosystem.parseTaskHorizonExternalRef(externalRef("p1-block", "
 assert.equal(externalRef("p1:block", "2026-09-18"), undefined, "block IDs with separators are rejected");
 assert.equal(ecosystem.parseTaskHorizonExternalRef("taskhorizon:p1-block:2026-02-30"), undefined, "impossible dates are rejected");
 assert.deepEqual(manifest, ecosystem.TASK_HORIZON_CONTRACT, "machine-readable manifest stays aligned with runtime contract");
+assert.deepEqual(manifest.writeResult, {newEvent: "event", duplicate: "existing-event", rejected: "undefined"});
 assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:event-recorded"), true);
 assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:item-created"), false, "creation noise does not trigger calendar refresh");
 const first = event("task-1", "p1-block", "2026-09-18");

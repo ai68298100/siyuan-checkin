@@ -16,6 +16,7 @@ export const TASK_HORIZON_CONTRACT = Object.freeze({
     writeCapability: "events.record",
     readMethod: "getEventRangeSummary",
     writeMethod: "recordEvent",
+    writeResult: Object.freeze({newEvent: "event", duplicate: "existing-event", rejected: "undefined"}),
     source: "api",
     unit: "个",
     externalRefPrefix: `${TASK_HORIZON_EXTERNAL_REF_PREFIX}:`,

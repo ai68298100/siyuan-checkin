@@ -2173,9 +2173,14 @@
   - 状态：done（`examples/task-horizon-bridge` 与运行时 fixture 已接入 `test:ecosystem`）
 
 - [x] T-1171 Task Horizon bridge 失败重试边界（P1 前置）
-  - 验收：刷新异常可诊断；抛出的写入保留原 externalRef 并可批量重试；公共 `undefined` 重复/拒绝结果不误判为传输失败；注销后不再写入。
+  - 验收：刷新异常可诊断；抛出的写入保留原 externalRef 并可批量重试；公共 `undefined` 拒绝结果不误判为传输失败；注销后不再写入。
   - 依赖：T-1170
   - 状态：done（bridge fixture 覆盖异常、待重试队列、重试统计和清理）
+
+- [x] T-1172 Task Horizon 写入结果语义对齐（P1 前置）
+  - 验收：统一“新事件/重复已有事件/非法拒绝”的 `recordEvent` 返回语义；机器清单、文档、bridge 示例和测试不再把重复误判为 `undefined`。
+  - 依赖：T-1171
+  - 状态：done（不改变运行时兼容行为，仅修正文档与消费端判断）
 - [ ] T-1166 外部软件摘要通道（P3，远期评估）
   - 验收：每日摘要写入驻留文档的方案设计与隐私评估；外部工具（手机/桌面）经内核 API 读取的最小可用形态。
   - 依赖：T-1164；用户隐私决策

@@ -6,6 +6,11 @@
   "writeCapability": "events.record",
   "readMethod": "getEventRangeSummary",
   "writeMethod": "recordEvent",
+  "writeResult": {
+    "newEvent": "event",
+    "duplicate": "existing-event",
+    "rejected": "undefined"
+  },
   "source": "api",
   "unit": "个",
   "externalRefPrefix": "taskhorizon:",

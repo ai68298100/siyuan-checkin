@@ -22,6 +22,6 @@ bridge.stop();
 ```
 
 The bridge retries by reusing the same `blockId` and `localDate`; the canonical
-`taskhorizon:<blockId>:<localDate>` reference makes replay idempotent. A public
-`undefined` result is treated as duplicate/rejected, not as a transport failure;
-only thrown writes enter `getPendingCompletions()`.
+`taskhorizon:<blockId>:<localDate>` reference makes replay idempotent. A returned
+event means new or idempotent-existing; `undefined` means rejected and is not a
+transport failure. Only thrown writes enter `getPendingCompletions()`.

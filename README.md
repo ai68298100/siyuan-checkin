@@ -195,6 +195,7 @@ if (checkin.hasCapability("events.record")) {
 
 Task Horizon 等日历/任务插件可使用 `getEventRangeSummary({startDate, endDateExclusive}, {maxEvents?, maxPoints?})` 获取有界的本地日期聚合（半开区间，默认最多 366 天、5,000 条事件和 366 个日期点），返回值不包含备注、附件或私有事件对象。任务联动可使用内置「任务打卡」模板，并通过 `externalRef: taskhorizon:<blockId>:<localDate>` 保证重复回放不重复记账；完整边界见 [Task Horizon 合作契约](docs/checkin-taskhorizon-cooperation.md)。
 对 `taskhorizon:` 前缀，写入边界还会校验块 ID、有效本地日期和 `source: "api"`；非法或来源错误的键会安全拒绝，通用 `externalRef` 前缀不受影响。
+`recordEvent` 对重复 externalRef 返回已有事件的防御性副本，只有非法或拒绝才返回 `undefined`；调用方应沿用原 externalRef，不要因重复结果创建新身份。
 双方联调可直接使用 [Task Horizon v1 机器可读契约](docs/contracts/task-horizon-v1.json)，其中包含能力、方法、刷新事件白名单和摘要上限。
 
 当前设置页明确提供“自带番茄钟”和“底栏番茄钟插件”两个选择。兼容版底栏番茄钟通过版本化 focus facade 提供开始/停止专注，并在记录持久化后返回稳定会话；小飞驴打卡使用 `source: "tomato"` 与 `docktomato:<sessionId>` 幂等写入完成事件。旧的泛化“番茄钟插件”偏好会自动迁移到“底栏番茄钟插件”，但只有适配器 ID 精确匹配时才会启用，避免误调用其他番茄钟。未加载兼容版、宿主不支持或调用失败时，手动打卡和内置专注流程仍可用。完整字段、事件和安全边界见[生态集成契约](docs/ecosystem-integration.md)。
