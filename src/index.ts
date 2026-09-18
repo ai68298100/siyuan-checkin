@@ -1,4 +1,4 @@
-import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage} from "siyuan";
+import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage, type IProtyle} from "siyuan";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
@@ -11,7 +11,7 @@ import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, f
 import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
-import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
+import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
 import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
@@ -35,6 +35,7 @@ import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboa
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
+import {renderCheckinBlocksIn} from "./render/block-renderer";
 import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
@@ -245,6 +246,39 @@ export default class CheckinPlugin extends Plugin {
     reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
     /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
     private suspendedAnchors = new Set<string>();
+    /* T-1234/T-1236 渲染块监听器清理。 */
+    private renderBlocksUnsubscribers: Array<() => void> = [];
+
+    private handleProtyleLoaded = (event: {detail: {protyle: IProtyle}}) => {
+        this.activateRenderBlocks(event.detail.protyle);
+    };
+
+    private handleRenderBlocksRefresh = () => {
+        this.refreshAllRenderBlocks();
+    };
+
+    private activateRenderBlocks(protyle: IProtyle) {
+        renderCheckinBlocksIn(protyle.element, {
+            getStore: () => this.store,
+            getNow: () => currentCalendarDate(),
+            onJumpDate: (date) => this.jumpToHistoryDate(date),
+        });
+    }
+
+    private refreshAllRenderBlocks() {
+        /* app.protyles 为运行时成员（typings 未声明），防御式访问；主驱动是事件总线。 */
+        const app = this.app as unknown as {protyles?: IProtyle[]} | undefined;
+        const protyles = app?.protyles || [];
+        protyles.forEach((protyle) => this.activateRenderBlocks(protyle));
+    }
+
+    /* T-1235：点击渲染块日期 → 跳回顾页并定位该日（无效日期拒绝）。 */
+    private jumpToHistoryDate(date: string) {
+        if (!isValidLocalDateInput(date)) return;
+        this.selectedHistoryDate = date;
+        this.historyMonth = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1);
+        this.showReview();
+    }
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
@@ -428,6 +462,24 @@ export default class CheckinPlugin extends Plugin {
             title: "打开小驴打卡（Alt+Shift+C）",
             callback: () => this.toggleQuickDialog(),
         });
+        /* T-1234/T-1235/T-1236 渲染块：protyle 装载事件驱动 + 打卡数据事件刷新。
+           app.protyles 是运行时成员（ typings 未声明），防御式访问。 */
+        if (typeof this.eventBus?.on === "function") {
+            this.eventBus.on("loaded-protyle-static", this.handleProtyleLoaded);
+            this.eventBus.on("loaded-protyle-dynamic", this.handleProtyleLoaded);
+            this.renderBlocksUnsubscribers.push(() => {
+                this.eventBus.off("loaded-protyle-static", this.handleProtyleLoaded);
+                this.eventBus.off("loaded-protyle-dynamic", this.handleProtyleLoaded);
+            });
+        }
+        window.addEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
+        window.addEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
+        window.addEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
+        this.renderBlocksUnsubscribers.push(() => {
+            window.removeEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
+            window.removeEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
+            window.removeEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
+        });
         try {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
@@ -528,6 +580,7 @@ export default class CheckinPlugin extends Plugin {
         this.acceptingOperations = false;
         this.disposing = true;
         this.settleReady(false);
+        this.renderBlocksUnsubscribers.splice(0).forEach((dispose) => dispose());
         this.stopHostThemeWatcher();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
             if (!root) return;

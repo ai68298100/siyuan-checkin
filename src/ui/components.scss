@@ -10038,3 +10038,98 @@ details:not([open]) > :not(summary) { display: none !important; }
     height: auto;
     display: block;
 }
+
+/* T-1234/T-1235 渲染块：月历/热力/汇总只读预览（ Neutral 跳过格 + today 环）。 */
+.lc-checkin__renderblock-host {
+    margin: 6px 0 10px;
+}
+.lc-checkin__renderblock-error {
+    color: var(--lc-checkin-danger-text);
+    font-size: 10.5px;
+    padding: 6px 8px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 8px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__renderblock-empty {
+    color: var(--lc-checkin-muted);
+    font-size: 10.5px;
+}
+.lc-checkin__renderblock-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    max-width: 340px;
+}
+.lc-checkin__renderblock-wd {
+    text-align: center;
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+}
+.lc-checkin__renderblock-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    background: var(--lc-checkin-muted-surface);
+    color: var(--lc-checkin-text);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__renderblock-cell.is-empty {
+    background: transparent;
+}
+.lc-checkin__renderblock-cell.is-level-1 { background: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
+.lc-checkin__renderblock-cell.is-level-2 { background: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }
+.lc-checkin__renderblock-cell.is-level-3 { background: color-mix(in srgb, var(--lc-checkin-accent) 65%, var(--lc-checkin-surface)); }
+.lc-checkin__renderblock-cell.is-level-4 { background: var(--lc-checkin-accent); }
+.lc-checkin__renderblock-cell.is-level-3,
+.lc-checkin__renderblock-cell.is-level-4 {
+    color: var(--lc-checkin-accent-contrast, var(--lc-checkin-surface));
+}
+.lc-checkin__renderblock-cell.is-skip {
+    background: var(--lc-checkin-muted-surface);
+    border: 1px dashed var(--lc-checkin-muted);
+    color: var(--lc-checkin-muted);
+}
+.lc-checkin__renderblock-cell.is-today {
+    outline: 2px solid var(--lc-checkin-accent);
+    outline-offset: 1px;
+}
+.lc-checkin__renderblock-cell.is-future {
+    opacity: .55;
+}
+.lc-checkin__renderblock-meta {
+    color: var(--lc-checkin-muted);
+    font-size: 9.5px;
+}
+.lc-checkin__renderblock-summary {
+    display: grid;
+    gap: 6px;
+}
+.lc-checkin__renderblock-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__renderblock-row strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+}
+.lc-checkin__renderblock-row span {
+    color: var(--lc-checkin-muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__renderblock-row em {
+    font-style: normal;
+    color: var(--lc-checkin-muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+}

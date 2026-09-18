@@ -2443,12 +2443,15 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v17.2 声明式渲染块
 
-- [ ] T-1234 checkin 渲染块
+- [x] T-1234 checkin 渲染块
   - 验收：作用域（笔记本/文档/标签/项目）+ month/heatmap/summary 视图 + 阈值色阶配置；intensity 映射主题色阶、today 环、跳过中性色；配置错误可读提示。
-- [ ] T-1235 点击跳转定位
+  - 状态：done（新增 `src/features/checkin-block.ts` 纯函数：`parseCheckinBlockConfig`（JSON 配置，view 三选一/itemIds≤50/group/month 格式/thresholds 升序校验，错误固定文案不回显用户原文）+ `resolveBlockItems`（itemIds > group > 全部活跃，归档排除；笔记本/文档维度经笔记锚点间接可查、本期不做——我们的数据模型无标签属性，已注明）+ `buildMonthViewHtml`/`buildHeatmapViewHtml`/`buildSummaryViewHtml`（色阶经 thresholds、today 环、跳过中性 is-skip、future 降透明、data-jump-date）；新增 `src/render/block-renderer.ts` DOM 胶水：定位 ```checkin``` 代码块（data-subtype/language 双选择器）→ 紧邻插入只读预览（源码块保持可编辑），经 eventBus loaded-protyle-static/dynamic 驱动（typings 已核对），app.protyles 防御式访问。i18n 9 键。验证：`tests/checkin-block.test.cjs` 纳入 test:ui）
+- [x] T-1235 点击跳转定位
   - 验收：点格子打开当日视图/日记并滚动定位高亮；无对应文档跳回顾页当日详情。
-- [ ] T-1236 渲染安全与性能
+  - 状态：done（预览容器点击委托 data-jump-date → deps.onJumpDate → index `jumpToHistoryDate`：selectedHistoryDate + historyMonth 切月 + showReview()（回顾页当日详情即该日完整记录视图）；非法日期拒绝；渲染块宿主即用户文档，无对应文档场景天然落在回顾页。测试：jump 断言 + 胶水点击委托断言）
+- [x] T-1236 渲染安全与性能
   - 验收：只读、不渲染任意 HTML；1k/10k 性能门禁；经刷新事件更新。
+  - 状态：done（①预览 HTML 全部由 checkin-block 纯函数构造，用户内容（项目名/配置错误）一律 escapeHtml，测试含敌意名称断言；②配置错误显示固定 i18n 文案不回显原文；③~9k 事件（40 项目×12 月）三视图渲染 73ms，门禁 500ms（test 断言）；④刷新：eventBus protyle 装载事件 + checkin:event-recorded/deleted/analytics-updated 窗口事件 → 全 protyle 重渲染，onunload 统一清理（防御式 eventBus/protyles 访问，宽度走查夹具兼容）。验证：`pnpm run check`、构建、Edge 宽度走查 12/12、完整 `test:quality` exit 0（115 文件全覆盖））
 
 ### v18.0 开放生态（原 v18 + 吸收项）
 
