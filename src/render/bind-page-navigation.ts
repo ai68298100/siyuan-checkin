@@ -49,7 +49,9 @@ export interface BindPageNavigationHost {
     broadcast(event: unknown): void;
     renderBackgroundUpdate(): void;
     restoreItem(itemId: string): Promise<void>;
+    restoreArchivedItems(itemIds: string[]): Promise<boolean> | void;
     deleteArchivedItem(itemId: string): Promise<boolean> | void;
+    deleteArchivedItems(itemIds: string[]): Promise<boolean> | void;
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
     reminderFilter: import("../reminders").ReminderFilter;
@@ -313,20 +315,23 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     });
     /* 归档动作共享一个本地互斥边界：除了原生 disabled 外，程序化 click/触屏
        重复派发也必须被吞掉；完成后尽量把焦点留在原动作上。 */
-    const archivedBusy = new WeakSet<HTMLButtonElement>();
+    const archivedBusy = new WeakSet<HTMLElement>();
     const runArchivedAction = (button: HTMLButtonElement, operation: () => Promise<unknown> | unknown) => {
-        if (archivedBusy.has(button)) return;
-        archivedBusy.add(button);
-        button.disabled = true;
-        button.setAttribute("aria-busy", "true");
+        const boundary = button.closest<HTMLElement>("[data-archived-bulk-toolbar]") || button;
+        if (archivedBusy.has(boundary)) return;
+        archivedBusy.add(boundary);
+        const controls = boundary === button ? [button] : [...boundary.querySelectorAll<HTMLButtonElement>("button")];
+        const disabledStates = controls.map((control) => control.disabled);
+        controls.forEach((control) => control.disabled = true);
+        boundary.setAttribute("aria-busy", "true");
         Promise.resolve().then(operation).catch(() => undefined).finally(() => {
-            archivedBusy.delete(button);
+            archivedBusy.delete(boundary);
+            boundary.removeAttribute("aria-busy");
             if (!button.isConnected) {
                 root.querySelector<HTMLElement>("[data-archived-search], [data-action='back']")?.focus();
                 return;
             }
-            button.disabled = false;
-            button.removeAttribute("aria-busy");
+            controls.forEach((control, index) => control.disabled = disabledStates[index]);
             button.focus();
         });
     };
@@ -338,6 +343,36 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const id = button.dataset.archivedDelete || "";
         if (id) runArchivedAction(button, () => host.deleteArchivedItem(id));
     }));
+    const archivedSelections = () => [...root.querySelectorAll<HTMLInputElement>("[data-archived-select]:checked")].map((input) => input.dataset.archivedSelect || "").filter(Boolean);
+    const bulkToolbar = root.querySelector<HTMLElement>("[data-archived-bulk-toolbar]");
+    const selectAll = root.querySelector<HTMLInputElement>("[data-archived-select-all]");
+    const selectedCount = root.querySelector<HTMLElement>("[data-archived-selected-count]");
+    const syncArchivedSelection = () => {
+        const inputs = [...root.querySelectorAll<HTMLInputElement>("[data-archived-select]")];
+        const selected = inputs.filter((input) => input.checked).length;
+        if (selectedCount) selectedCount.textContent = String(selected);
+        if (bulkToolbar) bulkToolbar.hidden = selected === 0;
+        if (selectAll) {
+            selectAll.checked = inputs.length > 0 && selected === inputs.length;
+            selectAll.indeterminate = selected > 0 && selected < inputs.length;
+        }
+    };
+    root.querySelectorAll<HTMLInputElement>("[data-archived-select]").forEach((input) => input.addEventListener("change", syncArchivedSelection));
+    selectAll?.addEventListener("change", () => {
+        root.querySelectorAll<HTMLInputElement>("[data-archived-select]").forEach((input) => input.checked = selectAll.checked);
+        syncArchivedSelection();
+    });
+    root.querySelector<HTMLButtonElement>("[data-action='bulk-restore-archived']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        const ids = archivedSelections();
+        if (!ids.length) return;
+        runArchivedAction(button, () => host.restoreArchivedItems(ids));
+    });
+    root.querySelector<HTMLButtonElement>("[data-action='bulk-delete-archived']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        const ids = archivedSelections();
+        if (ids.length) runArchivedAction(button, () => host.deleteArchivedItems(ids));
+    });
     root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
         const range = button.dataset.summaryRange;
         if (range === "day" || range === "week" || range === "month") {

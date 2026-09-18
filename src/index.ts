@@ -643,8 +643,18 @@ export default class CheckinPlugin extends Plugin {
         if (countCompletedDays(this.store, item, currentCalendarDate()) < target) return;
         const moment = captureActionMoment();
         const fingerprint = this.itemFingerprint(item);
-        void this.enqueueMutation(() => this.setItemArchived(item.id, true, moment, fingerprint)).then((archived) => {
-            if (archived) showMessage(t("msg.autoArchived", {name: item.name, n: target}));
+        let autoArchived = false;
+        void this.enqueueMutation(async () => {
+            const current = getItemById(this.store, item.id);
+            if (!current || current.archived) return false;
+            autoArchived = await this.setItemArchived(item.id, true, moment, fingerprint);
+            return autoArchived;
+        }).then((archived) => {
+            if (archived && autoArchived) {
+                const updated = this.store.items.find((candidate) => candidate.id === item.id);
+                if (updated?.archived) this.broadcast({type: "item-archived", item: updated});
+                showMessage(t("msg.autoArchived", {name: item.name, n: target}));
+            }
         });
     }
 
@@ -1979,7 +1989,72 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private async deleteArchivedItem(itemId: string): Promise<boolean> {
-        return this.deleteItemWithRecords(itemId);
+        const deleted = await this.deleteItemWithRecords(itemId);
+        if (deleted) this.renderBackgroundUpdate();
+        return deleted;
+    }
+
+    private async restoreArchivedItems(itemIds: string[]): Promise<boolean> {
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        if (!requestedIds.size || this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const moment = captureActionMoment();
+            const previous = this.store;
+            const restored: CheckinItem[] = [];
+            const nextItems = this.store.items.map((item) => {
+                if (!requestedIds.has(item.id) || !item.archived) return item;
+                const archivePeriods = item.archivePeriods.map((period) => ({...period}));
+                const openIndex = archivePeriods.findIndex((period) => !period.endDate);
+                if (openIndex >= 0) {
+                    if (archivePeriods[openIndex].startDate >= moment.localDate) archivePeriods.splice(openIndex, 1);
+                    else archivePeriods[openIndex] = {...archivePeriods[openIndex], endDate: moment.localDate};
+                }
+                const updated = {...item, archived: false, archivePeriods, updatedAt: nextItemUpdatedAt(item.updatedAt, moment.occurredAt)};
+                restored.push(updated);
+                return updated;
+            });
+            if (!restored.length) return false;
+            this.store = {...this.store, items: nextItems};
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                this.renderBackgroundUpdate();
+                return false;
+            }
+            this.invalidateSummary();
+            for (const item of restored) this.broadcast({type: "item-updated", item});
+            showMessage(t("msg.itemsRestored", {n: restored.length}));
+            this.renderBackgroundUpdate();
+            return true;
+        });
+    }
+
+    private async deleteArchivedItems(itemIds: string[]): Promise<boolean> {
+        const ids = [...new Set(itemIds)].filter((id) => typeof id === "string" && this.store.items.some((item) => item.id === id && item.archived));
+        if (!ids.length || this.disposed || this.disposing) return false;
+        const items = this.store.items.filter((item) => ids.includes(item.id));
+        const recordCount = this.store.events.filter((event) => ids.includes(event.itemId)).length;
+        if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.length, records: recordCount}))) return false;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const moment = captureActionMoment();
+            for (const id of ids) this.store = deleteItemCascade(this.store, id, moment.occurredAt);
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                this.renderBackgroundUpdate();
+                return false;
+            }
+            this.invalidateSummary();
+            for (const item of items) this.broadcast({type: "item-deleted", item});
+            showMessage(t("msg.itemsDeleted", {n: ids.length}));
+            this.renderBackgroundUpdate();
+            return true;
+        });
     }
 
     private async toggleItem(itemId: string, moment: ActionMoment, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo: readonly CheckinEvent[] = []) {

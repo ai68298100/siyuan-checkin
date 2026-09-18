@@ -1,6 +1,6 @@
 /* 打卡项编辑器视图：从 index.ts 外置；依赖以 EditorViewContext 显式传入。 */
 import {t} from "../i18n";
-import {dateKey} from "../model";
+import {countCompletedDays, dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup} from "../shared";
 import {getRecordStepInputStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateGroupLabel, templateName, templateNote} from "../catalog";
@@ -43,6 +43,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
     const selectedUnit = item?.unit || selectedKindOption.defaultUnit;
     const selectedRecordStep = getRecordStep(selectedKind, selectedUnit, item?.recordStep);
     const editorTarget = item?.target || (selectedKind === "duration" && selectedUnit === "小时" ? 0.5 : selectedKindOption.step);
+    /* 仅编辑已有项目时计算历史达成天数；新建表单无需扫描事件。 */
+    const completedDays = item ? countCompletedDays(ctx.store, item, currentCalendarDate()) : 0;
     const groupSuggestions = [...new Set([
         ...ctx.store.items.map((candidate) => candidate.group || ""),
         ...CHECKIN_TEMPLATES.map((template) => template.group),
@@ -142,6 +144,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
                         <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__advanced-content">
+                            ${item ? `<div class="lc-checkin__editor-history-summary" data-editor-completed-days aria-label="${t("editor.completedDays", {n: completedDays})}"><span>${t("editor.completedDaysLabel")}</span><strong>${completedDays}</strong></div>` : ""}
                             <div class="lc-checkin__organization-fields">
                                 <label class="lc-checkin__field"><span>${t("editor.group")}</span><input name="group" type="text" maxlength="32" placeholder="${t("editor.groupPlaceholder")}" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
                                 <label class="lc-checkin__field"><span>${t("editor.priorityLabel")}</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${t(PRIORITY_LABELS[priority])}</option>`).join("")}</select></label>

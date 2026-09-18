@@ -1126,7 +1126,15 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 ### v15.0 归档、生态与跨表面交互批次（2026-09-18）
 
-- 归档页新增累计达成天数与最近打卡日期/时间；事件先按 itemId 分桶，达成天数投影复用事件日期索引，避免归档项目逐项扫描完整历史。
+- 归档页新增累计达成天数与最近打卡日期/时间；最近记录先按 itemId 分桶，累计达成继续复用 `countCompletedDays`/`isComplete` 业务口径。
 - Task Horizon 合作契约补充 `getEventRangeSummary`：半开本地日期区间、366 天/5,000 事件/366 点上限、`truncated` 标记和防御性聚合投影；新增「任务打卡」配额模板（目标数量可调整）。
 - 跨表面交互测试锁定归档恢复/删除、回顾复制/导出、设置导入/恢复统一的 `aria-busy`、重复提交、错误可见性与焦点恢复；新增测试已纳入生态/扩展质量链。
 - 定向证据：`pnpm run check`、`node tests/event-range-summary.test.cjs`、`node tests/cross-surface-interaction.test.cjs`、`node tests/archived-search.test.cjs`、`node tests/i18n-hygiene.test.cjs` 通过。完整质量链待本轮汇合后执行。
+
+### v15.0 归档批量管理与自动归档契约批次（2026-09-18）
+
+- 归档页支持逐项选择、筛选结果全选、批量恢复与批量删除；批量恢复/删除各自只进入一次 mutation 队列并持久化一次，删除仍展示项目/记录影响并保留墓碑与恢复点语义。
+- 批量工具栏共享 `aria-busy` 与整组禁用边界，避免恢复与删除交叉排队；560px 以下操作按钮回流到第二行，历史页通用三列布局不受影响。
+- 编辑已有项目时在高级区显示累计达成天数；新建项目不计算历史，继续复用 `countCompletedDays`/`isComplete` 业务口径。
+- 新增 `checkin:item-archived` 生态事件，仅真实自动归档状态转换成功后广播；手动归档仍使用 `item-updated`。项目、修订、周期、quota、归档区间和自动归档配置均作防御性克隆。
+- 验证：`pnpm run test:quality` 全链与 `node tests/width-walkthrough.cjs` 通过；100k 事件/3,650 天自动归档投影约 199ms，10k Today 完整渲染 35ms、横向溢出 0px；无障碍 0 缺名/0 正向 tabindex/0 对比度违规。生产 CSS 429,056 bytes，低于 450,000-byte 硬线。

@@ -130,7 +130,7 @@ export interface UserTemplate {
 }
 
 export interface CheckinIntegrationEvent {
-    type: "item-created" | "item-updated" | "item-deleted" | "event-recorded" | "event-deleted" | "suggestion-workflow-updated" | "analytics-updated";
+    type: "item-created" | "item-updated" | "item-deleted" | "item-archived" | "event-recorded" | "event-deleted" | "suggestion-workflow-updated" | "analytics-updated";
     item?: CheckinItem;
     event?: CheckinEvent;
     deletedEvents?: CheckinEvent[];

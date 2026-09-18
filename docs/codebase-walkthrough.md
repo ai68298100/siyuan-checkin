@@ -152,7 +152,7 @@ if (checkin.hasCapability("events.record")) {
 
 能力集：`items.read` `events.read` `occasions.read` `events.record` `occasions.complete` `summary.read` `summary.custom` `analytics.read` `export.json` `export.csv` `focus.adapters` `summary.providers` `suggestions.read` `integrations.events`。
 
-**事件广播**走 `window.dispatchEvent(new CustomEvent(...))`，事件名集中在 `integrations.ts`：`checkin:item-created`、`checkin:item-updated`、`checkin:event-recorded`、`checkin:event-deleted`、`checkin:suggestion-workflow-updated`、`checkin:analytics-updated`。该文件顶部有一段启动期自检——事件名与 `api-contract.ts` 的协议快照不一致就直接 `throw`，防止契约漂移。
+**事件广播**走 `window.dispatchEvent(new CustomEvent(...))`，事件名集中在 `integrations.ts`：`checkin:item-created`、`checkin:item-updated`、`checkin:item-deleted`、`checkin:item-archived`、`checkin:event-recorded`、`checkin:event-deleted`、`checkin:suggestion-workflow-updated`、`checkin:analytics-updated`。其中 `item-archived` 仅由自动归档成功路径广播；手动归档保持 `item-updated` 兼容行为。该文件顶部有一段启动期自检——事件名与 `api-contract.ts` 的协议快照不一致就直接 `throw`，防止契约漂移。
 
 **适配器注册**：`registerFocusAdapter()`（番茄钟）与 `registerSummaryProvider()`（总结模型）都返回反注册函数，并在宿主销毁/插件卸载时清理。两者都带超时（`withTimeout(..., 30000)`）与"注册者是否已变更"的二次校验，避免旧结果覆盖新状态。
 

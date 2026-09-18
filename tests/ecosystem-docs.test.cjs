@@ -5,6 +5,7 @@ assert.match(source, /source/); assert.match(source, /externalRef/); assert.matc
 assert.match(source, /宿主兼容矩阵/); assert.match(source, /第三方接入检查清单/); assert.match(source, /itemId/); assert.match(source, /注销函数/); assert.match(source, /待重试事件/);
 assert.match(source, /getSuggestionWorkflow/); assert.match(source, /getSuggestionWorkflowSummary/); assert.match(source, /防御性快照/);
 assert.match(source, /checkin:suggestion-workflow-updated/); assert.match(source, /规范化的建议 ID/);
+assert.match(source, /checkin:item-archived/); assert.match(source, /自动归档/);
 assert.match(source, /isSuggestionWorkflowEvent/); assert.match(source, /伪造状态/);
 assert.match(source, /suggestions\.read/); assert.match(source, /localOnly/);
 assert.match(source, /analytics\.read/);

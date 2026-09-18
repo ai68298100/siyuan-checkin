@@ -25,6 +25,14 @@ assert.match(fragmentsSource, /revision\.kind === "binary" && revision\.schedule
 assert.match(saveFormSource, /isValidLocalDateInput\(requestedAnchor\)/);
 assert.match(bindEditorSource, /Math\.ceil\(current \/ step - 1e-9\) \* step/);
 assert.match(editorSource, /data-editor-preview/);
+assert.match(editorSource, /countCompletedDays\(ctx\.store, item, currentCalendarDate\(\)\)/, "editing an existing item exposes cumulative completion days");
+assert.match(editorSource, /data-editor-completed-days/, "editor history summary has a stable hook");
+assert.match(editorSource, /editor\.completedDaysLabel/);
+assert.match(editorSource, /editor\.completedDays/);
+assert.match(i18nSource, /"editor\.completedDaysLabel": "累计达成天数"/);
+assert.match(i18nSource, /"editor\.completedDaysLabel": "Completed days"/);
+assert.match(i18nSource, /"editor\.completedDays": "累计达成 \{n\} 天"/);
+assert.match(i18nSource, /"editor\.completedDays": "\{n\} completed days"/);
 assert.match(bindEditorSource, /updateEditorPreview/);
 assert.match(editorSource, /data-preview-action/);
 assert.match(editorSource, /data-action="save-template"/);

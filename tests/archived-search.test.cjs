@@ -8,6 +8,7 @@ const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 /* 归档视图已外置（15.0-A）：标记断言读 render/archived.ts。 */
 const view = fs.readFileSync(path.join(root, "src", "render", "archived.ts"), "utf8");
+const bindings = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 
 assert.match(source, /private archivedQuery = "";/, "archive search state must be independent from history search");
 assert.match(source, /renderArchivedView\(\{items: this\.store\.items, summaries: buildArchivedItemSummaries\(this\.store\.items, this\.store\.events/, "the shell must delegate archive summaries to the extracted view");
@@ -26,8 +27,16 @@ assert.match(i18n, /"archived\.restoreAria": "恢复\{name\}"/, "restore aria la
 const pluginOps = fs.readFileSync(path.join(root, "src", "plugin-ops.ts"), "utf8");
 assert.match(pluginOps, /t\("msg\.restoredNamed", \{name: expectedItem\.name\}\)/, "successful restore must give named feedback");
 assert.match(i18n, /"msg\.restoredNamed": "\[小驴打卡\] 已恢复「\{name\}」"/, "restore feedback must stay in the dictionary");
+assert.match(view, /data-archived-select=/, "archive rows must expose accessible bulk selection");
+assert.match(view, /data-archived-select-all/, "archive page must support selecting the filtered result set");
+assert.match(view, /data-archived-bulk-toolbar/, "archive page must expose a dedicated bulk toolbar");
+assert.match(bindings, /restoreArchivedItems\(ids\)/, "bulk restore must use one host transaction instead of N row actions");
+assert.match(source, /private async restoreArchivedItems[\s\S]*?await this\.persist\(\)/, "bulk restore must persist once through the mutation queue");
+assert.match(source, /private async deleteArchivedItems[\s\S]*?bulkDeleteConfirm/, "bulk delete must retain an impact confirmation");
+assert.match(source, /private async deleteArchivedItems[\s\S]*?deleteItemCascade/, "bulk delete must retain event tombstones");
 /* 布局守门锁现行活规则（D-051）；宽度决策只认 lc5 容器，不认视口（D-016）。 */
 assert.match(styles, /\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[^}]*justify-content:\s*space-between;/, "archive tools must have a stable desktop layout");
 assert.match(styles, /@container lc5 \(max-width:\s*560px\)\s*\{[\s\S]*?\.lc-checkin--archived \.lc-checkin__archived-tools\s*\{[^}]*display:\s*grid;/, "archive tools must stack compactly in narrow containers");
+assert.match(styles, /\.lc-checkin--archived \.lc-checkin__history-row \[data-action="restore-archived"\][^}]*grid-row:\s*2/, "narrow archive actions must move below row metadata");
 
 console.log("Archived search and recovery structure checks passed.");

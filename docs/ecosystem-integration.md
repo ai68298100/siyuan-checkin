@@ -2,7 +2,7 @@
 
 第三方插件可以通过 `window.siyuanCheckin` 接入记录、专注和总结能力。接入必须把外部完成事件转换为稳定记录，并提供唯一的 `source` 与 `externalRef`。
 
-当前 API 版本为 `4`，名称为 `siyuanCheckin`，协议标识为 `siyuan-checkin`。`describe()` 返回协议、API 版本、存储版本、能力和事件名称快照；`hasCapability(name)` 用于调用前检查单项能力。接入方应先检查 `isReady()` / `whenReady()`，再读取项目和事件；可通过 `capabilities` 和 `getCapabilityInfo()` 协商能力与本地写入边界，能力不存在时必须保留自己的离线流程。事件名称固定为 `checkin:item-created`、`checkin:item-updated`、`checkin:event-recorded`、`checkin:event-deleted`、`checkin:suggestion-workflow-updated` 和 `checkin:analytics-updated`。删除事件通过 `deletedEvents` 提供具体记录；建议事件仅包含规范化的建议 ID 与状态，不包含令牌或完整变更；分析事件仅表示只读快照已刷新。公共 API 不声明外部删除或建议写入能力。
+当前 API 版本为 `4`，名称为 `siyuanCheckin`，协议标识为 `siyuan-checkin`。`describe()` 返回协议、API 版本、存储版本、能力和事件名称快照；`hasCapability(name)` 用于调用前检查单项能力。接入方应先检查 `isReady()` / `whenReady()`，再读取项目和事件；可通过 `capabilities` 和 `getCapabilityInfo()` 协商能力与本地写入边界，能力不存在时必须保留自己的离线流程。事件名称固定为 `checkin:item-created`、`checkin:item-updated`、`checkin:event-recorded`、`checkin:event-deleted`、`checkin:item-deleted`、`checkin:item-archived`、`checkin:suggestion-workflow-updated` 和 `checkin:analytics-updated`。`item-archived` 仅在自动归档成功后广播，携带归档项目的防御性快照；手动归档仍使用 `item-updated`，避免旧接入方重复处理。删除事件通过 `deletedEvents` 提供具体记录；建议事件仅包含规范化的建议 ID 与状态，不包含令牌或完整变更；分析事件仅表示只读快照已刷新。公共 API 不声明外部删除或建议写入能力。
 
 ## 记录同步
 

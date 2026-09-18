@@ -7,6 +7,7 @@ export const CHECKIN_EVENT_NAMES = {
     itemCreated: "checkin:item-created",
     itemUpdated: "checkin:item-updated",
     itemDeleted: "checkin:item-deleted",
+    itemArchived: "checkin:item-archived",
     eventRecorded: "checkin:event-recorded",
     eventDeleted: "checkin:event-deleted",
     suggestionWorkflowUpdated: "checkin:suggestion-workflow-updated",
@@ -61,8 +62,27 @@ export function cloneIntegrationEvent(event: CheckinIntegrationEvent): CheckinIn
     if (event.type === "analytics-updated") {
         return {type: event.type, analyticsAsOf: typeof event.analyticsAsOf === "string" ? event.analyticsAsOf.slice(0, 32) : undefined};
     }
+    if (event.type === "item-archived") {
+        /* 自动归档事件只公开稳定的项目快照；忽略调用方附加字段，避免把宿主私有数据带出边界。 */
+        return {
+            type: event.type,
+            item: event.item ? {
+                ...event.item,
+                schedule: event.item.schedule ? {...event.item.schedule, weekdays: event.item.schedule.weekdays ? [...event.item.schedule.weekdays] : undefined, quota: event.item.schedule.quota ? {...event.item.schedule.quota} : undefined} : event.item.schedule,
+                revisions: event.item.revisions?.map((revision) => ({...revision, schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined, quota: revision.schedule.quota ? {...revision.schedule.quota} : undefined}})),
+                archivePeriods: event.item.archivePeriods?.map((period) => ({...period})),
+                autoArchive: event.item.autoArchive ? {...event.item.autoArchive} : event.item.autoArchive,
+            } : undefined,
+        };
+    }
     if (event.type === "item-created" || event.type === "item-updated" || event.type === "item-deleted") {
-        return {...event, item: event.item ? {...event.item, archivePeriods: event.item.archivePeriods?.map((period) => ({...period})), schedule: event.item.schedule ? {...event.item.schedule} : event.item.schedule} : undefined};
+        return {...event, item: event.item ? {
+            ...event.item,
+            archivePeriods: event.item.archivePeriods?.map((period) => ({...period})),
+            schedule: event.item.schedule ? {...event.item.schedule, weekdays: event.item.schedule.weekdays ? [...event.item.schedule.weekdays] : undefined, quota: event.item.schedule.quota ? {...event.item.schedule.quota} : undefined} : event.item.schedule,
+            revisions: event.item.revisions?.map((revision) => ({...revision, schedule: {...revision.schedule, weekdays: revision.schedule.weekdays ? [...revision.schedule.weekdays] : undefined, quota: revision.schedule.quota ? {...revision.schedule.quota} : undefined}})),
+            autoArchive: event.item.autoArchive ? {...event.item.autoArchive} : event.item.autoArchive,
+        } : undefined};
     }
     if (event.type === "event-recorded" || event.type === "event-deleted") {
         return {...event, event: event.event ? {...event.event} : undefined, deletedEvents: event.deletedEvents?.map((entry) => ({...entry}))};
@@ -87,6 +107,8 @@ export function toExternalEventName(event: CheckinIntegrationEvent): string {
             return CHECKIN_EVENT_NAMES.itemUpdated;
         case "item-deleted":
             return CHECKIN_EVENT_NAMES.itemDeleted;
+        case "item-archived":
+            return CHECKIN_EVENT_NAMES.itemArchived;
         case "event-recorded":
             return CHECKIN_EVENT_NAMES.eventRecorded;
         case "event-deleted":

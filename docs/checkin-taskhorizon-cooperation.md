@@ -12,7 +12,7 @@
 
 ### 小飞驴打卡（本插件）
 - 公共 API：`window.siyuanCheckin`，协议 `siyuan-checkin`，版本 4，能力协商（14 项能力，含 items.read / events.read / events.record / occasions.* / summary.* / analytics.read / integrations.events / export.* / focus.adapters）。
-- 集成事件（window 广播）：`checkin:item-created|item-updated|event-recorded|event-deleted|analytics-updated|suggestion-workflow-updated`。
+- 集成事件（window 广播）：`checkin:item-created|item-updated|item-deleted|item-archived|event-recorded|event-deleted|analytics-updated|suggestion-workflow-updated`。其中 `item-archived` 仅在自动归档成功后广播，携带项目快照；手动归档保持 `item-updated` 兼容行为。
 - 记录写入：`recordEvent({itemId, value, unit, source:"api", note, externalRef})`——**externalRef 幂等**，重复投递返回 undefined，多窗口/重放安全。
 - 项目模型：配额型项目（按记录数或按达成天数，目标 N），当天达到目标即"完成"；另有农历、提醒、成就、统计、自动归档（规划中，T-1161）。
 
@@ -39,7 +39,7 @@
 - 探测：`window.siyuanCheckin` 存在且 `protocol === "siyuan-checkin"`、`version >= 4`，按 `capabilities` 确认所需能力可用。
 - 读：`analytics.read` 快照（含日期范围与点数上限，localOnly）；`events.read` 半开日期区间、保持原持久顺序。为日历等轻量图层提供 `siyuanCheckin.getEventRangeSummary({startDate, endDateExclusive}, {maxEvents?, maxPoints?})`：仅按本地日期返回 `{localDate,eventCount,totalValue,totalsByUnit}` 点，默认最多 366 天/5,000 条事件/366 个点，超出时返回 `truncated: true`；输入范围超过 366 天或非法直接拒绝。返回值为防御性投影，不含 store、附件或私有事件对象。
 - 写：`events.record`（见 L2）；返回 `undefined` 视为重复或拒绝，不应重试提示。
-- 事件：`checkin:analytics-updated`（聚合变化）、`checkin:event-recorded`（新记录）用于增量刷新。
+- 事件：`checkin:analytics-updated`（聚合变化）、`checkin:event-recorded`（新记录）和 `checkin:item-archived`（自动归档成功）用于增量刷新；手动归档继续监听 `checkin:item-updated`。
 - 风格：与 `__dockTomato.stats.queryFocus` 同款——能力检测、超时、AbortSignal、不可用即降级隐藏。
 - 稳定性：API 版本化；破坏性变更升 major 并给过渡期。
 

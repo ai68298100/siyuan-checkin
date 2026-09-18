@@ -11,8 +11,9 @@ const index = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(navigation, /const archivedBusy = new WeakSet/);
 assert.match(navigation, /data-restore-id/);
 assert.match(navigation, /data-archived-delete/);
-assert.match(navigation, /button\.setAttribute\("aria-busy", "true"\)/);
-assert.match(navigation, /archivedBusy\.has\(button\)/);
+assert.match(navigation, /boundary\.setAttribute\("aria-busy", "true"\)/);
+assert.match(navigation, /archivedBusy\.has\(boundary\)/);
+assert.match(navigation, /controls\.forEach\(\(control\) => control\.disabled = true\)/, "bulk archive actions must disable the whole toolbar");
 assert.match(archived, /data-action="restore-archived"/);
 assert.match(archived, /data-action="delete-archived"/);
 
