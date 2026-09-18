@@ -35,6 +35,7 @@ assert.match(source, /private async restoreArchivedItems[\s\S]*?await this\.pers
 assert.match(source, /private async deleteArchivedItems[\s\S]*?bulkDeleteConfirm/, "bulk delete must retain an impact confirmation");
 assert.match(source, /private async deleteArchivedItems[\s\S]*?deleteItemsCascade/, "bulk delete must retain event tombstones through the linear batch projection");
 assert.match(source, /for \(const event of this\.store\.events\) if \(ids\.has\(event\.itemId\)\) recordCount \+= 1;/, "bulk impact counting must scan history once");
+assert.match(source, /private async deleteArchivedItems[\s\S]*?currentItems\.length !== items\.length \|\| currentRecordCount !== recordCount[\s\S]*?msg\.deleteImpactChanged/, "archive deletion must reject a stale cross-window confirmation");
 assert.match(bindings, /data-archived-bulk-toolbar[\s\S]*?\|\| row \|\| button/, "row actions must share one mutual-exclusion boundary");
 assert.match(bindings, /const candidates = action[\s\S]*?data-action/, "removed rows must restore focus to the nearest equivalent action");
 /* 布局守门锁现行活规则（D-051）；宽度决策只认 lc5 容器，不认视口（D-016）。 */

@@ -635,27 +635,52 @@ export default class CheckinPlugin extends Plugin {
         return {...event};
     }
 
-    /** 自动归档检查（D-165/T-1161）：达成天数 ≥ afterDays 时自动归档并提示。
-        撤销导致天数回落不自动恢复（归档是显式状态，恢复走归档页）。 */
+    /** 自动归档检查（D-165/T-1161）：单条与批量记录共享同一批处理入口。 */
     private maybeAutoArchiveAfterRecord(item: CheckinItem): void {
-        const target = item.autoArchive?.afterDays;
-        if (!target || item.archived || this.disposed || this.disposing) return;
-        if (countCompletedDays(this.store, item, currentCalendarDate()) < target) return;
-        const moment = captureActionMoment();
-        const fingerprint = this.itemFingerprint(item);
-        let autoArchived = false;
+        this.maybeAutoArchiveItemsAfterRecord([item]);
+    }
+
+    /** 达标项目在一次 mutation 中统一归档和持久化；撤销仍不会自动恢复。 */
+    private maybeAutoArchiveItemsAfterRecord(items: readonly CheckinItem[]): void {
+        if (this.disposed || this.disposing) return;
+        const eligibleIds = new Set(items.filter((item) => {
+            const target = item.autoArchive?.afterDays;
+            return Boolean(target && !item.archived && countCompletedDays(this.store, item, currentCalendarDate()) >= target);
+        }).map((item) => item.id));
+        if (!eligibleIds.size) return;
         void this.enqueueMutation(async () => {
-            const current = getItemById(this.store, item.id);
-            if (!current || current.archived) return false;
-            autoArchived = await this.setItemArchived(item.id, true, moment, fingerprint);
-            return autoArchived;
-        }).then((archived) => {
-            if (archived && autoArchived) {
-                const updated = this.store.items.find((candidate) => candidate.id === item.id);
-                if (updated?.archived) this.broadcast({type: "item-archived", item: updated});
-                showMessage(t("msg.autoArchived", {name: item.name, n: target}));
+            const currentEligible = new Set<string>();
+            const targets = new Map<string, number>();
+            const asOf = currentCalendarDate();
+            for (const id of eligibleIds) {
+                const current = getItemById(this.store, id);
+                const target = current?.autoArchive?.afterDays;
+                if (!current || !target || current.archived || countCompletedDays(this.store, current, asOf) < target) continue;
+                currentEligible.add(id);
+                targets.set(id, target);
             }
-        });
+            if (!currentEligible.size) return [] as Array<{item: CheckinItem; target: number}>;
+            const previous = this.store;
+            const archived = this.applyArchivedItems(currentEligible, captureActionMoment());
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                return [] as Array<{item: CheckinItem; target: number}>;
+            }
+            this.invalidateSummary();
+            for (const item of archived) {
+                this.broadcast({type: "item-updated", item});
+                this.broadcast({type: "item-archived", item});
+            }
+            this.renderBackgroundUpdate();
+            return archived.map((item) => ({item, target: targets.get(item.id) || 0}));
+        }).then((archived) => {
+            if (!archived?.length) return;
+            if (archived.length === 1) showMessage(t("msg.autoArchived", {name: archived[0].item.name, n: archived[0].target}));
+            else showMessage(t("msg.autoArchivedMany", {n: archived.length}));
+        }).catch(() => undefined);
     }
 
     private showToday() {
@@ -1805,6 +1830,23 @@ export default class CheckinPlugin extends Plugin {
         return true;
     }
 
+    /** Apply the shared archive-period transition to the current in-memory snapshot. */
+    private applyArchivedItems(requestedIds: ReadonlySet<string>, moment: ActionMoment): CheckinItem[] {
+        const today = calendarDateFromKey(moment.localDate);
+        const startDate = dateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+        const archived: CheckinItem[] = [];
+        const items = this.store.items.map((item) => {
+            if (!requestedIds.has(item.id) || item.archived) return item;
+            const archivePeriods = item.archivePeriods.map((period) => ({...period}));
+            if (!archivePeriods.some((period) => !period.endDate)) archivePeriods.push({startDate});
+            const updated = {...item, archived: true, archivePeriods, updatedAt: nextItemUpdatedAt(item.updatedAt, moment.occurredAt)};
+            archived.push(updated);
+            return updated;
+        });
+        if (archived.length) this.store = {...this.store, items};
+        return archived;
+    }
+
     /** Today 批量归档：一次构造快照、一次持久化，避免逐项保存和中间态重渲染。 */
     private async archiveItems(itemIds: string[]): Promise<boolean> {
         const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
@@ -1812,19 +1854,8 @@ export default class CheckinPlugin extends Plugin {
         return this.enqueueMutation(async () => {
             const previous = this.store;
             const moment = captureActionMoment();
-            const today = calendarDateFromKey(moment.localDate);
-            const startDate = dateKey(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
-            const archived: CheckinItem[] = [];
-            const items = this.store.items.map((item) => {
-                if (!requestedIds.has(item.id) || item.archived) return item;
-                const archivePeriods = item.archivePeriods.map((period) => ({...period}));
-                if (!archivePeriods.some((period) => !period.endDate)) archivePeriods.push({startDate});
-                const updated = {...item, archived: true, archivePeriods, updatedAt: nextItemUpdatedAt(item.updatedAt, moment.occurredAt)};
-                archived.push(updated);
-                return updated;
-            });
+            const archived = this.applyArchivedItems(requestedIds, moment);
             if (!archived.length) return false;
-            this.store = {...this.store, items};
             try {
                 await this.persist();
             } catch {
@@ -1875,8 +1906,8 @@ export default class CheckinPlugin extends Plugin {
                 if (entry.item.linkedOccasionId && isComplete(this.store, entry.item, actionDate)) {
                     void this.setOccasionCompleted(entry.item.linkedOccasionId, moment.localDate, true);
                 }
-                this.maybeAutoArchiveAfterRecord(entry.item);
             }
+            this.maybeAutoArchiveItemsAfterRecord(recorded.map((entry) => entry.item));
             const last = recorded[recorded.length - 1];
             if (last) {
                 const target = last.revision.schedule.type === "quota" ? last.revision.schedule.quota?.amount || last.revision.target : last.revision.target;
@@ -2051,25 +2082,39 @@ export default class CheckinPlugin extends Plugin {
         if (!item || this.disposed || this.disposing) return false;
         const recordCount = this.store.events.filter((event) => event.itemId === itemId).length;
         if (!window.confirm(t("editor.deleteItemConfirm", {name: item.name, n: recordCount}))) return false;
-        const previous = this.store;
-        const moment = captureActionMoment();
-        this.store = deleteItemCascade(this.store, itemId, moment.occurredAt);
-        try {
-            await this.persist();
-        } catch {
-            this.store = previous;
-            showMessage(t("msg.saveFail"));
-            this.renderBackgroundUpdate();
-            return false;
-        }
-        this.invalidateSummary();
-        this.broadcast({type: "item-deleted", item});
-        if (this.editingId === itemId) {
-            this.editingId = undefined;
-            this.editingFingerprint = undefined;
-        }
-        showMessage(t("msg.itemDeleted", {name: item.name}));
-        return true;
+        return this.enqueueMutation(async () => {
+            const current = getItemById(this.store, itemId);
+            if (!current) {
+                if (this.currentPage === "today") this.renderBackgroundUpdate();
+                return true;
+            }
+            let currentRecordCount = 0;
+            for (const event of this.store.events) if (event.itemId === itemId) currentRecordCount += 1;
+            if (currentRecordCount !== recordCount) {
+                showMessage(t("msg.deleteImpactChanged"));
+                return false;
+            }
+            const previous = this.store;
+            const moment = captureActionMoment();
+            this.store = deleteItemCascade(this.store, itemId, moment.occurredAt);
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                this.renderBackgroundUpdate();
+                return false;
+            }
+            this.invalidateSummary();
+            this.broadcast({type: "item-deleted", item: current});
+            if (this.editingId === itemId) {
+                this.editingId = undefined;
+                this.editingFingerprint = undefined;
+            }
+            showMessage(t("msg.itemDeleted", {name: current.name}));
+            if (this.currentPage === "today") this.renderBackgroundUpdate();
+            return true;
+        });
     }
 
     /** Today 批量删除：确认统计与删除投影均为单次线性扫描，整批只持久化一次。 */
@@ -2082,6 +2127,13 @@ export default class CheckinPlugin extends Plugin {
         for (const event of this.store.events) if (ids.has(event.itemId)) recordCount += 1;
         if (!window.confirm(t("today.bulkDeleteConfirm", {n: items.length, records: recordCount}))) return false;
         return this.enqueueMutation(async () => {
+            const currentItems = this.store.items.filter((item) => ids.has(item.id) && !item.archived);
+            let currentRecordCount = 0;
+            for (const event of this.store.events) if (ids.has(event.itemId)) currentRecordCount += 1;
+            if (currentItems.length !== items.length || currentRecordCount !== recordCount) {
+                showMessage(t("msg.deleteImpactChanged"));
+                return false;
+            }
             const previous = this.store;
             const moment = captureActionMoment();
             this.store = deleteItemsCascade(this.store, [...ids], moment.occurredAt);
@@ -2093,8 +2145,8 @@ export default class CheckinPlugin extends Plugin {
                 return false;
             }
             this.invalidateSummary();
-            for (const item of items) this.broadcast({type: "item-deleted", item});
-            showMessage(t("msg.itemsDeleted", {n: items.length}));
+            for (const item of currentItems) this.broadcast({type: "item-deleted", item});
+            showMessage(t("msg.itemsDeleted", {n: currentItems.length}));
             return true;
         });
     }
@@ -2158,6 +2210,13 @@ export default class CheckinPlugin extends Plugin {
         for (const event of this.store.events) if (ids.has(event.itemId)) recordCount += 1;
         if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.size, records: recordCount}))) return false;
         return this.enqueueMutation(async () => {
+            const currentItems = this.store.items.filter((item) => ids.has(item.id) && item.archived);
+            let currentRecordCount = 0;
+            for (const event of this.store.events) if (ids.has(event.itemId)) currentRecordCount += 1;
+            if (currentItems.length !== items.length || currentRecordCount !== recordCount) {
+                showMessage(t("msg.deleteImpactChanged"));
+                return false;
+            }
             const previous = this.store;
             const moment = captureActionMoment();
             this.store = deleteItemsCascade(this.store, [...ids], moment.occurredAt);
@@ -2170,8 +2229,8 @@ export default class CheckinPlugin extends Plugin {
                 return false;
             }
             this.invalidateSummary();
-            for (const item of items) this.broadcast({type: "item-deleted", item});
-            showMessage(t("msg.itemsDeleted", {n: ids.size}));
+            for (const item of currentItems) this.broadcast({type: "item-deleted", item});
+            showMessage(t("msg.itemsDeleted", {n: currentItems.length}));
             this.renderBackgroundUpdate();
             return true;
         });

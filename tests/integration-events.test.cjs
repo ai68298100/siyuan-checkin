@@ -19,7 +19,8 @@ assert.notEqual(safe, input);
 assert.equal(events.toExternalEventName(safe), "checkin:suggestion-workflow-updated");
 assert.equal(events.cloneIntegrationEvent(analytics).analyticsAsOf, "2026-09-15");
 assert.equal(events.toExternalEventName({type: "analytics-updated"}), "checkin:analytics-updated");
-assert.match(indexSource, /let autoArchived = false;[\s\S]*?current\.archived\) return false;[\s\S]*?type: "item-archived"/, "only a real automatic archive transition may emit item-archived");
+assert.match(indexSource, /maybeAutoArchiveItemsAfterRecord[\s\S]*?current\.archived[\s\S]*?applyArchivedItems[\s\S]*?await this\.persist\(\)[\s\S]*?type: "item-archived"/, "only persisted automatic archive transitions may emit item-archived");
+assert.match(indexSource, /for \(const item of archived\)[\s\S]*?type: "item-updated"[\s\S]*?type: "item-archived"/, "automatic archive retains the compatibility update before its dedicated event");
 const archived = {
     type: "item-archived",
     leaked: {secret: true},

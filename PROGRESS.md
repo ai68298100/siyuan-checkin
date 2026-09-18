@@ -1152,3 +1152,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - T-1179：模型新增 `appendEvents`，一次索引检查和一次数组克隆完成批量追加；严格过滤已有及批次内重复 ID/externalRef、ID/外部身份墓碑，`appendEvent` 保持原签名并委托新核心。
 - T-1180/T-1181：全选仅遍历当前 `[data-bulk-check]` 结果；筛选重渲染会剔除不可见旧选择。逐项选择、全选、计数、按钮禁用均局部更新，不再为一次勾选重渲染完整 Today 表面。批量完成仍逐条广播 `event-recorded`，合并一次 `analytics-updated`，保留日期事项联动、自动归档和最近记录反馈。
 - 验证：`pnpm run test:quality` exit 0，98 个测试文件零退役；100k 历史追加 1,000 事件约 3.6ms，100 项/100k 事件批量删除约 14.2ms，10k Today 完整渲染约 81ms；无障碍 0 缺名/0 正向 tabindex/0 对比度违规；CSS 429,056 bytes，低于 450KB 硬线。`node tests/width-walkthrough.cjs` 全矩阵无横向溢出。
+
+### v15.0 删除并发复核与自动归档批处理（2026-09-18）
+
+- T-1182：单项目删除纳入 storage mutation 队列，锁内重新读取当前项目后级联删除；Today 上下文菜单成功删除会立即刷新表面，编辑器和归档页继续由各自导航路径收口。
+- T-1183：单项、Today 批量、归档批量删除在用户确认后、实际写入前重新核对项目数量与记录数量；跨窗口变化会显示可见提示并中止，避免按过期影响数字删除新增记录。
+- T-1184：自动归档改为 `maybeAutoArchiveItemsAfterRecord` 批处理，多个达标项目共享一次 mutation/持久化；`applyArchivedItems` 同时服务手动批量归档与自动归档，归档周期起点语义保持一致。每个项目仍按顺序广播 `item-updated`、`item-archived`。
+- T-1185：单项目自动归档保留名称和达成天数，多项目改用聚合反馈；性能门禁扩展为 50 项/100k 事件批量资格投影。完整质量链测得单项约 270.5ms、批量约 448.6ms；独占复跑分别约 184.6ms/273.8ms。
+- 验证：`pnpm run test:quality` exit 0，98 个测试文件零退役；无障碍 0 缺名/0 正向 tabindex/0 对比度违规，CSS 429,056 bytes 低于 450KB 硬线；`node tests/width-walkthrough.cjs` 全矩阵无横向溢出。

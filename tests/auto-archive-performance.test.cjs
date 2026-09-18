@@ -39,4 +39,22 @@ const completedDays = model.countCompletedDays(store, item, today);
 const elapsed = performance.now() - startedAt;
 assert.equal(completedDays, 3650, "every represented daily opportunity is complete exactly once");
 assert.ok(elapsed < 500, `100k-event auto-archive projection must finish within 500ms, received ${elapsed.toFixed(1)}ms`);
-console.log(`Auto-archive performance checks passed: 100k events across 3650 days in ${elapsed.toFixed(1)}ms.`);
+
+const batchItemCount = 50;
+const batchDays = 365;
+const batchItems = Array.from({length:batchItemCount}, (_, index) => ({...item, id:`batch-item-${index}`, name:`批量项目 ${index}`, createdDate:dayKey(0)}));
+const batchEvents = Array.from({length:100000}, (_, index) => {
+    const itemIndex = index % batchItemCount;
+    const localDate = dayKey(Math.floor(index / batchItemCount) % batchDays);
+    return {id:`batch-event-${index}`,itemId:`batch-item-${itemIndex}`,occurredAt:`${localDate}T04:00:00.000Z`,localDate,value:1,unit:"次",source:"manual"};
+});
+const batchStore = {version:2,items:batchItems,events:batchEvents,eventTombstones:[]};
+const batchToday = new Date(start);
+batchToday.setDate(batchToday.getDate() + batchDays - 1);
+const batchStartedAt = performance.now();
+const eligible = batchItems.filter((candidate) => model.countCompletedDays(batchStore, candidate, batchToday) >= batchDays);
+const batchElapsed = performance.now() - batchStartedAt;
+assert.equal(eligible.length, batchItemCount, "all batch candidates meet the same automatic archive threshold");
+assert.ok(batchElapsed < 1000, `50-item / 100k-event eligibility projection must finish within 1s, received ${batchElapsed.toFixed(1)}ms`);
+
+console.log(`Auto-archive performance checks passed: 100k/3650 single ${elapsed.toFixed(1)}ms; 50-item/100k batch ${batchElapsed.toFixed(1)}ms.`);

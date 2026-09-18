@@ -36,9 +36,13 @@ assert.match(source, /await host\.deleteItemsWithRecords\(ids\)/, "bulk delete d
 assert.match(index, /private async archiveItems[\s\S]*?return this\.enqueueMutation[\s\S]*?await this\.persist\(\)/, "bulk archive persists once inside the mutation queue");
 assert.match(index, /private async completeItems[\s\S]*?appendEvents[\s\S]*?await this\.persist\(\)/, "bulk completion appends and persists the batch once");
 assert.match(index, /private async completeItems[\s\S]*?type: "event-recorded"[\s\S]*?type: "analytics-updated"/, "bulk completion preserves integration refresh events");
-assert.match(index, /private async completeItems[\s\S]*?setOccasionCompleted[\s\S]*?maybeAutoArchiveAfterRecord[\s\S]*?setRecentRecord/, "bulk completion preserves linked occasions, automatic archive, and undo feedback");
+assert.match(index, /private async completeItems[\s\S]*?setOccasionCompleted[\s\S]*?maybeAutoArchiveItemsAfterRecord[\s\S]*?setRecentRecord/, "bulk completion preserves linked occasions, batched automatic archive, and undo feedback");
 assert.match(index, /private async deleteItemsWithRecords[\s\S]*?deleteItemsCascade[\s\S]*?await this\.persist\(\)/, "bulk deletion uses the linear cascade and persists once");
 assert.match(index, /private async recordEvent[\s\S]*?this\.maybeAutoArchiveAfterRecord\(current\)/, "manual records participate in automatic archiving");
+assert.match(index, /private async deleteItemWithRecords[\s\S]*?return this\.enqueueMutation[\s\S]*?deleteItemCascade[\s\S]*?await this\.persist\(\)/, "single deletion mutates only inside the storage queue");
+assert.match(index, /private async deleteItemWithRecords[\s\S]*?currentRecordCount !== recordCount[\s\S]*?msg\.deleteImpactChanged/, "single deletion rejects a stale impact confirmation");
+assert.match(index, /private async deleteItemsWithRecords[\s\S]*?currentItems\.length !== items\.length \|\| currentRecordCount !== recordCount/, "bulk deletion revalidates its confirmed item and record counts");
+assert.match(index, /showMessage\(t\("msg\.itemDeleted"[\s\S]*?currentPage === "today"[\s\S]*?renderBackgroundUpdate/, "Today context deletion refreshes the removed card immediately");
 assert.match(source, /menu\.dataset\.actionBusy === "true"/, "context-menu actions ignore duplicate clicks");
 assert.match(source, /querySelectorAll<HTMLElement>\("\[data-bulk-check\]"\)[\s\S]*?syncBulkSelection\(\)/, "select-all is scoped to rendered filtered results");
 assert.match(source, /const renderedIds = new Set[\s\S]*?host\.bulkSelected\.delete\(id\)/, "filter rerenders prune selections outside the rendered result set");
