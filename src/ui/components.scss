@@ -9928,3 +9928,22 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__compare-item-bar span:not(.is-base) {
     background: var(--lc-checkin-accent);
 }
+
+/* T-1217 报告设置：复用 review-more 弹出容器，仅定义选项行布局。 */
+.lc-checkin__report-settings-menu {
+    display: grid;
+    gap: 6px;
+}
+.lc-checkin__report-option {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--lc-checkin-text);
+    font-size: 10.5px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.lc-checkin__report-option input {
+    accent-color: var(--lc-checkin-accent);
+    margin: 0;
+}

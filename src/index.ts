@@ -17,7 +17,7 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
-import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
+import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -26,7 +26,7 @@ import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -239,6 +239,8 @@ export default class CheckinPlugin extends Plugin {
     /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
+    /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
+    reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
@@ -1634,6 +1636,7 @@ export default class CheckinPlugin extends Plugin {
             summaryRange: this.summaryRange,
             summaryCustomRange: this.summaryCustomRange,
             summaryText: this.summaryText,
+            reportSections: this.reportSections,
             suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
             analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
@@ -2049,6 +2052,11 @@ export default class CheckinPlugin extends Plugin {
 
     private downloadExport(format: "json" | "csv") {
         downloadExportFor(this as unknown as PluginOpsHost, format);
+    }
+
+    /* T-1217：报告 Markdown 走与 JSON/CSV 相同的下载边界。 */
+    private downloadReportMarkdown(markdown: string) {
+        downloadReportMarkdownFor(markdown);
     }
 
     private getSummaryEvents(range: SummaryRange, date = new Date()): CheckinEvent[] {
@@ -2706,6 +2714,7 @@ export default class CheckinPlugin extends Plugin {
         this.insightsItemId = preferences.lastInsightsItemId;
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
+        this.reportSections = {...preferences.reportSections};
     }
 
     /* 手机端打卡成功的短振动（仅移动前端 + 用户未关闭；无振动能力的环境静默跳过）。 */
@@ -2739,6 +2748,7 @@ export default class CheckinPlugin extends Plugin {
             dialogFixedSize: {...this.dialogFixedSize},
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
+            reportSections: {...this.reportSections},
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

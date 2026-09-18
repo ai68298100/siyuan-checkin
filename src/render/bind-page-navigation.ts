@@ -2,6 +2,8 @@
    宿主成员经 BindPageNavigationHost 结构化接口声明。 */
 import {t} from "../i18n";
 import {buildWeeklyReportMarkdown} from "../features/report";
+import {buildReviewComparison, getPreviousReviewRange, type ReviewComparison} from "../features/review-comparison";
+import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
@@ -54,6 +56,8 @@ export interface BindPageNavigationHost {
     deleteArchivedItems(itemIds: string[]): Promise<boolean> | void;
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv"): void;
+    downloadReportMarkdown(markdown: string): void;
+    reportSections: ReportSectionToggles;
     reminderFilter: import("../reminders").ReminderFilter;
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
@@ -477,14 +481,40 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             button.focus();
         });
     };
+    /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
+    const buildCurrentReport = (): string => {
+        const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
+        const label = host.summaryRange === "day" ? t("report.titleDay")
+            : host.summaryRange === "month" ? t("report.titleMonth")
+            : host.summaryRange === "week" ? t("report.titleWeek")
+            : t("report.titleCustom");
+        const title = t("report.titleWithRange", {label, start: summary.startDate, end: summary.endDate});
+        let comparison: ReviewComparison | undefined;
+        if (host.reportSections.baseline) {
+            const previous = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
+            comparison = previous ? buildReviewComparison(summary, buildCustomSummaryContext(host.store, previous)) : undefined;
+        }
+        return buildWeeklyReportMarkdown(summary, title, host.reportSections, comparison);
+    };
     root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         runReviewTool(button, async () => {
-            const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
-            const label = host.summaryRange === "day" ? "今日报告" : host.summaryRange === "month" ? "本月报告" : "本周报告";
-            const markdown = buildWeeklyReportMarkdown(summary, `${label}（${summary.startDate} ~ ${summary.endDate}）`);
+            const markdown = buildCurrentReport();
             try { await navigator.clipboard.writeText(markdown); showMessage(t("msg.reportCopied")); }
             catch { showMessage(t("msg.clipboardFail")); }
+        });
+    });
+    root.querySelector<HTMLElement>("[data-action='export-report']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        runReviewTool(button, () => host.downloadReportMarkdown(buildCurrentReport()));
+    });
+    /* 报告设置：改动即写回视图偏好；不触发重渲染（复选框自身状态就是真值）。 */
+    root.querySelectorAll<HTMLInputElement>("[data-report-option]").forEach((input) => {
+        input.addEventListener("change", () => {
+            const key = input.dataset.reportOption as keyof ReportSectionToggles;
+            if (!(key in host.reportSections)) return;
+            host.reportSections = {...host.reportSections, [key]: input.checked};
+            void host.persistViewPreferences();
         });
     });
     root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("csv")));

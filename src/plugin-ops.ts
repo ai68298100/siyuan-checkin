@@ -136,6 +136,17 @@ export function downloadMigrationReportFor(report: JsonMigrationReport): void {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+/* T-1217：本地生成的 Markdown 报告走与 JSON/CSV 相同的临时 Blob 下载路径。 */
+export function downloadReportMarkdownFor(markdown: string): void {
+    const blob = new Blob([markdown], {type: "text/markdown;charset=utf-8"});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `siyuan-checkin-report-${dateKey(new Date())}.md`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
 export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void {
     const blob = new Blob([serializeStoreAudit(entries)], {type: "application/json;charset=utf-8"});
     const url = URL.createObjectURL(blob);

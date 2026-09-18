@@ -1,24 +1,76 @@
-/* 8.3 周报 Markdown 生成：纯函数，输入已构建的 SummaryContext，输出可粘贴的 Markdown。 */
+/* 8.3 周报 Markdown 生成：纯函数，输入已构建的 SummaryContext，输出可粘贴的 Markdown。
+   16.1 T-1217：区块可配置（视图偏好持久化）、基线消费 review-comparison 的比较结果、
+   数据不足时明确说明而不是给空结论；全部本地生成，不发网络请求。 */
 
+import {t} from "../i18n";
 import type {SummaryContext} from "../analytics";
+import type {ReviewComparison} from "./review-comparison";
+import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 
-export function buildWeeklyReportMarkdown(summary: SummaryContext, title: string): string {
+export {DEFAULT_REPORT_SECTIONS};
+
+function signed(value: number): string {
+    if (value > 0) return `+${value}`;
+    if (value < 0) return `${value}`;
+    return "±0";
+}
+
+function highlightLines(summary: SummaryContext): string[] {
+    if (summary.totalEvents <= 0 && summary.items.length === 0) {
+        return [`> ${t("report.insufficientNote")}`];
+    }
+    const ranked = [...summary.items].sort((left, right) => right.completionRate - left.completionRate);
+    if (ranked.length < 2) {
+        return [`> ${t("report.singleItemNote")}`];
+    }
+    const best = ranked[0];
+    const attention = ranked[ranked.length - 1];
+    return [
+        `- ${t("report.bestLine", {name: best.name, rate: best.completionRate})}`,
+        `- ${t("report.attentionLine", {name: attention.name, rate: attention.completionRate})}`,
+    ];
+}
+
+export function buildWeeklyReportMarkdown(
+    summary: SummaryContext,
+    title: string,
+    sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
+    comparison?: ReviewComparison,
+): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
     lines.push(`## ${title}`);
     lines.push("");
-    lines.push(`- 记录 **${summary.totalEvents}** 条`);
-    lines.push(`- **${summary.completedItems}/${summary.scheduledItems}** 项有完成（${rate}%）`);
-    lines.push(`- 范围：${summary.startDate} ~ ${summary.endDate}`);
-    if (summary.items.length) {
-        lines.push("");
-        lines.push("| 项目 | 完成 | 完成率 |");
-        lines.push("| --- | --- | --- |");
-        for (const item of summary.items) {
-            lines.push(`| ${item.name} | ${item.completedDays}/${item.scheduledDays} 天 | ${item.completionRate}% |`);
+    if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
+    if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);
+    lines.push(`- ${t("report.lineRange", {start: summary.startDate, end: summary.endDate})}`);
+    if (sections.baseline) {
+        if (comparison) {
+            lines.push(`- ${t("report.baselineLine", {
+                start: comparison.baseline.startDate,
+                end: comparison.baseline.endDate,
+                events: signed(comparison.delta.totalEvents),
+                completed: signed(comparison.delta.completedItems),
+                scheduled: signed(comparison.delta.scheduledItems),
+            })}`);
+        } else {
+            lines.push(`- ${t("report.baselineMissingNote")}`);
         }
     }
+    if (sections.items && summary.items.length) {
+        lines.push("");
+        lines.push(`| ${t("report.colItem")} | ${t("report.colCompleted")} | ${t("report.colRate")} |`);
+        lines.push("| --- | --- | --- |");
+        for (const item of summary.items) {
+            lines.push(`| ${item.name} | ${item.completedDays}/${item.scheduledDays} ${t("report.dayUnit")} | ${item.completionRate}% |`);
+        }
+    }
+    if (sections.highlights) {
+        lines.push("");
+        lines.push(`### ${t("report.highlightsTitle")}`);
+        lines.push(...highlightLines(summary));
+    }
     lines.push("");
-    lines.push("> 由小驴打卡生成");
+    lines.push(`> ${t("report.footer")}`);
     return lines.join("\n");
 }

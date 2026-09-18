@@ -8,6 +8,15 @@ export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
 /** Which focus timer should open from a duration item's clock button. */
 export type FocusTimerProvider = "builtin" | "docktomato";
 
+/** T-1217 周报/月报包含的区块；缺省全开，关闭项不进入报告输出。 */
+export interface ReportSectionToggles {
+    events: boolean;
+    completion: boolean;
+    items: boolean;
+    baseline: boolean;
+    highlights: boolean;
+}
+
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
     sortMode: CheckinItemSortMode;
@@ -42,7 +51,17 @@ export interface CheckinViewPreferences {
     dialogRect?: {width: number; height: number};
     /** Last user-dragged dialog offset from center in px. */
     dialogOffset?: {x: number; y: number};
+    /** T-1217 Markdown 报告包含的区块。 */
+    reportSections: ReportSectionToggles;
 }
+
+export const DEFAULT_REPORT_SECTIONS: ReportSectionToggles = {
+    events: true,
+    completion: true,
+    items: true,
+    baseline: true,
+    highlights: true,
+};
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     groupMode: "none",
@@ -63,6 +82,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     palette: "lavender",
     dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
+    reportSections: {...DEFAULT_REPORT_SECTIONS},
 };
 
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
@@ -121,6 +141,15 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         if (x === 0 && y === 0) return undefined;
         return {x: clampNumber(x, -4000, 4000, 0), y: clampNumber(y, -4000, 4000, 0)};
     };
+    /* 报告区块开关缺省全开：旧偏好里没有该字段时保持完整报告。 */
+    const reportSource = (source.reportSections && typeof source.reportSections === "object" ? source.reportSections : {}) as Record<string, unknown>;
+    const reportSections: ReportSectionToggles = {
+        events: reportSource.events !== false,
+        completion: reportSource.completion !== false,
+        items: reportSource.items !== false,
+        baseline: reportSource.baseline !== false,
+        highlights: reportSource.highlights !== false,
+    };
     return {
         groupMode,
         sortMode,
@@ -146,5 +175,6 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         },
         dialogRect: readRect(source.dialogRect, 520, 400, 3840, 2160),
         dialogOffset: readOffset(source.dialogOffset),
+        reportSections,
     };
 }

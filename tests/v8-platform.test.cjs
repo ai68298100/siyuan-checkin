@@ -20,9 +20,14 @@ assert.match(source, /this\.bindQuickKeyboard\(root\);/, "main today page also b
 assert.match(reviewSource, /data-action="copy-weekly-report"/, "review exposes a copy-weekly-report action");
 assert.match(navigationSource, /navigator\.clipboard\.writeText/, "weekly report copies via clipboard");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-report-"));
-const reportJs = path.join(outputRoot, "report.js");
+/* T-1217 起 report.ts 运行时依赖 i18n（报告文案走字典）与 view-preferences（区块开关缺省），
+   临时目录镜像 src 布局（features/report.js + 根上 i18n/view-preferences）。 */
+const reportJs = path.join(outputRoot, "features", "report.js");
+fs.mkdirSync(path.dirname(reportJs), {recursive: true});
 fs.writeFileSync(reportJs, ts.transpileModule(reportSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
-// report.ts 依赖 analytics 类型仅为类型标注，转译后无需运行时依赖
+const prefsSource = fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8");
+fs.writeFileSync(path.join(outputRoot, "i18n.js"), ts.transpileModule(i18nSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+fs.writeFileSync(path.join(outputRoot, "view-preferences.js"), ts.transpileModule(prefsSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const {buildWeeklyReportMarkdown} = require(reportJs);
 const markdown = buildWeeklyReportMarkdown({
     range: "week", startDate: "2026-09-08", endDate: "2026-09-14",

@@ -2383,8 +2383,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 验收：消费 buildReviewComparison 渲染「较上一周期」delta 与逐项目标差值条；空数据/单日/跨时区表达清晰；双主题对比度达标；回顾性能基线不回退。
   - 依赖：T-1215（done）
   - 状态：done（新增 `src/render/review-compare.ts` 双导出：hero 下的统计条带（事件/有完成/有安排 当前-上期-带符号 delta，计划数恒中性色）+ 折叠区逐项目差值行（按 |完成率 delta| 排序并集，基线 accent-soft 底条 + 本期 accent 实条，±0 不带 pp）；review.ts 以共享 asOf 经 getPreviousReviewRange+buildCustomSummaryContext 推导基线，空两侧显示明确空态，subnav 仅在有逐项差值时出现「较上期」跳转；i18n 中英 8 键；CSS 语义 token 复用双主题。验证：`pnpm run check`、新增 `tests/review-compare-view.test.cjs`（结构守门+功能断言：delta 色调/排序/转义/空态/en 字典）纳入 test:ui，完整 `test:quality` 链 exit 0，CSS 431,514B 告警区低于硬线，Edge 宽度走查 2000/1180/640/360 无溢出，100k 回顾性能基线持平）
-- [ ] T-1217 周报/月报模板与导出
+- [x] T-1217 周报/月报模板与导出
   - 验收：周/月报视图可配置指标与基线，异常说明本地生成（数据不足时明说）；导出 Markdown 走既有安全导出路径。
+  - 状态：done（重写 `src/features/report.ts`：`buildWeeklyReportMarkdown(summary, title, sections?, comparison?)` 五区块开关（记录条数/完成概览/项目明细/上一周期对比/亮点与说明），基线消费 buildReviewComparison 带符号 delta，数据不足输出 insufficient/singleItem/baselineMissing 明确说明；文案全部 i18n（report.* 中英 21 键+review.reportSettings/exportReport 4 键），标题组合走 titleWithRange；`CheckinViewPreferences.reportSections` 归一化（缺省全开、非法回落）并接入 apply/persist；回顾工具区新增「导出报告」按钮 + 「报告设置」弹层（复用 review-more 容器，勾选即持久化不重渲染）；plugin-ops 新增 `downloadReportMarkdownFor` 与 JSON/CSV 同构的 Blob 下载。验证：`pnpm run check`、新增 `tests/report-sections.test.cjs` 纳入 test:ui、v8-platform 测试闭包扩为 i18n+view-preferences，完整 `test:quality` exit 0（CSS 431,796B 告警区低于硬线））
 - [ ] T-1218 Loop Habit Tracker CSV 导入与导出
   - 验收：兼容 HabitsCSVExporter 格式，映射到现有类型/排期（不可映射项明确降级）；source=import、幂等、导入前自动恢复点；导出同构 CSV。
 - [ ] T-1219 宽容提醒一期
