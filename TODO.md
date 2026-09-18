@@ -2455,8 +2455,10 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v18.0 开放生态（原 v18 + 吸收项）
 
-- [ ] T-1237 记录确定性身份文档化（不迁移历史 id）
-- [ ] T-1238 导出格式 v2：CSV/JSON/Markdown 三件套 + 第三方导入兼容说明
+- [x] T-1237 记录确定性身份文档化（不迁移历史 id）
+  - 状态：done（新增 `docs/identity-and-merge.md` 对外契约文档：事件四层身份（id / externalRef 幂等通道 / 语义身份 / event-legacy- 确定性补全）、externalRef 派生约定 `<前缀>:<外部身份>:<本地日期>`（确定性要求 + taskhorizon 示例）、写入去重顺序（id → externalRef 三元组 → 墓碑 → 规范化）、mergeNormalizedStores 合并语义、多窗口写收敛；明确不迁移历史 id。测试交叉核对文档引用与实现逐条一致）
+- [x] T-1238 导出格式 v2：CSV/JSON/Markdown 三件套 + 第三方导入兼容说明
+  - 状态：done（三件套已齐备（JSON 备份/CSV 记录/Markdown 报告 T-1217 + Loop 迁出 T-1218），本轮补齐统一对外文档 `docs/export-formats.md`：四条导出通道 + 三条导入通道表格、CSV 表头与 serializeCsv 逐字段一致（测试核对）、Loop 迁出映射与降级边界、第三方接入指引（文件导入 vs 运行时 API 两条路径）；README 新增「数据所有权与文档」小节指向两份契约文档。验证：新增 `tests/export-identity-docs.test.cjs`（文档引用与实现交叉核对 + README 链接 + 引用测试文件存在性）纳入 test:ui；完整 `test:quality` exit 0）
 - [ ] 原 v18 项：API v5、externalRef 前缀注册、摘要写驻留文档（隐私评估先行）
 
 ### v19.0 习惯内核二期（视 v16.3 反馈启动）

@@ -208,6 +208,10 @@ Task Horizon 等日历/任务插件可使用 `getEventRangeSummary({startDate, e
 
 设置页提供“跟随思源/浅色/深色”三种主题、减少动效、弹窗尺寸和显示偏好重置。组件使用独立的淡紫蓝画布、白卡和紫罗兰强调色，不直接继承思源的业务色。键盘焦点、`aria` 标签、缩放和高对比度规则与桌面/移动布局一起维护；视觉测试需显式指定浏览器，不能把截图结果当作真实客户端兼容证明。
 
+## 数据所有权与文档
+
+所有数据归用户所有：JSON 全量备份、CSV 记录、Markdown 报告与 Loop Habit Tracker 迁出四条导出通道，JSON/CSV/Loop 三条导入通道，行为均有测试锁定。完整格式说明见 [数据导出与导入格式总览](docs/export-formats.md)；事件身份、externalRef 幂等约定与多端合并规则见 [记录身份与多端合并规则](docs/identity-and-merge.md)。
+
 ## 开发、构建与验证
 
 环境要求：Node.js 18+、pnpm 11（仓库通过 `corepack` 固定包管理器）。
