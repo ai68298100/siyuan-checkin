@@ -68,6 +68,12 @@ const checkin = {
     assert.equal(refreshCount, 3, "refresh bursts coalesce across manifest events");
     const [refreshA, refreshB] = await Promise.all([bridge.refresh(), bridge.refresh()]);
     assert.deepEqual(refreshA, refreshB, "overlapping refresh calls share one read");
+    const summaryReadsBeforeSplit = calls.filter((entry) => entry.type === "summary").length;
+    await Promise.all([
+        bridge.refresh({startDate: "2026-09-01", endDateExclusive: "2026-09-10"}),
+        bridge.refresh({startDate: "2026-09-10", endDateExclusive: "2026-09-20"}),
+    ]);
+    assert.equal(calls.filter((entry) => entry.type === "summary").length, summaryReadsBeforeSplit + 2, "different ranges do not share a refresh result");
     const recorded = await bridge.recordTaskCompletion({blockId: "block-1", localDate: "2026-09-18"});
     assert.equal(recorded.externalRef, "taskhorizon:block-1:2026-09-18");
     failNextRecord = true;
