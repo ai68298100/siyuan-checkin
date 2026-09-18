@@ -1079,3 +1079,15 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 新增 deleteItemCascade 模型函数（移除项目+全部事件、写含 externalRef 身份的事件墓碑、不可变更新）；编辑器「删除…」入口（确认层展示记录条数与恢复点提示，persist 链自动落删除前快照）；归档页每项新增「删除」；新增 checkin:item-deleted 集成事件（API 契约事件数 6→7）。
 - 证据：真机端到端实测——新建临时项→编辑器删除→确认层显示影响→项目移除；设置页恢复点管理出现删除前快照（21 个项目·124 条记录）；deleteItemCascade 独立语义校验（墓碑含 externalRef、原 store 不变、幂等）。
 - 五版本计划定稿并写入路线图（v14 生命周期/v15 UI 系统/v16 复盘洞察/v17 生态联动/v18 开放生态）。
+
+### 小驴速切组件商店协作调研（2026-09-18）
+
+- 调研了 siyuan-speed-switch 仓库的组件商店系统：home-store-ui.ts（商店 UI）、home-external-adapters.ts（适配器注册）、checkin-bridge-model.js（打卡桥接模型，489 行，ADR 0057）。
+- 发现：速切已内建 6 个打卡桥接组件（今日概览/连续记录/年度热力图/周统计/日期事项/月度统计），经 window.siyuanCheckin API v4 只读消费，无需打卡侧改动。
+- 结论：打卡侧暂无必须开发项；新增组件类型需改速切侧 checkin-bridge-model.js + home-external-adapters.ts；已写入 D-167。
+
+### 回顾页头部风格统一与详情面板宽度（2026-09-18，T-1160 补充）
+
+- 用户截图反馈：① 复制报告/更多按钮样式与左侧范围页签不一致（工具容器用全圆角胶囊+边框，页签容器用方角无边框）；② 右侧详情面板内容没铺满可用宽度。
+- 修复：review-tools 容器改为方角+无边框（与 range-tabs 容器同款 muted-surface）；tool-button/more-summary 的 border-radius 从 999px 统一为 5px、min-height 从 28 统一为 25（与页签一致）；review-detail 子元素统一 min-width:0 + width:100%。
+- 证据：真机思源截图确认头部按钮风格一致、右侧详情面板正常显示；quality-run11 全绿。

@@ -590,3 +590,10 @@
 - 写入合作（L2）：任务完成回写经 events.record，externalRef 契约为 "taskhorizon:<blockId>:<localDate>"（幂等防重放）；打卡项目用配额按记录数目标 N，达成即当天完成，可与自动归档（T-1161）组合。
 - 责任边界：打卡侧只维护 siyuanCheckin 公共面（v4 已就绪）+ 文档 + 预设模板；日历图层与完成回写在对方侧实现；不读取对方私有文件、不做文档污染式同步。
 - 外部软件通道：短期导出 JSON/CSV；中期评估每日摘要写驻留文档（经内核 API 供外部工具读取，需隐私评估，另立项）。
+
+## D-167：小驴速切组件商店协作模式调研（2026-09-18）
+
+- 小驴速切（siyuan-speed-switch）的组件面板已有完整的小组件商店系统（home-store-ui.ts），其中**已包含 6 个小驴打卡桥接组件**（ADR 0057）：checkin-today/streak/year-heatmap/weekly/occasions/monthly，经 `window.siyuanCheckin` API v4 读取数据，source 标注为 siyuan-checkin 使商店按来源归组。
+- 桥接采用「速切侧消费」模式而非「打卡侧注册」：打卡的生态 API v4 已是稳定公开契约，速切以内建 adapter 直接消费，组件即刻可用，无需打卡发版。
+- 打卡侧目前**无需任何改动**；如需新增组件类型（如成就展示、目标进度），需修改速切侧 checkin-bridge-model.js + home-external-adapters.ts。若将来打卡插件自行注册相同 moduleId，token 覆盖会让原生实现接管（桥接预留的升级路径）。
+- 组件在商店中按来源归入「小驴打卡」组、功能归入「生活信息/Life」组。
