@@ -378,5 +378,34 @@ const checkin = {
     }
     for (const [label, passed] of summaryMatrix) assert.equal(passed, true, `summary matrix case: ${label}`);
     assert.equal(summaryMatrix.length, 30, "seventh 30-case summary matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and seven 30-case contract matrices.");
+    const automaticTargets = [
+        [[{id: "auto-1", name: "任务打卡"}], "auto-1"],
+        [[{id: "old", name: "任务打卡", archived: true}, {id: "auto-2", name: "任务打卡"}], "auto-2"],
+        [[{id: "other", name: "其它"}, {id: "auto-3", name: "任务打卡"}], "auto-3"],
+        [[{id: "auto-4", name: "任务打卡"}, {id: "later", name: "任务打卡"}], "auto-4"],
+        [[null, {id: "auto-5", name: "任务打卡"}], "auto-5"],
+        [[false, {id: "auto-6", name: "任务打卡"}], "auto-6"],
+        [[{id: "auto-7", name: "任务打卡", archived: false}], "auto-7"],
+        [[{id: "auto-8", name: "任务打卡", archived: 0}], "auto-8"],
+        [[{id: "missing-1", name: "任务打卡", archived: true}], undefined],
+        [[{id: "missing-2", name: "Task check-in"}], undefined],
+        [[{id: "missing-3", name: "任务打卡 "}], undefined],
+        [[{id: "missing-4", name: ""}], undefined],
+        [[], undefined],
+        [[{id: "", name: "任务打卡"}], undefined],
+        [[{id: "auto-9", name: "任务打卡", archived: null}], "auto-9"],
+    ];
+    const targetMatrix = [];
+    for (const [index, [items, expected]] of automaticTargets.entries()) {
+        const status = await createTaskHorizonBridge({checkin: {...checkin, getItems: () => items}}).start();
+        targetMatrix.push([`automatic target ${index}`, expected ? status.ready === true && status.itemId === expected : status.reason === "target-missing"]);
+    }
+    const explicitTargets = ["explicit-1", "explicit-2", "中文目标", "target_4", "target-5", "target.6", "7", "A", "z9", "task#10", "target/11", "target:12", " spaced ", "é-14", "final-target"];
+    for (const [index, itemId] of explicitTargets.entries()) {
+        const status = await createTaskHorizonBridge({checkin, itemId}).start();
+        targetMatrix.push([`explicit target ${index}`, status.ready === true && status.itemId === itemId]);
+    }
+    for (const [label, passed] of targetMatrix) assert.equal(passed, true, `target matrix case: ${label}`);
+    assert.equal(targetMatrix.length, 30, "eighth 30-case target matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and eight 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
