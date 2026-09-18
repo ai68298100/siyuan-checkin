@@ -478,5 +478,23 @@ const checkin = {
     assert.equal(stressMatrix.length, 300, "300-case generated stress matrix remains complete");
     assert.equal(stressMatrix.every(Boolean), true, "all generated stress matrix cases pass");
     assert.equal(stressCalls.length, 100, "only valid stress inputs reach recordEvent");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup, ten 30-case matrices and 300-case generated stress matrix.");
+    const replayCalls = [];
+    const replayBridge = createTaskHorizonBridge({checkin: {...checkin,
+        recordEvent: async (payload) => {
+            replayCalls.push({...payload});
+            return {id: `replay-${replayCalls.length}`, ...payload};
+        },
+    }});
+    const replayMatrix = [];
+    for (let index = 0; index < 150; index += 1) {
+        const input = {blockId: `replay-block-${index}`, localDate: `2026-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 28) + 1).padStart(2, "0")}`, itemId: `replay-item-${index % 15}`};
+        const first = await replayBridge.recordTaskCompletion(input);
+        const second = await replayBridge.recordTaskCompletion(input);
+        const preserved = first.externalRef === second.externalRef && first.itemId === second.itemId && replayBridge.getPendingCompletions().length === 0;
+        replayMatrix.push(preserved, preserved);
+    }
+    assert.equal(replayMatrix.length, 300, "300-case replay matrix remains complete");
+    assert.equal(replayMatrix.every(Boolean), true, "all replay cases preserve identity and empty pending state");
+    assert.equal(replayCalls.length, 300, "each replay reaches public recordEvent for facade idempotency");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup, ten 30-case matrices and two 300-case generated stress matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

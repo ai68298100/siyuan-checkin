@@ -2259,6 +2259,9 @@
 - [x] T-1213 Task Horizon 300 项生成式输入压力批次（P1）
   - 验收：新增不少于 300 个真实 bridge 项目，包含 100 个合法日期/身份、100 个非法日期、100 个非法 blockId；逐项验证 externalRef 或 `undefined`，并确认仅 100 个合法输入抵达 `recordEvent`。
   - 状态：done（300-case generated stress matrix，生态质量链通过）
+- [x] T-1214 Task Horizon 第二个 300 项 replay 矩阵（P1）
+  - 验收：新增 150 个完整身份各执行首次写入+重放，共 300 项；两次结果 externalRef/itemId 稳定、pending 始终为空，验证幂等交给公开 facade 而非 bridge 私自吞写。
+  - 状态：done（300-case replay matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
