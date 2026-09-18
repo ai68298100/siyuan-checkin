@@ -325,5 +325,21 @@ const checkin = {
     }
     for (const [label, passed] of eventMatrix) assert.equal(passed, true, `event matrix case: ${label}`);
     assert.equal(eventMatrix.length, 30, "fifth 30-case event matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and five 30-case contract matrices.");
+    const protocolVersions = [0, 1, 3, 3.9, "3", NaN, Infinity, null, "", "unknown", -1, 4, 4.5, 5, "4"];
+    const protocolMatrix = [];
+    for (const [index, version] of protocolVersions.entries()) {
+        const status = await createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "siyuan-checkin", version})}, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}}).start();
+        const accepted = index >= 11;
+        protocolMatrix.push([`protocol version ${String(version)}`, accepted ? status.ready === true : status.reason === "protocol-mismatch"]);
+    }
+    const capabilityValues = [false, 0, null, "", undefined, NaN, [], true, 1, "yes", {}, ["ok"], "true", 99, new Boolean(false)];
+    const capabilityMatrix = [];
+    for (const [index, value] of capabilityValues.entries()) {
+        const status = await createTaskHorizonBridge({checkin: {...checkin, hasCapability: () => value}, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}}).start();
+        const accepted = Boolean(value);
+        capabilityMatrix.push([`capability value ${index}`, accepted ? status.ready === true : status.reason === "capability-missing"]);
+    }
+    for (const [label, passed] of [...protocolMatrix, ...capabilityMatrix]) assert.equal(passed, true, `protocol/capability matrix case: ${label}`);
+    assert.equal(protocolMatrix.length + capabilityMatrix.length, 30, "sixth 30-case protocol matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and six 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

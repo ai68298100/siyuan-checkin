@@ -2241,6 +2241,9 @@
 - [x] T-1207 Task Horizon 第五批 30 项事件矩阵（P1）
   - 验收：新增不少于 30 个订阅事件项目，覆盖白名单刷新事件、未知事件、大小写/空白污染、空值、非对象和恶意 getter；白名单逐项刷新，其他项无副作用。
   - 状态：done（15 个允许 + 15 个忽略事件，共 30 项 event matrix，生态质量链通过）
+- [x] T-1208 Task Horizon 第六批 30 项协议能力矩阵（P1）
+  - 验收：新增不少于 30 个协议版本/能力返回项目，覆盖 API v4 边界、字符串/NaN/Infinity/null 与真假/非布尔 capability；稳定区分 protocol-mismatch、capability-missing 和 ready。
+  - 状态：done（15 个版本 + 15 个能力值，共 30 项 protocol/capability matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 
