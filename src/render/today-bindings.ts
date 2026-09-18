@@ -28,6 +28,19 @@ export interface TodayBindingsHost {
     showEditor(item?: CheckinItem): void;
 }
 
+function runExclusiveAction(button: HTMLElement | null, operation: () => Promise<unknown> | unknown): void {
+    if (!button || button.dataset.actionBusy === "true") return;
+    button.dataset.actionBusy = "true";
+    button.setAttribute("aria-busy", "true");
+    if (button instanceof HTMLButtonElement) button.disabled = true;
+    void Promise.resolve().then(operation).catch(() => undefined).finally(() => {
+        if (!button.isConnected) return;
+        delete button.dataset.actionBusy;
+        button.removeAttribute("aria-busy");
+        if (button instanceof HTMLButtonElement) button.disabled = false;
+    });
+}
+
 /* Alt+1~9 直达今日页前九项打卡。 */
 export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.quickKeyboardBound === "true") return;
@@ -104,48 +117,67 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         }
         host.render();
     });
-    root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
-        const date = currentCalendarDate();
-        for (const id of ids) {
-            const item = getActiveItemById(host.store, id);
-            if (!item || isComplete(host.store, item, date)) continue;
-            const moment = captureActionMoment();
-            const revision = getItemRevisionForDate(item, date);
-            const fingerprint = host.revisionFingerprint(item, date);
-            const remaining = evaluateItemRule(host.store, item, date).remaining ?? 0;
-            const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
-            if (value <= 0) continue;
-            void host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint));
-        }
-        host.bulkMode = false;
-        host.bulkSelected.clear();
+        runExclusiveAction(button, async () => {
+            const date = currentCalendarDate();
+            for (const id of ids) {
+                const item = getActiveItemById(host.store, id);
+                if (!item || isComplete(host.store, item, date)) continue;
+                const moment = captureActionMoment();
+                const revision = getItemRevisionForDate(item, date);
+                const fingerprint = host.revisionFingerprint(item, date);
+                const remaining = evaluateItemRule(host.store, item, date).remaining ?? 0;
+                const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
+                if (value <= 0) continue;
+                await host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint));
+            }
+            host.bulkMode = false;
+            host.bulkSelected.clear();
+            host.render();
+        });
     });
-    root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
-        for (const id of ids) {
-            const item = getActiveItemById(host.store, id);
-            if (!item) continue;
-            void host.enqueueMutation(() => host.setItemArchived(id, true, captureActionMoment(), host.itemFingerprint(item)));
-        }
-        host.bulkMode = false;
-        host.bulkSelected.clear();
+        runExclusiveAction(button, async () => {
+            for (const id of ids) {
+                const item = getActiveItemById(host.store, id);
+                if (!item) continue;
+                await host.enqueueMutation(() => host.setItemArchived(id, true, captureActionMoment(), host.itemFingerprint(item)));
+            }
+            host.bulkMode = false;
+            host.bulkSelected.clear();
+            host.render();
+        });
     });
-    root.querySelector<HTMLElement>("[data-action='bulk-delete']")?.addEventListener("click", () => {
+    root.querySelector<HTMLElement>("[data-action='bulk-delete']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
         const recordCount = ids.reduce((sum, id) => sum + host.store.events.filter((event) => event.itemId === id).length, 0);
         if (!window.confirm(t("today.bulkDeleteConfirm", {n: ids.length, records: recordCount}))) return;
-        const moment = captureActionMoment();
-        for (const id of ids) {
-            host.store = deleteItemCascade(host.store, id, moment.occurredAt);
-        }
-        host.bulkMode = false;
-        host.bulkSelected.clear();
-        void host.enqueueMutation(async () => { await host.persist(); });
-        showMessage(t("msg.itemsDeleted", {n: ids.length}));
+        runExclusiveAction(button, async () => {
+            const previous = host.store;
+            try {
+                await host.enqueueMutation(async () => {
+                    const moment = captureActionMoment();
+                    for (const id of ids) host.store = deleteItemCascade(host.store, id, moment.occurredAt);
+                    await host.persist();
+                });
+                showMessage(t("msg.itemsDeleted", {n: ids.length}));
+            } catch {
+                host.store = previous;
+                showMessage(t("msg.saveFailedShort"));
+            } finally {
+                host.bulkMode = false;
+                host.bulkSelected.clear();
+                host.render();
+            }
+        });
     });
 }
 
@@ -187,14 +219,20 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         menu.style.top = `${Math.min(Math.max(margin, clientY), maxY)}px`;
         menu.querySelector<HTMLElement>("[data-menu-action]")?.focus();
         menu.addEventListener("click", (ev) => {
-            const action = (ev.target as HTMLElement).dataset?.menuAction;
+            const actionButton = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-menu-action]");
+            const action = actionButton?.dataset.menuAction;
+            if (!actionButton || menu.dataset.actionBusy === "true") return;
             ev.stopPropagation();
-            closeMenus();
             const moment = captureActionMoment();
             const fingerprint = host.itemFingerprint(item);
-            if (action === "edit") host.showEditor(item);
-            else if (action === "archive") void host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint));
-            else if (action === "delete") void host.deleteItemWithRecords(item.id);
+            menu.dataset.actionBusy = "true";
+            actionButton.disabled = true;
+            const operation = action === "edit"
+                ? () => host.showEditor(item)
+                : action === "archive"
+                    ? () => host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint))
+                    : () => host.deleteItemWithRecords(item.id);
+            void Promise.resolve().then(operation).catch(() => undefined).finally(closeMenus);
         });
     };
     root.addEventListener("contextmenu", (event) => {
