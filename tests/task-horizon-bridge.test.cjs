@@ -292,5 +292,38 @@ const checkin = {
     }
     for (const [label, passed] of identityMatrix) assert.equal(passed, true, `identity matrix case: ${label}`);
     assert.equal(identityMatrix.length, 30, "fourth 30-case identity matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and four 30-case contract matrices.");
+    let eventMatrixListener;
+    let eventMatrixRefreshes = 0;
+    const eventMatrixBridge = createTaskHorizonBridge({
+        checkin: {...checkin, subscribe: (callback) => { eventMatrixListener = callback; return () => {}; }},
+        range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"},
+        onRefresh: () => { eventMatrixRefreshes += 1; },
+    });
+    await eventMatrixBridge.start();
+    const allowedEvents = [
+        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
+        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
+        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived", "checkin:item-updated",
+        "checkin:event-recorded", "checkin:analytics-updated", "checkin:item-archived",
+    ];
+    const ignoredEvents = [
+        "", "checkin:unknown", "event-recorded", "checkin:event-deleted", "checkin:item-created",
+        "checkin:analytics-reset", "CHECKIN:EVENT-RECORDED", "checkin:event-recorded ", "checkin:item-updated:extra", null,
+        undefined, 7, {}, {type: "other"}, {get type() { throw new Error("event type"); }},
+    ];
+    const eventMatrix = [];
+    for (const [index, type] of allowedEvents.entries()) {
+        eventMatrixListener({type});
+        await new Promise((resolve) => setImmediate(resolve));
+        eventMatrix.push([`allowed event ${index}`, eventMatrixRefreshes === index + 2]);
+    }
+    const refreshesBeforeIgnored = eventMatrixRefreshes;
+    for (const [index, event] of ignoredEvents.entries()) {
+        eventMatrixListener(event);
+        await new Promise((resolve) => setImmediate(resolve));
+        eventMatrix.push([`ignored event ${index}`, eventMatrixRefreshes === refreshesBeforeIgnored]);
+    }
+    for (const [label, passed] of eventMatrix) assert.equal(passed, true, `event matrix case: ${label}`);
+    assert.equal(eventMatrix.length, 30, "fifth 30-case event matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and five 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
