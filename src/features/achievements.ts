@@ -1,6 +1,6 @@
 /* 7.0 成就徽章：纯函数引擎，全部从事件与项目配置推导，可重放、可测试。 */
 
-import {dateKey, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import type {CheckinStore} from "../types";
 
 export interface Achievement {
@@ -64,6 +64,10 @@ function buildContext(store: CheckinStore, asOf: Date): AchievementsContext {
         let completed = 0;
         for (const item of store.items) {
             if (item.archived || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) continue;
+            if (!isComplete(store, item, date) && getSkipDatesForItem(store, item.id).has(dateKey(date))) {
+                /* T-1226：跳过（未完成）的项目不进入完美日分母——跳过不算失败。 */
+                continue;
+            }
             scheduled += 1;
             if (isComplete(store, item, date)) completed += 1;
         }

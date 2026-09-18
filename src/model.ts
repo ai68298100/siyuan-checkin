@@ -1,7 +1,7 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
-import {evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
+import {deriveQuotaAutoDays, evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
 
 export {getItemRevisionForDate} from "./rules";
 
@@ -511,7 +511,10 @@ export function getItemById(store: CheckinStore, itemId: string | undefined): Ch
     return itemId ? getStoreIndex(store).itemById.get(itemId) : undefined;
 }
 
-/** Current natural-day recording streaks; an absent today may continue from yesterday. */
+/** Current natural-day recording streaks; an absent today may continue from yesterday.
+    T-1226：统一状态序列 manual(auto 含) − skip——真实完成日与 AUTO 日（弹性配额
+    达成后的期内剩余日，D-217）各计 1 天，跳过日中性桥接，其余断链。AUTO 按需在
+    断链日惰性推导（仅 quota 项、单周期窗口），无跳过/配额数据时行为与旧版一致。 */
 export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map<string, number> {
     const streaks = new Map<string, number>();
     const todayDate = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
@@ -529,12 +532,23 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             streaks.set(item.id, 0);
             continue;
         }
-        /* T-1221：跳过日中性——不算完成也不断链，作为桥接日穿越。
-           eventDates 含跳过日，真实完成日需剔除跳过日（同日并存按完成计）。
-           锚点从「今天有完成或跳过」开始；全部由跳过组成的链条 streak 为 0。 */
+        /* eventDates 含跳过日，真实完成日需剔除跳过日（同日并存按完成计）。 */
         const realDays = new Set([...days].filter((key) => !skipDays.has(key)));
-        const startKey = realDays.has(today) || skipDays.has(today) ? today : yesterday;
-        if (!realDays.has(startKey) && !skipDays.has(startKey)) {
+        const autoCache = new Map<string, boolean>();
+        const isAuto = (key: string): boolean => {
+            if (autoCache.has(key)) return autoCache.get(key) as boolean;
+            let result = false;
+            const date = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, Number(key.slice(8, 10)), 12);
+            const schedule = getItemRevisionForDate(item, date).schedule;
+            if (schedule.type === "quota") {
+                result = deriveQuotaAutoDays(schedule, store.events, item.id, key, key, {asOf: today}).has(key);
+            }
+            autoCache.set(key, result);
+            return result;
+        };
+        /* 锚点从「今天有完成/跳过/自动补全」开始；全部为空的链条 streak 为 0。 */
+        const startKey = realDays.has(today) || skipDays.has(today) || isAuto(today) ? today : yesterday;
+        if (!realDays.has(startKey) && !skipDays.has(startKey) && !isAuto(startKey)) {
             streaks.set(item.id, 0);
             continue;
         }
@@ -545,7 +559,10 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             guard += 1;
             const key = dateKey(check);
             if (realDays.has(key)) streak += 1;
-            else if (!skipDays.has(key)) break;
+            else if (skipDays.has(key)) {
+                /* 跳过日中性桥接：不加成、不断链。 */
+            } else if (isAuto(key)) streak += 1;
+            else break;
             check.setDate(check.getDate() - 1);
         }
         streaks.set(item.id, streak);

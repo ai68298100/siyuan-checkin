@@ -2416,8 +2416,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1225 弹性频率自动补全（AUTO 推导）
   - 验收：quota 达标后剩余日推导 AUTO（滑动窗口法）；只存在于计算层不落事件；SKIP 优先且不吃 AUTO 配额；决策+样例记 DECISIONS。
   - 状态：done（决策 **D-217** 已记录：AUTO 仅 quota 当期达成后推导、不落事件不通知、真实完成 > SKIP > AUTO 优先级、AUTO 日视同已完成机会日但不制造热力图热度、asOf 双重裁剪防未来日伪造连续。实现：rules.ts 新增 `deriveQuotaAutoDays(schedule, events, itemId, windowStart, windowEnd, {asOf, unit})`——按周期滑动窗口，dates 模式达成日=第 N 个贡献日、value 模式=累计值首达日（已修复初版套用贡献日数的错误），产出达成日后的期内剩余日；排除有真实事件的日期；skip 事件不计入配额贡献（内部防御性 `kind !== "skip"` 过滤，因 rules 不可反向依赖 model）；400 周期护栏）。验证：新增 `tests/auto-days.test.cjs`（达成窗口/asOf 裁剪/skip 与真实事件优先/value 模式/月度跨月/非法回退）纳入 test:ui；`pnpm run check` 通过）
-- [ ] T-1226 streak 计算重构
+- [x] T-1226 streak 计算重构
   - 验收：manual+AUTO−skip 合并序列单一代码路径；与成就判定对齐；100k 性能持平。
+  - 状态：done（`computeEventStreaks` 重构为统一状态遍历：真实完成日 +1、AUTO 日 +1（视同已完成，D-217）、跳过日中性桥接、其余断链；AUTO 在断链日惰性推导——仅 quota 项、单周期窗口 `[key,key]` + asOf 裁剪 + 逐日缓存，无配额数据零额外开销（streak-index 100k warmed 0.3ms 持平）；锚点含 AUTO。成就对齐：完美日分母排除「跳过且未完成」项目——跳过不算失败、不破坏全清连续（`tests/auto-streak.test.cjs` 断言 skip 日保持 streak progress）。验证：新增 `tests/auto-streak.test.cjs`（跨周 AUTO 桥接=10 天/中途 asOf/陈旧周期不复活/成就跳过中性）纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0）
 - [ ] T-1227 回顾页强度曲线与建议接入
   - 验收：每项目强度趋势卡（0~100，可折叠进 reviewFold）；建议引擎消费强度；智能体摘要 API 输出有界强度字段。
 
