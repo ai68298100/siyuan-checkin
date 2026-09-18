@@ -15,7 +15,7 @@ import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./
 import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
-import type {CustomSummaryRange, SummaryRange} from "./analytics";
+import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode} from "./view-preferences";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
@@ -33,7 +33,7 @@ import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboa
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
-import {renderArchivedView} from "./render/archived";
+import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -108,6 +108,7 @@ interface CheckinApi {
     getStore: () => CheckinStore;
     getItems: () => CheckinItem[];
     getEvents: () => CheckinEvent[];
+    getEventRangeSummary: (range: {startDate: string; endDateExclusive: string}, options?: EventRangeSummaryOptions) => EventRangeSummary;
     getOccasions: () => Occasion[];
     getTodayOccasions: () => VisibleOccasion[];
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
@@ -1185,6 +1186,32 @@ export default class CheckinPlugin extends Plugin {
         this.bindDialogClose(root);
         this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        const settingsBusy = new WeakSet<HTMLElement>();
+        const settingsFeedback = (message: string) => {
+            let node = root.querySelector<HTMLElement>("[data-settings-feedback]");
+            if (!node) {
+                node = document.createElement("div");
+                node.dataset.settingsFeedback = "true";
+                node.setAttribute("role", "alert");
+                node.className = "lc-checkin__settings-feedback";
+                root.querySelector<HTMLElement>(".lc-checkin__settings-layout")?.prepend(node);
+            }
+            node.textContent = message;
+        };
+        const runSettingsAction = (control: HTMLElement, operation: () => Promise<unknown> | unknown, focusSelector = "[data-action='back']") => {
+            if (settingsBusy.has(control)) return;
+            settingsBusy.add(control);
+            control.setAttribute("aria-busy", "true");
+            if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = true;
+            Promise.resolve().then(operation).catch((error) => settingsFeedback(String(error instanceof Error ? error.message : error || t("common.unknownError")))).finally(() => {
+                settingsBusy.delete(control);
+                if (control.isConnected) {
+                    control.removeAttribute("aria-busy");
+                    if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = false;
+                    control.focus();
+                } else root.querySelector<HTMLElement>(focusSelector)?.focus();
+            });
+        };
         const savePreference = () => { void this.persistViewPreferences().then(() => showMessage(t("msg.prefSaved"))).catch(() => showMessage(t("msg.prefSaveFail"))); };
         root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "none" || value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
@@ -1226,10 +1253,10 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
-        root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", () => void this.restoreLatestBackup());
+        root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", (event) => runSettingsAction(event.currentTarget as HTMLElement, () => this.restoreLatestBackup()));
         root.querySelectorAll<HTMLElement>("[data-restore-snapshot]").forEach((button) => button.addEventListener("click", () => {
             const index = Number(button.dataset.restoreSnapshot);
-            if (Number.isInteger(index)) void this.restoreLatestBackup(index);
+            if (Number.isInteger(index)) runSettingsAction(button, () => this.restoreLatestBackup(index), `[data-restore-snapshot='${index}']`);
         }));
         root.querySelector<HTMLElement>("[data-action='export-snapshots']")?.addEventListener("click", () => void this.loadData(BACKUP_STORAGE_NAME).then(downloadSnapshotHistoryFor).catch(() => showMessage(t("msg.snapshotExportFail"))));
         root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", () => {
@@ -1242,6 +1269,8 @@ export default class CheckinPlugin extends Plugin {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
             if (!file) return;
+            if (settingsBusy.has(input)) return;
+            settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
             try {
                 const history = parseStoreSnapshotHistoryExport(await file.text());
                 if (!window.confirm(t("msg.importSnapshotsConfirm", {count: history.snapshots.length}))) return;
@@ -1250,8 +1279,11 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             } catch {
                 showMessage(t("msg.importSnapshotsFail"));
+                settingsFeedback(t("msg.importSnapshotsFail"));
             } finally {
                 input.value = "";
+                settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
+                (root.querySelector<HTMLInputElement>("[data-import-snapshots]") || input).focus();
             }
         });
         root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.persistAuditBestEffort(); this.render(); });
@@ -1260,6 +1292,8 @@ export default class CheckinPlugin extends Plugin {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
             if (!file) return;
+            if (settingsBusy.has(input)) return;
+            settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
             try {
                 const preflight = preflightJsonRecovery(await file.text(), normalizeStore, summarizeJsonBackup(this.store));
                 const {report: migration, assessment, validationErrors} = preflight;
@@ -1293,13 +1327,18 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             } catch (error) {
                 showMessage(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t("msg.importFail", {error: String(error)}));
+            } finally {
+                input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
+                (root.querySelector<HTMLInputElement>("[data-import-json]") || input).focus();
             }
-            input.value = "";
         });
         root.querySelector<HTMLInputElement>("[data-import-csv]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
             if (!file) return;
+            if (settingsBusy.has(input)) return;
+            settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
             try {
                 const parsed = parseCheckinCsv(await file.text());
                 const names = [...new Set(parsed.rows.map((row) => row.name))];
@@ -1312,8 +1351,11 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             } catch (error) {
                 showMessage(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t("msg.importFail", {error: String(error)}));
+            } finally {
+                input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
+                (root.querySelector<HTMLInputElement>("[data-import-csv]") || input).focus();
             }
-            input.value = "";
         });
 
         const modeSelect = root.querySelector<HTMLSelectElement>("[data-setting-dialog-mode]");
@@ -1582,7 +1624,7 @@ export default class CheckinPlugin extends Plugin {
 
     /* 方法体外置于 render/archived.ts（15.0-A 模块化）；壳保持类内 API 与存储字段稳定。 */
     private renderArchived(): string {
-        return renderArchivedView({items: this.store.items, query: this.archivedQuery, appearance: this.resolvedAppearance()});
+        return renderArchivedView({items: this.store.items, summaries: buildArchivedItemSummaries(this.store.items, this.store.events, (item) => countCompletedDays(this.store, item, currentCalendarDate())), query: this.archivedQuery, appearance: this.resolvedAppearance()});
     }
 
     /* 方法体外置于 render/occasions.ts（T-022）。 */

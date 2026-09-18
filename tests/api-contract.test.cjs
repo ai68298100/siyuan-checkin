@@ -34,6 +34,8 @@ assert.equal(descriptor.events.includes("checkin:analytics-updated"), true);
 assert.equal(api.hasCheckinCapability("events.record"), true);
 assert.equal(api.hasCheckinCapability("events.delete"), false);
 assert.equal(api.hasCheckinCapability("suggestions.read"), true);
+assert.deepEqual(api.CHECKIN_EVENT_RANGE_LIMITS, {maxDays: 366, maxPoints: 366, maxEvents: 5000});
+assert.equal(Object.isFrozen(api.CHECKIN_EVENT_RANGE_LIMITS), true);
 
 const info = api.getCheckinCapabilityInfo();
 assert.deepEqual(Object.keys(info), api.CHECKIN_CAPABILITIES);

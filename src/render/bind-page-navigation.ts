@@ -311,14 +311,32 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.render();
         root.querySelector<HTMLInputElement>("[data-archived-search]")?.focus();
     });
-    root.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => {
+    /* 归档动作共享一个本地互斥边界：除了原生 disabled 外，程序化 click/触屏
+       重复派发也必须被吞掉；完成后尽量把焦点留在原动作上。 */
+    const archivedBusy = new WeakSet<HTMLButtonElement>();
+    const runArchivedAction = (button: HTMLButtonElement, operation: () => Promise<unknown> | unknown) => {
+        if (archivedBusy.has(button)) return;
+        archivedBusy.add(button);
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
-        void host.restoreItem(button.dataset.restoreId || "");
+        Promise.resolve().then(operation).catch(() => undefined).finally(() => {
+            archivedBusy.delete(button);
+            if (!button.isConnected) {
+                root.querySelector<HTMLElement>("[data-archived-search], [data-action='back']")?.focus();
+                return;
+            }
+            button.disabled = false;
+            button.removeAttribute("aria-busy");
+            button.focus();
+        });
+    };
+    root.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.restoreId || "";
+        if (id) runArchivedAction(button, () => host.restoreItem(id));
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-archived-delete]").forEach((button) => button.addEventListener("click", () => {
-        button.disabled = true;
-        void host.deleteArchivedItem(button.dataset.archivedDelete || "");
+        const id = button.dataset.archivedDelete || "";
+        if (id) runArchivedAction(button, () => host.deleteArchivedItem(id));
     }));
     root.querySelectorAll<HTMLElement>("[data-summary-range]").forEach((button) => button.addEventListener("click", () => {
         const range = button.dataset.summaryRange;
@@ -405,17 +423,30 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         });
     });
     root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => { const button = event.currentTarget as HTMLElement; const item = button.dataset.suggestionItem; const rate = button.dataset.suggestionRate; const preview = new Dialog({title: t("agent.previewTitle"), content: `<div class="lc-checkin__agent-preview"><strong>${t("agent.previewDisclaimer")}</strong>${item ? `<p>${t("agent.previewFocus", {name: item || "", rate: rate || "0"})}</p><p>${t("agent.previewAdvice")}</p>` : `<p>${t("agent.previewNone")}</p>`}<p>${t("agent.previewSafety")}</p><div class="lc-checkin__agent-preview-actions"><button class="b3-button" type="button" data-agent-preview-close>${t("agent.previewDefer")}</button><button class="b3-button" type="button" disabled title="${t("agent.previewPendingTitle")}">${t("agent.previewPendingButton")}</button></div></div>`}); preview.element.querySelector<HTMLElement>("[data-agent-preview-close]")?.addEventListener("click", () => preview.destroy()); });
-    root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", async () => {
-        const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
-        const label = host.summaryRange === "day" ? "今日报告" : host.summaryRange === "month" ? "本月报告" : "本周报告";
-        const markdown = buildWeeklyReportMarkdown(summary, `${label}（${summary.startDate} ~ ${summary.endDate}）`);
-        try {
-            await navigator.clipboard.writeText(markdown);
-            showMessage(t("msg.reportCopied"));
-        } catch {
-            showMessage(t("msg.clipboardFail"));
-        }
+    const reviewBusy = new WeakSet<HTMLElement>();
+    const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown) => {
+        if (reviewBusy.has(button)) return;
+        reviewBusy.add(button);
+        button.setAttribute("aria-busy", "true");
+        button.setAttribute("disabled", "true");
+        Promise.resolve().then(operation).catch(() => undefined).finally(() => {
+            reviewBusy.delete(button);
+            if (!button.isConnected) return;
+            button.removeAttribute("aria-busy");
+            button.removeAttribute("disabled");
+            button.focus();
+        });
+    };
+    root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        runReviewTool(button, async () => {
+            const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
+            const label = host.summaryRange === "day" ? "今日报告" : host.summaryRange === "month" ? "本月报告" : "本周报告";
+            const markdown = buildWeeklyReportMarkdown(summary, `${label}（${summary.startDate} ~ ${summary.endDate}）`);
+            try { await navigator.clipboard.writeText(markdown); showMessage(t("msg.reportCopied")); }
+            catch { showMessage(t("msg.clipboardFail")); }
+        });
     });
-    root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", () => host.downloadExport("csv"));
-    root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", () => host.downloadExport("json"));
+    root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("csv")));
+    root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("json")));
 }

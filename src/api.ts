@@ -1,7 +1,7 @@
 /* 对外 API 工厂：从 index.ts 外置（T-022）。
    CheckinApiHost 以结构化接口声明插件宿主成员；index.ts 通过
    `createCheckinApi(this as unknown as CheckinApiHost)` 接线，绕开 private 可见性（仅编译期）。 */
-import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange} from "./analytics";
+import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange, type EventRangeSummary, type EventRangeSummaryOptions} from "./analytics";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinStore} from "./types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLocalDateInput, withTimeout} from "./shared";
 import {serializeCsv, serializeJson} from "./export";
@@ -25,6 +25,8 @@ export interface CheckinApi {
     getStore: () => CheckinStore;
     getItems: () => CheckinItem[];
     getEvents: () => CheckinEvent[];
+    /** Bounded local-date projection; range is half-open [startDate, endDateExclusive). */
+    getEventRangeSummary: (range: {startDate: string; endDateExclusive: string}, options?: EventRangeSummaryOptions) => EventRangeSummary;
     getOccasions: () => Occasion[];
     getTodayOccasions: () => VisibleOccasion[];
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
@@ -119,6 +121,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         getStore: () => host.cloneStore(),
         getItems: () => host.store.items.filter((item) => !item.archived).map((item) => host.cloneItem(item)),
         getEvents: () => host.store.events.map((event) => ({...event})),
+        getEventRangeSummary: (range, options) => getEventRangeSummary(host.store, range, options),
         getOccasions: () => host.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
         getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
         completeOccasion: (id, occurrenceDate, completed) => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)),

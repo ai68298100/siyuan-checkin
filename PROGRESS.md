@@ -1123,3 +1123,10 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - Today 上下文菜单补充 `role=menu/menuitem`、上下方向键循环和关闭后焦点恢复；删除卡片后若原主按钮已离开 DOM，则安全跳过聚焦。
 - 菜单动作同步抛错统一进入 Promise rejection 边界；新增结构断言锁定 toolbar 互斥、菜单语义、键盘导航和焦点恢复。
 - 证据：`pnpm run check`、`pnpm run test:ui`、`pnpm run test:extended` 与完整 `pnpm run test:quality` 已通过；真实思源宿主焦点/滚动仍归 T-1173 与 B-007 现场验收。
+
+### v15.0 归档、生态与跨表面交互批次（2026-09-18）
+
+- 归档页新增累计达成天数与最近打卡日期/时间；事件先按 itemId 分桶，达成天数投影复用事件日期索引，避免归档项目逐项扫描完整历史。
+- Task Horizon 合作契约补充 `getEventRangeSummary`：半开本地日期区间、366 天/5,000 事件/366 点上限、`truncated` 标记和防御性聚合投影；新增「任务打卡」配额模板（目标数量可调整）。
+- 跨表面交互测试锁定归档恢复/删除、回顾复制/导出、设置导入/恢复统一的 `aria-busy`、重复提交、错误可见性与焦点恢复；新增测试已纳入生态/扩展质量链。
+- 定向证据：`pnpm run check`、`node tests/event-range-summary.test.cjs`、`node tests/cross-surface-interaction.test.cjs`、`node tests/archived-search.test.cjs`、`node tests/i18n-hygiene.test.cjs` 通过。完整质量链待本轮汇合后执行。

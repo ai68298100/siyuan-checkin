@@ -1,7 +1,7 @@
 # 小飞驴打卡 × Task Horizon 合作设计
 
 > 目标：把「当天打卡内容」接入 Task Horizon 的日历等视图，并把「任务完成」接入打卡的记录体系，形成任务↔习惯的闭环。
-> 状态：草案 v1（2026-09-18），可供双方评审。打卡侧 API 已就绪，Task Horizon 侧需新增消费层。
+> 状态：打卡侧 P0 v1 已落地（2026-09-18），可供双方评审。日期摘要 API 与预设模板已就绪，Task Horizon 侧需新增消费层。
 
 ## 一、双方现状
 
@@ -37,7 +37,7 @@
 ## 三、契约要点（打卡侧承诺）
 
 - 探测：`window.siyuanCheckin` 存在且 `protocol === "siyuan-checkin"`、`version >= 4`，按 `capabilities` 确认所需能力可用。
-- 读：`analytics.read` 快照（含日期范围与点数上限，localOnly）；`events.read` 半开日期区间、保持原持久顺序。
+- 读：`analytics.read` 快照（含日期范围与点数上限，localOnly）；`events.read` 半开日期区间、保持原持久顺序。为日历等轻量图层提供 `siyuanCheckin.getEventRangeSummary({startDate, endDateExclusive}, {maxEvents?, maxPoints?})`：仅按本地日期返回 `{localDate,eventCount,totalValue,totalsByUnit}` 点，默认最多 366 天/5,000 条事件/366 个点，超出时返回 `truncated: true`；输入范围超过 366 天或非法直接拒绝。返回值为防御性投影，不含 store、附件或私有事件对象。
 - 写：`events.record`（见 L2）；返回 `undefined` 视为重复或拒绝，不应重试提示。
 - 事件：`checkin:analytics-updated`（聚合变化）、`checkin:event-recorded`（新记录）用于增量刷新。
 - 风格：与 `__dockTomato.stats.queryFocus` 同款——能力检测、超时、AbortSignal、不可用即降级隐藏。

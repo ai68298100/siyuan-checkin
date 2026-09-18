@@ -1,6 +1,13 @@
 export const CHECKIN_API_PROTOCOL = "siyuan-checkin" as const;
 export const CHECKIN_API_VERSION = 4 as const;
 
+/** Hard safety limits for the events.read date-range summary helper. */
+export const CHECKIN_EVENT_RANGE_LIMITS = Object.freeze({
+    maxDays: 366,
+    maxPoints: 366,
+    maxEvents: 5000,
+}) as Readonly<{maxDays: number; maxPoints: number; maxEvents: number}>;
+
 export const CHECKIN_INTEGRATION_EVENTS = [
     "checkin:item-created",
     "checkin:item-updated",

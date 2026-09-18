@@ -1,6 +1,7 @@
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
 import {dateKey, getEventsInDateRange, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+const EVENT_RANGE_LIMITS = {maxDays: 366, maxPoints: 366, maxEvents: 5000} as const;
 
 export type SummaryRange = "day" | "week" | "month";
 
@@ -65,6 +66,102 @@ export function getEventsInRange(store: CheckinStore, range: SummaryRange, date 
     const startKey = dateKey(bounds.start);
     const endKey = dateKey(elapsedEnd);
     return getEventsInDateRange(store, startKey, endKey);
+}
+
+/** A compact, local-only projection suitable for calendar integrations. */
+export interface EventRangePoint {
+    localDate: string;
+    eventCount: number;
+    totalValue: number;
+    totalsByUnit: Array<{unit: string; totalValue: number; eventCount: number}>;
+}
+
+export interface EventRangeSummary {
+    startDate: string;
+    /** Exclusive upper bound (YYYY-MM-DD). */
+    endDateExclusive: string;
+    points: EventRangePoint[];
+    totalEvents: number;
+    /** True when maxEvents or maxPoints prevented a complete projection. */
+    truncated: boolean;
+}
+
+export interface EventRangeSummaryOptions {
+    maxEvents?: number;
+    maxPoints?: number;
+}
+
+/**
+ * Build a bounded event projection without exposing the store or event objects.
+ * The range is half-open: [startDate, endDateExclusive), and dates are local
+ * calendar dates (never derived from UTC timestamps).
+ */
+export function getEventRangeSummary(
+    store: CheckinStore,
+    range: {startDate: string; endDateExclusive: string},
+    options: EventRangeSummaryOptions = {},
+): EventRangeSummary {
+    if (!range || !isLocalDateKey(range.startDate) || !isLocalDateKey(range.endDateExclusive) || range.startDate >= range.endDateExclusive) {
+        throw new TypeError("事件日期范围无效，需使用半开区间 [startDate, endDateExclusive)");
+    }
+    const span = localDaySpan(range.startDate, range.endDateExclusive);
+    if (span > EVENT_RANGE_LIMITS.maxDays) {
+        throw new RangeError(`事件日期范围最多 ${EVENT_RANGE_LIMITS.maxDays} 天`);
+    }
+    const maxEvents = boundedLimit(options.maxEvents, EVENT_RANGE_LIMITS.maxEvents);
+    const maxPoints = boundedLimit(options.maxPoints, EVENT_RANGE_LIMITS.maxPoints);
+    const candidates = getEventsInDateRange(store, range.startDate, range.endDateExclusive);
+    const selected = candidates.slice(0, maxEvents);
+    const byDate = new Map<string, EventRangePoint>();
+    for (const event of selected) {
+        const date = event.localDate;
+        let point = byDate.get(date);
+        if (!point) {
+            point = {localDate: date, eventCount: 0, totalValue: 0, totalsByUnit: []};
+            byDate.set(date, point);
+        }
+        point.eventCount += 1;
+        point.totalValue += event.value;
+        const unit = point.totalsByUnit.find((entry) => entry.unit === event.unit);
+        if (unit) {
+            unit.totalValue += event.value;
+            unit.eventCount += 1;
+        } else {
+            point.totalsByUnit.push({unit: event.unit, totalValue: event.value, eventCount: 1});
+        }
+    }
+    const points = [...byDate.values()].slice(0, maxPoints).map((point) => ({
+        localDate: point.localDate,
+        eventCount: point.eventCount,
+        totalValue: point.totalValue,
+        totalsByUnit: point.totalsByUnit.map((entry) => ({...entry})),
+    }));
+    return {
+        startDate: range.startDate,
+        endDateExclusive: range.endDateExclusive,
+        points,
+        totalEvents: candidates.length,
+        truncated: candidates.length > maxEvents || byDate.size > maxPoints,
+    };
+}
+
+function boundedLimit(value: number | undefined, maximum: number): number {
+    if (value === undefined) return maximum;
+    if (!Number.isFinite(value) || value <= 0) throw new RangeError("事件摘要限制必须为正数");
+    return Math.min(Math.floor(value), maximum);
+}
+
+function isLocalDateKey(value: unknown): value is string {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return dateKey(date) === value;
+}
+
+function localDaySpan(startDate: string, endDateExclusive: string): number {
+    const [sy, sm, sd] = startDate.split("-").map(Number);
+    const [ey, em, ed] = endDateExclusive.split("-").map(Number);
+    return Math.round((new Date(ey, em - 1, ed).getTime() - new Date(sy, sm - 1, sd).getTime()) / 86400000);
 }
 
 export function getEventsInCustomRange(store: CheckinStore, range: CustomSummaryRange): CheckinEvent[] {
