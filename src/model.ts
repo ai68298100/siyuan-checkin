@@ -526,8 +526,29 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             streaks.set(item.id, 0);
             continue;
         }
-        const days = getEventDatesForItem(store, item.id);
         const skipDays = getSkipDatesForItem(store, item.id);
+        /* T-1239（D-219）：at-most 被动戒除——连续 = 连续无破戒日；
+           破戒日断链、跳过日桥接、回溯止于项目创建日；无事件不等于中断。 */
+        if (item.direction === "atMost") {
+            const createdDate = item.createdDate;
+            let lapseStreak = 0;
+            let guard = 0;
+            const check = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 12);
+            while (guard < 36500) {
+                guard += 1;
+                const key = dateKey(check);
+                if (key < createdDate) break;
+                const dayEvents = getEventsForDay(store, item.id, check);
+                const hasLapse = dayEvents.some((event) => !isSkipEvent(event));
+                if (hasLapse) break;
+                const skipped = dayEvents.some((event) => isSkipEvent(event));
+                if (!skipped) lapseStreak += 1;
+                check.setDate(check.getDate() - 1);
+            }
+            streaks.set(item.id, lapseStreak);
+            continue;
+        }
+        const days = getEventDatesForItem(store, item.id);
         if (!days.size && !skipDays.size) {
             streaks.set(item.id, 0);
             continue;
@@ -619,7 +640,15 @@ export function evaluateItemRule(store: CheckinStore, item: CheckinItem, date = 
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {
     const revision = getItemRevisionForDate(item, date);
     const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || 0 : revision.target;
-    return target > 0 && getProgress(store, item, date) >= target;
+    if (target <= 0) return false;
+    /* D-219：at-most（戒除类）——当日无真实事件即完成；跳过日不算成功。
+       binary：任意真实事件即破戒；数值型：不超过目标即完成。 */
+    if (item.direction === "atMost") {
+        if (getSkipDatesForItem(store, item.id).has(dateKey(date))) return false;
+        const progress = getProgress(store, item, date);
+        return revision.kind === "binary" ? progress === 0 : progress <= target;
+    }
+    return getProgress(store, item, date) >= target;
 }
 
 /** Append several events against one warmed index and clone the event array once.
@@ -723,6 +752,8 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
     const kind = isCheckinKind(value.kind) ? value.kind : "binary";
     const targetValue = Number(value.target);
     const schedule = normalizeSchedule(value.schedule);
+    /* D-219：atMost 仅在 daily 排期下有意义，其他排期静默回落 at-least。 */
+    const direction = value.direction === "atMost" && schedule.type === "daily" ? "atMost" as const : undefined;
     const now = new Date();
     const createdAtCandidate = typeof value.createdAt === "string" ? new Date(value.createdAt) : now;
     const createdAt = Number.isNaN(createdAtCandidate.getTime()) ? now.toISOString() : createdAtCandidate.toISOString();
@@ -763,6 +794,7 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         completionSource,
         tomatoMode,
         linkedOccasionId: typeof value.linkedOccasionId === "string" && value.linkedOccasionId.trim() ? value.linkedOccasionId.trim().slice(0, 64) : undefined,
+        ...(direction ? {direction} : {}),
         ...(normalizeNoteAnchor(value.noteAnchor) ? {noteAnchor: normalizeNoteAnchor(value.noteAnchor)} : {}),
         ...(normalizeAutoArchive(value.autoArchive) ? {autoArchive: normalizeAutoArchive(value.autoArchive)} : {}),
     };

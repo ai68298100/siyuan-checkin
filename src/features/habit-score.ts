@@ -115,12 +115,17 @@ export function collectHabitScoreDays(store: CheckinStore, item: CheckinItem, st
         const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
         const complete = isComplete(store, item, cursor);
         const progress = getProgress(store, item, cursor);
-        const completion = target > 0 ? Math.min(1, Math.max(0, progress / target)) : 0;
+        /* D-219：at-most 完成日 1 分、破戒日 0 分（无部分完成概念）。 */
+        const completion = complete
+            ? 1
+            : item.direction === "atMost" || target <= 0
+                ? 0
+                : Math.min(1, Math.max(0, progress / target));
         days.push({
             date: key,
             scheduled,
             skipped: skipDates.has(key) && !complete,
-            completion: complete ? 1 : completion,
+            completion,
         });
     }
     return days;

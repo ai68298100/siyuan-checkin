@@ -1,7 +1,7 @@
 /* 回顾页碎片渲染：近期事项 / 打卡日志。
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, evaluateItemRule, getEventDateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, sortCheckinItems} from "../model";
+import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, getEditorStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
 import {uiIcon} from "../ui/icons";
@@ -121,6 +121,12 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const unit = revision.unit || t("today.unitDefault");
     /* T-1222：当日已跳过（未完成）的卡片显示中性徽章；仍可打卡，完成优先于跳过。 */
     const skipToday = getSkipDatesForItem(ctx.store, item.id).has(dateKey(date)) && !complete;
+    /* T-1239：at-most 戒除卡——破戒状态决定按钮语义；无破戒即完成（进已完成区）。 */
+    const atMost = item.direction === "atMost";
+    const lapseExists = atMost ? getEventsForDay(ctx.store, item.id, date).some((ev) => !isSkipEvent(ev)) : false;
+    const recordLabel = atMost
+        ? (lapseExists ? t("item.cancelLapse") : t("item.recordLapse"))
+        : complete ? t("item.cancel") : t("item.checkin");
     const icon = isBinary
         ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
         : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
@@ -131,6 +137,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${(ctx.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
                     ${skipToday ? `<span class="lc-checkin__item-tag is-skip-tag">${t("today.skipBadge")}</span>` : ""}
+                    ${atMost && !lapseExists ? `<span class="lc-checkin__item-tag is-avoided">${t("today.avoided")}</span>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
@@ -144,7 +151,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                 ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
-                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${complete ? t("item.cancel") : t("item.checkin")}</button>`
+                    ? `<button class="lc-checkin__record-button" type="button" data-action="record">${atMost ? recordLabel : complete ? t("item.cancel") : t("item.checkin")}</button>`
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>`}
                 ${isBinary && complete ? "" : `<button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
                 ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}

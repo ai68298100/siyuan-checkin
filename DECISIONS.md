@@ -885,3 +885,12 @@
 - 内核调用只使用已验证端点：`/api/attr/setBlockAttrs`、`/api/block/getBlockInfo`、`/api/block/appendBlock`；统一经 `fetchSyncPost`（前端会话鉴权，无需令牌）。
 - 撤销策略：取消打卡/取消跳过会重写状态属性（unskip 文案）；但 T-1232 追加的备注块属于用户文档内容，撤销不删除（尊重用户文档主权）。
 - 多窗口：锚点属性写入走内核 API 天然 last-writer-wins；打卡数据本体仍由存储锁保护。挂起标志是内存态，重载即重置，避免永久禁用。
+
+## D-219：负向习惯采用被动型 at-most 语义（2026-09-19）
+
+- `CheckinItem.direction?: "atMost"`（缺省缺省值即 at-least，不物化；仅 daily 排期支持——normalize 时非 daily 丢弃 direction，编辑器限选每日）。
+- 被动型戒除语义（uhabits AT_MOST 同源）：不记录即成功，零打卡负担。`isComplete` 反转 = 当日无真实事件（progress ≤ target）；记录事件 = 破戒日。跳过日不算成功也不算失败（isComplete=false、完成率分母剔除，与 at-least 跳过口径一致）。
+- 连击：at-most 项连续 = 自今日向前的连续无破戒日（跳过日桥接、破戒日断链、回溯止于 createdDate）——与 at-least 走同一条 `computeEventStreaks` 通道，仅分支判定不同。
+- 强度分数：at-most 完成日 1、破戒日 0（不按比例），冻结规则不变。
+- UI：binary at-most 的主按钮语义 = 「记破戒 / 撤销破戒」（按当日是否已有破戒事件切换）；无破戒日卡片进「已完成」折叠区（被动成功的自然呈现）。仅每日排期，不与 quota 组合（语义无定义，编辑器禁用）。
+- 撤销：破戒记录的撤销 = 删除当日事件（墓碑通道），与其他事件一致。

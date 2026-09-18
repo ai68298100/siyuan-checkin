@@ -35,6 +35,8 @@ export interface CheckinTemplate {
     timeSlot?: CheckinTimeSlot;
     completionSource?: CompletionSource;
     tomatoMode?: TomatoValueMode;
+    /** T-1239：戒除类模板（at-most 语义，仅 daily）。 */
+    direction?: "atMost";
     note: string;
 }
 
@@ -230,6 +232,11 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "早餐", icon: "🍞", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "按时吃早餐，开启稳定的一天。"},
     {name: "午休", icon: "😴", kind: "duration", target: 20, unit: "分钟", schedule: workdays, group: "健康", priority: "low", timeSlot: "any", note: "午间小憩，20 分钟左右即可。"},
     {name: "颈部放松", icon: "🙆", kind: "duration", target: 5, unit: "分钟", schedule: workdays, group: "健康", priority: "low", timeSlot: "afternoon", note: "每小时起身活动，缓解颈肩僵硬。"},
+    {name: "戒烟", icon: "🚭", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "high", timeSlot: "any", direction: "atMost", note: "没记录就是胜利；破戒日如实记下，连续记录会重新开始。"},
+    {name: "戒奶茶", icon: "🧋", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "any", direction: "atMost", note: "想喝的时候先喝一杯水，再看还要不要。"},
+    {name: "限制咖啡", icon: "☕", kind: "count", target: 2, unit: "杯", schedule: daily, group: "戒除", priority: "low", timeSlot: "any", direction: "atMost", note: "每天不超过 2 杯；记录的每一杯都是在数上限。"},
+    {name: "不熬夜刷手机", icon: "📵", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "evening", direction: "atMost", note: "睡前半小时放下手机；跳过日不断链。"},
+    {name: "戒糖饮料", icon: "🥤", kind: "count", target: 1, unit: "杯", schedule: daily, group: "戒除", priority: "low", timeSlot: "any", direction: "atMost", note: "含糖饮料每天至多 1 杯，白水无限制。"},
 ] as const;
 
 /* 模板显示名/备注的字典键映射：zh 名作为数据锚点，渲染与套用时经 t() 翻译。 */

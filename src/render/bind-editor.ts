@@ -473,6 +473,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         setInput("completionSource", template.completionSource || "manual");
         setInput("tomatoMode", template.tomatoMode || "minutes");
         setInput("schedule", template.schedule.type);
+        /* T-1239：戒除类模板同步方向开关。 */
+        const atMostInput = root.querySelector<HTMLInputElement>("input[name='directionAtMost']");
+        if (atMostInput) atMostInput.checked = template.direction === "atMost";
         const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`);
         if (kindInput) kindInput.checked = true;
         root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => {

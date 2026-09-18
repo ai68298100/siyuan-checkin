@@ -78,6 +78,8 @@ export interface CheckinItem {
     tomatoMode?: TomatoValueMode;
     /** 自动归档（D-165/T-1161）：达成天数达到 afterDays 后自动归档；缺省或 0 表示关闭。 */
     autoArchive?: {afterDays: number};
+    /** T-1239 负向习惯方向（D-219）：atMost=戒除类（被动型，不记录即成功）；缺省 at-least。仅 daily 排期。 */
+    direction?: "atMost";
     /** T-1231 笔记锚点（opt-in）：打卡状态回写的目标块（文档 ID 亦是合法块 ID）。 */
     noteAnchor?: {blockId: string; appendNotes?: boolean};
 }

@@ -2,7 +2,7 @@
    宿主成员经 BindTodayHost 结构化接口声明；index.ts 通过
    `bindTodayHandlers(root, this as unknown as BindTodayHost)` 接线。 */
 import {t} from "../i18n";
-import {getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay} from "../model";
+import {getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay, isSkipEvent} from "../model";
 import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
@@ -283,6 +283,16 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const revision = getItemRevisionForDate(item, calendarDateFromKey(moment.localDate));
                 const expectedRevisionFingerprint = host.revisionFingerprint(item, calendarDateFromKey(moment.localDate));
                 if (revision.kind === "binary") {
+                    /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
+                    if (item.direction === "atMost") {
+                        const lapseEvents = getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate))
+                            .filter((event) => !isSkipEvent(event))
+                            .map((event) => ({...event}));
+                        host.pendingFocusItemId = item.id;
+                        host.pulseHaptic();
+                        host.enqueueMutation(() => host.toggleItem(item.id, moment, lapseEvents.length === 0, expectedRevisionFingerprint, lapseEvents));
+                        return;
+                    }
                     const desiredComplete = !element.classList.contains("is-complete");
                     const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
                     host.pendingFocusItemId = item.id;

@@ -77,6 +77,8 @@ export async function saveEditorForm(
         return;
     }
     const anchorAppendNotes = Boolean(anchorBlockId) && data.get("anchorAppendNotes") === "on";
+    /* T-1239（D-219）：戒除类方向仅支持每日排期，其他排期静默回落 at-least。 */
+    const direction = data.get("directionAtMost") === "on" && scheduleType === "daily" ? "atMost" as const : undefined;
     const sortOrder = existing?.sortOrder ?? host.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
     const revision: CheckinItemRevision = {
         effectiveDate: submittedAt.localDate,
@@ -121,6 +123,7 @@ export async function saveEditorForm(
         timeSlot,
         completionSource,
         tomatoMode,
+        ...(direction ? {direction} : {}),
         ...(anchorBlockId ? {noteAnchor: {blockId: anchorBlockId, ...(anchorAppendNotes ? {appendNotes: true} : {})}} : {}),
     };
     const previous = host.store;
