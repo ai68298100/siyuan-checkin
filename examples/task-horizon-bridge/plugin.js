@@ -30,6 +30,7 @@
         let targetItemId;
         let stopped = false;
         const pending = new Map();
+        let retryInFlight;
 
         const reportError = (phase, error) => {
             if (typeof options.onError !== "function") return;
@@ -102,23 +103,33 @@
             }
         };
 
-        const retryPending = async () => {
-            if (stopped || !checkin || typeof checkin.recordEvent !== "function") return {attempted: 0, succeeded: 0, rejected: 0, remaining: pending.size};
-            let attempted = 0;
-            let succeeded = 0;
-            let rejected = 0;
-            for (const [externalRef, payload] of [...pending.entries()]) {
-                attempted += 1;
-                try {
-                    const result = await checkin.recordEvent(payload);
-                    pending.delete(externalRef);
-                    if (result === undefined) rejected += 1;
-                    else succeeded += 1;
-                } catch (error) {
-                    reportError("retry", error);
-                }
+        const retryPending = () => {
+            if (retryInFlight) return retryInFlight;
+            if (stopped || !checkin || typeof checkin.recordEvent !== "function") {
+                return Promise.resolve({attempted: 0, succeeded: 0, rejected: 0, remaining: pending.size});
             }
-            return {attempted, succeeded, rejected, remaining: pending.size};
+            const run = (async () => {
+                let attempted = 0;
+                let succeeded = 0;
+                let rejected = 0;
+                for (const [externalRef, payload] of [...pending.entries()]) {
+                    attempted += 1;
+                    try {
+                        const result = await checkin.recordEvent(payload);
+                        pending.delete(externalRef);
+                        if (result === undefined) rejected += 1;
+                        else succeeded += 1;
+                    } catch (error) {
+                        reportError("retry", error);
+                    }
+                }
+                return {attempted, succeeded, rejected, remaining: pending.size};
+            })();
+            retryInFlight = run.finally(() => {
+                if (retryInFlight === retryPromise) retryInFlight = undefined;
+            });
+            const retryPromise = retryInFlight;
+            return retryPromise;
         };
 
         const getPendingCompletions = () => [...pending.values()].map((payload) => ({...payload}));

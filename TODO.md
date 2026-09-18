@@ -2190,6 +2190,9 @@
 - [x] T-1190 Task Horizon 重试结果分类（P1）
   - 验收：重试统计区分成功、明确拒绝和仍抛错；`undefined` 拒绝从传输队列移除但不计为成功，抛错项保留待后续重试。
   - 状态：done（`retryPending()` 新增 `rejected` 统计并补齐拒绝/抛错 fixture）
+- [x] T-1191 Task Horizon 重试单飞守门（P1）
+  - 验收：并发触发多个 `retryPending()` 时只产生一次外部写入，调用方共享同一结果；失败后仍可再次发起重试。
+  - 状态：done（bridge 增加 in-flight promise 复用，fixture 覆盖并发调用与单次传输计数）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

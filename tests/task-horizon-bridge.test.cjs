@@ -59,6 +59,19 @@ const checkin = {
     rejectNextRecord = true;
     const rejectedRetry = await bridge.retryPending();
     assert.deepEqual({attempted: rejectedRetry.attempted, succeeded: rejectedRetry.succeeded, rejected: rejectedRetry.rejected, remaining: rejectedRetry.remaining}, {attempted: 1, succeeded: 0, rejected: 1, remaining: 0});
+    let concurrentWrites = 0;
+    let failConcurrent = true;
+    const concurrentCheckin = {...checkin, recordEvent: async (input) => {
+        concurrentWrites += 1;
+        if (failConcurrent) { failConcurrent = false; throw new Error("seed failure"); }
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return {id: "event-concurrent", ...input};
+    }};
+    const concurrentBridge = createTaskHorizonBridge({checkin: concurrentCheckin});
+    await concurrentBridge.recordTaskCompletion({blockId: "block-concurrent", localDate: "2026-09-18", itemId: "task-item"});
+    const [retryA, retryB] = await Promise.all([concurrentBridge.retryPending(), concurrentBridge.retryPending()]);
+    assert.deepEqual(retryA, retryB, "overlapping retries share one result");
+    assert.equal(concurrentWrites, 2, "single-flight retry performs one transport attempt");
     assert.equal(await bridge.recordTaskCompletion({blockId: "block:bad", localDate: "2026-09-18"}), undefined);
     bridge.stop();
     assert.equal(listener, undefined);

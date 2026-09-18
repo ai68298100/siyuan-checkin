@@ -731,3 +731,8 @@
 
 - `recordEvent` 返回 `undefined` 表示确定性拒绝：从 pending 传输队列移除，但 `retryPending()` 只增加 `rejected`，不增加 `succeeded`。
 - 只有返回事件对象才计入成功；再次抛错的 payload 保留在队列，便于后续恢复后重试。
+
+## D-191：pending 重试采用单飞而非丢弃并发请求（2026-09-18）
+
+- 多个刷新事件可能在同一时间触发重试；bridge 复用当前 in-flight promise，让所有调用方观察同一组统计结果。
+- promise settle 后释放锁；失败 payload 仍保留，因此下一次显式重试不会被永久阻断。
