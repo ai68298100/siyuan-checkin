@@ -685,3 +685,10 @@
 - 在对方尚未排期前，打卡侧只增加可执行契约夹具，不臆造 Task Horizon 的原生复选框监听或日历消费实现。
 - 合作身份继续使用 `taskhorizon:<blockId>:<localDate>`；同一项目、来源和 externalRef 的重放由 `appendEvents`/`normalizeStore` 去重，事件墓碑优先阻止删除后的旧回调复活。
 - 契约测试纳入 `test:ecosystem`，但 T-1165 仍保持未完成，直到双方对齐真实回调、刷新事件和双仓库 contract test。
+
+## D-183：仅对 Task Horizon 前缀启用专用 externalRef 校验（2026-09-18）
+
+- `taskhorizon:<blockId>:<localDate>` 由打卡侧提供 canonical 构造/解析；日期按本地公历严格校验，块 ID 拒绝冒号、空白和控制字符。
+- 公共 `recordEvent` 写入仅在检测到 `taskhorizon:` 前缀时启用专用守门，并要求 `source: "api"`；番茄钟、快捷指令等其它 externalRef 前缀保持原有通用语义。
+- malformed Task Horizon identity 返回 `undefined`，不自动修正、不截断、不把后台同步伪装为用户完成。
+- 公共 API 与生态规范化都先以同一首尾空白策略识别 `taskhorizon:`，避免“规范化入口拒绝、直接 API 入口接受”的分叉。

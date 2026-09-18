@@ -1,5 +1,51 @@
 import type {CheckinEvent} from "./types";
 
+export const TASK_HORIZON_EXTERNAL_REF_PREFIX = "taskhorizon" as const;
+const TASK_HORIZON_BLOCK_ID_MAX_LENGTH = 128;
+const TASK_HORIZON_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export interface TaskHorizonExternalRef {
+    blockId: string;
+    localDate: string;
+}
+
+function isTaskHorizonLocalDate(value: string): boolean {
+    const match = TASK_HORIZON_DATE_PATTERN.exec(value);
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (year < 1 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+    const utc = new Date(Date.UTC(year, month - 1, day));
+    return utc.getUTCFullYear() === year && utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day;
+}
+
+/** Build the canonical Task Horizon idempotency key without accepting ambiguous input. */
+export function createTaskHorizonExternalRef(blockId: unknown, localDate: unknown): string | undefined {
+    if (typeof blockId !== "string" || typeof localDate !== "string") return undefined;
+    const normalizedBlockId = blockId.trim();
+    if (!normalizedBlockId || normalizedBlockId.length > TASK_HORIZON_BLOCK_ID_MAX_LENGTH || /[:\s\u0000-\u001f\u007f]/.test(normalizedBlockId)) return undefined;
+    if (!isTaskHorizonLocalDate(localDate)) return undefined;
+    return `${TASK_HORIZON_EXTERNAL_REF_PREFIX}:${normalizedBlockId}:${localDate}`;
+}
+
+/** Parse only the canonical Task Horizon shape; malformed prefixed values are rejected. */
+export function parseTaskHorizonExternalRef(value: unknown): TaskHorizonExternalRef | undefined {
+    if (typeof value !== "string" || value.length > 240) return undefined;
+    const prefix = `${TASK_HORIZON_EXTERNAL_REF_PREFIX}:`;
+    if (!value.startsWith(prefix)) return undefined;
+    const body = value.slice(prefix.length);
+    const separator = body.lastIndexOf(":");
+    if (separator <= 0) return undefined;
+    const blockId = body.slice(0, separator);
+    const localDate = body.slice(separator + 1);
+    return createTaskHorizonExternalRef(blockId, localDate) === value ? {blockId, localDate} : undefined;
+}
+
+export function isTaskHorizonExternalRef(value: unknown): value is string {
+    return Boolean(parseTaskHorizonExternalRef(value));
+}
+
 export interface ExternalCheckinRecord {
     itemId: string;
     value: number;
@@ -130,6 +176,7 @@ export function normalizeExternalRecord(input: unknown, fallbackSource = "extern
     const externalRef = typeof value.externalRef === "string" ? value.externalRef.trim().slice(0, 240) : "";
     const source = typeof value.source === "string" && value.source.trim() ? value.source.trim().slice(0, 80) : fallbackSource;
     if (!itemId || !externalRef || !Number.isFinite(value.value) || (value.value as number) < 0) return undefined;
+    if (externalRef.startsWith(`${TASK_HORIZON_EXTERNAL_REF_PREFIX}:`) && (source !== "api" || !isTaskHorizonExternalRef(externalRef))) return undefined;
     return {
         itemId, value: value.value as number, source, externalRef,
         unit: typeof value.unit === "string" ? value.unit.trim().slice(0, 32) : undefined,

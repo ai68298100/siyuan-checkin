@@ -39,6 +39,7 @@
 - 探测：`window.siyuanCheckin` 存在且 `protocol === "siyuan-checkin"`、`version >= 4`，按 `capabilities` 确认所需能力可用。
 - 读：`analytics.read` 快照（含日期范围与点数上限，localOnly）；`events.read` 半开日期区间、保持原持久顺序。为日历等轻量图层提供 `siyuanCheckin.getEventRangeSummary({startDate, endDateExclusive}, {maxEvents?, maxPoints?})`：仅按本地日期返回 `{localDate,eventCount,totalValue,totalsByUnit}` 点，默认最多 366 天/5,000 条事件/366 个点，超出时返回 `truncated: true`；输入范围超过 366 天或非法直接拒绝。返回值为防御性投影，不含 store、附件或私有事件对象。
 - 写：`events.record`（见 L2）；返回 `undefined` 视为重复或拒绝，不应重试提示。
+- 身份校验：打卡侧对 `taskhorizon:` 前缀执行严格解析；块 ID 不得含冒号/控制字符，日期必须是有效本地日历日期，且来源必须为 `api`。其它来源前缀继续按通用 `externalRef` 规则处理，不被 Task Horizon 约束影响。
 - 事件：`checkin:analytics-updated`（聚合变化）、`checkin:event-recorded`（新记录）和 `checkin:item-archived`（自动归档成功）用于增量刷新；手动归档继续监听 `checkin:item-updated`。
 - 风格：与 `__dockTomato.stats.queryFocus` 同款——能力检测、超时、AbortSignal、不可用即降级隐藏。
 - 稳定性：API 版本化；破坏性变更升 major 并给过渡期。

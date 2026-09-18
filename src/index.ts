@@ -52,6 +52,7 @@ import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getChec
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
+import {isTaskHorizonExternalRef} from "./ecosystem";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -598,6 +599,10 @@ export default class CheckinPlugin extends Plugin {
         }
         const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" ? input.source : "api";
         const externalRef = typeof input.externalRef === "string" && input.externalRef ? input.externalRef : undefined;
+        const taskHorizonRef = externalRef?.trim();
+        if (taskHorizonRef?.startsWith("taskhorizon:") && (source !== "api" || !isTaskHorizonExternalRef(taskHorizonRef))) {
+            return undefined;
+        }
         if (externalRef) {
             const existing = this.store.events.find((event) => event.itemId === item.id && event.source === source && event.externalRef === externalRef);
             if (existing) {

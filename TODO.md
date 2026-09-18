@@ -2156,6 +2156,11 @@
   - 验收：本地测试固定 `taskhorizon:<blockId>:<localDate>` 身份格式、同任务同日重放幂等、删除墓碑不可复活，并明确原生复选框触发由对方负责。
   - 依赖：T-1164
   - 状态：done（`tests/task-horizon-contract.test.cjs` 已接入 `test:ecosystem`；双方联调仍待 T-1165 对方排期）
+
+- [x] T-1168 Task Horizon externalRef 写入边界（P1 前置）
+  - 验收：提供 canonical externalRef 构造/解析；`taskhorizon:` 前缀拒绝非法日期、块 ID 和非 `api` 来源；其它生态来源保持兼容；契约测试覆盖边界。
+  - 依赖：T-1167
+  - 状态：done（`src/ecosystem.ts` 规范化与 `index.ts` 公共写入边界均已接线）
 - [ ] T-1166 外部软件摘要通道（P3，远期评估）
   - 验收：每日摘要写入驻留文档的方案设计与隐私评估；外部工具（手机/桌面）经内核 API 读取的最小可用形态。
   - 依赖：T-1164；用户隐私决策
