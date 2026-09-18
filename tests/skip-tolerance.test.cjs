@@ -19,7 +19,7 @@ assert.match(indexSource, /insights\.streakRestart/, "insights page carries the 
 assert.match(indexSource, /currentStreak === 0 && report\.longestStreak > 0/, "restart note only shows after a real streak");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-skip-tolerance-"));
-for (const filename of ["types.ts", "i18n.ts", "lunar.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "occasions.ts", "reminders.ts", "features/insights.ts", "features/coaching.ts"]) {
+for (const filename of ["types.ts", "i18n.ts", "lunar.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "occasions.ts", "reminders.ts", "features/habit-score.ts", "features/insights.ts", "features/coaching.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

@@ -2419,8 +2419,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1226 streak 计算重构
   - 验收：manual+AUTO−skip 合并序列单一代码路径；与成就判定对齐；100k 性能持平。
   - 状态：done（`computeEventStreaks` 重构为统一状态遍历：真实完成日 +1、AUTO 日 +1（视同已完成，D-217）、跳过日中性桥接、其余断链；AUTO 在断链日惰性推导——仅 quota 项、单周期窗口 `[key,key]` + asOf 裁剪 + 逐日缓存，无配额数据零额外开销（streak-index 100k warmed 0.3ms 持平）；锚点含 AUTO。成就对齐：完美日分母排除「跳过且未完成」项目——跳过不算失败、不破坏全清连续（`tests/auto-streak.test.cjs` 断言 skip 日保持 streak progress）。验证：新增 `tests/auto-streak.test.cjs`（跨周 AUTO 桥接=10 天/中途 asOf/陈旧周期不复活/成就跳过中性）纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0）
-- [ ] T-1227 回顾页强度曲线与建议接入
+- [x] T-1227 回顾页强度曲线与建议接入
   - 验收：每项目强度趋势卡（0~100，可折叠进 reviewFold）；建议引擎消费强度；智能体摘要 API 输出有界强度字段。
+  - 状态：done（①insights：`HabitInsights` 新增 `strengthScore`/`strengthDelta`（30 天窗口现值与相对两周前的变化，null=数据不足），复用 habit-score 单一实现；②coaching 新规则 `strength-decline`：delta≤-15 且现值<60 → attention 建议「恢复最小可完成节奏」，与 skip-streak 并列；③回顾页新折叠卡「习惯强度」（fold id=strength，近 30 天每项目 0~100 折线 renderLineChart + 当前分值，subnav 条件跳转，reviewFold 偏好复用）；④智能体 API：`CheckinApi.getStrengthSummary({windowDays})` 只读有界（窗口 7~366 clamp 默认 30、活跃项目 cap 200、每项目 {itemId,name,score}），归 analytics.read 既有读能力不扩能力枚举；i18n 3 键；CSS 语义 token。验证：新增 `tests/strength-view.test.cjs` 纳入 test:ui；coaching/insights 测试闭包补 habit-score；`pnpm run check`、构建、Edge 宽度走查 12/12、完整 `test:quality` exit 0（113 文件全覆盖，CSS 433,530B 低于硬线））
 
 ### v17.0 Task Horizon 联调收口（原 v17 P1，可并行，待对方排期）
 

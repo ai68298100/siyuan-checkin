@@ -1,5 +1,6 @@
 import {dateKey, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
+import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./habit-score";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
 
 export type HabitDayStatus = "complete" | "partial" | "missed" | "pending" | "off" | "unavailable";
@@ -63,8 +64,11 @@ export interface HabitInsights {
     currentStreak: number;
     longestStreak: number;
     streakScope: "window";
-    /** T-1223：以最后一天收尾的连续跳过计划日数（0 = 最近没有连续跳过）。 */
+    /** T-1223：以窗口末尾收尾的连续跳过计划日数（0 = 最近没有连续跳过）。 */
     recentSkipDays: number;
+    /** T-1227：30 天强度分数现值与相对两周前的变化（数据不足时为 null）。 */
+    strengthScore: number | null;
+    strengthDelta: number | null;
     weeklyTrend: HabitWeekTrend[];
     totalsByUnit: HabitUnitTotal[];
     records: CheckinEvent[];
@@ -150,6 +154,20 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         break;
     }
     const records = days.flatMap((day) => day.events);
+    /* T-1227：30 天强度分数——与回顾页强度曲线共用 habit-score 单一实现。 */
+    let strengthScore: number | null = null;
+    let strengthDelta: number | null = null;
+    if (item) {
+        const revision = getItemRevisionForDate(item, end);
+        const series = buildHabitScoreSeries(
+            collectHabitScoreDays(store, item, dateKey(shiftDay(end, -29)), dateKey(shiftDay(end, 1))),
+            scheduleFrequency(revision.schedule),
+        );
+        if (series.length) {
+            strengthScore = series[series.length - 1].score;
+            strengthDelta = Math.round((strengthScore - series[Math.max(0, series.length - 15)].score) * 10) / 10;
+        }
+    }
     return {
         item,
         itemId,
@@ -161,6 +179,8 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         longestStreak,
         streakScope: "window",
         recentSkipDays,
+        strengthScore,
+        strengthDelta,
         weeklyTrend: buildWeeklyTrend(days),
         totalsByUnit: unitTotals(records),
         records,

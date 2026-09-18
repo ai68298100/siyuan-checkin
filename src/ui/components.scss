@@ -10000,3 +10000,41 @@ details:not([open]) > :not(summary) { display: none !important; }
     font-size: 10.5px;
     line-height: 1.5;
 }
+
+/* T-1227 习惯强度曲线：每项目 30 天强度折线（0~100）。 */
+.lc-checkin__strength-list {
+    display: grid;
+    gap: 8px;
+}
+.lc-checkin__strength-row {
+    display: grid;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__strength-row header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+.lc-checkin__strength-row strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin__strength-row em {
+    font-style: normal;
+    color: var(--lc-checkin-accent-text, var(--lc-checkin-muted));
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__strength-row svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}

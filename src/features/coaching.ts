@@ -64,6 +64,16 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
             evidence: `最近连续跳过 ${report.recentSkipDays} 个计划日`,
         });
     }
+    /* T-1227：强度分数下滑——恢复最小可完成节奏，强度随完成重新积累。 */
+    if (report.strengthScore !== null && report.strengthDelta !== null && report.strengthDelta <= -15 && report.strengthScore < 60) {
+        suggestions.push({
+            id: "strength-decline",
+            tone: "attention",
+            title: "习惯强度正在下滑",
+            detail: "强度分数反映近期完成节奏：先恢复最小可完成的一步，强度会随完成重新积累，不必追求立刻回到峰值。",
+            evidence: `30 天强度 ${report.strengthScore} 分，较两周前下降 ${Math.abs(report.strengthDelta)} 分`,
+        });
+    }
     if (trend && trend.latestRate <= trend.previousRate - 20) {
         suggestions.push({
             id: "trend-decline",

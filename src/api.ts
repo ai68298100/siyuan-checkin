@@ -2,6 +2,8 @@
    CheckinApiHost 以结构化接口声明插件宿主成员；index.ts 通过
    `createCheckinApi(this as unknown as CheckinApiHost)` 接线，绕开 private 可见性（仅编译期）。 */
 import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange, type EventRangeSummary, type EventRangeSummaryOptions} from "./analytics";
+import {getItemRevisionForDate, dateKey} from "./model";
+import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./features/habit-score";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinStore} from "./types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLocalDateInput, withTimeout} from "./shared";
 import {serializeCsv, serializeJson} from "./export";
@@ -34,6 +36,8 @@ export interface CheckinApi {
     getCustomSummaryContext: (range: CustomSummaryRange) => ReturnType<typeof buildCustomSummaryContext>;
     getAnalyticsSnapshot: (asOf?: Date) => AnalyticsSnapshot;
     getAnalyticsSummary: (asOf?: Date) => AnalyticsSnapshotSummary;
+    /** T-1227：有界强度摘要（只读；窗口 7~366 天，默认 30；最多 200 个活跃项目）。 */
+    getStrengthSummary: (options?: {windowDays?: number}) => {windowDays: number; startDate: string; endDate: string; items: Array<{itemId: string; name: string; score: number}>};
     getArchivedItems: () => CheckinItem[];
     setItemArchived: (itemId: string, archived: boolean) => Promise<boolean>;
     exportJson: () => string;
@@ -135,6 +139,27 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         },
         getAnalyticsSnapshot: (asOf = currentCalendarDate()) => cloneAnalyticsSnapshot(buildAnalyticsSnapshot(host.store, asOf)),
         getAnalyticsSummary: (asOf = currentCalendarDate()) => summarizeAnalyticsSnapshot(buildAnalyticsSnapshot(host.store, asOf)),
+        /* T-1227：有界强度摘要——只读、窗口 7~366 天（默认 30）、最多 200 个活跃项目。 */
+        getStrengthSummary: (options) => {
+            const requested = Number(options?.windowDays);
+            const windowDays = Number.isFinite(requested) ? Math.min(366, Math.max(7, Math.floor(requested))) : 30;
+            const asOf = currentCalendarDate();
+            const endExclusive = dateKey(new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate() + 1));
+            const start = dateKey(new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate() - (windowDays - 1)));
+            const items = host.store.items.filter((item) => !item.archived).slice(0, 200);
+            return {
+                windowDays,
+                startDate: start,
+                endDate: dateKey(asOf),
+                items: items.map((item) => {
+                    const series = buildHabitScoreSeries(
+                        collectHabitScoreDays(host.store, item, start, endExclusive),
+                        scheduleFrequency(getItemRevisionForDate(item, asOf).schedule),
+                    );
+                    return {itemId: item.id, name: item.name, score: series.length ? series[series.length - 1].score : 0};
+                }),
+            };
+        },
         getArchivedItems: () => host.store.items.filter((item) => item.archived).map((item) => host.cloneItem(item)),
         setItemArchived: (itemId, archived) => {
             if (!host.acceptingOperations) return Promise.resolve(false);
