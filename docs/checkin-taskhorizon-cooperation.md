@@ -3,6 +3,8 @@
 > 目标：把「当天打卡内容」接入 Task Horizon 的日历等视图，并把「任务完成」接入打卡的记录体系，形成任务↔习惯的闭环。
 > 状态：打卡侧 P0 v1 已落地（2026-09-18），可供双方评审。日期摘要 API 与预设模板已就绪，Task Horizon 侧需新增消费层。
 
+机器可读契约清单：[docs/contracts/task-horizon-v1.json](contracts/task-horizon-v1.json)。该文件与运行时 `TASK_HORIZON_CONTRACT` 及契约测试保持一致，供对方生成消费层常量和 CI fixture。
+
 ## 一、双方现状
 
 ### Task Horizon（思源任务管理器）
@@ -41,6 +43,7 @@
 - 写：`events.record`（见 L2）；返回 `undefined` 视为重复或拒绝，不应重试提示。
 - 身份校验：打卡侧对 `taskhorizon:` 前缀执行严格解析；块 ID 不得含冒号/控制字符，日期必须是有效本地日历日期，且来源必须为 `api`。其它来源前缀继续按通用 `externalRef` 规则处理，不被 Task Horizon 约束影响。
 - 事件：`checkin:analytics-updated`（聚合变化）、`checkin:event-recorded`（新记录）和 `checkin:item-archived`（自动归档成功）用于增量刷新；手动归档继续监听 `checkin:item-updated`。
+- 刷新事件白名单：仅处理 `checkin:event-recorded`、`checkin:analytics-updated`、`checkin:item-archived`、`checkin:item-updated`；`item-created`、`item-deleted` 等其它事件不应触发日历聚合重查。
 - 风格：与 `__dockTomato.stats.queryFocus` 同款——能力检测、超时、AbortSignal、不可用即降级隐藏。
 - 稳定性：API 版本化；破坏性变更升 major 并给过渡期。
 

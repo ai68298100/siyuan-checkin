@@ -1,6 +1,34 @@
 import type {CheckinEvent} from "./types";
+import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_EVENT_RANGE_LIMITS} from "./api-contract";
 
 export const TASK_HORIZON_EXTERNAL_REF_PREFIX = "taskhorizon" as const;
+export const TASK_HORIZON_REFRESH_EVENTS = [
+    "checkin:event-recorded",
+    "checkin:analytics-updated",
+    "checkin:item-archived",
+    "checkin:item-updated",
+] as const;
+export const TASK_HORIZON_CONTRACT = Object.freeze({
+    version: 1,
+    apiProtocol: CHECKIN_API_PROTOCOL,
+    minApiVersion: CHECKIN_API_VERSION,
+    readCapability: "analytics.read",
+    writeCapability: "events.record",
+    readMethod: "getEventRangeSummary",
+    writeMethod: "recordEvent",
+    source: "api",
+    unit: "个",
+    externalRefPrefix: `${TASK_HORIZON_EXTERNAL_REF_PREFIX}:`,
+    refreshEvents: Object.freeze([...TASK_HORIZON_REFRESH_EVENTS]),
+    summaryLimits: Object.freeze({...CHECKIN_EVENT_RANGE_LIMITS}),
+});
+
+export type TaskHorizonRefreshEvent = typeof TASK_HORIZON_REFRESH_EVENTS[number];
+
+export function isTaskHorizonRefreshEvent(value: unknown): value is TaskHorizonRefreshEvent {
+    return typeof value === "string" && (TASK_HORIZON_REFRESH_EVENTS as readonly string[]).includes(value);
+}
+
 const TASK_HORIZON_BLOCK_ID_MAX_LENGTH = 128;
 const TASK_HORIZON_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 

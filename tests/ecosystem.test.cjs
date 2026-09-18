@@ -5,6 +5,8 @@ const path = require("node:path");
 const ts = require("typescript");
 const source = fs.readFileSync("src/ecosystem.ts", "utf8");
 const output = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-ecosystem-")), "ecosystem.js");
+const apiContractSource = fs.readFileSync("src/api-contract.ts", "utf8");
+fs.writeFileSync(path.join(path.dirname(output), "api-contract.js"), ts.transpileModule(apiContractSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const api = require(output);
 assert.equal(api.createTaskHorizonExternalRef("block-1", "2026-09-18"), "taskhorizon:block-1:2026-09-18");

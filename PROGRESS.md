@@ -12,6 +12,8 @@
 
 2026-09-18 Task Horizon 身份边界批次（T-1168）：新增 `createTaskHorizonExternalRef` / `parseTaskHorizonExternalRef` / `isTaskHorizonExternalRef`，严格校验本地公历日期、块 ID 字符和长度；`normalizeExternalRecord` 与公共 `recordEvent` 写入边界仅对 `taskhorizon:` 前缀启用专用守门，并要求 `source: "api"`，其它生态来源保持兼容。补充非法日期、分隔符、来源错误和 malformed key 测试，更新合作文档与 README。验证：`pnpm run test:quality` 全链通过（系统 Chrome）；CSS 429,056 bytes，低于 450KB 硬线。下一步：等待对方联调排期，不实现 Task Horizon 私有监听或日历 UI。
 
+2026-09-18 Task Horizon 机器可读契约批次（T-1169）：新增 `docs/contracts/task-horizon-v1.json`，固定协议、能力、方法、单位、externalRef 前缀、四类刷新事件及摘要限制；运行时导出 `TASK_HORIZON_CONTRACT` 与 `isTaskHorizonRefreshEvent`，契约测试逐字段校验 JSON/运行时/文档一致性，并确认创建/删除噪声不会触发日历聚合重查。验证：`pnpm run test:quality` 全链通过（系统 Chrome）；CSS 429,056 bytes，低于 450KB 硬线。下一步：等待 Task Horizon 对方联调排期。
+
 2026-09-16 T-925~T-927 CSS 发布体积护栏受控放宽：应用户明确授权，将原 380KB 硬阻断调整为 420KB 告警、450KB 硬阻断，保留 318KB 历史软线并新增阈值递增断言；`test:quality` 同步改为先生产构建、后发布资源检查，避免读取旧 `dist`。当前生产 `dist/index.css` 为 404,587 bytes，位于告警区；完整质量链、宽度走查、70 张 UI 截图扫描及浅/深色视觉探针均通过。
 
 2026-09-15 T-105 legacy 样式退役第三十批（32 项）：迁移历史事件基础块与移动入场关键帧，清理 3 个空窄容器块；历史事件改用插件 surface/text/muted token，保留备注链接、值列和空态语义。同步更新移动发版测试，将 360px 容器断言切换至组件层。legacy SCSS 减少 32 行，生产 CSS 304094B。验证：`pnpm run check`、`test:mobile`、`ui-theme`、release-assets、diff 检查通过；完整质量链已启动并修正归属断言，下一轮补跑视觉双主题。

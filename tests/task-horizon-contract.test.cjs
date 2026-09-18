@@ -10,7 +10,7 @@ const ts = require("typescript");
 // replay semantics before the two plugins are installed together.
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-task-horizon-contract-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "ecosystem.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "api-contract.ts", "ecosystem.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js")), ts.transpileModule(source, {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
@@ -19,6 +19,7 @@ for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "m
 
 const model = require(path.join(outputRoot, "model.js"));
 const ecosystem = require(path.join(outputRoot, "ecosystem.js"));
+const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "docs", "contracts", "task-horizon-v1.json"), "utf8"));
 const item = {
     id: "task-checkin",
     name: "任务打卡",
@@ -54,6 +55,9 @@ assert.equal(externalRef("p1-block", "2026-09-18"), "taskhorizon:p1-block:2026-0
 assert.deepEqual(ecosystem.parseTaskHorizonExternalRef(externalRef("p1-block", "2026-09-18")), {blockId: "p1-block", localDate: "2026-09-18"});
 assert.equal(externalRef("p1:block", "2026-09-18"), undefined, "block IDs with separators are rejected");
 assert.equal(ecosystem.parseTaskHorizonExternalRef("taskhorizon:p1-block:2026-02-30"), undefined, "impossible dates are rejected");
+assert.deepEqual(manifest, ecosystem.TASK_HORIZON_CONTRACT, "machine-readable manifest stays aligned with runtime contract");
+assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:event-recorded"), true);
+assert.equal(ecosystem.isTaskHorizonRefreshEvent("checkin:item-created"), false, "creation noise does not trigger calendar refresh");
 const first = event("task-1", "p1-block", "2026-09-18");
 const replay = {...first, id: "task-replay", value: 99};
 const nextDay = event("task-2", "p1-block", "2026-09-19");
@@ -73,6 +77,7 @@ assert.equal(replayAfterDelete.events.length, 0, "a deleted task completion cann
 const docs = fs.readFileSync(path.join(__dirname, "..", "docs", "checkin-taskhorizon-cooperation.md"), "utf8");
 assert.match(docs, /taskhorizon:<blockId>:<localDate>/, "cooperation doc keeps the canonical identity format");
 assert.match(docs, /仅用户真实点击/, "cooperation doc keeps the native-checkbox trigger boundary");
+assert.match(docs, /task-horizon-v1\.json/, "cooperation doc links the machine-readable manifest");
 
 const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
 assert.match(indexSource, /isTaskHorizonExternalRef\(taskHorizonRef\)/, "API write boundary validates Task Horizon keys after trimming");

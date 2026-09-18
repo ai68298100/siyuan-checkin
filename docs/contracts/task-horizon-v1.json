@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "apiProtocol": "siyuan-checkin",
+  "minApiVersion": 4,
+  "readCapability": "analytics.read",
+  "writeCapability": "events.record",
+  "readMethod": "getEventRangeSummary",
+  "writeMethod": "recordEvent",
+  "source": "api",
+  "unit": "个",
+  "externalRefPrefix": "taskhorizon:",
+  "refreshEvents": [
+    "checkin:event-recorded",
+    "checkin:analytics-updated",
+    "checkin:item-archived",
+    "checkin:item-updated"
+  ],
+  "summaryLimits": {
+    "maxDays": 366,
+    "maxPoints": 366,
+    "maxEvents": 5000
+  }
+}
