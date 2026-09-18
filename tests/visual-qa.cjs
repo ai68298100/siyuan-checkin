@@ -423,6 +423,7 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
             title: title?.textContent?.trim() || "",
             templateSummaryVisible: visible(summary),
             templateSummary: summary?.textContent?.replace(/\s+/g, " ").trim() || "",
+            templateCount: element.querySelectorAll(".lc-checkin--editor [data-template-index]").length,
             mobileTopbarVisible: visible(mobileTopbar),
             mobileTopbarTitle: mobileTopbarTitle?.textContent?.trim() || "",
             scrollTop: element.querySelector(".lc-checkin")?.scrollTop ?? -1,
@@ -883,7 +884,11 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         assert.equal(results.narrowEditorChrome.title, "新建打卡项");
     }
     assert.equal(results.narrowEditorChrome.templateSummaryVisible, true);
-    assert.match(results.narrowEditorChrome.templateSummary, /^从常用打卡开始24/);
+    assert.match(
+        results.narrowEditorChrome.templateSummary,
+        new RegExp(`^从常用打卡开始${results.narrowEditorChrome.templateCount}`),
+        "template summary must show the rendered catalog size",
+    );
     assert.equal(results.narrowEditorChrome.scrollTop, 0);
     for (const width of [320, 360, 390, 430]) {
         assert.ok(results.mobileMatrix[width].cardGeometry.length > 0);

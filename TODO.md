@@ -2214,6 +2214,16 @@
   - 验收：单项目保留项目名/天数提示，多项目使用聚合提示；50 项/100k 事件资格投影低于 1 秒，旧单项 100k 门槛保持。
   - 状态：done（全链测得单项约 270.5ms、50 项批量约 448.6ms；专用事件顺序和聚合文案已有守门）
 
+- [x] T-1186 v15.0.0 发布真值与说明
+  - 验收：package.json、plugin.json、src/version.ts、README、变更记录和发布说明统一为 15.0.0，并完整描述本版本能力与现场验收边界。
+  - 状态：done（版本文件、README、docs/v15.0.0-change-log.md 与 release-notes-15.0.0.md 已同步）
+- [x] T-1187 v15.0.0 发布质量验收
+  - 验收：完整 test:quality、宽度走查和发布资源检查通过，package.zip 版本与 SHA-256 可复核。
+  - 状态：done（test:quality、宽度矩阵、浅/深主题 visual-qa 与最终 release-assets 全部通过；package.zip 376,186 bytes）
+- [ ] T-1188 v15.0.0 正式发布
+  - 验收：main、v15.0.0 标签和 GitHub Release 推送成功；远端 package.zip 摘要与发布说明一致。
+  - 依赖：T-1187
+
 - [x] T-1160 打卡项删除能力（两步确认 + 删除前自动恢复点 + 事件墓碑）
   - 验收：编辑器与归档页提供「删除」入口；删除前自动写入恢复点并在确认层展示影响（将删除 N 条记录）；删除后写事件墓碑，多窗口旧数据重放不复活；完整质量链通过。
   - 状态：done（model.deleteItemCascade + 编辑器/归档页入口 + checkin:item-deleted 事件；真机端到端验证通过；专用矩阵测试并入 T-1163）
