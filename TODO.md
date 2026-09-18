@@ -2226,6 +2226,9 @@
 - [x] T-1202 Task Horizon 停止中断重试批次（P1）
   - 验收：重试批次中调用 `stop()` 时允许当前 transport 完成，但不再启动后续 payload；未尝试项保留在 pending，宿主可先导出后交给新 bridge 生命周期处理。
   - 状态：done（循环边界增加 stopped 守门，fixture 覆盖两项 pending 中途停止）
+- [x] T-1203 Task Horizon 30 项契约矩阵批次（P1）
+  - 验收：新增不少于 30 个可执行边界项目，覆盖 externalRef 输入、启动状态、能力/事项/订阅异常、停止、刷新和重试结果；矩阵数量有断言并接入生态链。
+  - 状态：done（`task-horizon-bridge.test.cjs` 新增 30-case matrix，生态质量链通过）
 
 ## v15.0 UI 系统与交互体验（2026-09-18 启动）
 

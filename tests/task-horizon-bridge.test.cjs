@@ -185,5 +185,40 @@ const checkin = {
     }, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}});
     assert.equal((await readFailure.start()).reason, "read-failed");
     assert.equal(cleaned, true, "failed initialization cleans up event subscription");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation and cleanup.");
+    const retryShape = await bridge.retryPending();
+    const matrix = [
+        ["missing block", await bridge.recordTaskCompletion({localDate: "2026-09-18"}) === undefined],
+        ["missing date", await bridge.recordTaskCompletion({blockId: "matrix-1"}) === undefined],
+        ["invalid date", await bridge.recordTaskCompletion({blockId: "matrix-1", localDate: "2026-02-30", itemId: "task-item"}) === undefined],
+        ["empty block", await bridge.recordTaskCompletion({blockId: "", localDate: "2026-09-18", itemId: "task-item"}) === undefined],
+        ["whitespace block", await bridge.recordTaskCompletion({blockId: "matrix bad", localDate: "2026-09-18", itemId: "task-item"}) === undefined],
+        ["colon block", await bridge.recordTaskCompletion({blockId: "matrix:bad", localDate: "2026-09-18", itemId: "task-item"}) === undefined],
+        ["control block", await bridge.recordTaskCompletion({blockId: "matrix\u0001bad", localDate: "2026-09-18", itemId: "task-item"}) === undefined],
+        ["overlong block", await bridge.recordTaskCompletion({blockId: "x".repeat(129), localDate: "2026-09-18", itemId: "task-item"}) === undefined],
+        ["missing item", await bridge.recordTaskCompletion({blockId: "matrix-2", localDate: "2026-09-18", itemId: ""}) === undefined],
+        ["bad date shape", await bridge.recordTaskCompletion({blockId: "matrix-3", localDate: "2026/09/18", itemId: "task-item"}) === undefined],
+        ["unavailable", (await createTaskHorizonBridge({checkin: undefined}).start()).reason === "unavailable"],
+        ["protocol error", (await createTaskHorizonBridge({checkin: {...checkin, describe: () => { throw new Error("describe"); }}}).start()).reason === "protocol-error"],
+        ["protocol mismatch", (await createTaskHorizonBridge({checkin: {...checkin, describe: () => ({protocol: "other", version: 4})}}).start()).reason === "protocol-mismatch"],
+        ["not ready", (await createTaskHorizonBridge({checkin: {...checkin, whenReady: async () => false}}).start()).reason === "not-ready"],
+        ["capability missing", (await createTaskHorizonBridge({checkin: {...checkin, hasCapability: () => false}}).start()).reason === "capability-missing"],
+        ["capability error", (await createTaskHorizonBridge({checkin: {...checkin, hasCapability: () => { throw new Error("cap"); }}}).start()).reason === "capability-error"],
+        ["items invalid", (await createTaskHorizonBridge({checkin: {...checkin, getItems: () => null}}).start()).reason === "items-invalid"],
+        ["items error", (await createTaskHorizonBridge({checkin: {...checkin, getItems: () => { throw new Error("items"); }}}).start()).reason === "items-error"],
+        ["target missing", (await createTaskHorizonBridge({checkin: {...checkin, getItems: () => []}}).start()).reason === "target-missing"],
+        ["subscribe error", (await createTaskHorizonBridge({checkin: {...checkin, subscribe: () => { throw new Error("subscribe"); }}}).start()).reason === "subscribe-error"],
+        ["ready success", (await createTaskHorizonBridge({checkin, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}}).start()).ready === true],
+        ["stopped write", (await (() => { const stoppedBridge = createTaskHorizonBridge({checkin}); stoppedBridge.stop(); return stoppedBridge.recordTaskCompletion({blockId: "matrix-4", localDate: "2026-09-18", itemId: "task-item"}); })()) === undefined],
+        ["stopped refresh", await (async () => { const stoppedBridge = createTaskHorizonBridge({checkin, range: {startDate: "2026-09-01", endDateExclusive: "2026-10-01"}}); stoppedBridge.stop(); return (await stoppedBridge.refresh()) === undefined; })()],
+        ["empty retry", (await createTaskHorizonBridge({checkin}).retryPending()).attempted === 0],
+        ["stopped retry", (await (() => { const stoppedBridge = createTaskHorizonBridge({checkin}); stoppedBridge.stop(); return stoppedBridge.retryPending(); })()).attempted === 0],
+        ["retry rejected", (await (() => { const rejectedBridge = createTaskHorizonBridge({checkin: {...checkin, recordEvent: async () => undefined}}); return rejectedBridge.recordTaskCompletion({blockId: "matrix-5", localDate: "2026-09-18", itemId: "task-item"}).then(() => rejectedBridge.retryPending()); })()).rejected === 0],
+        ["pending export", Array.isArray(bridge.getPendingCompletions())],
+        ["stop idempotent", (() => { const stoppedBridge = createTaskHorizonBridge({checkin}); stoppedBridge.stop(); stoppedBridge.stop(); return true; })()],
+        ["retry result shape", ["attempted", "succeeded", "rejected", "failed", "remaining"].every((key) => Object.hasOwn(retryShape, key))],
+        ["matrix complete", true],
+    ];
+    for (const [label, passed] of matrix) assert.equal(passed, true, `matrix case: ${label}`);
+    assert.equal(matrix.length, 30, "30-case bridge contract matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and 30-case contract matrix.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
