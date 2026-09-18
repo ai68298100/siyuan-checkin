@@ -256,5 +256,27 @@ const checkin = {
     ];
     for (const [label, passed] of stabilityMatrix) assert.equal(passed, true, `stability matrix case: ${label}`);
     assert.equal(stabilityMatrix.length, 30, "second 30-case stability matrix remains complete");
-    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and two 30-case contract matrices.");
+    const calendarBridge = createTaskHorizonBridge({checkin});
+    const validDates = [
+        "2024-02-29", "2028-02-29", "2000-02-29", "1996-02-29", "2400-02-29",
+        "2026-01-01", "2026-01-31", "2026-03-01", "2026-03-31", "2026-04-01",
+        "2026-04-30", "2026-06-30", "2026-09-30", "2026-12-01", "2026-12-31",
+    ];
+    const invalidDates = [
+        "2023-02-29", "2025-02-29", "2100-02-29", "2200-02-29", "2026-00-01",
+        "2026-01-00", "2026-01-32", "2026-03-00", "2026-04-31", "2026-06-31",
+        "2026-09-31", "2026-11-31", "2026-12-32", "26-01-01", "2026-1-01",
+    ];
+    const calendarMatrix = [];
+    for (const [index, localDate] of validDates.entries()) {
+        const result = await calendarBridge.recordTaskCompletion({blockId: `calendar-valid-${index}`, localDate, itemId: "task-item"});
+        calendarMatrix.push([`valid date ${localDate}`, result && result.externalRef === `taskhorizon:calendar-valid-${index}:${localDate}`]);
+    }
+    for (const [index, localDate] of invalidDates.entries()) {
+        const result = await calendarBridge.recordTaskCompletion({blockId: `calendar-invalid-${index}`, localDate, itemId: "task-item"});
+        calendarMatrix.push([`invalid date ${localDate}`, result === undefined]);
+    }
+    for (const [label, passed] of calendarMatrix) assert.equal(passed, true, `calendar matrix case: ${label}`);
+    assert.equal(calendarMatrix.length, 30, "third 30-case calendar matrix remains complete");
+    console.log("Task Horizon bridge example checks passed: readiness, refresh, write, retry, validation, cleanup and three 30-case contract matrices.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });
