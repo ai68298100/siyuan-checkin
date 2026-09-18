@@ -866,3 +866,12 @@
 - 墓碑兼容：`CheckinEventTombstone` 以 eventId 标识，skip 事件删除走同一墓碑通道，无结构变化。
 - 智能体 API 边界（D-211 五字段写入 payload）不变：生态不能写入跳过（跳过是用户显式行为），`recordEvent` 返回的防御性事件副本携带 kind 只读字段。
 - SKIP 的统计口径（streak 中性、完成率分母剔除、热力图中性色、配额不吃量）在计算层落地（T-1221），不改写任何历史事件。
+
+## D-217：弹性配额自动补全（AUTO）只存在于计算层（2026-09-19）
+
+- 仅 quota 排期（每周/月 N 次）在**当期配额已达成**时推导 AUTO 日：达成日（第 N 个贡献日）之后的期内剩余日为 AUTO；非 quota 排期不推导。
+- AUTO 不落事件、不产生通知、不改写历史——与跳过同属计算层口径，指标可追溯到原始事件。
+- 优先级（消费者侧约定）：真实完成 > SKIP > AUTO。`deriveQuotaAutoDays` 产出候选时不覆盖有真实事件的日期；SKIP 日由消费者按跳过处理（跳过冻结优先于自动补全）。
+- `evaluateQuotaSchedule` 的调用方约定沿用 T-1221：传入事件须先剔除 skip（getProgress/insights 已过滤）；deriveQuotaAutoDays 内部再防御一次（`event.kind !== "skip"`，因 rules 不可反向依赖 model）。
+- AUTO 日视同已完成机会日：计入 streak（T-1226）、计入强度分数的当日完成度（配额达成期 isComplete 本就为真）；年度热力图仍以真实事件计热度（AUTO 不制造热度）。
+- 窗口与 asOf 双重裁剪：AUTO 不推导到 asOf（含）之后，避免未来日伪造连续。

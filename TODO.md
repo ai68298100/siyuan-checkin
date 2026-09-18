@@ -2413,8 +2413,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1224 强度分数模块 src/features/habit-score.ts
   - 验收：半衰期公式逐日滚动 0~100，跳过日冻结衰减，数值型按 target 归一，非每日频率倍增平滑；纯函数消费预聚合（D-215）；属性化测试覆盖闰年/跨时区/修订。
   - 状态：done（新增 `src/features/habit-score.ts`：纯函数核心 `buildHabitScoreSeries(days, frequency, {initial})`——m=0.5^(√freq/13) 逐日滚动 0~100，跳过日与非计划日冻结（不加成不衰减；冻结机制等效实现 uhabits 非固定星期习惯倍增平滑的意图，已在模块头注明推导），数值型按当日 target 归一（min(1, 进度/目标)）部分完成按比例计分；`scheduleFrequency` 六种排期→num/den 映射；`scoreMultiplier` 导出；`collectHabitScoreDays` 有界窗口 store 投影器（复用 isComplete/getProgress/getSkipDatesForItem 单一代码路径，修订感知按日取 target）。语义要点：频率越高 m 越小→漏做日掉分越快（uhabits 原语义）。验证：新增 `tests/habit-score.test.cjs`（乘数数学/单调收敛/冻结等价性/比例计分/频率映射/闰日采集/修订目标）纳入 test:ui；`pnpm run check` 通过）
-- [ ] T-1225 弹性频率自动补全（AUTO 推导）
+- [x] T-1225 弹性频率自动补全（AUTO 推导）
   - 验收：quota 达标后剩余日推导 AUTO（滑动窗口法）；只存在于计算层不落事件；SKIP 优先且不吃 AUTO 配额；决策+样例记 DECISIONS。
+  - 状态：done（决策 **D-217** 已记录：AUTO 仅 quota 当期达成后推导、不落事件不通知、真实完成 > SKIP > AUTO 优先级、AUTO 日视同已完成机会日但不制造热力图热度、asOf 双重裁剪防未来日伪造连续。实现：rules.ts 新增 `deriveQuotaAutoDays(schedule, events, itemId, windowStart, windowEnd, {asOf, unit})`——按周期滑动窗口，dates 模式达成日=第 N 个贡献日、value 模式=累计值首达日（已修复初版套用贡献日数的错误），产出达成日后的期内剩余日；排除有真实事件的日期；skip 事件不计入配额贡献（内部防御性 `kind !== "skip"` 过滤，因 rules 不可反向依赖 model）；400 周期护栏）。验证：新增 `tests/auto-days.test.cjs`（达成窗口/asOf 裁剪/skip 与真实事件优先/value 模式/月度跨月/非法回退）纳入 test:ui；`pnpm run check` 通过）
 - [ ] T-1226 streak 计算重构
   - 验收：manual+AUTO−skip 合并序列单一代码路径；与成就判定对齐；100k 性能持平。
 - [ ] T-1227 回顾页强度曲线与建议接入

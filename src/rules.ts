@@ -194,6 +194,76 @@ function dateFromKey(value: string): Date {
     return new Date(year, month - 1, day, 12);
 }
 
+/**
+ * T-1225（D-217）：弹性配额自动补全——当期配额达成后，达成日之后的期内剩余日
+ * 推导为 AUTO 候选（mhabit 滑动窗口法的等价实现）。只存在于计算层：不落事件、
+ * 不通知、不推导到 asOf 之后。真实完成优先（有非跳过事件的日期不产出）；
+ * SKIP 日不在本函数排除（消费者按跳过冻结处理，跳过优先于 AUTO）。
+ * 窗口为包含式本地日期 [windowStart, windowEnd]；周期数超 400 有护栏。
+ */
+export function deriveQuotaAutoDays(
+    schedule: CheckinSchedule,
+    events: readonly CheckinEvent[],
+    itemId: string,
+    windowStart: string,
+    windowEnd: string,
+    options: {asOf?: string; unit?: string} = {},
+): Set<string> {
+    const auto = new Set<string>();
+    if (schedule.type !== "quota" || !schedule.quota || !schedule.quota.amount || schedule.quota.amount <= 0) return auto;
+    const start = windowStart;
+    const end = windowEnd;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end) || start > end) return auto;
+    const asOf = options.asOf && /^\d{4}-\d{2}-\d{2}$/.test(options.asOf) ? options.asOf : end;
+    const realDates = new Set<string>();
+    for (const event of events) {
+        if (event.itemId !== itemId || event.kind === "skip") continue;
+        const key = eventDateKey(event);
+        if (key) realDates.add(key);
+    }
+    const contributingEvents = events.filter((event) => event.itemId === itemId && event.kind !== "skip");
+    let cursor = dateFromKey(start);
+    let guard = 0;
+    while (guard < 400) {
+        guard += 1;
+        const bounds = getQuotaPeriodBounds(schedule.quota.period, cursor);
+        if (bounds.startDate > end) break;
+        if (bounds.endDate >= start) {
+            const progress = evaluateQuotaSchedule(schedule, contributingEvents, itemId, dateFromKey(bounds.startDate), options.unit);
+            if (progress?.complete && progress.contributingDates.length) {
+                /* 达成日：dates 模式 = 第 N 个贡献日；value 模式 = 累计值首次达到 N 的日期。 */
+                let metDate: string | undefined;
+                if (schedule.quota.countMode === "dates") {
+                    metDate = progress.contributingDates[schedule.quota.amount - 1];
+                } else {
+                    const unit = options.unit;
+                    const valueByDate = new Map<string, number>();
+                    for (const ev of contributingEvents) {
+                        if (unit && ev.unit !== unit) continue;
+                        const dayKey = eventDateKey(ev);
+                        if (dayKey) valueByDate.set(dayKey, (valueByDate.get(dayKey) || 0) + ev.value);
+                    }
+                    let cumulative = 0;
+                    for (const dayKey of [...valueByDate.keys()].sort()) {
+                        cumulative += valueByDate.get(dayKey) || 0;
+                        if (cumulative >= schedule.quota.amount) { metDate = dayKey; break; }
+                    }
+                }
+                if (metDate) {
+                    const autoEnd = [bounds.endDate, end, asOf].reduce((left, right) => left < right ? left : right);
+                    for (let candidate = addCalendarDays(dateFromKey(metDate), 1); localDateKey(candidate) <= autoEnd; candidate = addCalendarDays(candidate, 1)) {
+                        const candidateKey = localDateKey(candidate);
+                        if (candidateKey > autoEnd) break;
+                        if (!realDates.has(candidateKey)) auto.add(candidateKey);
+                    }
+                }
+            }
+        }
+        cursor = addCalendarDays(dateFromKey(bounds.endDate), 1);
+    }
+    return auto;
+}
+
 function addCalendarDays(date: Date, amount: number): Date {
     const result = dateFromKey(localDateKey(date));
     result.setDate(result.getDate() + amount);
