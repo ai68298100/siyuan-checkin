@@ -5,6 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "src", "render", "today-bindings.ts"), "utf8");
 const index = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 
 assert.match(source, /export function bindItemContextMenuFor\(/, "Today cards expose a context-menu binding");
@@ -30,12 +31,21 @@ assert.match(source, /Promise\.resolve\(\)\.then\(operation\)/, "synchronous act
 assert.match(source, /button\.dataset\.actionBusy === "true"/, "repeated action clicks are ignored while a mutation is pending");
 assert.match(source, /button\.setAttribute\("aria-busy", "true"\)/, "pending actions expose busy state");
 assert.match(source, /await host\.archiveItems\(ids\)/, "bulk archive delegates to one host transaction");
+assert.match(source, /await host\.completeItems\(ids\)/, "bulk completion delegates to one host transaction");
 assert.match(source, /await host\.deleteItemsWithRecords\(ids\)/, "bulk delete delegates to one host transaction");
 assert.match(index, /private async archiveItems[\s\S]*?return this\.enqueueMutation[\s\S]*?await this\.persist\(\)/, "bulk archive persists once inside the mutation queue");
+assert.match(index, /private async completeItems[\s\S]*?appendEvents[\s\S]*?await this\.persist\(\)/, "bulk completion appends and persists the batch once");
+assert.match(index, /private async completeItems[\s\S]*?type: "event-recorded"[\s\S]*?type: "analytics-updated"/, "bulk completion preserves integration refresh events");
+assert.match(index, /private async completeItems[\s\S]*?setOccasionCompleted[\s\S]*?maybeAutoArchiveAfterRecord[\s\S]*?setRecentRecord/, "bulk completion preserves linked occasions, automatic archive, and undo feedback");
 assert.match(index, /private async deleteItemsWithRecords[\s\S]*?deleteItemsCascade[\s\S]*?await this\.persist\(\)/, "bulk deletion uses the linear cascade and persists once");
 assert.match(index, /private async recordEvent[\s\S]*?this\.maybeAutoArchiveAfterRecord\(current\)/, "manual records participate in automatic archiving");
 assert.match(source, /menu\.dataset\.actionBusy === "true"/, "context-menu actions ignore duplicate clicks");
-assert.match(fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8"), /data-bulk-toolbar/, "bulk toolbar exposes a coordination boundary");
+assert.match(source, /querySelectorAll<HTMLElement>\("\[data-bulk-check\]"\)[\s\S]*?syncBulkSelection\(\)/, "select-all is scoped to rendered filtered results");
+assert.match(source, /const renderedIds = new Set[\s\S]*?host\.bulkSelected\.delete\(id\)/, "filter rerenders prune selections outside the rendered result set");
+assert.doesNotMatch(source, /host\.bulkSelected\.add\(item\.id\);[\s\S]{0,80}host\.render\(\)/, "selection changes must not force a full surface render");
+assert.match(fragments, /data-bulk-toolbar/, "bulk toolbar exposes a coordination boundary");
+assert.match(fragments, /data-bulk-selected-count role="status" aria-live="polite"/, "selection count is announced without rerendering");
+assert.match(fragments, /data-bulk-selection-action[\s\S]*?disabled/, "empty selection disables destructive bulk actions");
 assert.match(styles, /\.lc-checkin__item-context-menu \{[\s\S]*?position: fixed;/, "context menu is positioned against the viewport");
 
 console.log("Today context-menu checks passed.");

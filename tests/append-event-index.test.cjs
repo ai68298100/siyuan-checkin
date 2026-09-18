@@ -28,6 +28,16 @@ for (let index = 1; index <= 25; index += 1) {
     assert.equal(model.appendEvent(store, {...makeEvent(index + 200, existing.externalRef)}), store, `case ${index}: duplicate external identity is rejected`);
     assert.equal(model.appendEvent(store, {...makeEvent(index + 300),id:`deleted-${index}`}), store, `case ${index}: ID tombstone is rejected`);
     assert.equal(model.appendEvent(store, makeEvent(index + 400, `deleted-session-${index}`)), store, `case ${index}: external tombstone is rejected`);
+    const fresh = makeEvent(index + 500, `fresh-session-${index}`);
+    const batch = model.appendEvents(store, [
+        fresh,
+        {...makeEvent(index + 600), id:fresh.id},
+        makeEvent(index + 700, fresh.externalRef),
+        {...makeEvent(index + 800), id:`deleted-${index}`},
+        makeEvent(index + 900, `deleted-session-${index}`),
+    ]);
+    assert.equal(batch.events.length, 2, `case ${index}: only one fresh batch candidate is accepted`);
+    assert.equal(batch.events[1], fresh, `case ${index}: batch append preserves candidate identity`);
 }
 
 const eventCount = 100000;
@@ -41,5 +51,12 @@ const elapsed = performance.now() - startedAt;
 assert.equal(appended.events.length, eventCount + 1, "new event is appended to a long history");
 assert.equal(appended.events[eventCount], candidate, "append preserves the candidate object");
 assert.ok(elapsed < 250, `warmed 100k append must finish within 250ms, received ${elapsed.toFixed(1)}ms`);
+const batchCandidates = Array.from({length:1000}, (_, index) => makeEvent(eventCount + 3000 + index, `batch-session-${index}`));
+const batchStartedAt = performance.now();
+const batchAppended = model.appendEvents(largeStore, batchCandidates);
+const batchElapsed = performance.now() - batchStartedAt;
+assert.equal(batchAppended.events.length, eventCount + batchCandidates.length, "all unique batch candidates are appended");
+assert.equal(batchAppended.events[eventCount + batchCandidates.length - 1], batchCandidates[batchCandidates.length - 1]);
+assert.ok(batchElapsed < 250, `warmed 100k + 1k batch append must finish within 250ms, received ${batchElapsed.toFixed(1)}ms`);
 
-console.log(`Append event index checks passed: 25 cases, 100 matrix assertions; warmed 100k append ${elapsed.toFixed(1)}ms.`);
+console.log(`Append event index checks passed: 25 cases, 150 matrix assertions; warmed 100k append ${elapsed.toFixed(1)}ms, +1k batch ${batchElapsed.toFixed(1)}ms.`);

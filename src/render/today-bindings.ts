@@ -2,7 +2,7 @@
    从 index.ts 外置（T-022 可选收尾）；宿主成员经 TodayBindingsHost 结构化接口声明，
    index.ts 以薄壳委托 `bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root)` 接线。 */
 import {t} from "../i18n";
-import {evaluateItemRule, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, dateKey} from "../model";
+import {getItemRevisionForDate, isComplete, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
@@ -20,6 +20,7 @@ export interface TodayBindingsHost {
     reorderItems(orderedIds: string[]): Promise<boolean>;
     setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean>;
     archiveItems(itemIds: string[]): Promise<boolean>;
+    completeItems(itemIds: string[]): Promise<boolean>;
     deleteItemWithRecords(itemId: string): Promise<boolean>;
     deleteItemsWithRecords(itemIds: string[]): Promise<boolean>;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
@@ -107,38 +108,43 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
         host.bulkSelected.clear();
         host.render();
     });
+    const syncBulkSelection = () => {
+        root.querySelectorAll<HTMLButtonElement>("[data-bulk-check]").forEach((button) => {
+            const selected = host.bulkSelected.has(button.dataset.bulkCheck || "");
+            button.classList.toggle("is-selected", selected);
+            button.setAttribute("aria-pressed", String(selected));
+            button.textContent = selected ? "✓" : "";
+        });
+        const count = host.bulkSelected.size;
+        const countLabel = root.querySelector<HTMLElement>("[data-bulk-selected-count]");
+        if (countLabel) countLabel.textContent = t("today.bulkSelectedCount", {n: count});
+        root.querySelectorAll<HTMLButtonElement>("[data-bulk-selection-action]").forEach((button) => button.disabled = count === 0);
+    };
     root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.bulkCheck || "";
         if (!id) return;
         if (host.bulkSelected.has(id)) host.bulkSelected.delete(id);
         else host.bulkSelected.add(id);
-        host.render();
+        syncBulkSelection();
     }));
     root.querySelector<HTMLElement>("[data-action='bulk-all']")?.addEventListener("click", () => {
         const date = currentCalendarDate();
-        for (const item of host.store.items) {
-            if (item.archived || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date) || isComplete(host.store, item, date)) continue;
-            host.bulkSelected.add(item.id);
-        }
-        host.render();
+        root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((selection) => {
+            const item = getActiveItemById(host.store, selection.dataset.bulkCheck || "");
+            if (item && !isComplete(host.store, item, date)) host.bulkSelected.add(item.id);
+        });
+        syncBulkSelection();
     });
+    /* 搜索/筛选重渲染后丢弃结果集之外的旧选择，避免批量动作影响不可见项目。 */
+    const renderedIds = new Set([...root.querySelectorAll<HTMLElement>("[data-bulk-check]")].map((selection) => selection.dataset.bulkCheck || "").filter(Boolean));
+    for (const id of host.bulkSelected) if (!renderedIds.has(id)) host.bulkSelected.delete(id);
+    syncBulkSelection();
     root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
-            const date = currentCalendarDate();
-            for (const id of ids) {
-                const item = getActiveItemById(host.store, id);
-                if (!item || isComplete(host.store, item, date)) continue;
-                const moment = captureActionMoment();
-                const revision = getItemRevisionForDate(item, date);
-                const fingerprint = host.revisionFingerprint(item, date);
-                const remaining = evaluateItemRule(host.store, item, date).remaining ?? 0;
-                const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
-                if (value <= 0) continue;
-                await host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint));
-            }
+            if (!await host.completeItems(ids)) return;
             host.bulkMode = false;
             host.bulkSelected.clear();
             host.render();

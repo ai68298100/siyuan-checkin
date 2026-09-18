@@ -575,15 +575,33 @@ export function isComplete(store: CheckinStore, item: CheckinItem, date = new Da
     return target > 0 && getProgress(store, item, date) >= target;
 }
 
-export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinStore {
+/** Append several events against one warmed index and clone the event array once.
+    Candidates still honor ID/externalRef tombstones and are deduplicated both
+    against the store and within the incoming batch. */
+export function appendEvents(store: CheckinStore, candidates: readonly CheckinEvent[]): CheckinStore {
+    if (!candidates.length) return store;
     const index = getStoreIndex(store);
-    if (isEventTombstonedByLookup(event, index.tombstones)) return store;
-    const externalIdentity = getExternalRefIdentity(event);
-    if (index.byId.has(event.id) || Boolean(externalIdentity && index.byExternalIdentity.has(externalIdentity))) return store;
+    const accepted: CheckinEvent[] = [];
+    const candidateIds = new Set<string>();
+    const candidateExternalIdentities = new Set<string>();
+    for (const event of candidates) {
+        if (isEventTombstonedByLookup(event, index.tombstones)) continue;
+        const externalIdentity = getExternalRefIdentity(event);
+        if (index.byId.has(event.id) || candidateIds.has(event.id)) continue;
+        if (externalIdentity && (index.byExternalIdentity.has(externalIdentity) || candidateExternalIdentities.has(externalIdentity))) continue;
+        accepted.push(event);
+        candidateIds.add(event.id);
+        if (externalIdentity) candidateExternalIdentities.add(externalIdentity);
+    }
+    if (!accepted.length) return store;
     return {
         ...store,
-        events: [...store.events, event],
+        events: [...store.events, ...accepted],
     };
+}
+
+export function appendEvent(store: CheckinStore, event: CheckinEvent): CheckinStore {
+    return appendEvents(store, [event]);
 }
 
 /** Replace only the user-editable note while preserving event identity and time. */

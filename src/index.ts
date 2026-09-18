@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -1835,6 +1835,63 @@ export default class CheckinPlugin extends Plugin {
             this.invalidateSummary();
             for (const item of archived) this.broadcast({type: "item-updated", item});
             showMessage(t("msg.itemsArchived", {n: archived.length}));
+            return true;
+        });
+    }
+
+    /** Today 批量完成：基于同一自然日快照生成事件，整批只追加/持久化一次。 */
+    private async completeItems(itemIds: string[]): Promise<boolean> {
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        if (!requestedIds.size || this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const moment = captureActionMoment();
+            const actionDate = calendarDateFromKey(moment.localDate);
+            const recorded: Array<{item: CheckinItem; event: CheckinEvent; revision: CheckinItemRevision; value: number}> = [];
+            for (const item of this.store.items) {
+                if (!requestedIds.has(item.id) || item.archived || !isItemAvailableOnDate(item, actionDate)
+                    || !isScheduledToday(item, actionDate) || isComplete(this.store, item, actionDate)) continue;
+                const revision = getItemRevisionForDate(item, actionDate);
+                const remaining = evaluateItemRule(this.store, item, actionDate).remaining ?? 0;
+                const value = revision.kind === "binary" ? 1 : Math.max(0, remaining);
+                if (value <= 0) continue;
+                const event = this.makeEvent(item, value, "manual", revision.unit, undefined, undefined, moment);
+                recorded.push({item, event, revision, value});
+            }
+            const next = appendEvents(this.store, recorded.map((entry) => entry.event));
+            if (next === this.store) return false;
+            this.store = next;
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                return false;
+            }
+            this.invalidateSummary();
+            for (const entry of recorded) this.broadcast({type: "event-recorded", item: entry.item, event: entry.event});
+            this.broadcast({type: "analytics-updated", analyticsAsOf: moment.localDate});
+            for (const entry of recorded) {
+                if (entry.item.linkedOccasionId && isComplete(this.store, entry.item, actionDate)) {
+                    void this.setOccasionCompleted(entry.item.linkedOccasionId, moment.localDate, true);
+                }
+                this.maybeAutoArchiveAfterRecord(entry.item);
+            }
+            const last = recorded[recorded.length - 1];
+            if (last) {
+                const target = last.revision.schedule.type === "quota" ? last.revision.schedule.quota?.amount || last.revision.target : last.revision.target;
+                this.setRecentRecord({
+                    eventId: last.event.id,
+                    itemId: last.item.id,
+                    message: `已记录 ${last.item.name} +${formatNumber(last.value)} ${last.revision.unit || "次"}`,
+                    progress: getProgress(this.store, last.item, actionDate),
+                    target,
+                    unit: last.revision.unit || "次",
+                });
+                this.pendingLocalItemId = last.item.id;
+                this.pendingLocalItemDate = moment.localDate;
+            }
+            showMessage(t("msg.itemsCompleted", {n: recorded.length}));
             return true;
         });
     }
