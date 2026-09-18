@@ -28,7 +28,7 @@ import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksVa
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
-import {ANCHOR_ATTR_KEY, buildAnchorAttrValue, clearAnchorAttr, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
+import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -2017,6 +2017,9 @@ export default class CheckinPlugin extends Plugin {
             this.broadcast({type: "event-recorded", item: current, event});
             this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
             void this.writebackNoteAnchor(current, {state: "skip"});
+            if (current.noteAnchor?.appendNotes && note?.trim()) {
+                void this.appendNoteToAnchor(current, buildAnchorNoteMarkdown({date: event.localDate, itemName: current.name, stateText: t("anchor.stateSkip"), note: note.trim()}));
+            }
             showMessage(t("msg.skipDone", {name: current.name}));
             return true;
         });
@@ -2487,6 +2490,9 @@ export default class CheckinPlugin extends Plugin {
         this.broadcast({type: "event-recorded", item: current, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         void this.writebackNoteAnchor(current, {state: "done", value, unit: revision.unit});
+        if (current.noteAnchor?.appendNotes && event.note) {
+            void this.appendNoteToAnchor(current, buildAnchorNoteMarkdown({date: event.localDate, itemName: current.name, stateText: t("anchor.stateDone"), note: event.note}));
+        }
         /* 6.0 occasion linkage: completing a generated one-shot item resolves its occasion. */
         if (current.linkedOccasionId && isComplete(this.store, current, actionDate)) {
             void this.setOccasionCompleted(current.linkedOccasionId, moment.localDate, true);
@@ -2714,6 +2720,18 @@ export default class CheckinPlugin extends Plugin {
             await clearAnchorAttr((url, payload) => this.kernelPost(url, payload), blockId);
         } catch {
             // 清理失败不打扰用户；块可能已被删除。
+        }
+    }
+
+    /* T-1232 打卡即笔记：备注/跳过原因追加为锚点文档的子块（opt-in，撤销不删除）。 */
+    private async appendNoteToAnchor(item: CheckinItem, markdown: string): Promise<void> {
+        const anchor = item.noteAnchor;
+        if (!anchor?.blockId || !anchor.appendNotes) return;
+        if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        const result = await appendAnchorNote((url, payload) => this.kernelPost(url, payload), anchor.blockId, markdown);
+        if (!result.ok) {
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId: anchor.blockId, channel: "append", reason: result.reason || "unknown"}});
+            void this.persistAuditBestEffort();
         }
     }
 

@@ -24,6 +24,11 @@ assert.match(saveFormSource, /editor\.anchorInvalid/, "invalid anchor ids are re
 assert.match(editorSource, /name="anchorBlockId"/, "editor exposes the anchor input");
 assert.match(editorSource, /name="anchorAppendNotes"/, "editor exposes the append-notes switch");
 assert.match(read("render", "settings.ts"), /set\.auditAnchor/, "settings label the anchor audit type");
+assert.match(read("features", "note-anchor.ts"), /export function buildAnchorNoteMarkdown/, "note markdown builder exists");
+assert.match(indexSource, /appendNoteToAnchor\(current, buildAnchorNoteMarkdown\(/, "recordEvent and skip append notes through the builder");
+assert.match(indexSource, /private async appendNoteToAnchor\(/, "index implements the append bypass");
+assert.match(indexSource, /noteAnchor\?\.appendNotes/, "append honors the opt-in switch");
+assert.match(indexSource, /channel: "append"/, "append failures are audited distinctly");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-note-anchor-"));
 for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "i18n.ts", "features/note-anchor.ts"]) {
@@ -45,6 +50,16 @@ assert.equal(anchor.validateAnchorBlockId("has space1234567890"), undefined, "sp
 
 /* 属性值格式。 */
 assert.equal(anchor.buildAnchorAttrValue("2026-09-19", "已完成 3 次"), "2026-09-19 · 已完成 3 次");
+
+/* T-1232 备注块 markdown：带日期戳、换行折叠、空备注省略冒号。 */
+assert.equal(
+    anchor.buildAnchorNoteMarkdown({date: "2026-09-19", itemName: "阅读", stateText: "已完成", note: "读完第二章\n做了笔记"}),
+    "- 2026-09-19 已完成 **阅读**：读完第二章 做了笔记",
+);
+assert.equal(
+    anchor.buildAnchorNoteMarkdown({date: "2026-09-19", itemName: "阅读", stateText: "已跳过", note: "   "}),
+    "- 2026-09-19 已跳过 **阅读**",
+);
 
 /* 内核调用封装：写/清只动本插件键，code!=0 视为失败。（CJS 无顶层 await，异步段包裹执行） */
 (async () => {

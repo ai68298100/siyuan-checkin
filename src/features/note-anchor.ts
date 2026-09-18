@@ -68,6 +68,12 @@ export async function appendAnchorNote(post: KernelPost, blockId: string, markdo
     return ok(response) ? {ok: true} : {ok: false, reason: response?.msg || "append-block-failed"};
 }
 
+/** T-1232：追加进用户文档的备注行（带日期戳；换行折叠为空格防断块）。 */
+export function buildAnchorNoteMarkdown(input: {date: string; itemName: string; stateText: string; note: string}): string {
+    const note = input.note.replace(/\r?\n/g, " ").trim();
+    return `- ${input.date} ${input.stateText} **${input.itemName}**${note ? `：${note}` : ""}`;
+}
+
 /** 有界重试包装：最多 attempts 次（含首次），间隔 retryDelayMs。 */
 export async function withBoundedRetry<T>(
     operation: () => Promise<{ok: boolean; reason?: string}>,
