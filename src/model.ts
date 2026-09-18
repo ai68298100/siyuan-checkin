@@ -104,9 +104,9 @@ export interface StoreConflictReport {
 }
 export type StoreConflictStrategy = "local" | "remote" | "merge";
 export interface StoreConflictResolution { strategy: StoreConflictStrategy; store: CheckinStore; report: StoreConflictReport; }
-export interface StoreAuditEntry { type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>; }
+export interface StoreAuditEntry { type: "conflict" | "merge" | "restore" | "migration" | "anchor"; at: string; details: Record<string, unknown>; }
 
-const STORE_AUDIT_TYPES = new Set<StoreAuditEntry["type"]>(["conflict", "merge", "restore", "migration"]);
+const STORE_AUDIT_TYPES = new Set<StoreAuditEntry["type"]>(["conflict", "merge", "restore", "migration", "anchor"]);
 
 export function normalizeStoreAudit(value: unknown, limit = 50): StoreAuditEntry[] {
     if (!Array.isArray(value)) return [];
@@ -763,6 +763,7 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         completionSource,
         tomatoMode,
         linkedOccasionId: typeof value.linkedOccasionId === "string" && value.linkedOccasionId.trim() ? value.linkedOccasionId.trim().slice(0, 64) : undefined,
+        ...(normalizeNoteAnchor(value.noteAnchor) ? {noteAnchor: normalizeNoteAnchor(value.noteAnchor)} : {}),
         ...(normalizeAutoArchive(value.autoArchive) ? {autoArchive: normalizeAutoArchive(value.autoArchive)} : {}),
     };
 }
@@ -772,6 +773,15 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
 function normalizeAutoArchive(value: unknown): {afterDays: number} | undefined {
     const days = value && typeof value === "object" ? Math.round(Number((value as {afterDays?: unknown}).afterDays)) : 0;
     return Number.isFinite(days) && days >= 1 ? {afterDays: Math.min(1_000_000, days)} : undefined;
+}
+
+/** T-1231：笔记锚点规范化——块 ID 只留安全字符，appendNotes 仅在真值时物化。 */
+function normalizeNoteAnchor(value: unknown): {blockId: string; appendNotes?: boolean} | undefined {
+    if (!isRecord(value) || typeof value.blockId !== "string") return undefined;
+    const blockId = value.blockId.trim();
+    if (!/^[A-Za-z0-9_-]{10,64}$/.test(blockId)) return undefined;
+    const appendNotes = value.appendNotes === true;
+    return {blockId, ...(appendNotes ? {appendNotes: true} : {})};
 }
 
 /** 达成天数（自动归档口径）：从可考最早日期逐自然日到 today，按 isComplete 计数。

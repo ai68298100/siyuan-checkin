@@ -2431,8 +2431,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v17.1 打卡回写笔记块（opt-in 默认关，失败隔离）
 
-- [ ] T-1231 项目级笔记锚点与状态回写
+- [x] T-1231 项目级笔记锚点与状态回写
   - 验收：绑定文档/块后打卡回写 custom 属性/ memo；回写失败不阻断主路径，有界重试+诊断；卸载清理路径明确。
+  - 状态：done（决策 D-218 已记录。新增 `src/features/note-anchor.ts`：属性键 `custom-lv-checkin`（小写连字符 custom- 前缀，合契约）、`validateAnchorBlockId`（10-64 位 URL 安全字符）、`buildAnchorAttrValue`（`日期 · 状态文本` 单行）、`writeAnchorAttr`/`clearAnchorAttr`/`resolveAnchorBlock`/`appendAnchorNote`（deps.post 注入可测）+ `withBoundedRetry`（默认 2 次/1.5s）；`CheckinItem.noteAnchor?: {blockId, appendNotes?}` 规范化（appendNotes 仅真值物化，同 D-157 字段集合纪律）；编辑器「笔记锚点」字段 + 附加备注开关（save-form 校验非法 ID 显式拒绝）；index.ts `writebackNoteAnchor` 旁路回写（五个写入路径打点：recordEvent/skipItemToday/unskipItemToday/completeItems/skipItems），失败重试一次后挂起锚点 + 审计类型 `anchor`（model 白名单 + settings 标签扩展）；解绑保存时清除旧块属性；`uninstall()` 遍历清除全部锚点键。内核 API 全部经 siyuan fetchSyncPost 走已验证端点（/api/attr/setBlockAttrs /api/block/getBlockInfo /api/block/appendBlock）。验证：新增 `tests/note-anchor.test.cjs` 纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0）
 - [ ] T-1232 打卡即笔记（备注锚定）
   - 验收：备注/跳过原因可追加到锚点日记（带日期戳可检索）；只写用户绑定位置；撤销同步策略记 DECISIONS。
 - [ ] T-1233 回写一致性守门

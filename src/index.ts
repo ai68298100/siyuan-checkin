@@ -1,4 +1,4 @@
-import {Dialog, getFrontend, Plugin, showMessage} from "siyuan";
+import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage} from "siyuan";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -28,6 +28,7 @@ import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksVa
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
+import {ANCHOR_ATTR_KEY, buildAnchorAttrValue, clearAnchorAttr, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -148,7 +149,7 @@ interface LockManagerLike {
 export default class CheckinPlugin extends Plugin {
     private store: CheckinStore = createDefaultStore();
     private lastPersistedStore: CheckinStore = createDefaultStore();
-    private auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration"; at: string; details: Record<string, unknown>}> = [];
+    private auditEntries: StoreAuditEntry[] = [];
     private snapshotHistory: ReturnType<typeof readStoreSnapshotHistory> = [];
     private occasionStore: OccasionStore = createDefaultOccasionStore();
     private userTemplates: UserTemplate[] = [];
@@ -242,6 +243,8 @@ export default class CheckinPlugin extends Plugin {
     private reviewFoldTouched = false;
     /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
     reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
+    /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
+    private suspendedAnchors = new Set<string>();
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
@@ -504,6 +507,20 @@ export default class CheckinPlugin extends Plugin {
             this.renderBackgroundUpdate();
         } catch (error) {
             if (!this.disposing) showMessage(t("msg.prefRefreshFail", {error: String(error)}));
+        }
+    }
+
+    /* T-1231 卸载清理：尽力清除所有锚点块上的本插件属性键（custom-lv-checkin）。
+       块可能已被删除——逐个尝试，失败不中断；卸载后插件存储保留，重装可恢复绑定关系。 */
+    async uninstall() {
+        for (const item of this.store.items) {
+            const blockId = item.noteAnchor?.blockId;
+            if (!blockId) continue;
+            try {
+                await fetchSyncPost("/api/attr/setBlockAttrs", {id: blockId, attrs: {[ANCHOR_ATTR_KEY]: ""}});
+            } catch {
+                // 尽力而为；卸载流程不因单个失败中断。
+            }
         }
     }
 
@@ -1949,6 +1966,7 @@ export default class CheckinPlugin extends Plugin {
                 if (entry.item.linkedOccasionId && isComplete(this.store, entry.item, actionDate)) {
                     void this.setOccasionCompleted(entry.item.linkedOccasionId, moment.localDate, true);
                 }
+                void this.writebackNoteAnchor(entry.item, {state: "done", value: entry.value, unit: entry.revision.unit});
             }
             this.maybeAutoArchiveItemsAfterRecord(recorded.map((entry) => entry.item));
             const last = recorded[recorded.length - 1];
@@ -1998,6 +2016,7 @@ export default class CheckinPlugin extends Plugin {
             this.invalidateSummary();
             this.broadcast({type: "event-recorded", item: current, event});
             this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
+            void this.writebackNoteAnchor(current, {state: "skip"});
             showMessage(t("msg.skipDone", {name: current.name}));
             return true;
         });
@@ -2024,6 +2043,7 @@ export default class CheckinPlugin extends Plugin {
             }
             this.invalidateSummary();
             this.broadcast({type: "event-deleted", item: current, deletedEvents: skipEvents});
+            void this.writebackNoteAnchor(current, {state: "unskip"});
             showMessage(t("msg.unskipDone", {name: current.name}));
             return true;
         });
@@ -2060,6 +2080,7 @@ export default class CheckinPlugin extends Plugin {
             for (const item of skipped) {
                 const created = events.find((event) => event.itemId === item.id);
                 if (created) this.broadcast({type: "event-recorded", item, event: created});
+                void this.writebackNoteAnchor(item, {state: "skip"});
             }
             this.broadcast({type: "analytics-updated", analyticsAsOf: events[0].localDate});
             showMessage(t("msg.skipBatchDone", {n: skipped.length}));
@@ -2202,7 +2223,14 @@ export default class CheckinPlugin extends Plugin {
 
     /* 方法体外置于 render/save-form.ts（T-022）。 */
     private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string) {
+        /* T-1231：解绑时清除旧锚点块上的本插件属性（尽力而为，不阻断保存）。 */
+        const previousAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
+        const newAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
+        if (previousAnchor && (!newAnchor || newAnchor.blockId !== previousAnchor.blockId)) {
+            this.suspendedAnchors.delete(`${editingId}:${previousAnchor.blockId}`);
+            void this.clearAnchorAttrBestEffort(previousAnchor.blockId);
+        }
     }
 
     private async archiveEditingItem() {
@@ -2458,6 +2486,7 @@ export default class CheckinPlugin extends Plugin {
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item: current, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
+        void this.writebackNoteAnchor(current, {state: "done", value, unit: revision.unit});
         /* 6.0 occasion linkage: completing a generated one-shot item resolves its occasion. */
         if (current.linkedOccasionId && isComplete(this.store, current, actionDate)) {
             void this.setOccasionCompleted(current.linkedOccasionId, moment.localDate, true);
@@ -2649,6 +2678,43 @@ export default class CheckinPlugin extends Plugin {
 
     private downloadLoopExport() {
         downloadLoopExportFor(this.cloneStore());
+    }
+
+    /* T-1231 笔记锚点回写：尽力而为的旁路——不阻断、不回滚打卡主路径；
+       失败有界重试一次（1.5s），仍失败则挂起该锚点并写入审计。 */
+    private kernelPost(url: string, payload: unknown): Promise<{code?: number; msg?: string}> {
+        return fetchSyncPost(url, payload);
+    }
+
+    private async writebackNoteAnchor(item: CheckinItem, info: {state: "done" | "skip" | "unskip"; value?: number; unit?: string}): Promise<void> {
+        const blockId = item.noteAnchor?.blockId;
+        if (!blockId || this.disposed || this.disposing || !this.acceptingOperations) return;
+        const suspendKey = `${item.id}:${blockId}`;
+        if (this.suspendedAnchors.has(suspendKey)) return;
+        const now = currentCalendarDate();
+        const streak = computeStreaksValue(this.store).get(item.id) || 0;
+        const stateText = info.state === "done"
+            ? (info.value !== undefined && info.unit ? `${t("anchor.stateDone")} ${formatNumber(info.value)} ${info.unit}` : t("anchor.stateDone"))
+            : info.state === "skip" ? t("anchor.stateSkip") : t("anchor.stateUnskip");
+        const value = buildAnchorAttrValue(dateKey(now), `${stateText}${streak > 1 ? ` · ${t("anchor.streakSuffix", {n: streak})}` : ""}`);
+        const result = await withBoundedRetry(
+            () => writeAnchorAttr((url, payload) => this.kernelPost(url, payload), blockId, value),
+            {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},
+        );
+        if (!result.ok) {
+            this.suspendedAnchors.add(suspendKey);
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, reason: result.reason || "unknown"}});
+            void this.persistAuditBestEffort();
+        }
+    }
+
+    /* 解绑/卸载清理：只清本插件键（空串即移除），尽力而为。 */
+    private async clearAnchorAttrBestEffort(blockId: string): Promise<void> {
+        try {
+            await clearAnchorAttr((url, payload) => this.kernelPost(url, payload), blockId);
+        } catch {
+            // 清理失败不打扰用户；块可能已被删除。
+        }
     }
 
     /* 6.0 P0 drag-sort: pointer drag on the handle reorders within the group;

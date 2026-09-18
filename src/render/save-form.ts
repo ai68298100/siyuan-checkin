@@ -6,6 +6,7 @@ import {nextItemUpdatedAt, isValidLocalDateInput, normalizePriorityInput, normal
 import {normalizeRecordStep} from "../record-step";
 import {KIND_OPTIONS} from "../catalog";
 import {validateEditorInput} from "../editor-validation";
+import {validateAnchorBlockId} from "../features/note-anchor";
 import {showMessage} from "siyuan";
 import type {CheckinItem, CheckinItemRevision, CheckinKind, CheckinSchedule, CheckinStore, CompletionSource, ScheduleType, TomatoValueMode} from "../types";
 
@@ -68,6 +69,14 @@ export async function saveEditorForm(
     const timeSlot = normalizeTimeSlotInput(data.get("timeSlot"));
     const completionSource: CompletionSource = data.get("completionSource") === "tomato" ? "tomato" : "manual";
     const tomatoMode: TomatoValueMode = data.get("tomatoMode") === "sessions" ? "sessions" : "minutes";
+    /* T-1231：笔记锚点——非法输入显式拒绝（不静默丢弃）。 */
+    const requestedAnchorBlock = String(data.get("anchorBlockId") || "").trim();
+    const anchorBlockId = requestedAnchorBlock ? validateAnchorBlockId(requestedAnchorBlock) : undefined;
+    if (requestedAnchorBlock && !anchorBlockId) {
+        showMessage(`[小驴打卡] ${t("editor.anchorInvalid")}`);
+        return;
+    }
+    const anchorAppendNotes = Boolean(anchorBlockId) && data.get("anchorAppendNotes") === "on";
     const sortOrder = existing?.sortOrder ?? host.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
     const revision: CheckinItemRevision = {
         effectiveDate: submittedAt.localDate,
@@ -112,6 +121,7 @@ export async function saveEditorForm(
         timeSlot,
         completionSource,
         tomatoMode,
+        ...(anchorBlockId ? {noteAnchor: {blockId: anchorBlockId, ...(anchorAppendNotes ? {appendNotes: true} : {})}} : {}),
     };
     const previous = host.store;
     host.store = {

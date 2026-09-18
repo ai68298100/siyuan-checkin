@@ -875,3 +875,13 @@
 - `evaluateQuotaSchedule` 的调用方约定沿用 T-1221：传入事件须先剔除 skip（getProgress/insights 已过滤）；deriveQuotaAutoDays 内部再防御一次（`event.kind !== "skip"`，因 rules 不可反向依赖 model）。
 - AUTO 日视同已完成机会日：计入 streak（T-1226）、计入强度分数的当日完成度（配额达成期 isComplete 本就为真）；年度热力图仍以真实事件计热度（AUTO 不制造热度）。
 - 窗口与 asOf 双重裁剪：AUTO 不推导到 asOf（含）之后，避免未来日伪造连续。
+
+## D-218：笔记锚点回写是尽力而为的旁路（2026-09-19）
+
+- 锚点为项目级 opt-in：`CheckinItem.noteAnchor = {blockId, appendNotes?}`；只写用户明确绑定的一个块（文档 ID 亦是合法块 ID），绝不写其他位置。
+- 属性键固定 `custom-lv-checkin`（小写连字符，custom- 前缀避免与思源内置属性冲突）；值为一行人类可读文本 `YYYY-MM-DD · 状态 · 连续 N 天`，属性面板直接可见。
+- 回写发生在打卡持久化成功之后，是 fire-and-forget 旁路：失败不回滚、不重排打卡队列；`withBoundedRetry` 最多 2 次（间隔 1.5s），仍失败则内存挂起该锚点（本次会话不再尝试）+ 审计记录（新增审计类型 `anchor`）。
+- 清理语义：`setBlockAttrs` 是合并语义，清除 = 空串覆盖本插件键，不触碰其他属性。解绑（编辑器清空保存）与 `uninstall()` 都逐块清除；卸载时块可能已删——逐个尝试、失败不中断，插件存储保留使重装后绑定关系可恢复。
+- 内核调用只使用已验证端点：`/api/attr/setBlockAttrs`、`/api/block/getBlockInfo`、`/api/block/appendBlock`；统一经 `fetchSyncPost`（前端会话鉴权，无需令牌）。
+- 撤销策略：取消打卡/取消跳过会重写状态属性（unskip 文案）；但 T-1232 追加的备注块属于用户文档内容，撤销不删除（尊重用户文档主权）。
+- 多窗口：锚点属性写入走内核 API 天然 last-writer-wins；打卡数据本体仍由存储锁保护。挂起标志是内存态，重载即重置，避免永久禁用。
