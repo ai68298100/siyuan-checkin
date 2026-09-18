@@ -1,7 +1,7 @@
 /* 回顾页碎片渲染：近期事项 / 打卡日志。
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
-import {dateKey, evaluateItemRule, getEventDateKey, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, sortCheckinItems} from "../model";
+import {dateKey, evaluateItemRule, getEventDateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, getEditorStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
 import {uiIcon} from "../ui/icons";
@@ -119,15 +119,18 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const timeSlot = item.timeSlot || "any";
     const completionSource = item.completionSource || "manual";
     const unit = revision.unit || t("today.unitDefault");
+    /* T-1222：当日已跳过（未完成）的卡片显示中性徽章；仍可打卡，完成优先于跳过。 */
+    const skipToday = getSkipDatesForItem(ctx.store, item.id).has(dateKey(date)) && !complete;
     const icon = isBinary
         ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
         : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
-    return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
+    return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}${skipToday ? " is-skip" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
             ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
                     <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
                     ${(ctx.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
+                    ${skipToday ? `<span class="lc-checkin__item-tag is-skip-tag">${t("today.skipBadge")}</span>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
@@ -360,6 +363,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <strong data-bulk-selected-count role="status" aria-live="polite">${t("today.bulkSelectedCount", {n: ctx.bulkSelected.size})}</strong>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-all">${t("today.bulkAll")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-complete" data-bulk-selection-action ${ctx.bulkSelected.size ? "" : "disabled"}>${t("today.bulkComplete")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="bulk-skip" data-bulk-selection-action ${ctx.bulkSelected.size ? "" : "disabled"}>${t("today.bulkSkip")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-archive" data-bulk-selection-action ${ctx.bulkSelected.size ? "" : "disabled"}>${t("today.bulkArchive")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-delete" data-bulk-selection-action ${ctx.bulkSelected.size ? "" : "disabled"}>${t("today.bulkDelete")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>

@@ -9981,3 +9981,13 @@ details:not([open]) > :not(summary) { display: none !important; }
     font-size: 9px;
     line-height: 1.4;
 }
+
+/* T-1222 今日卡跳过态：中性虚线标签，卡片仍可正常打卡（完成优先）。 */
+.lc-checkin__item-tag.is-skip-tag {
+    border: 1px dashed var(--lc-checkin-muted);
+    color: var(--lc-checkin-muted);
+    font-weight: 400;
+}
+.lc-checkin__item.is-skip .lc-checkin__item-icon {
+    opacity: .72;
+}

@@ -2401,8 +2401,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1221 跳过统计口径
   - 验收：streak 跳过日中性不断链；完成率分母剔除跳过；热力图中性色双主题 4.5:1；日志显示跳过行；quota 跳过不吃配额。
   - 状态：done（计算层口径，不改写历史事件：①model 索引新增 `skipDatesByItem` + `getSkipDatesForItem`；②`getProgress`/`evaluateItemRule` 全部排除 skip 事件——跳过日不完成、quota 不吃量（单一代码路径，isComplete 自动跟随）；③`computeEventStreaks` 重写为「真实完成日 + 跳过日中性桥接」遍历（锚点含跳过、纯跳过链为 0、真实空缺仍断链、36,500 步护栏；无跳过数据行为与旧版完全一致）；④analytics `summarizeItem` 跳过日剔除完成率分母（同日有真实完成则按完成计）；⑤charts 年度热力图仅跳过日标 `skip:true` → `is-skip` 中性虚线格（含图例）；⑥回顾页月历仅跳过日中性 `is-skip` + ✕ 标记 + aria 跳过计数；日志跳过行显示「跳过」徽章（备注=原因可见）且不进当日聚合合计。i18n 3 键；样式全部 muted 语义 token。验证：新增 `tests/skip-semantics.test.cjs` 纳入 test:ui；`pnpm run check`、完整 `test:quality` exit 0，100k 索引/投影基线持平）
-- [ ] T-1222 跳过交互
+- [x] T-1222 跳过交互
   - 验收：Today 卡上下文菜单（复用 T-1170 通道）可跳过、可写原因、可撤销；批量模式支持跳过。
+  - 状态：done（TodayBindingsHost 新增 skipItemToday/unskipItemToday/skipItems 三宿主边界；index.ts 实现：跳过创建 kind=skip、value=0 事件（仅当日排期且未完成项；已完成/未排期不提供；重复跳过幂等），取消跳过经 removeEvents 墓碑通道，批量跳过 appendEvents 单事务单持久化并逐项目广播 event-recorded + analytics-updated，恢复点由 persist 管线保证；卡片菜单在 skip/unskip 间切换（原因 window.prompt 可选，取消 prompt 无副作用，busy 守门复用）；批量工具栏新增「跳过」（runExclusiveAction 防重复提交，完成后退出批量并重渲染）；今日卡跳过态显示中性虚线「已跳过」标签（is-skip-tag），卡片仍可正常打卡（完成优先于跳过）。i18n 中英 8 键（today.skipToday/unskipToday/skipBadge/skipPrompt/bulkSkip + msg.skipDone/unskipDone/skipBatchDone）。验证：新增 `tests/skip-interaction.test.cjs` 纳入 test:ui；today-context-menu/today-view/cross-surface/i18n-hygiene 回归通过；`pnpm run check`、完整 `test:quality` exit 0、Edge 宽度走查 12/12 无溢出）
 - [ ] T-1223 宽容提醒二期与反内疚建议
   - 验收：跳过日不再提醒；连续跳过/强度下滑触发「下调排期」建议（只建议不自动改）；断链文案统一「重新开始」（中英 i18n）。
 

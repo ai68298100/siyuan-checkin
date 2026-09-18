@@ -12,7 +12,7 @@ import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summa
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {CHECKIN_API_NAME, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getItemById, getItemRevisionForDate, getProgress, isComplete, isItemAvailableOnDate, isScheduledToday, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
+import {appendEvent, appendEvents, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -1964,6 +1964,103 @@ export default class CheckinPlugin extends Plugin {
                 this.pendingLocalItemDate = moment.localDate;
             }
             showMessage(t("msg.itemsCompleted", {n: recorded.length}));
+            return true;
+        });
+    }
+
+    /* T-1222 跳过（D-216）：用户显式跳过当日——kind=skip 事件，完成/配额/连击口径
+       由计算层自动跟随（T-1221）。已完成或非当日排期的项不提供跳过。 */
+    private async skipItemToday(itemId: string, note?: string): Promise<boolean> {
+        if (this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const current = getActiveItemById(this.store, itemId);
+            const moment = captureActionMoment();
+            const actionDate = calendarDateFromKey(moment.localDate);
+            if (!current || !isItemAvailableOnDate(current, actionDate) || !isScheduledToday(current, actionDate)) return false;
+            if (isComplete(this.store, current, actionDate)) return false;
+            if (getEventsForDay(this.store, itemId, actionDate).some((event) => isSkipEvent(event))) return true;
+            const revision = getItemRevisionForDate(current, actionDate);
+            const event: CheckinEvent = {...this.makeEvent(current, 0, "manual", revision.unit, note?.trim() || undefined, undefined, moment), kind: "skip"};
+            const previous = this.store;
+            const next = appendEvent(this.store, event);
+            if (next === this.store) return false;
+            this.store = next;
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                this.renderBackgroundUpdate();
+                return false;
+            }
+            this.invalidateSummary();
+            this.broadcast({type: "event-recorded", item: current, event});
+            this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
+            showMessage(t("msg.skipDone", {name: current.name}));
+            return true;
+        });
+    }
+
+    private async unskipItemToday(itemId: string): Promise<boolean> {
+        if (this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const current = getActiveItemById(this.store, itemId);
+            const moment = captureActionMoment();
+            const actionDate = calendarDateFromKey(moment.localDate);
+            if (!current) return false;
+            const skipEvents = getEventsForDay(this.store, itemId, actionDate).filter((event) => isSkipEvent(event));
+            if (!skipEvents.length) return true;
+            const previous = this.store;
+            this.store = removeEvents(this.store, skipEvents, moment.occurredAt);
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                this.renderBackgroundUpdate();
+                return false;
+            }
+            this.invalidateSummary();
+            this.broadcast({type: "event-deleted", item: current, deletedEvents: skipEvents});
+            showMessage(t("msg.unskipDone", {name: current.name}));
+            return true;
+        });
+    }
+
+    private async skipItems(itemIds: string[]): Promise<boolean> {
+        const requestedIds = new Set(itemIds.filter((id) => typeof id === "string" && id));
+        if (!requestedIds.size || this.disposed || this.disposing) return false;
+        return this.enqueueMutation(async () => {
+            const previous = this.store;
+            const moment = captureActionMoment();
+            const actionDate = calendarDateFromKey(moment.localDate);
+            const events: CheckinEvent[] = [];
+            const skipped: CheckinItem[] = [];
+            for (const item of this.store.items) {
+                if (!requestedIds.has(item.id) || item.archived || !isItemAvailableOnDate(item, actionDate) || !isScheduledToday(item, actionDate) || isComplete(this.store, item, actionDate)) continue;
+                if (getEventsForDay(this.store, item.id, actionDate).some((event) => isSkipEvent(event))) continue;
+                const revision = getItemRevisionForDate(item, actionDate);
+                events.push({...this.makeEvent(item, 0, "manual", revision.unit, undefined, undefined, moment), kind: "skip"});
+                skipped.push(item);
+            }
+            if (!events.length) return false;
+            const next = appendEvents(this.store, events);
+            if (next === this.store) return false;
+            this.store = next;
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                showMessage(t("msg.saveFail"));
+                return false;
+            }
+            this.invalidateSummary();
+            for (const item of skipped) {
+                const created = events.find((event) => event.itemId === item.id);
+                if (created) this.broadcast({type: "event-recorded", item, event: created});
+            }
+            this.broadcast({type: "analytics-updated", analyticsAsOf: events[0].localDate});
+            showMessage(t("msg.skipBatchDone", {n: skipped.length}));
             return true;
         });
     }

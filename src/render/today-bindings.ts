@@ -2,7 +2,7 @@
    从 index.ts 外置（T-022 可选收尾）；宿主成员经 TodayBindingsHost 结构化接口声明，
    index.ts 以薄壳委托 `bindQuickKeyboardFor(this as unknown as TodayBindingsHost, root)` 接线。 */
 import {t} from "../i18n";
-import {getItemRevisionForDate, isComplete, dateKey} from "../model";
+import {getItemRevisionForDate, getEventsForDay, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
@@ -23,6 +23,9 @@ export interface TodayBindingsHost {
     completeItems(itemIds: string[]): Promise<boolean>;
     deleteItemWithRecords(itemId: string): Promise<boolean>;
     deleteItemsWithRecords(itemIds: string[]): Promise<boolean>;
+    skipItemToday(itemId: string, note?: string): Promise<boolean>;
+    unskipItemToday(itemId: string): Promise<boolean>;
+    skipItems(itemIds: string[]): Promise<boolean>;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(): void;
@@ -150,6 +153,17 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
             host.render();
         });
     });
+    root.querySelector<HTMLElement>("[data-action='bulk-skip']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        const ids = [...host.bulkSelected];
+        if (!ids.length) return;
+        runExclusiveAction(button, async () => {
+            if (!await host.skipItems(ids)) return;
+            host.bulkMode = false;
+            host.bulkSelected.clear();
+            host.render();
+        });
+    });
     root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
         const ids = [...host.bulkSelected];
@@ -201,15 +215,25 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         if (!item) return;
         closeMenus();
         menuTrigger = card.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']") || undefined;
+        /* T-1222：当日排期且未完成的项可跳过/取消跳过（D-216 一等记录态）。 */
+        const actionDate = currentCalendarDate();
+        const scheduledToday = isItemAvailableOnDate(item, actionDate) && isScheduledToday(item, actionDate);
+        const completeToday = isComplete(host.store, item, actionDate);
+        const skippedToday = scheduledToday && !completeToday
+            && getEventsForDay(host.store, item.id, actionDate).some((event) => isSkipEvent(event));
+        const menuItems = [
+            `<button type="button" role="menuitem" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
+            ...(scheduledToday && !completeToday ? [skippedToday
+                ? `<button type="button" role="menuitem" data-menu-action="unskip">${t("today.unskipToday")}</button>`
+                : `<button type="button" role="menuitem" data-menu-action="skip">${t("today.skipToday")}</button>`] : []),
+            `<button type="button" role="menuitem" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
+        ];
         const menu = document.createElement("div");
         menu.className = "lc-checkin__item-context-menu";
         menu.setAttribute("role", "menu");
         menu.setAttribute("aria-label", t("today.bulkAria"));
-        menu.innerHTML = [
-            `<button type="button" role="menuitem" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
-            `<button type="button" role="menuitem" data-menu-action="archive">${item.archived ? t("editor.restore") : t("today.bulkArchive")}</button>`,
-            `<button type="button" role="menuitem" data-menu-action="delete" class="is-danger">${t("editor.deleteItem")}</button>`,
-        ].join("");
+        menu.innerHTML = menuItems.join("");
         menu.style.left = "0px";
         menu.style.top = "0px";
         root.appendChild(menu);
@@ -225,6 +249,9 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             const action = actionButton?.dataset.menuAction;
             if (!actionButton || menu.dataset.actionBusy === "true") return;
             ev.stopPropagation();
+            /* 跳过原因可选：取消 prompt 时不进入 busy、不关菜单。 */
+            const skipReason = action === "skip" ? window.prompt(t("today.skipPrompt")) : undefined;
+            if (action === "skip" && skipReason === null) return;
             const moment = captureActionMoment();
             const fingerprint = host.itemFingerprint(item);
             menu.dataset.actionBusy = "true";
@@ -232,9 +259,13 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]").forEach((button) => button.disabled = true);
             const operation = action === "edit"
                 ? () => host.showEditor(item)
-                : action === "archive"
-                    ? () => host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint))
-                    : () => host.deleteItemWithRecords(item.id);
+                : action === "skip"
+                    ? () => host.skipItemToday(item.id, skipReason ?? undefined)
+                    : action === "unskip"
+                        ? () => host.unskipItemToday(item.id)
+                        : action === "archive"
+                            ? () => host.enqueueMutation(() => host.setItemArchived(item.id, !item.archived, moment, fingerprint))
+                            : () => host.deleteItemWithRecords(item.id);
             void Promise.resolve().then(operation).catch(() => undefined).finally(() => closeMenus(true));
         });
         menu.addEventListener("keydown", (event) => {
