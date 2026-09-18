@@ -2410,8 +2410,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 
 ### v16.3 习惯内核一期
 
-- [ ] T-1224 强度分数模块 src/features/habit-score.ts
+- [x] T-1224 强度分数模块 src/features/habit-score.ts
   - 验收：半衰期公式逐日滚动 0~100，跳过日冻结衰减，数值型按 target 归一，非每日频率倍增平滑；纯函数消费预聚合（D-215）；属性化测试覆盖闰年/跨时区/修订。
+  - 状态：done（新增 `src/features/habit-score.ts`：纯函数核心 `buildHabitScoreSeries(days, frequency, {initial})`——m=0.5^(√freq/13) 逐日滚动 0~100，跳过日与非计划日冻结（不加成不衰减；冻结机制等效实现 uhabits 非固定星期习惯倍增平滑的意图，已在模块头注明推导），数值型按当日 target 归一（min(1, 进度/目标)）部分完成按比例计分；`scheduleFrequency` 六种排期→num/den 映射；`scoreMultiplier` 导出；`collectHabitScoreDays` 有界窗口 store 投影器（复用 isComplete/getProgress/getSkipDatesForItem 单一代码路径，修订感知按日取 target）。语义要点：频率越高 m 越小→漏做日掉分越快（uhabits 原语义）。验证：新增 `tests/habit-score.test.cjs`（乘数数学/单调收敛/冻结等价性/比例计分/频率映射/闰日采集/修订目标）纳入 test:ui；`pnpm run check` 通过）
 - [ ] T-1225 弹性频率自动补全（AUTO 推导）
   - 验收：quota 达标后剩余日推导 AUTO（滑动窗口法）；只存在于计算层不落事件；SKIP 优先且不吃 AUTO 配额；决策+样例记 DECISIONS。
 - [ ] T-1226 streak 计算重构
