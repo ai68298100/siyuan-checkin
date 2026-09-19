@@ -16,6 +16,8 @@
 
 2026-09-19 i18n 属性守门批次（T-1252）：卫生测试改为逐个解析 `aria-label`/`title`/`placeholder`/`alt` 属性槽位，修复同一行存在 `${t(...)}` 时误放行其它硬编码属性的问题；清理 Today 搜索、回顾统计、移动顶栏和快速窗口按钮的中文属性并补齐中英字典。`pnpm run check`、i18n hygiene、生产构建通过；当前包摘要为 `1801ed3c15bc6c9215bd1f4b19d4762eba63c0c9fcd531ab9bdeee2f50a6cbed`。
 
+2026-09-19 真实 E2E 嵌套资源安装修复（T-1259）：新增 `dist/i18n/` 后，旧安装器把目录误当文件复制而报 `EPERM`；改为递归复制完整插件树，并在全局前置断言 `i18n/zh_CN.json` 已落盘。旧隔离工作区因残留锁跳过，新的 `CHECKIN_E2E_WORKSPACE` 隔离工作区验证 `test:e2e` 7/7、`test:e2e:readonly` 1/1 通过。
+
 2026-09-18 远端同步与 Task Horizon 联调前置批次（T-1167）：本地 `main` 从 `5b98be3` 快进到 GitHub `origin/main` 的 `b01063c`（工作区原先干净，无本地提交被覆盖）。新增 `tests/task-horizon-contract.test.cjs`，固定 `taskhorizon:<blockId>:<localDate>` externalRef 的构造样例、同任务同日重放幂等、删除墓碑不可复活，并在测试注释与合作文档边界中明确“仅原生复选框真实点击”由 Task Horizon 侧负责；已接入 `pnpm run test:ecosystem`。验证：`pnpm run check`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`pnpm run check:release` 均通过；扩展测试使用系统 Chrome（`C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe`）补足 Playwright 浏览器环境。发布资源 CSS 429,056 bytes，处于 420KB 告警区内但低于 450KB 硬线。下一步：等待 Task Horizon 对方联调排期；T-023/T-129/T-1173 仍需真实宿主证据。
 
 2026-09-18 Task Horizon 身份边界批次（T-1168）：新增 `createTaskHorizonExternalRef` / `parseTaskHorizonExternalRef` / `isTaskHorizonExternalRef`，严格校验本地公历日期、块 ID 字符和长度；`normalizeExternalRecord` 与公共 `recordEvent` 写入边界仅对 `taskhorizon:` 前缀启用专用守门，并要求 `source: "api"`，其它生态来源保持兼容。补充非法日期、分隔符、来源错误和 malformed key 测试，更新合作文档与 README。验证：`pnpm run test:quality` 全链通过（系统 Chrome）；CSS 429,056 bytes，低于 450KB 硬线。下一步：等待对方联调排期，不实现 Task Horizon 私有监听或日历 UI。

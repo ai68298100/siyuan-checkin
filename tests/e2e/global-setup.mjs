@@ -26,6 +26,9 @@ export default async function globalSetup() {
     const install = resolveInstall();
     const prepared = prepareWorkspace(cfg.workspace);
     const installed = installPlugin(cfg.workspace, repoRoot);
+    if (!fs.existsSync(path.join(cfg.workspace, "data", "plugins", PLUGIN_NAME, "i18n", "zh_CN.json"))) {
+        throw new Error("E2E plugin install did not copy nested i18n resources");
+    }
     console.log(`[e2e] 工作区 ${cfg.workspace}（${prepared.created ? "新建" : "复用"}）· 插件 v${installed.version} · 内核 ${install.kernel}`);
 
     const running = startKernel({kernel: install.kernel, appDir: install.appDir, workspace: cfg.workspace, port: cfg.port});

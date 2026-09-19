@@ -77,7 +77,10 @@ export function installPlugin(workspace, repoRoot) {
     const target = path.join(workspace, "data", "plugins", PLUGIN_NAME);
     fs.rmSync(target, {recursive: true, force: true});
     fs.mkdirSync(target, {recursive: true});
-    for (const entry of fs.readdirSync(dist)) fs.copyFileSync(path.join(dist, entry), path.join(target, entry));
+    /* Production packages may contain nested resources such as i18n/*.json.
+       Copy the complete dist tree so the E2E host sees the same package shape
+       that a real SiYuan installation receives. */
+    fs.cpSync(dist, target, {recursive: true, force: true});
     return {target, version: manifest.version};
 }
 
