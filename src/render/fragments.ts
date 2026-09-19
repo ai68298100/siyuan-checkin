@@ -7,6 +7,7 @@ import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../oc
 import {uiIcon} from "../ui/icons";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {selectPriorityReminders} from "../features/priority-reminder";
+import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
 import {projectReminderCenter, type ReminderUserAction} from "../reminders";
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinEvent, CheckinItem, CheckinItemSortMode, CheckinPriority, CheckinStore, CheckinTimeSlot} from "../types";
@@ -191,6 +192,8 @@ export function renderUpcomingOccasionsView(occasionStore: OccasionStore): strin
 }
 
 export function renderCheckinLogView(events: readonly CheckinEvent[], items: readonly CheckinItem[]): string {
+    const rowBatchSize = 6;
+    const dayBatchSize = 4;
     const itemNames = new Map(items.map((item) => [item.id, item]));
     const byDay = new Map<string, CheckinEvent[]>();
     for (const event of events) {
@@ -201,12 +204,21 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
     }
     const days = [...byDay.keys()].filter((day) => day <= dateKey(currentCalendarDate())).sort((left, right) => right.localeCompare(left)).slice(0, 14);
     if (!days.length) return "";
-    /* T-1244 汇总优先：首日展开，其余日子折叠为日期 summary（点开才渲染行）。
-       汇总行给每日计数，让折叠态也有信息量。 */
-    const daySections = days.map((day, index) => {
-        const dayEvents = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
+    const hierarchy = buildCheckinLogHierarchy<CheckinEvent>(days.map((day): CheckinLogDay<CheckinEvent> => ({date: day, events: byDay.get(day) || []})));
+
+    const renderRowBatches = (rows: string[], labelKey: string, offset = 0): string => {
+        const end = Math.min(offset + rowBatchSize, rows.length);
+        const visible = rows.slice(offset, end).join("");
+        if (end >= rows.length) return visible;
+        const remaining = rows.length - end;
+        const nextCount = Math.min(rowBatchSize, remaining);
+        return `${visible}<details class="lc-checkin__log-more"><summary><span>${t(labelKey, {n: nextCount, remaining})}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-more-body">${renderRowBatches(rows, labelKey, end)}</div></details>`;
+    };
+
+    const renderDay = (day: string, dayEvents: readonly CheckinEvent[], open: boolean): string => {
+        const eventsForDay = dayEvents.slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
         const grouped = new Map<string, CheckinEvent[]>();
-        for (const event of dayEvents) {
+        for (const event of eventsForDay) {
             const key = `${event.itemId}\u0000${event.unit}`;
             const events = grouped.get(key);
             if (events) events.push(event); else grouped.set(key, [event]);
@@ -223,15 +235,29 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
                 const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
                 return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time(event)}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span></div>`;
             }
-            const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`).join("");
-            return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${eventRows}</div></details>`;
-        }).join("");
-        if (index === 0) {
-            return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: dayEvents.length})}</span></h3>${rows}</div>`;
-        }
-        return `<details class="lc-checkin__log-day is-folded"><summary><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: dayEvents.length})}</span></h3><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-day-body">${rows}</div></details>`;
-    }).join("");
-    return daySections;
+            const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`);
+            return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${renderRowBatches(eventRows, "review.logMoreEntries")}</div></details>`;
+        });
+        return `<details class="lc-checkin__log-day is-folded"${open ? " open" : ""}><summary><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: eventsForDay.length})}</span></h3><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-day-body">${renderRowBatches(rows, "review.logMoreItems")}</div></details>`;
+    };
+
+    const renderDayBatches = (weekDays: CheckinLogDay<CheckinEvent>[], offset = 0): string => {
+        const end = Math.min(offset + dayBatchSize, weekDays.length);
+        const visible = weekDays.slice(offset, end).map((day, index) => renderDay(day.date, day.events, offset + index === 0)).join("");
+        if (end >= weekDays.length) return visible;
+        const remaining = weekDays.length - end;
+        const nextCount = Math.min(dayBatchSize, remaining);
+        return `${visible}<details class="lc-checkin__log-more is-days"><summary><span>${t("review.logMoreDays", {n: nextCount, remaining})}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-more-body">${renderDayBatches(weekDays, end)}</div></details>`;
+    };
+
+    const compactDate = (value: string) => parseLocalDateKey(value).toLocaleDateString(getPluginLocale(), {month: "numeric", day: "numeric"});
+    return `<div class="lc-checkin__log-tree">${hierarchy.map((month, monthIndex) => `<details class="lc-checkin__log-month"${monthIndex === 0 ? " open" : ""}>
+        <summary><strong>${t("date.monthYear", {year: month.year, month: month.month})}</strong><span>${t("review.logPeriodCount", {days: month.dayCount, events: month.eventCount})}</span><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary>
+        <div class="lc-checkin__log-month-body">${month.weeks.map((week, weekIndex) => `<details class="lc-checkin__log-week"${weekIndex === 0 ? " open" : ""}>
+            <summary><strong>${t("review.logWeekTitle")} · ${escapeHtml(compactDate(week.startDate))}—${escapeHtml(compactDate(week.endDate))}</strong><span>${t("review.logPeriodCount", {days: week.days.length, events: week.eventCount})}</span><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary>
+            <div class="lc-checkin__log-week-body">${renderDayBatches(week.days)}</div>
+        </details>`).join("")}</div>
+    </details>`).join("")}</div>`;
 }
 
 function todayGroupKeyOf(groupMode: TodayGroupMode, item: CheckinItem): string {
