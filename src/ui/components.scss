@@ -10037,6 +10037,11 @@ details:not([open]) > :not(summary) { display: none !important; }
     width: 100%;
     height: auto;
     display: block;
+    color: var(--lc-checkin-accent);
+    min-width: 300px;
+}
+.lc-checkin__strength-row {
+    overflow-x: auto;
 }
 
 /* T-1234/T-1235 渲染块：月历/热力/汇总只读预览（ Neutral 跳过格 + today 环）。 */

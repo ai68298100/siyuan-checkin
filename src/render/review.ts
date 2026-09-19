@@ -170,7 +170,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         if (!series.length) return "";
         strengthCount += 1;
         const current = series[series.length - 1].score;
-        return `<div class="lc-checkin__strength-row"><header><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em></header>${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 260, height: 72, labelStride: 5})}</div>`;
+        return `<div class="lc-checkin__strength-row"><header><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em></header>${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 720, height: 150, labelStride: 5})}</div>`;
     }).join("");
     const strengthHasItems = strengthCount > 0;
     const projectRows = summary.items.length ? summary.items.map((item) => {
