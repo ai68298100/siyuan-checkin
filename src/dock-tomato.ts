@@ -335,6 +335,7 @@ export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<
 
 interface DockCheckinApi {
     getItems(): CheckinItem[];
+    getArchivedItems?(): CheckinItem[];
     getEvents(): CheckinEvent[];
     registerFocusAdapter(adapter: FocusAdapter): (options?: {stopActive?: boolean}) => void;
 }
@@ -540,7 +541,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             const detail = customEventDetail(event);
             const storedIdentities = collectDockTomatoStoredIdentities(api.getEvents());
             const tombstonedIdentities = host.dockTomatoTombstonedIdentities?.() || new Set<string>();
-            const decision = evaluateDockTomatoCompletion(detail, api.getItems(), new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]), tombstonedIdentities);
+            /* 归档项目也要参与判定:未入账且已归档的通知应报 archived-item,不能因
+               getItems 过滤归档而误报 missing-item(已入账且归档的由 duplicate 前置拦截)。 */
+            const items = [...api.getItems(), ...(api.getArchivedItems?.() ?? [])];
+            const decision = evaluateDockTomatoCompletion(detail, items, new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]), tombstonedIdentities);
             if (!decision.accepted) {
                 if (decision.reason && decision.reason !== "duplicate") {
                     const context = ownDataValue(detail, "context");

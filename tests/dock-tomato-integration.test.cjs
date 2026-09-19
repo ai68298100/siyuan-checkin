@@ -29,6 +29,9 @@ assert.match(bridge, /if \(claimedIdentity\) inFlightIdentities\.delete\(claimed
 assert.match(bridge, /throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an unresolved write must remain observable and retryable");
 assert.match(bridge, /dockTomatoTombstonedIdentities/, "the bridge must consult user-removed tombstones before writing");
 assert.match(bridge, /user-removed/, "an undone completion must be reported as user-removed, never re-added");
+assert.match(bridge, /api\.getArchivedItems\?\.\(\)/, "archived items must join completion evaluation so never-recorded ones report archived-item, not missing-item");
+assert.match(plugin, /buffered = upsertInboxEntry\(this\.dockTomatoInbox, entry, nowIso\)/, "every valid completion must be buffered into the inbox before any readiness check");
+assert.match(plugin, /storage-refresh-failed/, "a failed mutation refresh must surface as retry, never as recorded");
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
 assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");

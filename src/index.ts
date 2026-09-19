@@ -1009,30 +1009,36 @@ export default class CheckinPlugin extends Plugin {
         this.scheduleDockTomatoInboxWake();
     }
 
-    /** 桥完成事件的宿主通道:同一个受保护工作单元内 接收 → 写入 → 移除/标记。 */
+    /** 桥完成事件的宿主通道:先把合法通知缓冲进收件箱,再在同一个受保护工作单元内 写入 → 移除/标记。
+        未就绪、排队器刷新失败等任何失败路径都只影响处理时机,不丢已接收的通知。 */
     private processDockTomatoCompletion(entry: DockTomatoPendingCompletion): Promise<DockTomatoCompletionWriteResult> {
+        const nowIso = new Date().toISOString();
+        /* 先缓冲:内存收件箱是后续一切失败路径的兜底,不得跳过。 */
+        const buffered = upsertInboxEntry(this.dockTomatoInbox, entry, nowIso);
+        if (buffered.outcome === "full") {
+            showMessage(t("msg.dockInboxFull"));
+            return Promise.resolve({kind: "blocked", reason: "inbox-full"});
+        }
+        this.dockTomatoInbox = buffered.store;
         if (!this.acceptingOperations || this.initializationState !== "ready") {
+            /* 数据尚未就绪或已停止接受操作:先缓冲并尽力落盘,恢复后由 reconcile 处理。 */
+            void this.persistDockTomatoInbox();
             return Promise.resolve({kind: "retry", reason: "storage-not-ready"});
         }
-        return this.enqueueMutation(async () => {
+        return this.enqueueMutation(async (): Promise<DockTomatoCompletionWriteResult> => {
             if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return {kind: "retry", reason: "storage-not-ready"};
-            const nowIso = new Date().toISOString();
+            const unitNow = new Date().toISOString();
             /* 跨窗口合并:锁内重读收件箱逐项合并,不让窗口互相覆盖对方的待处理项。 */
             let stored = this.dockTomatoInbox;
             try {
                 const remote = normalizeInboxStore(await this.loadData(DOCKTOMATO_INBOX_STORAGE_NAME));
                 for (const remoteEntry of remote.items) {
-                    stored = upsertInboxEntry(stored, remoteEntry, nowIso).store;
+                    stored = upsertInboxEntry(stored, remoteEntry, unitNow).store;
                 }
             } catch {
                 /* 收件箱读取失败不阻断本条处理:内存态继续,写回时如实报告。 */
             }
-            const upsert = upsertInboxEntry(stored, entry, nowIso);
-            if (upsert.outcome === "full") {
-                showMessage(t("msg.dockInboxFull"));
-                return {kind: "blocked", reason: "inbox-full"};
-            }
-            this.dockTomatoInbox = upsert.store;
+            this.dockTomatoInbox = upsertInboxEntry(stored, entry, unitNow).store;
             const inboxPersisted = await this.persistDockTomatoInbox();
             if (!inboxPersisted) {
                 /* 先保存收件箱失败:保留内存待处理项并标记重试,不得显示成已保存。 */
@@ -1055,6 +1061,13 @@ export default class CheckinPlugin extends Plugin {
                 await this.persistDockTomatoInbox();
             }
             this.scheduleDockTomatoInboxWake();
+            return result;
+        }).then((result) => {
+            if (!result) {
+                /* 排队器刷新失败等工作单元未执行:内存条目已缓冲,尽力落盘并按 retry 上报。 */
+                void this.persistDockTomatoInbox();
+                return {kind: "retry", reason: "storage-refresh-failed"} as DockTomatoCompletionWriteResult;
+            }
             return result;
         });
     }

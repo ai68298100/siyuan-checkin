@@ -72,6 +72,7 @@ function makeFacade(name, options = {}) {
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
     const events = [], processed = [], adapters = [];
+    const archivedItems = [{id: "archived-read", name: "旧阅读", kind: "duration", unit: "分钟", tomatoMode: "minutes", archived: true}];
     const tombstoned = new Set();
     let processBehavior = "recorded";
     let deferredProcessResolve;
@@ -79,6 +80,7 @@ function makeFacade(name, options = {}) {
     const releasedAdapters = [];
     const api = {
         getItems: () => items,
+        getArchivedItems: () => archivedItems,
         getEvents: () => events,
         async recordEvent() { recordEventCalls += 1; return {}; },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
@@ -256,6 +258,14 @@ function makeFacade(name, options = {}) {
     assert.equal(removedIssue.reason, "user-removed");
     assert.equal(removedIssue.identity, "removed-session");
     tombstoned.delete("removed-session");
+    clearDockTomatoCompletionIssues();
+
+    /* 归档且从未入账的项目:archived-item,不因 getItems 过滤归档而误报 missing-item。 */
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "archived-norecord", context: {consumer: "siyuan-checkin", itemId: "archived-read", itemUnit: "分钟", tomatoMode: "minutes"}}));
+    await flush();
+    assert.equal(processed.length, 1, "an archived-item completion must not reach the writer");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "archived-item");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "archived-norecord");
     clearDockTomatoCompletionIssues();
 
     /* 宿主 blocked(skipped-day):诊断可见,不标 write-failed。 */
