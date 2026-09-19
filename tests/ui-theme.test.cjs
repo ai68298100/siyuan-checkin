@@ -121,6 +121,10 @@ assert.ok(!styles.includes(".lc-checkin__occasion-form-panel {"),
 assert.match(liveStyles, /\.lc-checkin__occasion-manager-row \{[\s\S]*\.lc-checkin__occasion-form-panel form \{/,
     "occasion manager and form foundations belong to the component layer");
 assert.ok(!styles.includes(".lc-checkin__insight-stats {"), "insight stat foundations must not return to legacy index.scss");
+
+assert.match(source, /computeLongestStreaks\(this\.store, currentCalendarDate\(\)\)\.get\(item\.id\)/,
+    "insights all-time longest must use the model single implementation (T-1295)");
+assert.match(source, /insights\.longestEver/, "insights must label the all-time longest stat");
 assert.ok(!styles.includes("backdrop-filter: blur(12px)"), "mobile navigation foundation must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__history-row {"), "history row foundations must not return to legacy index.scss");
 assert.ok(!styles.includes(".lc-checkin__preview-card {"), "editor preview foundations must not return to legacy index.scss");

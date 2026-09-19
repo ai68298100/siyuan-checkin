@@ -2650,3 +2650,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1294 v17.2.0 发版说明/变更记录补全（覆盖缺口巡检发现）
   - 验收:release-notes 与 change-log 覆盖 17.1.0 后全部已交付特性(Obsidian 迁出、渲染块 doc/notebook scope+相邻块修复、收件箱手动管理、性能门禁、E2E 增强)。
   - 状态:done(两份文档补齐;发布说明用户向三节扩充;变更记录新增渲染块与性能验证两节)
+
+- [x] T-1295 洞察页新增「历史最长连续」统计（T-1280 能力的用户可见化）
+  - 验收:洞察页统计区新增历史最长(全历史,computeLongestStreaks 单一实现),与窗口最佳并存;i18n 中英;结构断言锁定单一实现。
+  - 状态:done(index.ts renderInsights 五格统计;insights.longestEver 双语 1122 对等;ui-theme 断言单一实现与标签)
