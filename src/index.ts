@@ -236,6 +236,84 @@ export default class CheckinPlugin extends Plugin {
         this.hostThemeObserver?.disconnect();
         this.hostThemeObserver = undefined;
     }
+
+    private startHostMessageOffsetWatcher() {
+        if (!this.isMobileFrontend || typeof document === "undefined" || !document.documentElement || !document.body) return;
+        this.hostMessageOffsetCleanup?.();
+        const root = document.documentElement;
+        let frame = 0;
+        let settleFrames = 0;
+        let appliedOffset = 0;
+        let target: HTMLElement | undefined;
+        let targetObserver: MutationObserver | undefined;
+        const apply = () => {
+            frame = 0;
+            const message = target ?? document.getElementById("message") ?? undefined;
+            let messageBottom = 0;
+            if (message) {
+                const candidates = [message, ...Array.from(message.querySelectorAll<HTMLElement>(".b3-snackbar__content, [role=alert]"))];
+                for (const node of candidates) {
+                    const style = window.getComputedStyle(node);
+                    const rect = node.getBoundingClientRect();
+                    if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || 1) === 0) continue;
+                    if (rect.width <= 0 || rect.height <= 0 || rect.top > 80 || rect.bottom <= 0) continue;
+                    /* Ignore a full-viewport #message shell; use visible snackbar descendants instead. */
+                    if (node === message && rect.height > window.innerHeight * 0.8 && candidates.length > 1) continue;
+                    messageBottom = Math.max(messageBottom, Math.ceil(rect.bottom));
+                }
+            }
+            const headers = Array.from(document.querySelectorAll<HTMLElement>(":is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__editor-header"));
+            const naturalTop = headers.length ? Math.min(...headers.map((header) => header.getBoundingClientRect().top - appliedOffset)) : 0;
+            const naturalBottom = headers.length ? Math.max(...headers.map((header) => header.getBoundingClientRect().bottom - appliedOffset)) : naturalTop;
+            const availableOffset = Math.max(0, window.innerHeight - naturalBottom - 120);
+            appliedOffset = messageBottom && headers.length ? Math.min(Math.max(0, messageBottom + 8 - naturalTop), availableOffset) : 0;
+            root.style.setProperty("--lc-checkin-host-message-offset", `${Math.ceil(appliedOffset)}px`);
+            root.style.setProperty("--lc-checkin-review-header-bottom", `${Math.ceil(naturalBottom + appliedOffset)}px`);
+            if (settleFrames > 0) {
+                settleFrames -= 1;
+                frame = window.requestAnimationFrame(apply);
+            }
+        };
+        const schedule = () => {
+            /* CSS snackbar transitions change geometry without mutating attributes;
+               sample the next half-second so the avoidance follows the animation. */
+            settleFrames = 30;
+            if (frame) return;
+            frame = window.requestAnimationFrame(apply);
+        };
+        const attachTarget = () => {
+            const next = document.getElementById("message") ?? undefined;
+            if (next === target) return;
+            targetObserver?.disconnect();
+            target = next;
+            if (target && typeof MutationObserver !== "undefined") {
+                targetObserver = new MutationObserver(schedule);
+                targetObserver.observe(target, {attributes: true, childList: true, subtree: true});
+            }
+            schedule();
+        };
+        const bodyObserver = typeof MutationObserver === "undefined" ? undefined : new MutationObserver(() => {
+            attachTarget();
+            schedule();
+        });
+        bodyObserver?.observe(document.body, {childList: true, subtree: true});
+        window.addEventListener("resize", schedule, {passive: true});
+        attachTarget();
+        schedule();
+        this.hostMessageOffsetCleanup = () => {
+            bodyObserver?.disconnect();
+            targetObserver?.disconnect();
+            window.removeEventListener("resize", schedule);
+            if (frame) window.cancelAnimationFrame(frame);
+            root.style.removeProperty("--lc-checkin-host-message-offset");
+            root.style.removeProperty("--lc-checkin-review-header-bottom");
+            this.hostMessageOffsetCleanup = undefined;
+        };
+    }
+
+    private stopHostMessageOffsetWatcher() {
+        this.hostMessageOffsetCleanup?.();
+    }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
@@ -254,6 +332,9 @@ export default class CheckinPlugin extends Plugin {
     /* T-1234/T-1236 渲染块监听器清理。 */
     private renderBlocksUnsubscribers: Array<() => void> = [];
     private renderBlockObservers = new Map<HTMLElement, () => void>();
+    /* 思源的 #message 是插件外部的 fixed 提示层；移动端回顾工具栏按
+       实际几何位置避让，不能写死某个 WebView 的提示高度。 */
+    private hostMessageOffsetCleanup?: () => void;
 
     private handleProtyleLoaded = (event: {detail: {protyle: IProtyle}}) => {
         this.observeRenderBlocks(event.detail.protyle);
@@ -390,6 +471,7 @@ export default class CheckinPlugin extends Plugin {
         this.supportsCustomTab = !this.isMobileFrontend;
         const plugin = this;
         this.startHostThemeWatcher();
+        this.startHostMessageOffsetWatcher();
         this.addIcons(`<symbol id="iconLvCheckin" viewBox="0 0 32 32">
             <path d="M16 2.5 19.9 6l5.2-.3.8 5.1 4.1 3.2-2.6 4.5.9 5.1-5 1.4-2.8 4.3-4.8-2.1-4.8 2.1-2.8-4.3-5-1.4.9-5.1-2.6-4.5 4.1-3.2.8-5.1L12.1 6 16 2.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
             <path d="m10 16 3.7 3.7L22.5 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -619,6 +701,7 @@ export default class CheckinPlugin extends Plugin {
         this.renderBlockObservers.forEach((disconnect) => disconnect());
         this.renderBlockObservers.clear();
         this.stopHostThemeWatcher();
+        this.stopHostMessageOffsetWatcher();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
             if (!root) return;
             const cleanup = this.settingsNavigationCleanups.get(root);

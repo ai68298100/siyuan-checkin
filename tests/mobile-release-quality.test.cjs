@@ -61,6 +61,20 @@ assert.match(plugin, /if \(this\.hostThemeSignatures\.get\(root\) === signature\
     "unchanged appearance and palette should skip repeated computed-style work");
 assert.match(plugin, /class=\"lc-checkin__mobile-topbar\" data-appearance=\"\$\{this\.resolvedAppearance\(\)\}\"/,
     "mobile top bar must expose its resolved appearance for deterministic styling");
+assert.match(plugin, /private startHostMessageOffsetWatcher\(\)/,
+    "mobile host must watch SiYuan message geometry instead of assuming a fixed snackbar height");
+assert.match(plugin, /getBoundingClientRect\(\)[\s\S]*--lc-checkin-host-message-offset/,
+    "visible message bounds must drive the review toolbar offset");
+assert.match(plugin, /availableOffset = Math\.max\(0, window\.innerHeight - naturalBottom - 120\)/,
+    "host message avoidance must preserve usable viewport space even for unusually tall banners");
+assert.match(plugin, /settleFrames = 30/,
+    "host message avoidance must follow CSS snackbar animation frames");
+assert.match(plugin, /private stopHostMessageOffsetWatcher\(\)/,
+    "host message observer must expose lifecycle cleanup");
+assert.match(components, /\.lc-checkin--review \.lc-checkin__editor-header[\s\S]*margin-top:\s*var\(--lc-checkin-host-message-offset, 0px\)/,
+    "mobile review toolbar must consume the measured host message offset");
+assert.match(components, /\.lc-checkin__custom-range-disclosure\[open\][\s\S]*top:\s*calc\(var\(--lc-checkin-review-header-bottom, 40px\) \+ 8px\)/,
+    "custom range popover must start below the complete shifted toolbar");
 assert.match(components, /@container lc5 \(max-width: 380px\)/,
     "sub-380px content layout should respond to the surface container width");
 assert.match(components, /@container lc5 \(max-width: 360px\)/,

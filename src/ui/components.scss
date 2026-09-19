@@ -9855,6 +9855,53 @@ details:not([open]) > :not(summary) { display: none !important; }
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
 }
+.lc-checkin__compare-chart {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 10px;
+    background: var(--lc-checkin-surface);
+}
+.lc-checkin__compare-chart-legend {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+}
+.lc-checkin__compare-chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.lc-checkin__compare-chart-legend i { width: 14px; height: 4px; border-radius: 2px; }
+.lc-checkin__compare-chart-row {
+    display: grid;
+    grid-template-columns: minmax(64px, 0.28fr) minmax(120px, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+.lc-checkin__compare-chart-row > strong {
+    overflow: hidden;
+    color: var(--lc-checkin-text);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin__compare-chart-row > span {
+    min-width: 54px;
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.lc-checkin__compare-chart-bars { display: grid; gap: 3px; min-width: 0; }
+.lc-checkin__compare-chart-bars > i {
+    display: block;
+    min-width: 2px;
+    height: 5px;
+    border-radius: 3px;
+}
+.lc-checkin__compare-chart .is-current { background: var(--lc-checkin-accent); }
+.lc-checkin__compare-chart .is-baseline { background: var(--lc-checkin-accent-soft); }
 .lc-checkin__compare-stat {
     display: grid;
     gap: 1px;
@@ -9899,6 +9946,23 @@ details:not([open]) > :not(summary) { display: none !important; }
     display: grid;
     gap: 6px;
 }
+.lc-checkin__compare-item-batch {
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 9px;
+    background: var(--lc-checkin-surface);
+}
+.lc-checkin__compare-item-batch > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    color: var(--lc-checkin-accent-text);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.lc-checkin__compare-item-batch > div { display: grid; gap: 6px; padding: 0 6px 6px; }
 .lc-checkin__compare-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto auto;
@@ -9946,6 +10010,22 @@ details:not([open]) > :not(summary) { display: none !important; }
 }
 .lc-checkin__compare-item-bar span:not(.is-base) {
     background: var(--lc-checkin-accent);
+}
+
+/* T-1257：思源移动端 #message 位于插件 DOM 之外。index.ts 根据实际可见
+   snackbar 的底边写入变量；只在发生顶部占位时让回顾工具栏进入安全区域。 */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__editor-header {
+    margin-top: var(--lc-checkin-host-message-offset, 0px);
+    transition: margin-top var(--lc-checkin-motion-fast) ease;
+}
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--review .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+    top: calc(var(--lc-checkin-review-header-bottom, 40px) + 8px);
+}
+
+@container lc5 (max-width: 520px) {
+    .lc-checkin__compare-chart-row { grid-template-columns: 58px minmax(80px, 1fr) auto; gap: 5px; }
+    .lc-checkin__compare-stats { gap: 4px; }
+    .lc-checkin__compare-stat { padding-inline: 6px; }
 }
 
 /* T-1217 报告设置：复用 review-more 弹出容器，仅定义选项行布局。 */

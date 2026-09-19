@@ -35,6 +35,21 @@ function compareStats(comparison: ReviewComparison): string {
     }).join("")}</div>`;
 }
 
+function compareSummaryChart(comparison: ReviewComparison): string {
+    const stats = [
+        {label: t("review.statEvents"), current: comparison.current.totalEvents, baseline: comparison.baseline.totalEvents},
+        {label: t("review.statCompleted"), current: comparison.current.completedItems, baseline: comparison.baseline.completedItems},
+        {label: t("review.statScheduled"), current: comparison.current.scheduledItems, baseline: comparison.baseline.scheduledItems},
+    ];
+    const rows = stats.map((stat) => {
+        const maximum = Math.max(1, stat.current, stat.baseline);
+        const currentWidth = Math.round(stat.current / maximum * 1000) / 10;
+        const baselineWidth = Math.round(stat.baseline / maximum * 1000) / 10;
+        return `<div class="lc-checkin__compare-chart-row"><strong>${escapeHtml(stat.label)}</strong><div class="lc-checkin__compare-chart-bars"><i class="is-current" style="width:${currentWidth}%" title="${escapeHtml(`${t("review.compareCurrentLabel")} ${formatNumber(stat.current)}`)}"></i><i class="is-baseline" style="width:${baselineWidth}%" title="${escapeHtml(`${t("review.compareBaselineLabel")} ${formatNumber(stat.baseline)}`)}"></i></div><span>${escapeHtml(formatNumber(stat.current))} / ${escapeHtml(formatNumber(stat.baseline))}</span></div>`;
+    }).join("");
+    return `<div class="lc-checkin__compare-chart" role="img" aria-label="${escapeHtml(t("review.compareChartAria"))}"><div class="lc-checkin__compare-chart-legend"><span><i class="is-current"></i>${escapeHtml(t("review.compareCurrentLabel"))}</span><span><i class="is-baseline"></i>${escapeHtml(t("review.compareBaselineLabel"))}</span></div>${rows}</div>`;
+}
+
 function sortedCompareItems(items: ReviewComparisonItem[]): ReviewComparisonItem[] {
     return [...items].sort((left, right) => {
         const rateDiff = Math.abs(right.delta.completionRate) - Math.abs(left.delta.completionRate);
@@ -59,9 +74,18 @@ export function renderReviewCompareSection(comparison: ReviewComparison): string
     if (bothEmpty) {
         return `<section class="lc-checkin__compare is-empty" aria-label="${escapeHtml(t("review.compareAria"))}"><small>${escapeHtml(t("review.compareEmpty"))}</small></section>`;
     }
-    return `<section class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><header><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span></header>${compareStats(comparison)}</section>`;
+    return `<section class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><header><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span></header>${compareSummaryChart(comparison)}${compareStats(comparison)}</section>`;
 }
 
 export function renderReviewCompareItems(comparison: ReviewComparison): string {
-    return sortedCompareItems(comparison.items).map(compareItemRow).join("");
+    const items = sortedCompareItems(comparison.items);
+    const batchSize = 8;
+    const first = items.slice(0, batchSize).map(compareItemRow).join("");
+    const batches: string[] = [];
+    for (let start = batchSize; start < items.length; start += batchSize) {
+        const batch = items.slice(start, start + batchSize);
+        const remaining = items.length - start;
+        batches.push(`<details class="lc-checkin__compare-item-batch"><summary>${escapeHtml(t("review.compareMoreItems", {n: batch.length, remaining}))}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div>${batch.map(compareItemRow).join("")}</div></details>`);
+    }
+    return first + batches.join("");
 }

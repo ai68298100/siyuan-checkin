@@ -8,6 +8,9 @@ import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
 import {captureActionMoment} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
+import {renderAgentPreviewContent} from "./agent-preview";
+import {createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
+import {createSuggestionWorkflow} from "../features/suggestion-workflow";
 import {Dialog, showMessage} from "siyuan";
 
 export interface BindPageNavigationHost {
@@ -462,7 +465,44 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             status.textContent = t("agent.historyReady");
         });
     });
-    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => { const button = event.currentTarget as HTMLElement; const item = button.dataset.suggestionItem; const rate = button.dataset.suggestionRate; const preview = new Dialog({title: t("agent.previewTitle"), content: `<div class="lc-checkin__agent-preview"><strong>${t("agent.previewDisclaimer")}</strong>${item ? `<p>${t("agent.previewFocus", {name: item || "", rate: rate || "0"})}</p><p>${t("agent.previewAdvice")}</p>` : `<p>${t("agent.previewNone")}</p>`}<p>${t("agent.previewSafety")}</p><div class="lc-checkin__agent-preview-actions"><button class="b3-button" type="button" data-agent-preview-close>${t("agent.previewDefer")}</button><button class="b3-button" type="button" disabled title="${t("agent.previewPendingTitle")}">${t("agent.previewPendingButton")}</button></div></div>`}); preview.element.querySelector<HTMLElement>("[data-agent-preview-close]")?.addEventListener("click", () => preview.destroy()); });
+    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        const item = getActiveItemById(host.store, button.dataset.suggestionItemId || "");
+        const rate = button.dataset.suggestionRate || "0";
+        /* 回顾页的本地建议只调整非高优先级项目的 priority：这是现有建议执行
+           白名单中的纯元数据字段，不会改写历史、目标修订或排期。 */
+        const suggestion: AgentSuggestion | undefined = item && item.priority !== "high" ? {
+            id: `review-priority-${item.id}-${Date.now()}`,
+            title: t("agent.localPriorityTitle", {name: item.name}),
+            reason: t("agent.localPriorityReason", {name: item.name, rate}),
+            changes: [{itemId: item.id, field: "priority", before: item.priority || "medium", after: "high"}],
+            requiresConfirmation: true,
+        } : undefined;
+        const changes = suggestion?.changes || [];
+        const preview = new Dialog({
+            title: t("agent.previewTitle"),
+            content: `${renderAgentPreviewContent(item?.name || "", rate, changes)}<div class="lc-checkin__agent-preview-actions"><button class="b3-button" type="button" data-agent-preview-close>${t("agent.previewDefer")}</button><button class="b3-button" type="button" data-agent-preview-apply ${suggestion ? "" : "disabled"} title="${suggestion ? t("agent.previewApplyTitle") : t("agent.previewUnavailableTitle")}">${t("agent.previewApplyButton")}</button></div>`,
+        });
+        preview.element.querySelector<HTMLElement>("[data-agent-preview-close]")?.addEventListener("click", () => preview.destroy());
+        preview.element.querySelector<HTMLButtonElement>("[data-agent-preview-apply]")?.addEventListener("click", async (applyButton) => {
+            if (!suggestion) return;
+            const target = applyButton.currentTarget as HTMLButtonElement;
+            if (target.disabled) return;
+            target.disabled = true;
+            target.setAttribute("aria-busy", "true");
+            host.suggestionWorkflow = createSuggestionWorkflow(createSuggestionEnvelope(suggestion));
+            try {
+                await host.persistSuggestionWorkflow();
+                await host.handleSuggestionDecision("confirm");
+                preview.destroy();
+            } catch {
+                if (target.isConnected) {
+                    target.disabled = false;
+                    target.removeAttribute("aria-busy");
+                }
+            }
+        });
+    });
     const reviewBusy = new WeakSet<HTMLElement>();
     const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown) => {
         if (reviewBusy.has(button)) return;

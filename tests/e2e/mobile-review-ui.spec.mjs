@@ -62,10 +62,10 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
         return hit && panel.contains(hit) ? 1 : -2;
     }), {timeout: 5000, message: "③ 自定义范围面板被遮挡"}).toBe(1);
 
-    /* 前序步骤会留下思源的临时提示条（#message），它正好盖在工具栏上；
-       这里要验的是导出通道，所以先清掉提示条，再直接触发按钮的 click。 */
-    await page.evaluate(() => document.querySelectorAll("#message .b3-snackbar__content").forEach((node) => node.remove()));
-    await page.$eval("[data-action='export-report']", (el) => el.click());
+    /* 前序步骤会留下思源的临时提示条（#message）。插件应按其实际边界
+       避让，测试不再删除宿主提示内容。 */
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--lc-checkin-host-message-offset").trim()), {timeout: 5000, message: "④ 未建立宿主提示条动态避让变量"}).toMatch(/^\d+px$/);
+    await page.locator("[data-action='export-report']").click();
     await expect.poll(() => page.evaluate(() => window.__nativeSaves.length + window.__opens.length), {timeout: 20000, message: "④ 导出没有走宿主原生保存通道"}).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.__blobCalls.length), "④ 原生容器下出现了 blob 下载（正是导致思源重启的路径）").toBe(0);
     const savedUri = await page.evaluate(() => window.__nativeSaves[0] || window.__opens[0]);

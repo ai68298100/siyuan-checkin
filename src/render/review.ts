@@ -131,14 +131,16 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const summaryRate = summary.scheduledItems ? Math.round(summary.completedItems / summary.scheduledItems * 100) : 0;
     const rankedSummaryItems = [...summary.items].sort((a, b) => b.completionRate - a.completionRate);
     const topSummaryItem = rankedSummaryItems[0];
-    const attentionSummaryItem = rankedSummaryItems.length > 1 ? rankedSummaryItems[rankedSummaryItems.length - 1] : undefined;
+    const attentionSummaryItem = rankedSummaryItems.length > 1
+        ? [...rankedSummaryItems].reverse().find((entry) => getItemById(ctx.store, entry.itemId)?.priority !== "high")
+        : undefined;
     const hasPeriodRecords = summary.totalEvents > 0;
     /* Keep each sentence as a real text value and escape it once at the HTML
        boundary.  The previous inline interpolation escaped project names
        before composing the sentence, which made it difficult for the UI to
        expose the complete advice in a tooltip or a wrapped mobile layout. */
     const summaryAdvice = hasPeriodRecords
-        ? (attentionSummaryItem ? t("review.heroAdviceLower", {name: attentionSummaryItem.name}) : t("review.heroAdviceKeep"))
+        ? (attentionSummaryItem ? t("review.heroAdviceFocus", {name: attentionSummaryItem.name}) : t("review.heroAdviceKeep"))
         : "";
     const summaryAttention = hasPeriodRecords && attentionSummaryItem
         ? t("review.heroAttention", {name: attentionSummaryItem.name, rate: attentionSummaryItem.completionRate})
@@ -149,7 +151,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const summaryGuidance = summaryAttention || summaryAdvice
         ? `<div class="lc-checkin__review-guidance">${summaryAttention ? `<small class="lc-checkin__review-attention" title="${escapeHtml(summaryAttention)}">${escapeHtml(summaryAttention)}</small>` : ""}${summaryAdvice ? `<small class="lc-checkin__review-advice" title="${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}">${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}</small>` : ""}</div>`
         : "";
-    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div class="lc-checkin__review-hero-copy"><small class="lc-checkin__review-hero-cutoff">${escapeHtml(t("review.heroUntil", {date: summary.endDate}))}</small><h2>${escapeHtml(summaryHeadline)}</h2><p>${escapeHtml(summaryBody)}${summaryBest ? ` · ${escapeHtml(summaryBest)}` : ""}</p>${summaryGuidance}<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item="${escapeHtml(attentionSummaryItem?.name || "")}" data-suggestion-rate="${attentionSummaryItem?.completionRate ?? ""}">${t("review.heroPreview")}</button></div></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
+    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div class="lc-checkin__review-hero-copy"><small class="lc-checkin__review-hero-cutoff">${escapeHtml(t("review.heroUntil", {date: summary.endDate}))}</small><h2>${escapeHtml(summaryHeadline)}</h2><p>${escapeHtml(summaryBody)}${summaryBest ? ` · ${escapeHtml(summaryBest)}` : ""}</p>${summaryGuidance}<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item-id="${escapeHtml(attentionSummaryItem?.itemId || "")}" data-suggestion-item="${escapeHtml(attentionSummaryItem?.name || "")}" data-suggestion-rate="${attentionSummaryItem?.completionRate ?? ""}">${t("review.heroPreview")}</button></div></div><span class="lc-checkin__review-hero-rate">${summaryRate}%</span></section>`;
     /* T-1216 较上一周期：基线上下文与当前共享同一 asOf，比较只消费已投影的 SummaryContext。 */
     const previousRange = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
     const comparison = previousRange ? buildReviewComparison(summary, buildCustomSummaryContext(ctx.store, previousRange, asOf)) : undefined;

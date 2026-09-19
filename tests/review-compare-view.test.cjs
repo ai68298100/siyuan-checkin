@@ -78,6 +78,10 @@ const comparison = buildReviewComparison(current, baseline);
 const section = renderReviewCompareSection(comparison);
 assert.ok(section.includes(t("review.compareTitle")), "section must carry the compare title");
 assert.ok(section.includes("2026-08-25 ~ 2026-08-31"), "section must show the concrete baseline range");
+assert.match(section, /lc-checkin__compare-chart[^>]*role="img"/, "comparison must lead with one summary chart");
+assert.match(section, /lc-checkin__compare-chart-bars/, "summary chart must pair current and baseline bars");
+assert.match(section, /class="is-current"/, "summary chart must label the current series");
+assert.match(section, /class="is-baseline"/, "summary chart must label the previous series");
 assert.ok(section.includes(`>${t("review.statEvents")}</small>`), "stats reuse the range-stat labels");
 assert.match(section, /lc-checkin__compare-stat is-up/, "event growth must be marked up");
 assert.match(section, /lc-checkin__compare-stat is-down/, "item drop must be marked down");
@@ -96,6 +100,18 @@ assert.ok(rows.includes("+3 条记录"), "event delta line keeps the shared reco
 assert.match(rows, /class="is-base" style="width:25%"/, "baseline bar mirrors the previous completion rate");
 assert.match(rows, /style="width:60%"/, "current bar mirrors the current completion rate");
 assert.ok(!rows.includes("<script>"), "item names must be html-escaped");
+
+/* 项目很多时首屏只显示 8 项，其余按最多 8 项分批展开，并明确本批/剩余数量。 */
+const manyCurrent = context({
+    totalEvents: 18,
+    completedItems: 9,
+    scheduledItems: 18,
+    items: Array.from({length: 18}, (_, index) => ({...item(`item-${index}`, `Item ${index + 1}`), eventCount: index + 1, scheduledDays: 7, completedDays: index % 7, completionRate: index * 5})),
+});
+const manyRows = renderReviewCompareItems(buildReviewComparison(manyCurrent, context()));
+assert.equal((manyRows.match(/lc-checkin__compare-item-batch/g) || []).length, 2, "18 items should produce two bounded expansion batches after the first eight");
+assert.ok(manyRows.includes(t("review.compareMoreItems", {n: 8, remaining: 10})), "first expansion must state its batch and remaining counts");
+assert.ok(manyRows.includes(t("review.compareMoreItems", {n: 2, remaining: 2})), "last expansion must state the final count");
 
 /* 嵌入名字的恶意输入必须转义后再进入 title/aria。 */
 const hostile = context({

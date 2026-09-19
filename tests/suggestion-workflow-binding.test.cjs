@@ -20,6 +20,15 @@ assert.match(source, /data-suggestion-undo\]:not\(\[disabled\]\)/);
 assert.match(source, /\?\.focus\(\)/);
 assert.match(source, /querySelector<HTMLElement>\("\[data-suggestion-undo\]"\)/);
 assert.match(source, /host\.undoSuggestionWorkflow\(\)/);
+const reviewSource = fs.readFileSync("src/render/review.ts", "utf8");
+assert.match(reviewSource, /data-suggestion-item-id/, "review preview must address the project by stable id");
+assert.match(source, /field: "priority"[\s\S]*after: "high"/, "local review suggestion must use the safe priority field");
+assert.match(source, /renderAgentPreviewContent\(item\?\.name \|\| "", rate, changes\)/, "preview must render the exact executable change");
+assert.match(source, /data-agent-preview-apply/, "preview must expose an executable confirmation button");
+assert.match(source, /host\.suggestionWorkflow = createSuggestionWorkflow\(createSuggestionEnvelope\(suggestion\)\)/, "confirmation must enter the audited workflow");
+assert.match(source, /await host\.persistSuggestionWorkflow\(\)/, "pending workflow must be persisted before execution");
+assert.match(source, /await host\.handleSuggestionDecision\("confirm"\)/, "preview confirmation must reuse the conflict-checked apply boundary");
+assert.doesNotMatch(source, /previewPendingButton/, "coming-soon placeholder must not remain wired");
 
 const render = fs.readFileSync("src/render/suggestion-workflow.ts", "utf8");
 assert.match(render, /data-suggestion-decision="confirm"/);
