@@ -2558,3 +2558,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1268 评审结论文档化与提供方契约（方案第七、八、九、十、十一节）
   - 验收：消费端已实现行为与对提供方的要求（start 返回最终 sessionId、pause-session 原子调用、available detail、completedAt 必需、会话累计时长、并发启动互斥、默认关闭开关）形成对内决策与对外契约文档；真机联调（B-007/T-1165 同类）保持开放不阻塞。
   - 状态：done（DECISIONS D-235/D-236/D-237；`docs/docktomato-integration-plan.md` 新增「PR #5 评审后的消费端契约」节；BLOCKERS 番茄钟条目更新。上游 PR 修订与真实宿主联调仍待对方排期，保持 B-007 跟踪。）
+
+- [x] T-1269 PR #5 消费端修复定稿与推送
+  - 验收:按修复方案第十节交付要求(修改文件清单/错误码/存储 schema/测试结果/真机边界)写入 docs/docktomato-integration-plan.md「交付清单」节;用户授权后推送 main 至 origin。
+  - 状态:done(定稿节已写入;推送记录见 PROGRESS)

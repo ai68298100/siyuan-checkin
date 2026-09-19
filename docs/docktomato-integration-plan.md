@@ -30,3 +30,24 @@ Dock Tomato 公开提供 `window.__dockTomatoStatsFacade`（同时挂载到 `win
 - 戒除类（`direction: "atMost"`）目标不参与自动专注打卡；完成日已有跳过（skip）时通知置 blocked，由用户决定，不静默删除跳过。
 - 消费方在私有存储 `checkin-docktomato-inbox` 中持久化已接收未入账的通知，按 1s/5s/30s 重试暂时性失败；跨窗口经存储锁合并。**该收件箱只覆盖「已接收」的通知**，不能弥补提供方进程崩溃导致的事件未送达；提供方仍须保证完成事件只在持久化成功后产生一次。
 
+
+## 交付清单（定稿，2026-09-20,按修复方案第十节要求）
+
+**修改源文件列表**（消费端,自 17.1.0 基线 `7efdc63` 起 5 个提交）：
+
+- `src/render/focus-adapter.ts` — 启动后校验拆分、`focusMappingFingerprint`（修订+direction+tomatoMode）、`releaseFocusAdapterFor` 纯清理、错误码翻译（6 个）。
+- `src/dock-tomato.ts` — 会话归属（ownedFocus）、守门停止与 `pause-session` 能力协商、available:false 即时解绑与失效登记、诊断优先级 ready 前置、完成判定重排（结构→duplicate/user-removed→项目可用性,含归档项目参与判定）、宿主回写通道。
+- `src/features/docktomato-inbox.ts`（新增）— completedAt 严格时钟、载荷规范化、收件箱存储模型（容量/合并/冲突/重试节奏）、完成值单一边界。
+- `src/index.ts` — 卸载纯解绑（跨插件计时器不暂停）、收件箱存取与「先缓冲再处理」、宿主内部写入器（存储锁内、显式五类结果、按完成日期修订校验、atMost/skip/墓碑/自动归档/锚点旁路）、墓碑投影、恢复入口与重试唤醒。
+- `src/api.ts` — `registerFocusAdapter` 注销回调支持 `{stopActive:false}` 纯解绑（默认行为不变,兼容第三方）。
+- `src/render/bind-today.ts` — 戒除类（atMost）专注入口禁用并说明原因。
+- `src/render/settings.ts` + `src/i18n.ts` — 5 个新诊断理由与全部新增文案（中英,字典 1097 键对等）。
+- 测试:新增 `tests/focus-adapter.test.cjs`、`tests/docktomato-inbox.test.cjs`;重写/扩展 `tests/dock-tomato-bridge.test.cjs`、`tests/dock-tomato-completion.test.cjs`、`tests/dock-tomato-integration.test.cjs`。
+
+**接口能力与错误码**：消费。REQUIRED: `status/start/pause/completion-event`（不变）;可选: `pause-session`（存在则 `pause({sessionId})` 原子按会话暂停）。新增错误码：`DOCK_TOMATO_START_UNCONFIRMED`（启动返回缺 sessionId,不接管）、`DOCK_TOMATO_SESSION_MISMATCH`、`DOCK_TOMATO_INTEGRATION_DISABLED`（预留,提供方抛出后分别解释）。`tomato:focus-api-availability-changed` 约定携带 `{available:boolean}` detail;`tomato:focus-session-completed` 必须含有效 ISO `completedAt` 与会话实际累计 `durationMinutes`。
+
+**存储 schema 与迁移**：新增私有存储 `checkin-docktomato-inbox`,外层 `{schemaVersion:1, items:PendingCompletion[]}`,单条字段 identity/externalRef/itemId/itemUnit/tomatoMode/durationMinutes/occurredAt/localDate/state(pending|blocked)/attempts/nextAttemptAt/lastError/receivedAt/updatedAt;容量 200 条,满员显式拒绝。主存储结构不变（仍为 v3）,无需迁移;旧版本插件不读取该存储,升级/回滚均无副作用。
+
+**运行测试结果**：`pnpm run check` 通过;`test:quality` 全链 exit 0（129 个测试文件、0 退役）,其中消费端专项 5 个测试文件覆盖：启动后误暂停复现、会话归属与五重守门、available 风暴、迟到启动归属、休息阶段、完成判定矩阵（completedAt/墓碑/归档/atMost/skip）、收件箱合并冲突与重试节奏、宿主通道 undefined 防误判。生产包 SHA-256 `7c00aefb…`（发布说明逐字核对）。
+
+**真实客户端验收结果**：自动化不能替代真实宿主。开始→暂停→继续→完成→打卡全流程、关闭/重开联动、双窗口与移动端行为,仍待与修订后的底栏番茄钟在真实思源桌面端/移动端联调验收（B-007 跟踪）；在完成前,本交付不宣称所有宿主场景不受影响。
