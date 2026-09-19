@@ -84,6 +84,8 @@
 
 2026-09-19 渲染块真机最终确认（T-1234 收口）：真机思源 v3.8.4 日记文档中，`checkin` 渲染块月历网格**完整渲染成功**（星期表头 + 30 天日期格 + 「2026 年 9 月 · 完成 13 次」统计行），labelStride 稀疏标签与 force 刷新链路一并生效。遗留：①强度曲线 x 轴标签重叠（labelStride 已实现并装机，待刷新后复核）；②笔记锚点回写细项走查。**渲染块核心链路（检测/解析/渲染/空态/错误提示）真机全部验证通过。**
 
+2026-09-19 强度卡汇总优先改版（用户反馈，提交 c26c711）：展开「习惯强度」时不再平铺 21 张折线图——改为①总览卡置顶：全部项目的**平均强度曲线**一张图 + 头部「平均强度（近 30 天）· NN 分」；②逐项目折线收进二级「按项目查看（N 个）」details 折叠，展开后是每项目一行可再展开的 details（名称+当前分 → 点开才渲染该图）。信息层级：一图看全貌 → 需要时再看单项。样式新增 overview 卡/二级折叠/明细 details 三组（accent 色、横滚兜底）。验证：`pnpm run check`、完整 `test:quality` exit 0（CSS 440,135B 告警区内），已装机。
+
 2026-09-19 强度卡显示修复（用户真机反馈，提交 e918427）：强度曲线此前复用 260×72 小 viewBox 的趋势图渲染，在回顾页宽容器被拉伸约 3 倍——点状巨大、文字巨大、颜色继承深色。修复：①强度图按宽容器实际尺寸渲染（viewBox 720×150 ≈ 1:1 显示）；②折线/圆点改用主题强调色（currentColor 继承 accent）；③窄容器（dock/手机）min-width 300px + 横向滚动，不挤压不溢出。已重新安装至思源工作区。
 
 2026-09-19 渲染块真机调试与修复（T-1234 追加）：真机插入 `checkin` 代码块后预览未出现——DevTools 实测思源 v3.8.4 代码块 DOM：语言名在 `.protyle-action__language` 文本（容器无 data-subtype、无 language-checkin 类），代码内容在 `.hljs` 下 contenteditable div（行号是同级空 div）。三处修复：①选择器扩展（protyle-action__language 文本判定 + data-subtype/language-checkin 兼容）；②配置文本读取改为优先 contenteditable div 并清理零宽字符；③loaded-protyle-static 时序竞争补 MutationObserver 兜底（200ms 防抖）+ onLayoutReady 存储装载后强制刷新 + 按配置文本变化重渲染（WeakMap 幂等）。已发现并记录：reloadUI 重载不刷新插件 JS 缓存，验证新版需整树重启或窗口 Ctrl+Shift+R。真机复核确认：块识别命中、错误提示路径生效（时序修复后预览待复看）。另发现思源内部 protyle data-change 在文档关闭时存在 null remove 报错（非本插件代码路径，已记录）。验证：`pnpm run check`、构建、完整 `test:quality` exit 0（checkin-block 59ms/at-most 定向测试通过）。
