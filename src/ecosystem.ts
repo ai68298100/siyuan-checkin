@@ -84,6 +84,7 @@ export interface ExternalRefPrefixSpec {
 
 export const EXTERNAL_REF_PREFIX_REGISTRY: readonly ExternalRefPrefixSpec[] = Object.freeze([
     Object.freeze({prefix: TASK_HORIZON_EXTERNAL_REF_PREFIX, label: "Task Horizon", format: "taskhorizon:<blockId>:<localDate>"}),
+    Object.freeze({prefix: "obsidian21", label: "Obsidian Habit Tracker 21", format: "obsidian21:<filename>:<localDate>"}),
 ]);
 
 export function isRegisteredExternalRefPrefix(prefix: unknown): boolean {

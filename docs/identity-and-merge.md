@@ -26,7 +26,8 @@
 
 ## 三、externalRef 约定（新集成的接入方式）
 
-格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。
+格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。
+- `obsidian21:<文件名>:<localDate>`：Obsidian Habit Tracker 21 迁入（T-1279）；文件名经去冒号消毒作为身份，来源 `import`。
 
 - 前缀即来源注册名（v18 开放 externalRef 前缀注册）；本地日期必须是设备本地时区日历日（`YYYY-MM-DD`）；
 - **派生规则必须确定性**：同一外部实体在同一日期重复触发必须产出同一 externalRef——这是多端/多窗口幂等的基础（mhabit 确定性 UUID 思路的等价物）；

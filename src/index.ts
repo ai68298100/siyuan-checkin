@@ -27,7 +27,7 @@ import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
@@ -58,6 +58,7 @@ import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
+import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef} from "./ecosystem";
 
@@ -1966,6 +1967,37 @@ export default class CheckinPlugin extends Plugin {
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-loop]") || input).focus();
+            }
+        });
+
+        root.querySelector<HTMLInputElement>("[data-import-obsidian]")?.addEventListener("change", async (event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            const files = Array.from(input.files || []);
+            if (!files.length) return;
+            
+            if (settingsBusy.has(input)) return;
+            settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            try {
+                const parsed = await Promise.all(files.map(async (file) => ({file, text: await file.text()})));
+                const habits = [];
+                let skipped = 0;
+                for (const {file, text} of parsed) {
+                    const result = parseObsidianHabitFile(text, file.name);
+                    if (result.ok) habits.push(result.habit);
+                    else skipped += 1;
+                }
+                if (!habits.length) { showMessage(t("msg.obsidianNoItems")); return; }
+                const plan = buildObsidianImportPlan(habits);
+                if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}))) { input.value = ""; return; }
+                const report = importObsidianHabitsInto(this.store, plan);
+                await this.persist();
+                showMessage(t("msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
+                this.render();
+            } catch (error) {
+                showMessage(t("msg.importFail", {error: String(error)}));
+            } finally {
+                input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
+                (root.querySelector<HTMLInputElement>("[data-import-obsidian]") || input).focus();
             }
         });
 

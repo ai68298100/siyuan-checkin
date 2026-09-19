@@ -2599,3 +2599,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1278 API v5-3 指标门面实施（D-240 切分第三批）
   - 验收:metrics.read 能力 + getStreaks(当前连续,走 computeEventStreaks 单一实现,itemIds 有界过滤,输出冻结);longest/capabilitiesSince 留待后续。
   - 状态:done(契约 18 能力;api.ts getStreaks;契约测试+2 断言;README/合作文档 18 项/走查/设计稿同步)
+
+- [x] T-1279 Obsidian Habit Tracker 21 迁入通道（T-1273 调研吸收项）
+  - 验收:解析 Habit Tracker 21 的习惯 .md frontmatter（title/color/maxGap/entries,引号与块列表/内联列表变体,非法日期消毒）;一习惯一文件 → 每日二值项目 + source=import 打卡,externalRef 走 obsidian21 注册前缀幂等;颜色与 maxGap 不迁移并在确认文案如实说明;设置页多选导入。
+  - 状态:done(features/obsidian-habits.ts 纯解析;plugin-ops importObsidianHabitsInto(外部身份+同日去重);EXTERNAL_REF_PREFIX_REGISTRY +obsidian21;设置页导入行;identity-and-merge.md 登记;i18n 中英 6 键(1117 对等);obsidian-habits.test.cjs 入 test:ecosystem)

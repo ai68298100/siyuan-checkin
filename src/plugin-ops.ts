@@ -5,6 +5,7 @@ import {saveGeneratedFile} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
+import {obsidianExternalRef, obsidianHabitName, type ObsidianImportPlan} from "./features/obsidian-habits";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
@@ -291,6 +292,74 @@ export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan): {
             source: "import",
         });
         eventsCreated += 1;
+    }
+    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
+}
+
+/* T-1279：按 Obsidian Habit Tracker 21 导入计划落库——一习惯一文件映射为每日二值项目,
+   完成日写 source=import 事件并带 obsidian21:<filename>:<date> 幂等身份;
+   颜色与 maxGap 容忍不迁移（降级已在确认文案说明）;上层 persist 前调用。 */
+export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImportPlan): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number} {
+    const now = new Date().toISOString();
+    const today = dateKey(new Date());
+    const items = [...store.items];
+    const itemByName = new Map<string, CheckinItem>();
+    let itemsCreated = 0;
+    for (const habit of plan.habits) {
+        const name = obsidianHabitName(habit);
+        const existing = items.find((candidate) => candidate.name === name && !candidate.archived) || itemByName.get(name);
+        if (existing) {
+            itemByName.set(name, existing);
+            continue;
+        }
+        const created = normalizeCheckinItem({
+            id: makeId("item"),
+            name,
+            icon: "✓",
+            kind: "binary",
+            target: 1,
+            unit: "次",
+            schedule: {type: "daily"},
+            createdDate: today,
+            createdAt: now,
+            updatedAt: now,
+        })!;
+        items.push(created);
+        itemByName.set(name, created);
+        itemsCreated += 1;
+    }
+    const knownRefs = new Set(store.events.map((event) => event.externalRef || "").filter(Boolean));
+    const events = [...store.events];
+    let eventsCreated = 0;
+    let duplicates = 0;
+    for (const habit of plan.habits) {
+        const name = obsidianHabitName(habit);
+        const item = itemByName.get(name);
+        if (!item) continue;
+        for (const date of habit.dates) {
+            const externalRef = obsidianExternalRef(habit, date);
+            if (knownRefs.has(externalRef)) {
+                duplicates += 1;
+                continue;
+            }
+            knownRefs.add(externalRef);
+            const sameDay = events.some((event) => event.itemId === item.id && event.localDate === date && event.kind !== "skip");
+            if (sameDay) {
+                duplicates += 1;
+                continue;
+            }
+            events.push({
+                id: makeId("event"),
+                itemId: item.id,
+                occurredAt: new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)), 12, 0).toISOString(),
+                localDate: date,
+                value: 1,
+                unit: item.unit,
+                source: "import",
+                externalRef,
+            });
+            eventsCreated += 1;
+        }
     }
     return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
 }
