@@ -1412,3 +1412,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 移动端番茄联动 E2E 与 longest 性能门禁（T-1287/T-1288）：①docktomato-completion.spec.mjs 增补 mobile bundle 场景——番茄完成联动在移动端前端同样真实入账（test:e2e 升为 13/13）;②api-v5 测试补 computeLongestStreaks 性能门禁——对 2000 年至今约 26 年窗口全历史逐日扫描设 2000ms 灾难退化捕获,本机实测通过。
 
 2026-09-20 跳过日解析旅程 E2E（T-1289):真实内核 + mobile bundle 走完整用户旅程——dispatch 完成事件 → 收件箱内核文件确认 blocked:skipped-day → 设置页收件箱区块渲染 → 点击「撤销跳过并计入」并接受确认 → 内核核验:完成事件入账 1 条、本项目 skip 事件消失且墓碑 ≥1、收件箱条目清除。修复过程修正测试自身两处问题(skip 种子的 itemId 前缀错位导致跳过被 normalize 丢弃;skip 断言范围未限定本项目)。test:e2e 13/13。
+
+2026-09-20 细节巡检批次：修复 Obsidian 导出按钮误用 CSV 按钮文案(set.exportLoopBtn「导出两个 CSV」→ 新键 set.exportObsidianBtn「导出」/「Export」,双字典 1121 对等);清理 dock-tomato.ts 中从未使用的 DockTomatoCompletionDetail 死接口(D-051)。集成契约与 i18n 卫生测试通过。

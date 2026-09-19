@@ -122,14 +122,6 @@ export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockT
     return {state: "ready", available: true, ready: true, active: false, apiVersion, capabilities};
 }
 
-interface DockTomatoCompletionDetail {
-    apiVersion?: number;
-    sessionId?: string;
-    recordId?: string;
-    durationMinutes?: number;
-    context?: Record<string, unknown>;
-}
-
 export type DockTomatoCompletionIssueReason = "invalid-event" | "unsupported-version" | "invalid-context" | "invalid-completion-time" | "missing-item" | "archived-item" | "mapping-changed" | "not-scheduled" | "at-most-item" | "skipped-day" | "invalid-duration" | "missing-identity" | "duplicate" | "user-removed" | "write-failed";
 
 export interface DockTomatoCompletionIssue {
