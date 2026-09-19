@@ -61,7 +61,8 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps): 
 const lastRenderedConfig = new WeakMap<HTMLElement, string>();
 
 export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps, options: {force?: boolean} = {}): void {
-    for (const block of findCodeBlocks(protyleElement)) {
+    const blocks = findCodeBlocks(protyleElement);
+    for (const block of blocks) {
         const configText = readBlockConfigText(block).trim();
         const previous = block.nextElementSibling;
         const existing = previous?.getAttribute(PREVIEW_FLAG) === "true";

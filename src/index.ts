@@ -273,10 +273,9 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private refreshAllRenderBlocks() {
-        /* app.protyles 为运行时成员（typings 未声明），防御式访问；主驱动是事件总线。 */
-        const app = this.app as unknown as {protyles?: IProtyle[]} | undefined;
-        const protyles = app?.protyles || [];
-        protyles.forEach((protyle) => renderCheckinBlocksIn(protyle.element, this.renderBlockDeps(), {force: true}));
+        /* 全 DOM 扫描（document.body）：不依赖 app.protyles（部分启动时序/版本下为空），
+           渲染器自身按 data-checkin-preview 幂等跳过已有预览。 */
+        renderCheckinBlocksIn(document.body, this.renderBlockDeps(), {force: true});
     }
 
     /* T-1235：点击渲染块日期 → 跳回顾页并定位该日（无效日期拒绝）。 */
@@ -537,8 +536,13 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.disposing) return;
         this.render();
         this.scheduleMidnightRefresh();
-        /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新。 */
+        /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新；
+           protyle 可能晚于 onLayoutReady 创建，用延迟补扫兜底（含观察器补挂）。 */
         this.refreshAllRenderBlocks();
+        const deferredSweeps = [1500, 4000].map((delay) => window.setTimeout(() => {
+            if (!this.disposed && !this.disposing) this.refreshAllRenderBlocks();
+        }, delay));
+        this.renderBlocksUnsubscribers.push(() => deferredSweeps.forEach((timer) => window.clearTimeout(timer)));
     }
 
     async onDataChanged() {
