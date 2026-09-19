@@ -142,5 +142,32 @@ const makeItem = (overrides = {}) => ({
     /* 限额常量。 */
     assert.deepEqual(CHECKIN_BATCH_RECORD_LIMITS, {maxItems: 200});
 
+    /* ===== 性能门禁（T-1172 哲学：防灾难退化，非单机承诺）=====
+       10 万级事件下：范围读走日期索引；批量规划为 O(批条数×事件数) 有界扫描。 */
+    const perfStore = model.createDefaultStore();
+    perfStore.items = [makeItem(), makeItem({id: "big", kind: "count"})];
+    const perfEvents = [];
+    const cursorDate = new Date(2000, 0, 1, 12);
+    for (let index = 0; index < 100000; index += 1) {
+        const localDate = `${cursorDate.getFullYear()}-${String(cursorDate.getMonth() + 1).padStart(2, "0")}-${String(cursorDate.getDate()).padStart(2, "0")}`;
+        perfEvents.push(event({id: `pe-${index}`, itemId: index % 2 ? "read" : "big", localDate, occurredAt: `${localDate}T12:00:00.000Z`}));
+        cursorDate.setDate(cursorDate.getDate() + 1);
+    }
+    perfStore.events = perfEvents;
+    const rangeStart = process.hrtime.bigint();
+    const inRange = model.getEventsInDateRange(perfStore, "2025-01-01", "2026-01-01");
+    const rangeRead = filterEventsInRange(inRange, {limit: 5000});
+    const rangeMs = Number(process.hrtime.bigint() - rangeStart) / 1e6;
+    assert.ok(rangeRead.events.length > 0, "range read returns a sane projection");
+    assert.ok(rangeMs < 2000, `100k-event range read must stay under 2000ms (took ${Math.round(rangeMs)}ms)`);
+
+    const planStart = process.hrtime.bigint();
+    const batchInputs = Array.from({length: 200}, (_, index) => ({itemId: "read", externalRef: `perf://${index}`, occurredAt: "2026-09-18T10:00:00.000Z"}));
+    const batchPlan = planBatchRecord(perfStore, batchInputs, "2026-09-20T08:00:00.000Z");
+    const planMs = Number(process.hrtime.bigint() - planStart) / 1e6;
+    assert.equal(batchPlan.results.length, 200);
+    assert.equal(batchPlan.planned.length, 200, "fresh refs plan as recorded");
+    assert.ok(planMs < 2000, `200-entry batch plan over 100k events must stay under 2000ms (took ${Math.round(planMs)}ms)`);
+
     console.log("API v5 read-only and batch-plan checks passed.");
 })().catch((error) => { console.error(error); process.exit(1); });
