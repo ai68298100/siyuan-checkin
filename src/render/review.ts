@@ -160,6 +160,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const strengthEndExclusive = dateKey(new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate() + 1));
     const strengthStart = dateKey(new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate() - 29));
     let strengthCount = 0;
+    let strengthSum = 0;
+    const strengthSumPoints = new Map<string, {sum: number; count: number}>();
     const strengthRows = summary.items.map((entry) => {
         const storeItem = getItemById(ctx.store, entry.itemId);
         if (!storeItem) return "";
@@ -170,8 +172,24 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         if (!series.length) return "";
         strengthCount += 1;
         const current = series[series.length - 1].score;
-        return `<div class="lc-checkin__strength-row"><header><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em></header>${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 720, height: 150, labelStride: 5})}</div>`;
+        strengthSum += current;
+        for (const point of series) {
+            const bucket = strengthSumPoints.get(point.date) || {sum: 0, count: 0};
+            bucket.sum += point.score;
+            bucket.count += 1;
+            strengthSumPoints.set(point.date, bucket);
+        }
+        /* 二级明细：每项目一行（名称+当前分），点击 details 展开后才加载折线。 */
+        return `<details class="lc-checkin__strength-detail"><summary><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__strength-detail-body">${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 720, height: 150, labelStride: 5})}</div></details>`;
     }).join("");
+    /* T-1243：汇总图优先——平均强度曲线一张图承载全貌，逐项目折线收进二级 details。 */
+    const averagedStrengthSeries = [...strengthSumPoints.entries()]
+        .sort((left, right) => left[0].localeCompare(right[0]))
+        .map(([date, bucket]) => ({label: date.slice(5), value: Math.round((bucket.sum / bucket.count) * 10) / 10}));
+    const strengthOverview = averagedStrengthSeries.length
+        ? renderLineChart({title: t("review.foldStrength"), unit: "%", points: averagedStrengthSeries}, {width: 720, height: 170, labelStride: 5})
+        : "";
+    const strengthAverage = strengthCount ? Math.round((strengthSum / strengthCount) * 10) / 10 : 0;
     const strengthHasItems = strengthCount > 0;
     const projectRows = summary.items.length ? summary.items.map((item) => {
         const quotaMeta = item.quota
@@ -311,7 +329,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             </details>
             ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
             ${compareHasItems ? fold("compare", `${t("review.compareTitle")} ${countBadge(comparison!.items.length)}`, compareFoldBody) : ""}
-            ${strengthHasItems ? fold("strength", `${t("review.foldStrength")} ${countBadge(strengthCount)}`, `<div class="lc-checkin__strength-list">${strengthRows}</div>`) : ""}
+            ${strengthHasItems ? fold("strength", `${t("review.foldStrength")} ${countBadge(strengthCount)}`, `<div class="lc-checkin__strength-overview"><header><strong>${t("review.strengthAverage")}</strong><em>${t("review.strengthPoints", {n: strengthAverage})}</em></header>${strengthOverview}</div><details class="lc-checkin__strength-details-fold"><summary><span>${t("review.strengthPerItem", {n: strengthCount})}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__strength-list">${strengthRows}</div></details>`) : ""}
             ${fold("projects", `${t("review.foldProjects")} ${countBadge(summary.items.length)}`, `<section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>`)}
             ${fold("log", `${t("review.foldLog")} · ${ctx.store.events.length} 条`, renderCheckinLogView(ctx.store.events, ctx.store.items))}
             ${groupBars ? fold("balance", `${t("review.balanceTitle")} ${countBadge(groupBars.match(/lc-checkin__balance-row/g)?.length || 0)}`, `<section class="lc-checkin__balance" aria-label="${t("review.balanceTitle")}">${groupBars}</section>`) : ""}

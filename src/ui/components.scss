@@ -10044,6 +10044,112 @@ details:not([open]) > :not(summary) { display: none !important; }
     overflow-x: auto;
 }
 
+/* T-1243 汇总优先：总览卡（平均强度曲线）+ 二级 per-item details。 */
+.lc-checkin__strength-overview {
+    display: grid;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__strength-overview > header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+.lc-checkin__strength-overview strong {
+    color: var(--lc-checkin-text);
+    font-size: 11.5px;
+}
+.lc-checkin__strength-overview em {
+    font-style: normal;
+    color: var(--lc-checkin-accent-text);
+    font-size: 12px;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__strength-overview svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    color: var(--lc-checkin-accent);
+    min-width: 300px;
+}
+.lc-checkin__strength-overview,
+.lc-checkin__strength-details-fold {
+    overflow-x: auto;
+}
+.lc-checkin__strength-details-fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    margin-top: 8px;
+    padding: 4px 10px;
+    border: 1px dashed var(--lc-checkin-border-strong);
+    border-radius: var(--lc-checkin-radius-sm);
+    color: var(--lc-checkin-muted);
+    background: transparent;
+    font-size: 11.5px;
+    font-weight: 620;
+    cursor: pointer;
+    list-style: none;
+}
+.lc-checkin__strength-details-fold > summary::-webkit-details-marker { display: none; }
+.lc-checkin__strength-details-fold > summary .lc-checkin__fold-chevron { margin-left: auto; }
+.lc-checkin__strength-details-fold[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+.lc-checkin__strength-details-fold[open] > summary { color: var(--lc-checkin-text); }
+.lc-checkin__strength-details-fold[open] > .lc-checkin__strength-list { margin-top: 8px; }
+.lc-checkin__strength-detail {
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 10px;
+    background: var(--lc-checkin-muted-surface);
+    overflow-x: auto;
+}
+.lc-checkin__strength-detail > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 36px;
+    padding: 4px 10px;
+    cursor: pointer;
+    list-style: none;
+}
+.lc-checkin__strength-detail > summary::-webkit-details-marker { display: none; }
+.lc-checkin__strength-detail > summary strong {
+    color: var(--lc-checkin-text);
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lc-checkin__strength-detail > summary em {
+    font-style: normal;
+    color: var(--lc-checkin-accent-text);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__strength-detail > summary .lc-checkin__fold-chevron { color: var(--lc-checkin-muted); }
+.lc-checkin__strength-detail[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+.lc-checkin__strength-detail-body {
+    padding: 0 8px 8px;
+    overflow-x: auto;
+}
+.lc-checkin__strength-detail-body svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    color: var(--lc-checkin-accent);
+    min-width: 300px;
+}
+.lc-checkin__strength-list {
+    display: grid;
+    gap: 7px;
+}
+
 /* T-1234/T-1235 渲染块：月历/热力/汇总只读预览（ Neutral 跳过格 + today 环）。 */
 .lc-checkin__renderblock-host {
     margin: 6px 0 10px;
