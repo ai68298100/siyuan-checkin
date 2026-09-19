@@ -1414,3 +1414,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 跳过日解析旅程 E2E（T-1289):真实内核 + mobile bundle 走完整用户旅程——dispatch 完成事件 → 收件箱内核文件确认 blocked:skipped-day → 设置页收件箱区块渲染 → 点击「撤销跳过并计入」并接受确认 → 内核核验:完成事件入账 1 条、本项目 skip 事件消失且墓碑 ≥1、收件箱条目清除。修复过程修正测试自身两处问题(skip 种子的 itemId 前缀错位导致跳过被 normalize 丢弃;skip 断言范围未限定本项目)。test:e2e 13/13。
 
 2026-09-20 细节巡检批次：修复 Obsidian 导出按钮误用 CSV 按钮文案(set.exportLoopBtn「导出两个 CSV」→ 新键 set.exportObsidianBtn「导出」/「Export」,双字典 1121 对等);清理 dock-tomato.ts 中从未使用的 DockTomatoCompletionDetail 死接口(D-051)。集成契约与 i18n 卫生测试通过。
+
+2026-09-20 E2E 密封化与迁移文档补全(T-1290/T-1291):①journey E2E 密封化——开始前清空收件箱存储,消除复用工作区跨次累积对断言与 200 上限的影响;②README 迁移条目、export-formats 总览(五出四入表/Obsidian 迁出节/第三方接入/测试锁定列表)补 Obsidian 进出通道;ecosystem-docs/export-identity-docs/preferences-docs 回归通过,test:e2e 14/14。

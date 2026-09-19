@@ -39,6 +39,7 @@
 - **笔记锚点回写**（opt-in）：项目可绑定思源块/文档，打卡状态回写为 `custom-lv-checkin` 自定义属性，备注与跳过原因可追加为锚点文档子块；回写失败自动挂起并入审计，不阻断打卡，解绑或卸载时清除插件写入的属性。
 - **声明式渲染块**：在文档代码块中写 `checkin` JSON 配置即可渲染月历 / 热力 / 汇总视图，支持项目、分组、全部三种作用域与色阶配置；点击日期跳转当日详情，打卡后自动刷新。
 - **Loop Habit Tracker 迁移**：导入官方导出的 Habits.csv / Checkmarks.csv，并可导出 Loop 兼容双文件；四条导出、三条导入通道均有测试锁定。
+- **Obsidian Habit Tracker 21 迁移**：导入习惯 .md 文件（frontmatter entries → 打卡记录，重复导入自动去重），并可导出 H21 兼容的习惯 .md 文件；颜色与断签容忍(maxGap)不迁移。
 - **弹性周期配额**：当期达成后的剩余日推导为自动完成日（仅计算层，不改写历史事件），连击跨配额周期桥接；智能体 API 新增 `getStrengthSummary` 只读强度摘要。
 - **宽容提醒**：已完成项退出待办提醒，跳过日不再提醒，超期延后自动清理；连续中断后显示「已重新开始」等反内疚文案。
 
@@ -237,7 +238,7 @@ Task Horizon 等日历/任务插件可使用 `getEventRangeSummary({startDate, e
 
 ## 数据所有权与文档
 
-所有数据归用户所有：JSON 全量备份、CSV 记录、Markdown 报告与 Loop Habit Tracker 迁出四条导出通道，JSON/CSV/Loop 三条导入通道，行为均有测试锁定。完整格式说明见 [数据导出与导入格式总览](docs/export-formats.md)；事件身份、externalRef 幂等约定与多端合并规则见 [记录身份与多端合并规则](docs/identity-and-merge.md)。
+所有数据归用户所有：JSON 全量备份、CSV 记录、Markdown 报告、Loop Habit Tracker 迁出与 Obsidian Habit Tracker 21 习惯文件五条导出通道，JSON/CSV/Loop/Obsidian 四条导入通道，行为均有测试锁定。完整格式说明见 [数据导出与导入格式总览](docs/export-formats.md)；事件身份、externalRef 幂等约定与多端合并规则见 [记录身份与多端合并规则](docs/identity-and-merge.md)。
 
 ## 开发、构建与验证
 

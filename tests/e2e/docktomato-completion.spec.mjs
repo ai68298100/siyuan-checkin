@@ -143,6 +143,8 @@ test('跳过日解析旅程:设置页撤销跳过并计入,同单元落库', asy
         source: 'manual',
         kind: 'skip',
     };
+    /* 密封化:工作区跨次复用,先清空收件箱存储,消除历史 blocked 条目对本旅程断言与 200 上限的影响。 */
+    await client.putFile('checkin-docktomato-inbox', {schemaVersion: 1, items: []});
     const base = await snapshotStore(page);
     await seedStore(client, {...base, events: [...(base.events || []), skipEvent]}, [item]);
     await page.reload();
