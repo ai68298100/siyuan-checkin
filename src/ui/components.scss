@@ -10305,3 +10305,30 @@ details:not([open]) > :not(summary) { display: none !important; }
         justify-self: start !important;
     }
 }
+
+/* T-1244 打卡日志按天折叠：首日展开，其余日子收为日期 summary。 */
+details.lc-checkin__log-day.is-folded > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px dashed var(--lc-checkin-border-strong);
+    border-radius: var(--lc-checkin-radius-sm);
+    cursor: pointer;
+    list-style: none;
+}
+details.lc-checkin__log-day.is-folded > summary::-webkit-details-marker { display: none; }
+details.lc-checkin__log-day.is-folded > summary h3 { margin: 0; display: flex; align-items: baseline; gap: 8px; }
+details.lc-checkin__log-day.is-folded > summary .lc-checkin__fold-chevron { color: var(--lc-checkin-muted); }
+details.lc-checkin__log-day.is-folded[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
+details.lc-checkin__log-day.is-folded[open] > summary { border-style: solid; color: var(--lc-checkin-text); }
+details.lc-checkin__log-day.is-folded > summary:hover { color: var(--lc-checkin-text); }
+.lc-checkin__log-day-count {
+    color: var(--lc-checkin-muted);
+    font-size: 10px;
+    font-weight: 550;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__log-day.is-folded > .lc-checkin__log-day-body { padding-top: 8px; }

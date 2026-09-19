@@ -263,10 +263,6 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         extra.hidden = false;
         button.remove();
     });
-    root.querySelector<HTMLElement>("[data-log-expand]")?.addEventListener("click", (event) => {
-        root.querySelectorAll<HTMLElement>("[data-log-extra]").forEach((row) => row.hidden = false);
-        (event.currentTarget as HTMLElement).remove();
-    });
     root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]").forEach((button) => button.addEventListener("click", () => {
         const event = getEventById(host.store, button.dataset.editHistoryEventId);
         if (!event) return;

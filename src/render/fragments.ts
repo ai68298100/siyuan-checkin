@@ -201,6 +201,8 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
     }
     const days = [...byDay.keys()].filter((day) => day <= dateKey(currentCalendarDate())).sort((left, right) => right.localeCompare(left)).slice(0, 14);
     if (!days.length) return "";
+    /* T-1244 汇总优先：首日展开，其余日子折叠为日期 summary（点开才渲染行）。
+       汇总行给每日计数，让折叠态也有信息量。 */
     const daySections = days.map((day, index) => {
         const dayEvents = (byDay.get(day) || []).slice().sort((left, right) => left.occurredAt.localeCompare(right.occurredAt));
         const grouped = new Map<string, CheckinEvent[]>();
@@ -224,9 +226,12 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
             const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`).join("");
             return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${escapeHtml(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${eventRows}</div></details>`;
         }).join("");
-        return `<div class="lc-checkin__log-day"${index >= 2 ? ' data-log-extra hidden' : ''}><h3>${escapeHtml(formatHistoryDate(day))}</h3>${rows}</div>`;
+        if (index === 0) {
+            return `<div class="lc-checkin__log-day"><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: dayEvents.length})}</span></h3>${rows}</div>`;
+        }
+        return `<details class="lc-checkin__log-day is-folded"><summary><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: dayEvents.length})}</span></h3><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-day-body">${rows}</div></details>`;
     }).join("");
-    return `${daySections}${days.length > 2 ? `<button class="lc-checkin__text-button" type="button" data-log-expand>${t("review.logExpandDays", {n: days.length - 2})}</button>` : ""}`;
+    return daySections;
 }
 
 function todayGroupKeyOf(groupMode: TodayGroupMode, item: CheckinItem): string {
