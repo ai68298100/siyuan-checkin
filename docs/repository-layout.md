@@ -31,3 +31,29 @@ docs/releases/release-notes-<semver>.md
 
 - `icon.png` 和 `preview.png` 被 `plugin.json`、webpack 和发布资源门禁明确引用，必须保留。
 - `icon.svg` 当前没有运行时、构建或发布引用，是未使用的候选源稿；本轮保留以避免破坏外部 raw 链接，若后续确认没有设计资产用途再单独删除。
+
+## 提交历史与远端分支
+
+GitHub 顶部显示的提交数是版本历史，不是仓库根目录里的文件，也不会被打进插件安装包。为减少数字而重写 `main` 历史会破坏现有标签、Release、外部链接和协作基线，因此不把提交数量当作清理目标。
+
+2026-09-19 在 `git fetch --prune` 后审计 `origin/main`：以下 14 条 `codex/*` 分支已经完全合并，可以在获得远端清理授权后删除；删除远端分支属于 push，本轮不执行。
+
+```text
+entry-capability-guard  insight-context        insight-memory
+insight-narrow-layout  insight-switcher       insights-accessibility
+insights-ui            post-v050              release-candidate
+rules-engine           sidebar-narrow-layout  template-details
+template-polish        ui-quick-actions
+```
+
+另外 13 条未合并分支都停留在 2026-09-07 至 2026-09-08，相对当前 `main` 落后 1249 至 1315 个提交，但各自仍有 1 至 5 个非 patch-equivalent 提交。它们只能列为“待逐支确认的旧分支”，不能直接判定为无用：
+
+```text
+active-cycle                 flexible-cycle-v2            flexible-rules
+mobile-dialog-close          mobile-dialog-polish          mobile-tab-ux
+next-cycle                   v07-custom-range              v07-mobile-safe-area
+v07-project-plan             v07-quick-interaction         v07-quota-ui
+v07-responsive-quick-summary
+```
+
+日常清理口径：先 `git branch -r --merged origin/main` 找已合并候选；未合并分支必须先看 `git cherry` 和文件差异；不通过历史重写、强推或批量删除来追求表面整洁。
