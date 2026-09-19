@@ -1430,3 +1430,5 @@ T-1293 摘要回填后全链 exit 0。
 2026-09-20 洞察页历史最长统计（T-1295):洞察页统计区由四格扩为五格——完成率/当前连续/窗口最佳/成熟度之外新增「历史最长」(全历史最长连续,走 computeLongestStreaks 单一实现,与 v5 getStreaks.longest 同源);窗口「最佳连续」标签改为「窗口最佳」以区分口径;i18n 双语 1122 对等;ui-theme 结构断言锁定单一实现与标签。test:ui 通过。
 
 T-1295 摘要回填后全链 exit 0。
+
+2026-09-20 渲染块 notebook 维度 E2E 与 Obsidian 导出下载流 E2E(T-1297/T-1298):①渲染块 spec 扩为三块矩阵——docId 命中行、notebook 维度命中行、未命中文档空视图(nameCount=2 断言);②obsidian-export.spec.mjs——mobile bundle 设置页点击导出,捕获 2 个下载,H21 .md 含 frontmatter title+entries(acceptDownloads)。test:e2e 全套 16/16 通过。

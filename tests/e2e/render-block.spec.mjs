@@ -25,23 +25,25 @@ test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page
     await expect.poll(() => page.evaluate((id) => window.siyuanCheckin.getItems().some((entry) => entry.id === id), item.id), {timeout: 20000}).toBe(true);
 
     /* 注入两个合成代码块并触发插件自己的刷新事件(真实渲染管线入口)。 */
-    await page.evaluate(({anchoredDocId, missDocId}) => {
+    await page.evaluate(({anchoredDocId, notebookId, missDocId}) => {
         const host = document.createElement("div");
         host.setAttribute("data-e2e-renderhost", "true");
         host.innerHTML =
             `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", docId: anchoredDocId})}</div></code></pre></div>` +
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", notebook: notebookId})}</div></code></pre></div>` +
             `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", docId: missDocId})}</div></code></pre></div>`;
         document.body.append(host);
         window.dispatchEvent(new CustomEvent("checkin:event-recorded"));
-    }, {anchoredDocId, missDocId: "20990101120000-notexist99"});
+    }, {anchoredDocId, notebookId, missDocId: "20990101120000-notexist99"});
 
     /* 命中块:预览包含项目行(经锚点解析);未命中块:fail-closed 空视图,不含项目行。 */
     await expect.poll(async () => {
         const texts = await page.locator("[data-checkin-preview]").allTextContents();
         const hit = texts.some((text) => text.includes(item.name));
         const missIsEmpty = texts.some((text) => text.includes("没有匹配的活跃项目") || text.includes("No matching active items") || text.trim() === "");
-        return {hit, missIsEmpty};
-    }, {timeout: 20000}).toEqual({hit: true, missIsEmpty: true});
+        const nameCount = texts.filter((text) => text.includes(item.name)).length;
+        return {hit, missIsEmpty, nameCount};
+    }, {timeout: 20000}).toEqual({hit: true, missIsEmpty: true, nameCount: 2});
 
     fs.writeFileSync(".artifacts/render-dump-final.json", JSON.stringify({ok: true, item: item.name}));
 });

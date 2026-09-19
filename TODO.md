@@ -2654,3 +2654,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1295 洞察页新增「历史最长连续」统计（T-1280 能力的用户可见化）
   - 验收:洞察页统计区新增历史最长(全历史,computeLongestStreaks 单一实现),与窗口最佳并存;i18n 中英;结构断言锁定单一实现。
   - 状态:done(index.ts renderInsights 五格统计;insights.longestEver 双语 1122 对等;ui-theme 断言单一实现与标签)
+
+- [x] T-1297 渲染块 notebook 维度 E2E(作用域矩阵补全)+ T-1298 Obsidian 迁出下载流 E2E
+  - 验收:notebook 维度块渲染项目行(docId 块+notebook 块=2 行,未命中块空视图);Obsidian 导出按钮触发逐文件下载,H21 .md 含 frontmatter title+entries。
+  - 状态:done(render-block.spec.mjs 三块矩阵 nameCount=2;obsidian-export.spec.mjs 下载 2 文件内容断言;test:e2e 16/16)
