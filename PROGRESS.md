@@ -1418,3 +1418,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 E2E 密封化与迁移文档补全(T-1290/T-1291):①journey E2E 密封化——开始前清空收件箱存储,消除复用工作区跨次累积对断言与 200 上限的影响;②README 迁移条目、export-formats 总览(五出四入表/Obsidian 迁出节/第三方接入/测试锁定列表)补 Obsidian 进出通道;ecosystem-docs/export-identity-docs/preferences-docs 回归通过,test:e2e 14/14。
 
 2026-09-20 渲染块 doc/notebook 维度（T-1292/T-1234 遗留收口):```checkin``` 配置新增 "docId"/"notebook"——只统计锚点块位于该文档/笔记本的项目。纯层 AnchorDocIndex 注入 resolveBlockItems,fail-closed(无索引/未命中=空);胶水层同步读缓存,未命中锚点经 deps.resolveAnchorDocs(内核 /api/block/getBlockInfo,取 root_id/box,会话内缓存,失败按未命中)异步解析后强制重渲染一次,期间出加载占位。现有作用域行为不变;兼容文档登记该端点用途。checkin-block 测试 +12 断言(配置格式/fail-closed/双维度过滤);i18n +1 键(1122 对等)。
+
+T-1292 摘要回填后全链 exit 0。
