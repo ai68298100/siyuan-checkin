@@ -1,9 +1,9 @@
 # 进度
-当前任务：T-1262 回顾页打卡日志月/周/日渐进折叠已完成
-上次检查点：完整质量链与宽度走查通过，等待与后续回顾页任务一起形成阶段提交
+当前任务：T-1264 新建页锚点选择、搜索与新建入口已完成
+上次检查点：锚点选择器单元/结构测试、完整质量链与宽度走查均通过，待阶段提交
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032、T-105、T-1167~T-1215
-未提交变更：T-1262（月/周/日日志层级、4 天/6 项/6 条分批、测试与发布文档）
-上次提交：`81bca03 feat: open review actions and summarize comparisons`
+未提交变更：无（T-1263/T-1264 已纳入本轮阶段提交）
+上次提交：T-1263/T-1264 阶段提交（发布说明归档、仓库布局守门、锚点选择器与编辑器语义布局）
 下一步：继续选择无需用户真机操作的可做 TODO；T-1256 等真机项保持跳过，不阻塞开发。
 上下文备注：竞品调研见 `docs/benchmark-habit-apps-2026-09.md`（uhabits/mhabit/Habitica 源码 + 商业应用 + 笔记生态）；思源集市其他打卡插件第二梯队与 Obsidian 补充精读按规划在 v17.1/17.2 启动前补做。
 续跑口令：继续自主开发。先读 TODO.md、PROGRESS.md、BLOCKERS.md、DECISIONS.md，从上次检查点恢复；按协议循环，不频繁提交、不 push，不要问是否继续。
@@ -15,6 +15,10 @@
 2026-09-19 周期对比信息层级（T-1261）：较上一周期区块新增本期/上期双序列汇总图（记录、完成、安排），项目明细保留外层折叠并按每批最多 8 项拆分；展开文案同时显示本批和剩余数量，避免 20+ 项一次铺满长页面。18 项用例验证为 8+8+2。
 
 2026-09-19 打卡日志渐进折叠（T-1262 / D-231）：保留最近 14 个有记录日期及同项目聚合口径，改为月份→周（周一至周日）→日期三级原生折叠；默认只展开最新月份、各月最新周、各周最新日。每周首批最多 4 天，单日首批最多 6 个项目，同项目逐条明细首批最多 6 条，后续递归按同样批次展开并显示本批/剩余数量。跨月周按日期所属月份拆开，计数不重复。新增 `checkin-log-hierarchy` 纯投影与 `log-hierarchy.test.cjs`，完整 `pnpm run test:quality` 通过（126 文件、0 退役），宽度走查 2000/1180/640/360 全部无横向溢出；生产 CSS 445,760 bytes，低于 450,000 硬线但已在临界警告区。安装包 404,814 bytes，SHA-256 `3f070547a589abd00a69dd8e5a31ba0effb18c8ed0e8bed6145fd282c96db85e`。
+
+2026-09-19 仓库整理收口（T-1263 / D-232）：11 份根目录 `release-notes-*.md` 统一迁入 `docs/releases/`，README、发布脚本、发布资源门禁及历史记录引用全部切换到归档路径；门禁新增根目录发布说明禁入断言，防止后续再次堆回。新增 `docs/repository-layout.md` 说明根目录必留项、本地生成物与资源处置；`icon.png`/`preview.png` 明确保留，未被构建引用的 `icon.svg` 暂保留为可能的设计源稿，不做未经确认的删除。
+
+2026-09-19 新建页锚点入口（T-1264）：①“戒除类目标”改为有说明的整行开关，仅每日排期显示；②“备注追加”改为有说明的整行开关，无锚点时禁用；③笔记锚点新增已绑定项目选择、本地名称/块 ID 搜索、清除和新建文档后自动绑定。新建流程只使用思源公开的 `POST /api/notebook/lsNotebooks` 与 `POST /api/filetree/createDocWithMd`，文档标题会把斜杠转换为全角斜杠，避免用户输入改变层级；不调用未验证的全库搜索/SQL 接口。`pnpm run test:quality`、宽度走查、`note-anchor-picker.test.cjs` 全部通过（127 个测试文件、0 退役）；生产 CSS 448,170 bytes，低于 450,000 硬线；安装包 407,338 bytes，SHA-256 `041c191ed7c8c9c9b987d3348d638e5f6297c5e165ef63f9e1f369771272a3fb`。
 
 2026-09-19 移动端宿主提示避让（T-1257）：不依赖真机固定高度，读取思源 `#message` 可见 snackbar 的实际边界，并在 CSS 动画期间连续采样；回顾工具栏动态进入安全区域，自定义范围浮层跟随完整工具栏底边，卸载时移除观察器和变量。真实内核 E2E 首轮保留宿主提示条后发现自定义范围仍拦截，修正浮层锚点后，不删除提示条、真实点击「导出报告」通过。
 
@@ -114,7 +118,7 @@
 
 2026-09-19 v17.0.0 真机首轮验收通过（本机思源 v3.8.4 实测）：安装 17.0.0 到工作区（15.0.0 旧版已备份至 temp/siyuan-checkin-15.0.0-backup-20260919），重启思源后插件正常加载，**v2→v3 存储自动迁移验证通过**（既有项目、连击 2 天数据完好）；回顾页「较上一周期」条带与「习惯强度」折叠卡（车辆年检 47 分等真实数据折线）真机渲染正常，副导航跳转含新入口；负向习惯全链路真机验证——戒除模板套用（方向开关自动勾选）、保存后按被动成功语义计入已完成（进度 1/4）、新建编辑器模板计数 45（40+5）与分组渲染正确；x 轴日期标签拥挤记为打磨项。渲染块 DOM 选择器与笔记锚点回写留待用户按 smoke 清单走查。安装方式备注：内核 HTTP 端口本次为 6806（默认），token 取自工作区 conf.json；reloadUI 重载不刷新插件 JS 缓存，需整树重启思源才可靠加载新版本。
 
-2026-09-19 v17.0.0 发布准备完成（本地，未 push）：版本号三处提升至 17.0.0（package.json/plugin.json/src/version.ts）+ README 当前版本声明；`release-notes-17.0.0.md` 六批次整合说明（含存储 v2→3 自动迁移说明）；`docs/integration-smoke-checklist.md` 新增四组真机走查（跳过态/渲染块/笔记锚点/负向习惯 + 宽容提醒与报告）；构建发布归档 package.zip（394,812B，SHA-256 c4b7416f…，已回填 notes）与本地测试包 siyuan-checkin-v17.0.0-test.zip。完整 `test:quality` exit 0，Release assets v17.0.0 通过。**剩余动作均需用户指令：① 确认并执行 GitHub 发布（push + tag + release，涉及网络与 push 授权）；② 真机验收（清单已就绪）；③ v18 尾项与 v17.0 联调的后续决策。**
+2026-09-19 v17.0.0 发布准备完成（本地，未 push）：版本号三处提升至 17.0.0（package.json/plugin.json/src/version.ts）+ README 当前版本声明；`docs/releases/release-notes-17.0.0.md` 六批次整合说明（含存储 v2→3 自动迁移说明）；`docs/integration-smoke-checklist.md` 新增四组真机走查（跳过态/渲染块/笔记锚点/负向习惯 + 宽容提醒与报告）；构建发布归档 package.zip（394,812B，SHA-256 c4b7416f…，已回填 notes）与本地测试包 siyuan-checkin-v17.0.0-test.zip。完整 `test:quality` exit 0，Release assets v17.0.0 通过。**剩余动作均需用户指令：① 确认并执行 GitHub 发布（push + tag + release，涉及网络与 push 授权）；② 真机验收（清单已就绪）；③ v18 尾项与 v17.0 联调的后续决策。**
 
 2026-09-19 v19 习惯内核二期全部收口（T-1239~T-1241，本地提交 42c6808 + 本批；决策 D-219 已记录）：T-1239 负向习惯被动型 at-most（不记录即成功/记录即破戒/跳过日两者皆非；direction 仅 daily；isComplete 反转；streak at-most 分支连续无破戒日、破戒断链、跳过桥接、止于 createdDate；Today 卡「记破戒/撤销破戒」语义切换 +「今日已避开」标签；编辑器戒除类开关（仅 daily）；+5 戒除类模板）；T-1240 超额日判定（数值型 ≥150% 目标）+ overachieve-1/10 徽章（partial 减半与超额封顶 1.5 由 habit-score 凸组合与 clamp 天然满足，补测试锁定）；T-1241 insights 成熟度 sigmoid（66 天参考线半程）+ 洞察页统计展示。验证：新增 `tests/at-most.test.cjs`/`tests/habit-quality.test.cjs` 纳入 test:ui；完整 `test:quality` exit 0（118 文件全覆盖）。**环境备注：本机今日进入持续慢速状态（review 100k 基线 583→2202ms，约 4 倍），auto-archive/item-rule/checkin-block 三处计时门禁按 T-1172 哲学对齐放宽（auto-archive 1s→3s、checkin-block 0.5s→2s、item-rule 维持 1s 未动），已在测试注释留档依据。**融合路线至此：v16.1/v16.2/v16.3/v17.1/v17.2/v18 首批/v19 共 23 任务全部完成；仅余 v17.0（待对方排期）、v18 尾项（API v5/前缀注册/摘要驻留，需隐私评估与生态决策）。**发布批次的优先级进一步提升，强烈建议下一步发版。**
 
@@ -1147,7 +1151,7 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 ### 13.0.0 发布收口（2026-09-17，T-1148~T-1150）
 
-- 版本真值同步 13.0.0（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.0-change-log.md / release-notes-13.0.0.md）；完整质量链 test:quality exit 0（92 项测试资产零退役，a11y 双主题 0 违规，10k 渲染 34ms/溢出 0px，发布资源检查通过，CSS 419,910 bytes 告警区但低于 450,000 硬线）。
+- 版本真值同步 13.0.0（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.0-change-log.md / docs/releases/release-notes-13.0.0.md）；完整质量链 test:quality exit 0（92 项测试资产零退役，a11y 双主题 0 违规，10k 渲染 34ms/溢出 0px，发布资源检查通过，CSS 419,910 bytes 告警区但低于 450,000 硬线）。
 - scripts/release.cjs 执行构建、测试链、提交、推送、标签与 GitHub Release（package.zip）；远端资产与发布说明 SHA-256 一致，仓库内发布说明回填最终摘要（webpack 产物 zip 元数据非字节确定，摘要以流水线上传时计算值为准）。
 - 路线图基线更新：官方集市 PR #2248 已合并；13.0 专注生态消费端与 14.0 数据内核可自动化范围已随 12.0.x/13.0.0 落地；主线下一步 15.0 UI 系统（版本决策 D-156：semver 连续递增，工作流标签不等于发布版本号）。
 
@@ -1159,7 +1163,7 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 ### 13.0.1 发布执行（2026-09-17）
 
-- 版本真值同步 13.0.1（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.1-change-log.md / release-notes-13.0.1.md）。
+- 版本真值同步 13.0.1（package.json / plugin.json / src/version.ts / dist / README / docs/v13.0.1-change-log.md / docs/releases/release-notes-13.0.1.md）。
 - scripts/release.cjs 执行构建、测试链、提交、推送、标签与 GitHub Release（package.zip）；远端资产与发布说明 SHA-256 一致，仓库内发布说明回填最终摘要（zip 元数据非字节确定，以上传时流水线计算值为准）。
 
 ### 回顾页打卡日志优化（2026-09-18，T-1153）
@@ -1344,7 +1348,7 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 ### v17.1.0 发布准备（2026-09-19，未推送）
 
-- 版本号已统一为 17.1.0（`src/version.ts`、`package.json`、`plugin.json`、README 当前版本行），新增 `docs/v17.1.0-change-log.md` 与 `release-notes-17.1.0.md`，README 增加「17.1.0 维护重点」。
+- 版本号已统一为 17.1.0（`src/version.ts`、`package.json`、`plugin.json`、README 当前版本行），新增 `docs/v17.1.0-change-log.md` 与 `docs/releases/release-notes-17.1.0.md`，README 增加「17.1.0 维护重点」。
 - 产物：`package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`（已回填进两份发布文档）。注意 `test:quality` 链内含 `build`，任何一次重跑都会因 zip 时间戳变化而产生新摘要，因此哈希必须在最终构建之后回填，并单独一次 docs 提交（与 v17.0.0 的 `docs: backfill … SHA-256` 做法一致）。
 - 验证：`pnpm run check:release` 通过（v17.1.0），完整 `test:quality` exit 0（125 个测试文件、0 退役），`test:e2e` 7/7、`test:e2e:readonly` 1/1（思源 3.8.4）。
 - 仓库接入：本目录原先是 tarball 快照，已 `git init` + SSH 远端 `git@github.com:ai68298100/siyuan-checkin.git`，`main` 对齐远端 `09f82bb` 后本地提交 `596f292`（release）与哈希回填提交，均为快进可推送。
@@ -1353,6 +1357,6 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 ### v17.1.0 正式发布（2026-09-19）
 
 - 远端 `main` 推进到 `06cf516`（`596f292` release 提交 → `ed53d03` 哈希回填 → `06cf516` 门禁缺口记录），注释标签 `v17.1.0` 已推送。
-- GitHub Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v17.1.0（id 392014777，非草稿，标题「小飞驴打卡 v17.1.0」，正文取 `release-notes-17.1.0.md`）。
+- GitHub Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v17.1.0（id 392014777，非草稿，标题「小飞驴打卡 v17.1.0」，正文取 `docs/releases/release-notes-17.1.0.md`）。
 - 资产 `package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`；已从 API 回读资产核对，远端与本地摘要逐字节一致。
 - 注意：本机 `github.com/.../releases/download/...` 直链返回空响应（objects.githubusercontent.com 不可达），API 通道可用——取源码与取资产都走 api.github.com。

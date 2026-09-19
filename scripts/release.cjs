@@ -80,9 +80,11 @@ run("git push origin main");
 run(`git tag -a v${version} -m "Release v${version}"`);
 run(`git push origin v${version}`);
 
-// 4. Release（notes 文件须提前放在 /tmp 或传入）
+// 4. Release（默认使用归档目录中的当前版本说明，也可传入仓库内相对路径或绝对路径）
 const sha = crypto.createHash("sha256").update(fs.readFileSync(path.join(root, "package.zip"))).digest("hex");
-const notesFile = process.argv[4] || `release-notes-${version}.md`;
+const notesFile = process.argv[4]
+    ? path.resolve(root, process.argv[4])
+    : path.join(root, "docs", "releases", `release-notes-${version}.md`);
 let notes = fs.readFileSync(notesFile, "utf8");
 /* Accept both the historical Markdown-bold label and the current bilingual
    release-note label.  A release must never silently publish an all-zero or

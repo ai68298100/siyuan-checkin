@@ -10,7 +10,8 @@ import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from ".
 import {validateEditorInput} from "../editor-validation";
 import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
-import {showMessage} from "siyuan";
+import {fetchSyncPost, showMessage} from "siyuan";
+import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate} from "../types";
 
 /* 存储名与 index.ts 保持一致（历史常量，避免跨模块导出）。 */
@@ -148,6 +149,66 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
     root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
+    const directionField = root.querySelector<HTMLElement>("[data-direction-at-most-field]");
+    const anchorInput = root.querySelector<HTMLInputElement>("input[name='anchorBlockId']");
+    const anchorAppendInput = root.querySelector<HTMLInputElement>("input[name='anchorAppendNotes']");
+    const anchorBrowser = root.querySelector<HTMLElement>("[data-anchor-browser]");
+    const anchorQuery = root.querySelector<HTMLInputElement>("[data-anchor-query]");
+    const anchorCreateRow = root.querySelector<HTMLElement>("[data-anchor-create-row]");
+    const anchorOptions = [...root.querySelectorAll<HTMLElement>("[data-anchor-choice]")];
+    const anchorFilterEmpty = root.querySelector<HTMLElement>("[data-anchor-filter-empty]");
+    const knownAnchorChoices = anchorOptions.map((button) => ({blockId: button.dataset.anchorChoice || "", labels: [button.dataset.anchorSearchText || ""]})).filter((choice) => choice.blockId);
+    const updateAnchorInputState = () => {
+        const hasAnchor = Boolean(anchorInput?.value.trim());
+        if (anchorAppendInput) {
+            anchorAppendInput.disabled = !hasAnchor;
+            if (!hasAnchor) anchorAppendInput.checked = false;
+        }
+        const filtered = filterAnchorChoices(knownAnchorChoices, anchorQuery?.value || "");
+        anchorOptions.forEach((button) => { button.hidden = !filtered.some((choice) => choice.blockId === button.dataset.anchorChoice); });
+        if (anchorFilterEmpty) anchorFilterEmpty.hidden = filtered.length > 0 || !knownAnchorChoices.length;
+    };
+    const loadAnchorNotebooks = async () => {
+        const select = root.querySelector<HTMLSelectElement>("[data-anchor-notebook]");
+        if (!select || select.dataset.loaded === "true") return;
+        try {
+            const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
+            const notebooks = (response.code === 0 ? response.data?.notebooks : undefined)?.filter((notebook) => notebook.id && !notebook.closed) || [];
+            select.replaceChildren(...notebooks.map((notebook) => { const option = document.createElement("option"); option.value = notebook.id || ""; option.textContent = notebook.name || notebook.id || ""; return option; }));
+            if (!notebooks.length) { const option = document.createElement("option"); option.value = ""; option.textContent = t("editor.anchorNoNotebook"); select.append(option); }
+            select.dataset.loaded = "true";
+        } catch {
+            select.replaceChildren();
+            const option = document.createElement("option"); option.value = ""; option.textContent = t("editor.anchorNotebookFailed"); select.append(option);
+        }
+    };
+    const openAnchorPicker = () => {
+        if (!anchorBrowser) return;
+        anchorBrowser.toggleAttribute("hidden");
+        if (!anchorBrowser.hidden) { updateAnchorInputState(); void loadAnchorNotebooks(); anchorQuery?.focus(); }
+    };
+    root.querySelector<HTMLElement>("[data-action='anchor-open-picker']")?.addEventListener("click", openAnchorPicker);
+    root.querySelector<HTMLElement>("[data-action='anchor-clear']")?.addEventListener("click", () => { if (anchorInput) anchorInput.value = ""; updateAnchorInputState(); anchorInput?.focus(); });
+    anchorInput?.addEventListener("input", updateAnchorInputState);
+    anchorQuery?.addEventListener("input", updateAnchorInputState);
+    anchorOptions.forEach((button) => button.addEventListener("click", () => { if (anchorInput) anchorInput.value = button.dataset.anchorChoice || ""; anchorBrowser?.setAttribute("hidden", ""); updateAnchorInputState(); }));
+    root.querySelector<HTMLElement>("[data-action='anchor-create']")?.addEventListener("click", () => { anchorCreateRow?.toggleAttribute("hidden"); if (!anchorCreateRow?.hidden) { void loadAnchorNotebooks(); root.querySelector<HTMLInputElement>("[data-anchor-doc-title]")?.focus(); } });
+    root.querySelector<HTMLElement>("[data-action='anchor-create-confirm']")?.addEventListener("click", async () => {
+        const notebook = root.querySelector<HTMLSelectElement>("[data-anchor-notebook]")?.value || "";
+        const title = root.querySelector<HTMLInputElement>("[data-anchor-doc-title]")?.value || "";
+        const path = buildAnchorDocumentPath(title);
+        if (!notebook || !path) { showMessage(t("editor.anchorCreateInvalid")); return; }
+        try {
+            const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path, markdown: ""}) as unknown as {code?: number; msg?: string; data?: unknown};
+            const blockId = response.code === 0 && typeof response.data === "string" ? response.data : "";
+            if (!blockId) throw new Error(response.msg || "create-anchor-failed");
+            if (anchorInput) anchorInput.value = blockId;
+            anchorCreateRow?.setAttribute("hidden", "");
+            anchorBrowser?.setAttribute("hidden", "");
+            updateAnchorInputState();
+            showMessage(t("editor.anchorCreated"));
+        } catch (error) { showMessage(`${t("editor.anchorCreateFailed")} ${String(error instanceof Error ? error.message : error)}`); }
+    });
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
     const targetInput = root.querySelector<HTMLInputElement>("input[name='target']");
     const recordStepInput = root.querySelector<HTMLInputElement>("input[name='recordStep']");
@@ -309,6 +370,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
         if (quotaSchedule) quotaSchedule.hidden = scheduleSelect?.value !== "quota";
+        if (directionField) directionField.hidden = scheduleSelect?.value !== "daily";
         const quotaMode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value || "dates";
         const quotaAmount = root.querySelector<HTMLInputElement>("input[name='quotaAmount']");
         const quotaAmountLabel = root.querySelector<HTMLElement>("[data-quota-amount-label]");
@@ -583,6 +645,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.addEventListener("change", updateTomatoFields);
     root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.addEventListener("change", updateAdvancedSummary);
     updateConditionalFields();
+    updateAnchorInputState();
     updateEditorPreview();
     applyIconFilter();
     applyTemplateFilter();

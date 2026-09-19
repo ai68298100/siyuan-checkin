@@ -2051,7 +2051,7 @@
 ## 13.0.0 发布收口（T-1148~T-1150）
 
 - [x] T-1148 13.0.0 版本真值与文档
-  - 验收：package.json、plugin.json、src/version.ts、dist/plugin.json、README、docs/v13.0.0-change-log.md、release-notes-13.0.0.md 一致为 13.0.0；路线图基线同步（集市 PR #2248 已合并、13.0/14.0 工作流落地状态、主线下一步 15.0）。
+  - 验收：package.json、plugin.json、src/version.ts、dist/plugin.json、README、docs/v13.0.0-change-log.md、docs/releases/release-notes-13.0.0.md 一致为 13.0.0；路线图基线同步（集市 PR #2248 已合并、13.0/14.0 工作流落地状态、主线下一步 15.0）。
   - 依赖：14.0 数据内核第二十二批
   - 状态：done
 - [x] T-1149 13.0.0 完整质量链门禁
@@ -2330,7 +2330,7 @@
 
 - [x] T-1186 v15.0.0 发布真值与说明
   - 验收：package.json、plugin.json、src/version.ts、README、变更记录和发布说明统一为 15.0.0，并完整描述本版本能力与现场验收边界。
-  - 状态：done（版本文件、README、docs/v15.0.0-change-log.md 与 release-notes-15.0.0.md 已同步）
+  - 状态：done（版本文件、README、docs/v15.0.0-change-log.md 与 docs/releases/release-notes-15.0.0.md 已同步）
 - [x] T-1187 v15.0.0 发布质量验收
   - 验收：完整 test:quality、宽度走查和发布资源检查通过，package.zip 版本与 SHA-256 可复核。
   - 状态：done（test:quality、宽度矩阵、浅/深主题 visual-qa 与最终 release-assets 全部通过；package.zip 376,186 bytes）
@@ -2533,3 +2533,10 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 附带缺口：`tests/release-assets.test.cjs` 只要求发布说明里存在一个非全零的 64 位摘要，并不校验它是否等于当前 `package.zip` 的实际哈希——本轮就出现过「构建后哈希过期但门禁仍通过」
   - 方案：打包时用固定的 `date`（如取 `plugin.json` 版本对应的提交时间或 1980-01-01），使同一份源码产出字节一致的 zip；验收是连续两次 `pnpm run build` 后 `sha256sum package.zip` 相同
   - 状态：done（`PackageZipPlugin` 为 yazl 每个条目固定 `mtime=1980-01-01`；`release-assets.test.cjs` 现在计算当前 `package.zip` SHA-256 并与发布说明逐字匹配。连续两次 `pnpm run build` 产出相同摘要 `f75723ff4f6f0cf725ee28405ccd70b55ef52284764a003b3b603a3757ce170a`；`pnpm run check`、`pnpm run check:release` 通过。当前 CSS 441,069 bytes，处于 420KB 警告区但低于 450KB 硬线。）
+
+- [x] T-1263 仓库发布说明归档与布局守门
+  - 验收：根目录不再堆放 `release-notes-*.md`；11 份历史说明迁入 `docs/releases/`；README、发布脚本、发布资源门禁和历史记录引用全部指向新路径；布局文档明确根目录必留项、本地生成物和未引用 `icon.svg` 的处置状态。
+  - 状态：done（`scripts/release.cjs` 默认从 `docs/releases/` 读取当前版本说明，支持第四参数覆盖；`tests/release-assets.test.cjs` 同时校验归档路径和根目录无发布说明；新增 `docs/repository-layout.md`。未删除用途未完全证实的 `icon.svg`。）
+- [x] T-1264 新建页锚点选择、搜索与新建入口
+  - 验收：戒除类目标和备注追加开关不再以裸复选框漂移；戒除类目标仅在每日排期显示；锚点支持选择已绑定项目、按项目名/块 ID 本地搜索、清除，以及经公开 `lsNotebooks` + `createDocWithMd` 创建文档后自动绑定。
+  - 状态：done（新增 `note-anchor-picker` 纯投影与测试；编辑器补齐说明、整行复选框、锚点选择器和新建文档流程；未调用未验证的全库 SQL 搜索接口。真实宿主创建文档仍可由用户显式点击触发，本轮不以真机验收阻塞开发。）

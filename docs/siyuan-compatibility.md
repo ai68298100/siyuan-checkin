@@ -13,6 +13,8 @@
 
 公开接口面：`Plugin` 生命周期（`onload`/`onLayoutReady`/`onDataChanged`/`onunload`）、`Dialog`、`addDock`、`addTab`、`addCommand`、`addTopBar`、`saveData`/`loadData`、`showMessage`、`getFrontend`、`eventBus`。业务数据只保存在插件自己的 `data/storage/petal/siyuan-checkin/` 下，不写思源的 `.sy` 结构（渲染块配置块除外）。
 
+锚点编辑器的「新建文档」只使用思源 API 文档列出的 `POST /api/notebook/lsNotebooks` 与 `POST /api/filetree/createDocWithMd`；「选择/搜索」默认只投影插件已经保存的绑定。未把 `/api/search/fullTextSearchBlock` 或 SQL 路由当作跨版本公共依赖。
+
 以下三处确实依赖思源内部 DOM，改动宿主结构时只会降级为「不显示」，不会损坏数据，但必须如实登记：
 
 - 渲染块的代码块识别：`src/render/block-renderer.ts` 的 `isCheckinCodeBlock` 依次尝试 `data-subtype`、`.language-checkin` 类、`.protyle-action__language` 标签文本。

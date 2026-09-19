@@ -41,7 +41,7 @@
 - **弹性周期配额**：当期达成后的剩余日推导为自动完成日（仅计算层，不改写历史事件），连击跨配额周期桥接；智能体 API 新增 `getStrengthSummary` 只读强度摘要。
 - **宽容提醒**：已完成项退出待办提醒，跳过日不再提醒，超期延后自动清理；连续中断后显示「已重新开始」等反内疚文案。
 
-完整条目见 [17.0.0 变更记录](docs/v17.0.0-change-log.md) 和 [GitHub 发布说明](release-notes-17.0.0.md)。
+完整条目见 [17.0.0 变更记录](docs/v17.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-17.0.0.md)。
 
 ## 16.0.0 维护重点
 
@@ -53,7 +53,7 @@
 - **生态摘要 API**：新增有界的本地日期区间事件摘要，供 Task Horizon 等消费者读取聚合数据，不暴露备注、附件或私有存储结构。
 - **性能与交互门禁**：新增回顾页 1k/10k/100k 基线、批量追加和生命周期性能门禁，以及跨表面 busy、错误反馈和焦点连续性守门。
 
-完整条目见 [16.0.0 变更记录](docs/v16.0.0-change-log.md) 和 [GitHub 发布说明](release-notes-16.0.0.md)。
+完整条目见 [16.0.0 变更记录](docs/v16.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-16.0.0.md)。
 
 ## 14.0.0 维护重点
 
@@ -68,21 +68,21 @@
 - **dock 设置页布局修复**：恢复点/审计列表文字竖排修复。
 - **弹窗圆角缺口遮罩**：四角不再透出背后白色文档。
 
-完整条目见 [14.0.0 变更记录](docs/v14.0.0-change-log.md) 和 [GitHub 发布说明](release-notes-14.0.0.md)。
+完整条目见 [14.0.0 变更记录](docs/v14.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-14.0.0.md)。
 
 ## 13.0.2 维护重点
 
 - **回顾页体验**：桌面回顾页下滑时二级导航条钉在滚动区顶部（界面缩放环境下同样跟随）；跳转按钮按区块精确定位；宽容器日志按天双列排布；"展开其余 N 天"修复。
 - **头部布局**：480-959px 容器下范围页签与工具区并为一行，不再占用第二行。
 
-完整条目见 [13.0.2 变更记录](docs/v13.0.2-change-log.md) 和 [GitHub 发布说明](release-notes-13.0.2.md)。
+完整条目见 [13.0.2 变更记录](docs/v13.0.2-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-13.0.2.md)。
 
 ## 13.0.1 维护重点
 
 - **紧急修复**：编辑器新建条目保存被写后校验误判失败并回滚——校验指纹对"缺省 archived 字段"与"物化 false"不等价；现条目构造与规范化字段集合严格一致。v13.0.0 用户请尽快升级。
 - **走查宿主保真**：浏览器 QA 存储模拟按存储名分槽、克隆失败显式拒绝；模板目标值步长期望同步步长分离设计；双击提交等待卡片渲染后再点击。
 
-完整条目见 [13.0.1 变更记录](docs/v13.0.1-change-log.md) 和 [GitHub 发布说明](release-notes-13.0.1.md)。
+完整条目见 [13.0.1 变更记录](docs/v13.0.1-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-13.0.1.md)。
 
 ## 13.0.0 维护重点
 
@@ -92,7 +92,7 @@
 - **记录体验**：手机端已完成项即时折叠/展开；非二元任务可配置"每次打卡"增量，旧数据自动兼容。
 - **十万级数据性能**：事件、墓碑与日期修订全面索引化，追加、备注编辑、配额、规则、汇总、成就与完美日计算降至毫秒级，均带自动化门禁；测试资产增至 92 项、零退役。
 
-完整条目见 [13.0.0 变更记录](docs/v13.0.0-change-log.md) 和 [GitHub 发布说明](release-notes-13.0.0.md)。
+完整条目见 [13.0.0 变更记录](docs/v13.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-13.0.0.md)。
 
 ## 12.0.2 维护重点
 
@@ -102,7 +102,7 @@
 - **样式与移动端治理**：生产入口退役 legacy `index.scss`，设备能力规则归入组件层；移动编辑器结构、多宽度、安全区、键盘和模板触控进入标准门禁。
 - **测试资产治理**：所有 76 个测试文件均进入执行脚本，孤立/退役测试为 0；新增事件、范围和项目索引的运行期边界验证。
 
-完整条目见 [12.0.2 变更记录](docs/v12.0.2-change-log.md) 和 [GitHub 发布说明](release-notes-12.0.2.md)。
+完整条目见 [12.0.2 变更记录](docs/v12.0.2-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-12.0.2.md)。
 
 ## 12.0.0 重点
 
@@ -113,7 +113,7 @@
 - **提醒与事项**：日期事项支持生日、纪念日、账单、会员续费、节日等模板，以及一次性、周/月/季度/半年、农历和自定义间隔规则；提醒支持延期、跳过、恢复和逾期历史。
 - **可靠性**：保留快照、审计、冲突检测、重复事件去重和安全导入；建议工作流必须经过差异预览、用户确认和可撤销审计。
 
-完整条目见 [12.0.0 变更记录](docs/v12.0.0-change-log.md) 和 [GitHub 发布说明](release-notes-12.0.0.md)。
+完整条目见 [12.0.0 变更记录](docs/v12.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-12.0.0.md)。
 
 ## 安装与兼容性
 
@@ -285,9 +285,10 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [17.0.0 变更记录](docs/v17.0.0-change-log.md) · [16.0.0 变更记录](docs/v16.0.0-change-log.md) · [发布与回滚](docs/release-rollback.md)
+- [17.0.0 变更记录](docs/v17.0.0-change-log.md) · [16.0.0 变更记录](docs/v16.0.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
 - [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap-2026.md)
+- [仓库布局与整理规则](docs/repository-layout.md) · [发布说明归档](docs/releases/)
 - [4.0 UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 产品路线](docs/ui-product-roadmap.md)
 - [生态集成与 API](docs/ecosystem-integration.md) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [AI 集成计划](docs/ai-integration-plan.md) · [2.0 迁移说明](docs/v2.0-migration-notes.md) · [2.0 变更记录](docs/v2.0-change-log.md)

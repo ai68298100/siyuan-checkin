@@ -31,8 +31,11 @@ assert.match(readme, new RegExp(`(?:当前版本|Current version)[^\\n]*${escape
 const changeLogFilename = path.join("docs", `v${RELEASE_VERSION}-change-log.md`);
 assert.ok(fs.existsSync(path.join(root, changeLogFilename)), `release changelog missing: ${changeLogFilename}`);
 assert.match(readText(changeLogFilename), new RegExp(`(?:^|\\n)#.*${escapedReleaseVersion}`), "release changelog heading must include the current version");
-const releaseNotesFilename = `release-notes-${RELEASE_VERSION}.md`;
+const releaseNotesFilename = path.join("docs", "releases", `release-notes-${RELEASE_VERSION}.md`);
 assert.ok(fs.existsSync(path.join(root, releaseNotesFilename)), `release notes missing: ${releaseNotesFilename}`);
+const rootReleaseNotes = fs.readdirSync(root)
+    .filter((filename) => /^release-notes-\d+\.\d+\.\d+\.md$/.test(filename));
+assert.deepEqual(rootReleaseNotes, [], "release notes must stay under docs/releases/");
 const releaseNotes = readText(releaseNotesFilename);
 assert.match(releaseNotes, new RegExp(`\\bv${escapedReleaseVersion}\\b`), "release notes must identify the current version");
 const releaseHash = releaseNotes.match(/SHA-256(?:\*\*)?\s*[:：]\s*`([a-f0-9]{64})`/i)?.[1];
