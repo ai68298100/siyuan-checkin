@@ -1420,3 +1420,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 渲染块 doc/notebook 维度（T-1292/T-1234 遗留收口):```checkin``` 配置新增 "docId"/"notebook"——只统计锚点块位于该文档/笔记本的项目。纯层 AnchorDocIndex 注入 resolveBlockItems,fail-closed(无索引/未命中=空);胶水层同步读缓存,未命中锚点经 deps.resolveAnchorDocs(内核 /api/block/getBlockInfo,取 root_id/box,会话内缓存,失败按未命中)异步解析后强制重渲染一次,期间出加载占位。现有作用域行为不变;兼容文档登记该端点用途。checkin-block 测试 +12 断言(配置格式/fail-closed/双维度过滤);i18n +1 键(1122 对等)。
 
 T-1292 摘要回填后全链 exit 0。
+
+2026-09-20 渲染块真实宿主 E2E(T-1293):公开内核 API 创建笔记本/文档(文档 id 即锚点块),注入合成 ```checkin``` 代码块,经插件真实渲染管线断言——docId 命中渲染项目行、未命中文档 fail-closed 空视图。过程中发现并修复两处真实缺陷:①胶水 previous?.remove() 会把相邻渲染块当旧预览删除(真实产品缺陷:相邻两个 checkin 块互相摧毁)——预览挂归属标记 data-checkin-preview-for,只删自己的;②宿主锚点解析字段名错误(内核 getBlockInfo 返回 rootID 驼峰,非 root_id),修复后锚点归属解析生效。test:e2e 升为 15/15;摘要回填后全链 exit 0。

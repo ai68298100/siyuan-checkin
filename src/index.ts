@@ -369,8 +369,9 @@ export default class CheckinPlugin extends Plugin {
             this.anchorDocAttempted.add(blockId);
             try {
                 const response = await fetchSyncPost("/api/block/getBlockInfo", {id: blockId});
-                if (response?.code === 0 && response.data?.root_id && response.data?.box) {
-                    this.anchorDocCache.set(blockId, {doc: String(response.data.root_id), notebook: String(response.data.box)});
+                /* 内核 getBlockInfo 的字段是驼峰 rootID(实测 3.8.4),不是 root_id。 */
+                if (response?.code === 0 && response.data?.rootID && response.data?.box) {
+                    this.anchorDocCache.set(blockId, {doc: String(response.data.rootID), notebook: String(response.data.box)});
                 }
             } catch {
                 /* 查询失败按未命中处理,不阻塞渲染 */

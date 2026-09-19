@@ -27,6 +27,8 @@ export interface BlockRendererDeps {
 
 const PREVIEW_FLAG = "data-checkin-preview";
 const BLOCK_LANGUAGE = "checkin";
+const PREVIEW_OWNER_FLAG = "data-checkin-preview-for";
+let previewBlockSeq = 0;
 
 /** 思源 3.8.4 实测 DOM：语言名在 `.protyle-action__language` 文本里，
     代码块容器无 data-subtype；同时兼容旧版 `.language-checkin` 类。 */
@@ -73,19 +75,30 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, a
 
 /* 记录每个代码块上次渲染的配置文本：观察回调里仅在配置变化时重渲染，
    避免预览自身 DOM 改动触发观察风暴。 */
+/* T-1292:已发起过解析的锚点登记——不可解析锚点(如块被删除)不得反复触发解析+重渲染循环。 */
+const anchorResolveRequested = new Set<string>();
 const lastRenderedConfig = new WeakMap<HTMLElement, string>();
 
 export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps, options: {force?: boolean} = {}): void {
     const blocks = findCodeBlocks(protyleElement);
     for (const block of blocks) {
         const configText = readBlockConfigText(block).trim();
+        /* T-1293:预览按源块归属(唯一标记),相邻渲染块互不干扰——
+           否则相邻两个渲染块的预览/加载占位会被互相当成旧预览删掉。 */
+        if (!block.dataset.checkinBlockId) {
+            previewBlockSeq += 1;
+            block.dataset.checkinBlockId = `cb-${previewBlockSeq}`;
+        }
+        const ownerMarker = block.dataset.checkinBlockId;
         const previous = block.nextElementSibling;
-        const existing = previous?.getAttribute(PREVIEW_FLAG) === "true";
-        if (existing && !options?.force && lastRenderedConfig.get(block) === configText) continue;
-        previous?.remove();
+        const previousIsOurs = previous?.getAttribute(PREVIEW_OWNER_FLAG) === ownerMarker;
+        const previousIsAnyPreview = previous?.getAttribute(PREVIEW_FLAG) === "true";
+        if (previousIsOurs && !options?.force && lastRenderedConfig.get(block) === configText) continue;
+        if (previousIsOurs) previous?.remove();
         const parsed = parseCheckinBlockConfig(configText);
         const preview = document.createElement("div");
         preview.setAttribute(PREVIEW_FLAG, "true");
+        preview.setAttribute(PREVIEW_OWNER_FLAG, ownerMarker);
         preview.className = "lc-checkin__renderblock-host";
         if (!parsed.ok) {
             preview.innerHTML = `<div class="lc-checkin__renderblock-error" role="alert">${escapeHtml(parsed.error)}</div>`;
@@ -94,18 +107,20 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             const anchorIndex = needsAnchorIndex ? deps.getAnchorIndex?.() : undefined;
             if (needsAnchorIndex && deps.resolveAnchorDocs) {
                 const store = deps.getStore();
-                const missing = new Set<string>();
+                const pending = new Set<string>();
                 for (const item of store.items) {
                     const blockId = item.noteAnchor?.blockId;
                     if (item.archived || !blockId) continue;
-                    if (!anchorIndex || !anchorIndex.has(blockId)) missing.add(blockId);
+                    if ((!anchorIndex || !anchorIndex.has(blockId)) && !anchorResolveRequested.has(blockId)) pending.add(blockId);
                 }
-                if (missing.size) {
+                if (pending.size) {
+                    pending.forEach((blockId) => anchorResolveRequested.add(blockId));
                     /* 首次渲染时锚点归属未解析完:先出加载占位,解析完成后强制重渲染一次。 */
+                    preview.setAttribute(PREVIEW_OWNER_FLAG, ownerMarker);
                     preview.innerHTML = `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.scopeLoading"))}</div>`;
                     lastRenderedConfig.set(block, configText);
                     block.insertAdjacentElement("afterend", preview);
-                    void deps.resolveAnchorDocs([...missing]).then(() => {
+                    void deps.resolveAnchorDocs([...pending]).then(() => {
                         renderCheckinBlocksIn(protyleElement, deps, {force: true});
                     });
                     continue;

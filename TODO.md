@@ -2642,3 +2642,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1292 渲染块 doc/notebook 维度（T-1234 遗留缺口收口）
   - 验收:配置 docId/notebook(内核 id 格式校验,≥8 字符);作用域优先级 itemIds>group>doc/notebook>全部活跃;锚点归属经宿主 getBlockInfo 解析并缓存(fail-closed:未命中/无索引=空视图);胶水首次渲染先出加载占位再强制重渲染一次。
   - 状态:done(checkin-block.ts AnchorDocIndex+parse+resolve;block-renderer deps 扩展+加载占位;index.ts 缓存+解析器;compat 文档登记;checkin-block 测试 +12 断言;i18n +1 键(1122 对等))
+
+- [x] T-1293 渲染块真实宿主 E2E(渲染管线首次真实宿主自动化验证)
+  - 验收:docId 作用域块在真实内核渲染出项目行(锚点经 getBlockInfo 解析);未命中文档 fail-closed 空视图;发现并修复两处真实缺陷——胶水相邻渲染块互删预览(归属标记修复)、宿主解析字段名错误(rootID 非 root_id)。
+  - 状态:done(tests/e2e/render-block.spec.mjs;test:e2e 15/15)
