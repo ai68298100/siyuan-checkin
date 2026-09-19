@@ -10138,3 +10138,64 @@ details:not([open]) > :not(summary) { display: none !important; }
     font-size: 9.5px;
     font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   事项行操作列最终层（T-029 收口，用户真机反馈 2026-09-19）：
+   操作钮此前在不同容器宽度/表面下被 5 条规则反复改写（视口 340/600、
+   lc5 480-959、lc-dock 719/340、lc-tab 720），宽页签场景下折叠规则命中
+   而修复块不命中，按钮整体不可见。本层为权威终态：
+   桌面/宽容器 = 行内 4 钮图标列（右对齐）；
+   dock/窄容器 ≤719 = 操作钮换行平铺在内容下方（可见、可点）。
+   ============================================================ */
+.lc-checkin--occasions .lc-checkin__occasion-row-actions {
+    display: grid !important;
+    grid-template-columns: repeat(4, 30px) !important;
+    gap: 2px !important;
+    align-items: center !important;
+    justify-content: end !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button {
+    display: grid !important;
+    place-items: center !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > .lc-checkin__action-icon {
+    display: grid !important;
+    place-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+.lc-checkin--occasions .lc-checkin__occasion-row-actions .lc-checkin__small-button > .lc-checkin__action-label {
+    display: none !important;
+}
+
+/* 窄容器（dock 与极窄 lc5）：操作列放不下 4 钮时换行平铺，保持可见。 */
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 28px minmax(0, 1fr) !important;
+    }
+    .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+        grid-column: 2 !important;
+        grid-template-columns: repeat(4, 30px) !important;
+        justify-content: start !important;
+        justify-self: start !important;
+    }
+}
+@container lc5 (max-width: 719px) {
+    .lc-checkin--occasions .lc-checkin__occasion-manager-row {
+        grid-template-columns: 28px minmax(0, 1fr) !important;
+    }
+    .lc-checkin--occasions .lc-checkin__occasion-row-actions {
+        grid-column: 2 !important;
+        grid-template-columns: repeat(4, 30px) !important;
+        justify-content: start !important;
+        justify-self: start !important;
+    }
+}
