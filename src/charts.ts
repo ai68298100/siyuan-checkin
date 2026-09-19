@@ -221,7 +221,7 @@ export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new
 }
 
 /** 折线图 SVG：紫罗兰线条 + 数据点，宽度自适应（viewBox）。 */
-export function renderLineChart(series: TrendSeries, options: {width?: number; height?: number} = {}): string {
+export function renderLineChart(series: TrendSeries, options: {width?: number; height?: number; labelStride?: number} = {}): string {
     const width = options.width ?? 320;
     const height = options.height ?? 120;
     const padX = 30;
@@ -237,7 +237,9 @@ export function renderLineChart(series: TrendSeries, options: {width?: number; h
     const grid = [0, 25, 50, 75, 100].map((value) => { const y = scaleY(value); return `<line class="lc-chart-grid" x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}"/><text class="lc-chart-axis" x="${padX - 5}" y="${y + 3}" text-anchor="end">${value}%</text>`; }).join("");
     const area = `${padX},${plotBottom} ${coords.join(" ")} ${width - padX},${plotBottom}`;
     const dots = series.points.map((point, index) => `<circle cx="${(padX + index * stepX).toFixed(1)}" cy="${scaleY(point.value).toFixed(1)}" r="3" fill="currentColor"><title>${point.label}：${point.value}${series.unit}</title></circle>`).join("");
-    const labels = series.points.map((point, index) => index % 2 === 0 || index === series.points.length - 1 ? `<text x="${(padX + index * stepX).toFixed(1)}" y="${height - 5}" text-anchor="middle" class="lc-chart-label">${point.label}</text>` : "").join("");
+    /* labelStride：长序列（如 30 天强度曲线）按步长稀疏标注，避免文字重叠。 */
+    const stride = Math.max(1, options.labelStride ?? 2);
+    const labels = series.points.map((point, index) => index % stride === 0 || index === series.points.length - 1 ? `<text x="${(padX + index * stepX).toFixed(1)}" y="${height - 5}" text-anchor="middle" class="lc-chart-label">${point.label}</text>` : "").join("");
     return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${series.title}" preserveAspectRatio="none">` +
         `${grid}<polygon class="lc-chart-area" points="${area}"/><polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` +
         `${dots}${labels}</svg>`;
