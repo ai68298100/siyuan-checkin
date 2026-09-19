@@ -38,12 +38,21 @@ assert.match(releaseNotes, new RegExp(`\\bv${escapedReleaseVersion}\\b`), "relea
 const releaseHash = releaseNotes.match(/SHA-256(?:\*\*)?\s*[:：]\s*`([a-f0-9]{64})`/i)?.[1];
 assert.ok(releaseHash, "release notes must include a 64-character SHA-256 digest");
 assert.notEqual(releaseHash, "0".repeat(64), "release notes must not retain the zero digest placeholder");
+const packageHash = require("node:crypto").createHash("sha256")
+    .update(fs.readFileSync(path.join(root, "package.zip")))
+    .digest("hex");
+assert.equal(releaseHash, packageHash, "release notes SHA-256 must match the current package.zip");
 assert.match(packageManifest.scripts["test:quality"], /test:legacy-style/, "quality chain must include legacy style audit");
 assert.equal(packageManifest.description, "SiYuan plugin: 小飞驴打卡", "package metadata must use readable UTF-8 Chinese");
 assert.ok(!/灏忛|鎵撳崱/.test(packageManifest.description), "package metadata must not contain mojibake");
 assert.ok(fs.statSync(path.join(root, "package.zip")).size > 10_000, "package.zip must be a non-empty release archive");
 for (const filename of ["index.js", "index.css", "plugin.json", "README.md", "LICENSE.txt", plugin.icon, plugin.preview]) {
     assert.ok(filename && fs.existsSync(path.join(root, "dist", filename)), `dist asset missing: ${filename}`);
+}
+for (const filename of ["zh_CN.json", "en_US.json"]) {
+    const i18nPath = path.join(root, "dist", "i18n", filename);
+    assert.ok(fs.existsSync(i18nPath), `dist i18n asset missing: ${filename}`);
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(i18nPath, "utf8"))).sort(), ["dock.title", "entry.topBar", "openCheckin", "openCheckinTab"].sort(), `dist i18n keys must stay complete: ${filename}`);
 }
 const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
 for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {

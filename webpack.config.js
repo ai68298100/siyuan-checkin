@@ -34,10 +34,14 @@ function createZip(entries) {
     return new Promise((resolve, reject) => {
         const zip = new yazl.ZipFile();
         const chunks = [];
+        /* Keep release archives byte-for-byte reproducible. yazl otherwise
+           stamps every entry with the current time, making the package digest
+           change after every build even when all source bytes are identical. */
+        const reproducibleMtime = new Date(1980, 0, 1);
         zip.outputStream.on("data", (chunk) => chunks.push(chunk));
         zip.outputStream.on("end", () => resolve(Buffer.concat(chunks)));
         zip.outputStream.on("error", reject);
-        entries.forEach((entry) => zip.addBuffer(Buffer.from(entry.content), entry.name));
+        entries.forEach((entry) => zip.addBuffer(Buffer.from(entry.content), entry.name, {mtime: reproducibleMtime}));
         zip.end();
     });
 }
@@ -53,6 +57,7 @@ module.exports = (env, argv) => {
                 {from: "plugin.json", to: "./dist/plugin.json"},
                 {from: "README.md", to: "./dist/README.md"},
                 {from: "LICENSE", to: "./dist/LICENSE.txt"},
+                {from: "i18n", to: "./dist/i18n"},
                 {from: pluginManifest.icon, to: `./dist/${pluginManifest.icon}`},
                 ...(pluginManifest.preview ? [{from: pluginManifest.preview, to: `./dist/${pluginManifest.preview}`}] : []),
             ] : [

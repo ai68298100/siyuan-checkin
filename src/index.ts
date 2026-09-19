@@ -402,7 +402,7 @@ export default class CheckinPlugin extends Plugin {
                 /* Dock API 没有 minWidth；420px 为推荐宽度，拖窄后由容器查询兜底。 */
                 size: {width: 420, height: 0},
                 icon: "iconLvCheckin",
-                title: "小驴打卡",
+                title: t("dock.title"),
             },
             data: {},
             type: DOCK_TYPE,
@@ -450,14 +450,12 @@ export default class CheckinPlugin extends Plugin {
 
         this.addCommand({
             langKey: "openCheckin",
-            langText: "打开小驴打卡快速窗口",
             hotkey: QUICK_DIALOG_HOTKEY,
             callback: () => this.toggleQuickDialog(),
             globalCallback: () => this.toggleQuickDialog(),
         });
         if (this.supportsCustomTab) this.addCommand({
             langKey: "openCheckinTab",
-            langText: "在页签打开小驴打卡",
             callback: () => this.openTabPage(),
             globalCallback: () => this.openTabPage(),
         });
@@ -477,7 +475,7 @@ export default class CheckinPlugin extends Plugin {
             id: "openCheckinDialog",
             icon: "iconLvCheckin",
             position: "right",
-            title: "打开小驴打卡（Alt+Shift+C）",
+            title: t("entry.topBar"),
             callback: () => this.toggleQuickDialog(),
         });
         /* T-1234/T-1235/T-1236 渲染块：protyle 装载事件驱动 + 打卡数据事件刷新。

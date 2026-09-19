@@ -2492,10 +2492,11 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 状态：done（独立配置 `playwright.e2e.readonly.config.mjs` + `tests/e2e/readonly/`：复用 E2E 工作区、以 `serve --wd=... --port=... --readonly true` 起 6828 端口，前置自证内核确实拒绝 `putFile`；用例断言只读下 `recordEvent` 不报成功、插件保持 `isReady`、磁盘记录数不变。发现记 D-222：`--readonly` 是 `serve` 旗标且取字符串值，写成全局旗标会被 cobra 拒绝并打印帮助。`pnpm run test:e2e:readonly` 1/1）
 - [x] T-1250 移动顶栏入口文案 i18n 化 + 卫生守门补形态
   - 状态：done（`ensureMobileTopBarButtonFor` 的 `aria-label`/`title` 改走 `t("entry.mobileTopBar")`，中英双字典各加一键；`tests/i18n-hygiene.test.cjs` 增加对 `setAttribute("aria-label"|"title"|"placeholder", "中文")` 形态的检测——原守门只匹配 HTML 属性写法，这类调用一直漏网）
-- [ ] T-1251 宿主可见文案的 i18n：随包发布 `i18n/*.json`
+- [x] T-1251 宿主可见文案的 i18n：随包发布 `i18n/*.json`
   - 现状：`dist/` 不含 `i18n/` 目录，思源的插件 i18n 通道（按语言码 `zh_CN`/`en_US` 读取 `i18n/<lang>.json` 填充 `plugin.i18n`）取不到字典，`langKey` 因此无法本地化，只能硬写 `langText`
   - 影响（4 处宿主面文案，英文界面显示中文）：`src/index.ts` 的 dock `title`（约 :403）、两条 `addCommand.langText`（约 :451/:458）、`addTopBar` 的 `title`（约 :478）
   - 方案：webpack 产出 `i18n/zh_CN.json` 与 `i18n/en_US.json`（内容取自主命令/顶栏/dock 标签），删除 `langText` 让宿主按 `langKey` 查表；验收需在英文语言下核对命令面板与顶栏提示
+  - 状态：done（新增 `i18n/zh_CN.json`、`i18n/en_US.json` 并随生产包复制到 `dist/i18n/`；命令移除硬编码 `langText`，dock/顶栏使用插件 i18n 字典；发布资源测试锁定两份字典和四个宿主文案键。`pnpm run check`、生产构建通过；真实英文宿主界面仍需 B-007 现场核对。）
 - [ ] T-1252 i18n 卫生守门的行级豁免漏洞
   - 现状：`tests/i18n-hygiene.test.cjs` 只要同一行出现 `${t(` 就整行放行，一行里多个属性时后面的写死中文被放过（`src/render/review.ts` 约 :307 的 `aria-label="范围统计"` 即由此漏网；`src/render/fragments.ts` 约 :366、`src/index.ts` 约 :1630/:1669 需逐个复核）
   - 方案：改为按属性槽位逐个判定（每个 `aria-label=`/`title=` 独立检查是否 `${t(`），并清完 render 层 `title="中文"` 存量；属独立任务，不与拆除/存储工作混做
@@ -2511,7 +2512,8 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [ ] T-1257 移动端提示条遮挡回顾工具栏
   - 现象：思源的临时提示条（`#message`）在移动端会盖住工具栏按钮，E2E 里必须先移除提示条才能点中「导出报告」
   - 方案：给移动端弹层底部/工具栏区域预留避让空间（或在插件内提示条出现时临时抬高工具栏 z-index 与内边距），需要先在真机上确认遮挡高度再定，避免凭猜调整
-- [ ] T-1258 让 package.zip 可复现（固定条目时间戳）
+- [x] T-1258 让 package.zip 可复现（固定条目时间戳）
   - 现状：每次 `pnpm run build` 重新打包都会写入当前时间戳，`package.zip` 的 SHA-256 随构建时刻变化；v17.0.0 与 v17.1.0 都被迫在构建之后单独回填哈希，且任何一次重跑 `test:quality`（链内含 build）都会让已回填的摘要失效
   - 附带缺口：`tests/release-assets.test.cjs` 只要求发布说明里存在一个非全零的 64 位摘要，并不校验它是否等于当前 `package.zip` 的实际哈希——本轮就出现过「构建后哈希过期但门禁仍通过」
   - 方案：打包时用固定的 `date`（如取 `plugin.json` 版本对应的提交时间或 1980-01-01），使同一份源码产出字节一致的 zip；验收是连续两次 `pnpm run build` 后 `sha256sum package.zip` 相同
+  - 状态：done（`PackageZipPlugin` 为 yazl 每个条目固定 `mtime=1980-01-01`；`release-assets.test.cjs` 现在计算当前 `package.zip` SHA-256 并与发布说明逐字匹配。连续两次 `pnpm run build` 产出相同摘要 `f75723ff4f6f0cf725ee28405ccd70b55ef52284764a003b3b603a3757ce170a`；`pnpm run check`、`pnpm run check:release` 通过。当前 CSS 441,069 bytes，处于 420KB 警告区但低于 450KB 硬线。）
