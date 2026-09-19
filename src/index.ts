@@ -56,7 +56,7 @@ import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getChec
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
-import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
+import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {isTaskHorizonExternalRef} from "./ecosystem";
 
 const STORAGE_NAME = "checkin-store";
@@ -1072,6 +1072,69 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /* ===== 收件箱手动管理（T-1270）：设置页的重试/丢弃/撤销跳过并计入。 ===== */
+
+    /** 手动重试：立即处理一条待处理/阻塞条目——用户显式动作,不受自动退避节奏限制。 */
+    private async retryDockTomatoInboxEntry(identity: string): Promise<boolean> {
+        const entry = this.dockTomatoInbox.items.find((item) => item.identity === identity);
+        if (!entry) return false;
+        const result = await this.processDockTomatoCompletion({...entry, nextAttemptAt: undefined});
+        return result.kind === "recorded" || result.kind === "duplicate";
+    }
+
+    /** 丢弃：只清除收件箱条目,不写打卡墓碑——提供方若重发同一完成事件,会作为新通知重新接收。 */
+    private async discardDockTomatoInboxEntry(identity: string): Promise<boolean> {
+        const next = removeInboxEntry(this.dockTomatoInbox, identity);
+        if (next === this.dockTomatoInbox) return false;
+        this.dockTomatoInbox = next;
+        const persisted = await this.persistDockTomatoInbox();
+        this.scheduleDockTomatoInboxWake();
+        return persisted;
+    }
+
+    /** 撤销跳过并计入:同一受保护单元内先写 skip 墓碑、再复用内部 writer 追加完成记录;
+        主记录未入账时墓碑一并恢复,不留半完成状态(修复方案第五节)。 */
+    private async undoSkipAndRecordDockTomatoInboxEntry(identity: string): Promise<boolean> {
+        if (!this.acceptingOperations || this.initializationState !== "ready") return false;
+        return this.enqueueMutation(async (): Promise<boolean> => {
+            if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return false;
+            const entry = this.dockTomatoInbox.items.find((item) => item.identity === identity);
+            if (!entry) return false;
+            const completionDate = calendarDateFromKey(entry.localDate);
+            const skipEvents = getEventsForDay(this.store, entry.itemId, completionDate).filter((event) => isSkipEvent(event));
+            const storeBeforeSkipRemoval = this.store;
+            if (skipEvents.length) {
+                this.store = removeEvents(this.store, skipEvents, new Date().toISOString());
+            }
+            const result = await this.recordDockTomatoCompletionUnlocked(entry);
+            if (result.kind === "recorded" || result.kind === "duplicate") {
+                if (result.kind === "duplicate" && skipEvents.length) {
+                    /* duplicate 路径 writer 不持久化:skip 墓碑需要随本次显式保存。 */
+                    try {
+                        await this.persist();
+                    } catch {
+                        this.store = storeBeforeSkipRemoval;
+                        showMessage(t("msg.dockInboxUndoSkipFail"));
+                        return false;
+                    }
+                    this.invalidateSummary();
+                    this.renderBackgroundUpdate();
+                }
+                this.dockTomatoInbox = removeInboxEntry(this.dockTomatoInbox, identity);
+                await this.persistDockTomatoInbox();
+                this.scheduleDockTomatoInboxWake();
+                return true;
+            }
+            /* 未入账(含 writer 保存失败已自回滚):skip 墓碑一并恢复。 */
+            this.store = storeBeforeSkipRemoval;
+            const nowIso = new Date().toISOString();
+            if (result.kind === "retry") this.dockTomatoInbox = markInboxRetry(this.dockTomatoInbox, identity, result.reason, nowIso);
+            else if (result.kind === "blocked") this.dockTomatoInbox = markInboxBlocked(this.dockTomatoInbox, identity, result.reason, nowIso);
+            await this.persistDockTomatoInbox();
+            return false;
+        });
+    }
+
     private showToday() {
         showTodayFor(this as unknown as NavigationHost);
     }
@@ -1606,6 +1669,10 @@ export default class CheckinPlugin extends Plugin {
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
             dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
+            dockTomatoInbox: {
+                capacity: DOCKTOMATO_INBOX_CAPACITY,
+                entries: projectInboxEntries(this.dockTomatoInbox),
+            },
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
             todayGroupMode: this.todayGroupMode,
@@ -1680,6 +1747,29 @@ export default class CheckinPlugin extends Plugin {
             downloadDockTomatoDiagnosticsFor(inspectDockTomatoProvider());
             showMessage(t("set.tomatoIssuesExported"));
         });
+        root.querySelectorAll<HTMLElement>("[data-inbox-retry]").forEach((button) => button.addEventListener("click", (event) => {
+            const identity = button.dataset.inboxRetry || "";
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.retryDockTomatoInboxEntry(identity).then((ok) => {
+                showMessage(ok ? t("msg.dockInboxRetried") : t("msg.dockInboxRetryFail"));
+                this.render();
+            }));
+        }));
+        root.querySelectorAll<HTMLElement>("[data-inbox-undo-skip]").forEach((button) => button.addEventListener("click", (event) => {
+            const identity = button.dataset.inboxUndoSkip || "";
+            if (!window.confirm(t("msg.dockInboxUndoSkipConfirm"))) return;
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.undoSkipAndRecordDockTomatoInboxEntry(identity).then((ok) => {
+                showMessage(ok ? t("msg.dockInboxUndoSkipDone") : t("msg.dockInboxUndoSkipFail"));
+                this.render();
+            }));
+        }));
+        root.querySelectorAll<HTMLElement>("[data-inbox-discard]").forEach((button) => button.addEventListener("click", (event) => {
+            const identity = button.dataset.inboxDiscard || "";
+            if (!window.confirm(t("msg.dockInboxDiscardConfirm"))) return;
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.discardDockTomatoInboxEntry(identity).then((ok) => {
+                showMessage(ok ? t("msg.dockInboxDiscarded") : t("msg.dockInboxRetryFail"));
+                this.render();
+            }));
+        }));
         root.querySelector<HTMLSelectElement>("[data-setting-palette]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "lavender" || value === "ocean" || value === "forest" || value === "sunset") {

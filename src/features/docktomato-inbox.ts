@@ -200,3 +200,41 @@ export function inboxNextWakeDelayMs(store: DockTomatoInboxStore, nowIso: string
     }
     return earliest;
 }
+
+/** 设置页展示投影：只含纯数据的最新若干条（新在前），不含函数/对象。 */
+export interface DockTomatoInboxEntryView {
+    identity: string;
+    itemId: string;
+    itemUnit: string;
+    tomatoMode: "minutes" | "sessions";
+    localDate: string;
+    durationMinutes: number;
+    occurredAt: string;
+    state: "pending" | "blocked";
+    blockedReason?: string;
+    attempts: number;
+    lastError?: string;
+}
+
+export function projectInboxEntries(store: DockTomatoInboxStore, limit = 20): DockTomatoInboxEntryView[] {
+    const items = store.items;
+    const views: DockTomatoInboxEntryView[] = [];
+    for (let index = items.length - 1; index >= 0 && views.length < limit; index -= 1) {
+        const entry = items[index];
+        if (!entry) continue;
+        views.push({
+            identity: entry.identity,
+            itemId: entry.itemId,
+            itemUnit: entry.itemUnit,
+            tomatoMode: entry.tomatoMode,
+            localDate: entry.localDate,
+            durationMinutes: entry.durationMinutes,
+            occurredAt: entry.occurredAt,
+            state: entry.state,
+            blockedReason: entry.blockedReason,
+            attempts: entry.attempts,
+            lastError: entry.lastError,
+        });
+    }
+    return views;
+}

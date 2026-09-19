@@ -16,7 +16,7 @@ const {
     completionClock, normalizeValidIsoTimestamp, normalizeInboxStore, serializeInboxStore,
     upsertInboxEntry, removeInboxEntry, markInboxRetry, markInboxBlocked,
     inboxDueEntries, inboxNextWakeDelayMs, dockTomatoCompletionValue,
-    DOCKTOMATO_INBOX_CAPACITY, INBOX_RETRY_DELAYS_MS,
+    DOCKTOMATO_INBOX_CAPACITY, INBOX_RETRY_DELAYS_MS, projectInboxEntries,
 } = moduleUnderTest.exports;
 
 const entry = (overrides = {}) => ({
@@ -116,6 +116,15 @@ const entry = (overrides = {}) => ({
     assert.equal(roundTrip.items.length, 1);
     assert.deepEqual(roundTrip.items[0], retried.items[0]);
     assert.deepEqual(JSON.parse(serializeInboxStore(INBOX_RETRY_DELAYS_MS ? {schemaVersion: 1, items: []} : {schemaVersion: 1, items: []})).items, []);
+
+    /* 展示投影:最新在前、限量、纯数据。 */
+    const projected = projectInboxEntries(normalizeInboxStore([entry({identity: "old"}), entry(), entry({identity: "newest", receivedAt: "2026-09-19T11:00:00.000Z"})]), 2);
+    assert.equal(projected.length, 2);
+    assert.equal(projected[0].identity, "newest", "newest entry first");
+    assert.equal(projected[0].itemId, "read");
+    assert.equal(projected[0].state, "pending");
+    assert.equal("externalRef" in projected[0], false, "view must not leak storage fields shape beyond the view");
+    assert.deepEqual(projectInboxEntries(normalizeInboxStore([]), 5), []);
 
     console.log("Dock Tomato inbox module checks passed.");
 })().catch((error) => { console.error(error); process.exit(1); });

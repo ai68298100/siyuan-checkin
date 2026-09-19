@@ -35,6 +35,17 @@ assert.match(plugin, /storage-refresh-failed/, "a failed mutation refresh must s
 assert.match(plugin, /t\("record\.tomatoSource"\)/, "the provider source note must be localized, not hardcoded Chinese");
 assert.match(i18n, /"record\.tomatoSource": "来自底栏番茄钟"/, "Chinese source-note copy must exist");
 assert.match(i18n, /"record\.tomatoSource": "Recorded via Dock Tomato"/, "English source-note copy must exist");
+/* 收件箱手动管理(T-1270)。 */
+assert.match(settings, /data-docktomato-inbox/, "the settings page must surface the pending completion inbox");
+assert.match(settings, /data-inbox-retry=/, "each inbox entry must offer an explicit retry action");
+assert.match(settings, /data-inbox-undo-skip=/, "skipped-day entries must offer undo-skip-and-record");
+assert.match(settings, /data-inbox-discard=/, "each inbox entry must offer an explicit discard action");
+assert.match(plugin, /retryDockTomatoInboxEntry/, "manual retry must bypass the automatic backoff pacing");
+assert.match(plugin, /discardDockTomatoInboxEntry/, "discard must be an explicit user action");
+assert.match(plugin, /undoSkipAndRecordDockTomatoInboxEntry/, "undo-skip-and-record must exist for skipped-day entries");
+assert.match(plugin, /storeBeforeSkipRemoval/, "the skip tombstone must roll back together when the record is not written");
+assert.match(i18n, /"set\.inboxUndoSkip": "撤销跳过并计入"/, "Chinese undo-skip copy must exist");
+assert.match(i18n, /"set\.inboxUndoSkip": "Undo skip and record"/, "English undo-skip copy must exist");
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
 assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");

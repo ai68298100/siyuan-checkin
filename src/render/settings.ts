@@ -1,11 +1,12 @@
 /* 设置页视图：从 index.ts 外置；依赖以 SettingsViewContext 显式传入。 */
 import {t} from "../i18n";
-import {escapeHtml} from "../shared";
+import {escapeHtml, formatNumber} from "../shared";
 import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
 import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
+import type {DockTomatoInboxEntryView} from "../features/docktomato-inbox";
 
 let settingsViewSequence = 0;
 
@@ -24,6 +25,7 @@ export interface SettingsViewContext {
     focusTimerBusy?: boolean;
     dockTomatoDiagnostics?: DockTomatoProviderDiagnostics;
     dockTomatoCompletionIssues?: readonly DockTomatoCompletionIssue[];
+    dockTomatoInbox?: {capacity: number; entries: readonly DockTomatoInboxEntryView[]};
     palette: CheckinPalette;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -90,6 +92,21 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const completionIssueCount = ctx.dockTomatoCompletionIssues?.reduce((sum, issue) => sum + (issue.count || 1), 0) || 0;
     const completionIssueRow = latestCompletionIssue
         ? `<div class="lc-checkin__settings-row" data-focus-completion-issue="${latestCompletionIssue.reason}"><span class="lc-checkin__settings-label"><span>${t("set.tomatoIssueTitle")}</span><small>${t(completionIssueKeys[latestCompletionIssue.reason])}</small><small>${escapeHtml(new Date(latestCompletionIssue.at).toLocaleString())}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value is-muted">${t("set.tomatoIssueCount", {n: completionIssueCount})}</span><button class="lc-checkin__text-button" type="button" data-action="export-focus-issues">${t("set.tomatoIssueExport")}</button><button class="lc-checkin__text-button" type="button" data-action="clear-focus-issues">${t("set.tomatoIssueClear")}</button></span></div>`
+        : "";
+    /* 待回写番茄完成收件箱：展示最新若干条，提供重试/丢弃与「撤销跳过并计入」。
+       条目内容全部为纯数据投影；identity 经 escapeHtml 后再进属性。 */
+    const inboxState = ctx.dockTomatoInbox;
+    const renderInboxEntry = (entry: DockTomatoInboxEntryView) => {
+        const stateLabel = entry.state === "blocked"
+            ? (entry.blockedReason && completionIssueKeys[entry.blockedReason as DockTomatoCompletionIssueReason] ? t(completionIssueKeys[entry.blockedReason as DockTomatoCompletionIssueReason]) : t("set.inboxStateBlocked"))
+            : entry.attempts > 0 ? `${t("set.inboxStatePending")} · ${t("set.inboxAttempts", {n: entry.attempts})}` : t("set.inboxStatePending");
+        const amount = entry.tomatoMode === "sessions" ? `1 ${entry.itemUnit}` : `${formatNumber(entry.durationMinutes)} ${entry.itemUnit}`;
+        return `<div class="lc-checkin__inbox-entry" data-inbox-identity="${escapeHtml(entry.identity)}"><small>${escapeHtml(entry.itemId)} · ${escapeHtml(entry.localDate)} · ${escapeHtml(amount)}</small><small class="lc-checkin__settings-value is-muted">${stateLabel}</small><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-inbox-retry="${escapeHtml(entry.identity)}">${t("set.inboxRetry")}</button>${entry.state === "blocked" && entry.blockedReason === "skipped-day" ? `<button class="lc-checkin__text-button" type="button" data-inbox-undo-skip="${escapeHtml(entry.identity)}">${t("set.inboxUndoSkip")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-inbox-discard="${escapeHtml(entry.identity)}">${t("set.inboxDiscard")}</button></span></div>`;
+    };
+    const inboxEntries = inboxState?.entries ?? [];
+    const inboxCapacity = inboxState?.capacity ?? 0;
+    const inboxRows = inboxEntries.length
+        ? `<div class="lc-checkin__settings-row" data-docktomato-inbox><span class="lc-checkin__settings-label"><span>${t("set.inboxTitle")}</span><small>${t("set.inboxCapacity", {n: inboxEntries.length, total: inboxCapacity})}</small>${inboxEntries.map(renderInboxEntry).join("")}</span></div>`
         : "";
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));
@@ -167,6 +184,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
                     <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
                     ${completionIssueRow}
+                    ${inboxRows}
                     <div class="lc-checkin__settings-row" data-agent-state="${ctx.agentCapability.state}"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small>${agentWhere}</span><span class="lc-checkin__settings-value" role="status">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
