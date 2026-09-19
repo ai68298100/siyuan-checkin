@@ -1432,3 +1432,5 @@ T-1293 摘要回填后全链 exit 0。
 T-1295 摘要回填后全链 exit 0。
 
 2026-09-20 渲染块 notebook 维度 E2E 与 Obsidian 导出下载流 E2E(T-1297/T-1298):①渲染块 spec 扩为三块矩阵——docId 命中行、notebook 维度命中行、未命中文档空视图(nameCount=2 断言);②obsidian-export.spec.mjs——mobile bundle 设置页点击导出,捕获 2 个下载,H21 .md 含 frontmatter title+entries(acceptDownloads)。test:e2e 全套 16/16 通过。
+
+2026-09-20 文档一致性巡检:ecosystem-integration.md 从 API v4 更新到 v5——describe 补 capabilitiesSince;新增 v5 四能力说明(queryItems/getEventsInRange/recordEventsBatch/getStreaks)与 obsidian21 前缀登记指引;合作契约文档此前已同步(18 项能力/minApiVersion 钉 4)。ecosystem-docs/export-identity-docs/preferences-docs 回归通过。

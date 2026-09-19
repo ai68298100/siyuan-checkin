@@ -29,6 +29,9 @@ test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page
         const host = document.createElement("div");
         host.setAttribute("data-e2e-renderhost", "true");
         host.innerHTML =
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">{"view":"month"}</div></code></pre></div>` +
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">{"view":"heatmap","year":2026}</div></code></pre></div>` +
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">not-json-at-all</div></code></pre></div>` +
             `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", docId: anchoredDocId})}</div></code></pre></div>` +
             `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", notebook: notebookId})}</div></code></pre></div>` +
             `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "summary", docId: missDocId})}</div></code></pre></div>`;
@@ -42,8 +45,11 @@ test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page
         const hit = texts.some((text) => text.includes(item.name));
         const missIsEmpty = texts.some((text) => text.includes("没有匹配的活跃项目") || text.includes("No matching active items") || text.trim() === "");
         const nameCount = texts.filter((text) => text.includes(item.name)).length;
-        return {hit, missIsEmpty, nameCount};
-    }, {timeout: 20000}).toEqual({hit: true, missIsEmpty: true, nameCount: 2});
+        const monthRendered = await page.locator("[data-renderblock-month]").count();
+        const heatmapRendered = await page.locator("[data-renderblock-year]").count();
+        const errorShown = await page.locator("[data-checkin-preview] [role='alert']").count();
+        return {hit, missIsEmpty, nameCount, monthRendered, heatmapRendered, errorShown};
+    }, {timeout: 20000}).toEqual({hit: true, missIsEmpty: true, nameCount: 2, monthRendered: 1, heatmapRendered: 1, errorShown: 1});
 
     fs.writeFileSync(".artifacts/render-dump-final.json", JSON.stringify({ok: true, item: item.name}));
 });
