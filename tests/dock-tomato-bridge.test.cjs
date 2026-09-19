@@ -89,6 +89,7 @@ function makeFacade(name, options = {}) {
         dockTomatoTombstonedIdentities: () => tombstoned,
         async processDockTomatoCompletion(entry) {
             processed.push(entry);
+            if (processBehavior === "undef") return undefined;
             if (processBehavior === "throw") throw new Error("storage unavailable");
             if (processBehavior === "retry") return {kind: "retry", reason: "persist-failed"};
             if (processBehavior === "blocked") return {kind: "blocked", reason: "skipped-day"};
@@ -204,6 +205,28 @@ function makeFacade(name, options = {}) {
     await replacementAdapter.stop();
     assert.equal(replacementFacadeRef.pauses.length, 0, "a replaced facade must not be controlled through stale ownership");
 
+    /* 启动等待期间换绑:旧调用不得登记归属,新 facade 也不得被旧调用接管。 */
+    const lateFacade = makeFacade("late");
+    fakeWindow.__dockTomato = {focus: lateFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    const lateAdapter = adapters[adapters.length - 1];
+    let resolveLateStart;
+    lateFacade.start = (input) => new Promise((resolve) => {
+        resolveLateStart = () => resolve({ready: true, active: true, running: true, paused: false, sessionId: "late-session-1", mode: "countdown"});
+        void input;
+    });
+    const pendingLateStart = lateAdapter.start(items[0]);
+    const nextFacade = makeFacade("next");
+    fakeWindow.__dockTomato = {focus: nextFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    resolveLateStart?.();
+    await pendingLateStart;
+    await lateAdapter.stop();
+    assert.equal(lateFacade.pauses.length, 0, "an unbound start must not claim ownership or pause");
+    assert.equal(nextFacade.pauses.length, 0, "the replacement facade must not be taken over by a stale start");
+
     /* 完成通知:经宿主收件箱通道回写,载荷完整、completedAt 固定;stopFocus/recordEvent 不被调用。 */
     fakeWindow.dispatch("tomato:focus-session-completed", completion());
     await flush(); await flush();
@@ -256,17 +279,28 @@ function makeFacade(name, options = {}) {
     assert.equal(processed.length, 4);
     assert.equal(getDockTomatoCompletionIssues().some((issue) => issue.identity === "retry-persist"), false, "successful retry resolves its write diagnostic");
 
+    /* 宿主通道返回 undefined(排队器刷新失败被吞):不得误判为已入账。 */
+    clearDockTomatoCompletionIssues();
+    processBehavior = "undef";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "undef-result"}));
+    await flush(); await flush();
+    assert.equal(processed.length, 5);
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "undef-result");
+    processBehavior = "recorded";
+    clearDockTomatoCompletionIssues();
+
     /* in-flight 合并:首个通知未落定前,重复通知安静;落定后只入账一次。 */
     clearDockTomatoCompletionIssues();
     processBehavior = "deferred";
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
     await flush();
-    assert.equal(processed.length, 5);
+    assert.equal(processed.length, 6);
     assert.equal(typeof deferredProcessResolve, "function");
     for (let index = 0; index < 25; index += 1) {
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
         await flush();
-        assert.equal(processed.length, 5, `in-flight replay ${index + 1} must not reach the writer`);
+        assert.equal(processed.length, 6, `in-flight replay ${index + 1} must not reach the writer`);
     }
     deferredProcessResolve();
     await flush(); await flush();

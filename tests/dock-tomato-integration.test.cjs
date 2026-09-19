@@ -50,6 +50,8 @@ assert.match(bridge, /getStatus\.call\(candidate\)/, "provider status methods mu
 assert.match(bridge, /if \(!status\.readable\) return \{state: "error"/, "unreadable status must remain distinguishable");
 assert.match(bridge, /ownedFocus: OwnedFocusSession \| undefined/, "the bridge must track which provider session it started");
 assert.match(bridge, /interface OwnedFocusSession/, "session ownership must be a closed internal shape");
+assert.match(bridge, /bridgeDisposed \|\| boundFacade !== facade \|\| invalidatedFacades\.has\(facade\)/, "a start resolving after unbind or rebind must not claim ownership");
+assert.match(bridge, /if \(!result\) throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an undefined host write result must not be misread as recorded");
 assert.match(bridge, /DOCK_TOMATO_START_UNCONFIRMED/, "an unconfirmable start result must fail closed without grabbing control");
 assert.match(bridge, /invalidatedFacades\.add\(candidate\)/, "an explicit unavailable notice must invalidate the facade immediately");
 assert.match(bridge, /invalidatedFacades\.delete\(candidate\)/, "an explicit available:true notice is the only way to re-enable the same object");
@@ -153,6 +155,10 @@ assert.match(i18n, /"set\.tomatoStateError": "Could not read status"/, "English 
 assert.match(i18n, /"set\.tomatoUseBuiltin": "Use built-in timer"/, "English recovery action must be explicit");
 assert.match(today, /DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string>/, "Today must map every provider state to an actionable message");
 assert.match(today, /inspectDockTomatoProvider\(\)\.state/, "Today must inspect the current provider state at click time");
+assert.match(today, /focusItem\.direction === "atMost"/, "the focus entry must be disabled for at-most goals with a stated reason");
+assert.match(today, /msg\.focusAtMostUnsupported/, "the at-most focus entry must explain why it is unavailable");
+assert.match(i18n, /"msg\.focusAtMostUnsupported": "戒除类目标不支持专注计时打卡/, "Chinese copy must explain the at-most focus entry");
+assert.match(i18n, /"msg\.focusAtMostUnsupported": "At-most \(quitting\) goals do not support focus-timer check-ins/, "English copy must explain the at-most focus entry");
 /* 收件箱与宿主回写通道（D-227）。 */
 assert.match(inbox, /export function completionClock/, "the completion clock must live in one pure boundary");
 assert.match(inbox, /export function dockTomatoCompletionValue/, "completion value conversion must share one boundary");

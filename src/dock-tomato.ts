@@ -499,6 +499,8 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 if (!sessionId) {
                     throw dockTomatoError("DOCK_TOMATO_START_UNCONFIRMED");
                 }
+                /* 启动完成前已卸载/解绑/换绑新 facade:不登记归属,也不用旧调用接管新绑定。 */
+                if (bridgeDisposed || boundFacade !== facade || invalidatedFacades.has(facade)) return;
                 ownedFocus = {provider: facade, sessionId, itemId: context.itemId};
             },
             stop: async () => { await releaseOwnedSession(facade, providerCapabilities); },
@@ -558,6 +560,8 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             if (!host.processDockTomatoCompletion) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
             const result = await host.processDockTomatoCompletion(entry);
             if (bridgeDisposed) return;
+            /* 排队器刷新失败等极端路径会把结果吞成 undefined:不得误判为已入账。 */
+            if (!result) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
             if (result.kind === "recorded" || result.kind === "duplicate") {
                 resolveCompletionWriteIssue(identity);
                 completedIdentities.add(identity);

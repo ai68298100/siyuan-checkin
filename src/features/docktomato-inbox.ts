@@ -105,7 +105,8 @@ function normalizeEntry(value: unknown): DockTomatoPendingCompletion | undefined
     };
 }
 
-/** 损坏输入隔离：逐条校验，坏条目直接丢弃；按 receivedAt 保留最新若干条。 */
+/** 损坏输入隔离：逐条校验，坏条目直接丢弃；超出容量时保留先接收的条目
+    （upsert 路径负责满员显式拒绝，不在恢复路径静默丢新数据）。 */
 export function normalizeInboxStore(value: unknown): DockTomatoInboxStore {
     const source = typeof value === "string"
         ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })()

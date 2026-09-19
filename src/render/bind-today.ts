@@ -223,6 +223,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         element.querySelector<HTMLElement>("[data-action='focus']")?.addEventListener("click", () => {
             const focusItem = getActiveItemById(host.store, itemId);
             if (!focusItem) return;
+            /* 戒除类（atMost）不参与专注自动打卡：专注计时完成即记账，会把专注转换成破戒记录。
+               记录真实破戒请使用「记破戒」按钮（PR #5 评审第五节）。 */
+            if (focusItem.direction === "atMost") {
+                showMessage(t("msg.focusAtMostUnsupported"));
+                return;
+            }
             if (host.focusTimerProvider === "docktomato") {
                 if (!host.findFocusAdapter(focusItem, currentCalendarDate(), DOCK_TOMATO_ADAPTER_ID)) {
                     showMessage(t(DOCK_TOMATO_MESSAGE_KEYS[inspectDockTomatoProvider().state]));
