@@ -12,6 +12,7 @@ interface DockTomatoFocusStatus {
     running?: boolean;
     paused?: boolean;
     sessionId?: string;
+    mode?: string;
 }
 
 export interface DockTomatoRuntimeStatus {
@@ -21,6 +22,7 @@ export interface DockTomatoRuntimeStatus {
     running: boolean;
     paused: boolean;
     sessionId?: string;
+    mode?: string;
 }
 
 interface DockTomatoFocusApi {
@@ -28,7 +30,7 @@ interface DockTomatoFocusApi {
     capabilities?: readonly string[];
     getStatus(): DockTomatoFocusStatus;
     start(input: {durationMinutes?: number; confirm?: boolean; context: Record<string, string>}): Promise<DockTomatoFocusStatus>;
-    pause(): Promise<DockTomatoFocusStatus>;
+    pause(options?: {sessionId?: string}): Promise<DockTomatoFocusStatus>;
 }
 
 export type DockTomatoProviderState = "missing" | "incompatible-version" | "incomplete-api" | "missing-capabilities" | "not-ready" | "ready" | "running" | "paused" | "error";
@@ -90,6 +92,7 @@ export function readDockTomatoRuntimeStatus(candidate: unknown): DockTomatoRunti
             running,
             paused,
             sessionId: exactBoundedText(ownDataValue(status, "sessionId"), 240) || undefined,
+            mode: boundedText(ownDataValue(status, "mode"), 24) || undefined,
         };
     } catch {
         return {readable: false, ready: false, active: false, running: false, paused: false};
@@ -110,9 +113,11 @@ export function inspectDockTomatoProvider(host: DockTomatoHost = window as DockT
     }
     const status = readDockTomatoRuntimeStatus(candidate);
     if (!status.readable) return {state: "error", available: true, ready: false, active: false, apiVersion, capabilities};
-    if (status.paused) return {state: "paused", available: true, ready: status.ready, active: status.active, apiVersion, capabilities};
-    if (status.running || status.active) return {state: "running", available: true, ready: status.ready, active: status.active, apiVersion, capabilities};
-    if (!status.ready) return {state: "not-ready", available: true, ready: false, active: false, apiVersion, capabilities};
+    /* 就绪优先于运行/暂停:ready:false 时即使 active/paused 为真也不视为可调用接口
+       （docktomato PR #5 评审第四节的诊断优先级）。 */
+    if (!status.ready) return {state: "not-ready", available: true, ready: false, active: status.active, apiVersion, capabilities};
+    if (status.paused) return {state: "paused", available: true, ready: true, active: status.active, apiVersion, capabilities};
+    if (status.running || status.active) return {state: "running", available: true, ready: true, active: status.active, apiVersion, capabilities};
     return {state: "ready", available: true, ready: true, active: false, apiVersion, capabilities};
 }
 
@@ -309,8 +314,31 @@ interface DockCheckinApi {
     getItems(): CheckinItem[];
     getEvents(): CheckinEvent[];
     recordEvent(input: {itemId: string; value?: number; unit?: string; source?: "tomato"; note?: string; externalRef?: string}): Promise<unknown>;
-    registerFocusAdapter(adapter: FocusAdapter): () => void;
-    stopFocus(): Promise<boolean>;
+    registerFocusAdapter(adapter: FocusAdapter): (options?: {stopActive?: boolean}) => void;
+}
+
+/** 宿主侧纯清理通道：只清本地活动登记，不产生任何控制副作用（D-226）。 */
+export interface DockTomatoBridgeHost {
+    releaseFocusAdapter?(adapter: FocusAdapter): void;
+}
+
+/** 休息等非专注阶段不参与按会话控制——休息阶段可能沿用父专注的 sessionId。 */
+const CONTROLABLE_FOCUS_MODES = new Set(["countdown", "stopwatch"]);
+
+function isControlableFocusMode(mode: string | undefined): boolean {
+    return mode === undefined || CONTROLABLE_FOCUS_MODES.has(mode);
+}
+
+function dockTomatoError(code: string): Error & {code: string} {
+    const error = new Error(code) as Error & {code: string};
+    error.code = code;
+    return error;
+}
+
+interface OwnedFocusSession {
+    provider: DockTomatoFocusApi;
+    sessionId: string;
+    itemId: string;
 }
 
 function getDockTomatoFocusApi(): DockTomatoFocusApi | undefined {
@@ -321,7 +349,7 @@ function getDockTomatoFocusApi(): DockTomatoFocusApi | undefined {
 }
 
 function canUseDockTomato(item: CheckinItem): boolean {
-    return item.kind !== "binary" && !item.archived && Boolean(dockTomatoStartContext(item));
+    return item.kind !== "binary" && item.direction !== "atMost" && !item.archived && Boolean(dockTomatoStartContext(item));
 }
 
 function dockTomatoStartContext(item: CheckinItem): Record<string, string> | undefined {
@@ -356,16 +384,18 @@ function findCompletionItem(items: readonly CheckinItem[], itemId: string): Chec
  * facade and events; no DOM selectors, storage paths or private functions are
  * coupled across plugins.
  */
-export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChanged: () => void = () => undefined): () => void {
-    let disposeAdapter: (() => void) | undefined;
+export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChanged: () => void = () => undefined, host: DockTomatoBridgeHost = {}): () => void {
+    let disposeAdapter: ((options?: {stopActive?: boolean}) => void) | undefined;
     let boundFacade: DockTomatoFocusApi | undefined;
-    let releaseTimer: number | undefined;
-    let releaseOperation: Promise<void> | undefined;
+    let boundAdapter: FocusAdapter | undefined;
+    let ownedFocus: OwnedFocusSession | undefined;
     let providerRefreshQueued = false;
     let bridgeDisposed = false;
     const completedIdentities = new Set<string>();
     const completionIdentityOrder: string[] = [];
     const inFlightIdentities = new Set<string>();
+    /* 收到明确 available:false 的 facade 短时间内不再注册,直到新的可用通知或新对象。 */
+    const invalidatedFacades = new Set<DockTomatoFocusApi>();
 
     const scheduleProviderRefresh = () => {
         if (providerRefreshQueued || bridgeDisposed) return;
@@ -376,50 +406,58 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         });
     };
 
-    const requestFocusRelease = () => {
-        if (bridgeDisposed || releaseOperation) return;
-        const operation = Promise.resolve()
-            .then(() => api.stopFocus())
-            .then(() => undefined, () => undefined);
-        releaseOperation = operation;
-        void operation.then(() => {
-            if (releaseOperation !== operation) return;
-            releaseOperation = undefined;
-            if (!bridgeDisposed) scheduleProviderRefresh();
-        });
+    const releaseOwnedSession = async (facade: DockTomatoFocusApi, capabilities: readonly string[]): Promise<void> => {
+        const owned = ownedFocus;
+        if (!owned || owned.provider !== facade || invalidatedFacades.has(facade)) {
+            if (owned && owned.provider === facade) ownedFocus = undefined;
+            return;
+        }
+        const status = readDockTomatoRuntimeStatus(facade);
+        /* 已不是本会话、或已进入休息等不可控阶段:只释放归属,绝不暂停其他会话。 */
+        if (!status.active || status.sessionId !== owned.sessionId || !isControlableFocusMode(status.mode)) {
+            ownedFocus = undefined;
+            return;
+        }
+        try {
+            if (capabilities.includes("pause-session")) {
+                /* 原子按会话暂停:提供方在同一串行边界内校验会话后才暂停。 */
+                await facade.pause({sessionId: owned.sessionId});
+            } else {
+                /* 无按会话能力:getStatus 守门已把误暂停缩到窄窗口,跨会话保证依赖提供方原子性。 */
+                await facade.pause();
+            }
+        } catch (error) {
+            /* 保留归属:用户可重试停止;不把所有异常吞成"停止成功"。 */
+            throw error;
+        }
+        ownedFocus = undefined;
     };
 
-    const releaseWhenIdle = (remaining = 20) => {
-        if (bridgeDisposed) return;
-        if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
-        const facade = getDockTomatoFocusApi();
-        const status = readDockTomatoRuntimeStatus(facade);
-        if (!facade || (status.readable && !status.active)) {
-            releaseTimer = undefined;
-            requestFocusRelease();
-            return;
-        }
-        if (remaining <= 0) {
-            releaseTimer = undefined;
-            return;
-        }
-        releaseTimer = window.setTimeout(() => releaseWhenIdle(remaining - 1), 250);
+    const releaseSessionForIdentity = (identity: string): void => {
+        if (!ownedFocus || ownedFocus.sessionId !== identity) return;
+        ownedFocus = undefined;
+        /* 立即释放"正在专注"登记,不等待打卡入账结果。 */
+        if (boundAdapter) host.releaseFocusAdapter?.(boundAdapter);
     };
 
     const unbind = () => {
-        disposeAdapter?.();
+        disposeAdapter?.({stopActive: false});
         disposeAdapter = undefined;
         boundFacade = undefined;
+        boundAdapter = undefined;
+        /* facade 失效/替换/卸载:清除归属即可,当前番茄钟继续运行(D-226)。 */
+        ownedFocus = undefined;
     };
 
     const bind = () => {
         const facade = getDockTomatoFocusApi();
-        if (!facade) {
+        if (!facade || invalidatedFacades.has(facade)) {
             unbind();
             return;
         }
         if (boundFacade === facade && disposeAdapter) return;
         unbind();
+        const providerCapabilities = projectCapabilities(ownDataValue(facade, "capabilities"));
         const adapter: FocusAdapter = {
             id: DOCK_TOMATO_ADAPTER_ID,
             name: "底栏番茄钟",
@@ -430,23 +468,44 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             start: async (item) => {
                 const context = dockTomatoStartContext(item);
                 if (!context) {
-                    const error = new Error("DOCK_TOMATO_INVALID_CONTEXT") as Error & {code: string};
-                    error.code = "DOCK_TOMATO_INVALID_CONTEXT";
-                    throw error;
+                    throw dockTomatoError("DOCK_TOMATO_INVALID_CONTEXT");
                 }
-                await facade.start({
+                const result = await facade.start({
                     confirm: true,
                     context,
                 });
+                /* 启动结果必须带回最终会话身份:空 ID 或无法确认时不猜测、不接管、不暂停。 */
+                const sessionId = result && typeof result === "object" ? exactBoundedText(ownDataValue(result, "sessionId"), 240) : "";
+                if (!sessionId) {
+                    throw dockTomatoError("DOCK_TOMATO_START_UNCONFIRMED");
+                }
+                ownedFocus = {provider: facade, sessionId, itemId: context.itemId};
             },
-            stop: async () => { await facade.pause(); },
+            stop: async () => { await releaseOwnedSession(facade, providerCapabilities); },
         };
         boundFacade = facade;
+        boundAdapter = adapter;
         disposeAdapter = api.registerFocusAdapter(adapter);
     };
 
-    const handleAvailability = () => {
-        bind();
+    const handleAvailability = (event: Event) => {
+        const detail = customEventDetail(event);
+        const rawAvailable = detail && typeof detail === "object" ? ownDataValue(detail, "available") : undefined;
+        if (rawAvailable === false) {
+            /* 明确不可用通知:立即失效该 facade 并解绑,不等它从 window 消失。 */
+            const candidate = getDockTomatoCandidate(window as DockTomatoHost);
+            if (candidate) {
+                invalidatedFacades.add(candidate);
+                if (ownedFocus?.provider === candidate) ownedFocus = undefined;
+                if (boundFacade === candidate) unbind();
+            }
+        } else {
+            if (rawAvailable === true) {
+                const candidate = getDockTomatoCandidate(window as DockTomatoHost);
+                if (candidate) invalidatedFacades.delete(candidate);
+            }
+            bind();
+        }
         scheduleProviderRefresh();
     };
     const handleProviderState = () => scheduleProviderRefresh();
@@ -470,6 +529,8 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             const {item, value, identity} = decision;
             failureItemId = item.id;
             failureIdentity = identity;
+            /* 会话已结束:先释放归属与"正在专注"登记,再进入独立回写流程。 */
+            releaseSessionForIdentity(identity);
             inFlightIdentities.add(identity);
             claimedIdentity = identity;
             const recorded = await api.recordEvent({
@@ -489,7 +550,6 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 const expired = completionIdentityOrder.shift();
                 if (expired) completedIdentities.delete(expired);
             }
-            releaseWhenIdle();
             scheduleProviderRefresh();
         } catch {
             if (!bridgeDisposed) {
@@ -503,7 +563,19 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
     };
 
     const handleEnded = () => {
-        releaseWhenIdle();
+        /* focus-ended 仅作为重新读取状态的提示:校验当前会话与阶段后再清理本地记录,
+           不暂停刚进入的休息或新会话(休息可能沿用父专注的 sessionId)。 */
+        const owned = ownedFocus;
+        if (owned) {
+            const status = readDockTomatoRuntimeStatus(owned.provider);
+            const focusStillControlable = status.readable && status.active
+                && (!status.sessionId || status.sessionId === owned.sessionId)
+                && isControlableFocusMode(status.mode);
+            if (!focusStillControlable) {
+                ownedFocus = undefined;
+                if (boundAdapter) host.releaseFocusAdapter?.(boundAdapter);
+            }
+        }
         scheduleProviderRefresh();
     };
 
@@ -520,10 +592,10 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         window.removeEventListener("tomato:focus-session-paused", handleProviderState);
         window.removeEventListener(DOCK_TOMATO_COMPLETED_EVENT, handleCompleted);
         window.removeEventListener(DOCK_TOMATO_ENDED_EVENT, handleEnded);
-        if (releaseTimer !== undefined) window.clearTimeout(releaseTimer);
         inFlightIdentities.clear();
         completedIdentities.clear();
         completionIdentityOrder.splice(0, completionIdentityOrder.length);
+        invalidatedFacades.clear();
         unbind();
     };
 }

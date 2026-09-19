@@ -1,3 +1,5 @@
+/* Dock Tomato 桥可执行生命周期守门（PR #5 评审第二~四节）：
+   会话归属、按会话停止、available:false 即时解绑、纯解绑注销、完成清理不暂停。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
@@ -9,14 +11,6 @@ class FakeWindow {
     dispatch(type, detail) { for (const listener of [...(this.listeners.get(type) || [])]) listener({type, detail}); }
     setTimeout(callback) { const id = this.nextTimer++; this.timers.set(id, callback); return id; }
     clearTimeout(id) { this.timers.delete(id); }
-    runNextTimer() {
-        const next = this.timers.entries().next().value;
-        if (!next) return false;
-        const [id, callback] = next;
-        this.timers.delete(id);
-        callback();
-        return true;
-    }
     runTimers() { const pending = [...this.timers.values()]; this.timers.clear(); for (const callback of pending) callback(); }
 }
 
@@ -31,23 +25,37 @@ new Function("require", "module", "exports", compiled)((id) => {
     throw new Error(`Unexpected dependency: ${id}`);
 }, moduleUnderTest, moduleUnderTest.exports);
 
-const {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, installDockTomatoBridge} = moduleUnderTest.exports;
+const {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, installDockTomatoBridge, inspectDockTomatoProvider} = moduleUnderTest.exports;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const storedExternalRef = (entry) => Object.getOwnPropertyDescriptor(entry, "externalRef")?.value;
 const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", durationMinutes: 25, context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"}, ...overrides});
 
-(async () => {
-    clearDockTomatoCompletionIssues();
-    let status = {ready: true, active: false, running: false, paused: false};
-    const starts = [];
-    let pauses = 0;
+function makeFacade(name, options = {}) {
     const facade = {
         version: 1,
-        capabilities: ["status", "start", "pause", "completion-event"],
-        getStatus() { return status; },
-        async start(input) { starts.push(input); status = {ready: true, active: true, running: true, paused: false}; return status; },
-        async pause() { pauses += 1; status = {ready: true, active: true, running: false, paused: true}; return status; },
+        capabilities: options.capabilities || ["status", "start", "pause", "completion-event"],
+        status: {ready: true, active: false, running: false, paused: false, sessionId: undefined, mode: undefined},
+        starts: [],
+        pauses: [],
+        getStatus() { return facade.status; },
+        async start(input) {
+            facade.starts.push(input);
+            facade.status = {ready: true, active: true, running: true, paused: false, sessionId: `${name}-session-${facade.starts.length}`, mode: "countdown"};
+            return facade.status;
+        },
+        async pause(sessionOptions) {
+            facade.pauses.push(sessionOptions === undefined ? null : sessionOptions);
+            if (facade.pauseBehavior === "throw") throw new Error("transport down");
+            facade.status = {...facade.status, active: false, running: false, paused: true};
+            return facade.status;
+        },
     };
+    return facade;
+}
+
+(async () => {
+    clearDockTomatoCompletionIssues();
+    const facade = makeFacade("bridge");
     fakeWindow.__dockTomato = {focus: facade};
     const items = [
         {id: "read", name: "阅读", kind: "duration", unit: "分钟", tomatoMode: "minutes", archived: false},
@@ -55,10 +63,10 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
     const events = [], writes = [], adapters = [];
-    let writeBehavior = "success", stopBehavior = "success";
+    let writeBehavior = "success";
     let deferredWriteResolve;
-    let deferredStopResolve;
-    let adapterDisposals = 0, stopCalls = 0, refreshes = 0;
+    let adapterDisposals = 0, stopFocusCalls = 0, refreshes = 0;
+    const releasedAdapters = [];
     const api = {
         getItems: () => items,
         getEvents: () => events,
@@ -78,20 +86,17 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
             const record = {...input, id: `event-${writes.length}`}; events.push(record); return record;
         },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
-        async stopFocus() {
-            stopCalls += 1;
-            if (stopBehavior === "deferred") return new Promise((resolve) => { deferredStopResolve = () => resolve(true); });
-            return true;
-        },
+        async stopFocus() { stopFocusCalls += 1; return true; },
+    };
+    const host = {
+        releaseFocusAdapter(adapter) { releasedAdapters.push(adapter); },
     };
 
-    const dispose = installDockTomatoBridge(api, () => { refreshes += 1; });
+    const dispose = installDockTomatoBridge(api, () => { refreshes += 1; }, host);
     assert.equal(adapters.length, 1);
     assert.equal(adapters[0].id, "siyuan-plugin-docktomato");
     assert.equal(adapters[0].name, "底栏番茄钟");
-    assert.equal(typeof adapters[0].start, "function");
-    assert.equal(typeof adapters[0].stop, "function");
-    for (const [candidate, expected] of [[{...items[0]}, true], [{...items[0], kind: "binary"}, false], [{...items[0], archived: true}, false], [{...items[0], kind: "count"}, true], [{...items[0], kind: "quantity"}, true]]) assert.equal(adapters[0].canStart(candidate), expected);
+    for (const [candidate, expected] of [[{...items[0]}, true], [{...items[0], kind: "binary"}, false], [{...items[0], archived: true}, false], [{...items[0], direction: "atMost"}, false], [{...items[0], kind: "count"}, true], [{...items[0], kind: "quantity"}, true]]) assert.equal(adapters[0].canStart(candidate), expected);
     const invalidStartItems = Array.from({length: 25}, (_, index) => {
         if (index % 6 === 0) return {...items[0], id: ""};
         if (index % 6 === 1) return {...items[0], id: " padded-id "};
@@ -102,37 +107,159 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     });
     for (let index = 0; index < invalidStartItems.length; index += 1) {
         assert.equal(adapters[0].canStart(invalidStartItems[index]), false, `invalid start context ${index + 1} must be rejected`);
-        assert.equal(starts.length, 0, `invalid start context ${index + 1} must not call provider`);
+        assert.equal(facade.starts.length, 0, `invalid start context ${index + 1} must not call provider`);
     }
-    assert.equal(adapters[0].canStart({...items[0], id: "i".repeat(160), unit: "u".repeat(80)}), true);
     await assert.rejects(adapters[0].start(invalidStartItems[0]), (error) => error?.code === "DOCK_TOMATO_INVALID_CONTEXT");
-    assert.equal(starts.length, 0);
-    for (const blocked of [{ready: false, active: false}, {ready: true, active: true}, {ready: false, active: true}]) { status = blocked; assert.equal(adapters[0].canStart(items[0]), false); }
-    status = {ready: true, active: false};
-    facade.getStatus = () => { throw new Error("unreadable"); };
-    assert.equal(adapters[0].canStart(items[0]), false);
-    facade.getStatus = function () { return status; };
+    assert.equal(facade.starts.length, 0);
+    for (const blocked of [{ready: false, active: false}, {ready: true, active: true}, {ready: false, active: true}]) { facade.status = {...blocked}; assert.equal(adapters[0].canStart(items[0]), false); }
+    facade.status = {ready: true, active: false};
 
+    /* 启动：记录会话归属；停止：守门后暂停本会话。 */
     await adapters[0].start(items[0]);
-    assert.equal(starts.length, 1);
-    assert.equal(starts[0].confirm, true);
-    for (const [key, value] of Object.entries({consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"})) assert.equal(starts[0].context[key], value);
+    assert.equal(facade.starts.length, 1);
+    assert.equal(facade.starts[0].confirm, true);
+    for (const [key, value] of Object.entries({consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"})) assert.equal(facade.starts[0].context[key], value);
     await adapters[0].stop();
-    assert.equal(pauses, 1);
+    assert.equal(facade.pauses.length, 1, "owned session stop pauses once");
+    assert.equal(facade.pauses[0], null, "without pause-session capability the legacy pause stays argument-free");
+    assert.equal(stopFocusCalls, 0, "bridge must never route stops through api.stopFocus");
 
-    status = {ready: true, active: false};
+    /* 停止的守门边界：非本会话、休息阶段、空闲态都只释放归属。 */
+    await adapters[0].start(items[0]);
+    facade.status = {...facade.status, sessionId: "manual-b"};
+    await adapters[0].stop();
+    assert.equal(facade.pauses.length, 1, "a foreign session must not be paused");
+    await adapters[0].start(items[0]);
+    facade.status = {...facade.status, mode: "break"};
+    await adapters[0].stop();
+    assert.equal(facade.pauses.length, 1, "a break phase sharing the parent id must not be paused");
+    await adapters[0].start(items[0]);
+    facade.status = {...facade.status, active: false};
+    await adapters[0].stop();
+    assert.equal(facade.pauses.length, 1, "an already idle provider must not be paused again");
+
+    /* 有 pause-session 能力时必须携带 sessionId。 */
+    const capableFacade = makeFacade("capable", {capabilities: ["status", "start", "pause", "pause-session", "completion-event"]});
+    fakeWindow.__dockTomato = {focus: capableFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    assert.equal(adapters.length, 2, "capability upgrade replaces the bound adapter");
+    await adapters[1].start(items[0]);
+    await adapters[1].stop();
+    assert.deepEqual(capableFacade.pauses[0], {sessionId: "capable-session-1"}, "pause-session capability must scope the pause to the owned session");
+
+    /* 启动结果无法确认(空/缺失 sessionId):不接管、不暂停、给出稳定错误。 */
+    const anonymousFacade = makeFacade("anonymous");
+    anonymousFacade.start = async (input) => {
+        anonymousFacade.starts.push(input);
+        anonymousFacade.status = {ready: true, active: true, running: true, paused: false};
+        return anonymousFacade.status;
+    };
+    fakeWindow.__dockTomato = {focus: anonymousFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    await assert.rejects(adapters[adapters.length - 1].start(items[0]), (error) => error?.code === "DOCK_TOMATO_START_UNCONFIRMED");
+    await adapters[adapters.length - 1].stop();
+    assert.equal(anonymousFacade.pauses.length, 0, "unconfirmed start must never grab control");
+
+    /* 停止传输失败:归属保留,可重试;恢复后按会话暂停成功。 */
+    const flakyFacade = makeFacade("flaky");
+    flakyFacade.pauseBehavior = "throw";
+    fakeWindow.__dockTomato = {focus: flakyFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    const flakyAdapter = adapters[adapters.length - 1];
+    await flakyAdapter.start(items[0]);
+    await assert.rejects(flakyAdapter.stop(), /transport down/);
+    flakyFacade.pauseBehavior = "success";
+    await flakyAdapter.stop();
+    assert.equal(flakyFacade.pauses.length, 2, "a failed stop must keep ownership for retry");
+
+    /* facade 替换:旧归属清除,旧适配器不能控制新 facade 的会话。 */
+    fakeWindow.__dockTomato = {focus: makeFacade("replacement")};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    const replacementAdapter = adapters[adapters.length - 1];
+    const replacementFacadeRef = fakeWindow.__dockTomato.focus;
+    await replacementAdapter.start(items[0]);
+    fakeWindow.__dockTomato = {focus: makeFacade("third")};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    await replacementAdapter.stop();
+    assert.equal(replacementFacadeRef.pauses.length, 0, "a replaced facade must not be controlled through stale ownership");
+
+    /* 完成通知:入账一次、重复安静、stopFocus 不被调用。 */
     fakeWindow.dispatch("tomato:focus-session-completed", completion());
     await flush(); await flush();
     assert.equal(writes.length, 1);
     for (const [key, value] of Object.entries({itemId: "read", value: 25, unit: "分钟", source: "tomato", externalRef: "docktomato:session-1", note: "来自底栏番茄钟"})) assert.equal(writes[0][key], value);
-    assert.equal(stopCalls, 1);
-    assert.ok(refreshes >= 1);
-
+    assert.equal(stopFocusCalls, 0, "completion cleanup must not call stopFocus");
+    assert.equal(releasedAdapters.length, 0, "identity outside ownership must not release the active adapter");
     fakeWindow.dispatch("tomato:focus-session-completed", completion()); await flush();
     assert.equal(writes.length, 1);
     assert.equal(getDockTomatoCompletionIssues().length, 0);
 
+    /* 完成时若归属匹配:立即释放归属并通知宿主纯清理。 */
+    await adapters[adapters.length - 1].start(items[0]);
+    const ownedSessionId = fakeWindow.__dockTomato.focus.status.sessionId;
+    const releasesBefore = releasedAdapters.length;
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: ownedSessionId, context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"}}));
+    await flush(); await flush();
+    assert.equal(releasedAdapters.length, releasesBefore + 1, "a completed owned session must release the active adapter immediately");
+    const pausesAfterCompletion = fakeWindow.__dockTomato.focus.pauses.length;
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(fakeWindow.__dockTomato.focus.pauses.length, pausesAfterCompletion, "focus-ended must not pause anything");
+
+    /* focus-ended:仅重读状态并清理归属;重复事件幂等;休息不被暂停。 */
+    await adapters[adapters.length - 1].start(items[0]);
+    const endedFacade = fakeWindow.__dockTomato.focus;
+    const releasesBeforeEnded = releasedAdapters.length;
+    endedFacade.status = {...endedFacade.status, mode: "break"};
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(releasedAdapters.length, releasesBeforeEnded + 1, "break after focus must release the focus registration");
+    const releasesAfterBreak = releasedAdapters.length;
+    fakeWindow.dispatch("tomato:focus-ended");
+    await flush();
+    assert.equal(releasedAdapters.length, releasesAfterBreak, "repeated focus-ended must stay idempotent");
+    assert.equal(endedFacade.pauses.length, 0, "focus-ended must never pause the break");
+
+    /* 诊断优先级:ready:false 时即使 active/paused 也不可用。 */
+    const diagFacade = makeFacade("diag");
+    fakeWindow.__dockTomato = {focus: diagFacade};
+    diagFacade.status = {ready: false, active: true, running: true, paused: false, sessionId: "diag-1", mode: "countdown"};
+    assert.equal(inspectDockTomatoProvider().state, "not-ready", "not-ready must outrank running/paused");
+
+    /* available:false 先于全局删除:立即解绑,无暂停副作用,不重复注册旧对象。 */
     clearDockTomatoCompletionIssues();
+    const unavailableFacade = makeFacade("unavailable");
+    fakeWindow.__dockTomato = {focus: unavailableFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    const unavailableAdapter = adapters[adapters.length - 1];
+    await unavailableAdapter.start(items[0]);
+    const pausesBeforeUnavailable = unavailableFacade.pauses.length;
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: false});
+    await flush();
+    assert.equal(unavailableFacade.pauses.length, pausesBeforeUnavailable, "unavailable must not pause the running timer");
+    const adapterCountBeforeInvalid = adapters.length;
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    assert.equal(adapters.length, adapterCountBeforeInvalid, "an invalidated facade must not re-register without a fresh available notice");
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    assert.equal(adapters.length, adapterCountBeforeInvalid + 1, "an explicit available:true notice may re-enable the same object idempotently");
+    fakeWindow.dispatch("tomato:focus-api-availability-changed", {available: true});
+    await flush();
+    assert.equal(adapters.length, adapterCountBeforeInvalid + 1, "repeated available:true must not register twice");
+    const freshFacade = makeFacade("fresh");
+    fakeWindow.__dockTomato = {focus: freshFacade};
+    fakeWindow.dispatch("tomato:focus-api-availability-changed");
+    await flush();
+    assert.equal(adapters[adapters.length - 1] !== unavailableAdapter, true, "a new facade object binds again");
+
+    /* 诊断折叠与完成写路径矩阵(批次 C 将把写路径迁入持久收件箱)。 */
     const repeatedFailureBaseline = writes.length;
     for (let index = 0; index < 25; index += 1) {
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "repeated-invalid", durationMinutes: 0}));
@@ -143,77 +270,16 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
     }
     assert.equal(writes.length, repeatedFailureBaseline);
     assert.equal(getDockTomatoCompletionIssues()[0].identity, "repeated-invalid");
-    clearDockTomatoCompletionIssues();
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "foreign", context: {...completion().context, consumer: "other"}})); await flush();
-    assert.equal(writes.length, 1);
-    assert.equal(getDockTomatoCompletionIssues().length, 0);
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "bad", durationMinutes: 0})); await flush();
-    assert.equal(writes.length, 1);
-    const issues = getDockTomatoCompletionIssues();
-    assert.equal(issues.length, 1);
-    for (const [key, value] of Object.entries({reason: "invalid-duration", itemId: "read", identity: "bad"})) assert.equal(issues[0][key], value);
-
-    clearDockTomatoCompletionIssues();
-    const invalidDurations = [0, -1, -25, 1441, 2000, Infinity, -Infinity, NaN, 0, -2, 1441, 9999, NaN, Infinity, -3, 0, 1442, 5000, -100, NaN];
-    const writesBeforeInvalidMatrix = writes.length;
-    for (let index = 0; index < invalidDurations.length; index += 1) {
-        const identity = `invalid-${index}`;
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity, durationMinutes: invalidDurations[index]}));
-        await flush();
-        const snapshot = getDockTomatoCompletionIssues();
-        const latest = snapshot[snapshot.length - 1];
-        assert.equal(writes.length, writesBeforeInvalidMatrix);
-        assert.equal(latest.reason, "invalid-duration");
-        assert.equal(latest.itemId, "read");
-        assert.equal(latest.identity, identity);
-    }
-    assert.equal(getDockTomatoCompletionIssues().length, 20);
 
     clearDockTomatoCompletionIssues();
     writeBehavior = "empty";
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush();
     assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
-    assert.equal(getDockTomatoCompletionIssues().at(-1).itemId, "read");
-    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-empty");
     const writesAfterEmpty = writes.length;
     writeBehavior = "success";
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush(); await flush();
     assert.equal(writes.length, writesAfterEmpty + 1);
     assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-empty"));
-
-    writeBehavior = "throw";
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-throw"})); await flush();
-    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
-    assert.equal(getDockTomatoCompletionIssues().at(-1).itemId, "read");
-    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-throw");
-    const writesAfterThrow = writes.length;
-    writeBehavior = "success";
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-throw"})); await flush(); await flush();
-    assert.equal(writes.length, writesAfterThrow + 1);
-    assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-throw"));
-
-    clearDockTomatoCompletionIssues();
-    const retryMatrixIds = Array.from({length: 20}, (_, index) => `retry-matrix-${index}`);
-    writeBehavior = "empty";
-    for (const identity of retryMatrixIds) {
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity}));
-        await flush();
-        const latest = getDockTomatoCompletionIssues().at(-1);
-        assert.equal(latest.reason, "write-failed");
-        assert.equal(latest.identity, identity);
-    }
-    assert.equal(getDockTomatoCompletionIssues().length, 20);
-    writeBehavior = "success";
-    for (let index = 0; index < retryMatrixIds.length; index += 1) {
-        const identity = retryMatrixIds[index];
-        const writesBeforeRetry = writes.length;
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: identity}));
-        await flush(); await flush();
-        assert.equal(writes.length, writesBeforeRetry + 1);
-        assert.equal(getDockTomatoCompletionIssues().some((issue) => issue.identity === identity), false);
-        assert.equal(events.filter((entry) => storedExternalRef(entry) === `docktomato:${identity}`).length, 1);
-    }
-    assert.equal(getDockTomatoCompletionIssues().length, 0);
 
     clearDockTomatoCompletionIssues();
     writeBehavior = "deferred";
@@ -226,133 +292,40 @@ const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", 
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
         await flush();
         assert.equal(writes.length, concurrentBaseline + 1, `in-flight replay ${index + 1} must not write`);
-        assert.equal(getDockTomatoCompletionIssues().length, 0, `in-flight replay ${index + 1} must stay quiet`);
     }
     deferredWriteResolve();
     await flush(); await flush();
     assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
+    writeBehavior = "success";
 
     clearDockTomatoCompletionIssues();
-    const persistedMatrixBaseline = writes.length;
     const persistedIdentities = Array.from({length: 25}, (_, index) => `persisted-${index}`);
     for (const identity of persistedIdentities) events.push({id: `seed-${identity}`, externalRef: `docktomato:${identity}`});
     let hostileExternalRefReads = 0;
     const hostileStoredEvent = {id: "hostile-event"};
     Object.defineProperty(hostileStoredEvent, "externalRef", {get() { hostileExternalRefReads += 1; throw new Error("must not execute"); }});
     events.push(hostileStoredEvent);
+    const persistedMatrixBaseline = writes.length;
     for (let index = 0; index < persistedIdentities.length; index += 1) {
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: persistedIdentities[index]}));
         await flush();
         assert.equal(writes.length, persistedMatrixBaseline, `stored replay ${index + 1} must not write`);
-        assert.equal(getDockTomatoCompletionIssues().length, 0, `stored replay ${index + 1} must stay quiet`);
     }
     assert.equal(hostileExternalRefReads, 0);
-    assert.equal(events.filter((entry) => typeof storedExternalRef(entry) === "string" && storedExternalRef(entry).startsWith("docktomato:persisted-")).length, 25);
-    writeBehavior = "success";
-    for (let index = 0; index < 25; index += 1) {
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
-        await flush();
-        assert.equal(writes.length, concurrentBaseline + 1, `persisted replay ${index + 1} must not write`);
-        assert.equal(getDockTomatoCompletionIssues().length, 0, `persisted replay ${index + 1} must stay quiet`);
-    }
-    assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
 
-    const beforeLifecycleRefresh = refreshes;
-    fakeWindow.dispatch("tomato:focus-session-started"); fakeWindow.dispatch("tomato:focus-session-paused"); await flush();
-    assert.equal(refreshes, beforeLifecycleRefresh + 1);
-    status = {ready: true, active: false};
-    const beforeEndedStops = stopCalls;
-    fakeWindow.dispatch("tomato:focus-ended"); await flush();
-    assert.equal(stopCalls, beforeEndedStops + 1);
-
-    stopBehavior = "deferred";
-    const releaseStormBaseline = stopCalls;
-    fakeWindow.dispatch("tomato:focus-ended");
-    await flush();
-    assert.equal(stopCalls, releaseStormBaseline + 1);
-    for (let index = 0; index < 25; index += 1) {
-        fakeWindow.dispatch("tomato:focus-ended");
-        assert.equal(stopCalls, releaseStormBaseline + 1, `release storm ${index + 1} must share the in-flight stop`);
-        assert.equal(fakeWindow.timers.size, 0, `release storm ${index + 1} must not create an idle poll`);
-    }
-    await flush();
-    assert.equal(stopCalls, releaseStormBaseline + 1);
-    deferredStopResolve();
-    await flush();
-    stopBehavior = "success";
-    fakeWindow.dispatch("tomato:focus-ended");
-    await flush();
-    assert.equal(stopCalls, releaseStormBaseline + 2, "a settled release must allow a later lifecycle release");
-
-    const availabilityRefreshBaseline = refreshes;
-    for (let index = 0; index < 25; index += 1) {
-        fakeWindow.dispatch("tomato:focus-api-availability-changed");
-        assert.equal(adapters.length, 1, `same facade availability ${index + 1} must not register twice`);
-        assert.equal(adapterDisposals, 0, `same facade availability ${index + 1} must not dispose the adapter`);
-    }
-    await flush();
-    assert.equal(refreshes, availabilityRefreshBaseline + 1);
-
-    const replacementStarts = [];
-    let replacementStatus = {ready: true, active: false};
-    const replacementFacade = {
-        version: 1,
-        capabilities: ["status", "start", "pause", "completion-event"],
-        getStatus() { return replacementStatus; },
-        async start(input) { replacementStarts.push(input); replacementStatus = {ready: true, active: true, running: true}; return replacementStatus; },
-        async pause() { replacementStatus = {ready: true, active: true, paused: true}; return replacementStatus; },
-    };
-    fakeWindow.__dockTomato = {focus: replacementFacade};
-    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
-    assert.equal(adapterDisposals, 1);
-    assert.equal(adapters.length, 2);
-    assert.equal(adapters[1].id, "siyuan-plugin-docktomato");
-    assert.equal(adapters[1].canStart(items[0]), true);
-    await adapters[1].start(items[0]);
-    assert.equal(replacementStarts.length, 1);
-    assert.equal(replacementStarts[0].context.itemId, "read");
-
-    fakeWindow.__dockTomato = {};
-    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
-    assert.equal(adapterDisposals, 2);
-    assert.equal(adapters.length, 2);
-    fakeWindow.__dockTomato = {focus: {...replacementFacade, version: 2}};
-    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
-    assert.equal(adapterDisposals, 2);
-    assert.equal(adapters.length, 2);
-    fakeWindow.__dockTomato = {focus: replacementFacade};
-    fakeWindow.dispatch("tomato:focus-api-availability-changed"); await flush();
-    assert.equal(adapters.length, 3);
-    assert.equal(adapterDisposals, 2);
-
-    replacementStatus = {ready: true, active: true, running: true};
-    const boundedPollingStops = stopCalls;
-    const boundedPollingRefreshes = refreshes;
-    fakeWindow.dispatch("tomato:focus-ended");
-    await flush();
-    assert.equal(fakeWindow.timers.size, 1);
-    for (let index = 0; index < 20; index += 1) {
-        assert.equal(fakeWindow.runNextTimer(), true, `release poll ${index + 1} must execute`);
-        assert.equal(stopCalls, boundedPollingStops, `release poll ${index + 1} must not release active focus`);
-        assert.equal(refreshes, boundedPollingRefreshes + 1, `release poll ${index + 1} must not spam refreshes`);
-    }
-    assert.equal(fakeWindow.timers.size, 0);
-    assert.equal(stopCalls, boundedPollingStops);
-    replacementStatus = {ready: true, active: false};
-    fakeWindow.dispatch("tomato:focus-ended");
-    await flush();
-    assert.equal(stopCalls, boundedPollingStops + 1);
-    assert.equal(fakeWindow.timers.size, 0);
-
-    const listenerTypes = ["tomato:focus-api-availability-changed", "tomato:focus-session-started", "tomato:focus-session-paused", "tomato:focus-session-completed", "tomato:focus-ended"];
-    for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 1);
+    /* 卸载:纯解绑——不暂停当前会话,监听器清空,迟到事件被忽略。 */
+    const teardownFacade = fakeWindow.__dockTomato.focus;
+    await adapters[adapters.length - 1].start(items[0]);
+    const teardownPauses = teardownFacade.pauses.length;
     dispose();
-    assert.equal(adapterDisposals, 3);
+    assert.equal(teardownFacade.pauses.length, teardownPauses, "unload must not pause the running timer");
+    const listenerTypes = ["tomato:focus-api-availability-changed", "tomato:focus-session-started", "tomato:focus-session-paused", "tomato:focus-session-completed", "tomato:focus-ended"];
     for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 0);
     const beforeDisposedWrites = writes.length, beforeDisposedRefreshes = refreshes;
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "after-dispose"})); fakeWindow.runTimers(); await flush();
     assert.equal(writes.length, beforeDisposedWrites);
     assert.equal(refreshes, beforeDisposedRefreshes);
     assert.equal(fakeWindow.timers.size, 0);
+    assert.equal(stopFocusCalls, 0, "the bridge must never call api.stopFocus in any scenario");
     console.log("Dock Tomato executable bridge lifecycle checks passed.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -34,7 +34,7 @@ import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOcc
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
-import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
+import {canStartWithAdapter, findFocusAdapterFor, releaseFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
 import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
@@ -547,6 +547,8 @@ export default class CheckinPlugin extends Plugin {
         this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => {
             this.renderBackgroundUpdate();
             if (this.storageReady && getDockTomatoCompletionIssues().length) void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
+        }, {
+            releaseFocusAdapter: (adapter) => releaseFocusAdapterFor(this as unknown as FocusAdapterHost, adapter),
         });
         window.addEventListener("focus", this.handleWindowFocus);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
@@ -762,8 +764,11 @@ export default class CheckinPlugin extends Plugin {
             if (flushed !== "done") showMessage(t("msg.teardownTruncated"), 5200);
         }
         const activeFocusAdapter = this.activeFocusAdapter;
+        /* 卸载=纯解绑（D-226）：外部计时器(底栏番茄钟)继续运行,不模拟用户停止;
+           内置计时器已在上方 stopFocusTimerFor 收尾。 */
         this.activeFocusAdapter = undefined;
-        if (activeFocusAdapter) {
+        if (activeFocusAdapter && activeFocusAdapter.id !== DOCK_TOMATO_ADAPTER_ID) {
+            /* 非跨插件适配器保留原有停止兜底,避免未来进程内适配器泄漏。 */
             await waitWithinDeadline(this.stopAdapterSilently(activeFocusAdapter), deadline);
         }
         this.disposed = true;

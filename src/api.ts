@@ -47,7 +47,7 @@ export interface CheckinApi {
     stopFocus: () => Promise<boolean>;
     getFocusAdapters: () => ReadonlyArray<{id: string; name: string}>;
     getFocusStatus: () => Readonly<{busy: boolean; activeAdapterId?: string; adapterCount: number}>;
-    registerFocusAdapter: (adapter: FocusAdapter) => () => void;
+    registerFocusAdapter: (adapter: FocusAdapter, options?: {stopActive?: boolean}) => (unregisterOptions?: {stopActive?: boolean}) => void;
     registerSummaryProvider: (provider: SummaryProvider) => () => void;
     summarize: (range: SummaryRange, providerId?: string) => Promise<string | undefined>;
     summarizeCustom: (range: CustomSummaryRange, providerId?: string) => Promise<string | undefined>;
@@ -186,19 +186,22 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         stopFocus: () => host.stopFocus(),
         getFocusAdapters: () => Object.freeze([...host.focusAdapters.values()].map((adapter) => Object.freeze({id: adapter.id, name: adapter.name}))),
         getFocusStatus: () => Object.freeze({busy: host.focusBusy, activeAdapterId: host.activeFocusAdapter?.id, adapterCount: host.focusAdapters.size}),
-        registerFocusAdapter: (adapter) => {
+        /* 注销回调支持 {stopActive:false} 纯解绑:facade 失效/替换/卸载等生命周期
+           不得模拟用户停止（docktomato PR #5 评审第四节）；默认保持原有停止行为兼容第三方。 */
+        registerFocusAdapter: (adapter, options) => {
             if (!host.acceptingOperations || host.disposed || !adapter || typeof adapter.id !== "string" || !adapter.id || typeof adapter.canStart !== "function" || typeof adapter.start !== "function" || typeof adapter.stop !== "function") {
                 return () => undefined;
             }
             host.focusAdapters.set(adapter.id, adapter);
             host.renderBackgroundUpdate();
-            return () => {
+            return (unregisterOptions?: {stopActive?: boolean}) => {
                 if (host.focusAdapters.get(adapter.id) === adapter) {
                     host.focusAdapters.delete(adapter.id);
                 }
+                const stopActive = (unregisterOptions ?? options)?.stopActive !== false;
                 if (host.activeFocusAdapter === adapter) {
                     host.activeFocusAdapter = undefined;
-                    if (!host.focusBusy) {
+                    if (stopActive && !host.focusBusy) {
                         host.focusBusy = true;
                         const stop = host.stopAdapterSilently(adapter).finally(() => {
                             host.focusBusy = false;
