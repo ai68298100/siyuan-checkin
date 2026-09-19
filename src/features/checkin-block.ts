@@ -115,6 +115,8 @@ export interface CheckinBlockDayCell {
     fraction: number;
     /** 仅跳过（有跳过且无完成）→ 中性格。 */
     skipOnly: boolean;
+    /** 当日未完成的项目名列表（供 tooltip 展示）。 */
+    incompleteNames: string[];
     isToday: boolean;
     future: boolean;
 }
@@ -136,6 +138,9 @@ export function buildMonthCells(store: CheckinStore, items: CheckinItem[], year:
             if (isComplete(store, item, date)) completedCount += 1;
             else if (getSkipDatesForItem(store, item.id).has(key)) skipCount += 1;
         }
+        const incompleteNames = items
+            .filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date) && !isComplete(store, item, date))
+            .map((item) => item.name);
         cells.push({
             date: key,
             dayOfMonth: day,
@@ -143,6 +148,7 @@ export function buildMonthCells(store: CheckinStore, items: CheckinItem[], year:
             completedCount,
             fraction: scheduledCount ? completedCount / scheduledCount : 0,
             skipOnly: scheduledCount > 0 && completedCount === 0 && skipCount > 0,
+            incompleteNames,
             isToday: key === today,
             future: key > today,
         });
@@ -175,7 +181,7 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
     for (const cell of cells) {
         const level = levelFor(cell.fraction, thresholds);
         const classes = ["lc-checkin__renderblock-cell", cell.skipOnly ? "is-skip" : `is-level-${level}`, cell.isToday ? "is-today" : "", cell.future ? "is-future" : ""].filter(Boolean).join(" ");
-        const stateText = cell.skipOnly ? ` · ${t("anchor.stateSkip")}` : cell.scheduledCount ? ` · ${cell.completedCount}/${cell.scheduledCount}` : "";
+        const stateText = cell.skipOnly ? ` · ${t("anchor.stateSkip")}` : cell.scheduledCount ? ` · ${cell.completedCount}/${cell.scheduledCount}${cell.incompleteNames.length ? `（缺：${cell.incompleteNames.join("、")}）` : ""}` : "";
         body.push(`<span class="${classes}" data-jump-date="${cell.date}" title="${escapeHtml(`${cell.date}${stateText}`)}"><i>${cell.dayOfMonth}</i></span>`);
     }
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)}))}</small></div>`;

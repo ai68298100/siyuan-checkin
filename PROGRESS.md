@@ -1442,3 +1442,5 @@ T-1300 摘要回填后全链 exit 0。
 
 2026-09-20 渲染块 summary 视图历史最长连续（T-1301):summary 行 em 标签同时显示当前连续(🔥 N 天)与历史最长连续(历史最长 N 天,仅 ≥2 时显示);两者走各自单一实现(computeEventStreaks / computeLongestStreaks),口径不混淆。i18n 双语 1124 对等;checkin-block 测试全过。
 T-1301 摘要回填后全链 exit 0。
+
+2026-09-20 渲染块 month 视图 tooltip 增强(T-1302):月历格 title 属性升级——此前只显示分数(如 1/3),现在同时列出当日未完成的项目名(如 1/3（缺：阅读、跑步）),hover 即可辨识具体缺了什么。CheckinBlockDayCell 新增 incompleteNames 字段,收集逻辑在既有循环内零额外遍历。checkin-block 测试 17ms 全过。

@@ -2666,3 +2666,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1301 渲染块 summary 视图加历史最长连续
   - 验收:summary 行的 em 标签同时显示当前连续与历史最长(≥2 时),逗号分隔;computeLongestStreaks 单一实现;i18n block.longestSuffix 中英。
   - 状态:done(checkin-block.ts 计算与渲染;i18n 双语 1124 对等;checkin-block 测试通过)
+
+- [x] T-1302 渲染块 month 视图 tooltip 增强——未完成项目名展示
+  - 验收:CheckinBlockDayCell 新增 incompleteNames(当日未完成项目名列表);month 视图 title 属性格式升级为 "1/3（缺：阅读、跑步）";hover 即可看到具体缺了哪些项目。
+  - 状态:done(checkin-block.ts 类型+收集+渲染三处;checkin-block 测试全过 17ms)
