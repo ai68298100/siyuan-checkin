@@ -1321,3 +1321,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 验证：新增 `tests/download-channel.test.cjs`（纳入 `test:extended`）与 `tests/e2e/mobile-review-ui.spec.mjs`；`pnpm run check`、完整 `pnpm run test:quality` exit 0、`pnpm run test:e2e` 7/7、`pnpm run test:e2e:readonly` 1/1。
 - 文档：README 与 `docs/export-formats.md` 补充「手机端导出会在工作区 `assets/` 留下文件」的行为说明。
 - 运维注意：E2E 默认工作区 `~/SiYuan-Checkin-E2E` 的 `.lock` 被一次强制杀进程后残留占用，本轮改用 `CHECKIN_E2E_WORKSPACE=~/SiYuan-Checkin-E2E-b`；`waitForBoot` 已加「工作区被锁定」的即时失败与提示，不再空等 60 秒。
+
+### v17.1.0 发布准备（2026-09-19，未推送）
+
+- 版本号已统一为 17.1.0（`src/version.ts`、`package.json`、`plugin.json`、README 当前版本行），新增 `docs/v17.1.0-change-log.md` 与 `release-notes-17.1.0.md`，README 增加「17.1.0 维护重点」。
+- 产物：`package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`（已回填进两份发布文档）。注意 `test:quality` 链内含 `build`，任何一次重跑都会因 zip 时间戳变化而产生新摘要，因此哈希必须在最终构建之后回填，并单独一次 docs 提交（与 v17.0.0 的 `docs: backfill … SHA-256` 做法一致）。
+- 验证：`pnpm run check:release` 通过（v17.1.0），完整 `test:quality` exit 0（125 个测试文件、0 退役），`test:e2e` 7/7、`test:e2e:readonly` 1/1（思源 3.8.4）。
+- 仓库接入：本目录原先是 tarball 快照，已 `git init` + SSH 远端 `git@github.com:ai68298100/siyuan-checkin.git`，`main` 对齐远端 `09f82bb` 后本地提交 `596f292`（release）与哈希回填提交，均为快进可推送。
+- 状态：**未推送、未建 Release**。按项目规矩 push 不擅自动手，等一句确认；`gh` 本机未安装，Release 可用 API 创建（凭据里有可用 PAT）或由你在网页上传 `package.zip`。
