@@ -1439,3 +1439,5 @@ T-1295 摘要回填后全链 exit 0。
 
 2026-09-20 收件箱 UI 项目名显示(T-1300):设置页收件箱条目此前显示内部 itemId(如 20260920-abcdef),用户无法辨识;现在在设置上下文构建时按 itemId 查找 store.items 中的项目名并注入,渲染层 itemName || itemId 回退。DockTomatoInboxEntryView 类型补可选 itemName 字段(纯函数层不依赖 store)。相关测试全过。
 T-1300 摘要回填后全链 exit 0。
+
+2026-09-20 渲染块 summary 视图历史最长连续（T-1301):summary 行 em 标签同时显示当前连续(🔥 N 天)与历史最长连续(历史最长 N 天,仅 ≥2 时显示);两者走各自单一实现(computeEventStreaks / computeLongestStreaks),口径不混淆。i18n 双语 1124 对等;checkin-block 测试全过。

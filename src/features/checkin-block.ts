@@ -13,7 +13,7 @@
 import {escapeHtml, formatNumber} from "../shared";
 import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
-import {computeEventStreaks} from "../model";
+import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
 export type CheckinBlockView = "month" | "heatmap" | "summary";
@@ -185,15 +185,21 @@ export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockCo
     const items = resolveBlockItems(store, config, anchorIndex);
     if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
     const streaks = computeEventStreaks(store, asOf);
+    const longestMap = computeLongestStreaks(store, asOf);
     /* 汇总行直接复用模型单一路径（getProgress/isComplete），避免在渲染块里重写完成口径。 */
     const lines = items.map((item) => {
         const progress = getProgress(store, item, asOf);
         const revision = getItemRevisionForDate(item, asOf);
         const complete = isComplete(store, item, asOf);
         const streak = streaks.get(item.id) || 0;
+        const longest = longestMap.get(item.id) || 0;
         const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
         const stateText = complete ? t("anchor.stateDone") : progress > 0 ? t("block.summaryPartial") : t("block.summaryPending");
-        return `<div class="lc-checkin__renderblock-row" data-jump-item="${escapeHtml(item.id)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(stateText)} · ${escapeHtml(formatNumber(progress))}/${escapeHtml(formatNumber(target))} ${escapeHtml(revision.unit)}</span><em>${streak > 0 ? escapeHtml(t("anchor.streakSuffix", {n: streak})) : ""}</em></div>`;
+        const streakParts: string[] = [];
+        if (streak > 0) streakParts.push(escapeHtml(t("anchor.streakSuffix", {n: streak})));
+        if (longest > 1) streakParts.push(escapeHtml(t("block.longestSuffix", {n: longest})));
+        const streakHtml = streakParts.length ? `<em>${streakParts.join(" · ")}</em>` : "";
+        return `<div class="lc-checkin__renderblock-row" data-jump-item="${escapeHtml(item.id)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(stateText)} · ${escapeHtml(formatNumber(progress))}/${escapeHtml(formatNumber(target))} ${escapeHtml(revision.unit)}</span>${streakHtml}</div>`;
     }).join("");
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-summary">${lines}</div>`;
 }
