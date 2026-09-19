@@ -113,6 +113,32 @@ const makeItem = (overrides = {}) => ({
     const crossMidnight = planBatchRecord(store, [{itemId: "read", occurredAt: "2026-09-18T15:59:59.000Z"}], nowIso);
     assert.equal(/2026-09-1[89]/.test(crossMidnight.planned[0].localDate), true, "local date derives from the completion moment");
 
+    /* ===== v5-3 longest streak（T-1280）：与当前连续同一状态语义的全历史最大值。 ===== */
+    const streakStore = model.createDefaultStore();
+    streakStore.items = [makeItem()];
+    streakStore.events = [
+        event({id: "s1", localDate: "2026-09-01"}),
+        event({id: "s2", localDate: "2026-09-02"}),
+        event({id: "s3", localDate: "2026-09-03"}),
+        event({id: "s9", localDate: "2026-09-19"}),
+    ];
+    const asOf = new Date(2026, 8, 19, 12);
+    const longestMap = model.computeLongestStreaks(streakStore, asOf);
+    const currentMap = model.computeEventStreaks(streakStore, asOf);
+    assert.equal(currentMap.get("read"), 1, "current streak is the tail run");
+    assert.equal(longestMap.get("read"), 3, "longest streak spans the earlier 3-day run");
+
+    /* 跳过日桥接不加成：1 日 + 跳过 + 3 日 → 最长 2（只算真实完成）。 */
+    const bridgeStore = model.createDefaultStore();
+    bridgeStore.items = [makeItem()];
+    bridgeStore.events = [
+        event({id: "b1", localDate: "2026-09-01"}),
+        event({id: "b2", localDate: "2026-09-02", kind: "skip"}),
+        event({id: "b3", localDate: "2026-09-03"}),
+    ];
+    const bridgedLongest = model.computeLongestStreaks(bridgeStore, asOf);
+    assert.equal(bridgedLongest.get("read"), 2, "skip days bridge the run but do not add to the count");
+
     /* 限额常量。 */
     assert.deepEqual(CHECKIN_BATCH_RECORD_LIMITS, {maxItems: 200});
 

@@ -2603,3 +2603,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1279 Obsidian Habit Tracker 21 迁入通道（T-1273 调研吸收项）
   - 验收:解析 Habit Tracker 21 的习惯 .md frontmatter（title/color/maxGap/entries,引号与块列表/内联列表变体,非法日期消毒）;一习惯一文件 → 每日二值项目 + source=import 打卡,externalRef 走 obsidian21 注册前缀幂等;颜色与 maxGap 不迁移并在确认文案如实说明;设置页多选导入。
   - 状态:done(features/obsidian-habits.ts 纯解析;plugin-ops importObsidianHabitsInto(外部身份+同日去重);EXTERNAL_REF_PREFIX_REGISTRY +obsidian21;设置页导入行;identity-and-merge.md 登记;i18n 中英 6 键(1117 对等);obsidian-habits.test.cjs 入 test:ecosystem)
+
+- [x] T-1280 longest streak 与 capabilitiesSince（v5-3 预留项收口）
+  - 验收:computeLongestStreaks 与现有当前连续同一状态语义(真实/派生 +1、跳过桥接、at-most 连续无破戒),全历史正向扫描取最大;getStreaks 返回 {current, longest};describe 增 capabilitiesSince 供 v4 消费方版本探测。
+  - 状态:done(model.ts 新增 computeLongestStreaks(现有函数零改动);api.ts getStreaks 三字段;CHECKIN_CAPABILITIES_SINCE 冻结映射 + descriptor;api-v5/contract 测试同步)

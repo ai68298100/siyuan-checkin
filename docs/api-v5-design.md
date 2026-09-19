@@ -95,6 +95,6 @@ getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest:
 | --- | --- | --- |
 | v5-1 | P1 范围读 + P3 项目投影(纯读,风险最低)——**已实施**:`features/api-v5.ts` 纯过滤 + `getEventsInRange`/`queryItems` 接线,契约测试与 tests/api-v5.test.cjs 守门 | 无 |
 | v5-2 | P2 批量写(抽取分类骨架,含结果测试矩阵)——**已实施**:`planBatchRecord` 单遍规划 + 宿主单单元落盘,单批 200 | v5-1 的索引复用 |
-| v5-3 | P4 指标门面 + P5 协商补强——**已实施**:metrics.read 能力 + getStreaks(current,单一实现);longest 与 capabilitiesSince 留待后续 | 无硬依赖 |
+| v5-3 | P4 指标门面 + P5 协商补强——**已实施**:metrics.read + getStreaks(current+longest,computeLongestStreaks 同语义全历史扫描) + describe.capabilitiesSince(v4 消费方版本探测) | 无硬依赖 |
 
 每批过既有门槛:`test:quality` 全绿、性能基线不回退、契约测试与文档交叉核对(export-identity-docs 模式)。

@@ -29,6 +29,10 @@ assert.equal(Object.isFrozen(api.CHECKIN_BATCH_RECORD_LIMITS), true);
 assert.equal(api.getCheckinCapabilityInfo()["events.record.batch"].effect, "write");
 assert.ok(api.CHECKIN_CAPABILITIES.includes("metrics.read"), "v5 metrics capability must be declared");
 assert.equal(api.getCheckinCapabilityInfo()["metrics.read"].effect, "read");
+assert.equal(api.CHECKIN_CAPABILITIES_SINCE["metrics.read"], 5);
+assert.equal(api.CHECKIN_CAPABILITIES_SINCE["events.record"], 4);
+assert.ok(Object.isFrozen(api.CHECKIN_CAPABILITIES_SINCE), "capabilities-since map must be frozen");
+assert.equal(api.getCheckinApiDescriptor().capabilitiesSince["items.query"], 5);
 assert.equal(new Set(api.CHECKIN_CAPABILITIES).size, api.CHECKIN_CAPABILITIES.length);
 
 const descriptor = api.getCheckinApiDescriptor();

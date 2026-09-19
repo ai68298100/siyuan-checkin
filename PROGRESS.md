@@ -1388,3 +1388,5 @@ v5-1 摘要回填:3eeba820…(API 契约变更使包体改变)。
 2026-09-20 API v5-3 指标门面（T-1278/D-240):能力清单 17→18(metrics.read);getStreaks 走 computeEventStreaks 单一实现,itemIds 有界过滤与只读快照;longest 连续与 capabilitiesSince 协商补强按设计稿留待后续。摘要回填后全链 exit 0。v5 三批全部落地:范围读/批量写/指标门面,运行时版本 5,Task Horizon minApiVersion 钉 4 不受影响。
 
 2026-09-20 Obsidian Habit Tracker 21 迁入通道（T-1279):features/obsidian-habits.ts 纯解析(frontmatter 引号剥离/块列表与内联 entries/非法日期消毒/去重排序;无 frontmatter 拒收);plugin-ops importObsidianHabitsInto(每日二值项目+source=import+obsidian21:<文件名>:<日期> 幂等身份,外部身份与同日双重去重);EXTERNAL_REF_PREFIX_REGISTRY 登记前缀并同步 identity-and-merge.md;设置页「从 Obsidian 导入」多选 .md;颜色与 maxGap 容忍不迁移(确认文案如实说明)。i18n 中英 6 键(1117 对等);obsidian-habits.test.cjs 入 test:ecosystem。摘要回填后全链 exit 0。
+
+2026-09-20 longest streak 与协商补强（T-1280/D-240 v5-3 预留项收口）:model.ts 新增 computeLongestStreaks——与 computeEventStreaks 同一套状态语义（真实/派生 +1、跳过中性桥接、at-most 连续无破戒）的全历史正向扫描取最大值,现有函数零改动;api.ts getStreaks 升为 {itemId,current,longest};api-contract 新增冻结 CHECKIN_CAPABILITIES_SINCE 映射并挂入 describe(),v4 消费方可在 v5 宿主上按能力探测首次版本。测试:断签后 longest>current、跳过桥接不加成、capabilitiesSince 冻结与 v4/v5 分野断言。v5 全部预留项收口完毕。

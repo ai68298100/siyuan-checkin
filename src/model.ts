@@ -591,6 +591,85 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
     return streaks;
 }
 
+/** v5-3（T-1280）：历史最长连续——与 computeEventStreaks 同一套状态语义
+    （真实完成/派生完成 +1,跳过日中性桥接,其余断链;at-most 为连续无破戒日）,
+    但做全历史正向扫描取最大值。仅 v5 getStreaks 使用,热路径不经过。 */
+export function computeLongestStreaks(store: CheckinStore, asOf = new Date()): Map<string, number> {
+    const longest = new Map<string, number>();
+    const todayDate = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
+    const today = dateKey(todayDate);
+    for (const item of store.items) {
+        if (item.archived) {
+            longest.set(item.id, 0);
+            continue;
+        }
+        const skipDays = getSkipDatesForItem(store, item.id);
+        if (item.direction === "atMost") {
+            let run = 0;
+            let max = 0;
+            let guard = 0;
+            const check = new Date(Number(item.createdDate.slice(0, 4)), Number(item.createdDate.slice(5, 7)) - 1, Number(item.createdDate.slice(8, 10)), 12);
+            while (guard < 36500) {
+                guard += 1;
+                const key = dateKey(check);
+                if (key > today) break;
+                const dayEvents = getEventsForDay(store, item.id, check);
+                const hasLapse = dayEvents.some((event) => !isSkipEvent(event));
+                if (hasLapse) {
+                    run = 0;
+                } else if (!dayEvents.some((event) => isSkipEvent(event))) {
+                    run += 1;
+                    max = Math.max(max, run);
+                }
+                check.setDate(check.getDate() + 1);
+            }
+            longest.set(item.id, max);
+            continue;
+        }
+        const days = getEventDatesForItem(store, item.id);
+        const realDays = new Set([...days].filter((key) => !skipDays.has(key)));
+        const autoCache = new Map<string, boolean>();
+        const isAuto = (key: string): boolean => {
+            if (autoCache.has(key)) return autoCache.get(key) as boolean;
+            let result = false;
+            const date = new Date(Number(key.slice(0, 4)), Number(key.slice(5, 7)) - 1, Number(key.slice(8, 10)), 12);
+            const schedule = getItemRevisionForDate(item, date).schedule;
+            if (schedule.type === "quota") {
+                result = deriveQuotaAutoDays(schedule, store.events, item.id, key, key, {asOf: today}).has(key);
+            }
+            autoCache.set(key, result);
+            return result;
+        };
+        if (!days.size && !skipDays.size) {
+            longest.set(item.id, 0);
+            continue;
+        }
+        let run = 0;
+        let max = 0;
+        let guard = 0;
+        const check = new Date(Number(item.createdDate.slice(0, 4)), Number(item.createdDate.slice(5, 7)) - 1, Number(item.createdDate.slice(8, 10)), 12);
+        while (guard < 36500) {
+            guard += 1;
+            const key = dateKey(check);
+            if (key > today) break;
+            if (realDays.has(key)) {
+                run += 1;
+                max = Math.max(max, run);
+            } else if (skipDays.has(key)) {
+                /* 跳过日中性桥接:不加成、不断链。 */
+            } else if (isAuto(key)) {
+                run += 1;
+                max = Math.max(max, run);
+            } else {
+                run = 0;
+            }
+            check.setDate(check.getDate() + 1);
+        }
+        longest.set(item.id, max);
+    }
+    return longest;
+}
+
 export function getActiveItemById(store: CheckinStore, itemId: string | undefined): CheckinItem | undefined {
     const item = getItemById(store, itemId);
     return item && !item.archived ? item : undefined;

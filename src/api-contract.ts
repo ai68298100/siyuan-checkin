@@ -60,6 +60,28 @@ export const CHECKIN_CAPABILITIES = [
 
 export type CheckinCapability = typeof CHECKIN_CAPABILITIES[number];
 
+/** v5 协商补强（D-240 P5）：每项能力首次出现的协议版本,供 v4 消费方在 v5 宿主上探测。 */
+export const CHECKIN_CAPABILITIES_SINCE: Readonly<Record<CheckinCapability, 4 | 5>> = Object.freeze({
+    "items.read": 4,
+    "items.query": 5,
+    "events.read": 4,
+    "events.range.read": 5,
+    "events.record": 4,
+    "events.record.batch": 5,
+    "occasions.read": 4,
+    "occasions.complete": 4,
+    "summary.read": 4,
+    "summary.custom": 4,
+    "analytics.read": 4,
+    "metrics.read": 5,
+    "summary.providers": 4,
+    "suggestions.read": 4,
+    "focus.adapters": 4,
+    "integrations.events": 4,
+    "export.json": 4,
+    "export.csv": 4,
+}) as Readonly<Record<CheckinCapability, 4 | 5>>;
+
 export interface CheckinCapabilityInfo {
     available: boolean;
     localOnly: boolean;
@@ -72,6 +94,7 @@ export interface CheckinApiDescriptor {
     version: typeof CHECKIN_API_VERSION;
     storeVersion: 2;
     capabilities: readonly CheckinCapability[];
+    capabilitiesSince: Readonly<Record<CheckinCapability, 4 | 5>>;
     events: readonly typeof CHECKIN_INTEGRATION_EVENTS[number][];
 }
 
@@ -107,6 +130,7 @@ export function getCheckinApiDescriptor(): Readonly<CheckinApiDescriptor> {
         version: CHECKIN_API_VERSION,
         storeVersion: 2,
         capabilities: Object.freeze([...CHECKIN_CAPABILITIES]),
+        capabilitiesSince: Object.freeze({...CHECKIN_CAPABILITIES_SINCE}),
         events: Object.freeze([...CHECKIN_INTEGRATION_EVENTS]),
     });
 }
