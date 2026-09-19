@@ -2615,3 +2615,10 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1282 发布流水线加固（v17.2.0 发布前置）
   - 验收:release.cjs 发布前测试链对齐 test:quality 全量(补 extended/perf/legacy-style/review-comparison);gh 可用性检查提前到任何 git 写操作之前,避免"已推送未发布"半成品。
   - 状态:done(node --check 通过;本机实测 gh 缺失 → 按设计在 push 前中止;发布 runbook 见 PROGRESS)
+
+- [x] T-1283 Obsidian 迁出通道（迁移对称性收口）
+  - 验收:活跃项目导出为 Habit Tracker 21 习惯 .md 文件（title+entries,完成日=非跳过事件日,跳过不导出）;文件名消毒+冲突唯一化;无记录/超上限(30)项目计入 skipped;设置页按钮+完成消息;round-trip(导出→解析无损还原)。
+  - 状态:done(features/obsidian-habits.ts buildObsidianExportFiles;plugin-ops downloadObsidianExportFor 顺序多文件下载;设置页导出行;i18n 中英 4 键(1120 对等);obsidian-habits 测试补 round-trip/消毒/唯一化断言)
+- [x] T-1284 E2E 公开 API v5 真实宿主 spec
+  - 验收:真实内核上验证 version=5、17→18 能力、capabilitiesSince、getEventsInRange/queryItems/getStreaks 形状与归档语义。
+  - 状态:done(tests/e2e/api-v5.spec.mjs,test:e2e 9/9 通过)

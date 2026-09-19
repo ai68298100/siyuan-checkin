@@ -5,7 +5,7 @@ import {saveGeneratedFile} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
-import {obsidianExternalRef, obsidianHabitName, type ObsidianImportPlan} from "./features/obsidian-habits";
+import {buildObsidianExportFiles, obsidianExternalRef, obsidianHabitName, type ObsidianImportPlan} from "./features/obsidian-habits";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
@@ -362,4 +362,14 @@ export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImpo
         }
     }
     return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
+}
+
+/* T-1283：导出活跃项目为 Habit Tracker 21 习惯 .md 文件（顺序多文件下载,上限 30）。 */
+export async function downloadObsidianExportFor(store: CheckinStore): Promise<{files: number; skippedItems: number}> {
+    const plan = buildObsidianExportFiles(store);
+    const stamp = Date.now();
+    for (const file of plan.files) {
+        await saveGeneratedFile({fileName: file.filename, content: file.content, mime: "text/markdown;charset=utf-8"}, stamp);
+    }
+    return {files: plan.files.length, skippedItems: plan.skippedItems};
 }

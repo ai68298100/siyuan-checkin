@@ -133,3 +133,65 @@ export function obsidianExternalRef(habit: ObsidianHabitFile, date: string): str
 export function obsidianHabitName(habit: ObsidianHabitFile): string {
     return habit.title || sanitizeIdentity(habit.filename);
 }
+
+/* ===== 迁出（T-1283）：活跃项目 → Habit Tracker 21 习惯 .md 文件 =====
+   完成日 = 有真实（非跳过）事件的日期；无完成日的项目不导出；
+   跳过记录 H21 无对应语义，不导出。 */
+
+import type {CheckinStore} from "../types";
+
+export interface ObsidianExportFile {
+    filename: string;
+    content: string;
+    entryCount: number;
+}
+
+export interface ObsidianExportPlan {
+    files: ObsidianExportFile[];
+    /** 无完成日或超出上限而未导出的活跃项目数。 */
+    skippedItems: number;
+}
+
+const EXPORT_MAX_FILES = 30;
+
+function sanitizeFilename(name: string): string {
+    const cleaned = name.replace(/[\/:*?"<>|#^\[\]{}]/g, " ").replace(/\s+/g, " ").trim();
+    return cleaned.slice(0, 60).trim();
+}
+
+export function buildObsidianExportFiles(store: CheckinStore, options: {maxFiles?: number} = {}): ObsidianExportPlan {
+    const maxFiles = options.maxFiles ?? EXPORT_MAX_FILES;
+    const byItem = new Map<string, {name: string; dates: Set<string>}>();
+    for (const item of store.items) {
+        if (item.archived) continue;
+        byItem.set(item.id, {name: item.name, dates: new Set()});
+    }
+    for (const event of store.events) {
+        if (event.kind === "skip") continue;
+        const target = byItem.get(event.itemId);
+        if (!target) continue;
+        if (event.localDate && DATE_PATTERN.test(event.localDate)) target.dates.add(event.localDate);
+    }
+    const files: ObsidianExportFile[] = [];
+    let skippedItems = 0;
+    const usedFilenames = new Set<string>();
+    for (const target of byItem.values()) {
+        if (!target.dates.size || files.length >= maxFiles) {
+            skippedItems += 1;
+            continue;
+        }
+        const base = sanitizeFilename(target.name) || "habit";
+        let filename = `${base}.md`;
+        let suffix = 2;
+        while (usedFilenames.has(filename.toLowerCase())) {
+            filename = `${base}-${suffix}.md`;
+            suffix += 1;
+        }
+        usedFilenames.add(filename.toLowerCase());
+        const dates = [...target.dates].sort();
+        const safeTitle = target.name.replace(/\\/g, "\\\\").replace(/"/g, "\"");
+        const content = `---\ntitle: "${safeTitle}"\nentries:\n${dates.map((date) => `  - ${date}`).join("\n")}\n---\n`;
+        files.push({filename, content, entryCount: dates.length});
+    }
+    return {files, skippedItems};
+}
