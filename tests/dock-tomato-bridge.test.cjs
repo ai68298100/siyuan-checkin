@@ -1,5 +1,6 @@
-/* Dock Tomato 桥可执行生命周期守门（PR #5 评审第二~四节）：
-   会话归属、按会话停止、available:false 即时解绑、纯解绑注销、完成清理不暂停。 */
+/* Dock Tomato 桥可执行生命周期守门（PR #5 评审第二~五节）：
+   会话归属、按会话停止、available:false 即时解绑、纯解绑注销、
+   完成事件经宿主收件箱通道回写并按结果分类。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
@@ -22,13 +23,21 @@ const moduleUnderTest = {exports: {}};
 new Function("require", "module", "exports", compiled)((id) => {
     if (id === "./integrations") return {DOCK_TOMATO_ADAPTER_ID: "siyuan-plugin-docktomato"};
     if (id === "./types") return {};
+    if (id === "./features/docktomato-inbox") return {
+        completionClock: (value) => {
+            if (typeof value !== "string" || !value || !Number.isFinite(Date.parse(value))) return undefined;
+            const date = new Date(value);
+            const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+            return {occurredAt: new Date(date.getTime()).toISOString(), localDate};
+        },
+    };
     throw new Error(`Unexpected dependency: ${id}`);
 }, moduleUnderTest, moduleUnderTest.exports);
 
 const {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, installDockTomatoBridge, inspectDockTomatoProvider} = moduleUnderTest.exports;
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const storedExternalRef = (entry) => Object.getOwnPropertyDescriptor(entry, "externalRef")?.value;
-const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", durationMinutes: 25, context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"}, ...overrides});
+const completion = (overrides = {}) => ({apiVersion: 1, sessionId: "session-1", durationMinutes: 25, completedAt: "2026-09-19T10:00:00.000Z", context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes"}, ...overrides});
 
 function makeFacade(name, options = {}) {
     const facade = {
@@ -62,34 +71,41 @@ function makeFacade(name, options = {}) {
         {id: "hour", name: "深度工作", kind: "duration", unit: "小时", tomatoMode: "minutes", archived: false},
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
-    const events = [], writes = [], adapters = [];
-    let writeBehavior = "success";
-    let deferredWriteResolve;
-    let adapterDisposals = 0, stopFocusCalls = 0, refreshes = 0;
+    const events = [], processed = [], adapters = [];
+    const tombstoned = new Set();
+    let processBehavior = "recorded";
+    let deferredProcessResolve;
+    let adapterDisposals = 0, stopFocusCalls = 0, refreshes = 0, recordEventCalls = 0;
     const releasedAdapters = [];
     const api = {
         getItems: () => items,
         getEvents: () => events,
-        async recordEvent(input) {
-            writes.push(input);
-            if (writeBehavior === "empty") return undefined;
-            if (writeBehavior === "throw") throw new Error("storage unavailable");
-            if (writeBehavior === "deferred") {
-                return new Promise((resolve) => {
-                    deferredWriteResolve = () => {
-                        const record = {...input, id: `event-${writes.length}`};
-                        events.push(record);
-                        resolve(record);
-                    };
-                });
-            }
-            const record = {...input, id: `event-${writes.length}`}; events.push(record); return record;
-        },
+        async recordEvent() { recordEventCalls += 1; return {}; },
         registerFocusAdapter(adapter) { adapters.push(adapter); return () => { adapterDisposals += 1; }; },
         async stopFocus() { stopFocusCalls += 1; return true; },
     };
     const host = {
         releaseFocusAdapter(adapter) { releasedAdapters.push(adapter); },
+        dockTomatoTombstonedIdentities: () => tombstoned,
+        async processDockTomatoCompletion(entry) {
+            processed.push(entry);
+            if (processBehavior === "throw") throw new Error("storage unavailable");
+            if (processBehavior === "retry") return {kind: "retry", reason: "persist-failed"};
+            if (processBehavior === "blocked") return {kind: "blocked", reason: "skipped-day"};
+            if (processBehavior === "deferred") {
+                return new Promise((resolve) => {
+                    deferredProcessResolve = () => {
+                        const record = {id: `event-${processed.length}`, itemId: entry.itemId, source: "tomato", externalRef: entry.externalRef};
+                        events.push(record);
+                        resolve({kind: "recorded", eventId: record.id});
+                    };
+                });
+            }
+            if (processBehavior === "duplicate") return {kind: "duplicate", eventId: "existing"};
+            const record = {id: `event-${processed.length}`, itemId: entry.itemId, source: "tomato", externalRef: entry.externalRef};
+            events.push(record);
+            return {kind: "recorded", eventId: record.id};
+        },
     };
 
     const dispose = installDockTomatoBridge(api, () => { refreshes += 1; }, host);
@@ -188,16 +204,106 @@ function makeFacade(name, options = {}) {
     await replacementAdapter.stop();
     assert.equal(replacementFacadeRef.pauses.length, 0, "a replaced facade must not be controlled through stale ownership");
 
-    /* 完成通知:入账一次、重复安静、stopFocus 不被调用。 */
+    /* 完成通知:经宿主收件箱通道回写,载荷完整、completedAt 固定;stopFocus/recordEvent 不被调用。 */
     fakeWindow.dispatch("tomato:focus-session-completed", completion());
     await flush(); await flush();
-    assert.equal(writes.length, 1);
-    for (const [key, value] of Object.entries({itemId: "read", value: 25, unit: "分钟", source: "tomato", externalRef: "docktomato:session-1", note: "来自底栏番茄钟"})) assert.equal(writes[0][key], value);
+    assert.equal(processed.length, 1);
+    assert.equal(processed[0].identity, "session-1");
+    assert.equal(processed[0].externalRef, "docktomato:session-1");
+    assert.equal(processed[0].itemId, "read");
+    assert.equal(processed[0].itemUnit, "分钟");
+    assert.equal(processed[0].tomatoMode, "minutes");
+    assert.equal(processed[0].durationMinutes, 25);
+    assert.equal(processed[0].occurredAt, "2026-09-19T10:00:00.000Z");
+    assert.equal(processed[0].state, "pending");
     assert.equal(stopFocusCalls, 0, "completion cleanup must not call stopFocus");
+    assert.equal(recordEventCalls, 0, "completion write must not go through the public recordEvent");
     assert.equal(releasedAdapters.length, 0, "identity outside ownership must not release the active adapter");
     fakeWindow.dispatch("tomato:focus-session-completed", completion()); await flush();
-    assert.equal(writes.length, 1);
+    assert.equal(processed.length, 1, "duplicate replay must stay quiet before the stored record exists too");
     assert.equal(getDockTomatoCompletionIssues().length, 0);
+    processBehavior = "recorded";
+
+    /* 墓碑身份:用户撤销过的完成不补回。 */
+    tombstoned.add("removed-session");
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "removed-session"}));
+    await flush(); await flush();
+    assert.equal(processed.length, 1, "a tombstoned completion must not reach the writer");
+    const removedIssue = getDockTomatoCompletionIssues().at(-1);
+    assert.equal(removedIssue.reason, "user-removed");
+    assert.equal(removedIssue.identity, "removed-session");
+    tombstoned.delete("removed-session");
+    clearDockTomatoCompletionIssues();
+
+    /* 宿主 blocked(skipped-day):诊断可见,不标 write-failed。 */
+    processBehavior = "blocked";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "skipped-day-1"}));
+    await flush(); await flush();
+    assert.equal(processed.length, 2);
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "skipped-day");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "skipped-day-1");
+    clearDockTomatoCompletionIssues();
+
+    /* 宿主 retry(persist 失败):write-failed 诊断;恢复后重放成功。 */
+    processBehavior = "retry";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-persist"}));
+    await flush(); await flush();
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-persist");
+    processBehavior = "recorded";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-persist"}));
+    await flush(); await flush();
+    assert.equal(processed.length, 4);
+    assert.equal(getDockTomatoCompletionIssues().some((issue) => issue.identity === "retry-persist"), false, "successful retry resolves its write diagnostic");
+
+    /* in-flight 合并:首个通知未落定前,重复通知安静;落定后只入账一次。 */
+    clearDockTomatoCompletionIssues();
+    processBehavior = "deferred";
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
+    await flush();
+    assert.equal(processed.length, 5);
+    assert.equal(typeof deferredProcessResolve, "function");
+    for (let index = 0; index < 25; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
+        await flush();
+        assert.equal(processed.length, 5, `in-flight replay ${index + 1} must not reach the writer`);
+    }
+    deferredProcessResolve();
+    await flush(); await flush();
+    assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
+    processBehavior = "recorded";
+
+    /* 已入账身份(含归档项目的事件):duplicate,不触发 missing-item。 */
+    const persistedIdentities = Array.from({length: 25}, (_, index) => `persisted-${index}`);
+    for (const identity of persistedIdentities) events.push({id: `seed-${identity}`, itemId: "read", source: "tomato", externalRef: `docktomato:${identity}`});
+    let hostileExternalRefReads = 0;
+    const hostileStoredEvent = {id: "hostile-event"};
+    Object.defineProperty(hostileStoredEvent, "externalRef", {get() { hostileExternalRefReads += 1; throw new Error("must not execute"); }});
+    events.push(hostileStoredEvent);
+    const processedBaseline = processed.length;
+    for (let index = 0; index < persistedIdentities.length; index += 1) {
+        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: persistedIdentities[index]}));
+        await flush();
+        assert.equal(processed.length, processedBaseline, `stored replay ${index + 1} must not reach the writer`);
+    }
+    assert.equal(hostileExternalRefReads, 0);
+    clearDockTomatoCompletionIssues();
+
+    /* completedAt 缺失/无效:invalid-completion-time,不得回退为当前时间。 */
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "no-clock", completedAt: undefined}));
+    await flush();
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "invalid-completion-time");
+    assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "no-clock");
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "bad-clock", completedAt: "not-a-date"}));
+    await flush();
+    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "invalid-completion-time");
+    clearDockTomatoCompletionIssues();
+
+    /* 跨午夜:完成时间属于昨日,localDate 固定为完成日。 */
+    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "midnight", completedAt: "2026-09-18T15:59:59.000Z"}));
+    await flush(); await flush();
+    assert.equal(processed[processed.length - 1].localDate, "2026-09-18", "completedAt before local midnight keeps its completion date");
+    clearDockTomatoCompletionIssues();
 
     /* 完成时若归属匹配:立即释放归属并通知宿主纯清理。 */
     await adapters[adapters.length - 1].start(items[0]);
@@ -259,8 +365,8 @@ function makeFacade(name, options = {}) {
     await flush();
     assert.equal(adapters[adapters.length - 1] !== unavailableAdapter, true, "a new facade object binds again");
 
-    /* 诊断折叠与完成写路径矩阵(批次 C 将把写路径迁入持久收件箱)。 */
-    const repeatedFailureBaseline = writes.length;
+    /* 诊断折叠矩阵。 */
+    const repeatedFailureBaseline = processed.length;
     for (let index = 0; index < 25; index += 1) {
         fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "repeated-invalid", durationMinutes: 0}));
         await flush();
@@ -268,50 +374,9 @@ function makeFacade(name, options = {}) {
         assert.equal(repeated.length, 1, `repeat ${index + 1} must stay folded`);
         assert.equal(repeated[0].count, index + 1, `repeat ${index + 1} must increment count`);
     }
-    assert.equal(writes.length, repeatedFailureBaseline);
+    assert.equal(processed.length, repeatedFailureBaseline);
     assert.equal(getDockTomatoCompletionIssues()[0].identity, "repeated-invalid");
-
     clearDockTomatoCompletionIssues();
-    writeBehavior = "empty";
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush();
-    assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
-    const writesAfterEmpty = writes.length;
-    writeBehavior = "success";
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-empty"})); await flush(); await flush();
-    assert.equal(writes.length, writesAfterEmpty + 1);
-    assert.ok(events.some((entry) => entry.externalRef === "docktomato:retry-empty"));
-
-    clearDockTomatoCompletionIssues();
-    writeBehavior = "deferred";
-    const concurrentBaseline = writes.length;
-    fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
-    await flush();
-    assert.equal(writes.length, concurrentBaseline + 1);
-    assert.equal(typeof deferredWriteResolve, "function");
-    for (let index = 0; index < 25; index += 1) {
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "concurrent-session"}));
-        await flush();
-        assert.equal(writes.length, concurrentBaseline + 1, `in-flight replay ${index + 1} must not write`);
-    }
-    deferredWriteResolve();
-    await flush(); await flush();
-    assert.equal(events.filter((entry) => storedExternalRef(entry) === "docktomato:concurrent-session").length, 1);
-    writeBehavior = "success";
-
-    clearDockTomatoCompletionIssues();
-    const persistedIdentities = Array.from({length: 25}, (_, index) => `persisted-${index}`);
-    for (const identity of persistedIdentities) events.push({id: `seed-${identity}`, externalRef: `docktomato:${identity}`});
-    let hostileExternalRefReads = 0;
-    const hostileStoredEvent = {id: "hostile-event"};
-    Object.defineProperty(hostileStoredEvent, "externalRef", {get() { hostileExternalRefReads += 1; throw new Error("must not execute"); }});
-    events.push(hostileStoredEvent);
-    const persistedMatrixBaseline = writes.length;
-    for (let index = 0; index < persistedIdentities.length; index += 1) {
-        fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: persistedIdentities[index]}));
-        await flush();
-        assert.equal(writes.length, persistedMatrixBaseline, `stored replay ${index + 1} must not write`);
-    }
-    assert.equal(hostileExternalRefReads, 0);
 
     /* 卸载:纯解绑——不暂停当前会话,监听器清空,迟到事件被忽略。 */
     const teardownFacade = fakeWindow.__dockTomato.focus;
@@ -321,11 +386,12 @@ function makeFacade(name, options = {}) {
     assert.equal(teardownFacade.pauses.length, teardownPauses, "unload must not pause the running timer");
     const listenerTypes = ["tomato:focus-api-availability-changed", "tomato:focus-session-started", "tomato:focus-session-paused", "tomato:focus-session-completed", "tomato:focus-ended"];
     for (const type of listenerTypes) assert.equal(fakeWindow.listeners.get(type)?.size, 0);
-    const beforeDisposedWrites = writes.length, beforeDisposedRefreshes = refreshes;
+    const beforeDisposedProcessed = processed.length, beforeDisposedRefreshes = refreshes;
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "after-dispose"})); fakeWindow.runTimers(); await flush();
-    assert.equal(writes.length, beforeDisposedWrites);
+    assert.equal(processed.length, beforeDisposedProcessed);
     assert.equal(refreshes, beforeDisposedRefreshes);
     assert.equal(fakeWindow.timers.size, 0);
     assert.equal(stopFocusCalls, 0, "the bridge must never call api.stopFocus in any scenario");
+    assert.equal(recordEventCalls, 0, "the bridge must never call api.recordEvent in any scenario");
     console.log("Dock Tomato executable bridge lifecycle checks passed.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

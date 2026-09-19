@@ -56,6 +56,7 @@ import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getChec
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
+import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {isTaskHorizonExternalRef} from "./ecosystem";
 
 const STORAGE_NAME = "checkin-store";
@@ -67,6 +68,7 @@ const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
 const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
+const DOCKTOMATO_INBOX_STORAGE_NAME = "checkin-docktomato-inbox";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 /* 审计是旁路诊断，同一变更窗口内的多次追加合成一次整文件写入（T-1246）。 */
@@ -407,6 +409,9 @@ export default class CheckinPlugin extends Plugin {
     private readonly teardownWrites = createTeardownWriteGate();
     private auditFlushTimer?: number;
     private lastPersistedSuggestionWorkflow?: string;
+    /** 底栏番茄钟完成回写收件箱(D-227):已接收未入账的完成通知,持久化于独立存储。 */
+    private dockTomatoInbox: DockTomatoInboxStore = {schemaVersion: 1, items: []};
+    private dockTomatoInboxTimer?: number;
     private api?: CheckinApi;
     private focusAdapters = new Map<string, FocusAdapter>();
     private disposeDockTomatoBridge?: () => void;
@@ -549,6 +554,8 @@ export default class CheckinPlugin extends Plugin {
             if (this.storageReady && getDockTomatoCompletionIssues().length) void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
         }, {
             releaseFocusAdapter: (adapter) => releaseFocusAdapterFor(this as unknown as FocusAdapterHost, adapter),
+            processDockTomatoCompletion: (entry) => this.processDockTomatoCompletion(entry),
+            dockTomatoTombstonedIdentities: () => this.collectDockTomatoTombstonedIdentities(),
         });
         window.addEventListener("focus", this.handleWindowFocus);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
@@ -593,6 +600,7 @@ export default class CheckinPlugin extends Plugin {
                 this.rememberSuggestionWorkflowBaseline(storedSuggestionWorkflow);
                 const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
+                const storedDockTomatoInbox = await this.loadData(DOCKTOMATO_INBOX_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
@@ -609,6 +617,7 @@ export default class CheckinPlugin extends Plugin {
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
                 restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
+                this.dockTomatoInbox = normalizeInboxStore(storedDockTomatoInbox);
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -620,6 +629,7 @@ export default class CheckinPlugin extends Plugin {
             this.settleReady(true);
             if (this.isMobileFrontend) this.ensureMobileTopBarButton();
             this.ensureSpeedSwitchQuickActions();
+            void this.reconcileDockTomatoInbox();
         } catch (error) {
             if (this.disposed || this.disposing) return;
             this.storageReady = false;
@@ -743,6 +753,10 @@ export default class CheckinPlugin extends Plugin {
         if (this.midnightTimer !== undefined) {
             window.clearTimeout(this.midnightTimer);
             this.midnightTimer = undefined;
+        }
+        if (this.dockTomatoInboxTimer !== undefined) {
+            window.clearTimeout(this.dockTomatoInboxTimer);
+            this.dockTomatoInboxTimer = undefined;
         }
         this.summaryRequestId += 1;
         [...this.apiSubscriptions].forEach((dispose) => dispose());
@@ -892,6 +906,157 @@ export default class CheckinPlugin extends Plugin {
             if (archived.length === 1) showMessage(t("msg.autoArchived", {name: archived[0].item.name, n: archived[0].target}));
             else showMessage(t("msg.autoArchivedMany", {n: archived.length}));
         }).catch(() => undefined);
+    }
+
+    /* ===== 底栏番茄钟完成回写(D-227):收件箱、内部写入器与幂等重试 =====
+       写入判定顺序固定为:已入账 duplicate → 墓碑 discarded → 项目/映射/跳过日 blocked → 写入。
+       duplicate 判定必须在项目可用性之前,否则归档后重复通知会误报 missing-item。 */
+
+    private collectDockTomatoTombstonedIdentities(): ReadonlySet<string> {
+        const identities = new Set<string>();
+        for (const tombstone of this.store.eventTombstones || []) {
+            if (tombstone.source !== "tomato") continue;
+            const ref = tombstone.externalRef || "";
+            if (!ref.startsWith("docktomato:")) continue;
+            const identity = ref.slice("docktomato:".length);
+            if (identity) identities.add(identity);
+        }
+        return identities;
+    }
+
+    /** 内部写入器:调用方已持有存储锁(enqueueMutation),不得再经公开 recordEvent 重新排队。 */
+    private async recordDockTomatoCompletionUnlocked(entry: DockTomatoPendingCompletion): Promise<DockTomatoCompletionWriteResult> {
+        if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return {kind: "retry", reason: "storage-not-ready"};
+        const ref = entry.externalRef;
+        const existing = this.store.events.find((event) => event.itemId === entry.itemId && event.source === "tomato" && event.externalRef === ref);
+        if (existing) return {kind: "duplicate", eventId: existing.id};
+        if ((this.store.eventTombstones || []).some((tombstone) => tombstone.source === "tomato" && tombstone.externalRef === ref)) return {kind: "discarded"};
+        const item = getItemById(this.store, entry.itemId);
+        if (!item) return {kind: "blocked", reason: "missing-item"};
+        if (item.archived) return {kind: "blocked", reason: "archived-item"};
+        if (item.direction === "atMost") return {kind: "blocked", reason: "at-most-item"};
+        const completionDate = calendarDateFromKey(entry.localDate);
+        if (!isItemAvailableOnDate(item, completionDate)) return {kind: "blocked", reason: "not-scheduled"};
+        const revision = getItemRevisionForDate(item, completionDate);
+        if (revision.kind === "binary") return {kind: "blocked", reason: "mapping-changed"};
+        if (revision.unit !== entry.itemUnit) return {kind: "blocked", reason: "mapping-changed"};
+        const currentMode = item.tomatoMode === "sessions" ? "sessions" : "minutes";
+        if (currentMode !== entry.tomatoMode) return {kind: "blocked", reason: "mapping-changed"};
+        /* 跳过日:保留待处理由用户决定,不默默删除跳过、也不把专注转成破戒。 */
+        if (getSkipDatesForItem(this.store, entry.itemId).has(entry.localDate) && !isComplete(this.store, item, completionDate)) {
+            return {kind: "blocked", reason: "skipped-day"};
+        }
+        const value = dockTomatoCompletionValue(revision.unit, entry.tomatoMode, entry.durationMinutes);
+        if (value === undefined || value <= 0) return {kind: "blocked", reason: "invalid-duration"};
+        const event = this.makeEvent(item, value, "tomato", revision.unit, "来自底栏番茄钟", ref, {occurredAt: entry.occurredAt, localDate: entry.localDate});
+        const previous = this.store;
+        const next = appendEvent(this.store, event);
+        if (next === this.store) {
+            const stored = this.store.events.find((candidate) => candidate.itemId === entry.itemId && candidate.source === "tomato" && candidate.externalRef === ref);
+            return stored ? {kind: "duplicate", eventId: stored.id} : {kind: "discarded"};
+        }
+        this.store = next;
+        try {
+            await this.persist();
+        } catch {
+            this.store = previous;
+            return {kind: "retry", reason: "persist-failed"};
+        }
+        this.invalidateSummary();
+        this.broadcast({type: "event-recorded", item, event});
+        this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
+        this.pendingLocalItemId = item.id;
+        this.pendingLocalItemDate = event.localDate;
+        this.renderBackgroundUpdate();
+        this.maybeAutoArchiveAfterRecord(item);
+        /* 锚点回写是尽力而为的旁路(D-218):失败不影响入账;
+           自动来源说明不追加为用户备注,仅刷新锚点状态属性。 */
+        void this.writebackNoteAnchor(item, {state: "done", value, unit: revision.unit});
+        return {kind: "recorded", eventId: event.id};
+    }
+
+    private async persistDockTomatoInbox(): Promise<boolean> {
+        try {
+            await this.saveData(DOCKTOMATO_INBOX_STORAGE_NAME, serializeInboxStore(this.dockTomatoInbox));
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    private scheduleDockTomatoInboxWake(): void {
+        if (this.dockTomatoInboxTimer !== undefined) {
+            window.clearTimeout(this.dockTomatoInboxTimer);
+            this.dockTomatoInboxTimer = undefined;
+        }
+        if (this.disposed || this.disposing) return;
+        const delay = inboxNextWakeDelayMs(this.dockTomatoInbox, new Date().toISOString());
+        if (delay === undefined) return;
+        this.dockTomatoInboxTimer = window.setTimeout(() => {
+            this.dockTomatoInboxTimer = undefined;
+            void this.reconcileDockTomatoInbox();
+        }, Math.min(Math.max(delay, 250), 60000));
+    }
+
+    /** 恢复入口:初始化后与重试到期时驱动;仅在有到期项时唤醒,无常驻定时器。 */
+    private async reconcileDockTomatoInbox(): Promise<void> {
+        if (this.disposed || this.disposing || !this.acceptingOperations || this.initializationState !== "ready") return;
+        const due = inboxDueEntries(this.dockTomatoInbox, new Date().toISOString());
+        for (const entry of due) {
+            if (this.disposed || this.disposing || !this.acceptingOperations) return;
+            await this.processDockTomatoCompletion(entry);
+        }
+        this.scheduleDockTomatoInboxWake();
+    }
+
+    /** 桥完成事件的宿主通道:同一个受保护工作单元内 接收 → 写入 → 移除/标记。 */
+    private processDockTomatoCompletion(entry: DockTomatoPendingCompletion): Promise<DockTomatoCompletionWriteResult> {
+        if (!this.acceptingOperations || this.initializationState !== "ready") {
+            return Promise.resolve({kind: "retry", reason: "storage-not-ready"});
+        }
+        return this.enqueueMutation(async () => {
+            if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return {kind: "retry", reason: "storage-not-ready"};
+            const nowIso = new Date().toISOString();
+            /* 跨窗口合并:锁内重读收件箱逐项合并,不让窗口互相覆盖对方的待处理项。 */
+            let stored = this.dockTomatoInbox;
+            try {
+                const remote = normalizeInboxStore(await this.loadData(DOCKTOMATO_INBOX_STORAGE_NAME));
+                for (const remoteEntry of remote.items) {
+                    stored = upsertInboxEntry(stored, remoteEntry, nowIso).store;
+                }
+            } catch {
+                /* 收件箱读取失败不阻断本条处理:内存态继续,写回时如实报告。 */
+            }
+            const upsert = upsertInboxEntry(stored, entry, nowIso);
+            if (upsert.outcome === "full") {
+                showMessage(t("msg.dockInboxFull"));
+                return {kind: "blocked", reason: "inbox-full"};
+            }
+            this.dockTomatoInbox = upsert.store;
+            const inboxPersisted = await this.persistDockTomatoInbox();
+            if (!inboxPersisted) {
+                /* 先保存收件箱失败:保留内存待处理项并标记重试,不得显示成已保存。 */
+                showMessage(t("msg.dockInboxSaveFail"));
+            }
+            const result = await this.recordDockTomatoCompletionUnlocked(entry);
+            if (result.kind === "recorded" || result.kind === "duplicate") {
+                this.dockTomatoInbox = removeInboxEntry(this.dockTomatoInbox, entry.identity);
+                const cleanupPersisted = await this.persistDockTomatoInbox();
+                if (!cleanupPersisted) {
+                    /* 主记录已成功,收件箱删除失败:保留待处理,恢复后以 duplicate 收尾不再新增。 */
+                    this.dockTomatoInbox = upsertInboxEntry(this.dockTomatoInbox, {...entry, state: "pending", attempts: 0, nextAttemptAt: undefined, lastError: "inbox-cleanup-pending", updatedAt: new Date().toISOString()}, new Date().toISOString()).store;
+                    void this.persistDockTomatoInbox();
+                }
+            } else if (result.kind === "retry") {
+                this.dockTomatoInbox = markInboxRetry(this.dockTomatoInbox, entry.identity, result.reason, new Date().toISOString());
+                await this.persistDockTomatoInbox();
+            } else if (result.kind === "blocked") {
+                this.dockTomatoInbox = markInboxBlocked(this.dockTomatoInbox, entry.identity, result.reason, new Date().toISOString());
+                await this.persistDockTomatoInbox();
+            }
+            this.scheduleDockTomatoInboxWake();
+            return result;
+        });
     }
 
     private showToday() {

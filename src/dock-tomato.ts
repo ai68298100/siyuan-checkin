@@ -1,4 +1,5 @@
 import {DOCK_TOMATO_ADAPTER_ID, type FocusAdapter} from "./integrations";
+import {completionClock, type DockTomatoCompletionWriteResult, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import type {CheckinEvent, CheckinItem} from "./types";
 
 const DOCK_TOMATO_API_EVENT = "tomato:focus-api-availability-changed";
@@ -129,7 +130,7 @@ interface DockTomatoCompletionDetail {
     context?: Record<string, unknown>;
 }
 
-export type DockTomatoCompletionIssueReason = "invalid-event" | "unsupported-version" | "invalid-context" | "missing-item" | "archived-item" | "mapping-changed" | "invalid-duration" | "missing-identity" | "duplicate" | "write-failed";
+export type DockTomatoCompletionIssueReason = "invalid-event" | "unsupported-version" | "invalid-context" | "invalid-completion-time" | "missing-item" | "archived-item" | "mapping-changed" | "not-scheduled" | "at-most-item" | "skipped-day" | "invalid-duration" | "missing-identity" | "duplicate" | "user-removed" | "write-failed";
 
 export interface DockTomatoCompletionIssue {
     reason: DockTomatoCompletionIssueReason;
@@ -151,8 +152,8 @@ interface DockTomatoCompletionDecision {
     ignored?: boolean;
     reason?: DockTomatoCompletionIssueReason;
     item?: CheckinItem;
-    value?: number;
     identity?: string;
+    entry?: DockTomatoPendingCompletion;
 }
 
 const completionIssues: DockTomatoCompletionIssue[] = [];
@@ -193,7 +194,7 @@ export function clearDockTomatoCompletionIssues(): void {
 function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | undefined {
     if (!value || typeof value !== "object") return undefined;
     const reason = boundedText(ownDataValue(value, "reason"), 40) as DockTomatoCompletionIssueReason;
-    const validReasons: readonly DockTomatoCompletionIssueReason[] = ["invalid-event", "unsupported-version", "invalid-context", "missing-item", "archived-item", "mapping-changed", "invalid-duration", "missing-identity", "duplicate", "write-failed"];
+    const validReasons: readonly DockTomatoCompletionIssueReason[] = ["invalid-event", "unsupported-version", "invalid-context", "invalid-completion-time", "missing-item", "archived-item", "mapping-changed", "not-scheduled", "at-most-item", "skipped-day", "invalid-duration", "missing-identity", "duplicate", "user-removed", "write-failed"];
     if (!validReasons.includes(reason)) return undefined;
     const at = boundedText(ownDataValue(value, "at"), 40);
     if (!at || !Number.isFinite(Date.parse(at))) return undefined;
@@ -272,7 +273,12 @@ function resolveCompletionWriteIssue(identity: string): void {
     }
 }
 
-export function evaluateDockTomatoCompletion(detail: unknown, items: readonly CheckinItem[], duplicateIdentities: ReadonlySet<string> = new Set()): DockTomatoCompletionDecision {
+/** 完成通知判定（D-227 顺序）：
+    1. 结构校验（版本/消费者/context/时长/身份/completedAt）——completedAt 缺失或无效直接拒绝，不回退当前时间；
+    2. 幂等身份判定（已入账 → duplicate；已撤销 → user-removed）——必须在项目可用性之前，
+       归档项目的既有记录才不会误报 missing-item；
+    3. 项目可用性与映射检查——只决定 blocked 与否，不吞掉身份语义。 */
+export function evaluateDockTomatoCompletion(detail: unknown, items: readonly CheckinItem[], duplicateIdentities: ReadonlySet<string> = new Set(), tombstonedIdentities: ReadonlySet<string> = new Set(), receivedAt = new Date().toISOString()): DockTomatoCompletionDecision {
     if (!detail || typeof detail !== "object") return {accepted: false, reason: "invalid-event"};
     if (ownDataValue(detail, "apiVersion") !== 1) return {accepted: false, reason: "unsupported-version"};
     const context = ownDataValue(detail, "context");
@@ -282,19 +288,36 @@ export function evaluateDockTomatoCompletion(detail: unknown, items: readonly Ch
     const startUnit = exactBoundedText(ownDataValue(context, "itemUnit"), 80);
     const startMode = exactBoundedText(ownDataValue(context, "tomatoMode"), 24);
     if (!itemId || !startUnit || (startMode !== "sessions" && startMode !== "minutes")) return {accepted: false, reason: "invalid-context"};
-    const item = findCompletionItem(items, itemId);
-    if (!item) return {accepted: false, reason: "missing-item"};
-    if (ownDataValue(item, "archived") === true) return {accepted: false, reason: "archived-item", item};
-    const currentMode = ownDataValue(item, "tomatoMode") === "sessions" ? "sessions" : "minutes";
-    if (ownDataValue(item, "unit") !== startUnit || currentMode !== startMode) return {accepted: false, reason: "mapping-changed", item};
     const rawDuration = ownDataValue(detail, "durationMinutes");
     const durationMinutes = typeof rawDuration === "number" && Number.isFinite(rawDuration) ? rawDuration : Number.NaN;
-    const value = completedValue(item, durationMinutes);
-    if (value === undefined) return {accepted: false, reason: "invalid-duration", item};
+    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) return {accepted: false, reason: "invalid-duration"};
     const identity = exactBoundedText(ownDataValue(detail, "sessionId"), 240) || exactBoundedText(ownDataValue(detail, "recordId"), 240);
-    if (!identity) return {accepted: false, reason: "missing-identity", item};
-    if (duplicateIdentities.has(identity)) return {accepted: false, reason: "duplicate", item, identity};
-    return {accepted: true, item, value, identity};
+    if (!identity) return {accepted: false, reason: "missing-identity"};
+    const clock = completionClock(ownDataValue(detail, "completedAt"));
+    if (!clock) return {accepted: false, reason: "invalid-completion-time"};
+    if (duplicateIdentities.has(identity)) return {accepted: false, reason: "duplicate", identity};
+    if (tombstonedIdentities.has(identity)) return {accepted: false, reason: "user-removed", identity};
+    const item = findCompletionItem(items, itemId);
+    if (!item) return {accepted: false, reason: "missing-item", identity};
+    if (ownDataValue(item, "archived") === true) return {accepted: false, reason: "archived-item", item, identity};
+    if (ownDataValue(item, "direction") === "atMost") return {accepted: false, reason: "at-most-item", item, identity};
+    const currentMode = ownDataValue(item, "tomatoMode") === "sessions" ? "sessions" : "minutes";
+    if (ownDataValue(item, "unit") !== startUnit || currentMode !== startMode) return {accepted: false, reason: "mapping-changed", item, identity};
+    const entry: DockTomatoPendingCompletion = {
+        identity,
+        externalRef: `docktomato:${identity}`,
+        itemId,
+        itemUnit: startUnit,
+        tomatoMode: startMode,
+        durationMinutes,
+        occurredAt: clock.occurredAt,
+        localDate: clock.localDate,
+        state: "pending",
+        attempts: 0,
+        receivedAt,
+        updatedAt: receivedAt,
+    };
+    return {accepted: true, item, identity, entry};
 }
 
 export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<string> {
@@ -313,13 +336,16 @@ export function collectDockTomatoStoredIdentities(events: unknown): ReadonlySet<
 interface DockCheckinApi {
     getItems(): CheckinItem[];
     getEvents(): CheckinEvent[];
-    recordEvent(input: {itemId: string; value?: number; unit?: string; source?: "tomato"; note?: string; externalRef?: string}): Promise<unknown>;
     registerFocusAdapter(adapter: FocusAdapter): (options?: {stopActive?: boolean}) => void;
 }
 
-/** 宿主侧纯清理通道：只清本地活动登记，不产生任何控制副作用（D-226）。 */
+/** 宿主侧通道：收件箱/回写/纯清理都归宿主持有,桥只做校验与诊断(D-227)。 */
 export interface DockTomatoBridgeHost {
     releaseFocusAdapter?(adapter: FocusAdapter): void;
+    /** 在受保护的工作单元内完成:收件箱接收 → 打卡写入 → 收件箱移除/标记。 */
+    processDockTomatoCompletion?(entry: DockTomatoPendingCompletion): Promise<DockTomatoCompletionWriteResult>;
+    /** 主存储中已被用户撤销的 docktomato 身份(墓碑投影)。 */
+    dockTomatoTombstonedIdentities?(): ReadonlySet<string>;
 }
 
 /** 休息等非专注阶段不参与按会话控制——休息阶段可能沿用父专注的 sessionId。 */
@@ -362,12 +388,6 @@ function dockTomatoStartContext(item: CheckinItem): Record<string, string> | und
         itemUnit,
         tomatoMode: item.tomatoMode === "sessions" ? "sessions" : "minutes",
     };
-}
-
-function completedValue(item: CheckinItem, durationMinutes: number): number | undefined {
-    if (!Number.isFinite(durationMinutes) || durationMinutes <= 0 || durationMinutes > 1440) return undefined;
-    if (ownDataValue(item, "tomatoMode") === "sessions") return 1;
-    return ownDataValue(item, "unit") === "小时" ? durationMinutes / 60 : durationMinutes;
 }
 
 function findCompletionItem(items: readonly CheckinItem[], itemId: string): CheckinItem | undefined {
@@ -517,8 +537,9 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         try {
             const detail = customEventDetail(event);
             const storedIdentities = collectDockTomatoStoredIdentities(api.getEvents());
-            const decision = evaluateDockTomatoCompletion(detail, api.getItems(), new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]));
-            if (!decision.accepted || !decision.item || decision.value === undefined || !decision.identity) {
+            const tombstonedIdentities = host.dockTomatoTombstonedIdentities?.() || new Set<string>();
+            const decision = evaluateDockTomatoCompletion(detail, api.getItems(), new Set([...storedIdentities, ...completedIdentities, ...inFlightIdentities]), tombstonedIdentities);
+            if (!decision.accepted) {
                 if (decision.reason && decision.reason !== "duplicate") {
                     const context = ownDataValue(detail, "context");
                     appendCompletionIssue(decision.reason, exactBoundedText(ownDataValue(context, "itemId"), 160), exactBoundedText(ownDataValue(detail, "sessionId"), 240));
@@ -526,29 +547,30 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 }
                 return;
             }
-            const {item, value, identity} = decision;
+            const {item, identity, entry} = decision;
+            if (!item || !entry || !identity) return;
             failureItemId = item.id;
             failureIdentity = identity;
             /* 会话已结束:先释放归属与"正在专注"登记,再进入独立回写流程。 */
             releaseSessionForIdentity(identity);
-            inFlightIdentities.add(identity);
             claimedIdentity = identity;
-            const recorded = await api.recordEvent({
-                itemId: item.id,
-                value,
-                unit: item.unit,
-                source: "tomato",
-                externalRef: `docktomato:${identity}`,
-                note: "来自底栏番茄钟",
-            });
-            if (!recorded) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
+            inFlightIdentities.add(identity);
+            if (!host.processDockTomatoCompletion) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
+            const result = await host.processDockTomatoCompletion(entry);
             if (bridgeDisposed) return;
-            resolveCompletionWriteIssue(identity);
-            completedIdentities.add(identity);
-            completionIdentityOrder.push(identity);
-            if (completionIdentityOrder.length > 500) {
-                const expired = completionIdentityOrder.shift();
-                if (expired) completedIdentities.delete(expired);
+            if (result.kind === "recorded" || result.kind === "duplicate") {
+                resolveCompletionWriteIssue(identity);
+                completedIdentities.add(identity);
+                completionIdentityOrder.push(identity);
+                if (completionIdentityOrder.length > 500) {
+                    const expired = completionIdentityOrder.shift();
+                    if (expired) completedIdentities.delete(expired);
+                }
+            } else if (result.kind === "blocked" || result.kind === "discarded") {
+                const reason: DockTomatoCompletionIssueReason = result.kind === "discarded" ? "user-removed" : (["missing-item", "archived-item", "mapping-changed", "not-scheduled", "at-most-item", "skipped-day"].includes(result.reason) ? result.reason as DockTomatoCompletionIssueReason : "write-failed");
+                appendCompletionIssue(reason, item.id, identity);
+            } else {
+                throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
             }
             scheduleProviderRefresh();
         } catch {

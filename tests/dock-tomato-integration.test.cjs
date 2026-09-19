@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const bridge = fs.readFileSync("src/dock-tomato.ts", "utf8");
+const inbox = fs.readFileSync("src/features/docktomato-inbox.ts", "utf8");
 const preferences = fs.readFileSync("src/view-preferences.ts", "utf8");
 const settings = fs.readFileSync("src/render/settings.ts", "utf8");
 const focus = fs.readFileSync("src/render/focus-adapter.ts", "utf8");
@@ -22,10 +23,12 @@ assert.match(bridge, /exactBoundedText\(ownDataValue\(entry, "externalRef"\), 25
 assert.match(bridge, /if \(exactBoundedText\(identity, 240\)\) identities\.add\(identity\)/, "empty or oversized provider identities must not enter the dedupe set");
 assert.match(bridge, /reference\.startsWith\("docktomato:"\)/, "only Dock Tomato identities may enter provider deduplication");
 assert.match(bridge, /new Set\(\[\.\.\.storedIdentities, \.\.\.completedIdentities, \.\.\.inFlightIdentities\]\)/, "stored, completed and in-flight identities must share one decision boundary");
-assert.match(bridge, /inFlightIdentities\.add\(identity\)[\s\S]*await api\.recordEvent/, "identity must enter the in-flight set before persistence starts");
+assert.match(bridge, /inFlightIdentities\.add\(identity\)[\s\S]*await host\.processDockTomatoCompletion/, "identity must enter the in-flight set before the host write starts");
 assert.match(bridge, /claimedIdentity = identity/, "only the handler that starts persistence may claim the in-flight identity");
 assert.match(bridge, /if \(claimedIdentity\) inFlightIdentities\.delete\(claimedIdentity\)/, "only the owning handler may release the in-flight identity");
-assert.match(bridge, /if \(!recorded\) throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an empty write result must remain observable and retryable");
+assert.match(bridge, /throw new Error\("DOCK_TOMATO_CHECKIN_WRITE_REJECTED"\)/, "an unresolved write must remain observable and retryable");
+assert.match(bridge, /dockTomatoTombstonedIdentities/, "the bridge must consult user-removed tombstones before writing");
+assert.match(bridge, /user-removed/, "an undone completion must be reported as user-removed, never re-added");
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
 assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");
@@ -33,8 +36,10 @@ assert.match(bridge, /resolveCompletionWriteIssue\(identity\)/, "successful retr
 assert.match(bridge, /issue\.reason === "write-failed" && issue\.identity === identity/, "retry resolution must be scoped by reason and identity");
 assert.match(bridge, /if \(bridgeDisposed\) return;[\s\S]*completedIdentities\.add/, "late writes must not recreate completion state after disposal");
 assert.match(bridge, /if \(!bridgeDisposed\) \{[\s\S]*appendCompletionIssue\("write-failed"/, "late failures must not recreate diagnostics after disposal");
-assert.match(bridge, /ownDataValue\(item, "unit"\) === "小时" \? durationMinutes \/ 60 : durationMinutes/, "minutes must safely convert to hour-based items");
-assert.match(bridge, /ownDataValue\(item, "tomatoMode"\) === "sessions"\) return 1/, "session-mode items must safely record one completion");
+assert.match(bridge, /ownDataValue\(item, "archived"\) === true/, "archived-item completions must be distinguishable from duplicates");
+assert.match(bridge, /ownDataValue\(item, "direction"\) === "atMost"/, "at-most goals must be rejected before accepting a completion");
+assert.match(bridge, /completionClock\(ownDataValue\(detail, "completedAt"\)\)/, "completion time must pass the strict clock validation");
+assert.match(bridge, /invalid-completion-time/, "a missing or invalid completedAt must be rejected instead of falling back to now");
 assert.match(bridge, /durationMinutes > 1440/, "implausible forged durations must be rejected");
 assert.match(bridge, /Object\.getOwnPropertyDescriptor\(object, key\)/, "foreign payload accessors must not execute during validation");
 assert.match(bridge, /export function readDockTomatoRuntimeStatus/, "provider status reads must share one defensive boundary");
@@ -148,6 +153,24 @@ assert.match(i18n, /"set\.tomatoStateError": "Could not read status"/, "English 
 assert.match(i18n, /"set\.tomatoUseBuiltin": "Use built-in timer"/, "English recovery action must be explicit");
 assert.match(today, /DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string>/, "Today must map every provider state to an actionable message");
 assert.match(today, /inspectDockTomatoProvider\(\)\.state/, "Today must inspect the current provider state at click time");
+/* 收件箱与宿主回写通道（D-227）。 */
+assert.match(inbox, /export function completionClock/, "the completion clock must live in one pure boundary");
+assert.match(inbox, /export function dockTomatoCompletionValue/, "completion value conversion must share one boundary");
+assert.match(inbox, /export function normalizeInboxStore/, "the inbox must have one corruption-isolating restore path");
+assert.match(inbox, /DOCKTOMATO_INBOX_CAPACITY/, "the inbox must have an explicit capacity");
+assert.match(inbox, /INBOX_RETRY_DELAYS_MS: readonly number\[\] = \[1000, 5000, 30000\]/, "retry pacing must be explicit and bounded");
+assert.match(inbox, /outcome: "conflict"/, "conflicting payloads must not overwrite the first received data");
+assert.match(plugin, /DOCKTOMATO_INBOX_STORAGE_NAME = "checkin-docktomato-inbox"/, "the pending completion inbox must use isolated versioned storage");
+assert.match(plugin, /processDockTomatoCompletion: \(entry\) => this\.processDockTomatoCompletion\(entry\)/, "the bridge host must wire the host-owned write channel");
+assert.match(plugin, /dockTomatoTombstonedIdentities: \(\) => this\.collectDockTomatoTombstonedIdentities\(\)/, "the bridge host must expose the tombstone projection");
+assert.match(plugin, /recordDockTomatoCompletionUnlocked/, "the writer must run inside the already-held storage lock");
+assert.match(plugin, /reconcileDockTomatoInbox/, "pending completions must recover after reload");
+assert.match(plugin, /dockTomatoInboxTimer !== undefined/, "the retry wake timer must be cleared on unload");
+assert.match(i18n, /"set\.tomatoIssueSkippedDay"/, "Chinese copy must explain skipped-day blocking");
+assert.match(i18n, /"set\.tomatoIssueAtMost"/, "Chinese copy must explain at-most blocking");
+assert.match(i18n, /"set\.tomatoIssueUserRemoved"/, "Chinese copy must explain user-removed completions");
+assert.match(i18n, /"set\.tomatoIssueSkippedDay": "The completion date is marked as skipped/, "English copy must explain skipped-day blocking");
+assert.match(i18n, /"msg\.dockInboxFull"/, "Chinese or English copy must explain inbox capacity");
 for (const key of ["focusDockMissing", "focusDockVersion", "focusDockApi", "focusDockCapabilities", "focusDockLoading", "focusDockBusy", "focusDockPaused", "focusDockError"]) {
     assert.match(today, new RegExp(`msg\\.${key}`), `Today must handle ${key}`);
 }

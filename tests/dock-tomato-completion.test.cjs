@@ -7,9 +7,27 @@ const compiled = ts.transpileModule(source, {
     compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020},
 }).outputText;
 const moduleUnderTest = {exports: {}};
+const loadTs = (file, stubs) => {
+    const src = fs.readFileSync(file, "utf8");
+    const compiledSrc = ts.transpileModule(src, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText;
+    const module = {exports: {}};
+    new Function("require", "module", "exports", compiledSrc)((id) => {
+        if (stubs[id]) return stubs[id];
+        throw new Error(`Unexpected dependency: ${id}`);
+    }, module, module.exports);
+    return module.exports;
+};
+const localDateKey = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
+};
+const inboxModule = loadTs("src/features/docktomato-inbox.ts", {"../model": {dateKey: localDateKey}});
 const localRequire = (id) => {
     if (id === "./integrations") return {DOCK_TOMATO_ADAPTER_ID: "siyuan-plugin-docktomato"};
     if (id === "./types") return {};
+    if (id === "./features/docktomato-inbox") return inboxModule;
     throw new Error(`Unexpected dependency: ${id}`);
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
@@ -20,13 +38,24 @@ const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
     sessionId: "session-1",
     durationMinutes: 25,
+    completedAt: "2026-09-19T10:00:00.000Z",
     context: {consumer: "siyuan-checkin", itemId: "read", itemUnit: "分钟", tomatoMode: "minutes", ...contextOverrides},
     ...overrides,
 });
+const expectedLocalDate = (() => { const d = new Date("2026-09-19T10:00:00.000Z"); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
 
-assert.equal(evaluateDockTomatoCompletion(detail(), [item]).accepted, true);
-assert.equal(evaluateDockTomatoCompletion(detail(), [item]).value, 25);
-assert.equal(evaluateDockTomatoCompletion(detail(), [item]).identity, "session-1");
+const acceptedDecision = evaluateDockTomatoCompletion(detail(), [item]);
+assert.equal(acceptedDecision.accepted, true);
+assert.equal(acceptedDecision.identity, "session-1");
+assert.equal(acceptedDecision.entry.identity, "session-1");
+assert.equal(acceptedDecision.entry.externalRef, "docktomato:session-1");
+assert.equal(acceptedDecision.entry.itemId, "read");
+assert.equal(acceptedDecision.entry.itemUnit, "分钟");
+assert.equal(acceptedDecision.entry.tomatoMode, "minutes");
+assert.equal(acceptedDecision.entry.durationMinutes, 25);
+assert.equal(acceptedDecision.entry.occurredAt, "2026-09-19T10:00:00.000Z");
+assert.equal(acceptedDecision.entry.localDate, expectedLocalDate);
+assert.equal(acceptedDecision.entry.state, "pending");
 assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "", recordId: "record-1"}), [item]).identity, "record-1");
 const malformedIdentities = Array.from({length: 25}, (_, index) => index % 3 === 0 ? ` ${index}` : index % 3 === 1 ? `${index} ` : `${index}-${"s".repeat(240)}`);
 for (let index = 0; index < malformedIdentities.length; index += 1) {
@@ -53,9 +82,20 @@ assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 1441}), [item
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: Number.NaN}), [item]).reason, "invalid-duration");
 assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "", recordId: ""}), [item]).reason, "missing-identity");
 assert.equal(evaluateDockTomatoCompletion(detail(), [item], new Set(["session-1"])).reason, "duplicate");
-assert.equal(evaluateDockTomatoCompletion(detail({}, {tomatoMode: "sessions"}), [{...item, tomatoMode: "sessions"}]).value, 1);
+/* duplicate/user-removed 必须先于项目可用性:归档项目的既有记录不得误报 missing-item。 */
+assert.equal(evaluateDockTomatoCompletion(detail({}, {itemId: "deleted"}), [item], new Set(["session-1"])).reason, "duplicate");
+assert.equal(evaluateDockTomatoCompletion(detail(), [{...item, archived: true}], new Set(["session-1"])).reason, "duplicate");
+assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "undone"}), [item], new Set(), new Set(["undone"])).reason, "user-removed");
+assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "undone"}), [{...item, archived: true}], new Set(), new Set(["undone"])).reason, "user-removed");
+/* 戒除类目标不能自动记录正向专注完成。 */
+assert.equal(evaluateDockTomatoCompletion(detail(), [{...item, direction: "atMost"}]).reason, "at-most-item");
+/* completedAt 缺失或无效:invalid-completion-time,不得回退当前时间。 */
+assert.equal(evaluateDockTomatoCompletion(detail({completedAt: undefined}), [item]).reason, "invalid-completion-time");
+assert.equal(evaluateDockTomatoCompletion(detail({completedAt: "not-a-date"}), [item]).reason, "invalid-completion-time");
+assert.equal(evaluateDockTomatoCompletion(detail({completedAt: 42}), [item]).reason, "invalid-completion-time");
+assert.equal(evaluateDockTomatoCompletion(detail({completedAt: ""}), [item]).reason, "invalid-completion-time");
+assert.equal(evaluateDockTomatoCompletion(detail({}, {tomatoMode: "sessions"}), [{...item, tomatoMode: "sessions"}]).accepted, true);
 assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 0}, {tomatoMode: "sessions"}), [{...item, tomatoMode: "sessions"}]).reason, "invalid-duration");
-assert.equal(evaluateDockTomatoCompletion(detail({durationMinutes: 30}, {itemUnit: "小时"}), [{...item, unit: "小时"}]).value, 0.5);
 
 const malformedContexts = Array.from({length: 25}, (_, index) => {
     if (index % 6 === 0) return {itemId: " read"};
@@ -112,10 +152,10 @@ clearDockTomatoCompletionIssues();
 assert.deepEqual(getDockTomatoCompletionIssues(), []);
 assert.ok(Object.isFrozen(getDockTomatoCompletionIssues()));
 
-const reasons = ["invalid-event", "unsupported-version", "invalid-context", "missing-item", "archived-item", "mapping-changed", "invalid-duration", "missing-identity", "duplicate", "write-failed"];
+const reasons = ["invalid-event", "unsupported-version", "invalid-context", "invalid-completion-time", "missing-item", "archived-item", "mapping-changed", "not-scheduled", "at-most-item", "skipped-day", "invalid-duration", "missing-identity", "duplicate", "user-removed", "write-failed"];
 const persisted = reasons.map((reason, index) => ({reason, at: `2026-09-17T00:${String(index).padStart(2, "0")}:00.000Z`, itemId: `item-${index}`, identity: `session-${index}`}));
 const restored = restoreDockTomatoCompletionIssues(JSON.stringify({schemaVersion: 1, issues: persisted}));
-assert.equal(restored.length, 10);
+assert.equal(restored.length, reasons.length);
 for (let index = 0; index < reasons.length; index += 1) {
     assert.equal(restored[index].reason, reasons[index]);
     assert.equal(restored[index].itemId, `item-${index}`);

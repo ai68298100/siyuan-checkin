@@ -71,12 +71,17 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         "invalid-event": "set.tomatoIssueInvalidEvent",
         "unsupported-version": "set.tomatoIssueVersion",
         "invalid-context": "set.tomatoIssueContext",
+        "invalid-completion-time": "set.tomatoIssueCompletionTime",
         "missing-item": "set.tomatoIssueMissingItem",
         "archived-item": "set.tomatoIssueArchivedItem",
         "mapping-changed": "set.tomatoIssueMapping",
+        "not-scheduled": "set.tomatoIssueNotScheduled",
+        "at-most-item": "set.tomatoIssueAtMost",
+        "skipped-day": "set.tomatoIssueSkippedDay",
         "invalid-duration": "set.tomatoIssueDuration",
         "missing-identity": "set.tomatoIssueIdentity",
         duplicate: "set.tomatoIssueDuplicate",
+        "user-removed": "set.tomatoIssueUserRemoved",
         "write-failed": "set.tomatoIssueWrite",
     };
     const latestCompletionIssue = ctx.dockTomatoCompletionIssues?.length
