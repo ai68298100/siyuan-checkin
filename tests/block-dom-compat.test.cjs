@@ -70,5 +70,6 @@ assert.equal(writable.length, 4, `写入型能力应为 4 项，实际 ${writabl
 /* 7. plugin.json 的版本门槛必须是三段式 semver，否则内核比较失效。 */
 assert.match(pluginJson.minAppVersion, /^\d+\.\d+\.\d+$/, "minAppVersion must be a three-part semver for the kernel gate to work");
 assert.ok(compatDoc.includes(pluginJson.minAppVersion), "doc must state the declared minAppVersion");
+assert.equal(pluginJson.minAppVersion, "3.8.4", "the declared minimum must be the actually tested baseline, not an untested historical value (T-1271/D-238)");
 
 console.log(`Block DOM-compat and compatibility-doc checks passed: ${caps.length} agent capabilities, ${coupled.length} coupled selectors confined, budgets ${drainMs}/${flushMs}ms.`);
