@@ -1328,4 +1328,11 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - 产物：`package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`（已回填进两份发布文档）。注意 `test:quality` 链内含 `build`，任何一次重跑都会因 zip 时间戳变化而产生新摘要，因此哈希必须在最终构建之后回填，并单独一次 docs 提交（与 v17.0.0 的 `docs: backfill … SHA-256` 做法一致）。
 - 验证：`pnpm run check:release` 通过（v17.1.0），完整 `test:quality` exit 0（125 个测试文件、0 退役），`test:e2e` 7/7、`test:e2e:readonly` 1/1（思源 3.8.4）。
 - 仓库接入：本目录原先是 tarball 快照，已 `git init` + SSH 远端 `git@github.com:ai68298100/siyuan-checkin.git`，`main` 对齐远端 `09f82bb` 后本地提交 `596f292`（release）与哈希回填提交，均为快进可推送。
-- 状态：**未推送、未建 Release**。按项目规矩 push 不擅自动手，等一句确认；`gh` 本机未安装，Release 可用 API 创建（凭据里有可用 PAT）或由你在网页上传 `package.zip`。
+- 发布通道：`gh` 本机未安装，改用 api.github.com 创建 Release 并上传资产（token 取自 git 凭据管理器，只在脚本内使用）；代码与标签走 SSH 远端。
+
+### v17.1.0 正式发布（2026-09-19）
+
+- 远端 `main` 推进到 `06cf516`（`596f292` release 提交 → `ed53d03` 哈希回填 → `06cf516` 门禁缺口记录），注释标签 `v17.1.0` 已推送。
+- GitHub Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v17.1.0（id 392014777，非草稿，标题「小飞驴打卡 v17.1.0」，正文取 `release-notes-17.1.0.md`）。
+- 资产 `package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`；已从 API 回读资产核对，远端与本地摘要逐字节一致。
+- 注意：本机 `github.com/.../releases/download/...` 直链返回空响应（objects.githubusercontent.com 不可达），API 通道可用——取源码与取资产都走 api.github.com。
