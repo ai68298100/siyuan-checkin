@@ -1410,3 +1410,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 番茄完成全链路真实内核 E2E（T-1286）：tests/e2e/docktomato-completion.spec.mjs 在真实思源内核上注入 completion 事件并断言——正常入账（值=实际时长、来源=tomato、完成日=completedAt 本地日、重复幂等）；跳过日 blocked:skipped-day（收件箱内核文件留痕、用户跳过原样保留、零误入账）。test:e2e 升为 12/12。v17.2.0 头牌功能的真实宿主证据补齐。
 
 2026-09-20 移动端番茄联动 E2E 与 longest 性能门禁（T-1287/T-1288）：①docktomato-completion.spec.mjs 增补 mobile bundle 场景——番茄完成联动在移动端前端同样真实入账（test:e2e 升为 13/13）;②api-v5 测试补 computeLongestStreaks 性能门禁——对 2000 年至今约 26 年窗口全历史逐日扫描设 2000ms 灾难退化捕获,本机实测通过。
+
+2026-09-20 跳过日解析旅程 E2E（T-1289):真实内核 + mobile bundle 走完整用户旅程——dispatch 完成事件 → 收件箱内核文件确认 blocked:skipped-day → 设置页收件箱区块渲染 → 点击「撤销跳过并计入」并接受确认 → 内核核验:完成事件入账 1 条、本项目 skip 事件消失且墓碑 ≥1、收件箱条目清除。修复过程修正测试自身两处问题(skip 种子的 itemId 前缀错位导致跳过被 normalize 丢弃;skip 断言范围未限定本项目)。test:e2e 13/13。

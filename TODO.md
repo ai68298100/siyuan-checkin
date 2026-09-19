@@ -2634,3 +2634,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1287 移动端番茄完成 E2E + T-1288 longest 性能门禁
   - 验收:mobile bundle 下番茄完成联动同样入账;computeLongestStreaks 在 26 年窗口(9.5k 日)全历史扫描设 2000ms 灾难退化捕获。
   - 状态:done(docktomato-completion.spec.mjs 增 mobile 场景;api-v5 测试补 longest 性能门禁)
+
+- [x] T-1289 跳过日解析旅程 E2E（T-1270 交互闭环的真实宿主验证）
+  - 验收:完成事件→收件箱 blocked→设置页收件箱区块→点击「撤销跳过并计入」(确认弹窗)→同单元落库断言:完成事件入账、skip 原子消失并留墓碑、收件箱条目清除。
+  - 状态:done(docktomato-completion.spec.mjs 增旅程场景,mobile bundle + iPhone 13 视口走完整 UI 旅程;test:e2e 13/13)
