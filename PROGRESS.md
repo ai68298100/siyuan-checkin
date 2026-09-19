@@ -1408,3 +1408,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 批量写真实内核 E2E（T-1285）：tests/e2e/api-v5-batch.spec.mjs——recordEventsBatch 两条带 occurredAt 的 api 记录一次落盘(内核存储文件核验 externalRef 原样保留、source=api),页面重载后同 externalRef 重放全部 duplicate 且内核不新增记录;test:e2e 升为 10/10 全过。v5 批量写路径(规划→追加→持久化→广播)自此有真实内核证据。任务池维持硬收敛:剩余仅 v17.2.0 发布(等授权)与外部依赖。
 
 2026-09-20 番茄完成全链路真实内核 E2E（T-1286）：tests/e2e/docktomato-completion.spec.mjs 在真实思源内核上注入 completion 事件并断言——正常入账（值=实际时长、来源=tomato、完成日=completedAt 本地日、重复幂等）；跳过日 blocked:skipped-day（收件箱内核文件留痕、用户跳过原样保留、零误入账）。test:e2e 升为 12/12。v17.2.0 头牌功能的真实宿主证据补齐。
+
+2026-09-20 移动端番茄联动 E2E 与 longest 性能门禁（T-1287/T-1288）：①docktomato-completion.spec.mjs 增补 mobile bundle 场景——番茄完成联动在移动端前端同样真实入账（test:e2e 升为 13/13）;②api-v5 测试补 computeLongestStreaks 性能门禁——对 2000 年至今约 26 年窗口全历史逐日扫描设 2000ms 灾难退化捕获,本机实测通过。

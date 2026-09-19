@@ -169,5 +169,12 @@ const makeItem = (overrides = {}) => ({
     assert.equal(batchPlan.planned.length, 200, "fresh refs plan as recorded");
     assert.ok(planMs < 2000, `200-entry batch plan over 100k events must stay under 2000ms (took ${Math.round(planMs)}ms)`);
 
-    console.log("API v5 read-only and batch-plan checks passed.");
+        /* longest 全历史扫描:createdDate 起逐日状态遍历,有 36500 步护栏。 */
+    const longestStart = process.hrtime.bigint();
+    const perfLongestMap = model.computeLongestStreaks(perfStore);
+    const longestMs = Number(process.hrtime.bigint() - longestStart) / 1e6;
+    assert.ok(typeof perfLongestMap.get("read") === "number", "longest projection must be numeric");
+    assert.ok(longestMs < 2000, `computeLongestStreaks over a 26-year window must stay under 2000ms (took ${Math.round(longestMs)}ms)`);
+
+console.log("API v5 read-only and batch-plan checks passed.");
 })().catch((error) => { console.error(error); process.exit(1); });

@@ -2630,3 +2630,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1286 番茄完成全链路真实内核 E2E（v17.2.0 头牌功能的真实宿主证据）
   - 验收:dispatch 真实 completion 事件→入账(值/日期/来源/externalRef 内核文件级断言)+重复幂等;skip-day→blocked:skipped-day 留痕收件箱、不删跳过、不误入账。
   - 状态:done(tests/e2e/docktomato-completion.spec.mjs;test:e2e 升为 12/12)
+
+- [x] T-1287 移动端番茄完成 E2E + T-1288 longest 性能门禁
+  - 验收:mobile bundle 下番茄完成联动同样入账;computeLongestStreaks 在 26 年窗口(9.5k 日)全历史扫描设 2000ms 灾难退化捕获。
+  - 状态:done(docktomato-completion.spec.mjs 增 mobile 场景;api-v5 测试补 longest 性能门禁)

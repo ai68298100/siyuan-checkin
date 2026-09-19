@@ -106,3 +106,19 @@ test("完成日已跳过:blocked 留痕于收件箱,不删跳过也不误入账"
     /* 跳过记录原样保留,未被静默删除。 */
     expect((await recordedEvents(client, item.id)).some((event) => event.kind === "skip" && event.localDate === todayKey), "用户跳过必须原样保留").toBe(true);
 });
+
+test('番茄完成联动在移动端 bundle 同样入账', async ({page}) => {
+    const client = createClient();
+    await openCheckin(page, {bundle: 'mobile'});
+
+    const runId = `${Date.now()}-m-${Math.random().toString(36).slice(2, 8)}`;
+    const item = makeDurationItem(runId);
+    await seedStore(client, await snapshotStore(page), [item]);
+    await page.reload();
+    await openCheckin(page, {bundle: 'mobile'});
+    await expect.poll(() => page.evaluate((id) => window.siyuanCheckin.getItems().some((entry) => entry.id === id), item.id), {timeout: 20000}).toBe(true);
+
+    const {detail} = completionDetail(item, 'e2e-dtm-' + runId, new Date());
+    await dispatchCompletion(page, detail);
+    await expect.poll(async () => (await recordedEvents(client, item.id)).filter((event) => event.externalRef === `docktomato:e2e-dtm-${runId}`).length, {timeout: 20000}).toBe(1);
+});
