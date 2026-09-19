@@ -1406,3 +1406,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 Obsidian 迁出与 E2E v5 spec（T-1283/T-1284）：①buildObsidianExportFiles 导出活跃项目为 H21 习惯 .md（完成日=非跳过事件日,文件名消毒+冲突唯一化,无记录/超上限计入 skipped,上限 30）,downloadObsidianExportFor 顺序多文件下载,设置页按钮+完成消息;i18n 中英 4 键(1120 对等);round-trip 测试(导出→解析无损还原)+文件名消毒/唯一化断言。②tests/e2e/api-v5.spec.mjs:真实内核验证 version=5、capabilitiesSince 4/5 分野、三个新方法形状与归档语义,test:e2e 升为 9/9。摘要回填后全链 exit 0。
 
 2026-09-20 批量写真实内核 E2E（T-1285）：tests/e2e/api-v5-batch.spec.mjs——recordEventsBatch 两条带 occurredAt 的 api 记录一次落盘(内核存储文件核验 externalRef 原样保留、source=api),页面重载后同 externalRef 重放全部 duplicate 且内核不新增记录;test:e2e 升为 10/10 全过。v5 批量写路径(规划→追加→持久化→广播)自此有真实内核证据。任务池维持硬收敛:剩余仅 v17.2.0 发布(等授权)与外部依赖。
+
+2026-09-20 番茄完成全链路真实内核 E2E（T-1286）：tests/e2e/docktomato-completion.spec.mjs 在真实思源内核上注入 completion 事件并断言——正常入账（值=实际时长、来源=tomato、完成日=completedAt 本地日、重复幂等）；跳过日 blocked:skipped-day（收件箱内核文件留痕、用户跳过原样保留、零误入账）。test:e2e 升为 12/12。v17.2.0 头牌功能的真实宿主证据补齐。

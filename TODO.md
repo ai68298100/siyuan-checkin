@@ -2626,3 +2626,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1285 批量写真实内核 E2E（v5-2 收口验证）
   - 验收:recordEventsBatch 在真实思源内核上单次落盘(事件带稳定 externalRef),重载后同 refs 重放全部 duplicate 且内核不新增记录。
   - 状态:done(tests/e2e/api-v5-batch.spec.mjs;test:e2e 升为 10/10)
+
+- [x] T-1286 番茄完成全链路真实内核 E2E（v17.2.0 头牌功能的真实宿主证据）
+  - 验收:dispatch 真实 completion 事件→入账(值/日期/来源/externalRef 内核文件级断言)+重复幂等;skip-day→blocked:skipped-day 留痕收件箱、不删跳过、不误入账。
+  - 状态:done(tests/e2e/docktomato-completion.spec.mjs;test:e2e 升为 12/12)
