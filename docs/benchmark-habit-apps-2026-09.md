@@ -201,5 +201,37 @@ let nextDelta = (0.9747 ** currVal) * (dir === 'down' ? -1 : 1);
 
 - 开源：https://github.com/iSoron/uhabits ｜ https://github.com/FriesI23/mhabit ｜ https://github.com/HabitRPG/habitica ｜ https://github.com/dohsimpson/HabitTrove ｜ https://github.com/daya0576/beaverhabits ｜ https://github.com/xpavle00/Habo ｜ https://github.com/shub39/Grit ｜ https://github.com/oppiliappan/dijo
 - 商业：habitify.me/pricing ｜ MacStories Streaks 评测 ｜ thesweetsetup.com ｜ zapier.com/blog/best-habit-tracker-app ｜ help.ticktick.com ｜ sspai.com（Loop 推荐）｜ flora.appfinca.com ｜ App Store / Google Play 各页面
-- 笔记生态：https://github.com/siyuan-note/bazaar ｜ https://github.com/Achuan-2/siyuan-plugin-task-note-management ｜ https://github.com/IAliceIAliceBobI/sy-tomato-plugin（sy-tomato-plugin）｜ https://github.com/5kyfkr/siyuan-plugin-docktomato ｜ https://github.com/syh19/siyuan-plugin-task-list ｜ https://github.com/zincplusplus/habit-tracker ｜ https://github.com/pyrochlore/obsidian-tracker ｜ https://github.com/richardsl/heatmap-calendar-obsidian ｜ https://github.com/c6p/logseq-habit-tracker ｜ thomasjfrank.com/5-ways-to-build-a-habit-tracker-in-notion
+- 笔记生态：https://github.com/siyuan-note/bazaar ｜ https://github.com/Achuan-2/siyuan-plugin-task-note-management ｜ https://github.com/IAliceIAliceBobI/sy-tomato-plugin（sy-tomato-plugin）｜ https://github.com/5kyfkr/siyuan-plugin-docktomato ｜ https://github.com/syh19/siyuan-plugin-task-list ｜ https://github.com/zincplusplus/habit-tracker ｜ https://github.com/pyrochlore/obsidian-tracker（docs/Expressions.md、InputParameters.md）｜ https://github.com/richardsl/heatmap-calendar-obsidian ｜ https://github.com/c6p/logseq-habit-tracker ｜ thomasjfrank.com/5-ways-to-build-a-habit-tracker-in-notion
 - 关键源码文件：uhabits `uhabits-core/.../models/{Entry,Score,ScoreList,EntryList,StreakList}.kt` + `reminders/ReminderScheduler.kt`；mhabit `lib/models/habit_summary.dart` + `lib/models/_score/{score,calculator}.dart` + `lib/common/math.dart`；Habitica `website/common/script/ops/scoreTask.js` + `fns/crit.js`
+
+---
+
+## 七、调研续作记录（2026-09-20,T-1273）
+
+### 思源集市第二梯队复扫（全量 plugins.txt）
+
+- 专打卡赛道结论不变：**专门打卡插件仍只有 2 个**（我们 + Achuan-2），无新增玩家。
+- 任务/番茄/日记/时间类第二梯队约 20 个，与打卡潜在联动或竞争的关键新面孔：
+  - `zxhd863943427/siyuan-plugin-pomodoro`：第三个番茄钟入场（sy-tomato、docktomato 之外），计时赛道拥挤化；
+  - `LunaNorth/siyuan-timetrail`、`khnsojina-arch/siyuan-time-block-calendar`、`vjomikakero/siyuan-worklog-calendar`：时间轨迹/时间块/工作日志日历——时间维度聚合的三个不同切片；
+  - `zhouhao/siyuan-plugin-day-memo`、`MoonBottle/siyuan-plugin-bullet-journal`、`xushuo97/diary-calendar`：日记侧，与「打卡即笔记」（v17.1 锚点）场景相邻；
+  - `Genwaygenway/siyuan-todo-plus` + `siyuan-calendar-plus`、`Macavity/siyuan-tasks`、`Kaede221/siyuan-easy-tasks`、`gnakilgnoh/siyuan-task-planner`、`LeonZ1998/siyuan-plugin-taskmap`、`zhouhao/siyuan-plugin-kanban`：任务管理密集，验证「任务×打卡」联动（Task Horizon 模式）有面可铺；
+  - `c00llin/siyuan-todoist-sync`：外部服务双向同步有用户基础——但本地优先定位不变，仅作范式参考；
+  - `HaoCeans/siyuan-points-reward`：纯积分奖励——v19 轻量积分若重启，这是集市内唯一参照物；
+  - `5kyfkr/siyuan-plugin-task-horizon`：契约合作方本体。
+- 结论：联动面（任务/日记/日历）远大于竞争面；渲染块 + 开放 API 是占住「打卡数据枢纽」位置的关键——第二梯队没有谁做了习惯算法内核。
+
+### Obsidian Tracker 表达式引擎精读
+
+- v1.9.0 起 `{{sum}}` 类模板变量废弃，改为真表达式：运算符 `+ - * / %`，函数 `dataset()` / `sum()` / `maxStreak()` 等；`dataset(N)` 引用第 N 个查询集（迁移示例 `{{sum(1)}}` → `{{sum(dataset(1))}}`）；v1.15.0 增 `first()` / `last()`。
+- 数据源矩阵：frontmatter 键（含 `frontmatter.exists` 存在性 v1.19.0、列表值 v1.18.0）、inline dataview 字段（含 emoji 值 v1.13.0）、Obsidian 1.4 复选框属性（v1.11.0）、标签；文件范围 `file` / `specifiedFilesOnly` / `fileContainsLinkedFiles` / `fileMultiplierAfterLink`（v1.10.0）；`textValueMap` 文本→数值映射支持正则键（v1.10.4）。
+- 视图参数：month（注释模式 v1.10.0、`colorByStreak` v1.17.0、`thresholdType` v1.16.0、`initMonth` 相对日期、`fitPanelWidth`）、line/bar（轴刻度间隔/格式、堆叠柱 v1.14.0、`aspectRatio` v1.12.0）、pie。
+- streak 语义：v1.13.2 起 streak 以 falsey（而非 null）终止——与我们「真实完成 +1、跳过中性桥接、AUTO 视同完成」的状态遍历同构。
+- 对我们的映射：渲染块（v17.2）已交付 month/heatmap/summary 三视图；表达式引擎是可选后续——`maxStreak`/强度分已有单一实现（streak-index/habit-score），若做表达式须走白名单函数 + 纯数据求值，不开放任意 JS。
+
+### Habit Tracker 21 断签容忍精读（纠正 + 补充）
+
+- 仓库 `zincplusplus/habit-tracker`；数据模型＝一习惯一文件，frontmatter `{title, color, maxGap, entries[]}`——`entries` 是 YYYY-MM-DD 完成日数组，点格自动维护（每文件即独立数据孤岛，与我们集中式 store 相反；迁移可批量读其 frontmatter）。
+- 断签容忍真名是 `maxGap`（数字，默认 0，非 gapStyle）：允许连续 N 天缺勤不断签——缺勤日以**降低不透明度**渲染，计数只算真实打勾日；频率对照表：每周 3 次→3、每周→6、双周→13、每月→30。
+- 网格：`daysToShow` 默认 21（名字由来）、`firstDisplayedDate` / `lastDisplayedDate`、`color`、`showStreaks`、`matchLineLength`；点击日期跳日记（Daily Notes / Periodic Notes）。
+- 对我们的映射：AUTO 弹性补全（v16.3）在语义上强于 maxGap（按配额周期推导而非固定容忍 N 天）；但「缺勤日淡化渲染 + 计数只算真实完成」的呈现值得渲染块月历吸收——跳过中性色已有，断签淡化列入 v18 渲染块迭代候选；其 frontmatter entries 格式可作 Obsidian 迁入通道（优先级低于 Loop CSV）。

@@ -2574,3 +2574,12 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1272 CSS 预算放宽（用户明确要求）
   - 验收：分级线放宽并记录;活文档同步;历史 change-log 不回改。
   - 状态：done（D-239:420/450→480/520,318KB 软线保留;当前 448,170 bytes 回落为常规 warning）
+
+## 调研与设计批次（T-1273~T-1274,2026-09-20 执行）
+
+- [x] T-1273 竞品调研续作（habits-evolution 路线第四节既定项）
+  - 验收：思源集市第二梯队复扫、Obsidian Tracker 表达式引擎精读、Habit Tracker 21 断签容忍细节,写入 benchmark 活文档。
+  - 状态：done（全量 plugins.txt 复扫:专打卡仍仅 2 家,第二梯队约 20 个联动面为主;Tracker 精读:dataset()/sum()/maxStreak() 表达式、四类数据源、colorByStreak 等视图参数、falsey 终止语义;Habit Tracker 21:断签容忍真名 maxGap(数字,频率对照 3/6/13/30),缺勤日淡化渲染+计数只算真实完成,entries[] 一习惯一文件模型;渲染块断签淡化列入 v18 候选,frontmatter 迁入通道列为 Loop CSV 之后的低优先）
+- [x] T-1274 API v5 设计稿（development-roadmap v18 既定项,除隐私待评项）
+  - 验收：基于 v4 四个实践缺口出提案,纯设计不实现,记 DECISIONS。
+  - 状态：done（docs/api-v5-design.md:范围读/幂等批量写/项目统一投影/指标门面/协商补强五提案,纪律沿用 D-211/D-227,切分 v5-1~3 三批;D-240 草案登记）
