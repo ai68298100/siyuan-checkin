@@ -1392,3 +1392,5 @@ v5-1 摘要回填:3eeba820…(API 契约变更使包体改变)。
 2026-09-20 longest streak 与协商补强（T-1280/D-240 v5-3 预留项收口）:model.ts 新增 computeLongestStreaks——与 computeEventStreaks 同一套状态语义（真实/派生 +1、跳过中性桥接、at-most 连续无破戒）的全历史正向扫描取最大值,现有函数零改动;api.ts getStreaks 升为 {itemId,current,longest};api-contract 新增冻结 CHECKIN_CAPABILITIES_SINCE 映射并挂入 describe(),v4 消费方可在 v5 宿主上按能力探测首次版本。测试:断签后 longest>current、跳过桥接不加成、capabilitiesSince 冻结与 v4/v5 分野断言。v5 全部预留项收口完毕。
 
 T-1280 摘要回填后全链 exit 0。
+
+2026-09-20 真实内核 E2E 回归(自动化,非真机人工):本机思源 3.8.4 内核 + 隔离工作区,`pnpm run test:e2e` **8/8 通过**(智能体登记 11 项、打卡落盘+重载恢复、只读保存失败反馈、双窗口对等同步且接收方不回写、移动端 bundle 加载与打卡、移动端回顾页对齐/浮层/导出、插件禁用零写盘+重启用数据完整、回顾建议确认执行撤销)、`pnpm run test:e2e:readonly` **1/1 通过**。此轮回归覆盖了近期全部风险面:卸载纯解绑(D-226)、收件箱装载、API v5 契约、minAppVersion 3.8.4。README「17.1.0 维护重点」补本批能力摘要。任务池收敛:剩余仅外部依赖(推送授权、Task Horizon 排期、隐私评估、真机 B-007)与需用户新立项的主题。
