@@ -32,6 +32,9 @@ assert.match(bridge, /user-removed/, "an undone completion must be reported as u
 assert.match(bridge, /api\.getArchivedItems\?\.\(\)/, "archived items must join completion evaluation so never-recorded ones report archived-item, not missing-item");
 assert.match(plugin, /buffered = upsertInboxEntry\(this\.dockTomatoInbox, entry, nowIso\)/, "every valid completion must be buffered into the inbox before any readiness check");
 assert.match(plugin, /storage-refresh-failed/, "a failed mutation refresh must surface as retry, never as recorded");
+assert.match(plugin, /t\("record\.tomatoSource"\)/, "the provider source note must be localized, not hardcoded Chinese");
+assert.match(i18n, /"record\.tomatoSource": "来自底栏番茄钟"/, "Chinese source-note copy must exist");
+assert.match(i18n, /"record\.tomatoSource": "Recorded via Dock Tomato"/, "English source-note copy must exist");
 assert.match(bridge, /failureItemId = item\.id/, "write failures must retain the affected item identity");
 assert.match(bridge, /failureIdentity = identity/, "write failures must retain the provider session identity");
 assert.match(bridge, /appendCompletionIssue\("write-failed", failureItemId, failureIdentity\)/, "write diagnostics must remain actionable");

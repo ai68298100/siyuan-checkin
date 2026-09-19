@@ -948,7 +948,7 @@ export default class CheckinPlugin extends Plugin {
         }
         const value = dockTomatoCompletionValue(revision.unit, entry.tomatoMode, entry.durationMinutes);
         if (value === undefined || value <= 0) return {kind: "blocked", reason: "invalid-duration"};
-        const event = this.makeEvent(item, value, "tomato", revision.unit, "来自底栏番茄钟", ref, {occurredAt: entry.occurredAt, localDate: entry.localDate});
+        const event = this.makeEvent(item, value, "tomato", revision.unit, t("record.tomatoSource"), ref, {occurredAt: entry.occurredAt, localDate: entry.localDate});
         const previous = this.store;
         const next = appendEvent(this.store, event);
         if (next === this.store) {
