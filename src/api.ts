@@ -4,7 +4,7 @@
 import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange, type EventRangeSummary, type EventRangeSummaryOptions} from "./analytics";
 import {getEventsInDateRange, getItemRevisionForDate, dateKey} from "./model";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./features/habit-score";
-import {filterEventsInRange, isValidEventSource, projectItems} from "./features/api-v5";
+import {filterEventsInRange, isValidEventSource, planBatchRecord, projectItems, type BatchEntryResult} from "./features/api-v5";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinKind, CheckinStore} from "./types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLocalDateInput, withTimeout} from "./shared";
 import {serializeCsv, serializeJson} from "./export";
@@ -48,6 +48,8 @@ export interface CheckinApi {
     exportJson: () => string;
     exportCsv: () => string;
     recordEvent: (input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}) => Promise<CheckinEvent | undefined>;
+    /** v5:幂等批量写入——单次持久化,结果与输入严格 1:1;宿主级失败(未就绪/持久化失败)整体拒绝。 */
+    recordEventsBatch: (inputs: readonly {itemId: string; value?: number; unit?: string; source?: "api"; externalRef?: string; note?: string; occurredAt?: string}[]) => Promise<BatchEntryResult[]>;
     startFocus: (itemId: string) => Promise<boolean>;
     stopFocus: () => Promise<boolean>;
     getFocusAdapters: () => ReadonlyArray<{id: string; name: string}>;
@@ -84,6 +86,7 @@ export interface CheckinApiHost {
     setItemArchived(itemId: string, archived: boolean, moment: {occurredAt: string; localDate: string}, expectedFingerprint?: string): Promise<boolean>;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
     recordExternalEvent(input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string): Promise<CheckinEvent | undefined>;
+    recordEventsBatch(inputs: readonly {itemId: string; value?: number; unit?: string; source?: "api"; externalRef?: string; note?: string; occurredAt?: string}[]): Promise<BatchEntryResult[]>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     itemFingerprint(item: CheckinItem): string;
     startFocus(itemId: string): Promise<boolean>;
@@ -192,6 +195,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         },
         exportJson: () => serializeJson(host.cloneStore()),
         exportCsv: () => serializeCsv(host.cloneStore()),
+        recordEventsBatch: (inputs) => host.recordEventsBatch(inputs),
         recordEvent: (input) => {
             if (!host.acceptingOperations) return Promise.resolve(undefined);
             const moment = captureActionMoment();

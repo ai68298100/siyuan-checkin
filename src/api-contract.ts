@@ -21,6 +21,11 @@ export const CHECKIN_ITEMS_QUERY_LIMITS = Object.freeze({
     maxLimit: 1000,
 }) as Readonly<{defaultLimit: number; maxLimit: number}>;
 
+/** v5 events.record.batch hard safety limits。 */
+export const CHECKIN_BATCH_RECORD_LIMITS = Object.freeze({
+    maxItems: 200,
+}) as Readonly<{maxItems: number}>;
+
 export const CHECKIN_INTEGRATION_EVENTS = [
     "checkin:item-created",
     "checkin:item-updated",
@@ -38,6 +43,7 @@ export const CHECKIN_CAPABILITIES = [
     "events.read",
     "events.range.read",
     "events.record",
+    "events.record.batch",
     "occasions.read",
     "occasions.complete",
     "summary.read",
@@ -74,6 +80,7 @@ const CAPABILITY_INFO: Record<CheckinCapability, CheckinCapabilityInfo> = {
     "events.read": {available: true, localOnly: true, effect: "read"},
     "events.range.read": {available: true, localOnly: true, effect: "read"},
     "events.record": {available: true, localOnly: true, effect: "write"},
+    "events.record.batch": {available: true, localOnly: true, effect: "write"},
     "occasions.read": {available: true, localOnly: true, effect: "read"},
     "occasions.complete": {available: true, localOnly: true, effect: "write"},
     "summary.read": {available: true, localOnly: true, effect: "read"},

@@ -94,7 +94,7 @@ getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest:
 | 批次 | 内容 | 依赖 |
 | --- | --- | --- |
 | v5-1 | P1 范围读 + P3 项目投影(纯读,风险最低)——**已实施**:`features/api-v5.ts` 纯过滤 + `getEventsInRange`/`queryItems` 接线,契约测试与 tests/api-v5.test.cjs 守门 | 无 |
-| v5-2 | P2 批量写(抽取分类骨架,含结果测试矩阵) | v5-1 的索引复用 |
+| v5-2 | P2 批量写(抽取分类骨架,含结果测试矩阵)——**已实施**:`planBatchRecord` 单遍规划 + 宿主单单元落盘,单批 200 | v5-1 的索引复用 |
 | v5-3 | P4 指标门面 + P5 协商补强 | 无硬依赖 |
 
 每批过既有门槛:`test:quality` 全绿、性能基线不回退、契约测试与文档交叉核对(export-identity-docs 模式)。

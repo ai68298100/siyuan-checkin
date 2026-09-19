@@ -63,3 +63,167 @@ export function projectItems(items: readonly CheckinItem[], options: {includeArc
     }
     return selected;
 }
+
+/* ===== v5-2：幂等批量写（events.record.batch, D-240 切分第二批）=====
+   单遍规划,结果与输入严格 1:1。判定顺序固定（与 D-227 内部写入器同源）：
+   duplicate → discarded → blocked → recorded；批内重复 externalRef 的条目
+   不得重复入账。落盘/持久化/广播由宿主在单一受保护单元内完成。 */
+
+import {dateKey, getItemById, getItemRevisionForDate, isItemAvailableOnDate} from "../model";
+import type {CheckinStore} from "../types";
+
+export interface BatchRecordInput {
+    itemId?: unknown;
+    value?: unknown;
+    unit?: unknown;
+    source?: unknown;
+    externalRef?: unknown;
+    note?: unknown;
+    occurredAt?: unknown;
+}
+
+export interface BatchEntryPlan {
+    itemId: string;
+    value: number;
+    unit: string;
+    externalRef?: string;
+    note?: string;
+    occurredAt: string;
+    localDate: string;
+}
+
+export interface BatchEntryResult {
+    kind: "recorded" | "duplicate" | "discarded" | "blocked" | "rejected";
+    eventId?: string;
+    reason?: string;
+    usedFallbackTime?: boolean;
+}
+
+function normalizeValidIso(value: unknown): string | undefined {
+    if (typeof value !== "string" || !value || value.length > 40) return undefined;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
+}
+
+/** 纯规划：结构校验(→rejected)与时钟注入(缺省 now→usedFallbackTime)合并进单遍分类,
+    按固定顺序 duplicate → tombstone discarded → 项目/映射 blocked → recorded;
+    批内相同 itemId+source+externalRef 只入账一次,后续条目回显首条结果。
+    返回 recorded 条目的写入计划(unit 解析为完成日期修订值)与 recorded 结果下标(供宿主追加后回填 eventId)。 */
+export function planBatchRecord(store: CheckinStore, inputs: readonly unknown[], nowIso: string): {results: BatchEntryResult[]; planned: BatchEntryPlan[]; recordedIndices: number[]} {
+    const results: BatchEntryResult[] = [];
+    const planned: BatchEntryPlan[] = [];
+    const recordedIndices: number[] = [];
+    const seenRefs = new Map<string, number>();
+    for (let index = 0; index < inputs.length; index += 1) {
+        const raw = inputs[index];
+        const pushRejected = (reason: string) => results.push({kind: "rejected", reason});
+        if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+            pushRejected("invalid-input");
+            continue;
+        }
+        const input = raw as Record<string, unknown>;
+        const itemId = typeof input.itemId === "string" ? input.itemId.trim().slice(0, 160) : "";
+        if (!itemId) {
+            pushRejected("invalid-item-id");
+            continue;
+        }
+        if (input.source !== undefined && input.source !== "api") {
+            pushRejected("invalid-source");
+            continue;
+        }
+        let value = 1;
+        if (input.value !== undefined) {
+            if (typeof input.value !== "number" || !Number.isFinite(input.value) || input.value < 0) {
+                pushRejected("invalid-value");
+                continue;
+            }
+            value = input.value;
+        }
+        let unit: string | undefined;
+        if (input.unit !== undefined) {
+            if (typeof input.unit !== "string" || !input.unit.trim() || input.unit.trim().length > 16) {
+                pushRejected("invalid-unit");
+                continue;
+            }
+            unit = input.unit.trim();
+        }
+        let externalRef: string | undefined;
+        if (input.externalRef !== undefined) {
+            if (typeof input.externalRef !== "string" || !input.externalRef.trim() || input.externalRef.trim().length > 251) {
+                pushRejected("invalid-external-ref");
+                continue;
+            }
+            externalRef = input.externalRef.trim();
+        }
+        let note: string | undefined;
+        if (input.note !== undefined) {
+            if (typeof input.note !== "string" || input.note.length > 2000) {
+                pushRejected("invalid-note");
+                continue;
+            }
+            note = input.note;
+        }
+        let usedFallbackTime = false;
+        let occurredAt = normalizeValidIso(input.occurredAt);
+        if (!occurredAt) {
+            if (input.occurredAt !== undefined) {
+                pushRejected("invalid-occurred-at");
+                continue;
+            }
+            occurredAt = nowIso;
+            usedFallbackTime = true;
+        }
+        const entry: Omit<BatchEntryPlan, "unit"> = {itemId, value, externalRef, note, occurredAt, localDate: dateKey(new Date(occurredAt))};
+        /* 批内去重:同 refKey 回显首条结果(recorded 的 eventId 在宿主追加后回填,此处未定)。 */
+        const refKey = externalRef ? `${itemId}\u0000api\u0000${externalRef}` : undefined;
+        if (refKey) {
+            const firstIndex = seenRefs.get(refKey);
+            if (firstIndex !== undefined) {
+                const first = results[firstIndex];
+                results.push(first.kind === "recorded" ? {kind: "duplicate"} : {...first});
+                continue;
+            }
+        }
+        if (externalRef) {
+            const existing = store.events.find((event) => event.itemId === itemId && event.source === "api" && event.externalRef === externalRef);
+            if (existing) {
+                if (refKey) seenRefs.set(refKey, results.length);
+                results.push({kind: "duplicate", eventId: existing.id});
+                continue;
+            }
+            if ((store.eventTombstones || []).some((tombstone) => tombstone.source === "api" && tombstone.externalRef === externalRef && (!tombstone.itemId || tombstone.itemId === entry.itemId))) {
+                if (refKey) seenRefs.set(refKey, results.length);
+                results.push({kind: "discarded"});
+                continue;
+            }
+        }
+        const item = getItemById(store, itemId);
+        if (!item) {
+            results.push({kind: "blocked", reason: "missing-item"});
+            continue;
+        }
+        if (item.archived) {
+            results.push({kind: "blocked", reason: "archived-item"});
+            continue;
+        }
+        if (item.direction === "atMost") {
+            results.push({kind: "blocked", reason: "at-most-item"});
+            continue;
+        }
+        const completionDate = new Date(Number(entry.localDate.slice(0, 4)), Number(entry.localDate.slice(5, 7)) - 1, Number(entry.localDate.slice(8, 10)));
+        if (!isItemAvailableOnDate(item, completionDate)) {
+            results.push({kind: "blocked", reason: "not-scheduled"});
+            continue;
+        }
+        const revision = getItemRevisionForDate(item, completionDate);
+        if (unit !== undefined && unit !== revision.unit) {
+            results.push({kind: "blocked", reason: "mapping-changed"});
+            continue;
+        }
+        if (refKey) seenRefs.set(refKey, results.length);
+        planned.push({...entry, unit: revision.unit});
+        recordedIndices.push(results.length);
+        results.push(usedFallbackTime ? {kind: "recorded", usedFallbackTime: true} : {kind: "recorded"});
+    }
+    return {results, planned, recordedIndices};
+}

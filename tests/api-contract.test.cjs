@@ -23,6 +23,10 @@ assert.ok(api.CHECKIN_CAPABILITIES.includes("events.range.read"), "v5 range-read
 assert.deepEqual(api.CHECKIN_EVENTS_READ_LIMITS, {maxItemIds: 200, defaultLimit: 1000, maxLimit: 5000});
 assert.deepEqual(api.CHECKIN_ITEMS_QUERY_LIMITS, {defaultLimit: 200, maxLimit: 1000});
 assert.equal(Object.isFrozen(api.CHECKIN_EVENTS_READ_LIMITS), true);
+assert.ok(api.CHECKIN_CAPABILITIES.includes("events.record.batch"), "v5 batch-record capability must be declared");
+assert.deepEqual(api.CHECKIN_BATCH_RECORD_LIMITS, {maxItems: 200});
+assert.equal(Object.isFrozen(api.CHECKIN_BATCH_RECORD_LIMITS), true);
+assert.equal(api.getCheckinCapabilityInfo()["events.record.batch"].effect, "write");
 assert.equal(new Set(api.CHECKIN_CAPABILITIES).size, api.CHECKIN_CAPABILITIES.length);
 
 const descriptor = api.getCheckinApiDescriptor();

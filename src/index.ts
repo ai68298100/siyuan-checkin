@@ -57,6 +57,8 @@ import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} fro
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
+import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
+import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef} from "./ecosystem";
 
 const STORAGE_NAME = "checkin-store";
@@ -1072,7 +1074,60 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
-    /* ===== 收件箱手动管理（T-1270）：设置页的重试/丢弃/撤销跳过并计入。 ===== */
+    /** v5-2 幂等批量写(D-240):单遍规划→单次追加→单次持久化;宿主级失败整体拒绝。 */
+    private async recordEventsBatch(inputs: readonly {itemId: string; value?: number; unit?: string; source?: "api"; externalRef?: string; note?: string; occurredAt?: string}[]): Promise<BatchEntryResult[]> {
+        if (this.disposed || this.disposing || !this.acceptingOperations || this.initializationState !== "ready" || !this.storageReady) {
+            throw new Error("checkin: storage is not ready for batch recording");
+        }
+        if (!Array.isArray(inputs) || !inputs.length) throw new TypeError("inputs 必须是非空数组");
+        if (inputs.length > CHECKIN_BATCH_RECORD_LIMITS.maxItems) throw new TypeError("单批不得超过 " + CHECKIN_BATCH_RECORD_LIMITS.maxItems + " 条");
+        return this.enqueueMutation(async (): Promise<BatchEntryResult[]> => {
+            if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) throw new Error("checkin: storage is not ready");
+            const {results, planned, recordedIndices} = planBatchRecord(this.store, inputs, new Date().toISOString());
+            if (!planned.length) return results;
+            const previous = this.store;
+            const events = planned.map((entry) => {
+                const item = getItemById(this.store, entry.itemId);
+                /* plan 阶段已校验项目存在;此处防御跳过。 */
+                if (!item) throw new Error("checkin: batch plan referenced a missing item");
+                return this.makeEvent(item, entry.value, "api", entry.unit, entry.note, entry.externalRef, {occurredAt: entry.occurredAt, localDate: entry.localDate});
+            });
+            const next = appendEvents(this.store, events);
+            if (next === this.store) throw new Error("checkin: batch append was rejected");
+            this.store = next;
+            try {
+                await this.persist();
+            } catch {
+                this.store = previous;
+                throw new Error("checkin: batch persist failed");
+            }
+            recordedIndices.forEach((resultIndex, planIndex) => {
+                const event = events[planIndex];
+                if (event) results[resultIndex].eventId = event.id;
+            });
+            this.invalidateSummary();
+            const affected = new Map<string, CheckinItem>();
+            for (let index = 0; index < events.length; index += 1) {
+                const event = events[index];
+                const item = getItemById(this.store, event.itemId);
+                if (item) {
+                    this.broadcast({type: "event-recorded", item, event});
+                    affected.set(item.id, item);
+                }
+            }
+            this.broadcast({type: "analytics-updated", analyticsAsOf: events[events.length - 1].localDate});
+            const lastEvent = events[events.length - 1];
+            this.pendingLocalItemId = lastEvent.itemId;
+            this.pendingLocalItemDate = lastEvent.localDate;
+            this.renderBackgroundUpdate();
+            this.maybeAutoArchiveItemsAfterRecord([...affected.values()]);
+            /* 锚点为尽力而为旁路(D-218):仅刷新状态,不携带单条数值。 */
+            for (const item of affected.values()) void this.writebackNoteAnchor(item, {state: "done"});
+            return results;
+        });
+    }
+
+        /* ===== 收件箱手动管理（T-1270）：设置页的重试/丢弃/撤销跳过并计入。 ===== */
 
     /** 手动重试：立即处理一条待处理/阻塞条目——用户显式动作,不受自动退避节奏限制。 */
     private async retryDockTomatoInboxEntry(identity: string): Promise<boolean> {

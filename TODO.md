@@ -2591,3 +2591,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1276 渲染块断签淡化候选评估（T-1273 调研吸收项）
   - 验收：评估 maxGap 淡化呈现是否适用于渲染块月历;如无真实缺口,按可证明性原则关闭并留档,不引入死代码。
   - 状态：done（结论=关闭:原型验证发现 quota 完成口径是回溯性的——周期达标后达标日之前的期内剩余日经 isComplete 已渲染为完成色,AUTO 回溯完成在呈现上强于 maxGap,「缺签缺口」不存在;原型已回撤,评估结论写入 benchmark 活文档。渲染块 15ms/万事件基线不受影响。）
+
+- [x] T-1277 API v5-2 幂等批量写实施（D-240 切分第二批）
+  - 验收:recordEventsBatch 单次持久化、结果与输入 1:1（recorded/duplicate/discarded/blocked/rejected）;occurredAt 缺省回退标注 usedFallbackTime、非法拒绝;单批 200;atMost/墓碑/归档照旧;单条 recordEvent 行为不变。
+  - 状态:done（api-contract 17 能力+CHECKIN_BATCH_RECORD_LIMITS;features/api-v5.ts 单遍 planBatchRecord(结构校验/时钟注入/批内去重回显首条/固定判定顺序);index.ts 单单元 makeEvent+appendEvents+persist+逐事件广播+受影响项目自动归档+锚点旁路;api-v5 测试扩 15 输入混合场景+跨午夜;契约/README/合作文档/走查/设计稿同步）
