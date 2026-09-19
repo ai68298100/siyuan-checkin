@@ -15,8 +15,11 @@ export interface FocusTimerState {
 
 export interface FocusTimerHost {
     store: CheckinStore;
+    disposed: boolean;
+    disposing: boolean;
     focusTimerState?: FocusTimerState;
     focusTimerInterval?: number;
+    focusCelebrationTimer?: number;
     focusTimerRoot?: HTMLElement;
     focusTimerMinutes: number;
     celebration?: {message: string; itemName: string};
@@ -29,13 +32,26 @@ export interface FocusTimerHost {
 export function openFocusTimerFor(host: FocusTimerHost, itemId: string): void {
     const item = getActiveItemById(host.store, itemId);
     if (!item) return;
-    if (host.focusTimerInterval !== undefined) { window.clearInterval(host.focusTimerInterval); host.focusTimerInterval = undefined; }
+    clearFocusTimerTimers(host);
     host.focusTimerState = {itemId, totalSec: host.focusTimerMinutes * 60, remainingSec: host.focusTimerMinutes * 60, running: true};
     host.focusTimerInterval = window.setInterval(() => tickFocusTimerFor(host), 1000);
     host.render();
 }
 
+/** 停掉秒级心跳与庆祝提示的延时器：思源不会代插件清理自有定时器，卸载路径必须显式调用。 */
+export function stopFocusTimerFor(host: FocusTimerHost): void {
+    clearFocusTimerTimers(host);
+    host.focusTimerState = undefined;
+    host.focusTimerRoot = undefined;
+}
+
+function clearFocusTimerTimers(host: FocusTimerHost): void {
+    if (host.focusTimerInterval !== undefined) { window.clearInterval(host.focusTimerInterval); host.focusTimerInterval = undefined; }
+    if (host.focusCelebrationTimer !== undefined) { window.clearTimeout(host.focusCelebrationTimer); host.focusCelebrationTimer = undefined; }
+}
+
 export function tickFocusTimerFor(host: FocusTimerHost): void {
+    if (host.disposed || host.disposing) { stopFocusTimerFor(host); return; }
     const state = host.focusTimerState;
     if (!state || !state.running) return;
     state.remainingSec = Math.max(0, state.remainingSec - 1);
@@ -60,9 +76,7 @@ export function paintFocusTimer(panel: HTMLElement, state: {remainingSec: number
 export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolean): Promise<void> {
     const state = host.focusTimerState;
     if (!state) return;
-    if (host.focusTimerInterval !== undefined) { window.clearInterval(host.focusTimerInterval); host.focusTimerInterval = undefined; }
-    host.focusTimerState = undefined;
-    host.focusTimerRoot = undefined;
+    stopFocusTimerFor(host);
     const elapsedMinutes = Math.floor((state.totalSec - state.remainingSec) / 60);
     if (complete && elapsedMinutes >= 1) {
         const item = getActiveItemById(host.store, state.itemId);
@@ -75,7 +89,13 @@ export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolea
             if (unit === "小时") { value = Math.round(elapsedMinutes / 6) / 10; unit = "小时"; }
             void host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint, `专注 ${elapsedMinutes} 分钟`));
             host.celebration = {message: `专注 ${elapsedMinutes} 分钟`, itemName: item.name};
-            window.setTimeout(() => { host.celebration = undefined; host.render(); }, 6000);
+            if (host.focusCelebrationTimer !== undefined) window.clearTimeout(host.focusCelebrationTimer);
+            host.focusCelebrationTimer = window.setTimeout(() => {
+                host.focusCelebrationTimer = undefined;
+                if (host.disposed || host.disposing) return;
+                host.celebration = undefined;
+                host.render();
+            }, 6000);
         }
     } else if (complete) {
         showMessage(t("msg.focusTooShort"));

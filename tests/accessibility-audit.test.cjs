@@ -8,10 +8,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 function loadPlaywright() {
+    /* 只用本机依赖与环境变量，不写死任何个人机器的绝对路径。 */
     const candidates = [
         process.env.CHECKIN_PLAYWRIGHT_MODULE,
         "playwright",
-        "C:/Users/sunku/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright",
     ].filter(Boolean);
     for (const candidate of candidates) {
         try { return require(candidate); } catch {}

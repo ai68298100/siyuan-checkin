@@ -43,3 +43,11 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 2. **从小驴打卡迁出**：JSON（全量）/CSV（事件级）/Loop CSV（习惯语义级）任选；
 3. **运行时集成**不走文件：使用 `window.siyuanCheckin` API（`events.read` / `events.record` / `analytics.read` / `suggestions.read` 等能力）与 externalRef 幂等约定，见 `docs/identity-and-merge.md`；
 4. 格式行为由测试锁定（`tests/backup.test.cjs`、`tests/insight-records.test.cjs`、`tests/loop-csv.test.cjs`、`tests/report-sections.test.cjs`、`tests/api-contract.test.cjs`）；破坏性变更有迁移期与版本警告。
+
+## 保存通道（按宿主形态分流）
+
+四条导出通道共用一条保存路径（`src/download.ts` 的 `saveGeneratedFile`）：
+
+- 思源 Android / iOS / 鸿蒙客户端（检测到 `JSAndroid.saveExportFile`、`webkit.messageHandlers.saveExportFile` 或 `JSHarmony.saveExportFile`）：先用 `/api/file/putFile` 写入工作区 `assets/siyuan-checkin-<类型>-<日期>-<时间戳>.<扩展名>`，再把该绝对 URL 交给宿主的 `saveExportFile`；宿主按前端能力拒绝（返回 `status:"error"`）时退回容器原生桥。**这些容器下绝不使用 `blob:` + `<a download>`**——WebView 没有下载处理，会把 blob 当成一次导航。
+- 桌面端与普通浏览器：仍走临时 `Blob` + `<a download>`，不写入工作区。
+- 文件名主干只保留 ASCII 安全字符（非 ASCII 收敛为 `-`，为空则用 `export`），扩展名按原名保留，并附时间戳避免同名覆盖。

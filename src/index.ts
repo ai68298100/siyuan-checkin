@@ -26,13 +26,14 @@ import {bindPageNavigationHandlers, type BindPageNavigationHost} from "./render/
 import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
+import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, importLoopPlanInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
-import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
+import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
@@ -68,6 +69,8 @@ const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
+/* 审计是旁路诊断，同一变更窗口内的多次追加合成一次整文件写入（T-1246）。 */
+const AUDIT_COALESCE_MS = 1500;
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
 const QUICK_DIALOG_HOTKEY = "⌥⇧C";
@@ -145,6 +148,8 @@ interface RecentRecord {
 
 interface LockManagerLike {
     request<T>(name: string, options: {mode: "exclusive"}, callback: () => T | PromiseLike<T>): Promise<T>;
+    /** ifAvailable 时拿不到锁会立刻 resolve(undefined)，用于拆除期不排队等待。 */
+    request<T>(name: string, options: {mode: "exclusive"; ifAvailable: true}, callback: () => T | PromiseLike<T>): Promise<T | undefined>;
 }
 
 export default class CheckinPlugin extends Plugin {
@@ -291,6 +296,7 @@ export default class CheckinPlugin extends Plugin {
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
     private focusTimerInterval?: number;
+    private focusCelebrationTimer?: number;
     private focusTimerRoot?: HTMLElement;
     private focusTimerMinutes = 25;
     private heatmapYearOffset = 0;
@@ -316,6 +322,10 @@ export default class CheckinPlugin extends Plugin {
     private editingFingerprint?: string;
     private saveQueue: Promise<void> = Promise.resolve();
     private mutationQueue: Promise<void> = Promise.resolve();
+    /** 拆除期写门禁：见 src/teardown.ts 与 persist() 的拦截分支。 */
+    private readonly teardownWrites = createTeardownWriteGate();
+    private auditFlushTimer?: number;
+    private lastPersistedSuggestionWorkflow?: string;
     private api?: CheckinApi;
     private focusAdapters = new Map<string, FocusAdapter>();
     private disposeDockTomatoBridge?: () => void;
@@ -349,7 +359,9 @@ export default class CheckinPlugin extends Plugin {
     private disposing = false;
     private acceptingOperations = true;
     private initializationState: "loading" | "ready" | "failed" = "loading";
-    private agentCapabilityRegistered = false;
+    private agentCapabilityState: "pending" | "registered" | "unsupported" | "failed" = "pending";
+    private agentCapabilityIds: string[] = [];
+    private agentCapabilityError?: string;
     private quickActionAdapters = new Map<string, (value: string) => void | Promise<void>>();
     private quickActionAdapterTargets = new Map<string, CheckinQuickActionTarget[]>();
     private mobileTopBarButton?: HTMLElement;
@@ -496,6 +508,7 @@ export default class CheckinPlugin extends Plugin {
                 const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
                 this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
                 const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
+                this.rememberSuggestionWorkflowBaseline(storedSuggestionWorkflow);
                 const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
@@ -523,7 +536,6 @@ export default class CheckinPlugin extends Plugin {
             if (this.disposed || this.disposing) return;
             this.initializationState = "ready";
             this.settleReady(true);
-            this.registerSiYuanAgentCapability();
             if (this.isMobileFrontend) this.ensureMobileTopBarButton();
             this.ensureSpeedSwitchQuickActions();
         } catch (error) {
@@ -534,6 +546,9 @@ export default class CheckinPlugin extends Plugin {
             showMessage(t("msg.dataLoadFail", {error: String(error)}));
         }
         if (this.disposed || this.disposing) return;
+        /* 智能体能力注册与存储读取结果解耦：处理器读的是实时状态、写入另有 canRecord 守卫，
+           所以存储读取失败时也要把入口注册上，别让「读数据失败」伪装成「宿主不支持智能体」。 */
+        this.registerSiYuanAgentCapability();
         this.render();
         this.scheduleMidnightRefresh();
         /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新；
@@ -556,6 +571,7 @@ export default class CheckinPlugin extends Plugin {
             const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
             this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
             const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
+            this.rememberSuggestionWorkflowBaseline(storedSuggestionWorkflow);
             const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
             this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
             this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
@@ -590,8 +606,16 @@ export default class CheckinPlugin extends Plugin {
     }
 
     async onunload() {
-        this.acceptingOperations = false;
         this.disposing = true;
+        /* 拆除预算由宿主统一计时，这里从 onunload 入口开始自计一个更小的预算，
+           让队列排空与补写都在被强制销毁之前给出确定的结果或提示。 */
+        const deadline = createTeardownDeadline(TEARDOWN_DRAIN_BUDGET_MS);
+        this.teardownWrites.deferWrites();
+        /* 卸载时专注仍在进行：入账必须在关闭 acceptingOperations 之前发起，
+           否则排队器会直接丢弃这次写入，整段专注白做。 */
+        if (this.focusTimerState) void finishFocusTimerFor(this as unknown as FocusTimerHost, true);
+        stopFocusTimerFor(this as unknown as FocusTimerHost);
+        this.acceptingOperations = false;
         this.settleReady(false);
         this.renderBlocksUnsubscribers.splice(0).forEach((dispose) => dispose());
         this.renderBlockObservers.forEach((disconnect) => disconnect());
@@ -628,7 +652,7 @@ export default class CheckinPlugin extends Plugin {
         this.closeQuickDialog();
         const openTabRequest = this.tabOpenPromise;
         if (openTabRequest) {
-            await openTabRequest.catch(() => undefined);
+            await waitWithinDeadline(openTabRequest.catch(() => undefined), deadline);
         }
         this.tabInstance?.close();
         this.tabInstance = undefined;
@@ -645,13 +669,21 @@ export default class CheckinPlugin extends Plugin {
         if (host.siyuanCheckin === this.api) {
             delete host.siyuanCheckin;
         }
-        await this.mutationQueue.catch(() => undefined);
-        await this.saveQueue.catch(() => undefined);
-        await this.focusOperation.catch(() => undefined);
+        const drained = await waitWithinDeadline(Promise.all([
+            this.mutationQueue.catch(() => undefined),
+            this.saveQueue.catch(() => undefined),
+            this.focusOperation.catch(() => undefined),
+            this.flushPendingAuditPersist(),
+        ]), deadline);
+        const hasDeferredWrites = this.teardownWrites.resume();
+        if (drained === "timeout" || hasDeferredWrites) {
+            const flushed = await waitWithinDeadline(this.teardownFinalFlush(), deadline);
+            if (flushed !== "done") showMessage(t("msg.teardownTruncated"), 5200);
+        }
         const activeFocusAdapter = this.activeFocusAdapter;
         this.activeFocusAdapter = undefined;
         if (activeFocusAdapter) {
-            await this.stopAdapterSilently(activeFocusAdapter);
+            await waitWithinDeadline(this.stopAdapterSilently(activeFocusAdapter), deadline);
         }
         this.disposed = true;
         this.storageReady = false;
@@ -890,14 +922,23 @@ export default class CheckinPlugin extends Plugin {
 
     /* 能力定义外置于 agent-capabilities.ts（T-022）；壳内仅保留守卫、Plugin 类型探测与注册完成标记。 */
     private registerSiYuanAgentCapability() {
-        if (this.agentCapabilityRegistered || this.disposed || this.disposing || !this.api) return;
+        if (this.agentCapabilityState !== "pending" || this.disposed || this.disposing || !this.api) return;
         const plugin = this as unknown as Plugin & {
             addAgentCapability?: (options: Parameters<typeof registerAgentCapabilities>[0]["addCapability"]) => string;
         };
-        if (typeof plugin.addAgentCapability !== "function") return;
+        if (typeof plugin.addAgentCapability !== "function") {
+            /* 宿主没有这个入口＝思源早于 3.8.0：核心打卡与公开 API 不受影响，设置页要说明这一点而不是含糊报「未检测到」。 */
+            this.agentCapabilityState = "unsupported";
+            return;
+        }
+        const ids: string[] = [];
         try {
             registerAgentCapabilities({
-                addCapability: (options) => { plugin.addAgentCapability?.(options); },
+                addCapability: (options) => {
+                    const id = plugin.addAgentCapability?.(options);
+                    if (typeof id === "string") ids.push(id);
+                    return id;
+                },
                 getStore: () => this.store,
                 getOccasionStore: () => this.occasionStore,
                 getSummaryContext: (range) => this.api!.getSummaryContext(range),
@@ -919,9 +960,14 @@ export default class CheckinPlugin extends Plugin {
                     this.render();
                 },
             });
-            this.agentCapabilityRegistered = true;
+            this.agentCapabilityIds = ids;
+            this.agentCapabilityState = "registered";
         } catch (error) {
-            showMessage(t("msg.agentRegisterFail", {error: String(error)}));
+            /* 抛错前已注册的能力仍然有效：保留计数，并把原因显示出来，避免与「宿主不支持」混为一谈。 */
+            this.agentCapabilityIds = ids;
+            this.agentCapabilityError = String(error instanceof Error ? error.message : error);
+            this.agentCapabilityState = "failed";
+            showMessage(t("msg.agentRegisterFail", {error: this.agentCapabilityError}));
         }
     }
 
@@ -1288,7 +1334,7 @@ export default class CheckinPlugin extends Plugin {
             snapshots: this.snapshotHistory.map((snapshot, index) => ({index, capturedAt: snapshot.capturedAt, legacy: snapshot.legacy,
                 itemCount: normalizeStore(snapshot.store).items.length, eventCount: normalizeStore(snapshot.store).events.length})),
             customIconLibrary: this.customIconLibrary,
-            agentCapabilityRegistered: this.agentCapabilityRegistered,
+            agentCapability: {state: this.agentCapabilityState, count: this.agentCapabilityIds.length, error: this.agentCapabilityError},
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
@@ -2680,6 +2726,11 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private persist(store: CheckinStore = this.store): Promise<void> {
+        if (this.teardownWrites.shouldIntercept()) {
+            /* 拆除期排队的写合并为收尾一次补写：每个整文件写入是「读备份-写备份-写主档-回读校验」四次 IO，
+               逐个落盘会在宿主拆除预算内排不完，导致末次打卡被截断。 */
+            return Promise.resolve();
+        }
         if (this.disposed || !this.storageReady) {
             return Promise.reject(new Error("数据存储尚未就绪"));
         }
@@ -2713,11 +2764,21 @@ export default class CheckinPlugin extends Plugin {
         return write;
     }
 
+    /** 与已落盘的建议工作流文本建立基线：非字符串（旧格式/异常内容）时清空基线，保证下一次真的写盘。 */
+    private rememberSuggestionWorkflowBaseline(stored: unknown): void {
+        this.lastPersistedSuggestionWorkflow = typeof stored === "string" ? stored : undefined;
+    }
+
     /** 建议工作流使用独立版本化存储，不混入主打卡 store。 */
     private persistSuggestionWorkflow(): Promise<void> {
         if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
         const payload = this.suggestionWorkflow ? serializeSuggestionWorkflow(this.suggestionWorkflow) : "";
-        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(SUGGESTION_WORKFLOW_STORAGE_NAME, payload));
+        /* 与已落盘内容等值就跳过：接收方 onDataChanged 只是把远端反序列化回来，
+           原样再写一次会多一次整文件写并再触发一轮跨实例推送（T-1246）。 */
+        if (payload === this.lastPersistedSuggestionWorkflow) return Promise.resolve();
+        const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(SUGGESTION_WORKFLOW_STORAGE_NAME, payload)).then(() => {
+            this.lastPersistedSuggestionWorkflow = payload;
+        });
         this.saveQueue = write.catch((error) => {
             if (!this.disposed && !this.disposing) showMessage(t("agent.workflowPersistFail", {error: String(error)}));
         });
@@ -2780,7 +2841,7 @@ export default class CheckinPlugin extends Plugin {
         if (!resolved.ok) {
             this.suspendedAnchors.add(suspendKey);
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, channel: "resolve", reason: resolved.reason || "unknown"}});
-            void this.persistAuditBestEffort();
+            this.scheduleAuditPersist();
             return;
         }
         const result = await withBoundedRetry(
@@ -2790,7 +2851,7 @@ export default class CheckinPlugin extends Plugin {
         if (!result.ok) {
             this.suspendedAnchors.add(suspendKey);
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, channel: "write", reason: result.reason || "unknown"}});
-            void this.persistAuditBestEffort();
+            this.scheduleAuditPersist();
         }
     }
 
@@ -2811,7 +2872,7 @@ export default class CheckinPlugin extends Plugin {
         const result = await appendAnchorNote((url, payload) => this.kernelPost(url, payload), anchor.blockId, markdown);
         if (!result.ok) {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId: anchor.blockId, channel: "append", reason: result.reason || "unknown"}});
-            void this.persistAuditBestEffort();
+            this.scheduleAuditPersist();
         }
     }
 
@@ -3065,11 +3126,34 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private async persistAuditBestEffort(): Promise<void> {
+        if (this.auditFlushTimer !== undefined) {
+            // 立即写覆盖排队中的合并写，避免同一内容写两次。
+            window.clearTimeout(this.auditFlushTimer);
+            this.auditFlushTimer = undefined;
+        }
         try {
             await this.saveData(AUDIT_STORAGE_NAME, this.auditEntries);
         } catch {
             // Audit diagnostics must never interrupt or roll back the user operation they describe.
         }
+    }
+
+    /** 旁路诊断的合并写入：一个合并窗口内的多次审计追加只落一次盘（T-1246）。 */
+    private scheduleAuditPersist(): void {
+        if (this.disposed || this.disposing) { void this.persistAuditBestEffort(); return; }
+        if (this.auditFlushTimer !== undefined) return;
+        this.auditFlushTimer = window.setTimeout(() => {
+            this.auditFlushTimer = undefined;
+            void this.persistAuditBestEffort();
+        }, AUDIT_COALESCE_MS);
+    }
+
+    /** 拆除前把挂起的审计写落盘，纳入 onunload 的等待集合；未排空时不重试，交给下一次变更。 */
+    private flushPendingAuditPersist(): Promise<void> {
+        if (this.auditFlushTimer === undefined) return Promise.resolve();
+        window.clearTimeout(this.auditFlushTimer);
+        this.auditFlushTimer = undefined;
+        return this.persistAuditBestEffort();
     }
 
     private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
@@ -3083,7 +3167,7 @@ export default class CheckinPlugin extends Plugin {
                     const {remote, merged: latest, conflict} = reconciliation;
                     if (conflict.conflicted) {
                         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "conflict", at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}});
-                        void this.persistAuditBestEffort();
+                        this.scheduleAuditPersist();
                     }
                     refreshed = reconciliation.localChanged;
                     this.store = latest;
@@ -3125,6 +3209,22 @@ export default class CheckinPlugin extends Plugin {
         const run = fallbackStorageQueue.then(operation, operation);
         fallbackStorageQueue = run.then(() => undefined, () => undefined);
         return run;
+    }
+
+    /**
+     * 拆除收尾补写：把门禁期内攒下的内存变更一次性写入主存储。
+     * 不生成快照历史（省掉读备份+写备份两次 IO），快照由下一次正常写入补齐。
+     * 锁被其它窗口占用时用 ifAvailable 避免排到队尾再被强制销毁，退化为普通排队。
+     */
+    private async teardownFinalFlush(): Promise<void> {
+        if (!this.storageReady) return;
+        const snapshot = normalizeStore(this.store);
+        const locks = typeof navigator === "undefined" ? undefined : (navigator as Navigator & {locks?: LockManagerLike}).locks;
+        const write = () => this.saveData(STORAGE_NAME, snapshot).then(() => undefined);
+        if (!locks) { await write(); return; }
+        const flushedMark = "teardown-flushed" as const;
+        const acquired = await locks.request<typeof flushedMark>(STORAGE_LOCK_NAME, {mode: "exclusive", ifAvailable: true}, () => write().then(() => flushedMark));
+        if (acquired === undefined) await this.withStorageLock(write);
     }
 
     private showSyncNotice() {

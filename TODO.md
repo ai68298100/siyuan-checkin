@@ -2469,3 +2469,45 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 状态：done（超额判定与徽章落地：achievements 新增 `overachievedDays` 计数（数值型非戒除项目，单日完成量 ≥ 目标 150%）与两枚徽章 `overachieve-1 超额一天` / `overachieve-10 十次超额`（quality 类）；部分完成衰减减半由 habit-score 凸组合天然满足（partial 按比例计分、衰减温和于 miss），超额加成由 completion clamp ≤1 天然封顶——两项均为既有设计的既有性质，本轮补测试锁定）。验证：`tests/habit-quality.test.cjs` 纳入 test:ui；完整 `test:quality` exit 0）
 - [x] T-1241 里程碑徽章 + sigmoid 成熟曲线 + 可选轻量积分（默认关，不做 RPG）
   - 状态：done（里程碑徽章沿用既有 milestone/consistency 类别；新增习惯成熟度：insights `maturity` 百分比 = sigmoid(计划机会日)，66 天参考线为半程（习惯养成常用参考周期，k=0.2），0 机会日归零展示于洞察页统计区（中英 i18n insights.maturity）；轻量积分按路线 E 项不做——避免空洞金币，成熟度曲线已承载成长可视化；真机反馈后再评估是否需要更多）
+
+### 思源真实约束回归（2026-09-19，对照 siyuan master v3.8.4）
+
+- [x] T-1242 卸载路径自带拆除预算与写门禁
+  - 状态：done（决策 **D-220**。`src/teardown.ts` 提供 `createTeardownDeadline`/`waitWithinDeadline`（`done`/`failed`/`timeout` 三分）与 `createTeardownWriteGate`；`onunload` 3.6s 排空三队列 + 900ms 补写、拆除期 `persist()` 拦截合并、`navigator.locks` 的 `ifAvailable` 降级、专注心跳与庆祝延时回收（含卸载前入账）、超预算时 `msg.teardownTruncated` 提示。验证：新增 `tests/teardown-budget.test.cjs`（预算常量、门禁语义、超时不残留计时器、onunload 无无界 await、补写不碰备份）纳入 `test:extended`；`pnpm run check`、完整 `test:quality` exit 0）
+- [x] T-1243 渲染块 DOM 回退链与兼容文档纠偏
+  - 状态：done（`block-renderer` 配置文本四级回退（`.hljs [contenteditable] → .hljs → pre → code`，取首个非空）；`docs/siyuan-compatibility.md` 承认三处内部 DOM 耦合并给出降级边界、11 项智能体能力（7 读 4 写）、`?remote=1` 与只读/发布 403 的行为差异、minAppVersion 语义。验证：新增 `tests/block-dom-compat.test.cjs`——回退链顺序、思源专有选择器不外溢到其它模块、文档预算数值与代码常量一致、能力清单逐一对应、minAppVersion 三段式；纳入 `test:extended`）
+- [x] T-1244 真实例 E2E 骨架（真内核 + 双窗口 onDataChanged）
+  - 状态：done（`scripts/e2e/lib.mjs` + `playwright.e2e.config.mjs` + `tests/e2e/`。要点：带 `checkin-e2e.json` 标记的独立工作区（缺标记即拒用）、回环目标校验、`setBazaar`+`setPetalEnabled` 启用链（仅拷 `data/plugins` 不加载——启用状态在 `data/storage/petal/petals.json`）、`bootProgress` 就绪、`putFile`/`getFile` 读写插件存储、内核日志与错误摘要归档。用例：打卡经真实 `saveData` 落盘→重载恢复→同 `externalRef` 幂等；双窗口对等合并且接收方不回写主存储。3/3 通过（思源 3.8.4）。README 增补 `pnpm run test:e2e` 用法与环境变量说明）
+- [x] T-1245 去除他人机器绝对路径并加可移植性守门
+  - 状态：done（四处 `loadPlaywright`/浏览器探测路径改为环境变量 + 标准安装路径；`tests/mobile-qa-harness.md` 示例改写；新增 `tests/portable-paths.test.cjs` 扫描 src/tests/scripts/docs/.github 共 280 文件，0 命中，纳入 `test:extended`）
+- [x] T-1246 消除 onDataChanged 的辅助存储原样重写（D-221 → D-221 补记）
+  - 状态：done（`persistSuggestionWorkflow` 与已落盘文本等值即跳过；`rememberSuggestionWorkflowBaseline` 在 `onLayoutReady`/`onDataChanged` 两条读取路径建基线，非字符串存储清空基线以保证真正需要写时会写。审计改走 `scheduleAuditPersist()` 的 1.5 秒合并窗口，`onunload` 用 `flushPendingAuditPersist()` 收尾并纳入排空集合；锚点旁路三处失败诊断同样合并。验证：新增 `tests/aux-write-hygiene.test.cjs` 纳入 `test:extended`；双窗口 E2E 断言接收方 `checkin-suggestion-workflow` 写入为 0、`checkin-store-audit` ≤1，实测辅助写入由 2 次降为 0 次）
+- [ ] T-1247 校准 minAppVersion 与实际依赖下限（待决策）
+  - 现状：`plugin.json.minAppVersion = 3.4.2`，但 `block-renderer` 的实测基线是 3.8.4 DOM，`addAgentCapability` 需 3.8.0+（已有 `typeof` 守卫优雅降级）
+  - 待决：要么在 3.4.2~3.8.2 真机上回归验证并留档，要么把下限提到实际验证过的最低版本；两条路都需在 `docs/siyuan-compatibility.md` 的矩阵里标注「已验证」而非「目标支持」
+  - 提示：内核在版本不满足时会把已装插件自动禁用（`kernel/model/plugin.go` + `bazaar/installed.go` 的 `semver.Compare`），所以「保守提高下限」的代价是老用户被静默禁用，需要发布说明配合
+- [x] T-1248 E2E 扩展到宿主生命周期与移动端 bundle
+  - 状态：done（`tests/e2e/plugin-lifecycle.spec.mjs`：真实 `setPetalEnabled(false)` → `window.siyuanCheckin` 在宿主 5 秒拆除预算内交出 → 注销后 2.6 秒观察窗口内该页面对内核零次 `putFile`（抓泄漏定时器与幽灵写）→ 重新启用后数据完整恢复。`tests/e2e/mobile-bundle.spec.mjs`：iPhone 13 视口加载 `/stage/build/mobile/`，公开 API 就绪、完成一次打卡并落盘、`#lcCheckinMobileTopBarButton` 注入、能力清单与桌面同版、零未捕获异常。验证：`pnpm run test:e2e` 5/5，完整 `test:quality` exit 0）
+- [x] T-1249 只读实例 E2E（`--readonly`）
+  - 状态：done（独立配置 `playwright.e2e.readonly.config.mjs` + `tests/e2e/readonly/`：复用 E2E 工作区、以 `serve --wd=... --port=... --readonly true` 起 6828 端口，前置自证内核确实拒绝 `putFile`；用例断言只读下 `recordEvent` 不报成功、插件保持 `isReady`、磁盘记录数不变。发现记 D-222：`--readonly` 是 `serve` 旗标且取字符串值，写成全局旗标会被 cobra 拒绝并打印帮助。`pnpm run test:e2e:readonly` 1/1）
+- [x] T-1250 移动顶栏入口文案 i18n 化 + 卫生守门补形态
+  - 状态：done（`ensureMobileTopBarButtonFor` 的 `aria-label`/`title` 改走 `t("entry.mobileTopBar")`，中英双字典各加一键；`tests/i18n-hygiene.test.cjs` 增加对 `setAttribute("aria-label"|"title"|"placeholder", "中文")` 形态的检测——原守门只匹配 HTML 属性写法，这类调用一直漏网）
+- [ ] T-1251 宿主可见文案的 i18n：随包发布 `i18n/*.json`
+  - 现状：`dist/` 不含 `i18n/` 目录，思源的插件 i18n 通道（按语言码 `zh_CN`/`en_US` 读取 `i18n/<lang>.json` 填充 `plugin.i18n`）取不到字典，`langKey` 因此无法本地化，只能硬写 `langText`
+  - 影响（4 处宿主面文案，英文界面显示中文）：`src/index.ts` 的 dock `title`（约 :403）、两条 `addCommand.langText`（约 :451/:458）、`addTopBar` 的 `title`（约 :478）
+  - 方案：webpack 产出 `i18n/zh_CN.json` 与 `i18n/en_US.json`（内容取自主命令/顶栏/dock 标签），删除 `langText` 让宿主按 `langKey` 查表；验收需在英文语言下核对命令面板与顶栏提示
+- [ ] T-1252 i18n 卫生守门的行级豁免漏洞
+  - 现状：`tests/i18n-hygiene.test.cjs` 只要同一行出现 `${t(` 就整行放行，一行里多个属性时后面的写死中文被放过（`src/render/review.ts` 约 :307 的 `aria-label="范围统计"` 即由此漏网；`src/render/fragments.ts` 约 :366、`src/index.ts` 约 :1630/:1669 需逐个复核）
+  - 方案：改为按属性槽位逐个判定（每个 `aria-label=`/`title=` 独立检查是否 `${t(`），并清完 render 层 `title="中文"` 存量；属独立任务，不与拆除/存储工作混做
+- [x] T-1253 智能体接入状态自证与注册解耦
+  - 状态：done（根因见 D-223：注册原在存储读取成功分支内，数据读取失败被伪装成「宿主不支持」。改为四态状态机 + 宿主返回的能力 id + 失败原因，设置页分列文案并给出 设置 - 人工智能 - 能力 的核对位置；注册移出 try/catch 无条件执行。验证：`tests/agent-status.test.cjs`（纳入 `test:ui`）与 `tests/e2e/agent-capabilities.spec.mjs`（宿主侧断言 11 项/4 写/策略未拒），`pnpm run test:e2e` 6/6）
+- [x] T-1254 移动端回顾页：工具栏对齐与浮层裁剪
+  - 状态：done（根因与量测见 D-224。改 `src/ui/components.scss`：移动端 `.lc-checkin__header-actions` 由 `overflow:hidden` 改 visible；`.lc-checkin__editor-header` 由 `position:static` 改 `relative; z-index:8`（sticky 时代的 z-index 因 static 失效，头部失去层叠上下文）；`.lc-checkin__text-button` 全局 `margin-top:15px` 在工具条按钮与菜单项内归零；工具组去独立胶囊（边框/底色/内边距归零）避免双层胶囊撑高；summary 与按钮统一方角无边框透明底；移动端 `justify-content: flex-start` 消除「更多」被推到最右的空洞。验证：新增 `tests/e2e/mobile-review-ui.spec.mjs`——四个控件顶部差为 0、两处下拉三点命中全在菜单内、自定义范围面板中心可命中，全部通过）
+- [x] T-1255 原生容器导出通道（点导出导致思源重启）
+  - 状态：done（新增 `src/download.ts` 的 `saveGeneratedFile`：检测到 `JSAndroid`/`webkit.messageHandlers`/`JSHarmony` 保存桥时，先 `/api/file/putFile` 写 `assets/`，再把绝对 URL 交给宿主 `saveExportFile`；宿主按前端能力返回 `status:"error"` 才退回容器桥，成功时不重复触发；原生路径任何分支都不再产生 `blob:` 导航，失败只报错。7 处导出入口统一改道，Loop 双文件顺序 await。验证：`tests/download-channel.test.cjs`（浏览器/三容器/宿主拒绝/宿主成功/写盘失败/文件名净化/通道唯一性）纳入 `test:extended`；`tests/e2e/mobile-review-ui.spec.mjs` 在真实例里断言零 blob 调用 + 报告确实落在 `assets/` + 导出后插件仍可用）
+- [ ] T-1256 真机复核移动端修复
+  - 现状：E2E 用 Chromium 的移动 bundle + 伪造的 `JSAndroid` 桥验证，覆盖不到 Android WebView 的真实下载/保存面板与键盘行为
+  - 验收：在思源 Android 客户端上复核回顾页工具栏、两处下拉与自定义范围展开，并实际完成一次「导出报告」的系统保存（确认不再重启、`assets/` 内生成报告文件）
+- [ ] T-1257 移动端提示条遮挡回顾工具栏
+  - 现象：思源的临时提示条（`#message`）在移动端会盖住工具栏按钮，E2E 里必须先移除提示条才能点中「导出报告」
+  - 方案：给移动端弹层底部/工具栏区域预留避让空间（或在插件内提示条出现时临时抬高工具栏 z-index 与内边距），需要先在真机上确认遮挡高度再定，避免凭猜调整

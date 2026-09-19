@@ -361,7 +361,7 @@ function assertActive(fixture, expectedId) {
         auditEntries: [],
         snapshots: [],
         customIconLibrary: [],
-        agentCapabilityRegistered: false,
+        agentCapability: {state: "pending", count: 0},
         appearance: "system",
         reducedMotion: false,
         hapticFeedback: true,

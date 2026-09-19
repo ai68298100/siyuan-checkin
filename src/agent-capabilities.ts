@@ -19,7 +19,8 @@ export interface AgentAddOptions {
 }
 
 export interface AgentCapabilityDeps {
-    addCapability: (options: AgentAddOptions) => void;
+    /** 宿主 addAgentCapability 返回能力 id（plugin/frontend/<插件>/<能力>），用于状态核对；旧宿主可能不返回。 */
+    addCapability: (options: AgentAddOptions) => string | void;
     getStore(): CheckinStore;
     getOccasionStore(): {occasions: Occasion[]};
     canRecord(): boolean;

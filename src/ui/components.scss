@@ -7238,7 +7238,11 @@
     min-height: 0;
     margin: 0 0 8px;
     padding: 0;
-    position: static;
+    /* 不能退回 static：上方 2007 行给移动端头部的是 sticky + z-index:4，
+       一旦 position 变 static，z-index 失效，头部里的下拉就会被后面的统计卡片盖住。
+       这里用 relative 保持「不吸顶」但继续持有层叠上下文（用户反馈 2026-09-19）。 */
+    position: relative;
+    z-index: 8;
     }
     .lc-checkin--review .lc-checkin__editor-header > div:first-child { display: none; }
     .lc-checkin--review .lc-checkin__header-actions {
@@ -7251,7 +7255,9 @@
         max-width: 100%;
         min-width: 0;
         gap: 4px;
-        overflow: hidden;
+        /* 不得裁剪：报告设置/更多/自定义范围的下拉都绝对定位在本容器内，
+           一旦 hidden 就会被剪成几像素高的残条（用户反馈 2026-09-19）。横向滚动由 .lc-checkin__range-tabs 自己承担。 */
+        overflow: visible;
     }
     .lc-checkin--review .lc-checkin__range-tabs {
     order: 1;
@@ -8153,7 +8159,9 @@
         width: 100%;
         min-width: 0;
         max-width: 100%;
-        overflow: hidden;
+        /* 这里不能裁剪：报告设置/更多/自定义范围的下拉都绝对定位在本容器内。
+           横向溢出由各页签自己的 overflow-x:auto 轨道承担（用户反馈 2026-09-19）。 */
+        overflow: visible;
     }
     .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__range-tabs {
         display: flex;
@@ -8410,20 +8418,25 @@
     }
 }
 .lc-checkin--review .lc-checkin__review-tool-group {
+    /* 工具条自身已经是那一层容器（见下方 14.0 之后的统一改版），组内不再叠第二个胶囊，
+       否则组的高度比兄弟项多出边框与内边距，行内出现两套基线。 */
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
-    padding: 2px 4px 2px 8px;
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: 999px;
-    background: var(--lc-checkin-muted-surface);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
 }
 .lc-checkin--review .lc-checkin__review-tool-button,
 .lc-checkin--review .lc-checkin__review-more > summary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    /* .lc-checkin__text-button 的全局 margin-top:15px 会把组内按钮整体下压，
+       与相邻 summary 错开约半个按钮高，工具条必须自行归零。 */
+    margin: 0;
     min-height: 28px;
     padding: 0 9px;
     border: 0;
@@ -8449,8 +8462,10 @@
 .lc-checkin--review .lc-checkin__review-more > summary {
     gap: 4px;
     padding-inline: 10px;
-    border: 1px solid var(--lc-checkin-border);
-    background: var(--lc-checkin-surface);
+    /* 与同排的 .lc-checkin__review-tool-button 同一款式：方角、无边框、透明底，
+       只有 hover/展开时才上色。 */
+    border: 0;
+    background: transparent;
     list-style: none;
 }
 .lc-checkin--review .lc-checkin__review-more > summary::-webkit-details-marker { display: none; }
@@ -8480,6 +8495,9 @@
 }
 .lc-checkin--review .lc-checkin__review-more-menu .lc-checkin__text-button {
     display: block;
+    /* 菜单项同样继承 .lc-checkin__text-button 的 margin-top:15px，会让菜单内部
+       每项之间多出 15px 空洞，与 gap 叠加后看起来像错位。 */
+    margin: 0;
     min-height: 30px;
     padding: 0 9px;
     border-radius: var(--lc-checkin-radius-sm);
@@ -8558,7 +8576,8 @@
     }
     .lc-checkin--review .lc-checkin__review-tools {
         width: 100%;
-        justify-content: space-between;
+        /* 四个控件靠在一起，不要把「更多」推到最右侧留出一个空洞。 */
+        justify-content: flex-start;
     }
     .lc-checkin--review .lc-checkin__review-tool-button,
     .lc-checkin--review .lc-checkin__review-more > summary {

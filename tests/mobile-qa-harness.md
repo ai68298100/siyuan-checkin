@@ -5,11 +5,13 @@ Build the current worktree, then point the maintained external harness at this c
 ```powershell
 pnpm run build
 $env:CHECKIN_QA_PROJECT_ROOT = (Get-Location).Path
-$env:CHECKIN_QA_OUTPUT_ROOT = "C:\Users\sunku\.codex\visualizations\mobile-qa"
+$env:CHECKIN_QA_OUTPUT_ROOT = Join-Path (Get-Location).Path ".artifacts\visual-qa"
 # Optional when Edge/Chrome is installed in a standard Windows path.
 $env:CHECKIN_BROWSER = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-node "C:\Users\sunku\.codex\visualizations\2026\09\06\01a0746c-a70f-78c0-b369-de9bc71c594e\qa-preview.cjs"
+node "<外部 harness 路径>\qa-preview.cjs"
 ```
+
+仓库内不写死任何个人机器的绝对路径；harness 与浏览器都通过环境变量指定（`CHECKIN_PLAYWRIGHT_MODULE`、`CHECKIN_BROWSER`、`CHECKIN_CHROME`）。
 
 The harness now reads `CHECKIN_QA_PROJECT_ROOT` and `CHECKIN_QA_OUTPUT_ROOT`. It mounts the production bundle in a SiYuan-compatible mock, checks the dock, history, summary, editor, template application, tab, narrow layout, draft preservation, concurrent writes, focus adapters, archive/restore, and horizontal scroll width, and writes screenshots to the output directory.
 

@@ -298,8 +298,8 @@ export function ensureMobileTopBarButtonFor(host: QuickDialogHost): void {
     button.type = "button";
     button.id = "lcCheckinMobileTopBarButton";
     button.className = "toolbar__button";
-    button.setAttribute("aria-label", "打开小驴打卡");
-    button.setAttribute("title", "打开小驴打卡");
+    button.setAttribute("aria-label", t("entry.mobileTopBar"));
+    button.setAttribute("title", t("entry.mobileTopBar"));
     button.innerHTML = `<svg aria-hidden="true"><use xlink:href="#iconLvCheckin"></use></svg>`;
     button.addEventListener("click", () => toggleQuickDialogFor(host));
     topBar.appendChild(button);

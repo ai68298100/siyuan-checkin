@@ -1,6 +1,7 @@
 /* 插件零散操作：从 index.ts 外置（T-022）。
    含后台渲染、今日快捷项、导航绑定、月份切换、项目恢复、导出、搜索聚焦、同步提示与就绪结算。 */
 import {t} from "./i18n";
+import {saveGeneratedFile} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
@@ -118,81 +119,45 @@ export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv"): 
     host.lastExportAt = new Date().toISOString();
     void host.persistViewPreferences();
     const content = format === "json" ? serializeJson(host.cloneStore()) : serializeCsv(host.cloneStore());
-    const blob = new Blob([content], {type: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-${dateKey(new Date())}.${format}`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-${dateKey(new Date())}.${format}`, content, mime: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
 }
 
 export function downloadMigrationReportFor(report: JsonMigrationReport): void {
-    const blob = new Blob([serializeJsonMigrationReport(report)], {type: "application/json;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-migration-${dateKey(new Date())}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-migration-${dateKey(new Date())}.json`, content: serializeJsonMigrationReport(report), mime: "application/json;charset=utf-8"});
 }
 
-/* T-1217：本地生成的 Markdown 报告走与 JSON/CSV 相同的临时 Blob 下载路径。 */
+/* T-1217：本地生成的 Markdown 报告与其他导出共用同一条保存通道。 */
 export function downloadReportMarkdownFor(markdown: string): void {
-    const blob = new Blob([markdown], {type: "text/markdown;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-report-${dateKey(new Date())}.md`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-report-${dateKey(new Date())}.md`, content: markdown, mime: "text/markdown;charset=utf-8"});
 }
 
-/* T-1218：Loop 同构导出是两个文件（Habits.csv + Checkmarks.csv），顺序触发下载。 */
+/* T-1218：Loop 同构导出是两个文件（Habits.csv + Checkmarks.csv）。
+   原生容器下必须顺序保存，两个保存面板叠上来会互相吞掉；对外保持同步签名。 */
 export function downloadLoopExportFor(store: CheckinStore): void {
+    void saveLoopExportPair(store);
+}
+
+async function saveLoopExportPair(store: CheckinStore): Promise<void> {
+    const stamp = Date.now();
     const files: Array<{name: string; content: string}> = [
         {name: `siyuan-checkin-loop-Habits-${dateKey(new Date())}.csv`, content: serializeLoopHabitsCsv(store)},
         {name: `siyuan-checkin-loop-Checkmarks-${dateKey(new Date())}.csv`, content: serializeLoopCheckmarksCsv(store)},
     ];
     for (const file of files) {
-        const blob = new Blob([file.content], {type: "text/csv;charset=utf-8"});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = file.name;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
+        await saveGeneratedFile({fileName: file.name, content: file.content, mime: "text/csv;charset=utf-8"}, stamp);
     }
 }
 
 export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void {
-    const blob = new Blob([serializeStoreAudit(entries)], {type: "application/json;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-audit-${dateKey(new Date())}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-audit-${dateKey(new Date())}.json`, content: serializeStoreAudit(entries), mime: "application/json;charset=utf-8"});
 }
 
 export function downloadSnapshotHistoryFor(history: unknown): void {
-    const blob = new Blob([serializeStoreSnapshotHistory(history)], {type: "application/json;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-snapshots-${dateKey(new Date())}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-snapshots-${dateKey(new Date())}.json`, content: serializeStoreSnapshotHistory(history), mime: "application/json;charset=utf-8"});
 }
 
 export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDiagnostics): void {
-    const blob = new Blob([serializeDockTomatoDiagnostics(provider)], {type: "application/json;charset=utf-8"});
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    void saveGeneratedFile({fileName: `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`, content: serializeDockTomatoDiagnostics(provider), mime: "application/json;charset=utf-8"});
 }
 
 export function focusTodaySearchFor(host: PluginOpsHost, selection?: number): void {

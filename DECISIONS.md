@@ -894,3 +894,54 @@
 - 强度分数：at-most 完成日 1、破戒日 0（不按比例），冻结规则不变。
 - UI：binary at-most 的主按钮语义 = 「记破戒 / 撤销破戒」（按当日是否已有破戒事件切换）；无破戒日卡片进「已完成」折叠区（被动成功的自然呈现）。仅每日排期，不与 quota 组合（语义无定义，编辑器禁用）。
 - 撤销：破戒记录的撤销 = 删除当日事件（墓碑通道），与其他事件一致。
+
+## D-220：卸载路径自带预算与写门禁（2026-09-19）
+
+- 思源把同一插件实例的 `onload`、`onLayoutReady`、`onDataChanged`、`onunload`、`uninstall` 放进**同一份**拆除预算（`siyuan` 类型包 `siyuan.d.ts` 的 Plugin 生命周期注释；宿主实现 `app/src/plugin/lifecycle.ts`，当前 5000ms），超时强制销毁且**不代插件清理** `setInterval`/`setTimeout`/`window` 监听（`app/src/plugin/uninstall.ts` 只回收命令、顶栏、dock、状态栏、图标、样式与 eventBus）。
+- 插件自计 `TEARDOWN_DRAIN_BUDGET_MS = 3600` 排空 `mutationQueue`/`saveQueue`/`focusOperation`，再用 `TEARDOWN_FLUSH_BUDGET_MS = 900` 补写，留 ~500ms 余量给宿主的 `uninstall` 与 DOM 拆除；等待结果区分 `done`/`failed`/`timeout`，未落在预算内时用 `msg.teardownTruncated` 明确告知用户，而不是静默截断。
+- 拆除期写门禁（`src/teardown.ts` `createTeardownWriteGate`）：`onunload` 入口 `deferWrites()`，队列内每个变更照常读盘合并但跳过各自的 `persist()`，收尾一次写主存储。理由：单次 `persist()` 是「读备份-写备份-写主档-回读校验」四次整文件 IO，逐个落盘在预算内排不完，越靠近超时时丢的恰是最新一条打卡。
+- 补写不生成快照历史（省两次 IO），快照由下一次正常写入补齐；补写用 `navigator.locks` 的 `ifAvailable` 先试，锁被其它窗口占用时退回普通排队，避免在跨窗口锁上无限等待。
+- 卸载时专注进行中：先 `finishFocusTimerFor(host, true)` 把已投入分钟数入账，再 `stopFocusTimerFor(host)`，最后才置 `acceptingOperations = false`——顺序颠倒会被 `enqueueMutation` 直接丢弃（已入账的写由写门禁合并进同一次补写）。
+- 庆祝提示的 6s 延时挂到宿主 `focusCelebrationTimer`，与秒级心跳一起由 `stopFocusTimerFor` 回收；两处回调都以 `disposed`/`disposing` 早退。
+- 已知未修：`docs/siyuan-compatibility.md` 原声明「未直接依赖思源内部 DOM」与代码矛盾，本轮改为如实登记三处耦合点（见 T-1243 与 `tests/block-dom-compat.test.cjs` 的守门）。
+
+## D-221：onDataChanged 的辅助存储原样重写（已知写放大，2026-09-19）
+
+- 真实例双窗口 E2E（`tests/e2e/dual-window-data-change.spec.mjs`）实测：接收方**没有**回写主存储（合并语义正确），但一次数据变更会写两个辅助存储 `checkin-suggestion-workflow` 与 `checkin-store-audit`。
+- 其中 suggestion-workflow 是「反序列化后原样再序列化写回」，属于可消除的写放大；每一轮辅助写都会再触发内核 `PushPluginStorageDataChanged`（`kernel/api/file.go:744`）向其它实例推送 dataChange，形成额外的往返。审计写回是合理的（合并冲突要留痕）。
+- 本轮不改：消除它需要给这两个通道加「内容未变不写」的等值判断（并明确建议工作流状态的归属窗口），属于独立任务；已在 TODO 记 T-1246 并用该 E2E 作为验收依据。
+
+## D-222：真实例 E2E 揭示的宿主约束与只读/移动端形态（2026-09-19）
+
+- 只把 `dist/` 拷进 `<workspace>/data/plugins/` **不会加载插件**：启用状态在 `data/storage/petal/petals.json`（`getPetals0`），桌面端还要 `conf.json` 的 `bazaar.trust=true`（`IsPetalsEnabled`）。E2E 因此在启动后调 `/api/setting/setBazaar {trust:true}` + `/api/petal/setPetalEnabled {packageName, enabled:true}`，并用 `/api/petal/loadPetals` 反查确认内核真的下发了 `index.js`。
+- `--readonly` 是 `serve` 子命令的旗标且取字符串值（`SiYuan-Kernel serve --help`），必须写在 `serve` 之后：`serve --wd=... --port=... --readonly true`；写成全局旗标会被 cobra 拒绝并打印帮助。只读角色下 `putFile` 与 `setPetalEnabled` 都会被 `CheckAdminRole`/`CheckReadonly` 拒绝，所以只读实例复用同一工作区、只做读取与「写不进去」的断言。
+- 跨实例通知的真实链路已验证：前端 `saveData` → `POST /api/file/putFile` → 内核 `PushPluginStorageDataChanged`（`kernel/api/file.go:744`、`kernel/model/push_reload.go`）→ 其它前端实例收到 `reloadPlugin` 的 `dataChangePlugins` → 命中我们覆写的 `onDataChanged`（宿主规则：未覆写基类 `onDataChanged` 的插件会被整插件重载）。
+- 实测数据：禁用插件到 `window.siyuanCheckin` 交出 <5s（宿主拆除预算内），注销后 2.6 秒观察窗口内该页面对内核零次 `putFile`——即 D-220 的定时器回收在真实宿主里成立。
+- 断言口径：接收方允许写审计（合并冲突要留痕），但**禁止**原样重写建议工作流与主存储；插件注销后**禁止**任何写入。移动端 bundle（`/stage/build/mobile/`）下只用公开 API 与 `#lcCheckinMobileTopBarButton` 注入点断言，不依赖桌面 dock/页签。
+- 存储文件路径与命名由宿主决定：`/data/storage/petal/<pluginName>/<storageName>`，**无扩展名**，内容是值的原始 JSON（`app/src/plugin/index.ts` saveData/loadData）。E2E 用 `/api/file/getFile` 直读该文件作为「真落盘」判据，而不是只看内存。
+
+## D-221 补记（2026-09-19，T-1246 已修）
+
+- 上条「本轮不改」已在本轮完成：`persistSuggestionWorkflow` 增加与已落盘文本的等值判断（两条读取路径都建立基线，非字符串存储清空基线以保证真写），审计改为 `scheduleAuditPersist()` 的 1.5 秒合并窗口并在 `onunload` 收尾落盘。
+- 验收：`tests/e2e/dual-window-data-change.spec.mjs` 断言接收方 `checkin-suggestion-workflow` 写入数为 0、`checkin-store-audit` 至多 1；`tests/aux-write-hygiene.test.cjs` 锁定实现口径。实测辅助写入由 2 次降为 0 次。
+
+## D-223：智能体接入状态要能自证，并与存储读取解耦（2026-09-19）
+
+- 现象：宿主为 3.8.4、插件为 17.0.0 且智能体已开启，设置页仍显示「未检测到可用的思源智能体入口」。
+- 根因：该文案只反映插件自己的 `agentCapabilityRegistered` 布尔值，而注册调用被放在 `onLayoutReady` 里存储读取 `try` 的成功分支内——数据读取失败（迁移/损坏/权限）时会整段跳过注册，于是「读数据失败」被伪装成「宿主没有智能体」；同时它也无法区分宿主不支持、还没轮到注册、注册中途抛错三种情况。
+- 真实接入状态（已用 `tests/e2e/agent-capabilities.spec.mjs` 在真宿主上验证）：`addAgentCapability` 存在于 3.8.0+ 前端；注册成功后宿主把能力记在实例的 `agentCapabilities`（id 形如 `plugin/frontend/siyuan-checkin/<能力名>`），默认策略为 allow，被 `设置 - 人工智能 - 能力` 逐个拒绝才对模型不可见。
+- 改法：`agentCapabilityState` 四态（`pending`/`registered`/`unsupported`/`failed`）+ `agentCapabilityIds`（回收宿主返回的 id）+ `agentCapabilityError`；注册调用移到 try/catch 之后无条件执行（读能力自带「数据尚未准备好」返回，写能力由 `canRecord()` 守卫）；设置页按状态给不同文案并附「已注册 N 项」与核对位置，旧 `set.agentOff` 键退役。
+- 边界：能力注册发生在 `onLayoutReady` 末尾，改插件后要重载界面或重新启用；智能体对话沿用本轮不可变的能力快照，需新开会话。
+
+## D-224：移动端浮层裁剪、双层胶囊与原生容器导出通道（2026-09-19）
+
+- 现象（用户截图）：手机端回顾页工具栏控件错位；「报告设置」「更多」「自定义」点开后的下拉被遮住；点「导出报告」思源整个重启。
+- 浮层裁剪根因链（全部在真实移动 bundle 里量出来，不是推断）：
+  1. `src/ui/components.scss` 里移动端「Review mobile toolbar stays on one rail」块把 `.lc-checkin__header-actions` 设成 `overflow: hidden`，而下拉是绝对定位在该容器内 → 220px 高的菜单只剩约 8px 可见。改为 `overflow: visible`（横向滚动本来就由 `.lc-checkin__range-tabs` 自己的 `overflow-x: auto` 承担）。
+  2. 改完仍被统计卡片压住：移动端「Final mobile review」块把 `.lc-checkin__editor-header` 设为 `position: static`，而更早的移动端规则给它的是 `position: sticky; z-index: 4`——static 之下 z-index 失效，头部失去层叠上下文。改为 `position: relative; z-index: 8`（8 高于回顾子导航的 6）。
+  3. 结论：绝对定位浮层的祖先链上，任何 `overflow: hidden` 与「靠 z-index 但 position 是 static」的组合都会吃掉它。
+- 工具栏错位根因：`.lc-checkin__text-button` 的全局 `margin-top: 15px` 被工具条按钮和菜单项继承（组内按钮比相邻 summary 低 7px、菜单每项多出 15px 空洞）；同时 14.0 之后工具条自身已改成容器样式，但内层 `.lc-checkin__review-tool-group` 仍保留独立胶囊（边框+底色+内边距），形成「胶囊套胶囊」并把行高撑到 46px。修法：组容器去边框去底色归零内边距、工具条内按钮与菜单项 `margin: 0`、summary 与按钮统一为方角无边框透明底、移动端 `justify-content: flex-start`（原先 space-between 把「更多」推到最右留出空洞）。
+- 导出重启根因：所有导出都走 `URL.createObjectURL(blob)` + `<a download>`。桌面与浏览器没问题，但思源 Android/iOS/鸿蒙客户端的 WebView 没有下载处理，blob 导航会打到宿主自身——表现为「点导出，思源重启」。
+- 修法（`src/download.ts`）：检测到容器原生桥时改为「先 `/api/file/putFile` 写 `assets/`，再把绝对 URL 交给宿主 `saveExportFile`」，宿主按前端能力拒绝（`status:"error"`）时退回容器桥，成功时不重复触发；原生路径下**任何情况都不再产生 blob**（包括失败路径，失败只报错）。桌面/浏览器保持原行为。7 处导出入口统一改走这一条通道，Loop 双文件顺序 await 避免两个保存面板叠加。
+- 副作用（已在 README 与 `docs/export-formats.md` 说明）：手机端导出会在工作区 `assets/` 留下文件，与思源自身导出行为一致。
+- 遗留：思源的临时提示条（`#message`）在移动端会盖住回顾页工具栏，测试里必须先移除才能点中按钮——记 T-1257。

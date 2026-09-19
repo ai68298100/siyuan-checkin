@@ -1286,3 +1286,38 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 
 - T-1188：发布提交 `f7086dd` 已推送至 `main`，注释标签 `v15.0.0` 指向同一提交，GitHub Release 已公开：https://github.com/ai68298100/siyuan-checkin/releases/tag/v15.0.0
 - 远端 `package.zip` 为 376,186 bytes，GitHub 资产摘要 `sha256:6328c7b073bae5704d5b0fa8dd2cfbec576010e7d1ea4365e3864f4f28628c1d`，与本地安装包及发布说明完全一致。
+
+### 拆除预算与真实例验证（2026-09-19）
+
+- 依据：通读 `siyuan-note/siyuan` master（v3.8.4）的 `app/src/plugin/{loader,lifecycle,uninstall,index}.ts`、`kernel/model/{plugin,push_reload}.go`、`kernel/api/{file,router}.go` 与 `siyuan-testing` 的 Playwright 基础设施，逐项比对插件当前实现。
+- T-1242（D-220）：卸载路径自带 3.6s 排空 + 900ms 补写预算、拆除期写门禁、专注心跳与庆祝延时回收、`msg.teardownTruncated` 提示；新增 `src/teardown.ts` 与 `tests/teardown-budget.test.cjs`（纳入 `test:extended`）。
+- T-1243：`src/render/block-renderer.ts` 配置文本改为 `.hljs [contenteditable] → .hljs → pre → code` 四级回退；`docs/siyuan-compatibility.md` 重写为如实登记三处内部 DOM 耦合、11 项智能体能力（4 写 7 读）、生命周期约束与 `?remote=1`/只读降级；新增 `tests/block-dom-compat.test.cjs` 同时守代码回退链与文档口径。
+- T-1244：真实例 E2E 骨架落地——`scripts/e2e/lib.mjs`（内核探测、带标记的独立工作区、`setBazaar`+`setPetalEnabled` 启用链、putFile 存储读写、日志与退出）、`playwright.e2e.config.mjs`、`tests/e2e/`（打卡落盘+重载恢复、`externalRef` 幂等、双窗口 `onDataChanged` 不回写主存储）。`pnpm run test:e2e` 3/3 通过（思源 3.8.4，12.5s）。
+- T-1245：清除 `tests/visual-qa.cjs`、`tests/ui-sweep.cjs`、`tests/accessibility-audit.test.cjs`、`scripts/environment-check.cjs`、`tests/mobile-qa-harness.md` 中绑定他人主目录的路径，新增 `tests/portable-paths.test.cjs`（280 个受控文件 0 命中）。
+- 关键发现（记 D-221 / TODO T-1246）：双窗口接收方不回写主存储，但会原样重写 `checkin-suggestion-workflow` 与 `checkin-store-audit` 两个辅助存储，构成可消除的写放大与额外推送。
+- 验证：`pnpm run check`、`pnpm run build`、完整 `pnpm run test:quality`（122 个测试文件、0 退役）、`pnpm run test:e2e` 全部通过；CSS 441,170 bytes 仍逼近 450,000 硬线。
+- 同步记录：本轮工作目录 `D:\AI\Codex\siyuan-checkin` 由 GitHub `main`（`09f82bb`，v17.0.0）快照同步而来，非 git 检出（本机 `github.com` 不可达，只能走 `codeload` tarball）。
+
+### 辅助存储写入与宿主形态覆盖（2026-09-19）
+
+- T-1246（D-221 补记）：接收方 `onDataChanged` 不再原样重写建议工作流（等值即跳过，基线在两条读取路径建立），审计改 1.5 秒合并窗口并在拆除收尾落盘；双窗口 E2E 实测辅助写入 2 → 0。新增 `tests/aux-write-hygiene.test.cjs`。
+- T-1248：新增 `tests/e2e/plugin-lifecycle.spec.mjs`（真实禁用→`window.siyuanCheckin` 在 5s 预算内交出→注销后 2.6s 零 `putFile`→重新启用后数据完整）与 `tests/e2e/mobile-bundle.spec.mjs`（iPhone 13 视口加载 `/stage/build/mobile/`，公开 API 可打卡落盘、`#lcCheckinMobileTopBarButton` 注入、零未捕获异常）。
+- T-1249：新增只读实例通道 `playwright.e2e.readonly.config.mjs` + `tests/e2e/readonly/`（`serve --readonly true`，前置自证内核拒绝 `putFile`），断言只读下 `recordEvent` 不报成功、插件保持可用、磁盘记录数不变。发现记 D-222。
+- T-1250：移动顶栏入口 `aria-label`/`title` 改走 `t("entry.mobileTopBar")`（中英各一键）；`tests/i18n-hygiene.test.cjs` 补 `setAttribute("aria-label", "中文")` 形态检测。
+- 新登记待办：T-1251（随包发布 `i18n/zh_CN.json`+`en_US.json` 以本地化 dock/命令/顶栏 4 处宿主面文案）、T-1252（卫生守门 `${t(` 行级豁免漏洞，`render/review.ts` 约 :307 漏网）。
+- 验证：`pnpm run check`、完整 `pnpm run test:quality`（123 个测试文件、0 退役）、`pnpm run test:e2e` 5/5、`pnpm run test:e2e:readonly` 1/1。
+
+### 智能体接入自证（2026-09-19）
+
+- 用户报告「智能体开着却显示未检测到可用入口」。查明：真实宿主的登记是正常的（E2E 断言宿主侧 `agentCapabilities` 恰 11 项、4 项写入型、策略未拒绝），问题出在插件把「存储读取失败」也显示成「宿主不支持」。
+- T-1253（D-223）：注册改为与存储读取解耦并落到四态状态机（`pending`/`registered`/`unsupported`/`failed` + 计数 + 原因），设置页文案分列并给出宿主侧核对位置；`set.agentOff` 退役，新增 5 个中英键。
+- 新增 `tests/agent-status.test.cjs`（渲染四态 + 注册时机契约 + 双语字典 parity）纳入 `test:ui`；新增 `tests/e2e/agent-capabilities.spec.mjs`（宿主侧真实登记与策略）；`docs/siyuan-compatibility.md` 补「宿主侧核对方法」与发布前检查项。
+
+### 移动端回顾页与导出通道（2026-09-19）
+
+- 用户报告手机端回顾页四处问题（工具栏错位、两处下拉被遮、自定义被遮、点导出报告思源重启）。全部在真实移动 bundle 里量出根因后修复，记录 D-224。
+- T-1254：`.lc-checkin__header-actions` 的 `overflow:hidden` 与 `.lc-checkin__editor-header` 的 `position:static`（使 sticky 时代的 `z-index:4` 失效）两处叠加造成裁剪；工具栏错位来自 `.lc-checkin__text-button` 全局 `margin-top:15px` 被继承 + 双层胶囊撑高；移动端 `space-between` 造成空洞。
+- T-1255：新增 `src/download.ts` 统一保存通道——原生容器写 `assets/` 后交宿主 `saveExportFile`（宿主拒绝才退容器桥，成功不重复），原生路径零 blob 导航；7 处导出入口改道，Loop 双文件顺序保存。
+- 验证：新增 `tests/download-channel.test.cjs`（纳入 `test:extended`）与 `tests/e2e/mobile-review-ui.spec.mjs`；`pnpm run check`、完整 `pnpm run test:quality` exit 0、`pnpm run test:e2e` 7/7、`pnpm run test:e2e:readonly` 1/1。
+- 文档：README 与 `docs/export-formats.md` 补充「手机端导出会在工作区 `assets/` 留下文件」的行为说明。
+- 运维注意：E2E 默认工作区 `~/SiYuan-Checkin-E2E` 的 `.lock` 被一次强制杀进程后残留占用，本轮改用 `CHECKIN_E2E_WORKSPACE=~/SiYuan-Checkin-E2E-b`；`waitForBoot` 已加「工作区被锁定」的即时失败与提示，不再空等 60 秒。

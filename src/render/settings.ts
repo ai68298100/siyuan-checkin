@@ -14,7 +14,7 @@ export interface SettingsViewContext {
     auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration" | "anchor"; at: string; details: Record<string, unknown>}>;
     snapshots: Array<{index: number; capturedAt?: string; legacy: boolean; itemCount: number; eventCount: number}>;
     customIconLibrary: string[];
-    agentCapabilityRegistered: boolean;
+    agentCapability: {state: "pending" | "registered" | "unsupported" | "failed"; count: number; error?: string};
     appearance: CheckinAppearance;
     reducedMotion: boolean;
     hapticFeedback: boolean;
@@ -39,7 +39,14 @@ export interface SettingsViewContext {
 
 export function renderSettingsView(ctx: SettingsViewContext): string {
     const settingsViewId = `lc-checkin-settings-${++settingsViewSequence}`;
-    const agentStatus = ctx.agentCapabilityRegistered ? t("set.agentOn") : t("set.agentOff");
+    const agentStatusOf = (state: SettingsViewContext["agentCapability"]["state"], count: number, error?: string): string => {
+        if (state === "registered") return count ? t("set.agentOn", {count}) : t("set.agentOnUnknown");
+        if (state === "unsupported") return t("set.agentUnsupported");
+        if (state === "failed") return t("set.agentFailed", {error: error || ""});
+        return t("set.agentPending");
+    };
+    const agentStatus = agentStatusOf(ctx.agentCapability.state, ctx.agentCapability.count, ctx.agentCapability.error);
+    const agentWhere = ctx.agentCapability.state === "registered" ? `<small>${t("set.agentWhere")}</small>` : "";
     const diagnosticState: DockTomatoProviderState = ctx.dockTomatoDiagnostics?.state || "missing";
     const diagnosticKey: Record<DockTomatoProviderState, string> = {
         missing: "set.tomatoStateMissing",
@@ -155,7 +162,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
                     <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
                     ${completionIssueRow}
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small></span><span class="lc-checkin__settings-value">${agentStatus}</span></div>
+                    <div class="lc-checkin__settings-row" data-agent-state="${ctx.agentCapability.state}"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small>${agentWhere}</span><span class="lc-checkin__settings-value" role="status">${agentStatus}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
         {

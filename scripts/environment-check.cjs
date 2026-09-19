@@ -17,11 +17,18 @@ if (!result.commands.pnpm && process.env.npm_config_user_agent) {
     const match = process.env.npm_config_user_agent.match(/pnpm\/([^\s]+)/);
     if (match) result.commands.pnpm = match[1];
 }
+/* 浏览器探测只用环境变量与标准安装路径，避免绑定某个人机器。 */
 for (const browser of [
-    "C:/Users/sunku/AppData/Local/Google/Chrome/Application/chrome.exe",
+    process.env.CHECKIN_CHROME,
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google/Chrome/Application/chrome.exe"),
     "C:/Program Files/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
     "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
-]) if (fs.existsSync(browser)) result.browsers.push(browser);
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium-browser",
+].filter(Boolean).map((candidate) => path.normalize(candidate))) if (fs.existsSync(browser)) result.browsers.push(browser);
 for (const dependency of ["typescript", "webpack"]) {
     try { require.resolve(dependency, {paths: [root]}); result.dependencies[dependency] = true; }
     catch {}

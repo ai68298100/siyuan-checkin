@@ -15,6 +15,10 @@ for (const name of files) {
         if (/(?:aria-label|placeholder|title|alt)="[^"]*[\u4e00-\u9fff][^"]*"/.test(line) && !line.includes("${t(")) {
             offenders.push(`${name}:${index + 1} ${line.trim().slice(0, 90)}`);
         }
+        /* setAttribute("aria-label"|"title"|"placeholder", "中文") 同样算写死，字符串字面量里没有插值通道。 */
+        if (/setAttribute\(\s*"(?:aria-label|title|placeholder)"\s*,\s*"[^"{]*[\u4e00-\u9fff]/.test(line)) {
+            offenders.push(`${name}:${index + 1} ${line.trim().slice(0, 90)}`);
+        }
     });
 }
 assert.deepEqual(offenders, [], `render 层存在写死中文的用户可见属性:\n${offenders.join("\n")}`);

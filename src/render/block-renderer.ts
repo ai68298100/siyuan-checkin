@@ -32,11 +32,19 @@ function isCheckinCodeBlock(block: HTMLElement): boolean {
 }
 
 function readBlockConfigText(block: HTMLElement): string {
-    /* 思源 3.8.4：代码内容在 .hljs 下的 contenteditable div（行号是同级空 div，
-       不能先匹配到）；再回退 .hljs 全文。零宽字符一并清理。 */
-    const editable = block.querySelector<HTMLElement>(".hljs [contenteditable='true']");
-    const fallback = block.querySelector<HTMLElement>(".hljs");
-    const raw = (editable || fallback)?.textContent || "";
+    /* 版本兼容链：思源 3.8.4 的代码内容在 .hljs 下的 contenteditable div（行号是同级空 div，
+       不能先匹配到）；再退到 .hljs / pre / code，取第一个非空文本，避免宿主 DOM 漂移时静默不渲染。 */
+    const candidates = [
+        block.querySelector<HTMLElement>(".hljs [contenteditable='true']"),
+        block.querySelector<HTMLElement>(".hljs"),
+        block.querySelector<HTMLElement>("pre"),
+        block.querySelector<HTMLElement>("code"),
+    ];
+    let raw = "";
+    for (const node of candidates) {
+        raw = node?.textContent || "";
+        if (raw.trim()) break;
+    }
     return raw.replace(/\u200B/g, "").trim();
 }
 
