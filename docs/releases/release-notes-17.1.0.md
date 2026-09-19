@@ -33,7 +33,7 @@
 
 - 文件：`package.zip`
 - 版本：`v17.1.0`
-- SHA-256：`7c00aefbbbb4a8287d00ff2c5fd15edadb0a2ab491c5e6404f5eebd851a395d2`
+- SHA-256：`408d9a6d321095905ee12bd62e2f96cf079defc5e4e740170ef819512605fa15`
 
 ## v17.1.0 维护记录（2026-09-19/20）
 
