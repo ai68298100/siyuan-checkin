@@ -11,9 +11,12 @@ for (const name of files) {
     const source = fs.readFileSync(path.join(renderDir, name), "utf8");
     source.split("\n").forEach((line, index) => {
         if (/^\s*(\/\*|\*|\/\/)/.test(line)) return;
-        /* 属性槽里出现中文且不是 ${t( 表达式 */
-        if (/(?:aria-label|placeholder|title|alt)="[^"]*[\u4e00-\u9fff][^"]*"/.test(line) && !line.includes("${t(")) {
-            offenders.push(`${name}:${index + 1} ${line.trim().slice(0, 90)}`);
+        /* 按属性槽逐个检查：同一行的另一个 ${t(...)} 不能豁免写死中文。 */
+        for (const match of line.matchAll(/(?:aria-label|placeholder|title|alt)\s*=\s*"([^"]*)"/g)) {
+            const value = match[1];
+            if (/[\u4e00-\u9fff]/.test(value) && !value.includes("${t(")) {
+                offenders.push(`${name}:${index + 1} ${line.trim().slice(0, 90)}`);
+            }
         }
         /* setAttribute("aria-label"|"title"|"placeholder", "中文") 同样算写死，字符串字面量里没有插值通道。 */
         if (/setAttribute\(\s*"(?:aria-label|title|placeholder)"\s*,\s*"[^"{]*[\u4e00-\u9fff]/.test(line)) {

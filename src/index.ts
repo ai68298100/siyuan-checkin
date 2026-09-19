@@ -1643,11 +1643,11 @@ export default class CheckinPlugin extends Plugin {
             : this.currentPage === "insights" || this.currentPage === "archived" ? "back" : "";
         const leadingAction = contextBackAction
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="${contextBackAction}" aria-label="${t("common.back")}" title="${t("common.back")}">${uiIcon("back")}</button>`
-            : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="关闭">${uiIcon("close")}</button>`;
+            : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="${t("common.close")}">${uiIcon("close")}</button>`;
         const occasionAction = this.currentPage === "occasions"
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">${uiIcon("add")}</button>`
             : "";
-        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="今日完成进度">${progress}</span>` : ""}${occasionAction}</div></div>`;
+        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
 
     private renderMobileNav(): string {
@@ -1679,10 +1679,10 @@ export default class CheckinPlugin extends Plugin {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const ownsDialogChrome = Boolean(this.quickDialog) && root === this.quickDialogElement && !this.isMobileFrontend;
         const fullscreen = ownsDialogChrome
-            ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}" title="${this.quickDialogFullscreen ? "退出全屏" : "全屏显示"}">${uiIcon("expand")}</button>`
+            ? `<button class="lc-checkin__topnav-action" type="button" data-action="toggle-fullscreen" aria-label="${t(this.quickDialogFullscreen ? "common.exitFullscreen" : "common.fullscreen")}" title="${t(this.quickDialogFullscreen ? "common.exitFullscreen" : "common.fullscreen")}">${uiIcon("expand")}</button>`
             : "";
         const dialogActions = ownsDialogChrome
-            ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="关闭快速窗口" title="关闭快速窗口">${uiIcon("close")}</button></div>`
+            ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
         return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }

@@ -2497,9 +2497,10 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 影响（4 处宿主面文案，英文界面显示中文）：`src/index.ts` 的 dock `title`（约 :403）、两条 `addCommand.langText`（约 :451/:458）、`addTopBar` 的 `title`（约 :478）
   - 方案：webpack 产出 `i18n/zh_CN.json` 与 `i18n/en_US.json`（内容取自主命令/顶栏/dock 标签），删除 `langText` 让宿主按 `langKey` 查表；验收需在英文语言下核对命令面板与顶栏提示
   - 状态：done（新增 `i18n/zh_CN.json`、`i18n/en_US.json` 并随生产包复制到 `dist/i18n/`；命令移除硬编码 `langText`，dock/顶栏使用插件 i18n 字典；发布资源测试锁定两份字典和四个宿主文案键。`pnpm run check`、生产构建通过；真实英文宿主界面仍需 B-007 现场核对。）
-- [ ] T-1252 i18n 卫生守门的行级豁免漏洞
+- [x] T-1252 i18n 卫生守门的行级豁免漏洞
   - 现状：`tests/i18n-hygiene.test.cjs` 只要同一行出现 `${t(` 就整行放行，一行里多个属性时后面的写死中文被放过（`src/render/review.ts` 约 :307 的 `aria-label="范围统计"` 即由此漏网；`src/render/fragments.ts` 约 :366、`src/index.ts` 约 :1630/:1669 需逐个复核）
   - 方案：改为按属性槽位逐个判定（每个 `aria-label=`/`title=` 独立检查是否 `${t(`），并清完 render 层 `title="中文"` 存量；属独立任务，不与拆除/存储工作混做
+  - 状态：done（守门改为逐属性槽位检查，不再因同一行其它属性使用 `${t(` 而整行豁免；清理 `src/index.ts`、`src/render/fragments.ts`、`src/render/review.ts` 的硬编码中文属性并补齐中英字典键。`pnpm run check`、`tests/i18n-hygiene.test.cjs`、构建通过。）
 - [x] T-1253 智能体接入状态自证与注册解耦
   - 状态：done（根因见 D-223：注册原在存储读取成功分支内，数据读取失败被伪装成「宿主不支持」。改为四态状态机 + 宿主返回的能力 id + 失败原因，设置页分列文案并给出 设置 - 人工智能 - 能力 的核对位置；注册移出 try/catch 无条件执行。验证：`tests/agent-status.test.cjs`（纳入 `test:ui`）与 `tests/e2e/agent-capabilities.spec.mjs`（宿主侧断言 11 项/4 写/策略未拒），`pnpm run test:e2e` 6/6）
 - [x] T-1254 移动端回顾页：工具栏对齐与浮层裁剪
