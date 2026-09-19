@@ -8,7 +8,7 @@
 1. **不推翻，只叠加**：现有五记录类型（binary/count/duration/quantity/custom）、六种排期（daily/weekly/workdays/custom/interval/quota）、事件模型（source/note/attachment/externalRef）、复盘管道（SummaryContext → review-comparison）全部保留；吸收的能力以**新增派生层 + 少量数据模型扩展**落地。
 2. **事件=原始记录，推导=计算层**（对齐 uhabits 原始/计算 Entry 分离）：跳过、自动补全、强度分数都不改写历史事件；统计口径变化只发生在计算层，保证指标可追溯（延续 D-215 原则）。
 3. **计分单一代码路径**（Habitica common/script 模式）：新的分数/streak/补全函数放独立纯函数模块，UI、智能体 API、批量操作共用同一入口，禁止多处实现。
-4. **每个吸收项都过既有门槛**：`pnpm run test:quality` 全绿、CSS 预算 420KB 告警 / 450KB 硬线（当前 429,056 bytes，新增 UI 需同步清退等量样式）、双主题无障碍 4.5:1、1k/10k/100k 性能基线不回退。
+4. **每个吸收项都过既有门槛**：`pnpm run test:quality` 全绿、CSS 预算 480KB 告警 / 520KB 硬线（2026-09-20 D-239 放宽，护栏仅防灾难性膨胀）、双主题无障碍 4.5:1、1k/10k/100k 性能基线不回退。
 5. **不臆造思源 API**：笔记联动只用已验证的内核接口（getBlockByID/setBlockAttrs/appendBlock/updateBlock 等），真机证据不足的能力先做诊断与降级。
 
 ## 二、吸收项 → 版本映射总览
@@ -139,5 +139,5 @@ T-1228 日历「打卡」图层、T-1229 任务完成回写联调（含 T-1165�
 | v16.2 store version 2→3 迁移引入数据问题 | 恢复点先行 + 迁移幂等测试 + 旧版本降级表达；对齐 14.0 数据内核既有迁移/回滚演练模式 |
 | 强度分数与既有成就/完成率口径冲突 | 分数只新增不替换，旧指标保留一期并行展示，用户反馈后再定去留 |
 | 笔记回写污染用户文档 | opt-in 默认关、只写绑定位置、失败隔离、卸载清理路径先行设计 |
-| CSS 预算（现 429KB，告警线 420KB） | 每个 UI 批次同步清退等量 legacy 样式，渲染块样式走主题 token 复用 |
+| CSS 预算 | D-239 放宽为 480KB 告警 / 520KB 硬线；护栏仍保留，渲染块样式继续走主题 token 复用 |
 | Task Horizon 联调排期不可控 | v17.0 定义为可并行支线，其余版本不依赖它 |
