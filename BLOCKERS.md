@@ -49,3 +49,4 @@ B-003 resolved: migration audit persistence is now isolated after successful sto
 - 13.0 第二十六批（2026-09-17）：T-1064~T-1066 已合并同一在途窗口的结束释放请求；真实 Dock Tomato 是否会同时广播 completed/ended 及其先后顺序仍需 B-007 联调确认。
 - T-105 第三十一批（2026-09-17）：设备能力样式已统一到组件层并通过自动宽度走查；真实 iOS/Android 安全区、系统打印预览和减弱动态偏好仍需 T-023 真机验收。
 - T-105 第三十二批（2026-09-17）：legacy 生产引用已完全退役且自动宽度走查无溢出；模板管理器、打印和独立双色板的真实宿主观感仍并入 T-023/T-033 真机验收，不阻塞代码退役完成。
+- 番茄钟状态（2026-09-19 晚）：PR #5 评审修复方案落地为 T-1266~T-1268/D-235~D-237——小飞驴侧启动误暂停、会话归属、可用性解绑、完成回写收件箱（completedAt 时钟/幂等/重试/atMost/skip）全部完成；对提供方的要求（start 返回最终 sessionId、pause-session 原子暂停、available detail、completedAt 必需、会话累计时长、并发互斥、默认关闭开关）已写入 docs/docktomato-integration-plan.md 契约节，待转交上游 PR 修订。真实宿主双插件联调仍归 B-007。

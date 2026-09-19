@@ -1003,3 +1003,27 @@
 - GitHub 的提交数量是可追溯历史，不进入插件发布包；现有版本标签和 Release 已引用这些提交，禁止为了缩小数字重写 `main` 或强推。
 - 远端分支只在完全合并后进入直接删除候选；`--no-merged` 分支即使很旧，也必须先核对 patch 和文件差异。本轮 14 条已合并分支与 13 条未合并旧分支分别登记，不把两类混在一起。
 - 删除远端分支属于 push。自主开发阶段只做只读审计和记录，不能绕过“不 push”协议实施远端清理。
+
+## D-235：启动后校验与启动资格拆分，专注专用业务指纹（2026-09-19）
+
+- 启动成功的正常结果就是计时器 active，把 `adapter.canStart()` 复用在启动后校验里必然把成功误判为失败并触发自动暂停（docktomato PR #5 评审第二节）；启动后只校验业务前提：未拆除、适配器仍为原对象、项目存在且当日可记录、专注专用指纹未变。
+- `revisionFingerprint` 只比较日期修订，不含 `direction`、`tomatoMode`；专注链接入新增 `focusMappingFingerprint`（修订指纹 + 规范化 direction/tomatoMode），只用于专注启动后校验，不改写所有通用记录操作的指纹口径。
+- 启动等待期间项目被删除/归档/改规则时走「只回滚本次会话」；通用适配器以 `adapter.stop()` 回滚，跨插件适配器的回滚由会话归属守门（D-236）限定在本次会话内。
+
+## D-236：跨插件专注会话归属与纯解绑生命周期（2026-09-19）
+
+- 底栏番茄钟适配器在实例闭包内维护 `ownedFocus`（provider 引用 + sessionId + itemId）；`facade.start()` 必须返回非空 sessionId 才登记归属，否则抛 `DOCK_TOMATO_START_UNCONFIRMED`——不猜测运行中的计时器是自己人，也不无条件暂停。
+- 停止前守门：provider 引用一致、facade 未被 available:false 失效、status.active、sessionId 匹配、mode ∈ countdown/stopwatch（休息阶段可能沿用父专注 sessionId，一律不暂停）；能力含 `pause-session` 时携带 sessionId 调用原子按会话暂停，否则 getStatus 守门后调用旧 `pause()`（只能缩小误暂停窗口，跨会话原子性依赖提供方，已写入契约文档）。
+- `available:false` 事件 detail 立即失效该 facade 并解绑；`available:true` 是同一对象恢复注册的唯一途径；无 detail 的旧事件保持兼容。
+- 注销回调支持 `{stopActive:false}` 纯解绑（默认保持原停止行为兼容第三方）；facade 失效/替换/卸载/完成清理一律纯解绑——`releaseFocusAdapterFor` 只清本地登记，卸载路径对跨插件适配器不再调用 `stop()`（不模拟用户停止）。完成通知以 sessionId 匹配为准立即释放「正在专注」，不等待打卡入账，也不再用 5 秒全局空闲轮询 + `stopFocus()` 旁路。
+- 完成事件过期：完成后番茄钟可能进入休息或新会话；`tomato:focus-ended` 仅作为重读状态提示，校验 sessionId 与阶段后再清理本地记录。
+
+## D-237：完成回写持久收件箱与宿主侧幂等写入器（2026-09-19）
+
+- 已接收未入账的完成通知持久化于私有存储 `checkin-docktomato-inbox`（schemaVersion 1，容量 200，满员拒绝新条目并提示，不静默丢弃）；只保存校验后的纯数据，`completedAt` 缺失或无效直接拒绝（invalid-completion-time），不回退为接收时间，完成日按首次接收的本地时区固定、重试不改写。
+- 写入判定顺序固定：已入账（duplicate，检索全部事件含归档项目）→ 用户撤销墓碑（user-removed，永不补回）→ 项目可用性/映射/跳过日（blocked：missing-item / archived-item / not-scheduled / mapping-changed / at-most-item / skipped-day）→ 写入；该顺序必须先于项目检查处理幂等身份，否则自动归档后的重复完成通知会误报 missing-item。
+- `atMost` 戒除类目标不参与自动专注打卡（启动资格、完成判定、写入边界三层拒绝）；完成值按完成日期的项目修订计算（单一代码路径 `dockTomatoCompletionValue`），跨午夜专注按完成日记账、不拆分。
+- 跳过日策略：通知置 blocked:skipped-day 保留待处理，由用户决定是否撤销跳过后计入；不静默删除 skip、不无墓碑过滤（防同步复活）。
+- 收件箱接收 → 写入 → 移除/标记在同一个 `enqueueMutation` 工作单元内完成；写入器 `recordDockTomatoCompletionUnlocked` 在已持有的存储锁内运行，禁止再经公开 `recordEvent` 重复排队（死锁边界）；跨窗口在锁内重读收件箱逐项合并 identity。
+- 重试：暂时性失败按 1s/5s/30s 自动重试，之后保持 pending 等待手动/下次恢复；blocked 不自动重试；主存储成功但收件箱清理失败时，恢复后以 duplicate 收尾不再新增。恢复入口 `reconcileDockTomatoInbox` 在初始化就绪后与重试到期时驱动，仅在有待处理项时唤醒，无常驻定时器，卸载清理。
+- 边界声明：收件箱只覆盖「已接收」的通知，不能弥补提供方未送达的事件；提供方仍须保证完成事件只在持久化成功后产生一次。

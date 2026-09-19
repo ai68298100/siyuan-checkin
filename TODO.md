@@ -2544,3 +2544,17 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1265 GitHub 历史分支与提交数量审计
   - 验收：区分可安全清理的已合并分支、仍有独立提交的未合并分支，以及不应重写的 `main` 提交历史；不自动 push 或删除远端引用。
   - 状态：done（刷新 `origin` 后确认本地落后 0、领先 6；14 条 `codex/*` 已完全合并，可在远端清理窗口删除；13 条旧分支仍各有 1-5 个非 patch-equivalent 提交，只登记为待确认候选。结论与命令写入 `docs/repository-layout.md`。）
+
+## 底栏番茄钟 PR #5 评审修复（T-1266~T-1268，2026-09-19 执行）
+
+依据《小飞驴与底栏番茄钟联动：完整修复方案（按 17.0.0 复核）》（用户提供，`checkin-docktomato-fix-plan.zh-CN.md`），对小飞驴侧六项主体修复落地；提供方（底栏番茄钟）侧要求同步写入 `docs/docktomato-integration-plan.md` 的契约节。
+
+- [x] T-1266 启动后校验拆分与会话归属（方案第二、三、四、七节 / D-235、D-236）
+  - 验收：启动成功后不复检 canStart（不自动暂停）；启动等待期业务变化用专注专用指纹（修订+direction+tomatoMode）识别并只回滚本次会话；桥内维护 ownedFocus，start 必须返回非空 sessionId，否则 DOCK_TOMATO_START_UNCONFIRMED；停止守门（provider/失效/active/sessionId/阶段）后按会话暂停，pause-session 能力携带 sessionId，休息阶段共享父 ID 不误暂停；available:false 即时解绑、失效对象不重注册、available:true 幂等恢复；注销支持 {stopActive:false} 纯解绑，卸载不暂停跨插件计时器；完成清理立即释放归属，移除 5 秒全局轮询与 stopFocus 旁路；诊断 ready 优先于 running/paused；新增三个错误码中英文案。
+  - 状态：done（`focus-adapter.ts`、`dock-tomato.ts`、`api.ts`、`index.ts` 卸载路径；新增 `tests/focus-adapter.test.cjs`（复现「启动成功即被暂停」）入 test:ui；重写 `tests/dock-tomato-bridge.test.cjs` 会话归属/守门/可用性/纯解绑/迟到事件矩阵；`tests/dock-tomato-integration.test.cjs` 契约断言同步）
+- [x] T-1267 完成回写持久收件箱与幂等写入器（方案第五、六节 / D-237）
+  - 验收：completedAt 缺失/无效拒绝不回退；判定顺序 duplicate → user-removed → 项目可用性（归档后重复不再误报 missing-item）；内部写入器在已持有存储锁内运行不重复排队；完成日期修订校验单位/模式/排期；atMost 三层拒绝；跳过日 blocked 由用户决定；收件箱先存后写、1s/5s/30s 重试、容量 200 拒绝不丢弃；跨窗口锁内合并；恢复入口就绪后与到期时驱动、无常驻定时器；锚点为非阻塞旁路且自动来源说明不追加为备注。
+  - 状态：done（新增 `src/features/docktomato-inbox.ts` 纯函数层与 `tests/docktomato-inbox.test.cjs` 入 test:ecosystem；`index.ts` 新增收件箱/写入器/恢复/卸载清理；`dock-tomato.ts` 完成判定重排并走宿主通道；`tests/dock-tomato-completion.test.cjs` 判定矩阵与 completedAt/墓碑/atMost 断言更新；设置页新增 5 个诊断理由中英文案）
+- [x] T-1268 评审结论文档化与提供方契约（方案第七、八、九、十、十一节）
+  - 验收：消费端已实现行为与对提供方的要求（start 返回最终 sessionId、pause-session 原子调用、available detail、completedAt 必需、会话累计时长、并发启动互斥、默认关闭开关）形成对内决策与对外契约文档；真机联调（B-007/T-1165 同类）保持开放不阻塞。
+  - 状态：done（DECISIONS D-235/D-236/D-237；`docs/docktomato-integration-plan.md` 新增「PR #5 评审后的消费端契约」节；BLOCKERS 番茄钟条目更新。上游 PR 修订与真实宿主联调仍待对方排期，保持 B-007 跟踪。）

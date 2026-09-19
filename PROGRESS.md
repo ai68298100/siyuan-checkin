@@ -1,6 +1,6 @@
 # 进度
-当前任务：T-1265 GitHub 历史分支与提交数量审计已完成
-上次检查点：T-1263/T-1264 已提交；远端分支只读审计完成，未执行 push 或删除
+当前任务：T-1266~T-1268 底栏番茄钟 PR #5 评审修复已完成（小飞驴侧六项主体修复落地）
+上次检查点：T-1266/T-1267 代码提交（c2b1435 会话归属、收件箱写入器）；T-1268 文档与决策记录
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032、T-105、T-1167~T-1215
 未提交变更：无（T-1265 已纳入本轮文档提交）
 上次提交：T-1265 文档提交（GitHub 历史分支与提交数量审计）
@@ -1362,3 +1362,5 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 - GitHub Release：https://github.com/ai68298100/siyuan-checkin/releases/tag/v17.1.0（id 392014777，非草稿，标题「小飞驴打卡 v17.1.0」，正文取 `docs/releases/release-notes-17.1.0.md`）。
 - 资产 `package.zip` 401,194 字节，SHA-256 `d390c0e2ef2ecdc098ba62e9afb7eadc8f4bc09143bf66b4704a844b5927ffd6`；已从 API 回读资产核对，远端与本地摘要逐字节一致。
 - 注意：本机 `github.com/.../releases/download/...` 直链返回空响应（objects.githubusercontent.com 不可达），API 通道可用——取源码与取资产都走 api.github.com。
+
+2026-09-19 底栏番茄钟 PR #5 评审修复（T-1266~T-1268 / D-235~D-237）：依据用户提供的《完整修复方案（按 17.0.0 复核）》，逐条对照 17.1.0 源码确认全部问题点后分三批落地。批次A：`startFocusFor` 启动成功后不再复检 `canStart`（消除「启动成功即自动暂停」），新增 `focusMappingFingerprint`（修订+direction+tomatoMode）识别等待期业务变化并只回滚本次会话。批次B：桥内维护 ownedFocus 会话归属，start 必须返回非空 sessionId（否则 START_UNCONFIRMED 不接管），停止经 provider/失效/active/sessionId/阶段五重守门，`pause-session` 能力携带 sessionId；available:false 即时解绑并失效该 facade；注销 `{stopActive:false}` 纯解绑，卸载不再暂停跨插件计时器；完成清理立即释放「正在专注」并移除 5 秒全局空闲轮询；诊断优先级 ready 前置。批次C：新增 `src/features/docktomato-inbox.ts` 纯函数层（completedAt 严格时钟、载荷规范化、容量 200、1s/5s/30s 重试），完成判定重排为 duplicate → user-removed → 项目可用性（归档后重复通知不再误报 missing-item），宿主内部写入器在已持有存储锁内运行（不经公开 recordEvent 重复排队），atMost 三层拒绝、跳过日 blocked 由用户决定、完成后复用自动归档与锚点旁路；`reconcileDockTomatoInbox` 就绪后与到期时驱动、无常驻定时器。提供方要求写入 `docs/docktomato-integration-plan.md` 契约节；上游 PR 修订与真实宿主联调待对方排期，B-007 继续跟踪。验证：`pnpm run check`、`test:ui`、`test:ecosystem`（新增 `focus-adapter` / `docktomato-inbox` 两个测试文件，桥/判定/集成契约测试全面重写为可执行竞态矩阵）、`test:extended`、`pnpm test` 与生产构建全部通过。
