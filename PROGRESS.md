@@ -1404,3 +1404,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 v5 性能门禁与发布干跑：①api-v5 测试补性能门禁(T-1172 哲学)——10 万级事件范围读(日期索引)与 200 条批量规划(O(批×事件)有界扫描)各设 2000ms 灾难退化捕获,本机实测通过;②release.cjs 真实干跑——构建+全量测试链通过后在 gh 前置检查处按设计中止(exit 1,零 git 写),验证了发布 runbook 的中止语义;真实发布仍待用户授权(装 gh 或走 api.github.com 流程)。
 
 2026-09-20 Obsidian 迁出与 E2E v5 spec（T-1283/T-1284）：①buildObsidianExportFiles 导出活跃项目为 H21 习惯 .md（完成日=非跳过事件日,文件名消毒+冲突唯一化,无记录/超上限计入 skipped,上限 30）,downloadObsidianExportFor 顺序多文件下载,设置页按钮+完成消息;i18n 中英 4 键(1120 对等);round-trip 测试(导出→解析无损还原)+文件名消毒/唯一化断言。②tests/e2e/api-v5.spec.mjs:真实内核验证 version=5、capabilitiesSince 4/5 分野、三个新方法形状与归档语义,test:e2e 升为 9/9。摘要回填后全链 exit 0。
+
+2026-09-20 批量写真实内核 E2E（T-1285）：tests/e2e/api-v5-batch.spec.mjs——recordEventsBatch 两条带 occurredAt 的 api 记录一次落盘(内核存储文件核验 externalRef 原样保留、source=api),页面重载后同 externalRef 重放全部 duplicate 且内核不新增记录;test:e2e 升为 10/10 全过。v5 批量写路径(规划→追加→持久化→广播)自此有真实内核证据。任务池维持硬收敛:剩余仅 v17.2.0 发布(等授权)与外部依赖。

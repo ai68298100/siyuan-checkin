@@ -2622,3 +2622,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1284 E2E 公开 API v5 真实宿主 spec
   - 验收:真实内核上验证 version=5、17→18 能力、capabilitiesSince、getEventsInRange/queryItems/getStreaks 形状与归档语义。
   - 状态:done(tests/e2e/api-v5.spec.mjs,test:e2e 9/9 通过)
+
+- [x] T-1285 批量写真实内核 E2E（v5-2 收口验证）
+  - 验收:recordEventsBatch 在真实思源内核上单次落盘(事件带稳定 externalRef),重载后同 refs 重放全部 duplicate 且内核不新增记录。
+  - 状态:done(tests/e2e/api-v5-batch.spec.mjs;test:e2e 升为 10/10)
