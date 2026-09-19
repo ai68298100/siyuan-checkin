@@ -2,9 +2,10 @@
    CheckinApiHost 以结构化接口声明插件宿主成员；index.ts 通过
    `createCheckinApi(this as unknown as CheckinApiHost)` 接线，绕开 private 可见性（仅编译期）。 */
 import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange, type EventRangeSummary, type EventRangeSummaryOptions} from "./analytics";
-import {getItemRevisionForDate, dateKey} from "./model";
+import {getEventsInDateRange, getItemRevisionForDate, dateKey} from "./model";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./features/habit-score";
-import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinStore} from "./types";
+import {filterEventsInRange, isValidEventSource, projectItems} from "./features/api-v5";
+import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinKind, CheckinStore} from "./types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLocalDateInput, withTimeout} from "./shared";
 import {serializeCsv, serializeJson} from "./export";
 import {getVisibleOccasions, type Occasion, type OccasionStore} from "./occasions";
@@ -29,6 +30,10 @@ export interface CheckinApi {
     getEvents: () => CheckinEvent[];
     /** Bounded local-date projection; range is half-open [startDate, endDateExclusive). */
     getEventRangeSummary: (range: {startDate: string; endDateExclusive: string}, options?: EventRangeSummaryOptions) => EventRangeSummary;
+    /** v5:有界日期区间事件读(半开区间,升序);truncated=true 表示达到 limit 截断。 */
+    getEventsInRange: (range: {startDate: string; endDateExclusive: string}, options?: {itemIds?: string[]; source?: CheckinEvent["source"]; includeSkips?: boolean; limit?: number}) => {events: CheckinEvent[]; truncated: boolean};
+    /** v5:统一项目投影(归档语义二选一 + 类型过滤 + 限量)。 */
+    queryItems: (options?: {includeArchived?: boolean; archivedOnly?: boolean; kinds?: CheckinKind[]; limit?: number}) => CheckinItem[];
     getOccasions: () => Occasion[];
     getTodayOccasions: () => VisibleOccasion[];
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
@@ -126,6 +131,23 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         getItems: () => host.store.items.filter((item) => !item.archived).map((item) => host.cloneItem(item)),
         getEvents: () => host.store.events.map((event) => ({...event})),
         getEventRangeSummary: (range, options) => getEventRangeSummary(host.store, range, options),
+        /* v5-1（D-240）：有界范围事件读——去重/过滤纪律与内部消费方一致,返回事件快照防 getter 逃逸。 */
+        getEventsInRange: (range, options) => {
+            if (!range || !isValidLocalDateInput(range.startDate) || !isValidLocalDateInput(range.endDateExclusive)) {
+                throw new TypeError("range 必须提供合法的 startDate 与 endDateExclusive（YYYY-MM-DD）");
+            }
+            if (range.startDate > range.endDateExclusive) throw new TypeError("range.startDate 不得晚于 endDateExclusive");
+            if (options?.itemIds !== undefined && !Array.isArray(options.itemIds)) throw new TypeError("itemIds 必须是字符串数组");
+            if (options?.source !== undefined && !isValidEventSource(options.source)) throw new TypeError("source 必须是 manual、tomato、import 或 api");
+            if (range.startDate === range.endDateExclusive) return {events: [], truncated: false};
+            const inRange = getEventsInDateRange(host.store, range.startDate, range.endDateExclusive);
+            const filtered = filterEventsInRange(inRange, options ?? {});
+            return {events: filtered.events.map((event) => ({...event})), truncated: filtered.truncated};
+        },
+        queryItems: (options) => {
+            if (options?.kinds !== undefined && !Array.isArray(options.kinds)) throw new TypeError("kinds 必须是 CheckinKind 数组");
+            return projectItems(host.store.items, options ?? {}).map((item) => host.cloneItem(item));
+        },
         getOccasions: () => host.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
         getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
         completeOccasion: (id, occurrenceDate, completed) => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)),

@@ -1,5 +1,5 @@
 import type {CheckinEvent} from "./types";
-import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_EVENT_RANGE_LIMITS} from "./api-contract";
+import {CHECKIN_API_PROTOCOL, CHECKIN_EVENT_RANGE_LIMITS} from "./api-contract";
 
 export const TASK_HORIZON_EXTERNAL_REF_PREFIX = "taskhorizon" as const;
 export const TASK_HORIZON_REFRESH_EVENTS = [
@@ -11,7 +11,8 @@ export const TASK_HORIZON_REFRESH_EVENTS = [
 export const TASK_HORIZON_CONTRACT = Object.freeze({
     version: 1,
     apiProtocol: CHECKIN_API_PROTOCOL,
-    minApiVersion: CHECKIN_API_VERSION,
+    /* 本集成只依赖 v4 面;D-240 承诺 v4 只增不删,故最低要求钉在 4,不随运行时版本号上升。 */
+    minApiVersion: 4,
     readCapability: "analytics.read",
     writeCapability: "events.record",
     readMethod: "getEventRangeSummary",

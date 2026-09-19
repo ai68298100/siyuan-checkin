@@ -1,4 +1,4 @@
-# 小驴打卡 API v5 设计稿（2026-09-20,T-1274 草案）
+# 小驴打卡 API v5 设计稿（2026-09-20,T-1274 草案；v5-1 已实施——T-1275）
 
 > 状态:**草案**——仅供评审与下一版本排期,未实现、未承诺发布窗口。
 > 输入:v4 契约(`src/api-contract.ts`,14 项能力)与本文件撰写时点已完成的消费端实践(docktomato 桥/D-227、Task Horizon bridge、externalRef 前缀注册 D-211)。
@@ -93,7 +93,7 @@ getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest:
 
 | 批次 | 内容 | 依赖 |
 | --- | --- | --- |
-| v5-1 | P1 范围读 + P3 项目投影(纯读,风险最低) | 无 |
+| v5-1 | P1 范围读 + P3 项目投影(纯读,风险最低)——**已实施**:`features/api-v5.ts` 纯过滤 + `getEventsInRange`/`queryItems` 接线,契约测试与 tests/api-v5.test.cjs 守门 | 无 |
 | v5-2 | P2 批量写(抽取分类骨架,含结果测试矩阵) | v5-1 的索引复用 |
 | v5-3 | P4 指标门面 + P5 协商补强 | 无硬依赖 |
 

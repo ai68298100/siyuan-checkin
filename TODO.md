@@ -2583,3 +2583,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1274 API v5 设计稿（development-roadmap v18 既定项,除隐私待评项）
   - 验收：基于 v4 四个实践缺口出提案,纯设计不实现,记 DECISIONS。
   - 状态：done（docs/api-v5-design.md:范围读/幂等批量写/项目统一投影/指标门面/协商补强五提案,纪律沿用 D-211/D-227,切分 v5-1~3 三批;D-240 草案登记）
+
+- [x] T-1275 API v5-1 只读批次实施（D-240 切分第一批）
+  - 验收:getEventsInRange(半开区间/itemIds≤200 消毒/source 白名单/includeSkips/limit 1000 默认 5000 上限+truncated)与 queryItems(归档语义二选一 archivedOnly 优先/kinds fail-closed/limit 200 默认 1000 上限)落地;版本 4→5 只增不删;Task Horizon minApiVersion 钉 4 不随运行时升。
+  - 状态:done(api-contract 16 能力+2 限额常量;features/api-v5.ts 纯过滤;api.ts 接线(TypeError 预 precedent);tests/api-v5.test.cjs 入 test:ecosystem,契约测试升 v5;合作文档/走查/README 能力清单同步)

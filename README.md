@@ -211,7 +211,7 @@ if (checkin.hasCapability("events.record")) {
 
 主要能力包括：
 
-- `items.read`、`events.read`、`occasions.read`：读取项目、事件和日期事项；
+- `items.read`、`items.query`、`events.read`、`events.range.read`、`occasions.read`：读取项目、事件和日期事项（v5 新增统一项目投影 `queryItems` 与有界日期区间事件读 `getEventsInRange`，半开区间、限量截断并标注 `truncated`）；
 - `events.record`、`occasions.complete`：在用户明确要求后写入本地记录；
 - `summary.read`、`summary.custom`、`analytics.read`：读取日/周/月、自定义范围和分析快照；
 - `export.json`、`export.csv`：导出本地数据；

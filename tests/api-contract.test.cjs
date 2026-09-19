@@ -17,7 +17,12 @@ fs.writeFileSync(output, ts.transpileModule(source, {compilerOptions: {target: t
 
 const api = require(output);
 assert.equal(api.CHECKIN_API_PROTOCOL, "siyuan-checkin");
-assert.equal(api.CHECKIN_API_VERSION, 4);
+assert.equal(api.CHECKIN_API_VERSION, 5);
+assert.ok(api.CHECKIN_CAPABILITIES.includes("items.query"), "v5 items.query capability must be declared");
+assert.ok(api.CHECKIN_CAPABILITIES.includes("events.range.read"), "v5 range-read capability must be declared");
+assert.deepEqual(api.CHECKIN_EVENTS_READ_LIMITS, {maxItemIds: 200, defaultLimit: 1000, maxLimit: 5000});
+assert.deepEqual(api.CHECKIN_ITEMS_QUERY_LIMITS, {defaultLimit: 200, maxLimit: 1000});
+assert.equal(Object.isFrozen(api.CHECKIN_EVENTS_READ_LIMITS), true);
 assert.equal(new Set(api.CHECKIN_CAPABILITIES).size, api.CHECKIN_CAPABILITIES.length);
 
 const descriptor = api.getCheckinApiDescriptor();

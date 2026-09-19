@@ -1,5 +1,5 @@
 export const CHECKIN_API_PROTOCOL = "siyuan-checkin" as const;
-export const CHECKIN_API_VERSION = 4 as const;
+export const CHECKIN_API_VERSION = 5 as const;
 
 /** Hard safety limits for the events.read date-range summary helper. */
 export const CHECKIN_EVENT_RANGE_LIMITS = Object.freeze({
@@ -7,6 +7,19 @@ export const CHECKIN_EVENT_RANGE_LIMITS = Object.freeze({
     maxPoints: 366,
     maxEvents: 5000,
 }) as Readonly<{maxDays: number; maxPoints: number; maxEvents: number}>;
+
+/** v5 events.range.read hard safety limits（与 design 文档一致）。 */
+export const CHECKIN_EVENTS_READ_LIMITS = Object.freeze({
+    maxItemIds: 200,
+    defaultLimit: 1000,
+    maxLimit: 5000,
+}) as Readonly<{maxItemIds: number; defaultLimit: number; maxLimit: number}>;
+
+/** v5 items.query hard safety limits。 */
+export const CHECKIN_ITEMS_QUERY_LIMITS = Object.freeze({
+    defaultLimit: 200,
+    maxLimit: 1000,
+}) as Readonly<{defaultLimit: number; maxLimit: number}>;
 
 export const CHECKIN_INTEGRATION_EVENTS = [
     "checkin:item-created",
@@ -21,7 +34,9 @@ export const CHECKIN_INTEGRATION_EVENTS = [
 
 export const CHECKIN_CAPABILITIES = [
     "items.read",
+    "items.query",
     "events.read",
+    "events.range.read",
     "events.record",
     "occasions.read",
     "occasions.complete",
@@ -55,7 +70,9 @@ export interface CheckinApiDescriptor {
 
 const CAPABILITY_INFO: Record<CheckinCapability, CheckinCapabilityInfo> = {
     "items.read": {available: true, localOnly: true, effect: "read"},
+    "items.query": {available: true, localOnly: true, effect: "read"},
     "events.read": {available: true, localOnly: true, effect: "read"},
+    "events.range.read": {available: true, localOnly: true, effect: "read"},
     "events.record": {available: true, localOnly: true, effect: "write"},
     "occasions.read": {available: true, localOnly: true, effect: "read"},
     "occasions.complete": {available: true, localOnly: true, effect: "write"},
