@@ -2607,3 +2607,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1280 longest streak 与 capabilitiesSince（v5-3 预留项收口）
   - 验收:computeLongestStreaks 与现有当前连续同一状态语义(真实/派生 +1、跳过桥接、at-most 连续无破戒),全历史正向扫描取最大;getStreaks 返回 {current, longest};describe 增 capabilitiesSince 供 v4 消费方版本探测。
   - 状态:done(model.ts 新增 computeLongestStreaks(现有函数零改动);api.ts getStreaks 三字段;CHECKIN_CAPABILITIES_SINCE 冻结映射 + descriptor;api-v5/contract 测试同步)
+
+- [x] T-1281 v17.2.0 发版准备（本地）
+  - 验收:版本三处(package.json/plugin.json/version.ts)统一 17.2.0;change-log 与 release-notes 完整覆盖 17.1.0 后全部变更(番茄修复/API v5/Obsidian 迁入/minAppVersion 3.8.4);发布资源门禁以 v17.2.0 通过。
+  - 状态:done(摘要 f84728b8… 已写入发布说明;README 当前版本与要点节同步。tag/push/GitHub Release 属发布动作,待用户授权执行)
