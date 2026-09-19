@@ -1422,3 +1422,5 @@ T-1280 摘要回填后全链 exit 0。
 T-1292 摘要回填后全链 exit 0。
 
 2026-09-20 渲染块真实宿主 E2E(T-1293):公开内核 API 创建笔记本/文档(文档 id 即锚点块),注入合成 ```checkin``` 代码块,经插件真实渲染管线断言——docId 命中渲染项目行、未命中文档 fail-closed 空视图。过程中发现并修复两处真实缺陷:①胶水 previous?.remove() 会把相邻渲染块当旧预览删除(真实产品缺陷:相邻两个 checkin 块互相摧毁)——预览挂归属标记 data-checkin-preview-for,只删自己的;②宿主锚点解析字段名错误(内核 getBlockInfo 返回 rootID 驼峰,非 root_id),修复后锚点归属解析生效。test:e2e 升为 15/15;摘要回填后全链 exit 0。
+
+T-1293 摘要回填后全链 exit 0。
