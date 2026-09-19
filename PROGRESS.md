@@ -1436,3 +1436,5 @@ T-1295 摘要回填后全链 exit 0。
 2026-09-20 文档一致性巡检:ecosystem-integration.md 从 API v4 更新到 v5——describe 补 capabilitiesSince;新增 v5 四能力说明(queryItems/getEventsInRange/recordEventsBatch/getStreaks)与 obsidian21 前缀登记指引;合作契约文档此前已同步(18 项能力/minApiVersion 钉 4)。ecosystem-docs/export-identity-docs/preferences-docs 回归通过。
 
 2026-09-20 发布就绪审查:自 v17.1.0 (596f292) 起全部变更 53 文件(+4079/-449),src+tests+docs+config 全量审计通过。安全扫描:硬编码中文文案零残留(新增纯模块),innerHTML 注入点全部经 escapeHtml,批量写外部输入 14 处验证。i18n 双字典 1123 对等;测试 143 文件、0 退役;真实内核 E2E 16/16;全链 test:quality exit 0。产物摘要 a2c33a4c… 与发布说明一致。工作树干净。
+
+2026-09-20 收件箱 UI 项目名显示(T-1300):设置页收件箱条目此前显示内部 itemId(如 20260920-abcdef),用户无法辨识;现在在设置上下文构建时按 itemId 查找 store.items 中的项目名并注入,渲染层 itemName || itemId 回退。DockTomatoInboxEntryView 类型补可选 itemName 字段(纯函数层不依赖 store)。相关测试全过。

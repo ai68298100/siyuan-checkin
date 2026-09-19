@@ -1749,7 +1749,10 @@ export default class CheckinPlugin extends Plugin {
             dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
             dockTomatoInbox: {
                 capacity: DOCKTOMATO_INBOX_CAPACITY,
-                entries: projectInboxEntries(this.dockTomatoInbox),
+                entries: projectInboxEntries(this.dockTomatoInbox).map((entry) => {
+                    const itemName = this.store.items.find((i) => i.id === entry.itemId)?.name || entry.itemId;
+                    return {...entry, itemName};
+                }),
             },
             focusTimerBusy: this.focusBusy,
             palette: this.palette,

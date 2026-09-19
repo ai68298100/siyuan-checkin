@@ -205,6 +205,7 @@ export function inboxNextWakeDelayMs(store: DockTomatoInboxStore, nowIso: string
 export interface DockTomatoInboxEntryView {
     identity: string;
     itemId: string;
+    itemName?: string;
     itemUnit: string;
     tomatoMode: "minutes" | "sessions";
     localDate: string;

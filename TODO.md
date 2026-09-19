@@ -2658,3 +2658,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1297 渲染块 notebook 维度 E2E(作用域矩阵补全)+ T-1298 Obsidian 迁出下载流 E2E
   - 验收:notebook 维度块渲染项目行(docId 块+notebook 块=2 行,未命中块空视图);Obsidian 导出按钮触发逐文件下载,H21 .md 含 frontmatter title+entries。
   - 状态:done(render-block.spec.mjs 三块矩阵 nameCount=2;obsidian-export.spec.mjs 下载 2 文件内容断言;test:e2e 16/16)
+
+- [x] T-1300 收件箱 UI 显示项目名而非内部 ID
+  - 验收:设置上下文构建时按 itemId 查找项目名注入 entries;settings 渲染层 itemName || itemId 回退;纯函数层 DockTomatoInboxEntryView 补可选 itemName。
+  - 状态:done(三文件协作:纯层类型扩展、宿主上下文名称解析、渲染层回退显示;i18n 无新增键;相关测试全过)
