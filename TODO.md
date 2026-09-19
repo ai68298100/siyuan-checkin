@@ -2638,3 +2638,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1289 跳过日解析旅程 E2E（T-1270 交互闭环的真实宿主验证）
   - 验收:完成事件→收件箱 blocked→设置页收件箱区块→点击「撤销跳过并计入」(确认弹窗)→同单元落库断言:完成事件入账、skip 原子消失并留墓碑、收件箱条目清除。
   - 状态:done(docktomato-completion.spec.mjs 增旅程场景,mobile bundle + iPhone 13 视口走完整 UI 旅程;test:e2e 13/13)
+
+- [x] T-1292 渲染块 doc/notebook 维度（T-1234 遗留缺口收口）
+  - 验收:配置 docId/notebook(内核 id 格式校验,≥8 字符);作用域优先级 itemIds>group>doc/notebook>全部活跃;锚点归属经宿主 getBlockInfo 解析并缓存(fail-closed:未命中/无索引=空视图);胶水首次渲染先出加载占位再强制重渲染一次。
+  - 状态:done(checkin-block.ts AnchorDocIndex+parse+resolve;block-renderer deps 扩展+加载占位;index.ts 缓存+解析器;compat 文档登记;checkin-block 测试 +12 断言;i18n +1 键(1122 对等))

@@ -3,11 +3,13 @@
    安全边界（T-1236）：预览 HTML 全部由 features/checkin-block 纯函数构造；
    配置错误显示固定文案，不回显用户原文；点击跳转经 deps 回调（块→插件单向）。 */
 import {escapeHtml} from "../shared";
+import {t} from "../i18n";
 import {
     buildHeatmapViewHtml,
     buildMonthViewHtml,
     buildSummaryViewHtml,
     parseCheckinBlockConfig,
+    type AnchorDocIndex,
     type CheckinBlockConfig,
 } from "../features/checkin-block";
 import type {CheckinStore} from "../types";
@@ -16,6 +18,11 @@ export interface BlockRendererDeps {
     getStore(): CheckinStore;
     getNow(): Date;
     onJumpDate?(date: string): void;
+    /** T-1292：锚点→文档归属索引的同步缓存读；未命中条目不在返回值中。 */
+    getAnchorIndex?(): AnchorDocIndex;
+    /** T-1292：索引未命中的锚点异步解析（内核 /api/block/getBlockInfo，宿主缓存）；
+        完成后由本函数的实现方触发一次强制重渲染。 */
+    resolveAnchorDocs?(blockIds: string[]): Promise<void>;
 }
 
 const PREVIEW_FLAG = "data-checkin-preview";
@@ -56,12 +63,12 @@ function findCodeBlocks(root: HTMLElement): HTMLElement[] {
     return [...candidates];
 }
 
-function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps): string {
+function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, anchorIndex?: AnchorDocIndex): string {
     const asOf = deps.getNow();
     const store = deps.getStore();
-    if (config.view === "month") return buildMonthViewHtml(store, config, asOf);
-    if (config.view === "heatmap") return buildHeatmapViewHtml(store, config, asOf);
-    return buildSummaryViewHtml(store, config, asOf);
+    if (config.view === "month") return buildMonthViewHtml(store, config, asOf, anchorIndex);
+    if (config.view === "heatmap") return buildHeatmapViewHtml(store, config, asOf, anchorIndex);
+    return buildSummaryViewHtml(store, config, asOf, anchorIndex);
 }
 
 /* 记录每个代码块上次渲染的配置文本：观察回调里仅在配置变化时重渲染，
@@ -83,7 +90,28 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
         if (!parsed.ok) {
             preview.innerHTML = `<div class="lc-checkin__renderblock-error" role="alert">${escapeHtml(parsed.error)}</div>`;
         } else {
-            preview.innerHTML = buildPreviewHtml(parsed.config, deps);
+            const needsAnchorIndex = Boolean(parsed.config.docId || parsed.config.notebook);
+            const anchorIndex = needsAnchorIndex ? deps.getAnchorIndex?.() : undefined;
+            if (needsAnchorIndex && deps.resolveAnchorDocs) {
+                const store = deps.getStore();
+                const missing = new Set<string>();
+                for (const item of store.items) {
+                    const blockId = item.noteAnchor?.blockId;
+                    if (item.archived || !blockId) continue;
+                    if (!anchorIndex || !anchorIndex.has(blockId)) missing.add(blockId);
+                }
+                if (missing.size) {
+                    /* 首次渲染时锚点归属未解析完:先出加载占位,解析完成后强制重渲染一次。 */
+                    preview.innerHTML = `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.scopeLoading"))}</div>`;
+                    lastRenderedConfig.set(block, configText);
+                    block.insertAdjacentElement("afterend", preview);
+                    void deps.resolveAnchorDocs([...missing]).then(() => {
+                        renderCheckinBlocksIn(protyleElement, deps, {force: true});
+                    });
+                    continue;
+                }
+            }
+            preview.innerHTML = buildPreviewHtml(parsed.config, deps, anchorIndex);
         }
         preview.addEventListener("click", (event) => {
             const target = (event.target as HTMLElement).closest("[data-jump-date]");

@@ -354,7 +354,28 @@ export default class CheckinPlugin extends Plugin {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
             onJumpDate: (date: string) => this.jumpToHistoryDate(date),
+            getAnchorIndex: () => new Map(this.anchorDocCache),
+            resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),
         };
+    }
+
+    /* T-1292:锚点归属索引(内核 getBlockInfo 解析,会话内缓存;缺失按未命中处理)。 */
+    private anchorDocCache = new Map<string, {doc: string; notebook: string}>();
+    private anchorDocAttempted = new Set<string>();
+
+    private async resolveAnchorDocsForRender(blockIds: string[]): Promise<void> {
+        for (const blockId of blockIds.slice(0, 200)) {
+            if (this.anchorDocAttempted.has(blockId)) continue;
+            this.anchorDocAttempted.add(blockId);
+            try {
+                const response = await fetchSyncPost("/api/block/getBlockInfo", {id: blockId});
+                if (response?.code === 0 && response.data?.root_id && response.data?.box) {
+                    this.anchorDocCache.set(blockId, {doc: String(response.data.root_id), notebook: String(response.data.box)});
+                }
+            } catch {
+                /* 查询失败按未命中处理,不阻塞渲染 */
+            }
+        }
     }
 
     private observeRenderBlocks(protyle: IProtyle) {

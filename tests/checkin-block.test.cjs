@@ -15,6 +15,8 @@ assert.match(glueSource, /escapeHtml\(parsed\.error\)/, "error output is escaped
 assert.match(read("index.ts"), /this\.eventBus\.on\("loaded-protyle-static", this\.handleProtyleLoaded\)/, "protyle load events drive rendering");
 assert.match(read("index.ts"), /CHECKIN_EVENT_NAMES\.eventRecorded, this\.handleRenderBlocksRefresh/, "check-in events refresh render blocks");
 assert.match(read("index.ts"), /private jumpToHistoryDate\(date: string\)/, "jump callback lands on review history date");
+assert.match(glueSource, /getAnchorIndex/, "glue must read the host anchor index synchronously (T-1292)");
+assert.match(glueSource, /resolveAnchorDocs/, "glue must delegate missing anchor resolution to the host");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-block-"));
 for (const filename of ["types.ts", "i18n.ts", "shared.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "model-helpers.ts", "features/record-notes.ts", "ui/labels.ts", "features/checkin-block.ts"]) {
@@ -126,6 +128,33 @@ block.buildHeatmapViewHtml(perfStore, {view: "heatmap", year: 2026}, asOf);
 const perfMs = Number(process.hrtime.bigint() - perfStart) / 1e6;
 /* 健康机基线 73ms；整机慢速时按 T-1172 哲学保留 25 倍级灾难退化捕获。 */
 assert.ok(perfMs < 2000, `three views over ~10k events must render under 2000ms (took ${Math.round(perfMs)}ms)`);
+
+/* ===== doc/notebook 维度（T-1292）===== */
+const goodDocScope = block.parseCheckinBlockConfig('{"view":"summary","docId":"20260920120000-abcdef1234"}');
+assert.equal(goodDocScope.ok, true);
+if (goodDocScope.ok) assert.equal(goodDocScope.config.docId, '20260920120000-abcdef1234');
+const goodNotebook = block.parseCheckinBlockConfig('{"view":"summary","notebook":"20260815110000-notebookid"}');
+assert.equal(goodNotebook.ok, true);
+const badDocId = block.parseCheckinBlockConfig('{"view":"summary","docId":"short"}');
+assert.equal(badDocId.ok, false, 'docId shorter than kernel ids must be rejected');
+
+/* 锚点索引解析:fail-closed——无索引返回空;命中/未命中按 doc 与 notebook 过滤。 */
+const anchorIndex = new Map([
+  ["block-1", {doc: "doc-A", notebook: "nb-1"}],
+  ["block-2", {doc: "doc-B", notebook: "nb-2"}],
+]);
+const anchorItems = [
+  {...dailyItem("anchA"), noteAnchor: {blockId: "block-1"}},
+  {...dailyItem("anchB"), noteAnchor: {blockId: "block-2"}},
+  dailyItem("plain"),
+];
+const docStore = model.createDefaultStore();
+docStore.items = anchorItems;
+assert.deepEqual(block.resolveBlockItems(docStore, {view: "summary", docId: "doc-A"}, anchorIndex).map((entry) => entry.id), ["anchA"]);
+assert.deepEqual(block.resolveBlockItems(docStore, {view: "summary", notebook: "nb-2"}, anchorIndex).map((entry) => entry.id), ["anchB"]);
+assert.equal(block.resolveBlockItems(docStore, {view: "summary", docId: "doc-C"}, anchorIndex).length, 0, "unknown doc must fail closed");
+assert.equal(block.resolveBlockItems(docStore, {view: "summary", docId: "doc-A"}, undefined).length, 0, "missing index must fail closed");
+assert.equal(block.resolveBlockItems(docStore, {view: "summary"}, anchorIndex).length, 3, "no scope keeps all-active behavior");
 
 /* i18n 双语。 */
 setPluginLanguage("en-US");

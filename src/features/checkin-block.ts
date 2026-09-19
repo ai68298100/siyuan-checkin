@@ -28,7 +28,14 @@ export interface CheckinBlockConfig {
     year?: number;
     /** month/heatmap 单元格色阶阈值（完成比例切分点，升序）。 */
     thresholds?: [number, number, number, number];
+    /** T-1292：文档维度——只统计锚点块位于该文档的项目（思源文档 id）。 */
+    docId?: string;
+    /** T-1292：笔记本维度——只统计锚点块位于该笔记本的项目（思源笔记本 id）。 */
+    notebook?: string;
 }
+
+/** 锚点→文档归属索引：键 = noteAnchor.blockId。由宿主经内核 getBlockInfo 解析并缓存。 */
+export type AnchorDocIndex = Map<string, {doc: string; notebook: string}>;
 
 export type CheckinBlockParseResult = {ok: true; config: CheckinBlockConfig} | {ok: false; error: string};
 
@@ -61,17 +68,41 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
         if (thresholds[0] < thresholds[1] && thresholds[1] < thresholds[2] && thresholds[2] < thresholds[3]) config.thresholds = thresholds;
     }
     if (!config.thresholds) config.thresholds = [...DEFAULT_THRESHOLDS] as [number, number, number, number];
+    const docId = typeof source.docId === "string" ? source.docId.trim() : "";
+    const notebook = typeof source.notebook === "string" ? source.notebook.trim() : "";
+    if (docId) {
+        if (!/^[0-9A-Za-z-]{8,64}$/.test(docId)) return {ok: false, error: t("block.errorConfig")};
+        config.docId = docId;
+    }
+    if (notebook) {
+        if (!/^[0-9A-Za-z-]{8,64}$/.test(notebook)) return {ok: false, error: t("block.errorConfig")};
+        config.notebook = notebook;
+    }
     return {ok: true, config};
 }
 
-/** 作用域解析：itemIds 优先，其次 group，缺省全部活跃项目。 */
-export function resolveBlockItems(store: CheckinStore, config: CheckinBlockConfig): CheckinItem[] {
+/* 作用域解析优先级：itemIds > group > docId/notebook（锚点索引） > 全部活跃项目。
+   docId/notebook 需要 anchorIndex（宿主经内核 getBlockInfo 解析并缓存）；
+   无锚点或索引未命中该项目时，视为不在该维度范围内——fail-closed，不静默放大范围。 */
+export function resolveBlockItems(store: CheckinStore, config: CheckinBlockConfig, anchorIndex?: AnchorDocIndex): CheckinItem[] {
     const active = store.items.filter((item) => !item.archived);
     if (config.itemIds) {
         const ids = new Set(config.itemIds);
         return active.filter((item) => ids.has(item.id));
     }
     if (config.group) return active.filter((item) => (item.group || "") === config.group);
+    if (config.docId || config.notebook) {
+        if (!anchorIndex) return [];
+        return active.filter((item) => {
+            const blockId = item.noteAnchor?.blockId;
+            if (!blockId) return false;
+            const location = anchorIndex.get(blockId);
+            if (!location) return false;
+            if (config.docId && location.doc !== config.docId) return false;
+            if (config.notebook && location.notebook !== config.notebook) return false;
+            return true;
+        });
+    }
     return active;
 }
 
@@ -129,8 +160,8 @@ function levelFor(fraction: number, thresholds: [number, number, number, number]
 
 const weekdayOrder = [1, 2, 3, 4, 5, 6, 0];
 
-export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date): string {
-    const items = resolveBlockItems(store, config);
+export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
+    const items = resolveBlockItems(store, config, anchorIndex);
     if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
     const now = asOf;
     const year = config.month ? Number(config.month.slice(0, 4)) : now.getFullYear();
@@ -150,8 +181,8 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)}))}</small></div>`;
 }
 
-export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date): string {
-    const items = resolveBlockItems(store, config);
+export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
+    const items = resolveBlockItems(store, config, anchorIndex);
     if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
     const streaks = computeEventStreaks(store, asOf);
     /* 汇总行直接复用模型单一路径（getProgress/isComplete），避免在渲染块里重写完成口径。 */
@@ -167,8 +198,8 @@ export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockCo
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-summary">${lines}</div>`;
 }
 
-export function buildHeatmapViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date): string {
-    const items = resolveBlockItems(store, config);
+export function buildHeatmapViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
+    const items = resolveBlockItems(store, config, anchorIndex);
     if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
     const year = config.year || asOf.getFullYear();
     const prefix = `${year}-`;
