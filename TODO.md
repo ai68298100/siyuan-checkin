@@ -2595,3 +2595,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1277 API v5-2 幂等批量写实施（D-240 切分第二批）
   - 验收:recordEventsBatch 单次持久化、结果与输入 1:1（recorded/duplicate/discarded/blocked/rejected）;occurredAt 缺省回退标注 usedFallbackTime、非法拒绝;单批 200;atMost/墓碑/归档照旧;单条 recordEvent 行为不变。
   - 状态:done（api-contract 17 能力+CHECKIN_BATCH_RECORD_LIMITS;features/api-v5.ts 单遍 planBatchRecord(结构校验/时钟注入/批内去重回显首条/固定判定顺序);index.ts 单单元 makeEvent+appendEvents+persist+逐事件广播+受影响项目自动归档+锚点旁路;api-v5 测试扩 15 输入混合场景+跨午夜;契约/README/合作文档/走查/设计稿同步）
+
+- [x] T-1278 API v5-3 指标门面实施（D-240 切分第三批）
+  - 验收:metrics.read 能力 + getStreaks(当前连续,走 computeEventStreaks 单一实现,itemIds 有界过滤,输出冻结);longest/capabilitiesSince 留待后续。
+  - 状态:done(契约 18 能力;api.ts getStreaks;契约测试+2 断言;README/合作文档 18 项/走查/设计稿同步)

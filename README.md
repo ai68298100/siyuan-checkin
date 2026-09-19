@@ -214,6 +214,7 @@ if (checkin.hasCapability("events.record")) {
 - `items.read`、`items.query`、`events.read`、`events.range.read`、`occasions.read`：读取项目、事件和日期事项（v5 新增统一项目投影 `queryItems` 与有界日期区间事件读 `getEventsInRange`，半开区间、限量截断并标注 `truncated`）；
 - `events.record`、`events.record.batch`、`occasions.complete`：在用户明确要求后写入本地记录（v5 批量写单次持久化、结果与输入一一对应：recorded/duplicate/discarded/blocked/rejected，单批上限 200）；
 - `summary.read`、`summary.custom`、`analytics.read`：读取日/周/月、自定义范围和分析快照；
+- `metrics.read`：读取习惯强度与当前连续等派生指标（与插件内同一模型实现）；
 - `export.json`、`export.csv`：导出本地数据；
 - `focus.adapters`、`summary.providers`：注册专注或总结适配器；
 - `suggestions.read`、`integrations.events`：读取建议工作流快照并订阅规范事件。

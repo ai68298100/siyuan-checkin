@@ -27,6 +27,8 @@ assert.ok(api.CHECKIN_CAPABILITIES.includes("events.record.batch"), "v5 batch-re
 assert.deepEqual(api.CHECKIN_BATCH_RECORD_LIMITS, {maxItems: 200});
 assert.equal(Object.isFrozen(api.CHECKIN_BATCH_RECORD_LIMITS), true);
 assert.equal(api.getCheckinCapabilityInfo()["events.record.batch"].effect, "write");
+assert.ok(api.CHECKIN_CAPABILITIES.includes("metrics.read"), "v5 metrics capability must be declared");
+assert.equal(api.getCheckinCapabilityInfo()["metrics.read"].effect, "read");
 assert.equal(new Set(api.CHECKIN_CAPABILITIES).size, api.CHECKIN_CAPABILITIES.length);
 
 const descriptor = api.getCheckinApiDescriptor();

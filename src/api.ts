@@ -2,7 +2,7 @@
    CheckinApiHost 以结构化接口声明插件宿主成员；index.ts 通过
    `createCheckinApi(this as unknown as CheckinApiHost)` 接线，绕开 private 可见性（仅编译期）。 */
 import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext, buildSummaryContext, type CustomSummaryRange, type SummaryRange, type EventRangeSummary, type EventRangeSummaryOptions} from "./analytics";
-import {getEventsInDateRange, getItemRevisionForDate, dateKey} from "./model";
+import {computeEventStreaks, getEventsInDateRange, getItemRevisionForDate, dateKey} from "./model";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./features/habit-score";
 import {filterEventsInRange, isValidEventSource, planBatchRecord, projectItems, type BatchEntryResult} from "./features/api-v5";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinKind, CheckinStore} from "./types";
@@ -34,6 +34,8 @@ export interface CheckinApi {
     getEventsInRange: (range: {startDate: string; endDateExclusive: string}, options?: {itemIds?: string[]; source?: CheckinEvent["source"]; includeSkips?: boolean; limit?: number}) => {events: CheckinEvent[]; truncated: boolean};
     /** v5:统一项目投影(归档语义二选一 + 类型过滤 + 限量)。 */
     queryItems: (options?: {includeArchived?: boolean; archivedOnly?: boolean; kinds?: CheckinKind[]; limit?: number}) => CheckinItem[];
+    /** v5:派生指标门面——当前连续(与成就/洞察同一模型实现)。 */
+    getStreaks: (itemIds?: string[]) => readonly {itemId: string; current: number}[];
     getOccasions: () => Occasion[];
     getTodayOccasions: () => VisibleOccasion[];
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
@@ -150,6 +152,16 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         queryItems: (options) => {
             if (options?.kinds !== undefined && !Array.isArray(options.kinds)) throw new TypeError("kinds 必须是 CheckinKind 数组");
             return projectItems(host.store.items, options ?? {}).map((item) => host.cloneItem(item));
+        },
+        /* v5-3(D-240):streak 数字走 computeEventStreaks 单一实现,禁止消费端自算。 */
+        getStreaks: (itemIds) => {
+            const streaks = computeEventStreaks(host.store, currentCalendarDate());
+            let ids = [...streaks.keys()];
+            if (Array.isArray(itemIds) && itemIds.length) {
+                const wanted = new Set(itemIds.slice(0, 200).filter((id) => typeof id === "string" && id.length <= 160));
+                ids = ids.filter((id) => wanted.has(id));
+            }
+            return Object.freeze(ids.slice(0, 200).map((itemId) => Object.freeze({itemId, current: streaks.get(itemId) || 0})));
         },
         getOccasions: () => host.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
         getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
