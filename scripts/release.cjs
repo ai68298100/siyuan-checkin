@@ -65,8 +65,17 @@ if (fs.existsSync(versionTs)) {
 
 // 2. 构建 + 全部测试链
 run("pnpm run build");
-for (const chain of ["check", "test", "test:ui", "test:mobile", "test:ecosystem", "check:release"]) {
+for (const chain of ["check", "test", "test:ui", "test:legacy-style", "test:mobile", "test:ecosystem", "test:extended", "test:review-comparison", "test:perf", "check:release"]) {
     run(`pnpm run ${chain}`);
+}
+
+// gh 缺失会在 push+tag 之后的 Release 步骤才失败,造成"已推送未发布"的半成品;
+// 因此把可用性检查提前到任何 git 写操作之前（17.1.0 经验:本机 gh 未装,需走 api.github.com 流程）。
+try {
+    execSync("gh --version", {stdio: "ignore"});
+} catch {
+    console.error("gh CLI 不可用：请安装 gh，或按 17.1.0 记录改用 api.github.com 发布流程后再运行本脚本。");
+    process.exit(1);
 }
 
 // 3. 提交 + 推送 + tag（版本号已一致时无变更可提交，跳过空提交）

@@ -1398,3 +1398,5 @@ T-1280 摘要回填后全链 exit 0。
 2026-09-20 浏览器级验收批次：宽度走查 12/12 无溢出(2000/1180/640/330 全表面);visual-qa 双主题(light/dark)各 277 项检查全部符合预期(exit 0;false 项均为无重叠/已卸载等预期语义),覆盖收件箱管理 UI、Obsidian 导入行等近期界面改动。无需代码变更。
 
 2026-09-20 v17.2.0 发版准备（T-1281）：版本三处统一升至 17.2.0；新增 docs/v17.2.0-change-log.md（开发者向全量变更）与 docs/releases/release-notes-17.2.0.md（用户向,「升级前必读」置顶 minAppVersion 3.8.4 警告）；README 当前版本与要点节同步。产物 package.zip 摘要 f84728b8… 已写入发布说明；`check:release` 以 v17.2.0 通过、`test:quality` 全链 exit 0。发布动作（tag v17.2.0、push main+tag、GitHub Release 上传资产）待用户授权后执行。
+
+2026-09-20 发布流水线加固与发布 runbook（T-1282）：release.cjs 两处加固——①发布前测试链对齐 test:quality 全量（补 test:extended/test:perf/test:legacy-style/test:review-comparison,此前子集漏掉扩展与性能链）；②gh CLI 可用性检查提前到任何 git 写操作之前（17.1.0 经验：本机无 gh,原脚本会在 push+tag 之后的 Release 步骤才失败,留下"已推送未发布"半成品）。本机实测：gh 缺失时按设计在 push 前中止。**v17.2.0 发布 runbook**：前置=工作区干净(当前是)+版本三处已 17.2.0(当前是)+notes 摘要行就位(当前是,需以最终构建刷新);命令=`node scripts/release.cjs 17.2.0`（版本无变更跳过改写,构建+全量链+commit+push+tag+gh release）；本机 gh 未装 → 要么先 `winget install GitHub.cli` 并 `gh auth login`,要么按 17.1.0 记录改走 api.github.com(token 取自 git 凭据管理器)创建 Release 并上传 package.zip(以 .artifacts/notes-17.2.0.md 为说明)。

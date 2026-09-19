@@ -2611,3 +2611,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1281 v17.2.0 发版准备（本地）
   - 验收:版本三处(package.json/plugin.json/version.ts)统一 17.2.0;change-log 与 release-notes 完整覆盖 17.1.0 后全部变更(番茄修复/API v5/Obsidian 迁入/minAppVersion 3.8.4);发布资源门禁以 v17.2.0 通过。
   - 状态:done(摘要 f84728b8… 已写入发布说明;README 当前版本与要点节同步。tag/push/GitHub Release 属发布动作,待用户授权执行)
+
+- [x] T-1282 发布流水线加固（v17.2.0 发布前置）
+  - 验收:release.cjs 发布前测试链对齐 test:quality 全量(补 extended/perf/legacy-style/review-comparison);gh 可用性检查提前到任何 git 写操作之前,避免"已推送未发布"半成品。
+  - 状态:done(node --check 通过;本机实测 gh 缺失 → 按设计在 push 前中止;发布 runbook 见 PROGRESS)
