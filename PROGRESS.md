@@ -1380,3 +1380,5 @@ T-134 生命周期接入：插件初始化已通过独立缓存键加载分析�
 2026-09-20 API v5-1 只读批次(T-1275/D-240):CHECKIN_API_VERSION 4→5,能力清单 14→16(items.query/events.range.read,均 read+localOnly),新增 CHECKIN_EVENTS_READ_LIMITS/CHECKIN_ITEMS_QUERY_LIMITS 冻结限额。纯过滤边界 `src/features/api-v5.ts`:itemIds 消毒限量、source 白名单校验、skip 按需排除、limit 夹取+truncated 判定(再多一条匹配即报截断);项目投影 archivedOnly 优先于 includeArchived、kinds 全非法 fail-closed 返回空(拼写错误不放大为未过滤)。api.ts 接线沿用 getCustomSummaryContext 的 TypeError 先例,事件返回 {...event} 快照、项目走 cloneItem 防 getter 逃逸。Task Horizon 契约 minApiVersion 显式钉 4(v4 面冻结承诺),修复 manifest 对齐断言。tests/api-v5.test.cjs(约 20 断言)入 test:ecosystem;合作文档/走查/README 能力清单同步 v5。下一批:渲染块断签淡化(maxGap 调研吸收)或 v5-2 批量写。
 
 v5-1 摘要回填:3eeba820…(API 契约变更使包体改变)。
+
+2026-09-20 渲染块断签淡化评估（T-1276,吸收项闭环）：按调研候选实现原型（month 视图逐 item 记忆化 deriveQuotaAutoDays、is-auto 淡化格+图例），单测失败触发语义核查——quota 项目的 isComplete 是回溯性完成（getProgress 取整周期进度,不按日截断）,周期达标后达标日之前的剩余日本就渲染为完成色。即 AUTO 回溯完成在呈现上已强于 maxGap 淡化容忍,「缺签缺口」在本语义下不存在,autoOnly 为死代码。按 D-051 可证明性原则回撤原型(checkin-block/i18n/CSS/测试四处干净还原,渲染块回归 15ms 通过),评估结论与关闭理由写回 benchmark 活文档供后续引用。经验:调研吸收项先验证语义缺口存在,再写呈现代码。
