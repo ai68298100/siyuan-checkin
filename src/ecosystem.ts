@@ -71,6 +71,39 @@ export function parseTaskHorizonExternalRef(value: unknown): TaskHorizonExternal
     return createTaskHorizonExternalRef(blockId, localDate) === value ? {blockId, localDate} : undefined;
 }
 
+/* v18（T-1242）：externalRef 前缀注册表——第三方集成完成来源的公开登记处。
+   新集成在此登记前缀与格式说明；未登记前缀的 externalRef 仍可写入（通用兼容），
+   但注册表是文档与诊断的权威来源。 */
+export interface ExternalRefPrefixSpec {
+    prefix: string;
+    label: string;
+    /** externalRef 完整格式说明（面向集成者）。 */
+    format: string;
+}
+
+export const EXTERNAL_REF_PREFIX_REGISTRY: readonly ExternalRefPrefixSpec[] = Object.freeze([
+    Object.freeze({prefix: TASK_HORIZON_EXTERNAL_REF_PREFIX, label: "Task Horizon", format: "taskhorizon:<blockId>:<localDate>"}),
+]);
+
+export function isRegisteredExternalRefPrefix(prefix: unknown): boolean {
+    return typeof prefix === "string" && EXTERNAL_REF_PREFIX_REGISTRY.some((spec) => spec.prefix === prefix);
+}
+
+/** 解析已注册前缀的 externalRef：`<prefix>:<identity>:<date>`。 */
+export function parseExternalRef(value: unknown): {prefix: string; identity: string; date: string} | undefined {
+    if (typeof value !== "string" || value.length > 240) return undefined;
+    const firstColon = value.indexOf(":");
+    if (firstColon <= 0) return undefined;
+    const prefix = value.slice(0, firstColon);
+    if (!isRegisteredExternalRefPrefix(prefix)) return undefined;
+    const lastColon = value.lastIndexOf(":");
+    if (lastColon <= firstColon) return undefined;
+    const identity = value.slice(firstColon + 1, lastColon);
+    const date = value.slice(lastColon + 1);
+    if (!identity || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return undefined;
+    return {prefix, identity, date};
+}
+
 export function isTaskHorizonExternalRef(value: unknown): value is string {
     return Boolean(parseTaskHorizonExternalRef(value));
 }
