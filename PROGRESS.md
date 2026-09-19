@@ -1441,3 +1441,4 @@ T-1295 摘要回填后全链 exit 0。
 T-1300 摘要回填后全链 exit 0。
 
 2026-09-20 渲染块 summary 视图历史最长连续（T-1301):summary 行 em 标签同时显示当前连续(🔥 N 天)与历史最长连续(历史最长 N 天,仅 ≥2 时显示);两者走各自单一实现(computeEventStreaks / computeLongestStreaks),口径不混淆。i18n 双语 1124 对等;checkin-block 测试全过。
+T-1301 摘要回填后全链 exit 0。
