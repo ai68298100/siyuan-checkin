@@ -77,20 +77,20 @@ assert.deepEqual(byIds.map((entry) => entry.id), ["a"]);
 
 /* 月视图：跳过中性格、today 环、色阶、跳转属性。 */
 const monthHtml = block.buildMonthViewHtml(store, {view: "month", thresholds: [0.25, 0.5, 0.75, 1]}, asOf);
-assert.match(monthHtml, /data-jump-date="2026-09-15" title="[^"]*3\/3/, "aggregate completion fraction shown in title");
-assert.match(monthHtml, /is-level-4[^"]*" data-jump-date="2026-09-15"/, "full-completion day hits top level");
-assert.match(monthHtml, /is-today[^"]*" data-jump-date="2026-09-19"/, "today ring present");
+assert.match(monthHtml, /data-jump-date="2026-09-15"[^>]*title="[^"]*3\/3/, "aggregate completion fraction shown in title");
+assert.match(monthHtml, /is-level-4[^>]*data-jump-date="2026-09-15"/, "full-completion day hits top level");
+assert.match(monthHtml, /is-today[^>]*data-jump-date="2026-09-19"/, "today ring present");
 assert.ok(monthHtml.includes(t("block.monthMeta", {year: 2026, month: 9, done: 5})));
 const emptyMonth = block.buildMonthViewHtml(store, {view: "month", group: "不存在"}, asOf);
 assert.ok(emptyMonth.includes(t("block.empty")));
 /* itemIds 作用域 + 跳过中性格：仅项目 a 时，16 日（跳过）是中性 skip 格。 */
 const monthA = block.buildMonthViewHtml(store, {view: "month", itemIds: ["a"]}, asOf);
-assert.match(monthA, /is-skip[^"]*" data-jump-date="2026-09-16"/, "skip-only day renders neutral");
-assert.match(monthA, /is-level-4[^"]*" data-jump-date="2026-09-15"/, "done day renders top level for single scope");
+assert.match(monthA, /is-skip[^>]*data-jump-date="2026-09-16"/, "skip-only day renders neutral");
+assert.match(monthA, /is-level-4[^>]*data-jump-date="2026-09-15"/, "done day renders top level for single scope");
 
 /* 热力视图：today 标记；跳过日混有真实完成时不标中性。 */
 const heatmapHtml = block.buildHeatmapViewHtml(store, {view: "heatmap", year: 2026}, asOf);
-assert.match(heatmapHtml, /is-today[^"]*" data-jump-date="2026-09-19"/, "heatmap rings today");
+assert.match(heatmapHtml, /is-today[^>]*data-jump-date="2026-09-19"/, "heatmap rings today");
 assert.ok(!heatmapHtml.includes("is-skip"), "skip marker only when a day has skips and no completions");
 assert.ok(heatmapHtml.includes(t("block.heatmapMeta", {year: 2026, n: 6})));
 
