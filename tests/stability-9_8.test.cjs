@@ -7,7 +7,7 @@ const read = (...parts) => fs.readFileSync(path.join(__dirname, "..", ...parts),
 const plugin = read("src", "index.ts");
 const settings = read("src", "render", "settings.ts");
 const components = read("src", "ui", "components.scss");
-const roadmap = read("docs", "development-roadmap.md");
+const roadmap = read("docs", "archive", "development-roadmap.md");
 const i18n = read("src", "i18n.ts");
 const occasions = read("src", "render", "occasions.ts");
 const packageJson = JSON.parse(read("package.json"));

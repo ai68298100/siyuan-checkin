@@ -8,7 +8,7 @@
   - 验收：端到端加密或外部同步的完整设计——隐私边界、冲突语义、撤销、数据所有权、密钥管理；输出评审稿与「立项/不立项」决策记录。
   - 状态：done（2026-09-21。docs/sync-design-review.md 评审稿 + D-243 决策：**不立项自建同步**——插件数据天然位于思源工作区、跨设备由思源同步承载，插件侧已具备合并/诊断/恢复点配合能力；立三个配套改进项随常规迭代（冲突用户文案已落/恢复指南已含/导出即迁移定位）；重启条件成文。v23 无同步开发线）
 - [x] T-1371 长期维护底座（首切片）
-  - 状态：done（首切片 2026-09-21。①i18n 字典健康度门禁 tests/i18n-parity.test.cjs：zh/en 1480 对键全对等、无重复键、插值占位符一致，接入 test:ui；②依赖升级评估并入既有 ES2020 容差纪律，无待办。剩余：旧路线文档归档清理随下次文档巡检）
+  - 状态：done（首切片 2026-09-21。①i18n 字典健康度门禁 tests/i18n-parity.test.cjs：zh/en 1480 对键全对等、无重复键、插值占位符一致，接入 test:ui；②依赖升级评估并入既有 ES2020 容差纪律，无待办。②旧路线文档归档清理完成：development-roadmap-2026/development-roadmap/ui-product-roadmap/ui-redesign-roadmap/v1.0-to-v2.0-roadmap 五文件移入 docs/archive/，README 与四个测试引用同步更新）
 - [x] T-1372 数据规模演练
   - 状态：done（2026-09-21。既有覆盖：100k 事件回顾性能基线（review-performance-baseline）、渲染块 1k/10k/100k 三档（T-1355，100k≈232ms）、批处理生命周期 100 项/100k 事件 17.5ms、10 万级合并与索引测试（v6-efficiency/streak-index 等）；恢复点/导出在 100k 量级由 backup/perf 链覆盖。三年量级可持续性已验证，无新增工作）
 
@@ -50,7 +50,7 @@
   - 状态：done（2026-09-21。①多分组数据集：groups 并集作用域（≤16，去重，超量 fail-closed）+ 新 `view:"groups"` 分组聚合视图（每组项目数/今日完成比/完成率，按完成率排序，未分组显式标注）；②白名单表达式：minRate（1~100 整数，越界忽略）过滤 summary 行与 groups 行——summary 按今日完成率（complete=100，否则进度比），全滤掉时给可读空态；③跳转增强：summary 行此前 data-jump-item 未绑定——现在绑定（点击→回顾页项目洞察），有已解析锚点的行携带 data-jump-anchor-block（点击→经内核 rootID+openTab 打开锚点文档，任何失败回落项目洞察）；openTab 滚动定位参数未验证故不传，高亮滚动留待真机窗口验证（记 T-1344 附注）。安全边界不变：纯函数构造、用户内容 escapeHtml、错误不回显原文。checkin-block 门禁扩展（groups/minRate/锚点/性能 30ms@10k））
 - [x] T-1352 日记集成：周期报告写入指定日记文档（opt-in 默认关）；共用锚点失败隔离通道；撤销策略先记 DECISIONS。
   - 状态：done（2026-09-21。设置页集成区新增「日记集成」：启用开关 + 目标文档 ID 输入（复用 validateAnchorBlockId 校验）+「写入本期报告」按钮（未启用或未绑定禁用）；写入走 appendAnchorNote（/api/block/appendBlock，只追加）+ withBoundedRetry（2 次/1.5s）+ 审计（type=anchor, channel=diary-report）+ 结果提示；报告与回顾页导出同一 buildWeeklyReportMarkdown 路径（来源筛选/区块开关/偏差解释全生效）。撤销与幂等策略落盘 D-241：报告属用户文档内容不随打卡撤销删除、不做自动去重、不提供定时自动写入（自动能力若立项须新决策）。新增 tests/diary-report.test.cjs 接入 test:ui；偏好归一：enabled 无合法 docId 不物化）
-- [ ] T-1353 每日摘要写驻留文档（T-1166）：⏸ 等用户隐私决策；此前保持设计稿状态不实现。
+- [ ] T-1353 每日摘要写驻留文档（T-1166）：⏸ 等用户隐私决策；**设计稿已成文**（docs/summary-resident-design.md：单一绑定文档/字段白名单/只追加/零新增 API 面），决策通过后 1 个批次可实现。
 - [x] T-1354 UI 维护收尾：重复 token/历史样式清理、状态组件归一、布局跳动专项、CSS 基线下修；错乱台账清零。
   - 状态：done（2026-09-21。审计结论：scripts/css-audit.cjs 全量核查 583 个 class token——**零死类**（历史清理 T-103~T-105 等已收净），重复规则仅 ~4.4KB（esbuild 已合并），无历史样式可删；维护态改为制度化护栏：css-hygiene 门禁（零死类断言+重复体积<10KB+预算 620KB 警告/640KB 硬阻断，替代 D-246 报告口径）落盘 D-242。状态组件归一已于 T-1345 完成；布局跳动专项随 T-1309~T-1346 各轮走查吸收）
 - [x] T-1355 性能基线扩展：渲染块 1k/10k/100k 渲染门禁并入 test:extended；日记回写多窗口演练。

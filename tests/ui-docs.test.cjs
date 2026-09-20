@@ -3,11 +3,11 @@ const fs = require("node:fs");
 
 const readme = fs.readFileSync("README.md", "utf8");
 const changeLog = fs.readFileSync("docs/v4.0-ui-change-log.md", "utf8");
-const roadmap = fs.readFileSync("docs/ui-product-roadmap.md", "utf8");
+const roadmap = fs.readFileSync("docs/archive/ui-product-roadmap.md", "utf8");
 assert.match(readme, /思源 v3.8.4/);
 assert.match(readme, /pnpm run test:ui/);
 assert.match(readme, /docs\/v4\.0-ui-change-log\.md/);
-assert.match(readme, /docs\/ui-product-roadmap\.md/);
+assert.match(readme, /docs\/archive\/ui-product-roadmap\.md/);
 assert.match(changeLog, /Today/);
 assert.match(changeLog, /Archived/);
 assert.match(changeLog, /视觉测试需要设置 `CHECKIN_BROWSER`/);

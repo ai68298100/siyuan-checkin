@@ -12,7 +12,7 @@ const smoke = read("docs/integration-smoke-checklist.md");
 const rollback = read("docs/release-rollback.md");
 const compatibility = read("docs/siyuan-compatibility.md");
 const recovery = read("docs/v10-recovery-acceptance.md");
-const roadmap = read("docs/development-roadmap.md");
+const roadmap = read("docs/archive/development-roadmap.md");
 const environmentCheck = read("scripts/environment-check.cjs");
 
 let passed = 0;
