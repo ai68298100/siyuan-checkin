@@ -1,5 +1,6 @@
 import type {CheckinItem} from "./types";
 import {t} from "./i18n";
+import {normalizeProjectDraft, type ProjectDraft} from "./features/project-draft";
 
 export type AgentSuggestionChange = {
     itemId: string;
@@ -150,6 +151,8 @@ export type AgentSuggestionDecision = "confirm" | "cancel";
 export interface NormalizedSummaryProviderResult {
     text: string;
     suggestions: AgentSuggestion[];
+    /** T-1359：项目草案（新建项目建议，进入编辑器检查流，不直接写 store）。 */
+    drafts: import("./features/project-draft").ProjectDraft[];
 }
 
 export function normalizeAgentSuggestion(value: unknown, items: readonly CheckinItem[]): AgentSuggestion | undefined {
@@ -164,12 +167,14 @@ export function normalizeAgentSuggestion(value: unknown, items: readonly Checkin
 }
 
 export function normalizeSummaryProviderResult(value: unknown, items: readonly CheckinItem[]): NormalizedSummaryProviderResult | undefined {
-    if (typeof value === "string") return value.length <= AGENT_SUMMARY_MAX_TEXT_LENGTH ? {text: value, suggestions: []} : undefined;
+    if (typeof value === "string") return value.length <= AGENT_SUMMARY_MAX_TEXT_LENGTH ? {text: value, suggestions: [], drafts: []} : undefined;
     if (!value || typeof value !== "object") return undefined;
-    const candidate = value as {text?: unknown; suggestions?: unknown};
+    const candidate = value as {text?: unknown; suggestions?: unknown; drafts?: unknown};
     if (typeof candidate.text !== "string" || candidate.text.length > AGENT_SUMMARY_MAX_TEXT_LENGTH) return undefined;
     const suggestions = Array.isArray(candidate.suggestions) ? candidate.suggestions.map((entry) => normalizeAgentSuggestion(entry, items)).filter((entry): entry is AgentSuggestion => Boolean(entry)).slice(0, 5) : [];
-    return {text: candidate.text, suggestions};
+    /* T-1359：草案是「检查后才保存」的结构化建议，与可执行变更分通道；最多 2 份。 */
+    const drafts = Array.isArray(candidate.drafts) ? candidate.drafts.map((entry) => normalizeProjectDraft(entry)).filter((entry): entry is import("./features/project-draft").ProjectDraft => Boolean(entry)).slice(0, 2) : [];
+    return {text: candidate.text, suggestions, drafts};
 }
 
 export interface ParsedSuggestionDecision {
@@ -350,37 +355,15 @@ export function summarizeSuggestionImpact(changes: readonly AgentSuggestionChang
 /* T-1360：执行白名单加入 schedule——排期调整从此走确认流（差异预览/before 校验/冲突跳过/可撤销）。 */
 const ALLOWED_CHANGE_FIELDS: ReadonlySet<keyof CheckinItem> = new Set(["name", "target", "unit", "group", "priority", "timeSlot", "tomatoMode", "schedule"]);
 
-const SUGGESTION_SCHEDULE_TYPES = new Set(["daily", "weekly", "workdays", "custom", "interval", "quota"]);
-
 /* 排期类型 → i18n 键（与 ui/labels 同名键，避免为预览文案引入模块依赖）。 */
 const SUGGESTION_SCHEDULE_LABEL_KEYS: Record<string, string> = {
     daily: "schedule.daily", weekly: "schedule.weekly", workdays: "schedule.workdays",
     custom: "schedule.custom", interval: "schedule.interval", quota: "schedule.quota",
 };
 
-/** T-1360：排期值结构校验与规范化——白名单纪律的一部分，非法排期不得进入建议通道。 */
-export function normalizeSuggestionSchedule(value: unknown): import("./types").CheckinSchedule | undefined {
-    if (!value || typeof value !== "object") return undefined;
-    const source = value as Record<string, unknown>;
-    if (typeof source.type !== "string" || !SUGGESTION_SCHEDULE_TYPES.has(source.type)) return undefined;
-    const schedule: {type: import("./types").ScheduleType; weekdays?: number[]; intervalDays?: number; anchorDate?: string; quota?: {period: "week" | "month"; amount: number; countMode: "dates" | "value"}} = {type: source.type as import("./types").ScheduleType};
-    if (Array.isArray(source.weekdays)) {
-        const weekdays = [...new Set(source.weekdays.filter((day): day is number => Number.isInteger(day) && day >= 0 && day <= 6))].sort((left, right) => left - right);
-        if (weekdays.length) schedule.weekdays = weekdays;
-    }
-    if (Number.isFinite(source.intervalDays) && (source.intervalDays as number) >= 1) schedule.intervalDays = Math.floor(source.intervalDays as number);
-    if (typeof source.anchorDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(source.anchorDate)) schedule.anchorDate = source.anchorDate;
-    if (source.quota && typeof source.quota === "object") {
-        const quota = source.quota as Record<string, unknown>;
-        if ((quota.period === "week" || quota.period === "month") && (quota.countMode === "dates" || quota.countMode === "value") && Number.isFinite(quota.amount) && (quota.amount as number) > 0) {
-            schedule.quota = {period: quota.period as "week" | "month", countMode: quota.countMode as "dates" | "value", amount: Number(quota.amount)};
-        }
-    }
-    if (schedule.type === "weekly" && !schedule.weekdays?.length) return undefined;
-    if (schedule.type === "interval" && !schedule.intervalDays) return undefined;
-    if (schedule.type === "quota" && !schedule.quota) return undefined;
-    return schedule as import("./types").CheckinSchedule;
-}
+/* T-1360：排期结构校验抽至 features/schedule-validate（T-1359 项目草案共用同一实现）。 */
+import {normalizeSuggestionSchedule} from "./features/schedule-validate";
+export {normalizeSuggestionSchedule};
 
 /** schedule 为嵌套对象，Object.is 会把克隆副本判为不同；深比较走键序稳定的序列化。 */
 export function suggestionValuesEqual(field: keyof CheckinItem, before: unknown, after: unknown): boolean {

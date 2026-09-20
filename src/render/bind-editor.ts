@@ -44,6 +44,9 @@ export interface BindEditorHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string): Promise<unknown>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
+    /** T-1359：待检查的智能体项目草案（存在时编辑器预填，检查后由用户手动保存）。 */
+    pendingProjectDraft?: import("../features/project-draft").ProjectDraft;
+    clearPendingProjectDraft(): void;
     /** T-1349：模板套用后更新「最近使用」偏好并持久化（宿主内去重置顶、容量 6）。 */
     recordRecentTemplateUse(name: string): void;
     [key: string]: unknown;
@@ -716,4 +719,44 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         };
         void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint)).then(resetSubmitting, resetSubmitting);
     });
+
+    /* T-1359：智能体项目草案预填——存在待检查草案时套用到新建表单，
+       用户在编辑器内检查/修改后手动保存；预填不写 store，检查后即清除。 */
+    const draft = host.pendingProjectDraft;
+    if (draft) {
+        host.clearPendingProjectDraft();
+        const setInput = (name: string, value: string) => {
+            const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+            if (control) control.value = value;
+        };
+        setInput("name", draft.name);
+        setInput("target", String(draft.target));
+        setInput("unit", draft.unit);
+        setInput("recordStep", String(getRecordStep(draft.kind, draft.unit)));
+        setInput("group", draft.group);
+        setInput("priority", draft.priority);
+        setInput("timeSlot", draft.timeSlot);
+        setInput("completionSource", "manual");
+        setInput("tomatoMode", "minutes");
+        setInput("schedule", draft.schedule.type);
+        if (draft.schedule.quota) {
+            setInput("quotaAmount", String(draft.schedule.quota.amount));
+            setInput("quotaPeriod", draft.schedule.quota.period);
+            setInput("quotaCountMode", draft.schedule.quota.countMode);
+        }
+        if (draft.schedule.intervalDays) setInput("intervalDays", String(draft.schedule.intervalDays));
+        const atMostInput = root.querySelector<HTMLInputElement>("input[name='directionAtMost']");
+        if (atMostInput) atMostInput.checked = false;
+        const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${draft.kind}']`);
+        if (kindInput) kindInput.checked = true;
+        root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => {
+            input.checked = (draft.schedule.weekdays || []).includes(Number(input.value));
+        });
+        selectIcon(draft.icon);
+        updateConditionalFields(false);
+        updateEditorPreview();
+        updateAdvancedSummary();
+        ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
+        root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
+    }
 }

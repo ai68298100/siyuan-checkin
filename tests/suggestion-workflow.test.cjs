@@ -6,6 +6,11 @@ const ts = require("typescript");
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-workflow-"));
 fs.writeFileSync(path.join(root, "i18n.js"), "exports.t=(key, vars={})=>key.replace(/\\{(\\w+)\\}/g, (_, name)=>String(vars[name] ?? ''));", "utf8");
+/* T-1360/T-1359：agent-suggestions 运行时依赖 features/schedule-validate 与 features/project-draft。 */
+fs.mkdirSync(path.join(root, "features"), {recursive: true});
+for (const feature of ["schedule-validate", "project-draft"]) {
+    fs.writeFileSync(path.join(root, "features", feature + ".js"), ts.transpileModule(fs.readFileSync(path.join(__dirname, "..", "src", "features", feature + ".ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText, "utf8");
+}
 for (const file of ["agent-suggestions.ts", path.join("features", "suggestion-workflow.ts")]) {
     const source = fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8");
     const out = ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;

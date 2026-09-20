@@ -1572,3 +1572,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1361 机器可读诊断:src/features/diagnostics.ts 纯模块（五原因码+环形 20+序列化往返）;五个失败路径打点（persist/冲突合并/刷新失败/导入拒绝/锁竞争）;公开能力 diagnostics.read（since 5）+ getDiagnostics() 防御副本,manifest/api-v5.md 同步;设置页「数据诊断」行（计数+最新标签+导出）;锁不设超时的设计决策记录（保护长事务,竞争记 lock-contended）。
 验证:diagnostics 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（64cd291f…）。
+
+2026-09-21 T-1359 项目草案确认流:project-draft.ts 纯模块（normalizeProjectDraft 边界校验/draftFromTemplate 模板派生/summarizeProjectDraft 预览摘要）;排期校验抽至 features/schedule-validate 供建议与草案同源;normalizeSummaryProviderResult 新增 drafts 通道（≤2 份,非法丢弃）;回顾页「项目草案」卡（摘要+检查并保存）→ host.openProjectDraftEditor → 编辑器预填（bind-editor 草案套用后即清除 pending）→ 用户手动 saveForm;模型无直达持久化路径（门禁断言）。
+验证:project-draft 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（e523760d…）。

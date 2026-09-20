@@ -74,8 +74,11 @@ export interface BindPageNavigationHost {
     downloadExport(format: "json" | "csv"): void;
     downloadReportMarkdown(markdown: string): void;
     reportSections: ReportSectionToggles;
-    /** T-1343 报告来源筛选："" = 全部来源。 */
+    /** T-1360 报告来源筛选："" = 全部来源。 */
     reportSource: string;
+    /** T-1359 智能体项目草案与编辑器检查流。 */
+    projectDrafts: import("../features/project-draft").ProjectDraft[];
+    openProjectDraftEditor(draft: import("../features/project-draft").ProjectDraft): void;
     reminderFilter: import("../reminders").ReminderFilter;
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
@@ -794,6 +797,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             } : undefined;
         });
     });
+    /* T-1359：草案卡 → 编辑器检查流（预填表单，用户手动保存）。 */
+    root.querySelectorAll<HTMLElement>("[data-action='edit-project-draft']").forEach((button) => button.addEventListener("click", () => {
+        const draft = host.projectDrafts?.[Number(button.dataset.draftIndex)];
+        if (draft) host.openProjectDraftEditor(draft);
+    }));
     const reviewBusy = new WeakSet<HTMLElement>();
     const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown, preservePromptFocus = false) => {
         if (reviewBusy.has(button)) return;

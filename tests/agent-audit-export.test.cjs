@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/types.ts", "src/i18n.ts", "src/agent-suggestions.ts"].forEach(transpile);
+["src/types.ts", "src/i18n.ts", "src/features/schedule-validate.ts", "src/features/project-draft.ts", "src/agent-suggestions.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {serializeSuggestionAuditExport, normalizeSuggestionAudits} = require(path.join(outputRoot, "src/agent-suggestions.js"));
 

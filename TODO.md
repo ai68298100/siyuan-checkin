@@ -2,7 +2,8 @@
 
 ## v20 规划任务（2026-09-21 启动，详见 docs/development-roadmap-v18-v22.md）
 
-- [ ] T-1359 项目草案确认流：智能体生成新建/调整项目结构化草案（可引用模板体系），用户在编辑器检查后保存；不直接写 store，全走建议工作流令牌/冲突/审计/撤销。
+- [x] T-1359 项目草案确认流：智能体生成新建/调整项目结构化草案（可引用模板体系），用户在编辑器检查后保存；不直接写 store，全走建议工作流令牌/冲突/审计/撤销。
+  - 状态：done（2026-09-21。①草案纯模块 src/features/project-draft.ts：normalizeProjectDraft 结构+边界校验（名称≤40/图标≤8/五类型/目标>0/单位≤12/排期复用 schedule-validate/优先级与时段枚举）、draftFromTemplate 模板派生（"喝水模板的变体"场景：模板默认+安全字段覆写，覆写非法回落模板值）、summarizeProjectDraft 预览摘要；②provider 通道：normalizeSummaryProviderResult 新增 drafts 字段（≤2 份，非法丢弃），智能体提供方经总结结果回传草案；③回顾页「项目草案」卡（摘要+检查并保存）→ 编辑器预填（bind-editor 草案套用：全部表单字段+排期参数+图标，套用即清除 pending）→ 用户手动 saveForm 落盘；模型不直接写 store——草案没有任何直达持久化路径（门禁断言 saveForm 只由用户提交触发）。排期校验抽至 features/schedule-validate 供建议/草案同源复用。新增 tests/project-draft.test.cjs 接入 test:ui；suggestion-apply/suggestion-workflow/agent-audit-export 转译清单同步补依赖）
 - [x] T-1360 建议执行范围扩展：排期/目标字段建议执行（差异预览、before 基线校验、冲突跳过、可撤销不变）；历史事件永不在范围。注意：字段白名单已含 target/unit/group/timeSlot/tomatoMode，缺 schedule 深比较与本地建议生成器扩展。
   - 状态：done（2026-09-21。①执行白名单加入 schedule：normalizeSuggestionSchedule 结构校验（六排期类型/quota 形态/weekdays 0-6/区间与锚点格式，非法整条丢弃、合法值规范化）；suggestionValuesEqual 深比较（schedule 走键序稳定序列化，其余 Object.is）贯通 build/normalize/apply/revert 四处；②差异预览：formatSuggestionChange 对 schedule 输出本地化排期文案（SCHEDULE_LABELS 键 + editor.quotaWeekly/Monthly 组合）；③本地建议生成器：回顾页重点项目新增「建议改为弹性排期」入口（daily 且非 at-most → 每周 3 次弹性配额，buildSuggestionChange 产出，同一确认对话框流：预览→确认→审计→可撤销；非 daily/at-most 项目显示不可用禁用态）。新增 tests/suggestion-schedule.test.cjs 接入 test:ui；agent-suggestions 旧断言同步深比较实现）
 - [x] T-1361 机器可读冲突与失败诊断：保存失败/版本冲突/迁移失败/锁超时输出结构化原因码；补并发/锁超时/迁移失败测试。

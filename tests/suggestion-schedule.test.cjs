@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/types.ts", "src/i18n.ts", "src/record-step.ts", "src/quota.ts", "src/rules.ts", "src/ui/labels.ts", "src/shared.ts", "src/model.ts", "src/features/record-notes.ts", "src/agent-suggestions.ts"].forEach(transpile);
+["src/types.ts", "src/i18n.ts", "src/record-step.ts", "src/quota.ts", "src/rules.ts", "src/ui/labels.ts", "src/shared.ts", "src/model.ts", "src/features/record-notes.ts", "src/features/schedule-validate.ts", "src/features/project-draft.ts", "src/agent-suggestions.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const model = require(path.join(outputRoot, "src", "model.js"));
 // eslint-disable-next-line @typescript-eslint/no-var-requires

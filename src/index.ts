@@ -10,7 +10,8 @@ import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
 import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
-import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
+import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
+import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -356,6 +357,20 @@ export default class CheckinPlugin extends Plugin {
     reportSource = "";
     /* T-1352 日记集成（opt-in 默认关）。 */
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
+    /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
+    private projectDrafts: ProjectDraft[] = [];
+    private pendingProjectDraft?: ProjectDraft;
+
+    clearPendingProjectDraft(): void {
+        this.pendingProjectDraft = undefined;
+    }
+
+    openProjectDraftEditor(draft: ProjectDraft): void {
+        this.pendingProjectDraft = draft;
+        this.editingId = undefined;
+        this.currentPage = "editor";
+        this.render();
+    }
     /* T-1361 会话诊断（环形容量 20，内存态不落盘；导出经设置页）。 */
     private diagnostics: CheckinDiagnostic[] = [];
 
@@ -2485,6 +2500,7 @@ export default class CheckinPlugin extends Plugin {
             summaryProviderNames: [...this.summaryProviders.values()].map(provider => typeof provider.name === "string" ? provider.name.slice(0, 200) : provider.id),
             reportSections: this.reportSections,
             reportSource: this.reportSource,
+            projectDrafts: this.projectDrafts,
             suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
             analysisLastGeneratedAt: analysis.snapshot?.generatedAt,
@@ -2932,6 +2948,8 @@ export default class CheckinPlugin extends Plugin {
             if (!normalized) throw new Error("总结适配器返回格式无效");
             this.summaryText = normalized.text;
             this.suggestionWorkflow = normalized.suggestions[0] ? createSuggestionWorkflow(createSuggestionEnvelope(normalized.suggestions[0])) : undefined;
+            /* T-1359：提供方草案随总结刷新；草案不经建议工作流，进入编辑器检查流。 */
+            this.projectDrafts = normalized.drafts;
             if (this.suggestionWorkflow) this.broadcast({type: "suggestion-workflow-updated", suggestionId: this.suggestionWorkflow.envelope.id, suggestionStatus: this.suggestionWorkflow.envelope.status});
             void this.persistSuggestionWorkflow().catch(() => undefined);
             this.summaryRefreshing = false;
