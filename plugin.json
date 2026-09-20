@@ -2,7 +2,7 @@
     "name": "siyuan-checkin",
     "author": "ai68298100",
     "url": "https://github.com/ai68298100/siyuan-checkin",
-    "version": "17.2.1",
+    "version": "17.3.0",
     "minAppVersion": "3.8.4",
     "disabledInPublish": false,
     "backends": [
