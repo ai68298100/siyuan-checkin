@@ -10,6 +10,7 @@ import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from ".
 import {validateEditorInput} from "../editor-validation";
 import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
+import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
@@ -43,6 +44,8 @@ export interface BindEditorHost {
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string): Promise<unknown>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
+    /** T-1349：模板套用后更新「最近使用」偏好并持久化（宿主内去重置顶、容量 6）。 */
+    recordRecentTemplateUse(name: string): void;
     [key: string]: unknown;
 }
 
@@ -465,6 +468,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     }));
     const templateQuery = root.querySelector<HTMLInputElement>("[data-template-query]");
     let activeTemplateGroup = "all";
+    let templateOverflowRevealed = false;
     const collapseTemplateDisclosure = () => {
         const disclosure = root.querySelector<HTMLDetailsElement>("[data-template-disclosure]");
         if (disclosure) disclosure.open = false;
@@ -472,18 +476,54 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     const applyTemplateFilter = () => {
         const query = templateQuery?.value || "";
         const hasQuery = Boolean(query.trim());
+        const filtered = hasQuery || activeTemplateGroup !== "all";
         let matchCount = 0;
-        root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((button) => {
+        root.querySelectorAll<HTMLButtonElement>("[data-template-list] [data-template-index]").forEach((button) => {
             const matches = (activeTemplateGroup === "all" || button.dataset.templateGroupValue === activeTemplateGroup)
                 && (!hasQuery || matchesSearch(button.dataset.templateSearchText || "", query));
-            button.hidden = !matches;
             if (matches) matchCount += 1;
+            /* T-1349：未展开全量时超出首批的模板保持隐藏；搜索/分组筛选态自动全显。 */
+            button.hidden = !matches || (!templateOverflowRevealed && !filtered && button.hasAttribute("data-template-overflow"));
         });
         const count = root.querySelector<HTMLElement>("[data-template-count]");
-        if (count) count.textContent = `${matchCount} 个模板`;
+        if (count) count.textContent = t("editor.templateCount", {n: matchCount});
         root.querySelector<HTMLElement>("[data-template-empty]")?.toggleAttribute("hidden", matchCount > 0);
         root.querySelector<HTMLButtonElement>("[data-action='clear-template-query']")?.toggleAttribute("hidden", !hasQuery);
-        root.querySelector<HTMLButtonElement>("[data-action='clear-template-filter']")?.toggleAttribute("hidden", !hasQuery && activeTemplateGroup === "all");
+        root.querySelector<HTMLButtonElement>("[data-action='clear-template-filter']")?.toggleAttribute("hidden", !filtered);
+        const expander = root.querySelector<HTMLButtonElement>("[data-action='template-show-all']");
+        if (expander) expander.hidden = templateOverflowRevealed || filtered;
+    };
+    /* T-1349：「显示全部」展开超出首批的模板；会话内保持展开，不写入偏好。 */
+    root.querySelector<HTMLButtonElement>("[data-action='template-show-all']")?.addEventListener("click", () => {
+        templateOverflowRevealed = true;
+        applyTemplateFilter();
+        root.querySelector<HTMLButtonElement>("[data-template-list] [data-template-overflow]:not([hidden])")?.focus();
+    });
+    /* T-1349：套用后把模板芯片提升到「最近使用」行；芯片缺失时惰性建行，克隆芯片经委托自动获得同一处理。 */
+    const refreshRecentTemplates = (button: HTMLButtonElement) => {
+        const list = root.querySelector<HTMLElement>("[data-template-list]");
+        const browser = list?.parentElement;
+        if (!browser) return;
+        let heading = browser.querySelector<HTMLElement>("[data-template-recent-heading]");
+        let row = browser.querySelector<HTMLElement>("[data-template-recent]");
+        if (!heading || !row) {
+            browser.insertAdjacentHTML("afterbegin", `<div class="lc-checkin__field-heading" data-template-recent-heading><span>${t("editor.recentTemplates")}</span></div><div class="lc-checkin__templates" data-template-recent></div>`);
+            heading = browser.querySelector<HTMLElement>("[data-template-recent-heading]");
+            row = browser.querySelector<HTMLElement>("[data-template-recent]");
+        }
+        if (!heading || !row) return;
+        const index = button.dataset.templateIndex || "";
+        const existing = index ? row.querySelector<HTMLButtonElement>(`[data-template-index='${index}']`) : null;
+        if (existing) {
+            row.insertBefore(existing, row.firstChild);
+            return;
+        }
+        const clone = button.cloneNode(true) as HTMLButtonElement;
+        clone.removeAttribute("hidden");
+        clone.removeAttribute("data-template-overflow");
+        clone.setAttribute("aria-pressed", "false");
+        row.insertBefore(clone, row.firstChild);
+        while (row.children.length > RECENT_TEMPLATES_LIMIT) row.lastElementChild?.remove();
     };
     templateQuery?.addEventListener("input", applyTemplateFilter);
     root.querySelectorAll<HTMLButtonElement>("[data-template-group]").forEach((button) => button.addEventListener("click", () => {
@@ -513,7 +553,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         applyTemplateFilter();
         templateQuery?.focus();
     }));
-    root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((button) => button.addEventListener("click", () => {
+    /* T-1349：委托绑定——「最近使用」克隆芯片无需重新绑定即可复用同一套用流程。 */
+    root.addEventListener("click", (event) => {
+        const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-index]") : null;
+        if (!button) return;
         const template = CHECKIN_TEMPLATES[Number(button.dataset.templateIndex)];
         if (!template) return;
         root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((candidate) => {
@@ -553,10 +596,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         updateAdvancedSummary();
         const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
         if (advanced) advanced.open = true;
+        host.recordRecentTemplateUse(template.name);
+        refreshRecentTemplates(button);
         collapseTemplateDisclosure();
         ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
         root.querySelector<HTMLInputElement>("input[name='name']")?.focus();
-    }));
+    });
     root.querySelectorAll<HTMLButtonElement>("[data-user-template-id]").forEach((button) => button.addEventListener("click", () => {
         const template = host.userTemplates.find((candidate) => candidate.id === button.dataset.userTemplateId);
         if (!template) return;

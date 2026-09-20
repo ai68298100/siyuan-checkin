@@ -53,6 +53,8 @@ export interface CheckinViewPreferences {
     dialogOffset?: {x: number; y: number};
     /** T-1217 Markdown 报告包含的区块。 */
     reportSections: ReportSectionToggles;
+    /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
+    recentTemplates: string[];
 }
 
 export const DEFAULT_REPORT_SECTIONS: ReportSectionToggles = {
@@ -83,7 +85,11 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
     reportSections: {...DEFAULT_REPORT_SECTIONS},
+    recentTemplates: [],
 };
+
+/** T-1349 「最近使用」保留条数上限。 */
+export const RECENT_TEMPLATES_LIMIT = 6;
 
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
@@ -150,6 +156,9 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         baseline: reportSource.baseline !== false,
         highlights: reportSource.highlights !== false,
     };
+    const recentTemplates = Array.isArray(source.recentTemplates)
+        ? [...new Set(source.recentTemplates.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, RECENT_TEMPLATES_LIMIT)
+        : [];
     return {
         groupMode,
         sortMode,
@@ -176,5 +185,6 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         dialogRect: readRect(source.dialogRect, 520, 400, 3840, 2160),
         dialogOffset: readOffset(source.dialogOffset),
         reportSections,
+        recentTemplates,
     };
 }

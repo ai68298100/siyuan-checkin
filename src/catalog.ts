@@ -278,6 +278,14 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "陪家人": "tpl.familyTime",
     "八段锦": "tpl.baduanjin",
     "泡脚": "tpl.footSoak",
+    "早餐": "tpl.breakfast",
+    "午休": "tpl.nap",
+    "颈部放松": "tpl.neckRelease",
+    "戒烟": "tpl.quitSmoking",
+    "戒奶茶": "tpl.quitMilkTea",
+    "限制咖啡": "tpl.coffeeCap",
+    "不熬夜刷手机": "tpl.noLatePhone",
+    "戒糖饮料": "tpl.sugaryDrinkCap",
 };
 
 const TEMPLATE_GROUP_KEYS: Record<string, string> = {
@@ -288,6 +296,7 @@ const TEMPLATE_GROUP_KEYS: Record<string, string> = {
     "生活": "tplGroup.life",
     "创作": "tplGroup.creative",
     "专注": "tplGroup.mindfulness",
+    "戒除": "tplGroup.quitting",
 };
 
 export function templateName(template: {name: string}): string {

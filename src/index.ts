@@ -55,7 +55,7 @@ import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, appendAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
-import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
+import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
 import type {CheckinAppearance, FocusTimerProvider, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
@@ -171,6 +171,8 @@ export default class CheckinPlugin extends Plugin {
     private snapshotHistory: ReturnType<typeof readStoreSnapshotHistory> = [];
     private occasionStore: OccasionStore = createDefaultOccasionStore();
     private userTemplates: UserTemplate[] = [];
+    /* T-1349：最近使用的内置模板名（zh 名锚点），随界面偏好持久化。 */
+    private recentTemplates: string[] = [];
     private customIconLibrary: string[] = [];
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
@@ -2428,6 +2430,7 @@ export default class CheckinPlugin extends Plugin {
             todayGroupMode: this.todayGroupMode,
             saveState: this.saveState,
             syncNoticeActive: this.syncNoticeTimer !== undefined,
+            recentTemplates: this.recentTemplates,
             anchorSuspended: (() => {
                 const anchor = this.store.items.find((candidate) => candidate.id === this.editingId)?.noteAnchor;
                 return Boolean(anchor && this.suspendedAnchors.has(`${this.editingId}:${anchor.blockId}`));
@@ -3686,6 +3689,13 @@ export default class CheckinPlugin extends Plugin {
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
         this.reportSections = {...preferences.reportSections};
+        this.recentTemplates = [...preferences.recentTemplates];
+    }
+
+    /* T-1349：模板套用后更新「最近使用」并随界面偏好持久化。 */
+    recordRecentTemplateUse(name: string): void {
+        this.recentTemplates = recordRecentTemplate(this.recentTemplates, name);
+        void this.persistViewPreferences();
     }
 
     /* 手机端打卡成功的短振动（仅移动前端 + 用户未关闭；无振动能力的环境静默跳过）。 */
@@ -3720,6 +3730,7 @@ export default class CheckinPlugin extends Plugin {
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
             reportSections: {...this.reportSections},
+            recentTemplates: [...this.recentTemplates],
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {

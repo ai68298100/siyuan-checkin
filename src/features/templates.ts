@@ -1,6 +1,14 @@
 import type {CheckinTemplate,} from "../catalog";
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, UserTemplate} from "../types";
 import {normalizeRecordStep} from "../record-step";
+import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
+
+/** T-1349：记录一次模板套用；存量与新增都修剪、去重置顶并保留最近 N 条，纯函数不落盘。 */
+export function recordRecentTemplate(recents: readonly string[], name: string): string[] {
+    const trimmed = name.trim();
+    if (!trimmed) return recents.map((entry) => entry.trim()).filter(Boolean);
+    return [trimmed, ...recents.map((entry) => entry.trim()).filter((entry) => entry && entry !== trimmed)].slice(0, RECENT_TEMPLATES_LIMIT);
+}
 
 export function normalizeUserTemplate(value: unknown, now = new Date().toISOString()): UserTemplate | undefined {
     if (!value || typeof value !== "object") return undefined;
