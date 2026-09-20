@@ -76,6 +76,13 @@ const DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string> = {
 };
 
 export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void {
+    root.querySelectorAll<HTMLElement>("[data-overview-focus]").forEach((button) => {
+        button.addEventListener("click", () => {
+            const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")]
+                .find((element) => element.dataset.itemId === button.dataset.overviewFocus);
+            card?.querySelector<HTMLButtonElement>("[data-action='focus']")?.click();
+        });
+    });
     host.bindDialogClose(root);
     host.bindItemDrag(root);
     host.bindQuickKeyboard(root);
@@ -201,12 +208,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!itemId) {
             return;
         }
-        element.querySelector<HTMLElement>("[data-action='edit']")?.addEventListener("click", () => {
+        element.querySelectorAll<HTMLElement>("[data-action='edit'], [data-edit-name]").forEach((button) => button.addEventListener("click", () => {
             const item = getItemById(host.store, itemId);
             if (item) {
                 host.showEditor(item);
             }
-        });
+        }));
         element.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => {
             const item = getItemById(host.store, itemId);
             if (item) host.showInsights(item);

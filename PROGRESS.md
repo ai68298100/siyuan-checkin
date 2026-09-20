@@ -1,5 +1,13 @@
 # 进度
 
+2026-09-20 T-1306~T-1308 / D-242：用户批准 UI 方向并补充未来 20–30 项容量要求，本批完成桌面导航、今日概览/卡片、编辑器表面统一与 >12 项自动紧凑模式。新增 src/ui/workbench.scss 作为 tokens/components 后的组合层。窄屏普通项约 66px，高度较高的时长项 110px，主要动作至少 44px；长名完整换行，不以固定高度裁掉内容。名称按钮使用独立 data-edit-name，避免旧图标替换器把名称变成铅笔；复盘补入右键/长按菜单。未修改业务存储与番茄时长协议。
+
+验收证据：pnpm run test:quality exit 0（日志 .artifacts/ui-workbench-quality.log，含类型、构建、UI、移动、生态、扩展、性能与本地产物校验）；最终包 SHA-256 f5056a231f49f6e87210f994f9f78b9443c8c79dd52ce0b02544b1f751a60284。CSS 465711 bytes，低于 480000 告警阈值和 520000 硬线（仍超历史 318000 软线）。最终 visual-qa 浅/深各 exit 0，日志 .artifacts/ui-workbench-visual-{light,dark}.log；accessibility-audit exit 0（0 missing names、0 positive tabindex，脚本报告 0 contrast pairs，不宣称完成颜色对比度实测）。
+
+宽度验收：CHECKIN_BROWSER 指向本机 Edge，dialog/light/desktop、tab/dark/desktop、dock/light/mobile、dock/dark/mobile 各 14 场景通过；功能覆盖记录/撤销、名称编辑、菜单复盘、桌面专注、真实三天记录连续概览。30 项混合 fixture 包括 binary/duration/count，29 待办+1 完成，1180px 卡高最大 73.98px、窄屏最大 110px，320/360px 待办列表总高 2701.91px；长名与长单位另测无横溢。截图位于 .artifacts/width-walkthrough/<host>-<theme>-<frontend>/。首次全链发现预览结构守门冲突已修复并全链重跑通过；连续 fixture 需重新创建 store 以避开模型 WeakMap 索引缓存，已修正，不修改模型缓存。真实思源安装/双插件/真机未执行，B-007 与现场任务继续开放。
+
+本批状态：T-1306/T-1307/T-1308 done；下一步为实际客户端观感与触摸验收。本地产物仅供验收，未安装、未 push、未发布；发布说明保留原 GitHub 包摘要，另标本地修订摘要。
+
 2026-09-20 T-1305：按合作方每日目标说明补齐 facade.start.durationMinutes，严格消费当天修订目标，不扣已有记录，不改内置计时器或提供方默认设置。非时长/sessions 省略字段；未知单位/非法目标请求前拒绝，新增双语提示。pnpm run check/build exit 0；按 package.json 顺序执行 test/test:ui/test:ecosystem 全部用例，零失败；桥接/专注生命周期/完成回写专项通过。当前本地 package.zip SHA-256：ce3b94dd350e5e7b6615b351af77528a58ecdcfd3f5cd3f79868cbe8846ad83a（含 T-1304 UI 修复，非 GitHub 已发布原包）。测试内核探测未找到 SiYuan-Kernel，未宣称真实双插件验证或发布验收通过。
 
 

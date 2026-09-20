@@ -4959,7 +4959,7 @@
    ============================================================ */
 
 /* 多选按钮与筛选同行，不独占一行 */
-.lc-checkin--today .lc-checkin__today-filters { flex: 1 1 auto; min-width: 0; }
+.lc-checkin--today .lc-checkin__today-filters { flex: 0 0 auto; min-width: 0; }
 .lc-checkin--today .lc-checkin__organize [data-action="toggle-bulk"] {
     flex: 0 0 auto;
     align-self: center;
@@ -6513,35 +6513,35 @@
     flex: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    min-height: 42px;
+    gap: 24px;
+    min-height: 64px;
     width: 100%;
-    max-width: 1320px;
+    max-width: none;
     margin: 0 auto;
-    padding: 4px 24px;
+    padding: 10px 28px;
     border-bottom: 1px solid var(--lc-checkin-border);
-    background: var(--lc-checkin-bg);
+    background: var(--lc-checkin-surface);
 }
 
-.lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 2px; }
+.lc-checkin__topnav-tabs { display: flex; align-items: center; gap: 6px; }
 .lc-checkin__topnav-tabs button {
     display: flex;
     align-items: center;
     gap: 6px;
-    min-height: 32px;
-    padding: 3px 10px;
+    min-height: 38px;
+    padding: 6px 16px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     color: var(--lc-checkin-muted);
     background: transparent;
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 620;
     cursor: pointer;
 }
 .lc-checkin__topnav-tabs button span { display: grid; place-items: center; width: 18px; height: 18px; }
 .lc-checkin__topnav-tabs button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__topnav-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
-.lc-checkin__topnav-tabs button.is-selected span { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+.lc-checkin__topnav-tabs button.is-selected span { color: inherit; background: transparent; }
 .lc-checkin__topnav-actions { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .lc-checkin__topnav-action {
     display: grid;
@@ -6556,39 +6556,7 @@
 }
 .lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 
-/* Topbar refinement: calm application chrome with clear navigation/action zones. */
-.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav,
-.lc-checkin-tab-host > .lc-checkin__topnav {
-    min-height: 46px;
-    padding: 5px 18px;
-    gap: 12px;
-    border-bottom-color: color-mix(in srgb, var(--lc-checkin-border) 72%, transparent);
-    background: color-mix(in srgb, var(--lc-checkin-bg) 92%, var(--lc-checkin-surface));
-}
-.lc-checkin__topnav-tabs { gap: 3px; }
-.lc-checkin__topnav-tabs button {
-    position: relative;
-    min-height: 34px;
-    padding: 4px 12px;
-    border-radius: 9px;
-    font-size: 13px;
-    font-weight: 600;
-    transition: color .16s ease, background-color .16s ease, transform .16s ease;
-}
-.lc-checkin__topnav-tabs button span { border-radius: 6px; }
-.lc-checkin__topnav-tabs button.is-selected {
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lc-checkin-accent) 16%, transparent);
-}
-.lc-checkin__topnav-tabs button.is-selected::after {
-    content: "";
-    position: absolute;
-    right: 12px;
-    bottom: 1px;
-    left: 12px;
-    height: 2px;
-    border-radius: 2px;
-    background: var(--lc-checkin-accent-fill);
-}
+/* Selected navigation uses one quiet pill; no nested icon tile or underline. */
 .lc-checkin__topnav-tabs button:active { transform: translateY(1px); }
 .lc-checkin__topnav-tabs button:focus-visible,
 .lc-checkin__topnav-action:focus-visible {
@@ -7861,9 +7829,6 @@
 /* Final density guardrails for Today, Review and Settings. These selectors
    intentionally sit after the legacy responsive layers so container rules
    cannot reintroduce double columns, overlayed actions or oversized cards. */
-.lc-checkin--today .lc-checkin__group-items:not([hidden]):not(:has(> :nth-child(2))) {
-    grid-template-columns: minmax(0, 1fr);
-}
 
 .lc-checkin--review .lc-checkin__editor-header {
     position: static;

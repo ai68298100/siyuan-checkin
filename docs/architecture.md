@@ -78,13 +78,14 @@
 | `export.ts` | JSON/CSV 导出、CSV 导入解析、快照恢复预检（公式注入净化） |
 | `ui/tokens.scss` | 全部设计 token（颜色角色/圆角/阴影/动效时长）——新样式禁止写死颜色与时长 |
 | `ui/components.scss` | v5 共享组件层（按钮/输入/卡片/容器查询布局） |
+| `ui/workbench.scss` | 今日工作台、桌面导航与编辑表面的最终组合布局；含多项目紧凑模式 |
 
 ## 样式架构
 
-构建内的活层只有三个，按序加载：`index.scss`（legacy floor）→ `ui/tokens.scss` → `ui/components.scss`。
+构建内的活层按序加载：`ui/tokens.scss` → `ui/components.scss` → `ui/workbench.scss`。`index.scss` 已退出生产导入；workbench 仅负责本轮界面组合，不复制基础控件实现。
 
 - 宽度决策只认 `@container lc5`（inline-size 容器），禁止 `@media`（D-016）；dock 面板另有 `lc-dialog`/`lc-dock` 容器。
-- 移动端最终布局层放在 components.scss 末尾，同特异性后写胜出（D-050）。
+- 基础移动宿主布局位于 components.scss 末尾；今日页的紧凑排列由 workbench.scss 收口（D-242），使用独立主题 token，不引入宿主颜色。
 - 8 个 4.0 时代的 `*-v4.scss` 补丁层已确认不在构建图并于 2026-09-14 删除；守门断言一律改锁活规则（D-051），禁止再引入补丁层。
 
 ## 存储键清单（全部经 index.ts 读写）

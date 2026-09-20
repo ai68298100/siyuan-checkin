@@ -30,6 +30,7 @@ export interface TodayBindingsHost {
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     render(): void;
     showEditor(item?: CheckinItem): void;
+    showInsights(item?: CheckinItem): void;
 }
 
 function runExclusiveAction(button: HTMLElement | null, operation: () => Promise<unknown> | unknown): void {
@@ -223,6 +224,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             && getEventsForDay(host.store, item.id, actionDate).some((event) => isSkipEvent(event));
         const menuItems = [
             `<button type="button" role="menuitem" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="insights">${t("item.insightsTitle")}</button>`,
             ...(scheduledToday && !completeToday ? [skippedToday
                 ? `<button type="button" role="menuitem" data-menu-action="unskip">${t("today.unskipToday")}</button>`
                 : `<button type="button" role="menuitem" data-menu-action="skip">${t("today.skipToday")}</button>`] : []),
@@ -259,6 +261,8 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]").forEach((button) => button.disabled = true);
             const operation = action === "edit"
                 ? () => host.showEditor(item)
+                : action === "insights"
+                    ? () => host.showInsights(item)
                 : action === "skip"
                     ? () => host.skipItemToday(item.id, skipReason ?? undefined)
                     : action === "unskip"

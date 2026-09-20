@@ -110,12 +110,13 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
     const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
     const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
-    const canFocus = revision.kind === "duration";
+    const canFocus = revision.kind === "duration" && item.direction !== "atMost";
     const recordStep = getRecordStep(revision.kind, revision.unit, revision.recordStep);
     const rule = evaluateItemRule(ctx.store, item, date);
     const inputStep = getEditorStep(revision.kind, revision.unit);
     const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
-    const meta = (isBinary ? t(KIND_LABELS[revision.kind]) : `${t(KIND_LABELS[revision.kind])} · ${formatNumber(progress)} / ${formatNumber(displayTarget)} ${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}${rule.remaining ? ` · 还需 ${formatNumber(rule.remaining)}${revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? "天" : revision.unit || "次"}` : ""}`) + scheduleMeta;
+    const meta = [item.group, t(KIND_LABELS[revision.kind])].filter(Boolean).join(" · ") + scheduleMeta;
+    const progressUnit = revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? t("common.days") : revision.unit || t("today.unitDefault");
     const priority = item.priority || "medium";
     const timeSlot = item.timeSlot || "any";
     const completionSource = item.completionSource || "manual";
@@ -135,7 +136,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
             ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
-                    <span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>
+                    <button class="lc-checkin__item-name" type="button" data-edit-name aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}" title="${escapeHtml(t("item.editAria", {name: item.name}))}">${escapeHtml(item.name)}</button>
                     ${(ctx.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
                     ${skipToday ? `<span class="lc-checkin__item-tag is-skip-tag">${t("today.skipBadge")}</span>` : ""}
                     ${atMost && !lapseExists ? `<span class="lc-checkin__item-tag is-avoided">${t("today.avoided")}</span>` : ""}
@@ -143,7 +144,8 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
                 </div>
-                <div class="lc-checkin__item-meta">${escapeHtml(meta)}</div>
+                <div class="lc-checkin__item-meta"${scheduleMeta ? " data-has-schedule" : ""}>${escapeHtml(meta)}</div>
+                ${isBinary ? "" : `<div class="lc-checkin__item-value"><strong>${escapeHtml(formatNumber(progress))}</strong><span>/ ${escapeHtml(formatNumber(displayTarget))} ${escapeHtml(progressUnit)}</span>${rule.remaining ? `<small>${escapeHtml(t("today.remainingValue", {value: formatNumber(rule.remaining), unit: progressUnit}))}</small>` : ""}</div>`}
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
@@ -370,20 +372,23 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
     const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
-    return `<div class="lc-checkin lc-checkin--today" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
+    const focusCandidate = pendingItems.find((item) => item.direction !== "atMost" && getItemRevisionForDate(item, now).kind === "duration");
+    return `<div class="lc-checkin lc-checkin--today" data-density="${scheduledItems.length > 12 ? "compact" : "comfortable"}" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">
                 <div class="lc-checkin__header-titles">
                     <h1 class="lc-checkin__title">${t("today.title")}</h1>
                     <span class="lc-checkin__header-date">${escapeHtml(date)}</span>
                 </div>
                 <div class="lc-checkin__header-actions">
-                    ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<span class="lc-checkin__header-streak" title="${t("today.bestStreakTitle")}">🔥 ${escapeHtml(ctx.bestStreakItem.name)} ${ctx.bestStreakValue} 天</span>` : ""}
-                    <span class="lc-checkin__count" role="status" aria-label="${t("today.progressAria")}">${completed}<span>/</span>${scheduledItems.length}</span>
                     ${ctx.supportsCustomTab ? `<button class="lc-checkin__small-button" type="button" data-action="open-tab" aria-label="${t("today.openTab")}" title="${t("today.openTab")}">${uiIcon("external")}</button>` : ""}
-                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="${t("editor.create")}" title="${t("editor.create")}">${uiIcon("add")}</button>
+                    <button class="lc-checkin__icon-button" type="button" data-action="add" aria-label="${t("editor.create")}" title="${t("editor.create")}">${uiIcon("add")}<span>${t("editor.create")}</span></button>
                 </div>
             </header>
-            <div class="lc-checkin__progress"><span style="width: ${completionRate}%"></span></div>
+            <section class="lc-checkin__overview" aria-label="${t("today.progressAria")}">
+                <div class="lc-checkin__overview-progress"><div><span class="lc-checkin__overview-label">${t("today.progressAria")}</span><span class="lc-checkin__count" role="status" aria-label="${t("today.progressAria")}">${completed}<span>/</span>${scheduledItems.length}</span><span class="lc-checkin__overview-caption">${t("today.atYourPace")}</span></div><span class="lc-checkin__overview-ring" aria-hidden="true" style="--overview-progress: ${completionRate}%">${completionRate}%</span><div class="lc-checkin__progress" aria-hidden="true"><span style="width: ${completionRate}%"></span></div></div>
+                ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<div class="lc-checkin__overview-streak"><span class="lc-checkin__overview-label">${escapeHtml(ctx.bestStreakItem.name)} · ${t("today.bestStreakTitle")}</span><strong>${ctx.bestStreakValue}<small>${t("common.days")}</small></strong><span class="lc-checkin__overview-caption">${t("today.everyStepCounts")}</span></div>` : ""}
+                ${focusCandidate ? `<div class="lc-checkin__overview-focus"><span class="lc-checkin__overview-label">${t("today.focusMoment")}</span><strong>${escapeHtml(focusCandidate.name)}</strong><button type="button" class="lc-checkin__text-button" data-overview-focus="${escapeHtml(focusCandidate.id)}">${uiIcon("timer")}${t("item.focus")}</button></div>` : ""}
+            </section>
             ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="${t("today.weekStripAria")}">${weekStrip}</section>` : ""}
             ${saveStatus}
             ${priorityReminder}

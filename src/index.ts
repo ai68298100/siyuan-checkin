@@ -1,6 +1,7 @@
 import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage, type IProtyle} from "siyuan";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
+import "./ui/workbench.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
@@ -1468,6 +1469,9 @@ export default class CheckinPlugin extends Plugin {
             const currentMeta = card.querySelector<HTMLElement>(".lc-checkin__item-meta");
             const nextMeta = next.querySelector<HTMLElement>(".lc-checkin__item-meta");
             if (currentMeta && nextMeta) currentMeta.textContent = nextMeta.textContent;
+            const currentValue = card.querySelector<HTMLElement>(".lc-checkin__item-value");
+            const nextValue = next.querySelector<HTMLElement>(".lc-checkin__item-value");
+            if (currentValue && nextValue) currentValue.innerHTML = nextValue.innerHTML;
             const currentProgress = card.querySelector<HTMLElement>(".lc-checkin__item-progress > span");
             const nextProgress = next.querySelector<HTMLElement>(".lc-checkin__item-progress > span");
             if (currentProgress && nextProgress) currentProgress.setAttribute("style", nextProgress.getAttribute("style") || "");
@@ -1512,6 +1516,12 @@ export default class CheckinPlugin extends Plugin {
             if (count) count.innerHTML = `${completedCount}<span>/</span>${scheduledItems.length}`;
             const progress = surface.querySelector<HTMLElement>(".lc-checkin__progress > span");
             if (progress) progress.style.width = `${scheduledItems.length ? Math.round((completedCount / scheduledItems.length) * 100) : 0}%`;
+            const percent = scheduledItems.length ? Math.round((completedCount / scheduledItems.length) * 100) : 0;
+            const ring = surface.querySelector<HTMLElement>(".lc-checkin__overview-ring");
+            if (ring) {
+                ring.style.setProperty("--overview-progress", `${percent}%`);
+                ring.textContent = `${percent}%`;
+            }
             this.updateTodayWeekStrip(surface, date);
         }
         this.syncRecentRecordToast();
@@ -2167,7 +2177,7 @@ export default class CheckinPlugin extends Plugin {
         const dialogActions = ownsDialogChrome
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span aria-hidden="true">${uiIcon("check")}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
