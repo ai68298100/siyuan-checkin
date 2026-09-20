@@ -237,7 +237,26 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "限制咖啡", icon: "☕", kind: "count", target: 2, unit: "杯", schedule: daily, group: "戒除", priority: "low", timeSlot: "any", direction: "atMost", note: "每天不超过 2 杯；记录的每一杯都是在数上限。"},
     {name: "不熬夜刷手机", icon: "📵", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "evening", direction: "atMost", note: "睡前半小时放下手机；跳过日不断链。"},
     {name: "戒糖饮料", icon: "🥤", kind: "count", target: 1, unit: "杯", schedule: daily, group: "戒除", priority: "low", timeSlot: "any", direction: "atMost", note: "含糖饮料每天至多 1 杯，白水无限制。"},
+    /* T-1356 模板二期（v19）：参考 Habitify/Loop/Streaks 预置目录扩充，按八类逐批合入。 */
+    {name: "记录体重", icon: "⚖", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "low", timeSlot: "morning", note: "每天早上上秤记一次，习惯本身比数字更重要。"},
+    {name: "防晒", icon: "🧴", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "low", timeSlot: "morning", note: "出门前涂好防晒，皮肤会感谢你。"},
+    {name: "听播客", icon: "🎧", kind: "duration", target: 20, unit: "分钟", schedule: daily, group: "学习", priority: "low", timeSlot: "any", note: "通勤或散步时听一集有营养的播客。"},
+    {name: "刷题", icon: "🧮", kind: "count", target: 10, unit: "题", schedule: daily, group: "学习", priority: "medium", timeSlot: "evening", note: "整理当天做错的题，弄懂一道算一道。"},
+    {name: "跑步", icon: "🏃", kind: "quantity", target: 3, unit: "公里", schedule: daily, group: "运动", priority: "high", timeSlot: "any", note: "慢跑即可，距离到了就算达标。"},
+    {name: "俯卧撑", icon: "💪", kind: "count", target: 20, unit: "个", schedule: daily, group: "运动", priority: "medium", timeSlot: "any", note: "分组完成，一组十个也行。"},
+    {name: "单事专注", icon: "🎯", kind: "binary", target: 1, unit: "次", schedule: workdays, group: "工作", priority: "medium", timeSlot: "morning", note: "选定一件事做完再切换，减少来回跳。"},
+    {name: "遛狗", icon: "🐾", kind: "count", target: 1, unit: "次", schedule: daily, group: "生活", priority: "low", timeSlot: "any", note: "毛孩子的健康也靠坚持。"},
+    {name: "洗碗", icon: "🧽", kind: "binary", target: 1, unit: "次", schedule: daily, group: "生活", priority: "low", timeSlot: "evening", note: "当天碗当天洗，厨房常清爽。"},
+    {name: "存钱", icon: "💰", kind: "quantity", target: 20, unit: "元", schedule: daily, group: "生活", priority: "medium", timeSlot: "any", note: "每天存一点，攒下安全感。"},
+    {name: "不刷短视频", icon: "📱", kind: "count", target: 3, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "any", direction: "atMost", note: "短视频每天至多打开 3 次，记录的每一次都在数上限。"},
+    {name: "戒酒", icon: "🍷", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "any", direction: "atMost", note: "今天没碰酒就是赢；应酬破戒如实记下。"},
+    {name: "感恩记录", icon: "🫶", kind: "count", target: 3, unit: "件", schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "写下三件值得感谢的小事，再普通也算。"},
+    {name: "深呼吸", icon: "🍃", kind: "duration", target: 5, unit: "分钟", schedule: daily, group: "专注", priority: "low", timeSlot: "any", note: "紧张时来一组深呼吸，五分钟就够。"},
+    {name: "写作", icon: "✒", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "创作", priority: "medium", timeSlot: "any", note: "散文、小说或笔记，持续写下去就算数。"},
 ] as const;
+
+/** T-1357 精选推荐位：无最近使用时展示这些跨类别模板（zh 名为锚点）。 */
+export const RECOMMENDED_TEMPLATES: readonly string[] = ["喝水", "运动", "阅读", "深度工作", "记账", "冥想", "戒烟", "拍照记录"];
 
 /* 模板显示名/备注的字典键映射：zh 名作为数据锚点，渲染与套用时经 t() 翻译。 */
 const TEMPLATE_NAME_KEYS: Record<string, string> = {
@@ -286,6 +305,21 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "限制咖啡": "tpl.coffeeCap",
     "不熬夜刷手机": "tpl.noLatePhone",
     "戒糖饮料": "tpl.sugaryDrinkCap",
+    "记录体重": "tpl.weighIn",
+    "防晒": "tpl.sunscreen",
+    "听播客": "tpl.podcast",
+    "刷题": "tpl.problemSets",
+    "跑步": "tpl.running",
+    "俯卧撑": "tpl.pushups",
+    "单事专注": "tpl.singleTask",
+    "遛狗": "tpl.dogWalk",
+    "洗碗": "tpl.dishes",
+    "存钱": "tpl.savings",
+    "不刷短视频": "tpl.shortVideoCap",
+    "戒酒": "tpl.quitAlcohol",
+    "感恩记录": "tpl.gratitude",
+    "深呼吸": "tpl.deepBreaths",
+    "写作": "tpl.writing",
 };
 
 const TEMPLATE_GROUP_KEYS: Record<string, string> = {

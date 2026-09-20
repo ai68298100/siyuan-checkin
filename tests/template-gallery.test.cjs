@@ -15,10 +15,10 @@ const indexSource = fs.readFileSync("src/index.ts", "utf8");
 const i18nSource = fs.readFileSync("src/i18n.ts", "utf8");
 const viewPrefs = fs.readFileSync("src/view-preferences.ts", "utf8");
 
-/* 目录映射完整性：45 个内置模板的名称键与分组键不允许回退到中文原文。 */
+/* 目录映射完整性：60 个内置模板的名称键与分组键不允许回退到中文原文。 */
 const templateBlock = catalog.slice(catalog.indexOf("CHECKIN_TEMPLATES"), catalog.indexOf("TEMPLATE_NAME_KEYS"));
 const templateNames = [...templateBlock.matchAll(/\{name: "([^"]+)"/g)].map((match) => match[1]);
-assert.ok(templateNames.length >= 40, `builtin templates should stay a rich catalog (got ${templateNames.length})`);
+assert.ok(templateNames.length >= 55 && templateNames.length <= 70, `template catalog stays curated (got ${templateNames.length})`);
 const nameKeyBlock = catalog.slice(catalog.indexOf("TEMPLATE_NAME_KEYS"), catalog.indexOf("TEMPLATE_GROUP_KEYS"));
 const mappedNames = new Set([...nameKeyBlock.matchAll(/"([^"]+)": "tpl\./g)].map((match) => match[1]));
 const unmapped = templateNames.filter((name) => !mappedNames.has(name));
@@ -67,6 +67,16 @@ assert.match(editor, /data-template-recent/, "recent row container marker");
 assert.match(editor, /data-template-overflow/, "overflow chips must be marked for batch reveal");
 assert.match(editor, /data-action="template-show-all"/, "show-all expander must exist");
 assert.match(editor, /editor\.recentTemplates/, "recent heading must go through i18n");
+assert.match(editor, /editor\.recommendedTemplates/, "recommended heading must go through i18n");
+assert.match(editor, /data-template-recommended/, "recommended row marker must exist");
+assert.match(editor, /RECOMMENDED_TEMPLATES/, "recommended names must come from the catalog constant");
+assert.match(catalog, /export const RECOMMENDED_TEMPLATES/, "recommended list must be a versioned catalog constant");
+/* 精选名单必须全部能解析为真实模板。 */
+const recommendedDeclaration = catalog.match(/export const RECOMMENDED_TEMPLATES[^=]*= \[([^\]]*)\]/);
+assert.ok(recommendedDeclaration, "RECOMMENDED_TEMPLATES must be declared as an array literal");
+const recommendedNames = [...recommendedDeclaration[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+const missingRecommended = recommendedNames.filter((name) => !templateNames.includes(name));
+assert.deepEqual(missingRecommended, [], `recommended names must exist in the catalog: ${missingRecommended.join(",")}`);
 assert.match(editor, /editor\.templateShowAll/, "expander label must go through i18n");
 assert.match(editor, /editor\.recentTemplates[\s\S]{0,400}data-template-recent/, "recent row renders after its heading");
 assert.match(editor, /\$\{template\.target\} \$\{template\.unit\} · \$\{t\(SCHEDULE_LABELS\[template\.schedule\.type\]\)\}/,

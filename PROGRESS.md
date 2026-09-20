@@ -1551,3 +1551,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1345 设置页状态可观察性收口:三类外部依赖（番茄钟/智能体/Task Horizon）统一 data-dependency+data-dependency-state 钩子与 healthy/degraded/error 分桶（dependencyBucket 显式映射表）,状态值统一 role="status"+三档视觉类,每行新增统一恢复/重试提示（lc-checkin__dependency-recovery）;新增 Task Horizon 提供方就绪行（API v5·契约 v1,如实标注"我方就绪"而非运行时握手）。新增 tests/dependency-status.test.cjs 接入 test:ui;agent-status 旧正则适配属性顺序。
 验证:dependency-status、agent-status、test:ui 全链、双语宽度走查、type check、release-assets 全过;摘要同步（59350da4…）。v18 本地可推进任务至此全部完成,剩余 T-1344/T-1347 等用户真机窗口。
+
+2026-09-21 v19 启动：模板二期（T-1356/T-1357/T-1358）:目录扩充 45→60（健康 记录体重/防晒、学习 听播客/刷题、运动 跑步/俯卧撑、工作 单事专注、生活 遛狗/洗碗/存钱、戒除 不刷短视频·atMost/戒酒·atMost、专注 感恩记录/深呼吸、创作 写作）,全部补 tpl/tplNote 双语键;新增 RECOMMENDED_TEMPLATES 精选推荐位（无最近使用时展示 8 个跨类别锚点）;template-gallery 门禁扩展目录规模护栏（55~70）与精选名单可解析断言。候选「情绪自评 custom 类型模板」因类型预览链路未验证暂缓,记入后续。
+验证:template-gallery、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（0ced5cd1…）。
