@@ -33,7 +33,7 @@ const cases = [
     page.on("pageerror", (error) => pageErrors.push(error.message));
     await page.setContent(`<style>:root{--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-theme-primary:#3575f0;--b3-font-family:Arial}body{margin:8px}</style><main id="frame" style="width:340px;height:720px;border:1px solid #ddd"><div id="dock" style="width:100%;height:100%"></div></main>`);
     await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
-    await page.evaluate((frontend) => {
+    await page.evaluate(({frontend, language}) => {
         const now = new Date();
         const today = (hour, minute) => new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute).toISOString();
         window.__store = {
@@ -56,6 +56,8 @@ const cases = [
             {id: "o2", name: "每月账单核对与到期提醒", kind: "scheduled", date: "2026-01-01", recurrence: "monthly", remindBeforeDays: 3, note: "验证重复规则、日期、操作按钮在窄屏上都可读。", enabled: true, completedDates: [], createdAt: now.toISOString(), updatedAt: now.toISOString()},
             {id: "o3", name: "暂停中的纪念日", kind: "anniversary", date: "2026-11-03", recurrence: "annual", remindBeforeDays: 7, note: "", enabled: false, completedDates: [], createdAt: now.toISOString(), updatedAt: now.toISOString()},
         ]}};
+        // T-1346：CHECKIN_QA_LANG=en-US 时以英文界面跑完整矩阵，审计英文文案布局。
+        if (language) window.__otherStores["checkin-view-preferences"] = {pluginLanguage: language};
         window.module = {exports: {}};
         window.siyuan = {config: {appearance: {mode: 0}, system: {appDir: "", os: "windows"}}};
         window.require = (name) => {
@@ -75,7 +77,7 @@ const cases = [
                 showMessage(message) { window.__messages = [...(window.__messages || []), message]; },
             };
         };
-    }, qaFrontend);
+    }, {frontend: qaFrontend, language: process.env.CHECKIN_QA_LANG || ""});
     await page.addScriptTag({path: path.join(projectRoot, "dist", "index.js")});
     await page.evaluate(async ({host, theme}) => {
         const PluginClass = window.module.exports.default || window.module.exports;
@@ -344,10 +346,25 @@ const cases = [
                 const summaryBox = await summary.boundingBox();
                 assert.ok(summaryBox && summaryBox.height >= (width < 720 || qaFrontend === 'mobile' ? 43.75 : 35.75), `${label}: template disclosure target ${JSON.stringify(summaryBox)}`);
                 await summary.click();
+                /* T-1349/T-1346：分批显示与「最近使用」的运行时断言。 */
+                const expander = page.locator('[data-action="template-show-all"]');
+                assert.equal(await expander.isVisible(), true, 'batch expander must be visible before reveal');
+                const visibleBefore = await page.locator('[data-template-list] [data-template-index]:not([hidden])').count();
+                await expander.click();
+                const visibleAfter = await page.locator('[data-template-list] [data-template-index]:not([hidden])').count();
+                assert.ok(visibleAfter > visibleBefore, `${label}: show-all must reveal overflow templates (${visibleBefore} -> ${visibleAfter})`);
+                assert.equal(await expander.isVisible(), false, 'expander must hide after reveal');
                 const template = page.locator('[data-template-index]').first();
+                const appliedIndex = await template.getAttribute('data-template-index');
                 await template.click();
                 assert.notEqual(await page.locator('input[name="name"]').inputValue(), '', 'template selection fills the real editor');
+                const lazyRecent = page.locator('[data-template-recent] [data-template-index]');
+                assert.ok(await lazyRecent.count() > 0, 'applying a template must surface the recent row');
+                assert.equal(await lazyRecent.first().getAttribute('data-template-index'), appliedIndex, 'applied template must top the recent row');
                 await goto('editor');
+                await page.locator('[data-template-disclosure] > summary').click();
+                const persistentRecent = page.locator('[data-template-recent] [data-template-index]').first();
+                assert.equal(await persistentRecent.getAttribute('data-template-index'), appliedIndex, 'recent row must survive a full re-render');
             }
             await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
                 for (const element of elements) {
@@ -386,30 +403,30 @@ const cases = [
                     const action = preview.locator('[data-preview-action]');
                     const source = page.locator('select[name="completionSource"]');
                     await chooseKind('duration');
-                    assert.match(await preview.innerText(), /专注/, `${label}/${theme}: duration preview exposes focus`);
-                    assert.match(await preview.innerText(), /记录/, `${label}/${theme}: duration preview exposes manual recording`);
+                    assert.match(await preview.innerText(), /专注|focus/i, `${label}/${theme}: duration preview exposes focus`);
+                    assert.match(await preview.innerText(), /记录|log|record/i, `${label}/${theme}: duration preview exposes manual recording`);
                     await showEditorPreview(preview, `${label}/${theme}/duration-preview`);
                     await assertLayout(`${label}/${theme}/duration-preview`);
                     await screenshot({path: path.join(outputRoot, `${label}-${theme}-duration-preview.png`)}, preview);
                     await chooseKind('count');
                     await source.selectOption('tomato');
-                    assert.match(await action.innerText(), /专注/, 'changing source refreshes the primary action immediately');
+                    assert.match(await action.innerText(), /专注|focus/i, 'changing source refreshes the primary action immediately');
                     await direction.check();
-                    assert.doesNotMatch(await action.innerText(), /专注/, 'limiting habits never preview a focus action');
-                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /上限/, 'limiting preview identifies its ceiling');
+                    assert.doesNotMatch(await action.innerText(), /专注|focus/i, 'limiting habits never preview a focus action');
+                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /上限|limit/i, 'limiting preview identifies its ceiling');
                     await direction.uncheck();
-                    assert.match(await action.innerText(), /专注/, 'leaving the limiting direction restores eligible focus');
+                    assert.match(await action.innerText(), /专注|focus/i, 'leaving the limiting direction restores eligible focus');
                     await source.selectOption('manual');
                     await chooseKind('quantity');
                     await page.locator('input[name="unit"]').fill('ml');
                     await page.locator('input[name="recordStep"]').fill('250');
                     assert.match(await action.innerText(), /\+250/, 'quantity preview shows the configured increment');
-                    assert.match(await preview.innerText(), /填写/, 'quantity preview exposes direct entry');
+                    assert.match(await preview.innerText(), /填写|enter/i, 'quantity preview exposes direct entry');
                     await page.locator('input[name="target"]').fill('2500');
                     await page.locator('select[name="schedule"]').selectOption('quota');
                     await page.locator('input[name="quotaAmount"]').fill('3');
                     await page.locator('select[name="quotaCountMode"]').selectOption('dates');
-                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /0\s*\/\s*3\s*天/, 'date quota preview uses counted days instead of the daily numeric target');
+                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /0\s*\/\s*3\s*(天|days?)/i, 'date quota preview uses counted days instead of the daily numeric target');
                     await page.locator('select[name="quotaCountMode"]').selectOption('value');
                     await page.locator('input[name="quotaAmount"]').fill('5000');
                     assert.match(await preview.locator('[data-preview-meta]').innerText(), /0\s*\/\s*5,?000\s*ml/, 'value quota preview uses the period target and original unit');
@@ -425,10 +442,10 @@ const cases = [
                     assert.ok(geometry.every(node => node.scroll <= node.width + 1), `preview text must wrap without clipping ${JSON.stringify(geometry)}`);
                     await screenshot({path: path.join(outputRoot, `${label}-${theme}-custom-preview.png`)}, preview);
                     await chooseKind('binary');
-                    assert.match(await action.innerText(), /打卡/, 'binary preview restores the check-in action');
-                    assert.match(await preview.innerText(), /备注/, 'binary preview includes its note entry');
+                    assert.match(await action.innerText(), /打卡|check[- ]?in|record/i, 'binary preview restores the check-in action');
+                    assert.match(await preview.innerText(), /备注|note/i, 'binary preview includes its note entry');
                     await direction.check();
-                    assert.match(await action.innerText(), /破戒/, 'binary limiting preview uses lapse semantics');
+                    assert.match(await action.innerText(), /破戒|lapse/i, 'binary limiting preview uses lapse semantics');
                     await direction.uncheck();
                     console.log(`${label}/${theme}: live preview matches focus/manual, source, limit, quantity and custom recording actions`);
                 }
@@ -556,7 +573,7 @@ const cases = [
         assert.ok(visual.clockVisible && visual.labels.length === 1 && visual.labels.every(span => /专注|计时|focus|timer/i.test(span.text) && span.width > 0 && span.scrollWidth <= span.width + 1) && /专注|计时|focus|timer/i.test(visual.name || ''), `${label}: normalization preserves the clock and visible, unclipped action label ${JSON.stringify(visual)}`);
         assert.match(await card.locator('[data-action="toggle-exact"]').getAttribute('aria-label'), /手动|manual/i, `${label}: manual recording remains a clearly named secondary action`);
         const manual = card.locator('[data-action="toggle-exact"]');
-        assert.equal((await manual.innerText()).trim(), '记录', `${label}: manual recording has a visible text entry`);
+        assert.match((await manual.innerText()).trim(), /^(记录|Log)$/, `${label}: manual recording has a visible text entry`);
         await assertControlReachable(manual, `${label}/manual-entry`, 44);
         return control;
     };
@@ -935,27 +952,27 @@ const cases = [
             for (const id of ['duration', 'hours', 'tomato-count']) await assertFocusPrimary(`${label}/${id}`, `mixed-${id}`);
             const tomatoMode = page.locator('[data-item-id="mixed-tomato-count"] .is-tomato');
             assert.equal(await tomatoMode.isVisible(), true, `${label}: external-timer measurement mode stays visible`);
-            assert.match(await tomatoMode.textContent(), /次数/, `${label}: session-based tomatoes are labelled as counts`);
-            for (const [id, text] of [['count', '填写'], ['binary', '备注']]) {
+            assert.match(await tomatoMode.textContent(), /次数|count/i, `${label}: session-based tomatoes are labelled as counts`);
+            for (const [id, text] of [['count', /^(填写|Enter)$/], ['binary', /^(备注|Note)$/]]) {
                 const entry = page.locator(`[data-item-id="mixed-${id}"] [data-action="toggle-exact"]`);
-                assert.equal((await entry.innerText()).trim(), text, `${label}/${id}: secondary entry explains its recording action`);
+                assert.match((await entry.innerText()).trim(), text, `${label}/${id}: secondary entry explains its recording action`);
                 await assertControlReachable(entry, `${label}/${id}-entry`, 44);
             }
-            assert.match(await page.locator('[data-item-id="mixed-quota-dates"] .lc-checkin__item-value').textContent(), /1\s*\/\s*4\s*天/, 'date quotas show recorded days rather than event values');
+            assert.match(await page.locator('[data-item-id="mixed-quota-dates"] .lc-checkin__item-value').textContent(), /1\s*\/\s*4\s*(天|days?)/i, 'date quotas show recorded days rather than event values');
             assert.match(await page.locator('[data-item-id="mixed-quota-value"] .lc-checkin__item-value').textContent(), /2\s*\/\s*20\s*公里/, 'value quotas retain their actual unit');
             const large = page.locator('[data-item-id="mixed-large"]');
-            assert.equal((await large.locator('[data-action="quick-record"]').textContent()).trim(), '记录');
+            assert.match((await large.locator('[data-action="quick-record"]').textContent()).trim(), /^(记录|Record)$/);
             assert.match(await large.locator('.lc-checkin__item-step').textContent(), /1000000000.*点/, 'large quick amounts stay fully readable beside the compact action');
             assert.equal(await large.locator('[data-action="quick-record"]').getAttribute('data-amount'), '1000000000');
             const limit = page.locator('[data-item-id="mixed-limit-number"]');
-            assert.match(await limit.locator('.lc-checkin__item-value').textContent(), /上限.*2.*杯/);
+            assert.match(await limit.locator('.lc-checkin__item-value').textContent(), /(?:上限|Limit)\s*2\s*杯/);
             assert.equal(await limit.locator('.lc-checkin__item-value small').count(), 0, 'limits do not encourage filling a remaining amount');
             for (const id of ['limit-number', 'limit-binary']) {
                 const card = page.locator(`[data-item-id="mixed-${id}"]`);
                 assert.equal(await card.locator('[data-action="focus"]').count(), 0);
                 assert.equal(await card.evaluate(element => getComputedStyle(element).backgroundImage), 'none');
             }
-            assert.match(await page.locator('[data-item-id="mixed-limit-binary"] .lc-checkin__item-action [data-action="record"]').textContent(), /破戒/, 'binary limiting action names its lapse semantics');
+            assert.match(await page.locator('[data-item-id="mixed-limit-binary"] .lc-checkin__item-action [data-action="record"]').textContent(), /破戒|lapse/i, 'binary limiting action names its lapse semantics');
             await page.locator('[data-item-id="mixed-image"] .lc-checkin__item-icon img').scrollIntoViewIfNeeded();
             await page.waitForFunction(() => { const img = document.querySelector('[data-item-id="mixed-image"] .lc-checkin__item-icon img'); return img?.complete && img.naturalWidth > 0; });
             await assertLayout(label);
@@ -1047,7 +1064,7 @@ const cases = [
         await limitBinary.locator('[data-action="toggle-exact"]').click();
         const lapseNote = '说明本次破戒原因，明天调整作息';
         await limitBinary.locator('.lc-checkin__record-note').fill(lapseNote);
-        assert.match(await limitBinary.locator('[data-exact-entry] [data-action="record"]').innerText(), /破戒/, 'expanded lapse submission uses the correct action label');
+        assert.match(await limitBinary.locator('[data-exact-entry] [data-action="record"]').innerText(), /破戒|lapse/i, 'expanded lapse submission uses the correct action label');
         await limitBinary.locator('[data-exact-entry] [data-action="record"]').click();
         await assertRecorded('mixed-limit-binary', 1, `${mixedInteractionLabel}/record-lapse-note`);
         assert.equal(await page.evaluate(() => window.__plugin.store.events.find(event => event.itemId === 'mixed-limit-binary')?.note), lapseNote, 'a first lapse can be recorded with its note');

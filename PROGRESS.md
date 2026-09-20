@@ -1537,3 +1537,6 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-20 v18 模板体系一期（T-1348/T-1349/T-1350）:①盘点 45 内置打卡模板——修复 8 个缺失 i18n 名称映射、补 tplGroup.quitting 与 20 个 tplNote 双语键、修 bind-editor 硬编码「个模板」计数;②新建页模板区新增「最近使用」置顶（recentTemplates 偏好容量 6、recordRecentTemplate 纯函数、套用后芯片惰性建行）、分批显示（首批 24、显示全部展开器、筛选态自动全显）、非 binary 预览摘要补排期标签、模板点击改事件委托;③新增 tests/template-gallery.test.cjs（映射/分组/备注键双语完备、at-most daily-only 契约、渲染与绑定链路标记、宿主接线、运行时纯函数边界）接入 test:ui;template-manager/templates 测试转译清单补 view-preferences.ts。
 验证:pnpm run check、完整 test:quality（check/build/test/test:ui/test:legacy-style/test:mobile/test:ecosystem/test:extended/test:review-comparison/test:perf/check:release）exit 0;宽度走查（Edge,CHECKIN_BROWSER）浅深双主题 42 页面+32 交互+8 对比度+10 混合+16 长内容全过;发布说明包摘要同步至可复现 webpack zip（9bf9dccf…）。真实宿主项 T-023/B-007 保持开放。
 附注:开发期发现 release-assets 摘要门槛依赖「build 后同步更新发布说明 SHA-256」;webpack PackageZipPlugin 固定 1980 时间戳保证未改源码时哈希稳定。
+
+2026-09-21 T-1346 两发现收口（界面语言接线 + 模板运行时断言）:①设置页新增「界面语言」（zh-CN/en-US/跟随思源,view-preferences 新增 pluginLanguage 偏好缺省 zh-CN 行为不变,syncPluginLanguage 按宿主 lang 解析 follow,变化时才切换避免无谓重渲染,设置变更即存即生效）;②走查脚本补 CHECKIN_QA_LANG=en-US 英文全矩阵能力,模板区运行时断言（展开器→全显→芯片置顶→重渲染保持）入走查;③修正走查内 14 处硬编码中文期望为双语正则（专注/记录/打卡/备注/破戒/上限/填写/次数/天等——此前英文界面不可达所以从未暴露）。
+验证:英文界面首次全矩阵走查通过（42+32+8+10+16,Edge）;中文走查回归通过;type check、release-assets、i18n-hygiene、settings-navigation、template-gallery、view-preferences 全过。发现:EN 文案布局无错乱,英文界面自此具备发布口径。

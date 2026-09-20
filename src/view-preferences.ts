@@ -7,6 +7,8 @@ export type DialogSizeMode = "auto" | "percent" | "fullscreen" | "fixed";
 export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
 /** Which focus timer should open from a duration item's clock button. */
 export type FocusTimerProvider = "builtin" | "docktomato";
+/** T-1346：插件界面语言；"follow" 按思源界面语言自动选择（en* → en-US）。 */
+export type PluginLanguageSetting = "zh-CN" | "en-US" | "follow";
 
 /** T-1217 周报/月报包含的区块；缺省全开，关闭项不进入报告输出。 */
 export interface ReportSectionToggles {
@@ -53,6 +55,8 @@ export interface CheckinViewPreferences {
     dialogOffset?: {x: number; y: number};
     /** T-1217 Markdown 报告包含的区块。 */
     reportSections: ReportSectionToggles;
+    /** T-1346 插件界面语言设置；缺省 zh-CN，历史偏好无该字段时行为不变。 */
+    pluginLanguage: PluginLanguageSetting;
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -85,11 +89,14 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
     reportSections: {...DEFAULT_REPORT_SECTIONS},
+    pluginLanguage: "zh-CN",
     recentTemplates: [],
 };
 
 /** T-1349 「最近使用」保留条数上限。 */
 export const RECENT_TEMPLATES_LIMIT = 6;
+
+const PLUGIN_LANGUAGE_SETTINGS = new Set<PluginLanguageSetting>(["zh-CN", "en-US", "follow"]);
 
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
@@ -159,6 +166,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const recentTemplates = Array.isArray(source.recentTemplates)
         ? [...new Set(source.recentTemplates.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, RECENT_TEMPLATES_LIMIT)
         : [];
+    const pluginLanguage = PLUGIN_LANGUAGE_SETTINGS.has(source.pluginLanguage as PluginLanguageSetting) ? source.pluginLanguage as PluginLanguageSetting : DEFAULT_VIEW_PREFERENCES.pluginLanguage;
     return {
         groupMode,
         sortMode,
@@ -185,6 +193,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         dialogRect: readRect(source.dialogRect, 520, 400, 3840, 2160),
         dialogOffset: readOffset(source.dialogOffset),
         reportSections,
+        pluginLanguage,
         recentTemplates,
     };
 }

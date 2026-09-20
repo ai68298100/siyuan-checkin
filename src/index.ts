@@ -10,7 +10,7 @@ import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
-import {getPluginLocale, t} from "./i18n";
+import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
@@ -56,7 +56,7 @@ import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, a
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
-import type {CheckinAppearance, FocusTimerProvider, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
@@ -173,6 +173,9 @@ export default class CheckinPlugin extends Plugin {
     private userTemplates: UserTemplate[] = [];
     /* T-1349：最近使用的内置模板名（zh 名锚点），随界面偏好持久化。 */
     private recentTemplates: string[] = [];
+    /* T-1346：插件界面语言设置；缺省 zh-CN，跟随思源时按宿主语言解析。 */
+    private pluginLanguageSetting: PluginLanguageSetting = "zh-CN";
+    private lastResolvedPluginLanguage?: "zh-CN" | "en-US";
     private customIconLibrary: string[] = [];
     private dockElement?: HTMLElement;
     private tabElement?: HTMLElement;
@@ -1792,6 +1795,7 @@ export default class CheckinPlugin extends Plugin {
             customIconLibrary: this.customIconLibrary,
             agentCapability: {state: this.agentCapabilityState, count: this.agentCapabilityIds.length, error: this.agentCapabilityError},
             appearance: this.appearance,
+            pluginLanguage: this.pluginLanguageSetting,
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
@@ -1855,6 +1859,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.pluginLanguageSetting = value; this.syncPluginLanguage(); void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
@@ -3690,6 +3695,19 @@ export default class CheckinPlugin extends Plugin {
         this.lastExportAt = preferences.lastExportAt;
         this.reportSections = {...preferences.reportSections};
         this.recentTemplates = [...preferences.recentTemplates];
+        this.pluginLanguageSetting = preferences.pluginLanguage;
+        this.syncPluginLanguage();
+    }
+
+    /* T-1346：解析语言设置并应用；仅在实际变化时切换，避免无谓的全量重渲染。 */
+    private syncPluginLanguage(): void {
+        const hostLang = (window as {siyuan?: {config?: {lang?: string}}}).siyuan?.config?.lang;
+        const resolved = this.pluginLanguageSetting === "follow"
+            ? (typeof hostLang === "string" && hostLang.toLowerCase().startsWith("en") ? "en-US" : "zh-CN")
+            : this.pluginLanguageSetting;
+        if (resolved === this.lastResolvedPluginLanguage) return;
+        this.lastResolvedPluginLanguage = resolved;
+        setPluginLanguage(resolved);
     }
 
     /* T-1349：模板套用后更新「最近使用」并随界面偏好持久化。 */
@@ -3730,6 +3748,7 @@ export default class CheckinPlugin extends Plugin {
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
             reportSections: {...this.reportSections},
+            pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
