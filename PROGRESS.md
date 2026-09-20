@@ -1582,4 +1582,7 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-21 v18.0.0 发版准备（本地完成，未 push）:版本四方升级（package.json/plugin.json/src/version.ts/README → 18.0.0，聚合 v18~v21 四版本特性为单次大版本发布）;新增 docs/v18.0.0-change-log.md 完整变更记录与 docs/releases/release-notes-18.0.0.md 用户向发布说明（沿用 17.3.0 格式:主要更新/能力边界/兼容与升级/SHA-256）;摘要经 sync:digest 同步（1ffa8e91…）。minAppVersion 3.8.4 不变,主存储 v3 与公共 storeVersion 2 不变。发布说明与变更记录均注明真实宿主验收项（T-1344/T-1347）保持开放。
 状态:awaiting user push confirmation。发布执行方式:push origin main + tag v18.0.0（或由用户运行 scripts/release.cjs 完整流程）。
 
+2026-09-21 v22 启动：T-1370 同步设计评审 + D-243 决策:docs/sync-design-review.md 评审稿——**不立项自建同步**（含 E2EE 自建通道），跨设备由思源同步天然承载（插件数据位于工作区），插件侧合并/诊断/恢复点已具备配合能力;立三个配套改进项随常规迭代;重启条件成文。T-1371 首切片:i18n-parity 门禁（zh/en 1480 对键全对等、无重复、占位符一致）接入 test:ui。T-1372 数据规模演练确认由既有 100k 基线覆盖（渲染块 100k≈232ms/批处理 17.5ms）。
+验证:i18n-parity、type check、test:ui 全链通过。
+
 2026-09-21 v21 启动：T-1364 契约测试包首版:contracts/siyuan-checkin-contract（check-contract.mjs 消费方自测 78 项合规断言:描述符/版本协商/能力面/事件清单/只读方法形状/批量写边界/未知 source 拒绝;manifest.json 字节级同源;README 五项准入清单）;tests/contract-kit.test.cjs 三重守门（manifest 字节一致+合规 mock 全过+4 项变异违规捕获）接入 test:ui。npm 独立发布待发版窗口（push 需用户确认）。
