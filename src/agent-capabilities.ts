@@ -5,7 +5,7 @@ import {currentCalendarDate, captureActionMoment, calendarDateFromKey, formatNum
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, normalizeOccasion, type Occasion} from "./occasions";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
-import {buildSummaryContext, type SummaryRange} from "./analytics";
+import {buildSummaryContext, type SummaryRange, type QuotaSummary} from "./analytics";
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 
 export interface AgentAddOptions {
@@ -29,7 +29,7 @@ export interface AgentCapabilityDeps {
     enqueueMutation<T>(fn: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, fingerprint: string | undefined, note?: string): Promise<CheckinEvent | undefined>;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
-    getSummaryContext(range: SummaryRange): {totalEvents: number; completedItems: number; scheduledItems: number; items: Array<{name: string; completedDays: number; scheduledDays: number; completionRate: number}>};
+    getSummaryContext(range: SummaryRange): {totalEvents: number; completedItems: number; scheduledItems: number; items: Array<{name: string; completedDays: number; scheduledDays: number; completionRate: number; quota?: QuotaSummary}>};
     getCustomSummaryContext(range: {startDate: string; endDate: string}): {totalEvents: number} | undefined;
     createItem(created: CheckinItem): Promise<void>;
     createOccasion(created: Occasion): Promise<void>;
@@ -49,7 +49,7 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             const range: SummaryRange = args.range === "day" || args.range === "month" ? args.range : "week";
             const context = deps.getSummaryContext(range);
             if (!context) return {error: "打卡数据尚未准备好。"};
-            const weakest = [...context.items].sort((a, b) => a.completionRate - b.completionRate)[0];
+            const weakest = context.items.filter(item => !item.quota && item.scheduledDays > 0).sort((a, b) => a.completionRate - b.completionRate)[0];
             const suggestions = weakest ? [{type: "review", item: weakest.name, reason: `完成率 ${weakest.completionRate}%`, requiresConfirmation: true}] : [];
             return {result: suggestions.length ? `建议优先复盘：${weakest!.name}。` : "当前没有明显需要优先处理的项目。", structuredContent: {range, suggestions, changes: [], requiresConfirmation: true}};
         },
@@ -80,10 +80,12 @@ export function registerAgentCapabilities(deps: AgentCapabilityDeps): void {
             }
             const context = deps.getSummaryContext(range);
             if (!context) return {error: "打卡数据尚未准备好。"};
-            const ranked = [...context.items].sort((a, b) => b.completionRate - a.completionRate);
+            // Quota contributions and unscheduled activity do not share the
+            // daily completion denominator used for these ranked highlights.
+            const ranked = context.items.filter(item => !item.quota && item.scheduledDays > 0).sort((a, b) => b.completionRate - a.completionRate);
             const enriched = {
                 ...context,
-                asOf: new Date().toISOString().slice(0, 10),
+                asOf: dateKey(currentCalendarDate()),
                 highlights: {bestItem: ranked[0]?.name || null, needsAttention: ranked.length > 1 ? ranked[ranked.length - 1]?.name || null : null},
                 guidance: "仅供复盘参考；如需调整项目或记录，必须由用户明确确认。",
             };

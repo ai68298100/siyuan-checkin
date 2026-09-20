@@ -1,6 +1,6 @@
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
 import {evaluateQuotaSchedule, getQuotaPeriodBounds} from "./rules";
-import {dateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday} from "./model";
+import {dateKey, getEventsInDateRange, getSkipDatesForItem, getItemRevisionForDate, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
 const EVENT_RANGE_LIMITS = {maxDays: 366, maxPoints: 366, maxEvents: 5000} as const;
 
 export type SummaryRange = "day" | "week" | "month";
@@ -272,9 +272,10 @@ function summarizeQuota(store: CheckinStore, item: CheckinItem, bounds: DateRang
     let elapsedPeriods = 0;
     let completedPeriods = 0;
     let current: ReturnType<typeof evaluateQuotaSchedule>;
+    const contributingEvents = events.filter(event => !isSkipEvent(event));
     for (const representative of periods.values()) {
         if (!isItemAvailableOnDate(item, representative)) continue;
-        const progress = evaluateQuotaSchedule(revision.schedule, events, item.id, representative, revision.schedule.quota.countMode === "value" ? revision.unit : undefined);
+        const progress = evaluateQuotaSchedule(revision.schedule, contributingEvents, item.id, representative, revision.schedule.quota.countMode === "value" ? revision.unit : undefined);
         if (!progress) continue;
         if (progress.endDate < elapsedEndKey) {
             elapsedPeriods += 1;

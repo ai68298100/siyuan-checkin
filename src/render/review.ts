@@ -3,7 +3,7 @@ import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
-import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
+import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
 import {buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
@@ -15,6 +15,8 @@ import {filterReminderEntries, projectOverdueOccurrenceHistory, projectReminderC
 import {buildLocalSummaryText} from "../features/local-summary";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "../features/habit-score";
 import {renderSuggestionWorkflowPanel} from "./suggestion-workflow";
+import {buildReviewRhythm, projectPresentation} from "../features/review-presentation";
+import {buildReviewPrompt} from "../features/review-assistant";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
@@ -27,6 +29,11 @@ export interface ReviewViewContext {
     reviewProjectOrder?: "attention" | "name";
     reviewTrend?: "weekly" | "monthly" | "daily" | "yearly";
     reviewStrengthItemId?: string;
+    reviewAssistantGoal?: "summary" | "patterns" | "plan";
+    agentCapability?: {state: "pending" | "registered" | "unsupported" | "failed"; count: number; error?: string};
+    summaryProviderNames?: string[];
+    summaryError?: string;
+    summaryCacheState?: "current" | "stale" | "none";
     store: CheckinStore;
     occasionStore: OccasionStore;
     appearance: "light" | "dark";
@@ -39,6 +46,7 @@ export interface ReviewViewContext {
     reviewFoldSections: Set<string>;
     reviewFoldTouched: boolean;
     summaryRange: SummaryRange;
+    summaryContext?: SummaryContext;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
     reportSections: import("../view-preferences").ReportSectionToggles;
@@ -70,14 +78,23 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const pages = Math.ceil(total / size);
         return `<div class="review-pagination" role="group" aria-label="${t("review.pagination")}"><button type="button" ${attr}="${page - 1}" ${page === 0 ? "disabled" : ""}>${t("review.pagePrev")}</button><span role="status">${t("review.pageStatus", {page: page + 1, pages, total})}</span><button type="button" ${attr}="${page + 1}" ${page + 1 >= pages ? "disabled" : ""}>${t("review.pageNext")}</button></div>`;
     };
-    const summary = ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange, asOf) : buildSummaryContext(ctx.store, ctx.summaryRange, asOf);
+    const summary = ctx.summaryContext || (ctx.summaryCustomRange ? buildCustomSummaryContext(ctx.store, ctx.summaryCustomRange, asOf) : buildSummaryContext(ctx.store, ctx.summaryRange, asOf));
     const iconsById = new Map(ctx.store.items.map((item) => [item.id, item.icon]));
-    const rankedSummaryItems = [...summary.items].sort((a, b) => b.completionRate - a.completionRate);
-    const topSummaryItem = rankedSummaryItems[0];
+    const projectMetrics = new Map(summary.items.map(item => [item.itemId, projectPresentation(item)]));
+    const coverage = (context: SummaryContext): SummaryContext => ({...context,
+        completedItems: context.items.filter(item => item.completedDays > 0 || Boolean(item.quota?.completedPeriods) || item.quota?.current?.complete).length,
+        scheduledItems: context.items.filter(item => item.scheduledDays > 0 || Boolean(item.quota?.elapsedPeriods) || Boolean(item.quota?.current)).length,
+    });
+    const viewSummary = coverage(summary);
+    const completedItemCount = viewSummary.completedItems;
+    const scheduledItemCount = viewSummary.scheduledItems;
+    // Local priority suggestions compare daily opportunities, never a weekly
+    // quota's progress against daily completion or a missing opportunity.
+    const rankedSummaryItems = summary.items.filter(item => !item.quota && item.scheduledDays > 0).sort((a, b) => b.completionRate - a.completionRate);
     const attentionSummaryItem = rankedSummaryItems.length > 1
         ? [...rankedSummaryItems].reverse().find((entry) => getItemById(ctx.store, entry.itemId)?.priority !== "high")
         : undefined;
-    const hasPeriodRecords = summary.totalEvents > 0;
+    const hasPeriodRecords = summary.totalEvents > 0 || completedItemCount > 0;
     /* Keep each sentence as a real text value and escape it once at the HTML
        boundary.  The previous inline interpolation escaped project names
        before composing the sentence, which made it difficult for the UI to
@@ -88,13 +105,21 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const summaryAttention = hasPeriodRecords && attentionSummaryItem
         ? t("review.heroAttention", {name: attentionSummaryItem.name, rate: attentionSummaryItem.completionRate})
         : "";
-    const summaryHeadline = hasPeriodRecords ? t("review.overviewHeadline") : t("review.overviewEmpty");
-    const summaryBody = t("review.heroBody", {done: summary.completedItems, scheduled: summary.scheduledItems || 0, events: summary.totalEvents});
-    const summaryBest = topSummaryItem && hasPeriodRecords ? t("review.heroBest", {name: topSummaryItem.name}) : "";
     const summaryGuidance = summaryAttention || summaryAdvice
         ? `<div class="lc-checkin__review-guidance">${summaryAttention ? `<small class="lc-checkin__review-attention" title="${escapeHtml(summaryAttention)}">${escapeHtml(summaryAttention)}</small>` : ""}${summaryAdvice ? `<small class="lc-checkin__review-advice" title="${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}">${escapeHtml(t("review.heroAdviceLabel", {advice: summaryAdvice}))}</small>` : ""}</div>`
         : "";
-    const summaryHero = `<section class="lc-checkin__review-hero" aria-label="${t("review.heroAria")}"><div class="lc-checkin__review-hero-copy"><h2>${escapeHtml(summaryHeadline)}</h2><p>${escapeHtml(summaryBody)}${summaryBest ? ` · ${escapeHtml(summaryBest)}` : ""}</p></div></section>`;
+    const renderRhythm = (): string => {
+        const rhythm = buildReviewRhythm(ctx.store, summary, asOf);
+        const days = rhythm.hasDailyItems ? rhythm.points.map(point => {
+            const rate = point.scheduled ? point.completed / point.scheduled * 100 : 0;
+            const state = point.scheduled ? (rate >= 100 ? "complete" : rate > 0 ? "partial" : "empty") : point.skipped ? "skipped" : "rest";
+            const value = point.scheduled ? `${point.completed}/${point.scheduled}` : t(point.skipped ? "review.rhythmSkipped" : "review.rhythmRest");
+            const label = t("review.rhythmAria", {date: point.date, done: point.completed, total: point.scheduled, skipped: point.skipped});
+            return `<button type="button" class="is-${state}" data-review-rhythm-date="${point.date}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}"><time datetime="${point.date}">${point.date.slice(5).replace("-", "/")}</time><i aria-hidden="true"><b style="height:${rate}%"></b></i><small>${escapeHtml(value)}</small></button>`;
+        }).join("") : "";
+        return `<section class="lc-checkin__review-hero review-rhythm" aria-label="${t("review.rhythmTitle")}"><div class="review-rhythm-heading"><h2>${t("review.rhythmTitle")}</h2><span>${escapeHtml(t("review.rhythmRange", {start: rhythm.startDate, end: rhythm.endDate}))}</span></div>${days ? `<div class="review-rhythm-days" role="group" aria-label="${t("review.rhythmTitle")}">${days}</div><small class="review-rhythm-help">${t("review.rhythmHelp")}</small>` : `<p class="review-rhythm-help">${t("review.rhythmEmpty")}</p>`}</section>`;
+    };
+    const assistantEntry = `<button type="button" class="lc-checkin__text-button review-assistant-entry" data-action="review-assistant">${t("review.assistantEntry")} <span aria-hidden="true">↗</span></button>`;
 
     const renderRecords = (): string => {
     const year = ctx.historyMonth.getFullYear();
@@ -169,10 +194,20 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         /* T-1221：跳过行显示中性徽章而非数值列。 */
         const skipBadge = isSkipEvent(event) ? `<span class="lc-checkin__history-skip-badge">${escapeHtml(t("review.skipBadge"))}</span>` : "";
         const valueLabel = isSkipEvent(event) ? "" : `<span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span>`;
-        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span>${escapeHtml(time)} · ${escapeHtml(sourceLabel)}${skipBadge}</span>${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
+        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span><time datetime="${escapeHtml(event.occurredAt)}" title="${escapeHtml(time)}">${escapeHtml(clock)}</time> · ${escapeHtml(sourceLabel)}${skipBadge}</span>${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
     };
     const page = Math.min(Math.max(0, ctx.historyPage || 0), Math.max(0, Math.ceil(filteredRecords.length / 30) - 1));
-    const eventRows = filteredRecords.slice(page * 30, (page + 1) * 30).map(renderEvent);
+    const pageRecords = filteredRecords.slice(page * 30, (page + 1) * 30);
+    const eventRows = pageRecords.map((record, index) => {
+        const day = getEventDateKey(record.event);
+        const startsDay = ctx.historyScope !== "day" && (!index || getEventDateKey(pageRecords[index - 1].event) !== day);
+        // Preserve timestamp ordering, including imported dates from other
+        // timezones. Counts describe this visible run, never an entire day.
+        let count = 0;
+        if (startsDay) for (let cursor = index; cursor < pageRecords.length && getEventDateKey(pageRecords[cursor].event) === day; cursor++) count++;
+        const heading = startsDay ? `<h3 class="review-record-day"><time datetime="${escapeHtml(day)}">${escapeHtml(formatHistoryDate(day))}</time><small>${t("review.recordDayCount", {n: count})}</small></h3>` : "";
+        return heading + renderEvent(record);
+    });
     const eventDetails = filteredRecords.length
         ? `<div class="lc-checkin__history-events">${eventRows.join("")}</div>${pagination(page, filteredRecords.length, 30, "data-history-page")}`
         : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
@@ -195,30 +230,42 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             <div class="lc-checkin__month-nav"><button type="button" data-history-month="-1" aria-label="${t("review.prevMonth")}">‹</button><strong>${t("date.monthYear", {year, month: month + 1})}</strong><button type="button" data-history-month="1" aria-label="${t("review.nextMonth")}" ${nextDisabled ? "disabled" : ""}>›</button></div>
             <div class="lc-checkin__calendar-weekdays">${calendarWeekdays().map(day => `<span>${day}</span>`).join("")}</div><div class="lc-checkin__calendar">${calendarCells}</div></div>` : ""}
         <div class="lc-checkin__review-detail">
-            ${historyTools}<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span>${hasHistoryFilter ? `<button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button>` : ""}</div>
+            ${historyTools}${hasHistoryFilter ? `<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span><button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button></div>` : ""}
             ${ctx.historyScope === "day" && aggregateDetails ? `<details class="review-day-totals"><summary>${t("review.historyAggregate")}</summary>${aggregateDetails}</details>` : ""}
             <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${ctx.historyScope === "day" ? escapeHtml(formatHistoryDate(ctx.selectedHistoryDate)) : t("review.scopePeriod")}</strong><span>${t("review.recordsCount", {n: filteredEvents.length})}</span></div>${eventDetails}</section>
         </div></div>`;
 
     };
+    const renderProjectRow = (item: ItemSummary): string => {
+        const metric = projectMetrics.get(item.itemId) || projectPresentation(item);
+        const stored = getItemById(ctx.store, item.itemId);
+        const revision = stored ? getItemRevisionForDate(stored, calendarDateFromKey(summary.endDate)) : undefined;
+        const unit = metric.mode === "closedQuota" ? t("review.projectPeriods")
+            : metric.mode === "currentQuota" && revision?.schedule.quota?.countMode === "value" ? revision.unit : t("common.days");
+        const label = t(({daily: "review.projectDaily", currentQuota: "review.projectCurrentQuota", closedQuota: "review.projectClosedQuota", noSchedule: "review.projectNoSchedule"} as const)[metric.mode]);
+        const progress = metric.rate === null ? "" : t("review.projectProgress", {done: formatNumber(metric.completed), total: formatNumber(metric.total), unit});
+        const quotaRange = item.quota?.current ? t("review.projectQuotaRange", {start: item.quota.current.startDate, end: item.quota.current.endDate}) : "";
+        const history = item.quota?.elapsedPeriods && metric.mode === "currentQuota"
+            ? t("review.projectQuotaHistory", {done: item.quota.completedPeriods, total: item.quota.elapsedPeriods}) : "";
+        return `<button type="button" class="lc-checkin__review-item${metric.rate === null ? " is-unplanned" : ""}" data-review-insights-id="${escapeHtml(item.itemId)}" data-review-project-mode="${metric.mode}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${renderIconMarkup(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${metric.rate !== null ? `<b class="review-project-rate">${metric.rate}%</b> ${escapeHtml(progress)}` : ""}<small class="review-project-kind">${escapeHtml(label)}${quotaRange ? ` · ${escapeHtml(quotaRange)}` : ""}${history ? ` · ${escapeHtml(history)}` : ""}</small></span>${metric.rate !== null ? `<i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${metric.rate}%"></span></i>` : ""}</button>`;
+    };
     const renderProjects = (): string => {
     const sortedProjects = [...summary.items].sort((a, b) => ctx.reviewProjectOrder === "name"
         ? a.name.localeCompare(b.name, getPluginLocale())
-        : a.completionRate - b.completionRate || a.name.localeCompare(b.name, getPluginLocale()));
+        : (projectMetrics.get(a.itemId)?.rate ?? 101) - (projectMetrics.get(b.itemId)?.rate ?? 101) || a.name.localeCompare(b.name, getPluginLocale()));
     const projectPage = Math.min(Math.max(0, ctx.reviewProjectPage || 0), Math.max(0, Math.ceil(sortedProjects.length / 8) - 1));
-    const projectRows = sortedProjects.length ? sortedProjects.slice(projectPage * 8, (projectPage + 1) * 8).map((item) => {
-        const quotaMeta = item.quota
-            ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
-            : t("review.daysRatio", {done: item.completedDays, scheduled: item.scheduledDays, rate: item.completionRate});
-        return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${renderIconMarkup(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
-    }).join("") : `<div class="lc-checkin__empty-description">${t("review.emptyProjects")}</div>`;
+    const projectRows = sortedProjects.length ? sortedProjects.slice(projectPage * 8, (projectPage + 1) * 8).map(renderProjectRow).join("") : `<div class="lc-checkin__empty-description">${t("review.emptyProjects")}</div>`;
 
         return `<div class="review-project-tools"><label>${t("review.projectSort")} <select data-review-project-order><option value="attention" ${ctx.reviewProjectOrder !== "name" ? "selected" : ""}>${t("review.sortAttention")}</option><option value="name" ${ctx.reviewProjectOrder === "name" ? "selected" : ""}>${t("review.sortName")}</option></select></label><small>${t("review.projectScope")}</small></div><section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>${pagination(projectPage, sortedProjects.length, 8, "data-review-project-page")}`;
     };
     const renderComparison = (): string => {
         const previousRange = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
-        const comparison = previousRange ? buildReviewComparison(summary, buildCustomSummaryContext(ctx.store, previousRange, asOf)) : undefined;
-        return comparison ? `${renderReviewCompareSection(comparison, true)}<div class="lc-checkin__compare-item-list">${renderReviewCompareItems(comparison)}</div>` : t("review.compareEmpty");
+        const previous = previousRange ? buildCustomSummaryContext(ctx.store, previousRange, asOf) : undefined;
+        // Quota progress and daily opportunities have different denominators;
+        // keep record comparisons, without presenting a meaningless rate delta.
+        const nonComparableRateIds = new Set([...summary.items, ...(previous?.items || [])].filter(item => item.quota).map(item => item.itemId));
+        const comparison = previous ? buildReviewComparison(viewSummary, coverage(previous)) : undefined;
+        return comparison ? `${renderReviewCompareSection(comparison, true)}<div class="lc-checkin__compare-item-list">${renderReviewCompareItems(comparison, {nonComparableRateIds})}</div>` : t("review.compareEmpty");
     };
     const renderStrength = (): string => {
     /* T-1227 强度曲线：近 30 天每项目强度（0~100），与建议引擎共用 habit-score 实现。 */
@@ -270,6 +317,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const renderBalance = (): string => {
     const groupMap = new Map<string, {name: string; completed: number; scheduled: number}>();
     for (const item of summary.items) {
+        if (item.quota) continue;
         const storeItem = getItemById(ctx.store, item.itemId);
         const group = storeItem?.group || t("review.ungrouped");
         const entry = groupMap.get(group) || {name: group, completed: 0, scheduled: 0};
@@ -285,7 +333,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             return `<div class="lc-checkin__balance-row"><strong>${escapeHtml(entry.name)}</strong><span>${entry.completed}/${entry.scheduled}</span><i class="lc-checkin__balance-bar"><span style="width:${Math.min(100, Math.round((entry.completed / Math.max(1, entry.scheduled)) * 100))}%"></span></i><em>${rate}%</em></div>`;
         }).join("");
 
-        return `<p class="review-scope-note">${t("review.projectScope")}</p><section class="lc-checkin__balance">${groupBars || t("review.emptyProjects")}</section>`;
+        const quotaItems = summary.items.filter(item => item.quota);
+        const visibleQuota = quotaItems.slice(0, 8).map(renderProjectRow).join("");
+        const remainingQuota = quotaItems.slice(8);
+        return `<h3 class="review-section-heading">${t("review.balanceDaily")}</h3><section class="lc-checkin__balance">${groupBars || t("review.emptyProjects")}</section>${quotaItems.length ? `<h3 class="review-section-heading">${t("review.balanceQuota")}</h3><div class="lc-checkin__review-project-list">${visibleQuota}</div>${remainingQuota.length ? `<details class="review-quota-more"><summary>${t("review.expandAll", {n: quotaItems.length})}</summary><div class="lc-checkin__review-project-list">${remainingQuota.map(renderProjectRow).join("")}</div></details>` : ""}` : ""}`;
     };
     const renderHeatmap = (): string => {
         const heatmapYear = Number(ctx.analyticsSnapshot.asOf.slice(0, 4)) + ctx.heatmapYearOffset;
@@ -306,7 +357,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const key = ctx.reviewTrend || "weekly";
         const series = {weekly: weeklyTrend, monthly: monthlyTrend, daily: dailyTrend, yearly: yearlyTrend}[key];
         const chart = key === "weekly" || key === "daily" ? renderLineChart(series, {labelStride: key === "daily" ? 7 : 3}) : renderBarChart(series);
-        return `<label class="review-analysis-trend">${t("review.trendMetric")}<select data-review-trend>${(["weekly", "monthly", "daily", "yearly"] as const).map(name => `<option value="${name}" ${key === name ? "selected" : ""}>${escapeHtml(ctx.analyticsSnapshot[name].title)}</option>`).join("")}</select></label><p class="review-scope-note">${t("review.trendScope")}</p><div class="lc-checkin__trend-grid">${trendCard(series, chart, key === "daily" ? t("review.trendDailyHint") : t("review.trendCompared"))}</div>`;
+        const dataTable = `<details class="review-chart-data"><summary>${t("review.chartData")}</summary><div class="review-chart-table"><table><caption>${escapeHtml(series.title)}</caption><thead><tr><th scope="col">${t("review.chartDate")}</th><th scope="col">${t("review.chartValue")} (${escapeHtml(series.unit)})</th></tr></thead><tbody>${series.points.map(point => `<tr><th scope="row">${escapeHtml(point.label)}</th><td>${escapeHtml(formatNumber(point.value))}</td></tr>`).join("")}</tbody></table></div></details>`;
+        return `<label class="review-analysis-trend">${t("review.trendMetric")}<select data-review-trend>${(["weekly", "monthly", "daily", "yearly"] as const).map(name => `<option value="${name}" ${key === name ? "selected" : ""}>${escapeHtml(ctx.analyticsSnapshot[name].title)}</option>`).join("")}</select></label><p class="review-scope-note">${t("review.trendScope")}</p><div class="lc-checkin__trend-grid">${trendCard(series, chart, key === "daily" ? t("review.trendDailyHint") : t("review.trendCompared"))}</div>${dataTable}`;
     };
     const renderReminders = (): string => {
     const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions), ctx.reminderFilter);
@@ -365,28 +417,46 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<p class="review-scope-note">${t("review.lifetimeScope")} · ${earnedCount}/${achievements.length}</p><div class="lc-checkin__achievement-categories">${achievementCategories}</div>`;
     };
     const renderReport = (): string => {
-    const providerButton = ctx.summaryProvidersCount
-        ? `<div class="lc-checkin__summary-agent" data-summary-refresh-state="${ctx.summaryRefreshing ? "loading" : "idle"}"><span>${t("review.agentConnected")} · ${t("review.summaryCutoff", {date: escapeHtml(summary.endDate)})}${ctx.analysisLastGeneratedAt ? ` · ${t("review.summaryUpdatedAt", {date: escapeHtml(ctx.analysisLastGeneratedAt)})}` : ""}${ctx.analysisHistoryCount ? ` · ${t("review.summaryHistoryCount", {n: ctx.analysisHistoryCount})}` : ""}</span><span><button class="lc-checkin__text-button" type="button" data-action="generate-summary" aria-label="${t("review.agentRefreshAria")}" ${ctx.summaryRefreshing ? "disabled aria-busy=\"true\"" : ""}>${ctx.summaryRefreshing ? t("review.agentRefreshing") : t("review.agentGenerate")}</button>${ctx.analysisHistoryCount && ctx.analysisHistoryCount > 1 ? `<button class="lc-checkin__text-button" type="button" data-action="view-analysis-history">${t("agent.historyTitle")}</button>` : ""}</span></div>`
-        : `<div class="lc-checkin__summary-agent is-unavailable" role="note"><span>${t("review.agentUnavailable")}</span></div>`;
-    const localSummaryText = ctx.summaryText ? "" : buildLocalSummaryText(summary);
-    const generated = ctx.summaryText
-        ? `<div class="lc-checkin__summary-text" data-summary-source="agent"><small>${t("review.agentMeta", {date: escapeHtml(summary.endDate)})}</small><div>${escapeHtml(ctx.summaryText)}</div></div>`
-        : `<div class="lc-checkin__summary-text is-local" data-summary-source="local"><small>${t("review.localMeta")}</small><div>${escapeHtml(localSummaryText)}</div></div>`;
-    const suggestionPanel = ctx.suggestionWorkflow ? renderSuggestionWorkflowPanel(ctx.suggestionWorkflow) : "";
-
-        return `<div class="lc-checkin__review-guidance-disclosure">${summaryGuidance}${attentionSummaryItem && hasPeriodRecords ? `<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item-id="${escapeHtml(attentionSummaryItem.itemId)}" data-suggestion-item="${escapeHtml(attentionSummaryItem.name)}" data-suggestion-rate="${attentionSummaryItem.completionRate}">${t("review.heroPreview")}</button></div>` : ""}</div>${generated}${suggestionPanel}${providerButton}`;
+        const capability = ctx.agentCapability;
+        const agentStatus = capability?.state === "registered" ? t("review.assistantRegistered", {n: capability.count})
+            : t(capability?.state === "failed" ? "review.assistantFailed" : capability?.state === "pending" ? "review.assistantPending" : "review.assistantUnsupported");
+        const providerStatus = ctx.summaryProvidersCount ? (ctx.summaryProviderNames?.join("、") || t("review.assistantProviderConnected", {n: ctx.summaryProvidersCount})) : t("review.assistantNoProvider");
+        const goal = ctx.reviewAssistantGoal || "summary";
+        const prompt = buildReviewPrompt(summary, goal);
+        const providerButton = ctx.summaryProvidersCount ? `<button class="lc-checkin__text-button" type="button" data-action="generate-summary" ${ctx.summaryRefreshing ? "disabled aria-busy=\"true\"" : ""}>${ctx.summaryRefreshing ? t("review.agentRefreshing") : t("review.assistantGenerate")}</button>` : "";
+        const assistant = `<section class="review-assistant" aria-label="${t("review.assistantTitle")}" data-summary-refresh-state="${ctx.summaryRefreshing ? "loading" : ctx.summaryError ? "error" : "idle"}">
+            <header><h3>${t("review.assistantTitle")}</h3><span>${escapeHtml(t("review.assistantScope", {start: summary.startDate, end: summary.endDate}))}</span></header>
+            <div class="review-assistant-status"><div><strong>${t("review.assistantSiYuan")}</strong><span>${escapeHtml(agentStatus)}</span></div><div><strong>${t("review.assistantProvider")}</strong><span>${escapeHtml(providerStatus)}</span>${providerButton}</div></div>
+            <label>${t("review.assistantGoal")}<select data-review-assistant-goal>${(["summary", "patterns", "plan"] as const).map(value => `<option value="${value}" ${goal === value ? "selected" : ""}>${t(`review.assistantGoal.${value}`)}</option>`).join("")}</select></label>
+            <div class="review-assistant-actions"><button class="lc-checkin__small-button" type="button" data-action="copy-review-prompt">${t("review.assistantCopy")}</button>${ctx.analysisHistoryCount ? `<button class="lc-checkin__text-button" type="button" data-action="view-analysis-history">${t("agent.historyTitle")}</button>` : ""}</div>
+            <p class="review-scope-note">${t("review.assistantHow")}</p>
+            <details class="review-assistant-prompt"><summary>${t("review.assistantPromptPreview")}</summary><textarea readonly rows="7" data-review-assistant-prompt aria-label="${t("review.assistantPromptLabel")}">${escapeHtml(prompt)}</textarea></details>
+            ${ctx.summaryCacheState === "stale" ? `<p class="review-scope-note" data-summary-cache-state="stale">${t("review.assistantStale")}</p>` : ""}
+            ${ctx.summaryError ? `<p class="is-error" role="alert">${escapeHtml(ctx.summaryError)}</p>` : ""}
+        </section>`;
+        const hasGenerated = Boolean(ctx.summaryText) && ctx.summaryCacheState !== "stale";
+        const generatedDate = ctx.analysisLastGeneratedAt ? new Date(ctx.analysisLastGeneratedAt) : undefined;
+        const generatedAt = generatedDate && Number.isFinite(generatedDate.getTime())
+            ? generatedDate.toLocaleString(getPluginLocale(), {year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"}) : summary.endDate;
+        const localSummaryText = hasGenerated ? "" : buildLocalSummaryText({...viewSummary, items: rankedSummaryItems});
+        const generated = hasGenerated
+            ? `<div class="lc-checkin__summary-text" data-summary-source="agent"><small>${escapeHtml(t("review.assistantGenerated", {date: generatedAt}))}</small><div>${escapeHtml(ctx.summaryText || "")}</div></div>`
+            : `<div class="lc-checkin__summary-text is-local" data-summary-source="local"><small>${t("review.assistantLocal")}</small><div>${escapeHtml(localSummaryText)}</div><small>${t("review.coverageHint")}</small></div>`;
+        const suggestionPanel = ctx.suggestionWorkflow ? renderSuggestionWorkflowPanel(ctx.suggestionWorkflow) : "";
+        return `${assistant}${generated}<div class="lc-checkin__review-guidance-disclosure">${summaryGuidance}${attentionSummaryItem && hasPeriodRecords ? `<div class="lc-checkin__review-hero-actions"><button class="lc-checkin__text-button" type="button" data-action="preview-agent-suggestion" data-suggestion-item-id="${escapeHtml(attentionSummaryItem.itemId)}" data-suggestion-item="${escapeHtml(attentionSummaryItem.name)}" data-suggestion-rate="${attentionSummaryItem.completionRate}">${t("review.heroPreview")}</button></div>` : ""}</div>${suggestionPanel}`;
     };
     const tabs = (["day", "week", "month"] as SummaryRange[]).map((range) => `<button type="button" data-summary-range="${range}" aria-pressed="${!ctx.summaryCustomRange && ctx.summaryRange === range}" class="${!ctx.summaryCustomRange && ctx.summaryRange === range ? "is-selected" : ""}">${range === "day" ? t("review.tabDay") : range === "month" ? t("review.tabMonth") : t("review.tabWeek")}</button>`).join("");
-    const custom = `<details class="lc-checkin__custom-range-disclosure"><summary>${ctx.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>${t("review.customStart")}</span><input type="date" name="customStartDate" value="${escapeHtml(ctx.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">${t("review.customSeparator")}</span><label><span>${t("review.customEnd")}</span><input type="date" name="customEndDate" value="${escapeHtml(ctx.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">${t("review.customApply")}</button></form></details>`;
+    const custom = `<details class="lc-checkin__custom-range-disclosure"><summary>${ctx.summaryCustomRange ? t("review.customOn") : t("review.custom")}</summary><form class="lc-checkin__custom-range" data-custom-range><label><span>${t("review.customStart")}</span><input type="date" name="customStartDate" max="${escapeHtml(ctx.analyticsSnapshot.asOf)}" value="${escapeHtml(ctx.summaryCustomRange?.startDate || summary.startDate)}" required /></label><span class="lc-checkin__custom-range-separator">${t("review.customSeparator")}</span><label><span>${t("review.customEnd")}</span><input type="date" name="customEndDate" max="${escapeHtml(ctx.analyticsSnapshot.asOf)}" value="${escapeHtml(ctx.summaryCustomRange?.endDate || summary.endDate)}" required /></label><button type="submit" class="lc-checkin__text-button">${t("review.customApply")}</button></form></details>`;
     const reportSectionOptions = (["events", "completion", "items", "baseline", "highlights"] as const).map((key) => {
         const labels = {events: "report.optEvents", completion: "report.optCompletion", items: "report.optItems", baseline: "report.optBaseline", highlights: "report.optHighlights"} as const;
         return `<label class="lc-checkin__report-option"><input type="checkbox" data-report-option="${key}" ${ctx.reportSections[key] ? "checked" : ""} /> ${escapeHtml(t(labels[key]))}</label>`;
     }).join("");
-    const reviewTools = `<details class="review-export-disclosure"><summary>${t("review.reportActions")}</summary><div class="lc-checkin__review-tools" role="toolbar" aria-label="${t("review.toolsAria")}"><div class="lc-checkin__review-tool-group" role="group" aria-label="${t("review.reportToolsAria")}"><button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="copy-weekly-report" aria-label="${t("review.copyReportAria")}" title="${t("review.copyReportAria")}">${t("review.copyReport")}</button><button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="export-report" aria-label="${t("review.exportReportAria")}" title="${t("review.exportReportAria")}">${t("review.exportReport")}</button><details class="lc-checkin__review-more lc-checkin__report-settings"><summary aria-label="${t("review.reportSettingsAria")}" title="${t("review.reportSettingsAria")}">${t("review.reportSettings")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu lc-checkin__report-settings-menu" role="group" aria-label="${t("review.reportSettingsAria")}">${reportSectionOptions}</div></details></div><details class="lc-checkin__review-more"><summary aria-label="${t("review.moreToolsAria")}" title="${t("review.moreToolsAria")}">${t("review.moreTools")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu" role="group" aria-label="${t("review.moreToolsAria")}"><button class="lc-checkin__text-button" type="button" data-action="archived" aria-label="${t("review.archivedAria")}">${t("review.archived")}</button><button class="lc-checkin__text-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}">${t("review.exportJson")}</button><button class="lc-checkin__text-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}">${t("review.exportCsv")}</button></div></details></div></details>`;
+    const reviewTools = `<details class="review-export-disclosure"><summary>${t("review.reportActions")}</summary><div class="lc-checkin__review-tools" role="toolbar" aria-label="${t("review.toolsAria")}"><div class="lc-checkin__review-tool-group" role="group" aria-label="${t("review.reportToolsAria")}">${assistantEntry}<button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="copy-weekly-report" aria-label="${t("review.copyReportAria")}" title="${t("review.copyReportAria")}">${t("review.copyReport")}</button><button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="export-report" aria-label="${t("review.exportReportAria")}" title="${t("review.exportReportAria")}">${t("review.exportReport")}</button><details class="lc-checkin__review-more lc-checkin__report-settings"><summary aria-label="${t("review.reportSettingsAria")}" title="${t("review.reportSettingsAria")}">${t("review.reportSettings")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu lc-checkin__report-settings-menu" role="group" aria-label="${t("review.reportSettingsAria")}">${reportSectionOptions}</div></details></div><details class="lc-checkin__review-more"><summary aria-label="${t("review.moreToolsAria")}" title="${t("review.moreToolsAria")}">${t("review.moreTools")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu" role="group" aria-label="${t("review.moreToolsAria")}"><button class="lc-checkin__text-button" type="button" data-action="archived" aria-label="${t("review.archivedAria")}">${t("review.archived")}</button><button class="lc-checkin__text-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}">${t("review.exportJson")}</button><button class="lc-checkin__text-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}">${t("review.exportCsv")}</button></div></details></div></details>`;
 
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
+            ${assistantEntry}
             ${fold("heatmap", t("review.heatmapTitle"), renderHeatmap)}
             ${fold("strength", t("review.foldStrength"), renderStrength)}
             ${fold("balance", t("review.balanceTitle"), renderBalance)}
@@ -395,9 +465,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${fold("reminders", t("review.foldReminders"), renderReminders)}
             ${fold("upcoming", t("review.foldUpcoming"), () => renderUpcomingOccasionsView(ctx.occasionStore))}
           </div>`
-        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${summary.completedItems}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${summary.scheduledItems}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
-            ${summaryHero}<p class="review-scope-note">${t("review.coverageHint")}</p><div class="lc-checkin__review-sections">
+        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
+            ${renderRhythm()}<div class="lc-checkin__review-sections">
             ${fold("projects", `${t("review.foldProjects")} · ${summary.items.length}`, renderProjects)}
+            ${assistantEntry}
             ${fold("compare", t("review.compareTitle"), renderComparison)}
             ${fold("report", t("review.fullReport"), renderReport)}
           </div>`;

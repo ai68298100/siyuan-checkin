@@ -91,6 +91,11 @@ assert.match(overview, /data-review-workspace-panel="overview"/);
 assert.match(overview, /data-review-fold="projects" open/);
 assert.equal(projectIds(overview).length, 8, "overview bounds its initial project list to eight");
 assert.equal(svgCount(overview), 0, "default overview must not produce chart DOM");
+const rhythmDates = (html) => [...html.matchAll(/data-review-rhythm-date="([^"]+)"/g)].map(match => match[1]);
+assert.deepEqual(rhythmDates(overview), ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20"]);
+assert.equal(rhythmDates(render({summaryCustomRange: {startDate: "2026-08-01", endDate: "2026-09-30"}})).length, 14,
+    "overview rhythm clips long periods to the latest fourteen elapsed days");
+assert.match(overview, /data-action="review-assistant"/, "overview provides a direct assistant entry without eagerly rendering its report");
 assert.doesNotMatch(overview, /lc-checkin__calendar-day|lc-checkin__history-event-main|lc-checkin__yearheatmap-cell|lc-checkin__strength-overview|lc-checkin__achievement-grid|lc-checkin__reminder-row/,
     "other workspaces and heavy closed sections must be absent, not just hidden");
 assert.ok(Object.values(calls).every(value => value === 0), `default overview must not compute secondary analyses: ${JSON.stringify(calls)}`);
@@ -104,6 +109,69 @@ assert.deepEqual(projectIds(render({reviewProjectPage: 99})), projectSecond, "st
 const expectedNameOrder = [...store.items].sort((a, b) => a.name.localeCompare(b.name, getPluginLocale())).map(item => item.id);
 assert.deepEqual(projectIds(render({reviewProjectOrder: "name"})), expectedNameOrder.slice(0, 8));
 
+const quotaItem = {...store.items[0], id: "volume-quota", name: "饮水周目标", unit: "ml", schedule: {type: "quota", quota: {period: "week", amount: 1000, countMode: "value"}}};
+const quotaStore = {...store, items: [quotaItem], events: [{...event("quota-volume", "19"), itemId: quotaItem.id, value: 1250, unit: "ml"}]};
+const quotaOverview = render({store: quotaStore});
+assert.match(quotaOverview, /data-review-project-mode="currentQuota"/);
+assert.match(quotaOverview, /class="review-project-rate">100%/);
+assert.match(quotaOverview, /width: 100%/);
+assert.ok(quotaOverview.includes(t("review.projectProgress", {done: "1250", total: "1000", unit: "ml"})), "quota rows show actual progress and custom units, including overachievement");
+assert.equal(rhythmDates(quotaOverview).length, 0, "quota-only stores do not invent daily completion bars");
+assert.ok(quotaOverview.includes(t("review.rhythmEmpty")));
+const quotaTodayOverview = render({store: quotaStore, summaryRange: "day", summaryCustomRange: undefined});
+const quotaTodayRow = quotaTodayOverview.match(/<button[^>]*data-review-insights-id="volume-quota"[\s\S]*?<\/button>/)?.[0];
+const quotaWeekRow = quotaOverview.match(/<button[^>]*data-review-insights-id="volume-quota"[\s\S]*?<\/button>/)?.[0];
+assert.ok(quotaTodayRow.includes(t("review.projectProgress", {done: "0", total: "1000", unit: "ml"})),
+    "today's quota contribution excludes yesterday's 1250 ml without silently changing public summary scope");
+assert.ok(quotaWeekRow.includes(t("review.projectProgress", {done: "1250", total: "1000", unit: "ml"})),
+    "weekly scope includes the same quota's earlier contribution");
+for (const row of [quotaTodayRow, quotaWeekRow]) {
+    assert.ok(row.includes(t("review.projectCurrentQuota")), "partial progress is explicitly labelled as contribution within the selected range");
+    assert.ok(row.includes(t("review.projectQuotaRange", {start: "2026-09-14", end: "2026-09-20"})),
+        "day and week views identify the same full quota period");
+}
+const quotaCompare = render({store: quotaStore, reviewFoldTouched: true, reviewFoldSections: new Set(["compare"])});
+const quotaCompareRow = quotaCompare.match(/<div class="lc-checkin__compare-item is-flat is-uncomparable"[\s\S]*?<\/div>/)?.[0];
+assert.ok(quotaCompareRow, "opening comparison carries quota metadata into the presentation renderer");
+assert.ok(quotaCompareRow.includes(t("review.compareQuotaRate")));
+assert.ok(quotaCompareRow.includes(`${t("review.compareCurrentLabel")} 1 / ${t("review.compareBaselineLabel")} 0 ${t("review.statEvents")}`));
+assert.doesNotMatch(quotaCompareRow, /%|pp|<em|lc-checkin__compare-item-bar/, "real overview comparison does not invent a daily rate for quota projects");
+// A historical custom range uses its end-date revision for both quota kind
+// and unit. Today's changed settings must not relabel old ml totals as days.
+for (const scenario of [
+    {name: "value quota changed unit", oldMode: "value", oldAmount: 1000, newMode: "value", newAmount: 2, done: "750", total: "1000", unit: "ml"},
+    {name: "value quota became date quota", oldMode: "value", oldAmount: 1000, newMode: "dates", newAmount: 3, done: "750", total: "1000", unit: "ml"},
+    {name: "date quota became value quota", oldMode: "dates", oldAmount: 3, newMode: "value", newAmount: 2, done: "2", total: "3", unit: t("common.days")},
+]) {
+    const scheduleFor = (mode, amount) => ({type: "quota", quota: {period: "week", amount, countMode: mode}});
+    const revisedItem = {...quotaItem, name: scenario.name, unit: "杯", schedule: scheduleFor(scenario.newMode, scenario.newAmount), revisions: [
+        {effectiveDate: "2026-08-01", kind: "quantity", target: 1000, unit: "ml", schedule: scheduleFor(scenario.oldMode, scenario.oldAmount)},
+        {effectiveDate: "2026-09-14", kind: "quantity", target: 2, unit: "杯", schedule: scheduleFor(scenario.newMode, scenario.newAmount)},
+    ]};
+    const revisedEvents = [
+        {...event("historical-ml-1", "10"), itemId: revisedItem.id, value: 500, unit: "ml"},
+        {...event("historical-ml-2", "11"), itemId: revisedItem.id, value: 250, unit: "ml"},
+    ];
+    const html = render({store: {...store, items: [revisedItem], events: revisedEvents}, summaryCustomRange: {startDate: "2026-09-07", endDate: "2026-09-13"}});
+    const row = html.match(/<button[^>]*data-review-insights-id="volume-quota"[\s\S]*?<\/button>/)?.[0];
+    assert.ok(row, `${scenario.name}: historical quota remains visible`);
+    assert.match(row, /data-review-project-mode="currentQuota"/);
+    assert.ok(row.includes(t("review.projectProgress", scenario)), `${scenario.name}: displayed ratio uses its historical count mode and unit`);
+    assert.ok(!row.includes("杯"), `${scenario.name}: today's unit cannot leak into historical progress`);
+}
+const unscheduled = {...quotaItem, id: "unscheduled", schedule: {type: "weekly", weekdays: []}};
+const unscheduledOverview = render({store: {...store, items: [unscheduled], events: [{...event("off-day-record", "19"), itemId: unscheduled.id}]}});
+assert.match(unscheduledOverview, /data-review-project-mode="noSchedule"/);
+assert.doesNotMatch(unscheduledOverview, /class="review-project-rate"/, "recorded off-day activity is neutral instead of displaying 0% failure");
+const archivedItem = {...store.items[0], name: '历史项目 <script>name</script>', archived: true, archivePeriods: [{startDate: "2026-09-19"}]};
+const archivedOverview = render({store: {...store, items: [archivedItem]}});
+assert.equal(projectIds(archivedOverview).length, 1, "historically scheduled archived projects remain represented");
+assert.ok(archivedOverview.includes("&lt;script&gt;name&lt;/script&gt;"));
+assert.doesNotMatch(archivedOverview, /<script>/);
+const atMostOverview = render({store: {...store, items: [{...store.items[0], id: "quit", kind: "binary", target: 1, direction: "atMost"}], events: []}});
+assert.equal((atMostOverview.match(/class="is-complete" data-review-rhythm-date=/g) || []).length, 7,
+    "successful at-most days remain visible without check-in events");
+
 resetCalls();
 const analysis = render({reviewWorkspace: "analysis"});
 assert.equal(svgCount(analysis), 1, "analysis starts with one selected trend chart");
@@ -114,11 +182,20 @@ for (const name of ["buildYearHeatmap", "buildAchievements", "collectHabitScoreD
 }
 assert.match(analysis, /data-review-fold="trend" open/);
 assert.doesNotMatch(analysis, /data-review-insights-id=|data-history-event-id=/);
+assert.equal(rhythmDates(analysis).length, 0, "analysis does not render the overview rhythm");
 for (const reviewTrend of ["weekly", "monthly", "daily", "yearly"]) {
     const html = render({reviewWorkspace: "analysis", reviewTrend});
     assert.equal(svgCount(html), 1, `${reviewTrend} replaces the active chart without generating other series`);
     assert.match(html, new RegExp(`<option value="${reviewTrend}" selected>`));
     assert.ok(html.includes(snapshot[reviewTrend].title));
+    const dataTable = html.match(/<details class="review-chart-data">[\s\S]*?<\/details>/)?.[0];
+    assert.ok(dataTable, `${reviewTrend} offers the chart's exact values as a readable table`);
+    assert.ok(dataTable.includes(`<caption>${snapshot[reviewTrend].title}</caption>`));
+    assert.ok(dataTable.includes(`(${snapshot[reviewTrend].unit})`));
+    assert.equal((dataTable.match(/<th scope="row">/g) || []).length, snapshot[reviewTrend].points.length);
+    for (const point of snapshot[reviewTrend].points) {
+        assert.ok(dataTable.includes(`<th scope="row">${point.label}</th><td>${point.value}</td>`), "table values and labels must match the selected series exactly");
+    }
 }
 
 resetCalls();
@@ -171,6 +248,7 @@ const sortedEvents = (events, order = "newest") => [...events].sort((a, b) => (o
 const records = (overrides = {}) => render({reviewWorkspace: "records", historyScope: "period", ...overrides});
 resetCalls();
 const firstPage = records();
+assert.equal(rhythmDates(firstPage).length, 0, "record browsing does not calculate or render the overview rhythm");
 assert.deepEqual(recordIds(firstPage), sortedEvents(periodEvents).slice(0, 30).map(entry => entry.id));
 assert.doesNotMatch(firstPage, /data-history-date=|data-review-fold=/, "period records exclude the day calendar and analytical folds");
 assert.ok(Object.values(calls).every(value => value === 0), "record browsing must not calculate secondary analyses");
@@ -247,6 +325,18 @@ const timezoneRow = timezoneRecords.match(/class="lc-checkin__history-event-main
 assert.ok(timezoneRow?.includes("2026/09/19 07:30"), "stored calendar day remains 19 September even when the local clock reads 20 September");
 assert.ok(!timezoneRow?.includes("2026/09/20"));
 
+const interleavedEvents = [
+    {...event("run-a", "19"), occurredAt: "2026-09-20T02:00:00.000Z"},
+    {...event("run-b", "20"), occurredAt: "2026-09-20T01:00:00.000Z"},
+    {...event("run-c", "19"), occurredAt: "2026-09-19T23:00:00.000Z"},
+];
+const interleaved = records({store: {...store, events: interleavedEvents}});
+assert.deepEqual(recordIds(interleaved), ["run-a", "run-b", "run-c"], "date headings cannot regroup or reorder timestamp-sorted records");
+assert.deepEqual([...interleaved.matchAll(/<h3 class="review-record-day"><time datetime="([^"]+)"/g)].map(match => match[1]), ["2026-09-19", "2026-09-20", "2026-09-19"]);
+assert.equal((interleaved.match(/<h3 class="review-record-day">/g) || []).length, 3);
+assert.equal((day.match(/<h3 class="review-record-day">/g) || []).length, 0, "day mode avoids redundant date headings");
+assert.equal(recordIds(firstPage).length, 30, "date headings never consume the thirty-record page budget");
+
 const reminders = render({reviewWorkspace: "analysis", reviewFoldTouched: true, reviewFoldSections: new Set(["reminders"])});
 assert.match(reminders, /<article[^>]*data-reminder-id="checkin:item-0:2026-09-20"/);
 assert.match(reminders, /<article[^>]*data-reminder-id="checkin:item-1:2026-09-20"/,
@@ -256,6 +346,50 @@ assert.match(report, /data-summary-refresh-state="loading"/);
 assert.match(report, /data-action="generate-summary"[^>]*disabled aria-busy="true"/);
 assert.match(report, /data-summary-source="local"/);
 assert.doesNotMatch(overview, /data-action="generate-summary"|data-summary-source=/, "report generation controls appear only inside the requested report");
+const reportContext = {reviewFoldTouched: true, reviewFoldSections: new Set(["report"])};
+const emptyPositiveReport = render({...reportContext, store: {...store, events: []}});
+assert.ok(emptyPositiveReport.includes(t("review.localHeadlineEmpty")), "ordinary goals without records remain an empty local summary");
+assert.doesNotMatch(emptyPositiveReport, /class="lc-checkin__review-guidance"|data-action="preview-agent-suggestion"/,
+    "empty ordinary goals cannot produce best/priority guidance or an executable preview");
+for (const item of store.items) assert.ok(!emptyPositiveReport.includes(t("review.localTop", {name: item.name, rate: 0, events: 0})),
+    "an unrecorded ordinary goal must not be presented as a best performer");
+const avoidanceItem = {...store.items[0], id: "avoidance", name: "Avoidance goal", kind: "binary", direction: "atMost", target: 1};
+const avoidanceReport = render({...reportContext, store: {...store, items: [avoidanceItem], events: []}});
+assert.ok(avoidanceReport.includes(t("review.localBody", {done: 1, scheduled: 1, rate: 100, events: 0})),
+    "absence of lapse records can truthfully represent a completed avoidance goal");
+assert.ok(avoidanceReport.includes(t("review.localTop", {name: avoidanceItem.name, rate: 100, events: 0})),
+    "a genuinely completed avoidance goal may appear in the local performance summary without records");
+assert.ok(!avoidanceReport.includes(t("review.localHeadlineEmpty")));
+const registeredWithoutProvider = render({...reportContext, agentCapability: {state: "registered", count: 7}});
+assert.ok(registeredWithoutProvider.includes(t("review.assistantRegistered", {n: 7})));
+assert.ok(registeredWithoutProvider.includes(t("review.assistantNoProvider")), "host capability registration is independent of summary-provider availability");
+assert.match(registeredWithoutProvider, /data-action="copy-review-prompt"/);
+assert.match(registeredWithoutProvider, /data-review-assistant-goal/);
+assert.match(registeredWithoutProvider, /textarea readonly[^>]*data-review-assistant-prompt/);
+assert.doesNotMatch(registeredWithoutProvider, /data-action="generate-summary"/);
+const planReport = render({...reportContext, reviewAssistantGoal: "plan"});
+assert.match(planReport, /<option value="plan" selected>/);
+assert.ok(planReport.includes(t("review.assistantPrompt.plan")));
+const promptText = planReport.match(/data-review-assistant-prompt[^>]*>([\s\S]*?)<\/textarea>/)?.[1];
+assert.ok(promptText.includes("2026-09-14") && promptText.includes("2026-09-20"));
+assert.ok(!promptText.includes("needle"), "prompt handoff contains scope instructions without copying private record notes");
+const providerWithoutRegistration = render({...reportContext, agentCapability: {state: "unsupported", count: 0}, summaryProvidersCount: 1, summaryProviderNames: ['Adapter <script>name</script>']});
+assert.match(providerWithoutRegistration, /data-action="generate-summary"/);
+assert.ok(providerWithoutRegistration.includes("Adapter &lt;script&gt;name&lt;/script&gt;"));
+assert.ok(providerWithoutRegistration.includes(t("review.assistantUnsupported")));
+const staleReport = render({...reportContext, summaryText: "STALE_PRIVATE_RESULT", summaryCacheState: "stale"});
+assert.match(staleReport, /data-summary-cache-state="stale"/);
+assert.match(staleReport, /data-summary-source="local"/);
+assert.doesNotMatch(staleReport, /STALE_PRIVATE_RESULT|data-summary-source="agent"/, "outdated analysis cannot masquerade as a current report");
+const currentReport = render({...reportContext, summaryText: "CURRENT_RESULT", summaryCacheState: "current", analysisLastGeneratedAt: "2026-09-20T12:00:00.000Z"});
+assert.match(currentReport, /data-summary-source="agent"/);
+assert.ok(currentReport.includes("CURRENT_RESULT") && currentReport.includes("2026/09/20 20:00"),
+    "generated analysis displays a readable local date and time in the active language");
+assert.ok(!currentReport.includes("2026-09-20T12:00:00.000Z"), "machine timestamps do not clutter the visible report metadata");
+const failedReport = render({...reportContext, summaryError: '<img src=x onerror="boom">'});
+assert.match(failedReport, /data-summary-refresh-state="error"/);
+assert.match(failedReport, /role="alert">&lt;img/);
+assert.doesNotMatch(failedReport, /<img src=x/);
 
 // Guard the actual render path against reintroducing eager historical feeds.
 // Prepare the shared analytics snapshot outside the renderer timing boundary.
@@ -274,7 +408,8 @@ const largeOverview = render({store: largeStore, analyticsSnapshot: largeSnapsho
 const largeElapsed = performance.now() - largeStarted;
 assert.equal(projectIds(largeOverview).length, 8);
 assert.equal(svgCount(largeOverview), 0);
-assert.ok(Buffer.byteLength(largeOverview) < 20000, "100k histories cannot inflate the default overview markup beyond 20 KB");
+assert.ok(rhythmDates(largeOverview).length <= 14);
+assert.ok(Buffer.byteLength(largeOverview) < 25000, "100k histories cannot inflate the bounded overview markup beyond 25 KB");
 assert.ok(Object.values(calls).every(value => value === 0), "100k default rendering must not activate any secondary analyses");
 assert.ok(largeElapsed < 5000, `100k HTML rendering exceeded the 5s regression budget: ${largeElapsed.toFixed(1)}ms`);
 const largeRecords = records({store: largeStore, analyticsSnapshot: largeSnapshot, summaryCustomRange: {startDate: "2026-06-01", endDate: "2026-09-20"}});

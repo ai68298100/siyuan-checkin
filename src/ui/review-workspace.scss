@@ -173,6 +173,130 @@
         line-height: 1.6;
     }
 
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero.review-rhythm {
+        display: grid;
+        gap: 10px;
+        min-height: 0;
+        padding: 12px 14px;
+        border: 1px solid var(--lc-checkin-border);
+        background: var(--lc-checkin-surface);
+        box-shadow: none;
+    }
+
+    .review-rhythm-heading {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 12px;
+        min-width: 0;
+    }
+
+    [data-review-workspace-panel="overview"] .review-rhythm-heading h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    .review-rhythm-heading > span,
+    .review-rhythm-help {
+        margin: 0;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    /* Preserve full touch targets in a local strip on narrow hosts. The
+       renderer opens the strip at the latest day; the page never overflows. */
+    .review-rhythm-days {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(44px, 1fr);
+        gap: 5px;
+        min-width: 0;
+        max-width: 100%;
+        padding: 2px 2px 6px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--lc-checkin-border) transparent;
+        scroll-snap-type: x proximity;
+    }
+
+    .review-rhythm-days::-webkit-scrollbar { height: 5px; }
+    .review-rhythm-days::-webkit-scrollbar-thumb {
+        border-radius: 5px;
+        background: var(--lc-checkin-border);
+    }
+
+    .review-rhythm-days > button {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+        min-width: 44px;
+        min-height: 82px;
+        padding: 6px 3px;
+        box-sizing: border-box;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: var(--lc-checkin-text);
+        background: var(--lc-checkin-muted-surface);
+        font: inherit;
+        text-align: center;
+        scroll-snap-align: end;
+        cursor: pointer;
+    }
+
+    .review-rhythm-days > button:hover {
+        border-color: var(--lc-checkin-accent);
+        background: var(--lc-checkin-accent-soft);
+    }
+
+    .review-rhythm-days > button:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 0;
+    }
+
+    .review-rhythm-days :is(time, small) {
+        min-width: 0;
+        font-size: 12px;
+        line-height: 1.3;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
+
+    .review-rhythm-days small { color: var(--lc-checkin-muted); }
+
+    .review-rhythm-days button > i {
+        display: flex;
+        align-items: flex-end;
+        width: 16px;
+        height: 28px;
+        overflow: hidden;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--lc-checkin-accent) 22%, var(--lc-checkin-surface));
+    }
+
+    .review-rhythm-days button > i > b {
+        display: block;
+        width: 100%;
+        max-height: 100%;
+        border-radius: inherit;
+        background: var(--lc-checkin-accent-fill);
+    }
+
+    .review-rhythm-days .is-complete > i > b { background: var(--lc-checkin-success); }
+    .review-rhythm-days .is-complete small { color: var(--lc-checkin-success-text); }
+    .review-rhythm-days :is(.is-skipped, .is-rest) > i {
+        border: 1px dashed var(--lc-checkin-border);
+        box-sizing: border-box;
+        background: transparent;
+    }
+
+    .review-rhythm-days :is(.is-skipped, .is-rest) > i > b { display: none; }
+
     [data-review-workspace-panel="overview"] .lc-checkin__review-guidance-disclosure {
         margin-top: 4px;
     }
@@ -188,8 +312,35 @@
         min-width: 0;
     }
 
-    [data-review-workspace-panel="overview"] .lc-checkin__review-project-list {
+    [data-review-workspace-panel="overview"] .lc-checkin__review-projects {
+        margin-top: 8px;
+    }
+
+    [data-review-workspace-panel] .lc-checkin__review-project-list {
+        min-width: 0;
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    [data-review-workspace-panel] .lc-checkin__review-item {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .review-project-rate {
+        display: inline-block;
+        margin-inline-end: 5px;
+        color: var(--lc-checkin-accent-text);
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    .review-project-kind {
+        display: block;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.5;
     }
 
     [data-review-workspace-panel] .lc-checkin__review-sections {
@@ -227,6 +378,20 @@
         padding: 12px 0;
     }
 
+    .lc-checkin__compare-item.is-uncomparable > .lc-checkin__compare-item-counts {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        color: var(--lc-checkin-text);
+        text-align: left;
+    }
+
+    .lc-checkin__compare-item.is-uncomparable > .lc-checkin__compare-item-note {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        color: var(--lc-checkin-muted);
+        text-align: left;
+    }
+
     [data-review-fold="report"] div.lc-checkin__review-guidance-disclosure > * {
         display: block;
     }
@@ -242,6 +407,185 @@
         width: 100%;
         box-sizing: border-box;
     }
+
+    .review-assistant {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--lc-checkin-border);
+    }
+
+    .review-assistant > header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 10px;
+    }
+
+    .review-assistant > header > :is(h2, h3, strong) {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .review-assistant > header > :is(small, span),
+    .review-assistant-status,
+    .review-assistant > p {
+        margin: 0;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+
+    .review-assistant-status {
+        display: grid;
+        gap: 5px 14px;
+    }
+
+    .review-assistant-status > * {
+        display: grid;
+        align-content: start;
+        gap: 2px;
+        min-width: 0;
+    }
+    .review-assistant-status strong { color: var(--lc-checkin-text); font-size: 12px; }
+    .review-assistant .is-error { color: var(--lc-checkin-danger-text); }
+
+    .review-assistant > label {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 12px;
+        min-width: 0;
+        color: var(--lc-checkin-text);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .review-assistant select {
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        max-width: 100%;
+        padding-inline: 10px;
+        font-size: 13px;
+    }
+
+    .review-assistant-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .review-assistant button,
+    .review-assistant-actions a,
+    button[data-action="review-assistant"] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: auto;
+        height: auto;
+        min-width: 44px;
+        min-height: var(--lc-review-workspace-control);
+        max-width: 100%;
+        margin: 0;
+        padding: 8px 12px;
+        box-sizing: border-box;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 9px;
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        opacity: 1;
+        cursor: pointer;
+    }
+
+    button[data-action="review-assistant"] { justify-self: start; }
+
+    .review-assistant-status button { justify-self: start; margin: 4px 0 0; }
+    .review-assistant [data-action="copy-review-prompt"] {
+        color: var(--lc-checkin-accent-contrast);
+        border-color: var(--lc-checkin-accent-fill);
+        background: var(--lc-checkin-accent-fill);
+    }
+    .review-assistant button:disabled { opacity: .6; cursor: default; }
+
+    .review-assistant button:focus-visible,
+    .review-assistant-actions a:focus-visible,
+    button[data-action="review-assistant"]:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 2px;
+    }
+
+    .review-assistant-prompt,
+    .review-chart-data {
+        min-width: 0;
+        border-top: 1px solid var(--lc-checkin-border);
+    }
+
+    :is(.review-assistant-prompt, .review-chart-data) > summary {
+        min-height: var(--lc-review-workspace-control);
+        align-content: center;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.5;
+        cursor: pointer;
+    }
+
+    :is(.review-assistant-prompt, .review-chart-data) > summary:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 1px;
+        border-radius: 6px;
+    }
+
+    :is(.review-assistant-prompt, .review-chart-data):not([open]) > :not(summary) { display: none; }
+
+    .review-assistant-prompt textarea {
+        width: 100%;
+        min-width: 0;
+        min-height: 180px;
+        max-height: 320px;
+        padding: 10px 12px;
+        box-sizing: border-box;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 9px;
+        color: var(--lc-checkin-text);
+        background: var(--lc-checkin-muted-surface);
+        font: inherit;
+        font-size: 13px;
+        line-height: 1.65;
+        resize: vertical;
+    }
+
+    .review-chart-data { grid-column: 1 / -1; }
+    .review-chart-table { min-width: 0; }
+    .review-chart-table table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        color: var(--lc-checkin-text);
+        font-size: 12px;
+        line-height: 1.5;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .review-chart-table :is(th, td) {
+        padding: 8px;
+        border-bottom: 1px solid var(--lc-checkin-border);
+        text-align: right;
+        overflow-wrap: anywhere;
+    }
+
+    .review-chart-table :is(th, td):first-child { text-align: left; }
+    .review-chart-table th { color: var(--lc-checkin-muted); font-weight: 650; }
 
     .review-project-tools {
         display: flex;
@@ -262,16 +606,9 @@
         font-size: 13px;
     }
 
-    .review-project-tools > :first-child {
-        flex: 1 1 220px;
-    }
-
-    .review-project-tools > :last-child {
-        flex: 0 1 180px;
-    }
-
     .review-project-tools > label {
         display: flex;
+        flex: 0 1 auto;
         align-items: center;
         gap: 8px;
         min-width: 0;
@@ -279,7 +616,7 @@
     }
 
     .review-project-tools > small {
-        flex: 1 1 0;
+        flex: 0 1 55%;
         font-size: 12px;
         text-align: right;
     }
@@ -466,46 +803,8 @@
         color: var(--lc-checkin-accent-text);
     }
 
-    [data-review-workspace-panel="records"] .lc-checkin__history-tools {
-        display: grid;
-        grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
-        gap: 8px;
-        align-items: end;
-        margin: 0;
-        background: var(--lc-checkin-surface);
-    }
-
-    [data-review-workspace-panel="records"] .lc-checkin__history-tools > .lc-checkin__history-search {
-        min-width: 0;
-    }
-
-    [data-review-workspace-panel="records"] .lc-checkin__history-tools :is(input, select) {
-        width: 100%;
-        min-width: 0;
-        min-height: var(--lc-review-workspace-control);
-        box-sizing: border-box;
-        font-size: 13px;
-    }
-
-    [data-review-workspace-panel="records"] .lc-checkin__history-filter-row {
-        display: contents;
-        padding: 0;
-        border: 0;
-        background: transparent;
-    }
-
     [data-review-workspace-panel="records"] .lc-checkin__history-filter-row label {
         min-width: 0;
-    }
-
-    [data-review-workspace-panel="records"] .lc-checkin__review-layout:not(.is-period) .lc-checkin__history-tools {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    [data-review-workspace-panel="records"] .lc-checkin__review-layout:not(.is-period) .lc-checkin__history-filter-row {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
     }
 
     [data-review-workspace-panel="records"] .lc-checkin__history-result {
@@ -514,6 +813,81 @@
         justify-content: space-between;
         gap: 8px;
         min-height: 32px;
+        margin: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-selected {
+        min-width: 0;
+        margin: 0;
+        padding: 10px 14px;
+        border-radius: 14px;
+        box-shadow: none;
+        container: review-records / inline-size;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-events {
+        gap: 0;
+        max-height: none;
+        overflow: visible;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event {
+        grid-template-columns: minmax(0, 1fr) fit-content(35%);
+        align-items: start;
+        margin: 0;
+        padding: 10px 0;
+        border: 0;
+        border-bottom: 1px solid var(--lc-checkin-border);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event:last-child {
+        border-bottom: 0;
+    }
+
+    .review-record-day {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 4px 10px;
+        margin: 6px 0 0;
+        padding: 10px 0 6px;
+        color: var(--lc-checkin-muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .review-record-day:first-child { margin-top: 0; }
+    .review-record-day small { font-size: 12px; font-weight: 400; }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event-main {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event:has(> .lc-checkin__history-thumb) {
+        grid-template-columns: 44px minmax(0, 1fr) fit-content(30%);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-thumb {
+        grid-column: 1;
+        grid-row: 1;
+        width: 44px;
+        height: 44px;
+        margin: 0;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-main {
+        grid-column: 2;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-value {
+        grid-column: 3;
     }
 
     .review-record-tools {
@@ -559,6 +933,10 @@
         background: var(--lc-checkin-surface);
     }
 
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout:not(.is-period) .lc-checkin__history-filter-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .review-record-tools .lc-checkin__history-filter-row select {
         min-width: 0;
         width: 100%;
@@ -594,6 +972,7 @@
 
     [data-review-workspace-panel="analysis"] .lc-checkin__trend-grid {
         width: 100%;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     [data-review-workspace-panel="analysis"] .lc-checkin__trend-card {
@@ -630,8 +1009,53 @@
         min-width: 0;
     }
 
-    [data-review-workspace-panel="analysis"] .lc-checkin__trend-grid {
-        grid-template-columns: minmax(0, 1fr);
+    .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        position: relative;
+        overflow: visible;
+    }
+
+    /* Anchor the date panel to the whole range strip. The custom summary is
+       narrower before a range is applied and cannot bound the panel safely. */
+    .lc-checkin__custom-range-disclosure { position: static; }
+
+    .lc-checkin__range-tabs > button,
+    .lc-checkin__custom-range-disclosure > summary {
+        min-height: var(--lc-review-workspace-control);
+    }
+
+    .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+        gap: 10px;
+        width: min(430px, calc(100cqw - 48px));
+        min-width: 0;
+        max-width: calc(100cqw - 24px);
+        padding: 12px;
+        box-sizing: border-box;
+    }
+
+    .lc-checkin__custom-range label {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .lc-checkin__custom-range input {
+        min-width: 0;
+        width: 100%;
+        min-height: var(--lc-review-workspace-control);
+        font-size: 13px;
+    }
+
+    .lc-checkin__custom-range-separator { display: none; }
+
+    .lc-checkin__custom-range > button {
+        grid-column: 1 / -1;
+        width: 100%;
+        min-width: 44px;
+        min-height: var(--lc-review-workspace-control);
+        margin: 0;
+        font-size: 13px;
     }
 
     .review-export-disclosure {
@@ -786,7 +1210,7 @@
             flex-direction: column;
         }
 
-        .review-project-tools > :is(:first-child, :last-child) { flex: 1 1 auto; width: 100%; }
+        .review-project-tools > :is(label, small) { flex: 0 1 auto; width: 100%; }
         .review-project-tools > small { text-align: left; }
         .review-project-tools > label { flex-wrap: wrap; }
         label.review-project-tools > select { width: 100%; }
@@ -794,19 +1218,79 @@
         .review-record-scopes { width: 100%; }
         .review-record-scopes button { flex: 1 1 0; min-width: 0; min-height: 44px; }
 
-        [data-review-workspace-panel="records"] .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); }
-        [data-review-workspace-panel="records"] .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        [data-review-workspace-panel="records"] .lc-checkin__history-filter-row label { min-width: 0; }
-
         .review-pagination { flex-wrap: wrap; }
 
         .review-record-tools .review-more-filters > .lc-checkin__history-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
         .review-export-disclosure > :not(summary) { max-width: min(76vw, 280px); }
+
+        .review-assistant select { flex: 1 1 180px; }
+        .review-assistant-actions > :is(button, a) { flex: 1 1 auto; }
+    }
+}
+
+@container lc5 (max-width: 399px) {
+    .lc-checkin.lc-checkin--review .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* Follow the actual header on mobile as it scrolls or moves below a host
+   message. A cached viewport coordinate can be stale after returning from
+   a lower review section, leaving a fixed date panel outside the viewport. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--review .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: auto;
+}
+
+/* The day view can have a narrow records rail inside a wide window. Use its
+   own width to place actions beside a record only when there is room. */
+@container review-records (max-width: 599px) {
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="records"] {
+        .lc-checkin__history-event:has(> .lc-checkin__history-thumb) {
+            grid-template-columns: 44px minmax(0, 1fr);
+        }
+        .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-value {
+            grid-column: 2;
+            grid-row: 2;
+            text-align: left;
+        }
+        .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-actions {
+            grid-row: 3;
+        }
+    }
+}
+
+@container review-records (min-width: 600px) {
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="records"] {
+        .lc-checkin__history-event {
+            grid-template-columns: minmax(0, 1fr) fit-content(24%) auto;
+            align-items: center;
+            gap: 8px 16px;
+        }
+        .lc-checkin__history-event-actions { grid-column: 3; grid-row: 1; }
+        .lc-checkin__history-event:has(> .lc-checkin__history-thumb) {
+            grid-template-columns: 44px minmax(0, 1fr) fit-content(24%) auto;
+        }
+        .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-actions {
+            grid-column: 4;
+        }
     }
 }
 
 @container lc5 (min-width: 720px) {
+    /* On wide mobile hosts the range strip sits at the right edge. Keep the
+       date panel inside that edge, matching the desktop alignment. */
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--review .lc-checkin__custom-range-disclosure[open] > .lc-checkin__custom-range {
+        left: auto;
+        right: 0;
+    }
+
+    .lc-checkin.lc-checkin--review .review-assistant-status {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .lc-checkin.lc-checkin--review .lc-checkin__header-actions {
         grid-template-columns: minmax(0, 1fr) auto;
     }

@@ -10,7 +10,8 @@ const stylesSource = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "co
 assert.match(reviewSource, /buildLocalSummaryText/);
 assert.match(reviewSource, /data-summary-source="local"/);
 assert.match(reviewSource, /data-summary-source="agent"/);
-assert.match(reviewSource, /ctx\.summaryText \? /);
+assert.match(reviewSource, /Boolean\(ctx\.summaryText\) && ctx\.summaryCacheState !== "stale"/,
+    "stale generated text must fall back to the current local summary");
 assert.match(i18nSource, /"review\.localMeta"/);
 assert.match(i18nSource, /"review\.localHeadlineHigh"/);
 assert.match(i18nSource, /"review\.localHeadlineEmpty"/);

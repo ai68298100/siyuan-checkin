@@ -89,7 +89,6 @@ assert.match(components, /scroll-padding-bottom: 16px/,
     "dock content must preserve bottom scroll safety space");
 
 /* ---- 真机截图核对修复守门(B-006,2026-09-14) ---- */
-const review = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
 /* 今日操作轨道:窄档 flex-end 溢出向左压正文——主按钮必须可收缩省略,图标钮 26px */
 assert.match(components, /\.lc-checkin--today \.lc-checkin__item-action \{ min-width: 0; max-width: 100%; \}/,
     "today action rail must be allowed to shrink instead of overflowing onto text");
@@ -103,9 +102,10 @@ assert.match(components, /\.lc-checkin__item-topline \.lc-checkin__streak-badge 
 /* 移动端页内标题与顶栏重复:窄档隐藏文字保留按钮 */
 assert.match(components, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile, \.lc-checkin-tab-host:has\(\.lc-checkin__mobile-topbar\)\)[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__title,[\s\S]*?\.lc-checkin__editor-header \.lc-checkin__eyebrow \{ display: none; \}/,
     "duplicate in-page titles must hide only on hosts that provide a mobile topbar");
-/* hero 零记录门控 */
-assert.match(review, /hasPeriodRecords = summary\.totalEvents > 0/, "hero extras must gate on actual records");
-assert.match(review, /topSummaryItem && hasPeriodRecords/, "best item must hide at zero records");
+/* 无记录的正向目标不生成最佳/优先建议；戒除目标无记录仍可能真实达成。
+   语义由实际 renderer fixtures 验证，不绑定已退役的 hero 局部变量名。 */
+assert.match(packageJson.scripts["test:ui"], /review-workspace\.test\.cjs/,
+    "release UI checks must execute empty-positive and achieved-avoidance review fixtures");
 /* 思源移动端悬浮钮避让 */
 assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__list \{ padding-bottom: 64px; \}/,
     "mobile list must reserve bottom space for the host floating button");

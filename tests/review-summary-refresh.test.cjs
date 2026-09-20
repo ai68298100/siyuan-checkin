@@ -18,11 +18,17 @@ assert.match(review, /analyticsSummary\.weeklyCurrent/);
 assert.match(review, /analyticsSummary\.activeDays/);
 assert.match(components, /lc-checkin__analytics-badge/);
 assert.match(review, /review\.agentRefreshing/);
-assert.match(review, /review\.agentRefreshAria/);
+assert.match(review, /review\.assistantGenerate/,
+    "the generation button retains an accessible text name in the assistant panel");
 assert.match(review, /disabled aria-busy/);
-assert.match(review, /review\.summaryCutoff/);
-assert.match(review, /review\.summaryUpdatedAt/);
-assert.match(review, /review\.summaryHistoryCount/);
+assert.match(review, /review\.assistantScope/,
+    "assistant generation exposes the exact statistics period");
+assert.match(review, /review\.assistantGenerated/);
+assert.match(review, /ctx\.analysisLastGeneratedAt/,
+    "generated output retains its timestamp");
+assert.match(review, /ctx\.analysisHistoryCount/);
+assert.match(review, /data-action="view-analysis-history"/,
+    "stored analysis history remains reachable from the assistant panel");
 assert.match(review, /review\.customStart/);
 assert.match(review, /review\.customEnd/);
 assert.match(review, /review\.customSeparator/);
@@ -36,7 +42,7 @@ assert.match(bind, /host\.summaryRefreshing = false/);
 assert.match(navigation, /summaryRefreshing\?: boolean/);
 assert.match(navigation, /host\.summaryRefreshing = false/);
 assert.match(i18n, /"review\.agentRefreshing"/);
-assert.match(i18n, /"review\.agentRefreshAria"/);
-assert.match(i18n, /"review\.summaryCutoff"/);
+assert.match(i18n, /"review\.assistantGenerate"/);
+assert.match(i18n, /"review\.assistantScope"/);
 assert.match(i18n, /"review\.customApply"/);
 console.log("Review summary refresh and cutoff structure checks passed.");

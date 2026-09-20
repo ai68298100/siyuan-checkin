@@ -50,9 +50,11 @@ function compareSummaryChart(comparison: ReviewComparison): string {
     return `<div class="lc-checkin__compare-chart" role="img" aria-label="${escapeHtml(t("review.compareChartAria"))}"><div class="lc-checkin__compare-chart-legend"><span><i class="is-current"></i>${escapeHtml(t("review.compareCurrentLabel"))}</span><span><i class="is-baseline"></i>${escapeHtml(t("review.compareBaselineLabel"))}</span></div>${rows}</div>`;
 }
 
-function sortedCompareItems(items: ReviewComparisonItem[]): ReviewComparisonItem[] {
+function sortedCompareItems(items: ReviewComparisonItem[], nonComparableRateIds: ReadonlySet<string>): ReviewComparisonItem[] {
     return [...items].sort((left, right) => {
-        const rateDiff = Math.abs(right.delta.completionRate) - Math.abs(left.delta.completionRate);
+        const leftRate = nonComparableRateIds.has(left.itemId) ? 0 : left.delta.completionRate;
+        const rightRate = nonComparableRateIds.has(right.itemId) ? 0 : right.delta.completionRate;
+        const rateDiff = Math.abs(rightRate) - Math.abs(leftRate);
         if (rateDiff !== 0) return rateDiff;
         const eventDiff = Math.abs(right.delta.eventCount) - Math.abs(left.delta.eventCount);
         if (eventDiff !== 0) return eventDiff;
@@ -60,7 +62,14 @@ function sortedCompareItems(items: ReviewComparisonItem[]): ReviewComparisonItem
     });
 }
 
-function compareItemRow(entry: ReviewComparisonItem): string {
+function compareItemRow(entry: ReviewComparisonItem, nonComparableRate: boolean): string {
+    if (nonComparableRate) {
+        // A quota period is not a daily schedule. Its public completionRate is
+        // deliberately not projected into a misleading daily percentage here.
+        const hint = t("review.compareQuotaRate");
+        const counts = `${t("review.compareCurrentLabel")} ${formatNumber(entry.current.eventCount)} / ${t("review.compareBaselineLabel")} ${formatNumber(entry.baseline.eventCount)} ${t("review.statEvents")}`;
+        return `<div class="lc-checkin__compare-item is-flat is-uncomparable" title="${escapeHtml(`${entry.name}: ${counts}; ${hint}`)}"><strong>${escapeHtml(entry.name)}</strong><span class="lc-checkin__compare-item-rate" aria-label="${escapeHtml(hint)}">—</span><small class="lc-checkin__compare-item-counts">${escapeHtml(counts)}</small><small class="lc-checkin__compare-item-note">${escapeHtml(hint)}</small></div>`;
+    }
     const rateTone = toneClass(entry.delta.completionRate);
     const aria = t("review.compareItemAria", {name: entry.name, current: formatNumber(entry.current.completionRate), baseline: formatNumber(entry.baseline.completionRate), delta: rateDeltaText(entry.delta.completionRate)});
     const eventDelta = entry.delta.eventCount !== 0 ? `<small>${escapeHtml(`${signedValue(entry.delta.eventCount)} ${t("review.statEvents")}`)}</small>` : "";
@@ -78,15 +87,17 @@ export function renderReviewCompareSection(comparison: ReviewComparison, embedde
     return `<details class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><summary><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__compare-body">${compareSummaryChart(comparison)}${compareStats(comparison)}</div></details>`;
 }
 
-export function renderReviewCompareItems(comparison: ReviewComparison): string {
-    const items = sortedCompareItems(comparison.items);
+export function renderReviewCompareItems(comparison: ReviewComparison, options: {nonComparableRateIds?: ReadonlySet<string>} = {}): string {
+    const nonComparableRateIds = options.nonComparableRateIds || new Set<string>();
+    const items = sortedCompareItems(comparison.items, nonComparableRateIds);
+    const renderRow = (entry: ReviewComparisonItem): string => compareItemRow(entry, nonComparableRateIds.has(entry.itemId));
     const batchSize = 8;
-    const first = items.slice(0, batchSize).map(compareItemRow).join("");
+    const first = items.slice(0, batchSize).map(renderRow).join("");
     const batches: string[] = [];
     for (let start = batchSize; start < items.length; start += batchSize) {
         const batch = items.slice(start, start + batchSize);
         const remaining = items.length - start;
-        batches.push(`<details class="lc-checkin__compare-item-batch"><summary>${escapeHtml(t("review.compareMoreItems", {n: batch.length, remaining}))}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div>${batch.map(compareItemRow).join("")}</div></details>`);
+        batches.push(`<details class="lc-checkin__compare-item-batch"><summary>${escapeHtml(t("review.compareMoreItems", {n: batch.length, remaining}))}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div>${batch.map(renderRow).join("")}</div></details>`);
     }
     return first + batches.join("");
 }

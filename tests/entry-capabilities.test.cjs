@@ -24,7 +24,8 @@ assert.match(apiSource, /summarizeCustom: \(range, providerId\) => summarizeWith
 assert.match(apiSource, /getAnalyticsSnapshot: \(asOf = currentCalendarDate\(\)\)/);
 assert.match(apiSource, /getAnalyticsSummary: \(asOf = currentCalendarDate\(\)\)/);
 assert.match(source, /customRange \? buildCustomSummaryContext/);
-assert.match(source, /getEventsInCustomRange\(this\.store, customRange\)/);
+// Provider request range and copy isolation are exercised below against the
+// actual generateSummary method, independent of its chosen range helper.
 assert.match(source, /const SUMMARY_TIMEOUT_MS = 30000/);
 assert.match(source, /withTimeout\(provider\.summarize\([\s\S]*SUMMARY_TIMEOUT_MS, "总结适配器响应超时"/);
 assert.match(sharedSource, /export function withTimeout<T>\(promise: Promise<T>, timeoutMs: number, message: string\)/);
@@ -51,3 +52,4 @@ assert.match(agentSource, /buildCoachingSuggestions\(report\)/);
 assert.match(agentSource, /suggestions,/);
 assert.match(agentSource, /自定义日期范围无效，请使用 YYYY-MM-DD/);
 console.log("Entry capability structure checks passed.");
+require("./review-assistant.test.cjs");

@@ -7,7 +7,7 @@ import "./ui/maintenance-responsive.scss";
 import "./ui/interaction-states.scss";
 import "./ui/review-detail.scss";
 import "./ui/review-workspace.scss";
-import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
+import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, t} from "./i18n";
@@ -17,8 +17,9 @@ import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, f
 import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
+import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
+import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -51,7 +52,7 @@ import {bindSettingsNavigationFor} from "./render/settings-navigation";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
-import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
+import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, appendAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./features/templates";
@@ -339,6 +340,7 @@ export default class CheckinPlugin extends Plugin {
     private reviewProjectOrder: "attention" | "name" = "attention";
     private reviewTrend: "weekly" | "monthly" | "daily" | "yearly" = "weekly";
     private reviewStrengthItemId = "";
+    private reviewAssistantGoal: ReviewAssistantGoal = "summary";
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
     /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
@@ -462,7 +464,10 @@ export default class CheckinPlugin extends Plugin {
     private summaryText?: string;
     private suggestionWorkflow?: SuggestionWorkflowState;
     private summaryRefreshing = false;
+    private summaryError?: string;
+    private summaryErrorScope?: string;
     private analysisHistory: AgentAnalysisSnapshot[] = [];
+    private analysisHistorySaveQueue: Promise<void> = Promise.resolve();
     private storageReady = false;
     private activeFocusAdapter?: FocusAdapter;
     private focusBusy = false;
@@ -654,7 +659,9 @@ export default class CheckinPlugin extends Plugin {
                 this.suggestionWorkflow = restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow) ? restoredWorkflow : undefined;
                 const audit = await this.loadData(AUDIT_STORAGE_NAME);
                 this.analysisHistory = await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY);
-                this.summaryText = this.analysisHistory[this.analysisHistory.length - 1]?.text;
+                // Historical text is selected by exact period and input digest
+                // when Review renders; the last saved entry may be unrelated.
+                this.summaryText = undefined;
                 this.auditEntries = normalizeStoreAudit(audit);
                 this.snapshotHistory = readStoreSnapshotHistory(storedSnapshots);
                 this.occasionStore = occasions;
@@ -2311,6 +2318,15 @@ export default class CheckinPlugin extends Plugin {
 
     /* 方法体外置于 render/review.ts（T-022）。 */
     private renderReview(analyticsSnapshot: AnalyticsSnapshot): string {
+        const asOf = calendarDateFromKey(analyticsSnapshot.asOf);
+        const context = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange, asOf) : buildSummaryContext(this.store, this.summaryRange, asOf);
+        const reportVisible = this.reviewWorkspace === "overview" && this.reviewFoldSections.has("report");
+        const hasMatchingScope = reportVisible && this.analysisHistory.some(entry => entry.source === "agent"
+            && entry.startDate === context.startDate && entry.endDate === context.endDate && Boolean(entry.contextKey));
+        const analysis: ReturnType<typeof selectReviewAnalysis> = hasMatchingScope
+            ? selectReviewAnalysis(this.analysisHistory, context, buildReviewAnalysisKey(this.store, context))
+            : {state: this.analysisHistory.length ? "stale" : "none"};
+        const scope = `${context.startDate}/${context.endDate}`;
         return renderReviewView({
             store: this.store,
             occasionStore: this.occasionStore,
@@ -2328,16 +2344,22 @@ export default class CheckinPlugin extends Plugin {
             reviewProjectOrder: this.reviewProjectOrder,
             reviewTrend: this.reviewTrend,
             reviewStrengthItemId: this.reviewStrengthItemId,
+            reviewAssistantGoal: this.reviewAssistantGoal,
             heatmapYearOffset: this.heatmapYearOffset,
             reviewFoldSections: this.reviewFoldSections,
             reviewFoldTouched: this.reviewFoldTouched,
             summaryRange: this.summaryRange,
             summaryCustomRange: this.summaryCustomRange,
-            summaryText: this.summaryText,
+            summaryContext: context,
+            summaryText: analysis.snapshot?.text,
+            summaryCacheState: analysis.state,
+            summaryError: this.summaryErrorScope === scope ? this.summaryError : undefined,
+            agentCapability: {state: this.agentCapabilityState, count: this.agentCapabilityIds.length, error: this.agentCapabilityError},
+            summaryProviderNames: [...this.summaryProviders.values()].map(provider => typeof provider.name === "string" ? provider.name.slice(0, 200) : provider.id),
             reportSections: this.reportSections,
             suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
-            analysisLastGeneratedAt: this.analysisHistory.length ? this.analysisHistory[this.analysisHistory.length - 1].generatedAt : undefined,
+            analysisLastGeneratedAt: analysis.snapshot?.generatedAt,
             analysisHistoryCount: this.analysisHistory.length,
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
@@ -2754,18 +2776,29 @@ export default class CheckinPlugin extends Plugin {
         const requestId = ++this.summaryRequestId;
         const now = currentCalendarDate();
         const context = customRange ? buildCustomSummaryContext(this.store, customRange, now) : buildSummaryContext(this.store, range, now);
+        const contextKey = buildReviewAnalysisKey(this.store, context);
+        const scope = `${context.startDate}/${context.endDate}`;
         const summaryItemIds = new Set(context.items.map((item) => item.itemId));
+        const end = calendarDateFromKey(context.endDate);
+        end.setDate(end.getDate() + 1);
+        const requestEvents = getEventsInDateRange(this.store, context.startDate, dateKey(end))
+            .filter(event => summaryItemIds.has(event.itemId)).map(event => ({...event}));
+        this.summaryError = undefined;
+        this.summaryErrorScope = scope;
         this.summaryRefreshing = true;
         this.render();
         try {
             const summaryText = await withTimeout(provider.summarize({
                 range,
-                ...(customRange ? {customRange} : {}),
+                ...(customRange ? {customRange: {...customRange}} : {}),
                 items: this.store.items.filter((item) => summaryItemIds.has(item.id)).map((item) => this.cloneItem(item)),
-                events: customRange ? getEventsInCustomRange(this.store, customRange) : this.getSummaryEvents(range, now),
-                context,
+                events: requestEvents,
+                context: structuredClone(context),
             }), SUMMARY_TIMEOUT_MS, "总结适配器响应超时");
-            if (this.disposed || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
+            if (this.disposed || this.disposing || requestId !== this.summaryRequestId || this.currentPage !== "review" || this.summaryRange !== range || this.summaryCustomRange !== customRange || this.summaryProviders.get(provider.id) !== provider) return;
+            const currentAsOf = currentCalendarDate();
+            const currentContext = customRange ? buildCustomSummaryContext(this.store, customRange, currentAsOf) : buildSummaryContext(this.store, range, currentAsOf);
+            if (buildReviewAnalysisKey(this.store, currentContext) !== contextKey) return;
             const normalized = normalizeSummaryProviderResult(summaryText, this.store.items);
             if (!normalized) throw new Error("总结适配器返回格式无效");
             this.summaryText = normalized.text;
@@ -2774,15 +2807,38 @@ export default class CheckinPlugin extends Plugin {
             void this.persistSuggestionWorkflow().catch(() => undefined);
             this.summaryRefreshing = false;
             const meta = createAnalysisMeta(customRange ? "custom" : range, "agent", context.endDate);
-            void saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, this.analysisHistory, {...meta, text: normalized.text}).then((history) => { this.analysisHistory = history; }).catch(() => undefined);
+            const snapshot: AgentAnalysisSnapshot = {...meta, text: normalized.text, startDate: context.startDate, endDate: context.endDate, contextKey,
+                providerName: (typeof provider.name === "string" ? provider.name : provider.id).slice(0, 200)};
+            const previousHistory = this.analysisHistory;
+            this.analysisHistory = appendAnalysisSnapshot(previousHistory, snapshot);
+            // Queue writes and publish the matching metadata in memory before
+            // rendering, so a slow earlier save cannot replace a newer result.
+            this.analysisHistorySaveQueue = this.analysisHistorySaveQueue.then(async () => {
+                await saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, previousHistory, snapshot);
+            }).catch(() => {
+                if (this.disposed || this.disposing || requestId !== this.summaryRequestId) return;
+                this.summaryError = t("review.assistantCacheSaveFailed");
+                this.summaryErrorScope = scope;
+                if (this.currentPage === "review") this.render();
+            });
             this.render();
         } catch (error) {
             if (requestId === this.summaryRequestId) {
                 this.summaryRefreshing = false;
             }
-            if (!this.disposed && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
+            if (!this.disposed && !this.disposing && requestId === this.summaryRequestId && this.currentPage === "review" && this.summaryRange === range && this.summaryCustomRange === customRange) {
+                this.summaryError = String(error instanceof Error ? error.message : error).slice(0, 200);
+                this.summaryErrorScope = scope;
                 this.render();
-                showMessage(t("msg.summaryFail", {error: String(error)}));            }
+                showMessage(t("msg.summaryFail", {error: String(error)}));
+            }
+        } finally {
+            // An invalidated request must not leave the generate action stuck
+            // loading; never clear a newer request's independent busy state.
+            if (requestId === this.summaryRequestId && this.summaryRefreshing) {
+                this.summaryRefreshing = false;
+                if (!this.disposed && !this.disposing && this.currentPage === "review") this.render();
+            }
         }
     }
 
@@ -3783,6 +3839,9 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private invalidateSummary() {
+        this.summaryRefreshing = false;
+        this.summaryError = undefined;
+        this.summaryErrorScope = undefined;
         invalidateSummaryFor(this as unknown as PluginOpsHost);
     }
 

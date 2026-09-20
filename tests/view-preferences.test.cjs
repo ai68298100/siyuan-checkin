@@ -53,6 +53,7 @@ assert.equal(normalized.reviewFoldTouched, true);
 assert.deepEqual(Array.from(preferences.normalizeViewPreferences({reviewFold: "projects"}).reviewFold), []);
 
 const timers = new Map();
+const animationFrames = [];
 let nextTimer = 1;
 let focused;
 class Element {
@@ -67,6 +68,11 @@ class Element {
     addEventListener(name, callback) { this.handlers.set(name, callback); }
     fire(name) { this.handlers.get(name)?.({currentTarget: this, preventDefault() {}, stopPropagation() {}}); }
     focus() { focused = this; }
+    select() { this.selected = true; }
+    setAttribute(name, value) { (this.attributes ||= {})[name] = value; }
+    removeAttribute(name) { delete this.attributes?.[name]; }
+    scrollIntoView() {}
+    contains(node) { return this === node || (this.children || []).includes(node); }
     getBoundingClientRect() { return {top: 100, height: 44}; }
     setSelectionRange(start, end) { this.selection = [start, end]; }
 }
@@ -77,20 +83,30 @@ class Details extends Element {
         this.summary = new Element({}, "SUMMARY");
     }
 }
+const messages = [];
 const imports = {
     "../i18n": {t: (key) => key},
     "../model": {
+        dateKey: () => "2026-09-20",
         getEventById: (store, id) => store.events.find((entry) => entry.id === id),
         getItemById: (store, id) => store.items.find((entry) => entry.id === id),
         updateEventNote: (store, id, note) => store.events.find(entry => entry.id === id)?.note === note ? store
             : {...store, events: store.events.map(entry => entry.id === id ? {...entry, note} : entry)},
         removeEvents: (store, removed) => ({...store, events: store.events.filter(entry => !removed.some(event => event.id === entry.id))}),
     },
-    "../shared": {isValidLocalDateInput: (value) => /^\d{4}-\d{2}-\d{2}$/.test(value), captureActionMoment: () => ({occurredAt: '2026-09-20T08:00:00.000Z'})},
-    "siyuan": {showMessage() {}},
+    "../shared": {isValidLocalDateInput: (value) => /^\d{4}-\d{2}-\d{2}$/.test(value), captureActionMoment: () => ({occurredAt: '2026-09-20T08:00:00.000Z'}), currentCalendarDate: () => new Date(2026, 8, 20)},
+    "../analytics": {
+        buildCustomSummaryContext: (store, range) => ({startDate: range.startDate, endDate: range.endDate}),
+        buildSummaryContext: () => ({startDate: "2026-09-14", endDate: "2026-09-20"}),
+    },
+    "../features/review-assistant": loadTypeScript("src/features/review-assistant.ts", {}, {"../i18n": {t: key => key}}),
+    "siyuan": {showMessage(message) { messages.push(message); }},
 };
+let clipboardWriter = async () => {};
 const {bindPageNavigationHandlers} = loadTypeScript("src/render/bind-page-navigation.ts", {
+    navigator: {clipboard: {writeText: value => clipboardWriter(value)}},
     window: {
+        requestAnimationFrame(callback) { animationFrames.push(callback); return animationFrames.length; },
         setTimeout(callback) { const id = nextTimer++; timers.set(id, callback); return id; },
         clearTimeout(id) { timers.delete(id); },
     },
@@ -101,28 +117,37 @@ const {bindPageNavigationHandlers} = loadTypeScript("src/render/bind-page-naviga
 const host = {
     currentPage: "review", reviewWorkspace: "overview", reviewFoldSections: new Set(), reviewFoldTouched: false,
     historyScope: "period", historyItemId: "", historyPage: 0, historyQuery: "", historySource: "all", historyOrder: "newest",
-    reviewProjectPage: 0, reviewProjectOrder: "attention", reviewTrend: "weekly", reviewStrengthItemId: "",
+    reviewProjectPage: 0, reviewProjectOrder: "attention", reviewTrend: "weekly", reviewStrengthItemId: "", reviewAssistantGoal: "summary",
     summaryRange: "week", summaryRequestId: 0, reportSections: {}, heatmapYearOffset: 0,
     store: {items: [{id: "reading"}], events: [{id: "note-event", itemId: "reading", note: "a note"}]},
     bindDialogClose() {}, bindMobileNav() {}, renderCount: 0, persistCount: 0,
     persistViewPreferences() { this.persistCount++; return Promise.resolve(); },
     persistSuggestionWorkflow() { return Promise.resolve(); },
+    jumpToHistoryDate(date) {
+        this.selectedHistoryDate = date;
+        this.historyScope = "day";
+        this.historyPage = 0;
+        this.reviewWorkspace = "records";
+        this.render();
+    },
 };
 let nodes = [];
 let surface;
 let folds;
 let noteInput;
+let rhythm;
 const root = {
     ownerDocument: {get activeElement() { return focused; }},
     querySelectorAll(selector) {
         if (selector === "details[data-review-fold]") return folds || [];
-        const attr = selector.match(/^\[data-([a-z-]+)\]$/);
+        const attr = selector.match(/^\[data-([a-z-]+)(?:=["']([^"']*)["'])?\]$/);
         if (!attr) return [];
         const key = attr[1].replace(/-([a-z])/g, (_, character) => character.toUpperCase());
-        return nodes.filter((node) => key in node.dataset);
+        return nodes.filter((node) => key in node.dataset && (attr[2] === undefined || node.dataset[key] === attr[2]));
     },
     querySelector(selector) {
         if (selector === ".lc-checkin--review") return surface;
+        if (selector === ".review-rhythm-days") return rhythm;
         if (selector.includes("data-review-fold") && selector.endsWith(" > summary")) {
             const id = selector.match(/data-review-fold="([^"]+)"/)?.[1];
             return folds.find((fold) => fold.dataset.reviewFold === id)?.summary;
@@ -138,9 +163,12 @@ host.render = function render() {
     nodes.forEach((node) => { node.isConnected = false; });
     folds?.forEach((fold) => { fold.isConnected = false; });
     if (surface) surface.isConnected = false;
+    if (rhythm) rhythm.isConnected = false;
     surface = new Element({}, "DIV");
+    rhythm = new Element({}, "DIV");
+    Object.assign(rhythm, {clientWidth: 280, scrollWidth: 700, scrollLeft: 0});
     const open = (id) => host.reviewFoldSections.has(id) || (!host.reviewFoldTouched && ["projects", "trend"].includes(id));
-    folds = ["projects", "trend", "compare"].map((id) => new Details(id, open(id), !open(id)));
+    folds = ["projects", "trend", "compare", "report"].map((id) => new Details(id, open(id), !open(id)));
     nodes = [
         ...["overview", "records", "analysis"].map((value) => new Element({reviewWorkspace: value})),
         ...["day", "period"].map((value) => new Element({historyScope: value})),
@@ -152,8 +180,16 @@ host.render = function render() {
         new Element({summaryRange: "month"}), new Element({historyDate: "2026-09-18"}),
         new Element({customRange: ""}, "FORM"), new Element({heatmapYear: "-1"}), new Element({heatmapYear: "1"}),
         new Element({action: "clear-history-filters"}),
+        new Element({reviewAssistantGoal: ""}, "SELECT"), new Element({action: "review-assistant"}),
+        new Element({reviewRhythmDate: "2026-09-18"}), new Element({reviewRhythmDate: "2026-09-21"}),
+        new Element({reviewRhythmDate: "invalid"}), new Element({action: "copy-review-prompt"}),
+        new Element({reviewAssistantPrompt: ""}, "TEXTAREA"),
         ...host.store.events.flatMap(event => [new Element({editHistoryEventId: event.id}), new Element({historyEventId: event.id})]),
     ];
+    const prompt = nodes.find(node => "reviewAssistantPrompt" in node.dataset);
+    rhythm.children = nodes.filter(node => "reviewRhythmDate" in node.dataset);
+    prompt.parentElement = new Details("", false, false);
+    prompt.parentElement.parentElement = root;
     if (host.editingHistoryNoteId) {
         noteInput = new Element({historyNoteInput: host.editingHistoryNoteId}, "TEXTAREA");
         noteInput.value = host.store.events.find(event => event.id === host.editingHistoryNoteId)?.note || "";
@@ -165,6 +201,16 @@ host.render = function render() {
 };
 const control = (key, value) => nodes.find((node) => key in node.dataset && (value === undefined || node.dataset[key] === value));
 host.render();
+surface.scrollTop = 210;
+const initialFocus = control("reviewWorkspace", "overview");
+initialFocus.focus();
+animationFrames.shift()();
+assert.equal(rhythm.scrollLeft, 700, "the first layout reveals the most recent dates inside the rhythm strip");
+assert.equal(surface.scrollTop, 210, "initializing the strip must preserve the page scroll position");
+assert.equal(focused, initialFocus, "initializing the strip must preserve keyboard focus");
+rhythm.scrollLeft = 120;
+bindPageNavigationHandlers(root, host);
+assert.equal(animationFrames.length, 0, "rebinding an existing strip cannot reset its user's horizontal position");
 folds.forEach((fold) => fold.fire("toggle"));
 assert.equal(host.reviewFoldTouched, false, "initial open toggle must not count as user interaction");
 assert.equal(host.persistCount, 0);
@@ -249,11 +295,53 @@ customForm.customEndDate = "2026-09-01";
 const beforeInvalidRange = host.renderCount;
 customForm.fire("submit");
 assert.equal(host.renderCount, beforeInvalidRange, "reversed custom ranges must not render or change the selection");
+const beforeFutureRange = {range: host.summaryCustomRange, requestId: host.summaryRequestId, renders: host.renderCount};
+customForm.customStartDate = "2026-10-01";
+customForm.customEndDate = "2026-10-05";
+customForm.fire("submit");
+assert.equal(host.summaryCustomRange, beforeFutureRange.range, "future-only review ranges cannot produce an inverted elapsed period");
+assert.equal(host.summaryRequestId, beforeFutureRange.requestId, "rejected ranges must not invalidate an existing summary request");
+assert.equal(host.renderCount, beforeFutureRange.renders);
+assert.equal(messages.at(-1), "msg.futureReviewStart", "future starts have an actionable validation message");
+customForm.customStartDate = "2026-09-20";
+customForm.customEndDate = "2026-09-20";
+customForm.fire("submit");
+assert.equal(JSON.stringify(host.summaryCustomRange), JSON.stringify({startDate: "2026-09-20", endDate: "2026-09-20"}),
+    "today remains a valid inclusive custom review date");
 control("heatmapYear", "-1").fire("click");
 assert.equal(host.heatmapYearOffset, -1);
 control("heatmapYear", "1").fire("click");
 control("heatmapYear", "1").fire("click");
 assert.equal(host.heatmapYearOffset, 0, "heatmaps cannot navigate into a future year");
+surface.scrollTop = 380;
+control("reviewAssistantGoal").value = "patterns";
+control("reviewAssistantGoal").fire("change");
+assert.equal(host.reviewAssistantGoal, "patterns");
+assert.equal(surface.scrollTop, 380);
+assert.equal(focused, control("reviewAssistantGoal"));
+control("reviewAssistantGoal").value = "unsupported-goal";
+control("reviewAssistantGoal").fire("change");
+assert.equal(host.reviewAssistantGoal, "patterns", "unknown assistant goals must not enter state");
+host.reviewWorkspace = "analysis";
+control("action", "review-assistant").fire("click");
+assert.equal(host.reviewWorkspace, "overview");
+assert.ok(host.reviewFoldSections.has("report"), "assistant shortcut reveals its real report section");
+assert.ok(host.reviewFoldSections.has("projects"), "opening the assistant preserves the existing fold choices");
+assert.equal(focused, control("reviewAssistantGoal"));
+Object.assign(host, {historyQuery: "old", historySource: "api", historyItemId: "reading", historyOrder: "oldest", historyPage: 4});
+control("reviewRhythmDate", "2026-09-18").fire("click");
+assert.equal(host.reviewWorkspace, "records");
+assert.equal(host.historyScope, "day");
+assert.equal(host.selectedHistoryDate, "2026-09-18");
+assert.equal(host.historyPage, 0);
+assert.equal(host.historyQuery, "");
+assert.equal(host.historySource, "all");
+assert.equal(host.historyItemId, "");
+assert.equal(host.historyOrder, "newest");
+const beforeInvalidDrilldown = host.renderCount;
+control("reviewRhythmDate", "2026-09-21").fire("click");
+control("reviewRhythmDate", "invalid").fire("click");
+assert.equal(host.renderCount, beforeInvalidDrilldown, "future/invalid chart days cannot change the record scope");
 control("editHistoryEventId").fire("click");
 assert.equal(noteInput.parentElement.open, true, "editing reveals closed history detail ancestors");
 assert.equal(focused, noteInput);
@@ -332,4 +420,60 @@ console.log("Review preferences and navigation behavior passed: full fold persis
     assert.equal(focused, editorFocus, 'an asynchronous save must not steal focus from a different page');
     assert.equal(host.editingHistoryNoteId, 'different-record', 'finishing an old save must not close a newer editor');
     console.log('Review record mutation behavior passed: no-op/save/delete focus, failure draft preservation, empty results and asynchronous navigation isolation.');
+
+    host.currentPage = "review";
+    host.summaryCustomRange = {startDate: "2026-09-02", endDate: "2026-09-12"};
+    host.reviewAssistantGoal = "plan";
+    host.render();
+    const flushTools = () => new Promise(resolve => setImmediate(resolve));
+    const copied = [];
+    clipboardWriter = async value => copied.push(value);
+    const copy = control("action", "copy-review-prompt");
+    copy.fire("click");
+    copy.fire("click");
+    await flushTools();
+    assert.equal(copied.length, 1, "copy ignores repeated clicks until clipboard completion");
+    assert.ok(copied[0].includes("review.assistantPrompt.plan"));
+    assert.ok(copied[0].includes('"startDate":"2026-09-02","endDate":"2026-09-12"'));
+    assert.equal(focused, copy);
+    assert.equal(copy.attributes.disabled, undefined);
+    clipboardWriter = async () => { throw new Error("clipboard denied"); };
+    copy.fire("click");
+    await flushTools();
+    const prompt = control("reviewAssistantPrompt");
+    assert.equal(prompt.parentElement.open, true, "clipboard denial reveals the manually copyable prompt");
+    assert.equal(prompt.selected, true);
+    assert.equal(focused, prompt, "clipboard fallback keeps the selected prompt focused after busy cleanup");
+    let rejectClipboard;
+    clipboardWriter = () => new Promise((resolve, reject) => { rejectClipboard = reject; });
+    copy.fire("click");
+    await Promise.resolve();
+    host.currentPage = "today";
+    host.render();
+    const nextPageFocus = new Element({}, "INPUT");
+    nextPageFocus.focus();
+    rejectClipboard(new Error("late failure"));
+    await flushTools();
+    assert.equal(focused, nextPageFocus, "a delayed clipboard failure cannot steal focus after navigation");
+    console.log("Review assistant navigation passed: task selection, report shortcut, unfiltered day drilldown, clipboard busy state and recoverable/manual copying.");
+
+    animationFrames.length = 0;
+    host.currentPage = "review";
+    host.reviewWorkspace = "overview";
+    host.render();
+    const oldRhythm = rhythm;
+    const oldFrame = animationFrames.shift();
+    host.render();
+    oldFrame();
+    assert.equal(oldRhythm.scrollLeft, 0, "a stale frame cannot initialize a detached strip");
+    const focusDay = control("reviewRhythmDate", "2026-09-18");
+    focusDay.focus();
+    animationFrames.shift()();
+    assert.equal(rhythm.scrollLeft, 0, "an already focused chart day wins over automatic latest-date scrolling");
+    assert.equal(focused, focusDay);
+    host.render();
+    rhythm.clientWidth = 0;
+    animationFrames.shift()();
+    assert.equal(rhythm.scrollLeft, 0, "non-renderable strips are not scrolled before layout exists");
+    console.log("Review rhythm initialization passed: latest date, internal scrolling only, one-time binding, detached-frame and keyboard focus guards.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

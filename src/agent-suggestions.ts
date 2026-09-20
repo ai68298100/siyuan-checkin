@@ -29,6 +29,11 @@ export type AgentAnalysisMeta = {
     range: "day" | "week" | "month" | "custom";
     source: "local" | "agent";
     generatedAt: string;
+    /** Exact input scope for summaries generated after the review assistant update. */
+    startDate?: string;
+    endDate?: string;
+    contextKey?: string;
+    providerName?: string;
 };
 
 export type AgentAnalysisSnapshot = AgentAnalysisMeta & {text: string};
@@ -84,18 +89,29 @@ export async function loadAnalysisSnapshots(loader: (key: string) => Promise<unk
     } catch { return []; }
 }
 
+function isAnalysisDate(value: unknown): value is string {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
 export function normalizeAnalysisSnapshots(value: unknown): AgentAnalysisSnapshot[] {
     if (!Array.isArray(value)) return [];
     const valid = value.filter((entry): entry is AgentAnalysisSnapshot => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<AgentAnalysisSnapshot>;
-        return typeof candidate.text === "string" && candidate.text.length <= AGENT_ANALYSIS_MAX_TEXT_LENGTH && typeof candidate.asOf === "string" &&
+        const validScope = candidate.startDate === undefined && candidate.endDate === undefined && candidate.contextKey === undefined
+            || isAnalysisDate(candidate.startDate)
+            && isAnalysisDate(candidate.endDate) && candidate.startDate <= candidate.endDate
+            && typeof candidate.contextKey === "string" && /^v1:[0-9a-f]+:[0-9a-f]+:\d+$/.test(candidate.contextKey);
+        return validScope && (candidate.providerName === undefined || typeof candidate.providerName === "string" && candidate.providerName.length <= 200)
+            && typeof candidate.text === "string" && candidate.text.length <= AGENT_ANALYSIS_MAX_TEXT_LENGTH && typeof candidate.asOf === "string" &&
             /^(day|week|month|custom)$/.test(String(candidate.range)) && /^(local|agent)$/.test(String(candidate.source)) &&
             typeof candidate.generatedAt === "string" && !Number.isNaN(Date.parse(candidate.generatedAt));
     });
     const seen = new Set<string>();
     return valid.filter((entry) => {
-        const key = `${entry.asOf}|${entry.range}|${entry.source}|${entry.generatedAt}|${entry.text}`;
+        const key = `${entry.asOf}|${entry.range}|${entry.source}|${entry.generatedAt}|${entry.startDate || ""}|${entry.endDate || ""}|${entry.contextKey || ""}|${entry.text}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

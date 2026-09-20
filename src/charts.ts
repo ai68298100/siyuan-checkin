@@ -1,7 +1,7 @@
 /* 7.0 趋势图表：纯函数聚合 + 零依赖 SVG 渲染。
    所有统计可从事件与项目配置推导，不引入第三方图表库。 */
 
-import {isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, dateKey} from "./model";
+import {isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, getSkipDatesForItem, dateKey} from "./model";
 import type {CheckinStore} from "./types";
 
 export interface TrendPoint {
@@ -163,6 +163,7 @@ export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf
     const points: TrendPoint[] = [];
     const today = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate());
     const currentMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
+    const skipsByItem = new Map(store.items.map(item => [item.id, getSkipDatesForItem(store, item.id)]));
     for (let index = weeks - 1; index >= 0; index -= 1) {
         const monday = new Date(currentMonday.getFullYear(), currentMonday.getMonth(), currentMonday.getDate() - index * 7);
         let scheduled = 0;
@@ -172,8 +173,12 @@ export function buildWeeklyCompletionTrend(store: CheckinStore, weeks = 12, asOf
             if (dateKey(date) > dateKey(today)) break;
             for (const item of store.items) {
                 if (item.archived || !isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) continue;
+                const complete = isComplete(store, item, date);
+                // Match summary completion rates: skip is neutral, while a
+                // genuine completion on the same day still takes precedence.
+                if (!complete && skipsByItem.get(item.id)?.has(dateKey(date))) continue;
                 scheduled += 1;
-                if (isComplete(store, item, date)) completed += 1;
+                if (complete) completed += 1;
             }
         }
         const label = `${monday.getMonth() + 1}/${monday.getDate()}`;

@@ -10,8 +10,10 @@ const reviewSource = fs.readFileSync(path.join(sourceRoot, "render", "review.ts"
 /* 结构守门：比较必须消费共享 asOf 推导的基线上下文，不得另取当前时刻。 */
 assert.match(reviewSource, /getPreviousReviewRange\(\{startDate: summary\.startDate, endDate: summary\.endDate\}\)/,
     "review must derive the baseline range from the active summary range");
-assert.match(reviewSource, /buildReviewComparison\(summary, buildCustomSummaryContext\(ctx\.store, previousRange, asOf\)\)/,
+assert.match(reviewSource, /const previous = previousRange \? buildCustomSummaryContext\(ctx\.store, previousRange, asOf\)/,
     "comparison must consume the shared cutoff when projecting the baseline context");
+assert.match(reviewSource, /buildReviewComparison\(viewSummary, coverage\(previous\)\)/,
+    "both sides of the comparison use the same presentation coverage projection");
 assert.match(reviewSource, /renderReviewCompareSection\(comparison, true\)/,
     "review embeds comparison without a redundant nested disclosure");
 assert.match(reviewSource, /fold\("compare", t\("review\.compareTitle"\), renderComparison\)/,
@@ -113,6 +115,32 @@ assert.match(rows, /class="is-base" style="width:25%"/, "baseline bar mirrors th
 assert.match(rows, /style="width:60%"/, "current bar mirrors the current completion rate");
 assert.ok(!rows.includes("<script>"), "item names must be html-escaped");
 
+/* 周期目标只比较可比的记录数；同数量也不能退化为空行或误导的 0%。 */
+const quotaComparison = buildReviewComparison(context({items: [
+    {...item("quota", "周目标 <ml>"), eventCount: 2, completionRate: 100},
+]}), context({items: [
+    {...item("quota", "周目标 <ml>"), eventCount: 2, completionRate: 0},
+]}));
+const quotaRows = renderReviewCompareItems(quotaComparison, {nonComparableRateIds: new Set(["quota"])});
+assert.match(quotaRows, /lc-checkin__compare-item is-flat is-uncomparable/);
+assert.ok(quotaRows.includes("周目标 &lt;ml&gt;"));
+assert.ok(quotaRows.includes(t("review.compareQuotaRate")));
+assert.ok(quotaRows.includes(`${t("review.compareCurrentLabel")} 2 / ${t("review.compareBaselineLabel")} 2 ${t("review.statEvents")}`), "equal counts remain visible on both sides");
+assert.match(quotaRows, /class="lc-checkin__compare-item-rate"[^>]*>—<\/span>/);
+assert.doesNotMatch(quotaRows, /%|pp|<em|lc-checkin__compare-item-bar/,
+    "incomparable quota completion rates must not create a fake percentage, delta, or progress bar");
+assert.ok(renderReviewCompareItems(quotaComparison).includes("100%"), "without quota metadata the renderer retains its existing daily-rate contract");
+const mixedComparison = buildReviewComparison(context({items: [
+    {...item("quota", "Quota"), eventCount: 2, completionRate: 100},
+    {...item("daily", "Daily"), eventCount: 1, completionRate: 50},
+]}), context({items: [
+    {...item("quota", "Quota"), eventCount: 2, completionRate: 0},
+    {...item("daily", "Daily"), eventCount: 1, completionRate: 40},
+]}));
+const mixedRows = renderReviewCompareItems(mixedComparison, {nonComparableRateIds: new Set(["quota"])});
+assert.deepEqual([...mixedRows.matchAll(/<strong>([^<]+)<\/strong>/g)].map(match => match[1]), ["Daily", "Quota"], "incomparable quota rates cannot influence daily-rate ordering");
+assert.equal((mixedRows.match(/lc-checkin__compare-item-bar/g) || []).length, 1, "ordinary daily projects retain their comparable bar");
+
 /* 项目很多时首屏只显示 8 项，其余按最多 8 项分批展开，并明确本批/剩余数量。 */
 const manyCurrent = context({
     totalEvents: 18,
@@ -141,6 +169,9 @@ assert.ok(enSection.includes("vs previous period"), "en dictionary must cover th
 assert.ok(enSection.includes("prev 5"), "en baseline label must render");
 const enRows = renderReviewCompareItems(comparison);
 assert.ok(enRows.includes("+3 records"), "en event delta keeps its label");
+const enQuotaRows = renderReviewCompareItems(quotaComparison, {nonComparableRateIds: new Set(["quota"])});
+assert.ok(enQuotaRows.includes("Period quota"));
+assert.ok(enQuotaRows.includes(`${t("review.compareCurrentLabel")} 2 / prev 2 records`));
 setPluginLanguage("zh-CN");
 
 console.log("Review compare view checks passed: shared-cutoff baseline, delta tones, union sorting, empty state and i18n coverage.");

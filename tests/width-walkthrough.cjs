@@ -307,11 +307,11 @@ const cases = [
             await summary.click();
             const disclosure = page.locator('[data-review-fold="report"]');
             assert.equal(await disclosure.getAttribute('open'), null, 'secondary review guidance starts folded');
-            await disclosure.locator('summary').click();
+            await disclosure.locator(':scope > summary').click();
             await page.waitForSelector('[data-review-fold="report"]:not([data-review-lazy])');
             assert.equal(await page.locator('[data-action="preview-agent-suggestion"]').isVisible(), true, 'guidance action remains accessible');
             await assertLayout(`${label}/guidance-open`);
-            await disclosure.locator('summary').click();
+            await disclosure.locator(':scope > summary').click();
         }
         if (surface === 'archived') {
             const selection = page.locator('[data-archived-select]').first();

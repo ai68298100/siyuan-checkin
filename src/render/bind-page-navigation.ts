@@ -3,10 +3,11 @@
 import {t} from "../i18n";
 import {buildWeeklyReportMarkdown} from "../features/report";
 import {buildReviewComparison, getPreviousReviewRange, type ReviewComparison} from "../features/review-comparison";
+import {buildReviewPrompt, type ReviewAssistantGoal} from "../features/review-assistant";
 import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
-import {getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
-import {captureActionMoment, isValidLocalDateInput} from "../shared";
+import {dateKey, getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
+import {currentCalendarDate, captureActionMoment, isValidLocalDateInput} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {renderAgentPreviewContent} from "./agent-preview";
 import {createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
@@ -29,12 +30,14 @@ export interface BindPageNavigationHost {
     reviewProjectOrder: "attention" | "name";
     reviewTrend: "weekly" | "monthly" | "daily" | "yearly";
     reviewStrengthItemId: string;
+    reviewAssistantGoal: ReviewAssistantGoal;
     heatmapYearOffset: number;
     selectedHistoryDate: string;
     archivedQuery: string;
     summaryRange: "day" | "week" | "month";
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
+    summaryError?: string;
     suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
     handleSuggestionDecision(decision: "confirm" | "cancel"): Promise<void> | void;
     undoSuggestionWorkflow(): Promise<void> | void;
@@ -48,6 +51,7 @@ export interface BindPageNavigationHost {
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showReview(): void;
+    jumpToHistoryDate(date: string): void;
     showToday(): void;
     showArchived(): void;
     showOccasions(): void;
@@ -76,6 +80,7 @@ export interface BindPageNavigationHost {
 }
 
 const pinnedSubnavScrollers = new WeakSet<HTMLElement>();
+const initializedRhythmScrollers = new WeakSet<HTMLElement>();
 
 /** 回顾二级导航滚动钉住（D-159）：宿主界面缩放形成 zoom 子树后，合成器滚动
     不会重定位 position:sticky（Chromium 已知缺陷，真机实测滚动后导航条消失）。
@@ -104,6 +109,18 @@ function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): (
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
+    const rhythm = root.querySelector<HTMLElement>(".review-rhythm-days");
+    if (rhythm && !initializedRhythmScrollers.has(rhythm)) {
+        initializedRhythmScrollers.add(rhythm);
+        // Layout is available on the next frame. Only the strip scrolls, and
+        // keyboard navigation or a detached page always wins over this default.
+        window.requestAnimationFrame(() => {
+            if (!rhythm.isConnected || host.disposed || host.disposing || host.currentPage !== "review"
+                || host.reviewWorkspace !== "overview" || rhythm.clientWidth <= 0
+                || rhythm.contains(root.ownerDocument.activeElement)) return;
+            rhythm.scrollLeft = rhythm.scrollWidth;
+        });
+    }
     const reviewScroller = () => root.querySelector<HTMLElement>(".lc-checkin--review");
     const renderReviewPreservingView = (focusSelector?: string, top = false): void => {
         const scrollTop = top ? 0 : (reviewScroller()?.scrollTop || 0);
@@ -287,6 +304,37 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.reviewStrengthItemId = itemId;
         renderReviewPreservingView("[data-review-strength-item]");
     });
+    root.querySelector<HTMLSelectElement>("[data-review-assistant-goal]")?.addEventListener("change", (event) => {
+        const value = (event.currentTarget as HTMLSelectElement).value;
+        if (value !== "summary" && value !== "patterns" && value !== "plan") return;
+        host.reviewAssistantGoal = value;
+        renderReviewPreservingView("[data-review-assistant-goal]");
+    });
+    root.querySelectorAll<HTMLElement>("[data-action='review-assistant']").forEach(button => button.addEventListener("click", () => {
+        rememberFoldDefaults();
+        host.reviewWorkspace = "overview";
+        host.reviewFoldSections.add("report");
+        host.reviewFoldTouched = true;
+        void host.persistViewPreferences();
+        renderReviewPage('[data-review-fold="report"] > summary');
+        root.querySelector<HTMLElement>("[data-review-assistant-goal]")?.focus({preventScroll: true});
+    }));
+    root.querySelectorAll<HTMLElement>("[data-review-rhythm-date]").forEach(button => button.addEventListener("click", () => {
+        const date = button.dataset.reviewRhythmDate || "";
+        if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;
+        host.historyQuery = "";
+        host.historySource = "all";
+        host.historyItemId = "";
+        host.historyOrder = "newest";
+        host.jumpToHistoryDate(date);
+        const heading = root.querySelector<HTMLElement>(".lc-checkin__history-date > strong");
+        if (heading) {
+            heading.tabIndex = -1;
+            heading.focus({preventScroll: true});
+            heading.scrollIntoView({block: "center", behavior: "instant"});
+            pinReviewSubnavRail(root, host)();
+        }
+    }));
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         const offset = Number(button.dataset.heatmapYear);
@@ -577,6 +625,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.summaryRange = range;
             host.summaryCustomRange = undefined;
             host.summaryText = undefined;
+            host.summaryError = undefined;
             host.suggestionWorkflow = undefined;
             void host.persistSuggestionWorkflow();
             host.summaryRefreshing = false;
@@ -596,8 +645,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             showMessage(t("msg.invalidDateRange"));
             return;
         }
+        if (startDate > dateKey(currentCalendarDate())) {
+            showMessage(t("msg.futureReviewStart"));
+            return;
+        }
         host.summaryCustomRange = {startDate, endDate};
         host.summaryText = undefined;
+        host.summaryError = undefined;
         host.suggestionWorkflow = undefined;
         void host.persistSuggestionWorkflow();
         host.summaryRefreshing = false;
@@ -717,7 +771,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         });
     });
     const reviewBusy = new WeakSet<HTMLElement>();
-    const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown) => {
+    const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown, preservePromptFocus = false) => {
         if (reviewBusy.has(button)) return;
         reviewBusy.add(button);
         button.setAttribute("aria-busy", "true");
@@ -727,7 +781,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             if (!button.isConnected) return;
             button.removeAttribute("aria-busy");
             button.removeAttribute("disabled");
-            button.focus();
+            if (!preservePromptFocus || root.ownerDocument.activeElement !== root.querySelector("[data-review-assistant-prompt]")) button.focus();
         });
     };
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
@@ -753,6 +807,31 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             try { await navigator.clipboard.writeText(markdown); showMessage(t("msg.reportCopied")); }
             catch { showMessage(t("msg.clipboardFail")); }
         });
+    });
+    root.querySelector<HTMLElement>("[data-action='copy-review-prompt']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        runReviewTool(button, async () => {
+            const asOf = currentCalendarDate();
+            const context = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange, asOf) : buildSummaryContext(host.store, host.summaryRange, asOf);
+            const prompt = buildReviewPrompt(context, host.reviewAssistantGoal);
+            try {
+                await navigator.clipboard.writeText(prompt);
+                showMessage(t("review.assistantPromptCopied"));
+            } catch {
+                if (!button.isConnected || host.currentPage !== "review") return;
+                const text = root.querySelector<HTMLTextAreaElement>("[data-review-assistant-prompt]");
+                if (text) {
+                    let ancestor = text.parentElement;
+                    while (ancestor && ancestor !== root) {
+                        if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+                        ancestor = ancestor.parentElement;
+                    }
+                    text.focus();
+                    text.select();
+                }
+                showMessage(t("review.assistantCopyFailed"));
+            }
+        }, true);
     });
     root.querySelector<HTMLElement>("[data-action='export-report']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
