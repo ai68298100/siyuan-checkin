@@ -59,7 +59,7 @@
 - `CheckinItem`：打卡项目。五种 `kind`（binary / count / duration / quantity / custom），`schedule` 支持 daily / weekly / workdays / custom / interval / quota。带 `revisions[]`（按生效日期的历史版本）、`archivePeriods[]`（归档区间）、`group`、`priority`、`sortOrder`、`timeSlot`、`linkedOccasionId`（与日期事项的联动）。
 - `CheckinEvent`：不可变事实记录。`source` 区分 `manual | tomato | import | api`；`externalRef` 用于外部事件幂等；可带 `note` 与图片附件（data URL，≤500KB）。
 - `CheckinEventTombstone`：**撤销 = 删除标记**，不是物理删除。这样旧客户端不会把已撤销事件从别处同步回来。
-- `CheckinStore`：`{version: 2, items, events, eventTombstones, templates?}`。
+- `CheckinStore`：内部持久化结构为 `{version: 3, items, events, eventTombstones, templates?}`；公开 API descriptor 的 `storeVersion: 2` 是独立的公共契约版本，两者不能混用。
 
 ### 4.2 领域层职责
 

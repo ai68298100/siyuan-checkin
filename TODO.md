@@ -2574,10 +2574,9 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 状态：done（四处 `loadPlaywright`/浏览器探测路径改为环境变量 + 标准安装路径；`tests/mobile-qa-harness.md` 示例改写；新增 `tests/portable-paths.test.cjs` 扫描 src/tests/scripts/docs/.github 共 280 文件，0 命中，纳入 `test:extended`）
 - [x] T-1246 消除 onDataChanged 的辅助存储原样重写（D-221 → D-221 补记）
   - 状态：done（`persistSuggestionWorkflow` 与已落盘文本等值即跳过；`rememberSuggestionWorkflowBaseline` 在 `onLayoutReady`/`onDataChanged` 两条读取路径建基线，非字符串存储清空基线以保证真正需要写时会写。审计改走 `scheduleAuditPersist()` 的 1.5 秒合并窗口，`onunload` 用 `flushPendingAuditPersist()` 收尾并纳入排空集合；锚点旁路三处失败诊断同样合并。验证：新增 `tests/aux-write-hygiene.test.cjs` 纳入 `test:extended`；双窗口 E2E 断言接收方 `checkin-suggestion-workflow` 写入为 0、`checkin-store-audit` ≤1，实测辅助写入由 2 次降为 0 次）
-- [ ] T-1247 校准 minAppVersion 与实际依赖下限（待决策）
-  - 现状：`plugin.json.minAppVersion = 3.4.2`，但 `block-renderer` 的实测基线是 3.8.4 DOM，`addAgentCapability` 需 3.8.0+（已有 `typeof` 守卫优雅降级）
-  - 待决：要么在 3.4.2~3.8.2 真机上回归验证并留档，要么把下限提到实际验证过的最低版本；两条路都需在 `docs/siyuan-compatibility.md` 的矩阵里标注「已验证」而非「目标支持」
-  - 提示：内核在版本不满足时会把已装插件自动禁用（`kernel/model/plugin.go` + `bazaar/installed.go` 的 `semver.Compare`），所以「保守提高下限」的代价是老用户被静默禁用，需要发布说明配合
+- [x] T-1247 校准 minAppVersion 与实际依赖下限
+  - 状态：done（D-238；`plugin.json.minAppVersion = 3.8.4`，与当前完整验证基线一致；README 与 `docs/siyuan-compatibility.md` 已同步）
+  - 说明：3.4.2~3.8.3 未完成真实回归，不再对这些版本承诺兼容；低于 3.8.4 的思源可能自动禁用已安装插件，发布说明需明确该影响
 - [x] T-1248 E2E 扩展到宿主生命周期与移动端 bundle
   - 状态：done（`tests/e2e/plugin-lifecycle.spec.mjs`：真实 `setPetalEnabled(false)` → `window.siyuanCheckin` 在宿主 5 秒拆除预算内交出 → 注销后 2.6 秒观察窗口内该页面对内核零次 `putFile`（抓泄漏定时器与幽灵写）→ 重新启用后数据完整恢复。`tests/e2e/mobile-bundle.spec.mjs`：iPhone 13 视口加载 `/stage/build/mobile/`，公开 API 就绪、完成一次打卡并落盘、`#lcCheckinMobileTopBarButton` 注入、能力清单与桌面同版、零未捕获异常。验证：`pnpm run test:e2e` 5/5，完整 `test:quality` exit 0）
 - [x] T-1249 只读实例 E2E（`--readonly`）

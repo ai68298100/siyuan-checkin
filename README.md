@@ -328,7 +328,7 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 ## 文档索引
 
 - [17.0.0 变更记录](docs/v17.0.0-change-log.md) · [16.0.0 变更记录](docs/v16.0.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
-- [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
+- [当前状态与开发路线](docs/development-roadmap-current.md) · [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap-2026.md)
 - [仓库布局与整理规则](docs/repository-layout.md) · [发布说明归档](docs/releases/)
 - [4.0 UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 产品路线](docs/ui-product-roadmap.md)
