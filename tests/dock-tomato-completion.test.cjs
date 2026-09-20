@@ -56,6 +56,13 @@ assert.equal(acceptedDecision.entry.durationMinutes, 25);
 assert.equal(acceptedDecision.entry.occurredAt, "2026-09-19T10:00:00.000Z");
 assert.equal(acceptedDecision.entry.localDate, expectedLocalDate);
 assert.equal(acceptedDecision.entry.state, "pending");
+for (const unit of ["分钟", "小时"]) {
+    const goal = {...item, kind: "duration", target: unit === "分钟" ? 60 : 1, unit};
+    const early = evaluateDockTomatoCompletion(detail({durationMinutes: 10}, {itemUnit: unit}), [goal]);
+    assert.equal(early.accepted, true);
+    assert.equal(early.entry.durationMinutes, 10, "completion must preserve actual elapsed minutes");
+    assert.equal(inboxModule.dockTomatoCompletionValue(unit, early.entry.tomatoMode, early.entry.durationMinutes), unit === "分钟" ? 10 : 10 / 60);
+}
 assert.equal(evaluateDockTomatoCompletion(detail({sessionId: "", recordId: "record-1"}), [item]).identity, "record-1");
 const malformedIdentities = Array.from({length: 25}, (_, index) => index % 3 === 0 ? ` ${index}` : index % 3 === 1 ? `${index} ` : `${index}-${"s".repeat(240)}`);
 for (let index = 0; index < malformedIdentities.length; index += 1) {

@@ -354,6 +354,19 @@ function dockTomatoError(code: string): Error & {code: string} {
     return error;
 }
 
+/** item is the effective revision at start; use the full goal, not remaining progress. */
+function dockTomatoTargetDurationMinutes(item: CheckinItem): number | undefined {
+    if (item.kind !== "duration" || item.tomatoMode === "sessions") return undefined;
+    const multiplier = item.unit === "分钟" ? 1 : item.unit === "小时" ? 60 : undefined;
+    if (multiplier === undefined) throw dockTomatoError("DOCK_TOMATO_UNSUPPORTED_TIME_UNIT");
+    const minutes = typeof item.target === "number" ? item.target * multiplier : Number.NaN;
+    const wholeMinutes = Math.round(minutes);
+    if (!Number.isFinite(minutes) || wholeMinutes < 1 || wholeMinutes > 180 || Math.abs(minutes - wholeMinutes) > 1e-8) {
+        throw dockTomatoError("DOCK_TOMATO_INVALID_DURATION");
+    }
+    return wholeMinutes;
+}
+
 interface OwnedFocusSession {
     provider: DockTomatoFocusApi;
     sessionId: string;
@@ -483,9 +496,11 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 if (!context) {
                     throw dockTomatoError("DOCK_TOMATO_INVALID_CONTEXT");
                 }
+                const durationMinutes = dockTomatoTargetDurationMinutes(item);
                 const result = await facade.start({
                     confirm: true,
                     context,
+                    ...(durationMinutes === undefined ? {} : {durationMinutes}),
                 });
                 /* 启动结果必须带回最终会话身份:空 ID 或无法确认时不猜测、不接管、不暂停。 */
                 const sessionId = result && typeof result === "object" ? exactBoundedText(ownDataValue(result, "sessionId"), 240) : "";

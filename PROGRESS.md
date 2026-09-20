@@ -1,4 +1,10 @@
 # 进度
+
+2026-09-20 T-1305：按合作方每日目标说明补齐 facade.start.durationMinutes，严格消费当天修订目标，不扣已有记录，不改内置计时器或提供方默认设置。非时长/sessions 省略字段；未知单位/非法目标请求前拒绝，新增双语提示。pnpm run check/build exit 0；按 package.json 顺序执行 test/test:ui/test:ecosystem 全部用例，零失败；桥接/专注生命周期/完成回写专项通过。当前本地 package.zip SHA-256：ce3b94dd350e5e7b6615b351af77528a58ecdcfd3f5cd3f79868cbe8846ad83a（含 T-1304 UI 修复，非 GitHub 已发布原包）。测试内核探测未找到 SiYuan-Kernel，未宣称真实双插件验证或发布验收通过。
+
+
+2026-09-20 T-1304：修复新建打卡页两个复选框被通用 min-height/padding 撑大的问题。width-walkthrough 增编辑器 640/360 宽度与四档双主题实际几何、文字布局、空格勾选、禁用状态断言。构建、类型检查、test:ui/test:mobile 全部用例、双主题 visual-qa、14 场景宽度走查通过。首次并发执行 reminder-actions 性能用例 721ms 超过 500ms；浏览器结束后完整串行重跑 UI/移动用例全部通过，未修改门槛。pnpm 初始联网策略校验约 3 分钟后构建成功。截图：.artifacts/width-walkthrough/editor-*-light.png 与 editor-*-dark.png。未安装到真实思源，现场验收仍保留。
+
 当前任务：T-1266~T-1268 底栏番茄钟 PR #5 评审修复已完成（小飞驴侧六项主体修复落地）
 上次检查点：T-1266/T-1267 代码提交（c2b1435 会话归属、收件箱写入器）；T-1268 文档与决策记录
 已完成：T-001~T-004、T-010~T-014、T-020~T-022、T-024~T-030、T-090~T-101、T-032、T-105、T-1167~T-1215

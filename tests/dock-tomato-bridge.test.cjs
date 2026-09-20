@@ -67,8 +67,8 @@ function makeFacade(name, options = {}) {
     const facade = makeFacade("bridge");
     fakeWindow.__dockTomato = {focus: facade};
     const items = [
-        {id: "read", name: "阅读", kind: "duration", unit: "分钟", tomatoMode: "minutes", archived: false},
-        {id: "hour", name: "深度工作", kind: "duration", unit: "小时", tomatoMode: "minutes", archived: false},
+        {id: "read", name: "阅读", kind: "duration", target: 60, unit: "分钟", tomatoMode: "minutes", archived: false},
+        {id: "hour", name: "深度工作", kind: "duration", target: 1.5, unit: "小时", tomatoMode: "minutes", archived: false},
         {id: "sessions", name: "番茄", kind: "count", unit: "次", tomatoMode: "sessions", archived: false},
     ];
     const events = [], processed = [], adapters = [];
@@ -132,6 +132,34 @@ function makeFacade(name, options = {}) {
     assert.equal(facade.starts.length, 0);
     for (const blocked of [{ready: false, active: false}, {ready: true, active: true}, {ready: false, active: true}]) { facade.status = {...blocked}; assert.equal(adapters[0].canStart(items[0]), false); }
     facade.status = {ready: true, active: false};
+
+    for (const [overrides, expected] of [
+        [{target: 60}, 60], [{unit: "小时", target: 1.5}, 90], [{unit: "小时", target: 0.5}, 30],
+        [{unit: "小时", target: 1 / 60}, 1], [{target: 180}, 180],
+        [{target: 45, revisions: [{effectiveDate: "2099-01-01", target: 60}]}, 45],
+        [{unit: "小时", target: 0.1 + 0.2}, 18],
+        [{kind: "count", target: 2, tomatoMode: "sessions"}, undefined],
+        [{kind: "quantity", target: 60}, undefined], [{tomatoMode: "sessions", target: 2}, undefined],
+    ]) {
+        await adapters[0].start({...items[0], ...overrides});
+        const request = facade.starts.at(-1);
+        assert.equal(request.durationMinutes, expected);
+        assert.equal(Object.hasOwn(request, "durationMinutes"), expected !== undefined);
+        await adapters[0].stop();
+    }
+    for (const overrides of [
+        ...[undefined, null, "60", NaN, Infinity, -1, 0, 181, 1.5].map(target => ({target})),
+        {unit: "小时", target: 3.1}, {unit: "小时", target: 0.025}, {unit: "秒", target: 60},
+    ]) {
+        const before = facade.starts.length;
+        await assert.rejects(adapters[0].start({...items[0], ...overrides}), error => error.code === (overrides.unit === "秒" ? "DOCK_TOMATO_UNSUPPORTED_TIME_UNIT" : "DOCK_TOMATO_INVALID_DURATION"));
+        assert.equal(facade.starts.length, before, "invalid goal must not reach provider");
+        const pauses = facade.pauses.length;
+        await adapters[0].stop();
+        assert.equal(facade.pauses.length, pauses, "invalid goal must not take session ownership");
+    }
+    facade.starts.length = 0;
+    facade.pauses.length = 0;
 
     /* 启动：记录会话归属；停止：守门后暂停本会话。 */
     await adapters[0].start(items[0]);

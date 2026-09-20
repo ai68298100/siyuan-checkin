@@ -1,5 +1,13 @@
 # Dock Tomato 联动准备
 
+## 2026-09-20：每日目标作为启动时长（T-1305）
+
+- 根据合作方提供的 `checkin-docktomato-daily-target-duration.zh-CN.md`，消费端现向 `focus.start` 传入 `durationMinutes`：只对时长型且非按次计入的项目，使用启动当天生效修订的完整目标（分钟原值，小时×60），不扣除当日已记录值，也不读取内置计时器设置。
+- 转换后必须为 1–180 整分钟，仅容忍 1e-8 的浮点误差；未知时间单位、非数字或越界目标在请求前拒绝并显示中英文具体原因，不截断、不回退到默认时长、不接管会话。
+- 次数、数量、自定义等非时长项目及 `tomatoMode=sessions` 不传该字段，继续使用提供方默认时长。现有协议和 FocusAdapter 接口保持兼容。
+- 完成事件仍以实际 `durationMinutes` 回写：目标 60 分钟而 10 分钟提前完成，只记 10 分钟；小时项目记 10/60 小时。目标时长不参与完成值换算。
+- 合作方报告其指定时长测试已通过；本仓库自动化不替代真实双插件客户端验证。
+
 Dock Tomato 公开提供 `window.__dockTomatoStatsFacade`（同时挂载到 `window.__dockTomato.stats`），门面包含 `listSessions`、`queryFocus`、`queryRoutine` 等只读查询，并广播 `tomato:stats-availability-changed`。标准化 session 包含阶段、开始/结束时间、`sessionKey`、`isCompleted`、计划时长和任务块 ID。
 
 联动应采用可选适配器：能力探测通过后按日期范围查询完成 session；以 `isCompleted === true` 和有效结束时间为准；通过用户把任务块 ID 映射到打卡项目；写入 `source: "docktomato"`、`externalRef: "docktomato:<sessionKey>"`，使用现有 externalRef 去重；结束时间作为记录时间，value 默认 1。没有映射、被放弃或未完成的 session 不自动写入。

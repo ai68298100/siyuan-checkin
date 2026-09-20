@@ -1,6 +1,7 @@
 /* Multi-width layout walkthrough: today/review/editor/settings/occasions at
    full-screen, 80% dialog, medium, narrow-dock widths. */
 const fs = require("node:fs");
+const assert = require("node:assert/strict");
 const path = require("node:path");
 const {chromium} = require("playwright");
 
@@ -19,6 +20,8 @@ const cases = [
     {surface: "today", width: 640},
     {surface: "review", width: 640},
     {surface: "editor", width: 1180},
+    {surface: "editor", width: 640},
+    {surface: "editor", width: 360},
     {surface: "today", width: 330},
     {surface: "review", width: 330},
 ];
@@ -92,6 +95,40 @@ const cases = [
         await page.locator("#frame").evaluate((element, w) => { element.style.width = `${w}px`; }, Math.max(width, 360));
         await goto(surface);
         await page.waitForTimeout(60);
+        if (surface === "editor") {
+            await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
+                for (const element of elements) {
+                    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+                        if (parent.tagName === "DETAILS") parent.open = true;
+                    }
+                }
+            });
+            for (const theme of ["light", "dark"]) {
+                await page.locator(".lc-checkin--editor").evaluate((element, value) => { element.dataset.appearance = value; }, theme);
+                const fields = page.locator(".lc-checkin__field-check");
+                assert.equal(await fields.count(), 2);
+                for (const field of await fields.all()) {
+                    const input = field.locator('input[type="checkbox"]');
+                    const box = await input.boundingBox();
+                    assert.ok(box && box.width === 18 && box.height === 18, `${width}/${theme}: checkbox must stay 18px`);
+                    const layout = await field.evaluate((element) => {
+                        const label = element.querySelector("span");
+                        const control = element.querySelector("input");
+                        return {overflow: element.scrollWidth > element.clientWidth, wraps: getComputedStyle(label).whiteSpace, beside: label.getBoundingClientRect().left >= control.getBoundingClientRect().right};
+                    });
+                    assert.deepEqual(layout, {overflow: false, wraps: "normal", beside: true});
+                }
+                const direction = page.locator('input[name="directionAtMost"]');
+                await direction.focus();
+                await page.keyboard.press("Space");
+                assert.equal(await direction.isChecked(), true);
+                await page.keyboard.press("Space");
+                assert.equal(await direction.isChecked(), false);
+                assert.equal(await page.locator('input[name="anchorAppendNotes"]').isDisabled(), true);
+                await page.screenshot({path: path.join(outputRoot, `editor-${width}-${theme}.png`)});
+            }
+            await page.locator(".lc-checkin--editor").evaluate((element) => { element.dataset.appearance = "light"; });
+        }
         const overflow = await page.evaluate(() => {
             const host = document.querySelector("#dock");
             return host ? {sw: host.scrollWidth, cw: host.clientWidth} : null;

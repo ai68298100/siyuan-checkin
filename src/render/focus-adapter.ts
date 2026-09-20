@@ -43,6 +43,8 @@ export function focusStartErrorMessage(error: unknown): string {
     if (code === "DOCK_TOMATO_NOT_READY") return t("msg.focusDockLoading");
     if (code === "DOCK_TOMATO_TIMER_BUSY") return t("msg.focusDockBusy");
     if (code === "DOCK_TOMATO_INVALID_CONTEXT") return t("msg.focusDockContext");
+    if (code === "DOCK_TOMATO_INVALID_DURATION") return t("msg.focusDockInvalidDuration");
+    if (code === "DOCK_TOMATO_UNSUPPORTED_TIME_UNIT") return t("msg.focusDockUnsupportedTimeUnit");
     if (code === "DOCK_TOMATO_START_UNCONFIRMED") return t("msg.focusDockUnconfirmed");
     if (code === "DOCK_TOMATO_SESSION_MISMATCH") return t("msg.focusDockSessionMismatch");
     if (code === "DOCK_TOMATO_INTEGRATION_DISABLED") return t("msg.focusDockDisabled");

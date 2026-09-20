@@ -21,7 +21,7 @@ const modelStub = {
     getItemRevisionForDate: (item) => ({kind: item.kind || "count", target: item.target || 1, unit: item.unit || "次", schedule: {type: "daily"}}),
 };
 
-const {startFocusFor, focusMappingFingerprint} = loadModule("src/render/focus-adapter.ts", {
+const {startFocusFor, focusMappingFingerprint, focusStartErrorMessage} = loadModule("src/render/focus-adapter.ts", {
     "../i18n": {t: (key) => key},
     "../model": modelStub,
     "../shared": {currentCalendarDate: () => new Date()},
@@ -61,6 +61,22 @@ function makeTimerAdapter() {
 }
 
 (async () => {
+    assert.equal(focusStartErrorMessage({code: "DOCK_TOMATO_INVALID_DURATION"}), "msg.focusDockInvalidDuration");
+    assert.equal(focusStartErrorMessage({code: "DOCK_TOMATO_UNSUPPORTED_TIME_UNIT"}), "msg.focusDockUnsupportedTimeUnit");
+    /* The start boundary must pass today's projection, not the raw future goal or remaining amount. */
+    for (const target of [45, 60]) {
+        const item = {id: "read", kind: "duration", target: 90, unit: "分钟"};
+        const host = makeHost([item]);
+        host.store.events = [{itemId: "read", value: 20}];
+        host.cloneItemForDate = value => ({...value, target});
+        const adapter = makeTimerAdapter();
+        let received;
+        adapter.start = async value => { received = value; };
+        host.focusAdapters.set(adapter.id, adapter);
+        assert.equal(await startFocusFor(host, item.id), true);
+        assert.equal(received.target, target);
+        assert.equal(item.target, 90, "start must not mutate stored goal");
+    }
     /* 1. 启动成功后 canStart 因 active 变 false，不得触发停止或登记失败。 */
     {
         const item = {id: "read", name: "阅读", kind: "duration", unit: "分钟", rev: 1};
