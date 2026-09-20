@@ -1595,3 +1595,13 @@ T-1301 摘要回填后全链 exit 0。
 验证:模板门禁 61 模板全过、type check、release-assets、test:ui 全链、中英双语走查（49 场景）全过;摘要同步（6572bce3…）。
 
 2026-09-21 v21 启动：T-1364 契约测试包首版:contracts/siyuan-checkin-contract（check-contract.mjs 消费方自测 78 项合规断言:描述符/版本协商/能力面/事件清单/只读方法形状/批量写边界/未知 source 拒绝;manifest.json 字节级同源;README 五项准入清单）;tests/contract-kit.test.cjs 三重守门（manifest 字节一致+合规 mock 全过+4 项变异违规捕获）接入 test:ui。npm 独立发布待发版窗口（push 需用户确认）。
+
+2026-09-21 v22 启动：T-1370 同步设计评审 + D-243 决策:docs/sync-design-review.md 评审稿——**不立项自建同步**（含 E2EE 自建通道），跨设备由思源同步天然承载（插件数据位于工作区），插件侧合并/诊断/恢复点已具备配合能力;立三个配套改进项随常规迭代;重启条件成文。T-1371 首切片:i18n-parity 门禁（zh/en 1480 对键全对等、无重复、占位符一致）接入 test:ui。T-1372 数据规模演练确认由既有 100k 基线覆盖（渲染块 100k≈232ms/批处理 17.5ms）。
+
+2026-09-21 T-1369 低端设备画像基线:走查接入 Chromium CDP CPU 节流（CHECKIN_THROTTLE）,x6 节流（模拟低端 4 核画像）下全矩阵 49 页面+32 交互+8 对比度+10 混合+16 长内容 **6 分钟通过**（灾难门槛 30 分钟）;无节流回归全绿。低配画像自此本地可复现,不依赖真机采样。
+
+2026-09-21 尾巴收口（二）:①「情绪自评」custom 类型模板补入（核实 describeEditorPreviewActions 对 custom 走精确录入分支后落地,目录 60→61）;②走查新增 280px 档（42→49 页面场景）,实测发现并修复 EN+280px 回顾自定义范围条横向溢出（range-tabs 换行+summary 可换行）。
+验证:模板门禁 61 模板全过、type check、release-assets、test:ui 全链、中英双语走查（49 场景）全过;摘要同步（6572bce3…）。
+
+2026-09-21 发版前深度安全扫描（Mimosa deep,static-only）:findingCount 0——13 个依赖包无已知通告,未发现注入/越权/泄露类问题;封印 sha256:1443ac6a…。自查修复 1 处:设置页诊断行 latestDiagnosticText（含错误详情字符串）补 escapeHtml（沿用「innerHTML 注入点全部转义」发布纪律）。
+验证:type check、release-assets、diagnostics、i18n-parity、test:ui 全链通过;摘要同步（77a55195…）。
