@@ -61,31 +61,8 @@ const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
 for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {
     assert.match(builtCss, new RegExp(`\\.lc-checkin--${surface}`), `built CSS missing 4.0 ${surface} surface`);
 }
-/* CSS 体积分级门禁：318KB 保留为历史基线，480KB 进入告警区，
-   520KB 才阻断发布。2026-09-20 经用户明确要求放宽（D-239）：
-   不再以字节数逼近硬线为由约束 UI 迭代，保留最终护栏防灾难性膨胀。 */
+/* D-246: user explicitly defers CSS size limits during the UI iteration.
+   Report actual bytes; retain content/asset checks and performance tests. */
 const builtCssBytes = fs.statSync(path.join(root, "dist", "index.css")).size;
-const CSS_SOFT_LIMIT = 318_000;
-const CSS_WARN_LIMIT = 480_000;
-const CSS_HARD_LIMIT = 520_000;
-assert.ok(CSS_SOFT_LIMIT < CSS_WARN_LIMIT && CSS_WARN_LIMIT < CSS_HARD_LIMIT, "CSS budget thresholds must be strictly increasing");
-assert.ok(builtCssBytes <= CSS_HARD_LIMIT, `built CSS exceeds the hard 520000-byte budget: ${builtCssBytes} bytes`);
-const classifyCssBudget = (bytes) => bytes <= CSS_SOFT_LIMIT
-    ? "within-budget"
-    : bytes <= CSS_WARN_LIMIT
-        ? "warning"
-        : bytes <= CSS_HARD_LIMIT ? "near-hard-limit" : "over-hard-limit";
-assert.deepEqual([
-    classifyCssBudget(CSS_SOFT_LIMIT),
-    classifyCssBudget(CSS_SOFT_LIMIT + 1),
-    classifyCssBudget(CSS_WARN_LIMIT),
-    classifyCssBudget(CSS_WARN_LIMIT + 1),
-    classifyCssBudget(CSS_HARD_LIMIT),
-    classifyCssBudget(CSS_HARD_LIMIT + 1),
-], ["within-budget", "warning", "warning", "near-hard-limit", "near-hard-limit", "over-hard-limit"],
-"CSS budget boundaries must remain explicit");
-const budgetState = classifyCssBudget(builtCssBytes);
-if (budgetState !== "within-budget") {
-    console.warn(`CSS budget notice: ${builtCssBytes} bytes (${budgetState}; warn ${CSS_WARN_LIMIT}, hard ${CSS_HARD_LIMIT}).`);
-}
-console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes, ${budgetState}).`);
+assert.ok(builtCssBytes > 0, "built CSS must not be empty");
+console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes; size reported only per D-246).`);

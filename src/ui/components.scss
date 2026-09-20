@@ -2126,7 +2126,6 @@
     .lc-checkin__mobile-nav button small { overflow-wrap: anywhere; }
     .lc-checkin__field > span:first-child { overflow-wrap: anywhere; }
     [data-appearance="dark"] .lc-checkin__mobile-nav button.is-selected { color: var(--lc-checkin-accent-text); background: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
-    [data-appearance="dark"] .lc-checkin--today .lc-checkin__item:not(.is-complete) .lc-checkin__record-button { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
     [data-appearance="dark"] .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 14%, var(--lc-checkin-surface)); }
     [data-appearance="dark"] .lc-checkin__item-tag.is-high { color: color-mix(in srgb, var(--lc-checkin-danger) 78%, #fff); }
     [data-appearance="dark"] .lc-checkin button:active { background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--lc-checkin-surface)); }

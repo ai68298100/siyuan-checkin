@@ -1,10 +1,22 @@
 /* Content composition after the shared workbench layer. Layout follows each
    plugin surface's container, not the enclosing SiYuan window width. */
 .lc-checkin.lc-checkin--review {
+    .lc-checkin__header-actions > .lc-checkin__range-tabs { padding: 3px; border: 0; border-radius: 10px; background: var(--lc-checkin-muted-surface); }
+    .lc-checkin__range-tabs button,
+    .lc-checkin__custom-range-disclosure > summary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; height: auto; border: 0; border-radius: 7px; background: transparent; font-size: 12px; }
+    .lc-checkin__range-tabs button.is-selected { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-surface); box-shadow: 0 1px 3px color-mix(in srgb, var(--lc-checkin-text) 8%, transparent); }
+    .lc-checkin__review-tools { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+    .lc-checkin__review-tool-button,
+    .lc-checkin__review-more > summary { border-radius: 7px; font-weight: 500; }
+    .lc-checkin__summary-stats { gap: 0; padding: 10px 0; border: 1px solid var(--lc-checkin-border); border-radius: 14px; background: var(--lc-checkin-surface); }
+    .lc-checkin__summary-stats > div { min-height: 44px; padding: 0 16px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+    .lc-checkin__summary-stats > div + div { border-left: 1px solid var(--lc-checkin-border); }
+    .lc-checkin__summary-stats > div::after { display: none; }
     .lc-checkin__review-overview { display: grid; gap: 12px; width: min(100%, 1180px); min-width: 0; margin: 0 auto 12px; }
     .lc-checkin__review-overview > :is(.lc-checkin__review-hero, .lc-checkin__compare) { width: 100%; min-width: 0; margin: 0; box-sizing: border-box; border-radius: 16px; }
     .lc-checkin__review-hero { background: var(--lc-checkin-accent-soft); }
-    .lc-checkin__review-hero-copy { gap: 6px; }
+    .lc-checkin__review-hero-copy { gap: 3px; }
+    .lc-checkin__review-hero-copy > h2 { margin-block: 2px; font-size: 19px; line-height: 1.4; }
     .lc-checkin__review-guidance-disclosure > p,
     .lc-checkin__review-hero .lc-checkin__review-guidance > small { font-size: 14px; line-height: 1.55; }
     .lc-checkin__review-guidance-disclosure { min-width: 0; }
@@ -33,17 +45,22 @@
     .lc-checkin__review-item { min-height: 52px; padding: 8px 10px; }
     .lc-checkin__review-item strong { font-size: 14px; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
     .lc-checkin__review-item-meta { white-space: normal; font-size: 11px; line-height: 1.4; }
-    .lc-checkin__review-subnav { padding-inline: 0; border: 0; border-radius: 0; box-shadow: none; }
-    .lc-checkin__review-subnav button { flex: 0 0 auto; width: auto; min-height: 36px; font-size: 12px; }
+    .lc-checkin__review-subnav { gap: 2px; padding: 3px 0; border: 0; border-bottom: 1px solid var(--lc-checkin-border); border-radius: 0; box-shadow: none; }
+    .lc-checkin__review-subnav button { flex: 0 0 auto; width: auto; min-height: 36px; padding-inline: 12px; border: 0; border-radius: 6px; color: var(--lc-checkin-muted); background: transparent; font-size: 12px; }
+    .lc-checkin__review-subnav button:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__month-nav { min-height: 44px; border: 0; border-radius: 10px; background: var(--lc-checkin-surface); }
+    .lc-checkin__month-nav > button { min-width: 44px; min-height: 44px; }
+    .lc-checkin__history-filter-disclosure > summary { min-height: 44px; padding: 10px 12px; box-sizing: border-box; border-radius: 10px; font-size: 12px; }
     .lc-checkin__calendar-empty { aspect-ratio: auto; min-height: 0; }
     .lc-checkin__history-event-main > strong { white-space: normal; overflow-wrap: anywhere; }
 }
 
 .lc-checkin.lc-checkin--editor {
-    .lc-checkin__form-scroll { max-height: none; }
+    .lc-checkin__form-scroll { max-height: none; padding: 18px; border: 1px solid var(--lc-checkin-border); border-radius: 16px; background: var(--lc-checkin-surface); box-sizing: border-box; }
     .lc-checkin__form-scroll > * { flex-shrink: 0; }
     .lc-checkin__template-section:not([open]) { min-height: 44px; height: auto; max-height: none; padding: 0; }
     .lc-checkin__template-summary { display: flex !important; align-items: center; gap: 6px; min-height: 44px !important; height: auto !important; padding: 4px 10px; box-sizing: border-box; }
+    .lc-checkin__template-section { border-radius: 10px; background: var(--lc-checkin-muted-surface); }
     .lc-checkin__template-section:not([open]) > .lc-checkin__template-browser { display: none; }
     .lc-checkin__editor-schedule-fields { display: grid; align-content: start; gap: 12px; min-width: 0; }
     .lc-checkin__editor-preview { padding: 12px; background: var(--lc-checkin-surface); border: 1px solid var(--lc-checkin-border); }
@@ -53,19 +70,23 @@
     .lc-checkin__preview-body strong { font-size: 14px; line-height: 1.4; }
     .lc-checkin__preview-body small { font-size: 11px; color: var(--lc-checkin-muted); line-height: 1.45; }
     .lc-checkin__preview-body :is(strong, small) { display: block; white-space: normal; overflow-wrap: anywhere; }
-    .lc-checkin__preview-action { grid-column: 3; grid-row: 1; justify-self: end; min-width: 0; max-width: 72px; box-sizing: border-box; padding: 5px 9px; border-radius: 999px; background: var(--lc-checkin-accent-soft); color: var(--lc-checkin-accent-text); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__preview-action { grid-column: 3; grid-row: 1; justify-self: end; min-width: 0; max-width: 72px; box-sizing: border-box; padding: 5px 9px; border-radius: 7px; background: var(--lc-checkin-accent-soft); color: var(--lc-checkin-accent-text); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
     .lc-checkin__advanced { background: var(--lc-checkin-surface); border-radius: 16px; }
     .lc-checkin__advanced > summary { background: transparent; color: var(--lc-checkin-text); }
     .lc-checkin__advanced > summary > span:first-child { min-width: 0; }
     .lc-checkin__advanced > summary small { white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
-    .lc-checkin__kind-option span { min-height: 48px; background: var(--lc-checkin-surface); }
+    .lc-checkin__kind-grid { gap: 4px; padding: 4px; border-radius: 11px; background: var(--lc-checkin-muted-surface); }
+    .lc-checkin__kind-option span { align-items: center; justify-content: center; min-height: 44px; padding-inline: 6px; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; text-align: center; }
+    .lc-checkin__kind-option input:checked + span { border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-surface); color: var(--lc-checkin-accent-text); box-shadow: 0 1px 3px color-mix(in srgb, var(--lc-checkin-text) 8%, transparent); }
     .lc-checkin__kind-option span small { display: none; }
     .lc-checkin__kind-help { display: block; font-size: 12px; line-height: 1.55; }
     .lc-checkin__organization-fields { align-items: start; }
     .lc-checkin__field > :is(small, span) { overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__field > span { font-size: 13px; color: var(--lc-checkin-text); }
     .lc-checkin__field > small { font-size: 12px; }
-    .lc-checkin__field:not(.lc-checkin__field-check) > :is(input, select, textarea) { min-width: 0; width: 100%; min-height: 44px; font-size: 14px; box-sizing: border-box; }
+    .lc-checkin__field:not(.lc-checkin__field-check) > :is(input, select, textarea) { min-width: 0; width: 100%; min-height: 44px; border-radius: 9px; font-size: 14px; box-sizing: border-box; }
+    .lc-checkin__icon-popup > summary { min-height: 44px; padding: 4px 9px; border-radius: 9px; background: var(--lc-checkin-surface); box-sizing: border-box; }
+    .lc-checkin__popup-current { width: 30px; height: 30px; border-radius: 8px; }
     .lc-checkin__field :is(input, select, textarea):focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
     .lc-checkin__group-options { display: flex; flex-wrap: wrap; gap: 4px; }
     .lc-checkin__group-options button { min-height: 28px; padding-inline: 8px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
@@ -75,33 +96,45 @@
     .lc-checkin__editor-header { min-width: 0; }
     .lc-checkin__editor-header > div { min-width: 0; flex: 1 1 0; }
     .lc-checkin__editor-header :is(.lc-checkin__title, .lc-checkin__eyebrow) { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
-    .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .lc-checkin__insight-stats > div { min-width: 0; min-height: 70px; padding: 12px; border-radius: 14px; }
-    .lc-checkin__insight-stats span { font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+    .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding-block: 10px; border: 1px solid var(--lc-checkin-border); border-radius: 14px; background: var(--lc-checkin-surface); }
+    .lc-checkin__insight-stats > div { min-width: 0; min-height: 54px; padding: 2px 12px; border: 0; border-radius: 0; background: transparent; }
+    .lc-checkin__insight-stats > div + div { border-left: 1px solid var(--lc-checkin-border); }
+    .lc-checkin__insight-stats > div::after { display: none; }
+    .lc-checkin__insight-stats span { font-size: 12px; line-height: 1.4; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
     .lc-checkin__insight-picker select { width: 100%; min-width: 0; }
     .lc-checkin__insight-section { max-height: none; overflow: visible; border-radius: 16px; }
     .lc-checkin__insight-heading :is(h2, small) { min-width: 0; overflow-wrap: anywhere; }
     .lc-checkin__coaching-item :is(strong, span, small) { display: block; white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__coaching-item :is(strong, span) { font-size: 14px; }
     .lc-checkin__coaching-item small { font-size: 12px; }
+    .lc-checkin__coaching-item { padding: 10px 0 10px 12px; border: 0; border-left: 2px solid var(--lc-checkin-border); border-radius: 0; background: transparent; }
+    .lc-checkin__coaching-item:is(:first-child, .is-primary) { border-left-color: var(--lc-checkin-accent); background: transparent; }
+    .lc-checkin__coaching-item.is-positive { border-left-color: var(--lc-checkin-success-text); }
+    .lc-checkin__coaching-item.is-caution { border-left-color: var(--lc-checkin-warning-text); }
     .lc-checkin__insight-row { gap: 8px; flex-wrap: wrap; }
 }
 
 /* Archived rows have five real children. Retain a selection track instead of
    inheriting the generic narrow history row's two-column layout. */
 .lc-checkin.lc-checkin--archived {
-    .lc-checkin__history-row { grid-template-columns: 32px 34px minmax(0, 1fr) auto auto; gap: 8px; border-radius: 14px; }
-    .lc-checkin__archived-select { display: grid; width: 32px; min-width: 32px; min-height: 44px; }
+    .lc-checkin__history-row { grid-template-columns: 44px 34px minmax(0, 1fr) auto auto; gap: 8px; border-radius: 12px; box-shadow: none; }
+    .lc-checkin__history-row:has([data-archived-select]:checked) { border-color: var(--lc-checkin-accent); background: color-mix(in srgb, var(--lc-checkin-accent-soft) 35%, var(--lc-checkin-surface)); }
+    .lc-checkin__archived-select { display: grid; width: 44px; min-width: 44px; min-height: 44px; background: transparent; box-shadow: none; }
+    .lc-checkin__archived-select input,
+    .lc-checkin__archived-select-all input { width: 18px; min-width: 18px; max-width: 18px; height: 18px; min-height: 18px; max-height: 18px; margin: 0; padding: 0; }
+    .lc-checkin__archived-select:focus-within { outline: none; }
+    .lc-checkin__archived-select input:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 3px; }
     .lc-checkin__archived-main > :is(strong, small) { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__archived-main > strong { font-size: 14px; }
     .lc-checkin__archived-main > small { font-size: 12px; }
-    .lc-checkin__history-row > .lc-checkin__text-button { margin: 0; min-width: 44px; min-height: 36px; }
-    .lc-checkin__archived-search { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .lc-checkin__history-row > .lc-checkin__text-button { margin: 0; min-width: 44px; min-height: 44px; border-radius: 7px; }
+    .lc-checkin__history-row > [data-action="delete-archived"] { margin-left: 12px; color: var(--lc-checkin-danger-text); }
+    .lc-checkin__archived-search { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; border-radius: 10px; box-sizing: border-box; }
     .lc-checkin__archived-bulk { flex-wrap: wrap; min-width: 0; }
 }
 @container lc5 (max-width: 719px) {
     .lc-checkin.lc-checkin--archived {
-        .lc-checkin__history-row { grid-template-columns: 32px 44px minmax(0, 1fr); gap: 4px 7px; padding: 8px; }
+        .lc-checkin__history-row { grid-template-columns: 44px 34px minmax(0, 1fr); gap: 4px 7px; padding: 8px; }
         .lc-checkin__history-row > [data-action="restore-archived"] { grid-column: 2; grid-row: 2; justify-self: start; }
         .lc-checkin__history-row > [data-action="delete-archived"] { grid-column: 3; grid-row: 2; justify-self: end; }
         .lc-checkin__history-row > .lc-checkin__text-button,
@@ -121,9 +154,15 @@
     .lc-checkin.lc-checkin--review .lc-checkin__review-overview:has(.lc-checkin__compare:not(.is-empty)) { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
     .lc-checkin.lc-checkin--review .lc-checkin__review-overview .lc-checkin__review-hero { padding: 16px; align-content: center; }
     .lc-checkin.lc-checkin--editor {
-        .lc-checkin__editor-columns { gap: 20px; }
+        .lc-checkin__editor-columns { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+        .lc-checkin__form-scroll { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px 18px; overflow: visible; }
+        .lc-checkin__form-scroll > * { grid-column: 1 / -1; }
+        .lc-checkin__form-scroll > .lc-checkin__field--name { grid-column: 1; }
+        .lc-checkin__form-scroll > .lc-checkin__field--icons { grid-column: 2; }
+        .lc-checkin__icon-popup[open] .lc-checkin__popup-body { left: auto; right: 0; width: 420px; box-sizing: border-box; }
         .lc-checkin__editor-side { display: contents; }
-        .lc-checkin__editor-preview { align-self: start; }
+        .lc-checkin__editor-preview { display: grid; grid-template-columns: minmax(130px, .45fr) minmax(0, 1fr); gap: 18px; align-items: center; align-self: start; padding: 12px 18px; }
+        .lc-checkin__editor-preview > .lc-checkin__field-heading { display: grid; gap: 4px; margin: 0; }
         .lc-checkin__advanced { grid-column: 1 / -1; }
         .lc-checkin__advanced-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 20px; padding: 8px 0 0; }
         .lc-checkin__editor-history-summary { grid-column: 1 / -1; }
@@ -134,6 +173,8 @@
 
 @container lc5 (max-width: 719px) {
     .lc-checkin.lc-checkin--review {
+        .lc-checkin__summary-stats { padding-block: 8px; }
+        .lc-checkin__summary-stats > div { padding-inline: 10px; }
         .lc-checkin__review-overview { gap: 8px; margin-bottom: 8px; }
         .lc-checkin__review-hero { padding: 12px; }
         .lc-checkin__review-hero-copy { display: contents; }
@@ -146,13 +187,15 @@
         .lc-checkin__compare-stat { padding: 7px; }
         .lc-checkin__summary-stats strong { font-size: 20px; }
         .lc-checkin__summary-stats span:not(.lc-checkin__analytics-badge) { font-size: 11px; }
-        .lc-checkin__review-subnav button { min-height: 38px; padding-inline: 11px; }
+        .lc-checkin__review-subnav button { min-height: 44px; padding-inline: 10px; }
         .lc-checkin__review-fold { padding: 8px 12px; }
         .lc-checkin__review-fold > summary { min-height: 44px; }
         .lc-checkin__history-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
         .lc-checkin__history-filter-row :is(label, select) { min-width: 0; }
     }
     .lc-checkin.lc-checkin--editor {
+        .lc-checkin__form-scroll { padding: 12px; }
+        .lc-checkin__kind-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .lc-checkin__editor-preview { padding: 10px 12px; }
         .lc-checkin__preview-card { padding: 0; }
         .lc-checkin__advanced { padding: 10px 12px; }
@@ -164,9 +207,10 @@
         .lc-checkin__group-options button { min-height: 32px; }
     }
     .lc-checkin.lc-checkin--insights {
-        .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-        .lc-checkin__insight-stats > div:nth-child(n) { grid-column: auto; min-height: 68px; padding: 8px 4px; }
-        .lc-checkin__insight-stats strong { font-size: 21px; }
+        .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding-block: 8px; }
+        .lc-checkin__insight-stats > div:nth-child(n) { grid-column: auto; min-height: 52px; padding: 4px; }
+        .lc-checkin__insight-stats strong { font-size: 19px; }
+        .lc-checkin__insight-stats span { font-size: 11px; }
         .lc-checkin__insight-section { padding: 12px; margin-block: 10px; }
         .lc-checkin__insight-picker select { min-height: 44px; font-size: 13px; }
     }
@@ -174,6 +218,10 @@
 
 /* Genuine touch hosts need comfortable targets without restoring the tall
    desktop panels. Leave the host-owned keyboard/safe-area action rail intact. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--editor > .lc-checkin__layout {
+    /* Keep trailing scroll space in the content box above the host save rail. */
+    flex: 0 0 auto;
+}
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--review {
     .lc-checkin__range-tabs button,
     .lc-checkin__custom-range-disclosure > summary,

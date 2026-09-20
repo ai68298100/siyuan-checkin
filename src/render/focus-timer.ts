@@ -1,7 +1,7 @@
 /* 专注计时面板：从 index.ts 外置（T-022）。
    倒计时状态由宿主持有，本模块负责渲染、秒级刷新与面板内交互绑定。 */
 import {t} from "../i18n";
-import {captureActionMoment, calendarDateFromKey, escapeHtml} from "../shared";
+import {captureActionMoment, calendarDateFromKey, escapeHtml, renderIconMarkup} from "../shared";
 import {showMessage} from "siyuan";
 import type {CheckinItem, CheckinStore} from "../types";
 import {getActiveItemById, getItemById} from "../model";
@@ -32,10 +32,21 @@ export interface FocusTimerHost {
 export function openFocusTimerFor(host: FocusTimerHost, itemId: string): void {
     const item = getActiveItemById(host.store, itemId);
     if (!item) return;
+    if (host.focusTimerState) {
+        if (host.focusTimerState.itemId !== itemId) showMessage(t("focus.switchPending"));
+        revealFocusTimerFor(host);
+        return;
+    }
     clearFocusTimerTimers(host);
     host.focusTimerState = {itemId, totalSec: host.focusTimerMinutes * 60, remainingSec: host.focusTimerMinutes * 60, running: true};
     host.focusTimerInterval = window.setInterval(() => tickFocusTimerFor(host), 1000);
+    revealFocusTimerFor(host);
+}
+
+/** Opening the entry again reveals the existing session; it never resets it. */
+function revealFocusTimerFor(host: FocusTimerHost): void {
     host.render();
+    host.focusTimerRoot?.querySelector<HTMLElement>("[data-focus-timer]")?.scrollIntoView({block: "nearest"});
 }
 
 /** 停掉秒级心跳与庆祝提示的延时器：思源不会代插件清理自有定时器，卸载路径必须显式调用。 */
@@ -113,7 +124,7 @@ export function renderFocusTimerPanelFor(host: FocusTimerHost): string {
     const minutes = Math.floor(state.remainingSec / 60);
     const seconds = state.remainingSec % 60;
     return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="${t("focus.timerAria")}">
-            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong></div>
+            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong></div>
             <div class="lc-checkin__focus-time" data-focus-remaining>${minutes}:${String(seconds).padStart(2, "0")}</div>
             <div class="lc-checkin__focus-progress" data-focus-progress><span style="width: ${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%"></span></div>
             <div class="lc-checkin__focus-presets" role="group" aria-label="${t("focus.presetsAria")}">${presets}</div>

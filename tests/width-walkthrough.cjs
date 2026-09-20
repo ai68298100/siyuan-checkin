@@ -107,21 +107,68 @@ const cases = [
         else if (name === "archived") plugin.showArchived();
     }, surface);
 
+    const waitForVisualStability = () => page.evaluate(() => new Promise((resolve, reject) => {
+        const started = performance.now();
+        let previousSurface;
+        let previousSnapshot = '';
+        let stableSince = started;
+        const sample = () => {
+            const now = performance.now();
+            const host = document.querySelector('#dock');
+            const surface = host?.querySelector('.lc-checkin');
+            const nodes = [host, surface, ...(host?.querySelectorAll('.lc-checkin__group-items:not([hidden])') || [])].filter(Boolean);
+            const bounds = nodes.map(node => {
+                const box = node.getBoundingClientRect();
+                return [box.x, box.y, box.width, box.height];
+            });
+            const painted = host && surface && surface.checkVisibility() && bounds.every(box => box[2] > 0 && box[3] > 0);
+            const finiteAnimation = host?.getAnimations({subtree: true}).some(animation => animation.playState === 'running' && Number.isFinite(animation.effect?.getComputedTiming().endTime));
+            const snapshot = JSON.stringify(bounds);
+            if (!painted || finiteAnimation || surface !== previousSurface || snapshot !== previousSnapshot) stableSince = now;
+            previousSurface = surface;
+            previousSnapshot = snapshot;
+            // Observe a quiet interval beyond the host's deferred resize work.
+            // Replaced nodes and active finite transitions restart the interval.
+            if (painted && !finiteAnimation && now - stableSince >= 120) return resolve();
+            if (now - started >= 4000) return reject(new Error(`host did not reach a visible stable layout: ${JSON.stringify({painted, finiteAnimation, bounds})}`));
+            requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+    }));
+    const screenshot = async (options, target = page) => {
+        // Failure artifacts should preserve even an unstable or blank result.
+        if (!options.path.endsWith('-failed.png')) await waitForVisualStability();
+        await target.screenshot({...options, animations: 'disabled'});
+    };
+    const waitForVisibleCards = async (expected) => {
+        await page.waitForFunction(expectedCount => {
+            const groups = [...document.querySelectorAll('.lc-checkin__group-items:not([hidden])')];
+            const cards = groups.flatMap(group => [...group.querySelectorAll('.lc-checkin__item')]);
+            return groups.length > 0 && cards.length === expectedCount && [...groups, ...cards].every(node => {
+                const box = node.getBoundingClientRect();
+                return node.checkVisibility() && box.width > 0 && box.height > 0;
+            });
+        }, expected, {timeout: 4000});
+        await waitForVisualStability();
+    };
     const sizeHost = async (width, height = 720, viewportHeight = 1000) => {
         await page.setViewportSize({width: width + 40, height: viewportHeight});
         await page.locator("#frame").evaluate((element, size) => {
             element.style.width = `${size.width}px`;
             element.style.height = `${size.height}px`;
         }, {width, height});
+        await waitForVisualStability();
     };
     const assertLayout = async (label) => {
         const layout = await page.locator("#dock").evaluate(host => {
             const bounds = host.getBoundingClientRect();
             const failures = [];
+            let visibleCandidates = 0;
             const candidates = host.querySelectorAll('button, input:not([type="hidden"]), select, textarea, summary, h1, h2, .lc-checkin__item, .lc-checkin__occasion-manager-row, .lc-checkin__settings-card');
             for (const element of candidates) {
                 const rect = element.getBoundingClientRect();
                 if (!rect.width || !rect.height || !element.checkVisibility()) continue;
+                visibleCandidates += 1;
                 // Pills, heatmaps and calendar strips may deliberately scroll
                 // horizontally. Hidden overflow is NOT an exemption: an
                 // oversized child clipped by its host is a real regression.
@@ -139,8 +186,9 @@ const cases = [
                     failures.push({element: element.tagName.toLowerCase(), type: element.getAttribute('type'), name: element.getAttribute('name'), class: element.className, text: (element.textContent || element.getAttribute('aria-label') || '').trim().slice(0, 60), left: Math.round(rect.left - bounds.left), right: Math.round(rect.right - bounds.left)});
                 }
             }
-            return {width: host.clientWidth, scrollWidth: host.scrollWidth, failures: failures.slice(0, 12)};
+            return {width: host.clientWidth, height: host.clientHeight, scrollWidth: host.scrollWidth, visibleCandidates, failures: failures.slice(0, 12)};
         });
+        assert.ok(layout.width > 0 && layout.height > 0 && layout.visibleCandidates > 0, `${label}: layout must contain visible positive-size content ${JSON.stringify(layout)}`);
         assert.ok(layout.scrollWidth <= layout.width + 1, `${label}: host horizontal overflow ${JSON.stringify(layout)}`);
         assert.deepEqual(layout.failures, [], `${label}: content clipped beyond host ${JSON.stringify(layout)}`);
         return layout;
@@ -162,7 +210,29 @@ const cases = [
         }
         await surface.evaluate(element => { element.scrollTop = 0; });
     };
+    const showEditorPreview = async (preview, label) => {
+        await waitForVisualStability();
+        // A nearest-edge scroll can put the preview beneath the sticky save
+        // rail. Center it in the scroll region before inspecting or capturing.
+        await preview.evaluate(element => {
+            element.scrollIntoView({block: 'center', inline: 'nearest', behavior: 'instant'});
+            const rail = document.querySelector('.lc-checkin__editor-actions').getBoundingClientRect();
+            const surface = element.closest('.lc-checkin--editor');
+            const remaining = element.getBoundingClientRect().bottom - rail.top + 12;
+            if (remaining > 0) surface.scrollTop += remaining;
+        });
+        await waitForVisualStability();
+        const visible = await preview.evaluate(element => {
+            const box = element.getBoundingClientRect();
+            const host = document.querySelector('#dock').getBoundingClientRect();
+            const rail = document.querySelector('.lc-checkin__editor-actions').getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return {height: box.height, inside: box.top >= host.top && box.bottom <= Math.min(host.bottom, rail.top) + 1, hit: hit === element || element.contains(hit)};
+        });
+        assert.ok(visible.height > 0 && visible.inside && visible.hit, `${label}: the whole preview can be read above the save rail ${JSON.stringify(visible)}`);
+    };
     const assertTextContrast = async (locator, label) => {
+        await waitForVisualStability();
         const contrast = await locator.evaluate(element => {
             // Let the browser parse RGB/color-mix and composite the actual
             // ancestor backgrounds. This checks named controls, not a blanket
@@ -195,7 +265,7 @@ const cases = [
         try {
         await sizeHost(width, height, viewportHeight);
         await goto(surface);
-        await page.waitForTimeout(60);
+        await waitForVisualStability();
         const topnav = page.locator('.lc-checkin__topnav');
         if (await topnav.count() && await topnav.isVisible()) {
             const chrome = await topnav.evaluate(element => {
@@ -218,7 +288,7 @@ const cases = [
             assert.equal(await comparison.locator('.lc-checkin__compare-stats > div:visible').count(), 3, 'keyboard expansion preserves all comparison metrics');
             assert.equal(await comparison.locator('.lc-checkin__compare-chart').isVisible(), true, 'comparison chart remains available on narrow surfaces');
             await assertLayout(`${label}/comparison-open`);
-            if (width === 320 || width === 1180) await page.screenshot({path: path.join(outputRoot, `${label}-comparison-open.png`)});
+            if (width === 320 || width === 1180) await screenshot({path: path.join(outputRoot, `${label}-comparison-open.png`)});
             await summary.click();
             const disclosure = page.locator('.lc-checkin__review-guidance-disclosure');
             assert.equal(await disclosure.getAttribute('open'), null, 'secondary review guidance starts folded');
@@ -242,13 +312,13 @@ const cases = [
         }
         if (surface === "today") {
             const names = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item-name').evaluateAll(elements => elements.map(element => ({text: element.textContent, width: element.getBoundingClientRect().width, height: element.getBoundingClientRect().height, parent: getComputedStyle(element.parentElement).cssText, flex: getComputedStyle(element).flex})));
-            assert.ok(names.every(name => name.text.trim() && name.width > 20 && name.height >= 16), `names must stay readable at ${width}: ${JSON.stringify(names)}`);
+            assert.ok(names.length > 0 && names.every(name => name.text.trim() && name.width > 20 && name.height >= 16), `names must stay readable at ${width}: ${JSON.stringify(names)}`);
             if (width < 720) {
                 const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(elements => Math.max(...elements.map(element => element.getBoundingClientRect().height)));
-                assert.ok(maxHeight <= 130, `${label}: even small lists must use compact phone cards (actual ${maxHeight}px)`);
+                assert.ok(maxHeight > 0 && maxHeight <= 130, `${label}: even small lists must use visible compact phone cards (actual ${maxHeight}px)`);
             } else {
                 const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(elements => Math.max(...elements.map(element => element.getBoundingClientRect().height)));
-                assert.ok(maxHeight <= 200, `${label}: ordinary desktop cards must stay within 200px (actual ${maxHeight}px)`);
+                assert.ok(maxHeight > 0 && maxHeight <= 200, `${label}: ordinary desktop cards must be visible and stay within 200px (actual ${maxHeight}px)`);
             }
         }
         if (surface === "editor") {
@@ -293,7 +363,59 @@ const cases = [
                 assert.equal(await direction.isChecked(), false);
                 assert.equal(await page.locator('input[name="anchorAppendNotes"]').isDisabled(), true);
                 await assertEditorSaveReachable(`${label}/${theme}`);
-                await page.screenshot({path: path.join(outputRoot, `${label}-${theme}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}-${theme}.png`)});
+                if (width === 320 || width === 1180 || height < 500) {
+                    const chooseKind = kind => page.locator(`.lc-checkin__kind-option:has(input[value="${kind}"])`).click();
+                    const preview = page.locator('[data-editor-preview]');
+                    const action = preview.locator('[data-preview-action]');
+                    const source = page.locator('select[name="completionSource"]');
+                    await chooseKind('duration');
+                    assert.match(await preview.innerText(), /专注/, `${label}/${theme}: duration preview exposes focus`);
+                    assert.match(await preview.innerText(), /记录/, `${label}/${theme}: duration preview exposes manual recording`);
+                    await showEditorPreview(preview, `${label}/${theme}/duration-preview`);
+                    await assertLayout(`${label}/${theme}/duration-preview`);
+                    await screenshot({path: path.join(outputRoot, `${label}-${theme}-duration-preview.png`)}, preview);
+                    await chooseKind('count');
+                    await source.selectOption('tomato');
+                    assert.match(await action.innerText(), /专注/, 'changing source refreshes the primary action immediately');
+                    await direction.check();
+                    assert.doesNotMatch(await action.innerText(), /专注/, 'limiting habits never preview a focus action');
+                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /上限/, 'limiting preview identifies its ceiling');
+                    await direction.uncheck();
+                    assert.match(await action.innerText(), /专注/, 'leaving the limiting direction restores eligible focus');
+                    await source.selectOption('manual');
+                    await chooseKind('quantity');
+                    await page.locator('input[name="unit"]').fill('ml');
+                    await page.locator('input[name="recordStep"]').fill('250');
+                    assert.match(await action.innerText(), /\+250/, 'quantity preview shows the configured increment');
+                    assert.match(await preview.innerText(), /填写/, 'quantity preview exposes direct entry');
+                    await page.locator('input[name="target"]').fill('2500');
+                    await page.locator('select[name="schedule"]').selectOption('quota');
+                    await page.locator('input[name="quotaAmount"]').fill('3');
+                    await page.locator('select[name="quotaCountMode"]').selectOption('dates');
+                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /0\s*\/\s*3\s*天/, 'date quota preview uses counted days instead of the daily numeric target');
+                    await page.locator('select[name="quotaCountMode"]').selectOption('value');
+                    await page.locator('input[name="quotaAmount"]').fill('5000');
+                    assert.match(await preview.locator('[data-preview-meta]').innerText(), /0\s*\/\s*5,?000\s*ml/, 'value quota preview uses the period target and original unit');
+                    await page.locator('select[name="schedule"]').selectOption('daily');
+                    await chooseKind('custom');
+                    await page.locator('input[name="unit"]').fill('自定义长单位');
+                    await page.locator('input[name="recordStep"]').fill('1000000000');
+                    assert.match(await preview.innerText(), /1,?000,?000,?000/, 'large increments remain fully readable in preview');
+                    assert.match(await preview.innerText(), /自定义长单位/, 'preview preserves the complete custom unit');
+                    await showEditorPreview(preview, `${label}/${theme}/custom-preview`);
+                    await assertLayout(`${label}/${theme}/custom-preview`);
+                    const geometry = await preview.evaluate(element => [...element.querySelectorAll('span, small')].filter(node => node.checkVisibility()).map(node => ({text: node.textContent, width: node.clientWidth, scroll: node.scrollWidth})));
+                    assert.ok(geometry.every(node => node.scroll <= node.width + 1), `preview text must wrap without clipping ${JSON.stringify(geometry)}`);
+                    await screenshot({path: path.join(outputRoot, `${label}-${theme}-custom-preview.png`)}, preview);
+                    await chooseKind('binary');
+                    assert.match(await action.innerText(), /打卡/, 'binary preview restores the check-in action');
+                    assert.match(await preview.innerText(), /备注/, 'binary preview includes its note entry');
+                    await direction.check();
+                    assert.match(await action.innerText(), /破戒/, 'binary limiting preview uses lapse semantics');
+                    await direction.uncheck();
+                    console.log(`${label}/${theme}: live preview matches focus/manual, source, limit, quantity and custom recording actions`);
+                }
             }
             await page.locator(".lc-checkin--editor").evaluate((element, theme) => { element.dataset.appearance = theme; }, qaTheme);
         }
@@ -315,13 +437,13 @@ const cases = [
                 }
             }
         }
-        await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+        await screenshot({path: path.join(outputRoot, `${label}.png`)});
         const layout = await assertLayout(`${qaHost}/${qaTheme}/${label}`);
         console.log(`${label}: overflow ${layout.scrollWidth}/${layout.width} ok`);
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
-            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
     }
     /* Functional acceptance for the new composition, using actual plugin handlers. */
@@ -369,6 +491,16 @@ const cases = [
         await plugin.finishFocusTimer(false);
         plugin.store = structuredClone(window.__stateBaseline);
         window.__store = structuredClone(plugin.store);
+        plugin.lastPersistedStore = plugin.cloneStore(plugin.store);
+        // Each scenario owns a fresh mocked storage baseline. A previous
+        // failure stays in scenarioFailures but its error/toast must not change
+        // a later scenario's measurements.
+        plugin.saveState = 'idle';
+        for (const key of ['recentRecordTimer', 'syncNoticeTimer']) {
+            if (plugin[key] !== undefined) clearTimeout(plugin[key]);
+            plugin[key] = undefined;
+        }
+        plugin.pendingFocusItemId = undefined;
         plugin.todayQuery = '';
         plugin.pendingOnly = false;
         plugin.completedCollapsed = true;
@@ -390,6 +522,46 @@ const cases = [
             return {width: box.width, height: box.height, inside: box.left >= host.left - 1 && box.right <= host.right + 1 && box.top >= host.top - 1 && box.bottom <= host.bottom + 1, hit: element === hit || element.contains(hit)};
         });
         assert.ok(geometry.inside && geometry.hit && geometry.width >= 43.75 && geometry.height >= minHeight - .25, `${label}: control must remain reachable ${JSON.stringify(geometry)}`);
+    };
+    const assertFocusPrimary = async (label, itemId = 'reading') => {
+        const card = page.locator(`[data-item-id="${itemId}"]`);
+        const control = card.locator('[data-action="focus"]');
+        assert.equal(await control.count(), 1, `${label}: duration habit exposes exactly one focus entry`);
+        assert.equal(await card.locator('.lc-checkin__item-action > .lc-checkin__focus-primary').count(), 1, `${label}: focus is the labelled primary action`);
+        assert.equal(await card.locator('.lc-checkin__item-action > [data-action="quick-record"]').count(), 0, `${label}: starting a timer cannot be confused with adding minutes immediately`);
+        assert.equal(await card.locator('.lc-checkin__item-icon').evaluate(icon => icon.tagName), 'SPAN', `${label}: the habit icon remains a visual identifier`);
+        await assertControlReachable(control, `${label}/focus-primary`, 44);
+        const visual = await control.evaluate(button => {
+            const clock = button.querySelector(':scope > svg');
+            const clockBox = clock?.getBoundingClientRect();
+            const labels = [...button.querySelectorAll(':scope > span')].filter(span => span.checkVisibility());
+            return {name: button.getAttribute('aria-label'), labels: labels.map(span => ({text: span.textContent.trim(), width: span.getBoundingClientRect().width, scrollWidth: span.scrollWidth})), clockVisible: Boolean(clock?.checkVisibility() && clockBox.width > 0 && clockBox.height > 0)};
+        });
+        assert.ok(visual.clockVisible && visual.labels.length === 1 && visual.labels.every(span => /专注|计时|focus|timer/i.test(span.text) && span.width > 0 && span.scrollWidth <= span.width + 1) && /专注|计时|focus|timer/i.test(visual.name || ''), `${label}: normalization preserves the clock and visible, unclipped action label ${JSON.stringify(visual)}`);
+        assert.match(await card.locator('[data-action="toggle-exact"]').getAttribute('aria-label'), /手动|manual/i, `${label}: manual recording remains a clearly named secondary action`);
+        const manual = card.locator('[data-action="toggle-exact"]');
+        assert.equal((await manual.innerText()).trim(), '记录', `${label}: manual recording has a visible text entry`);
+        await assertControlReachable(manual, `${label}/manual-entry`, 44);
+        return control;
+    };
+    const assertMobileNav = async (current, label) => {
+        const nav = page.locator('.lc-checkin__mobile-nav:visible');
+        if (!await nav.count()) return;
+        assert.equal(await nav.locator('button.is-selected').count(), 1, `${label}: only the current navigation item is selected`);
+        assert.equal(await nav.locator('button.is-selected').getAttribute('data-mobile-nav'), current);
+        assert.equal(await nav.locator('[aria-current="page"]').count(), 1, `${label}: only the current page is announced`);
+        if (current !== 'settings') {
+            const colors = await nav.locator('[data-mobile-nav="settings"]').evaluate(button => {
+                const probe = document.createElement('span');
+                probe.style.color = 'var(--lc-checkin-muted)';
+                button.append(probe);
+                const muted = getComputedStyle(probe).color;
+                probe.remove();
+                return {muted, icon: getComputedStyle(button.querySelector(':scope > span')).color, text: getComputedStyle(button.querySelector(':scope > small')).color};
+            });
+            assert.equal(colors.icon, colors.muted, `${label}: unselected settings icon uses the muted navigation color`);
+            assert.equal(colors.text, colors.muted, `${label}: unselected settings label uses the muted navigation color`);
+        }
     };
     for (const size of stateCases) {
       const suffix = `${size.width}${size.height < 500 ? `x${size.height}` : ''}`;
@@ -417,7 +589,7 @@ const cases = [
                     await assertControlReachable(page.locator(selector), `${label}/${selector}`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 30);
                 }
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await page.locator('[data-group-mode]').selectOption('group');
                 assert.equal(await page.locator('[data-group-toggle]').count(), 2, 'custom grouping restores both fixture groups');
                 if (await filters.getAttribute('open') === null) await filters.locator(':scope > summary').click();
@@ -477,9 +649,9 @@ const cases = [
                     assert.ok(targets.every(box => box.width >= 43.75 && box.height >= 43.75), `${label}: toolbar keeps touch targets ${JSON.stringify(targets)}`);
                 }
                 const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(cards => Math.max(...cards.map(card => card.getBoundingClientRect().height)));
-                assert.ok(maxHeight <= (size.width < 720 ? 120 : 200), `${label}: selecting must not inflate the habit cards (${maxHeight}px)`);
+                assert.ok(maxHeight > 0 && maxHeight <= (size.width < 720 ? 120 : 200), `${label}: selecting must keep visible compact habit cards (${maxHeight}px)`);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await toolbar.locator('[data-action="bulk-exit"]').click();
                 assert.equal(await page.locator('[data-bulk-toolbar]').count(), 0);
                 assert.equal(await page.locator('[data-bulk-check]').count(), 0);
@@ -505,7 +677,7 @@ const cases = [
                 await assertControlReachable(entry.locator('[data-action="record"]'), `${label}/save`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
                 await assertTextContrast(entry.locator('[data-action="record"]'), `${label}/save`);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await entry.locator('.lc-checkin__amount').press('Enter');
                 await page.waitForFunction(value => window.__plugin.store.events.some(event => event.itemId === 'water' && event.value === 3 && event.note === value), note);
                 await page.waitForFunction(() => document.querySelector('[data-item-id="water"] .lc-checkin__item-value strong')?.textContent === '5');
@@ -526,7 +698,7 @@ const cases = [
                 await assertControlReachable(entry.locator('[data-action="record"]'), `${label}/save`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
                 await assertTextContrast(entry.locator('[data-action="record"]'), `${label}/save`);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await entry.locator('[data-action="record"]').click();
                 await page.waitForFunction(value => window.__plugin.store.events.some(event => event.itemId === 'stretch' && event.value === 1 && event.note === value), note, {timeout: 3000});
                 const saved = await page.evaluate(() => window.__plugin.store.events.filter(event => event.itemId === 'stretch'));
@@ -545,9 +717,11 @@ const cases = [
                     plugin.showToday();
                 });
                 const initialEvents = await page.evaluate(() => window.__plugin.store.events.length);
-                await page.locator('[data-item-id="reading"] [data-action="focus"]').click();
+                const focusPrimary = await assertFocusPrimary(label);
+                await focusPrimary.click();
                 const panel = page.locator('[data-focus-timer]');
                 assert.equal(await panel.getAttribute('role'), 'dialog');
+                assert.equal(await page.evaluate(() => window.__plugin.store.events.length), initialEvents, 'opening the timer does not immediately add duration');
                 await panel.locator('[data-focus-timer-minutes="15"]').click();
                 assert.equal(await panel.locator('[data-focus-timer-minutes][aria-pressed="true"]').count(), 1, 'one focus preset is announced as selected');
                 assert.equal(await panel.locator('[data-focus-timer-minutes="15"]').getAttribute('aria-pressed'), 'true');
@@ -563,12 +737,13 @@ const cases = [
                 await assertControlReachable(panel.locator('[data-action="focus-finish"]'), `${label}/finish`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
                 await assertControlReachable(panel.locator('[data-action="focus-abandon"]'), `${label}/abandon`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await panel.locator('[data-action="focus-toggle"]').click();
                 assert.equal(await page.evaluate(() => window.__plugin.focusTimerState.running), true, 'resume updates live timer state');
                 await panel.locator('[data-action="focus-abandon"]').click();
                 assert.equal(await panel.count(), 0);
                 assert.equal(await page.evaluate(() => window.__plugin.store.events.length), initialEvents, 'abandoning focus must not add a record');
+                await assertFocusPrimary(`${label}/after-abandon`);
             } else if (state === 'search-empty') {
                 await page.locator('[data-today-search]').fill('NoSuchHabit-不存在的项目');
                 await page.waitForSelector('.lc-checkin__today-search-empty');
@@ -576,7 +751,7 @@ const cases = [
                 const clear = page.locator('.lc-checkin__today-search-empty [data-action="clear-search"]');
                 await assertControlReachable(clear, `${label}/clear`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await clear.click();
                 assert.equal(await page.locator('[data-today-search]').inputValue(), '');
                 assert.equal(await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').count(), 2, 'clear restores pending habits');
@@ -594,7 +769,7 @@ const cases = [
                 const toggle = page.locator('[data-action="toggle-completed"]');
                 assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
                 await assertControlReachable(toggle, `${label}/completed`);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await toggle.click();
                 assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
                 assert.equal(await page.locator('.lc-checkin__completed-section .lc-checkin__item:visible').count(), 3, 'all completed habits remain accessible');
@@ -617,7 +792,7 @@ const cases = [
                 });
                 assert.ok(!['absolute', 'fixed'].includes(onboarding.position) && onboarding.followsSteps && onboarding.width > onboarding.height, `${label}: first-habit CTA belongs in the onboarding flow ${JSON.stringify(onboarding)}`);
                 await assertLayout(label);
-                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await screenshot({path: path.join(outputRoot, `${label}.png`)});
                 await add.click();
                 assert.equal(await page.locator('.lc-checkin--editor input[name="name"]').inputValue(), '', 'first habit action opens a blank editor');
             }
@@ -625,10 +800,276 @@ const cases = [
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
-            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
       }
     }
+    /* Main actions must stay legible in every supported theme/palette. Use the
+       real narrow-page composition so action and host-nav overrides participate. */
+    const originalPalette = await page.evaluate(() => window.__plugin.palette);
+    for (const theme of ['light', 'dark']) {
+      for (const palette of ['lavender', 'ocean', 'forest', 'sunset']) {
+        const label = `action-colors-${theme}-${palette}`;
+        try {
+            await sizeHost(320);
+            await page.evaluate(({theme, palette}) => { window.__plugin.appearance = theme; window.__plugin.palette = palette; }, {theme, palette});
+            await resetState();
+            await page.evaluate(() => {
+                const plugin = window.__plugin;
+                plugin.store = {...plugin.store, events: plugin.store.events.filter(event => event.itemId !== 'stretch')};
+                window.__store = structuredClone(plugin.store);
+                plugin.showToday();
+            });
+            await waitForVisualStability();
+            await assertMobileNav('today', label);
+            await assertTextContrast(page.locator('[data-item-id="water"] [data-action="quick-record"]'), `${label}/water-quick`);
+            await assertTextContrast(page.locator('[data-item-id="reading"] [data-action="focus"]'), `${label}/reading-focus`);
+            const binaryRecord = page.locator('[data-item-id="stretch"] .lc-checkin__item-action [data-action="record"]');
+            await assertTextContrast(binaryRecord, `${label}/binary-record`);
+            await binaryRecord.hover();
+            await waitForVisualStability();
+            await assertTextContrast(binaryRecord, `${label}/binary-record-hover`);
+            await page.locator('[data-item-id="water"] [data-action="toggle-exact"]').click();
+            const record = page.locator('[data-item-id="water"] [data-exact-entry] [data-action="record"]');
+            await assertControlReachable(record, `${label}/exact`, 44);
+            await assertTextContrast(record, `${label}/exact`);
+            const nav = page.locator('.lc-checkin__mobile-nav:visible');
+            if (await nav.count()) {
+                await nav.locator('[data-mobile-nav="settings"]').click();
+                await assertMobileNav('settings', `${label}/settings`);
+                await nav.locator('[data-mobile-nav="today"]').click();
+                await assertMobileNav('today', `${label}/return-today`);
+            }
+            await goto('editor');
+            await assertEditorSaveReachable(label);
+            await assertTextContrast(page.locator('.lc-checkin__save-button'), `${label}/editor-save`);
+            console.log(`${label}: quick, binary record/default-hover, exact and editor-save contrast plus navigation state ok`);
+        } catch (error) {
+            scenarioFailures.push(`${label}: ${error.message}`);
+            console.error(`FAILED ${label}: ${error.message}`);
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+        }
+      }
+    }
+    await page.evaluate(({theme, palette}) => { window.__plugin.appearance = theme; window.__plugin.palette = palette; }, {theme: qaTheme, palette: originalPalette});
+    /* Exercise real user configurations together: the row layout must survive
+       different units, quotas, limits and tomato-backed count habits. */
+    await resetState();
+    await page.evaluate(async () => {
+        const plugin = window.__plugin;
+        const now = new Date();
+        const stamp = now.toISOString();
+        const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const imageIcon = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="13" fill="#6259df"/></svg>');
+        const definitions = [
+            {id: 'binary', name: '晨间运动', kind: 'binary', target: 1, unit: '次', recordStep: 1},
+            {id: 'count', name: '喝水', kind: 'count', target: 8, unit: '杯', recordStep: 1},
+            {id: 'quantity', name: '饮水量', kind: 'quantity', target: 2500, unit: '毫升', recordStep: 250},
+            {id: 'percent', name: '课程进度', kind: 'custom', target: 100, unit: '%', recordStep: 5},
+            {id: 'long-unit', name: '自定义训练', kind: 'quantity', target: 500, unit: '完整训练动作计量单位Reps', recordStep: 10},
+            {id: 'large', name: '累计数量', kind: 'quantity', target: 2000000000, unit: '点', recordStep: 1000000000},
+            {id: 'fraction', name: '小数记录', kind: 'custom', target: 100, unit: '%', recordStep: 0.01},
+            {id: 'image', name: '自定义图标', kind: 'count', target: 8, unit: '次', recordStep: 1, icon: imageIcon},
+            {id: 'quota-dates', name: '每周四天', kind: 'count', target: 1, unit: '次', recordStep: 1, schedule: {type: 'quota', quota: {period: 'week', amount: 4, countMode: 'dates'}}},
+            {id: 'quota-value', name: '每周累计', kind: 'quantity', target: 20, unit: '公里', recordStep: 1, schedule: {type: 'quota', quota: {period: 'week', amount: 20, countMode: 'value'}}},
+            {id: 'limit-number', name: '限制饮用', kind: 'count', target: 2, unit: '杯', recordStep: 1, direction: 'atMost'},
+            {id: 'limit-binary', name: '避免熬夜', kind: 'binary', target: 1, unit: '次', recordStep: 1, direction: 'atMost'},
+            {id: 'tomato-count', name: '番茄计次', kind: 'count', target: 4, unit: '个', recordStep: 1, completionSource: 'tomato', tomatoMode: 'sessions'},
+            {id: 'duration', name: '深度阅读', kind: 'duration', target: 30, unit: '分钟', recordStep: 5},
+            {id: 'hours', name: '按小时专注', kind: 'duration', target: 2, unit: '小时', recordStep: 0.5},
+        ];
+        const items = definitions.map((definition, index) => {
+            const item = {icon: '📖', priority: 'medium', timeSlot: 'any', group: '', completionSource: 'manual', schedule: {type: 'daily'}, createdAt: stamp, updatedAt: stamp, createdDate: day, archivePeriods: [], ...definition, id: `mixed-${definition.id}`, sortOrder: index};
+            item.revisions = [{effectiveDate: day, kind: item.kind, target: item.target, unit: item.unit, recordStep: item.recordStep, schedule: structuredClone(item.schedule)}];
+            return item;
+        });
+        const amounts = {'quota-dates': 2, 'quota-value': 2, 'limit-number': 3, 'limit-binary': 1, duration: 15};
+        const events = Object.entries(amounts).map(([id, value]) => ({id: `mixed-event-${id}`, itemId: `mixed-${id}`, value, unit: items.find(item => item.id === `mixed-${id}`).unit, occurredAt: stamp, localDate: day, source: 'manual'}));
+        // Load the fixture through the real storage reconciliation path so
+        // optional defaults and revisions match the production persisted shape.
+        window.__store = {...structuredClone(plugin.store), items, events, eventTombstones: []};
+        plugin.store = {...plugin.store, items: [], events: [], eventTombstones: []};
+        plugin.lastPersistedStore = plugin.cloneStore(plugin.store);
+        await plugin.reconcileStore();
+        await plugin.saveQueue;
+        window.__mixedFixture = structuredClone(plugin.store);
+        window.__store = structuredClone(plugin.store);
+        plugin.lastPersistedStore = plugin.cloneStore(plugin.store);
+        if (plugin.syncNoticeTimer !== undefined) clearTimeout(plugin.syncNoticeTimer);
+        plugin.syncNoticeTimer = undefined;
+        plugin.todaySortMode = 'manual';
+        plugin.showToday();
+    });
+    for (const theme of ['light', 'dark']) {
+      await page.evaluate(value => { window.__plugin.appearance = value; window.__plugin.showToday(); }, theme);
+      for (const size of [{width: 1180}, {width: 640}, {width: 360}, {width: 320}, {width: 844, height: 350, viewportHeight: 390}]) {
+        const label = `mixed-habits-${theme}-${size.width}${size.height ? 'x350' : ''}`;
+        try {
+            await sizeHost(size.width, size.height || 720, size.viewportHeight || 1000);
+            await waitForVisibleCards(15);
+            const rowGeometry = await page.locator('.lc-checkin__group-items:not([hidden]) .lc-checkin__item').evaluateAll(cards => cards.map(card => {
+                const body = card.querySelector('.lc-checkin__item-body').getBoundingClientRect();
+                const actions = card.querySelector('.lc-checkin__item-action').getBoundingClientRect();
+                const main = card.querySelector('.lc-checkin__item-action > :is(.lc-checkin__quick-button, .lc-checkin__record-button, .lc-checkin__focus-primary)');
+                const box = main.getBoundingClientRect();
+                return {id: card.dataset.itemId, separate: body.right <= actions.left + 1, width: box.width, height: box.height, noClip: main.scrollWidth <= main.clientWidth + 1};
+            }));
+            assert.equal(rowGeometry.length, 15);
+            assert.ok(rowGeometry.every(row => row.separate && row.noClip && row.width >= 43.75 && row.height >= (size.width < 720 || qaFrontend === 'mobile' ? 43.75 : 35.75)), `${label}: units and amounts cannot collide with primary actions ${JSON.stringify(rowGeometry)}`);
+            for (const id of ['duration', 'hours', 'tomato-count']) await assertFocusPrimary(`${label}/${id}`, `mixed-${id}`);
+            const tomatoMode = page.locator('[data-item-id="mixed-tomato-count"] .is-tomato');
+            assert.equal(await tomatoMode.isVisible(), true, `${label}: external-timer measurement mode stays visible`);
+            assert.match(await tomatoMode.textContent(), /次数/, `${label}: session-based tomatoes are labelled as counts`);
+            for (const [id, text] of [['count', '填写'], ['binary', '备注']]) {
+                const entry = page.locator(`[data-item-id="mixed-${id}"] [data-action="toggle-exact"]`);
+                assert.equal((await entry.innerText()).trim(), text, `${label}/${id}: secondary entry explains its recording action`);
+                await assertControlReachable(entry, `${label}/${id}-entry`, 44);
+            }
+            assert.match(await page.locator('[data-item-id="mixed-quota-dates"] .lc-checkin__item-value').textContent(), /1\s*\/\s*4\s*天/, 'date quotas show recorded days rather than event values');
+            assert.match(await page.locator('[data-item-id="mixed-quota-value"] .lc-checkin__item-value').textContent(), /2\s*\/\s*20\s*公里/, 'value quotas retain their actual unit');
+            const large = page.locator('[data-item-id="mixed-large"]');
+            assert.equal((await large.locator('[data-action="quick-record"]').textContent()).trim(), '记录');
+            assert.match(await large.locator('.lc-checkin__item-step').textContent(), /1000000000.*点/, 'large quick amounts stay fully readable beside the compact action');
+            assert.equal(await large.locator('[data-action="quick-record"]').getAttribute('data-amount'), '1000000000');
+            const limit = page.locator('[data-item-id="mixed-limit-number"]');
+            assert.match(await limit.locator('.lc-checkin__item-value').textContent(), /上限.*2.*杯/);
+            assert.equal(await limit.locator('.lc-checkin__item-value small').count(), 0, 'limits do not encourage filling a remaining amount');
+            for (const id of ['limit-number', 'limit-binary']) {
+                const card = page.locator(`[data-item-id="mixed-${id}"]`);
+                assert.equal(await card.locator('[data-action="focus"]').count(), 0);
+                assert.equal(await card.evaluate(element => getComputedStyle(element).backgroundImage), 'none');
+            }
+            assert.match(await page.locator('[data-item-id="mixed-limit-binary"] .lc-checkin__item-action [data-action="record"]').textContent(), /破戒/, 'binary limiting action names its lapse semantics');
+            await page.locator('[data-item-id="mixed-image"] .lc-checkin__item-icon img').scrollIntoViewIfNeeded();
+            await page.waitForFunction(() => { const img = document.querySelector('[data-item-id="mixed-image"] .lc-checkin__item-icon img'); return img?.complete && img.naturalWidth > 0; });
+            await assertLayout(label);
+            await page.locator('.lc-checkin--today').evaluate(surface => { surface.scrollTop = 0; });
+            await screenshot({path: path.join(outputRoot, `${label}.png`)});
+            console.log(`${label}: 15 recording forms, primary actions, units, quotas and limits ok`);
+        } catch (error) {
+            scenarioFailures.push(`${label}: ${error.message}`);
+            console.error(`FAILED ${label}: ${error.message}`);
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+        }
+      }
+    }
+    const mixedInteractionLabel = 'mixed-habits-real-recording';
+    const assertRecorded = async (id, value, label) => {
+        const result = await page.evaluate(async ({id, value}) => {
+            const plugin = window.__plugin;
+            await plugin.mutationQueue;
+            await plugin.saveQueue;
+            return {found: plugin.store.events.some(event => event.itemId === id && event.value === value), saveState: plugin.saveState, messages: (window.__messages || []).slice(-2)};
+        }, {id, value});
+        assert.ok(result.found && result.saveState !== 'error', `${label}: actual record must persist ${JSON.stringify(result)}`);
+    };
+    try {
+        await sizeHost(320);
+        await page.evaluate(async () => {
+            const plugin = window.__plugin;
+            await plugin.mutationQueue;
+            await plugin.saveQueue;
+            plugin.store = structuredClone(window.__mixedFixture);
+            window.__store = structuredClone(plugin.store);
+            plugin.lastPersistedStore = plugin.cloneStore(plugin.store);
+            plugin.showToday();
+        });
+        const duration = page.locator('[data-item-id="mixed-duration"]');
+        const originalEvents = await page.evaluate(() => window.__plugin.store.events.length);
+        await duration.locator('[data-action="focus"]').click();
+        assert.equal(await page.locator('[data-focus-timer]').isVisible(), true);
+        assert.equal(await page.evaluate(() => window.__plugin.store.events.length), originalEvents, 'focus starts a timer without inventing a duration record');
+        await page.locator('[data-action="focus-abandon"]').click();
+        for (const [id, value] of [['duration', '2.5'], ['fraction', '0.01']]) {
+            const card = page.locator(`[data-item-id="mixed-${id}"]`);
+            await card.locator('[data-action="toggle-exact"]').click();
+            const amount = card.locator('.lc-checkin__amount');
+            await amount.fill(value);
+            assert.equal(await amount.evaluate(input => input.validity.valid), true, `${id}: supported decimals must pass native input validation`);
+            await amount.press('Enter');
+            await assertRecorded(`mixed-${id}`, Number(value), `${mixedInteractionLabel}/${id}-${value}`);
+        }
+        const millilitres = page.locator('[data-item-id="mixed-quantity"]');
+        await millilitres.locator('[data-action="toggle-exact"]').click();
+        await millilitres.locator('.lc-checkin__amount').fill('375');
+        await millilitres.locator('[data-exact-entry] [data-action="record"]').click();
+        await assertRecorded('mixed-quantity', 375, `${mixedInteractionLabel}/manual-375ml`);
+        await millilitres.locator('[data-action="quick-record"]').click();
+        await assertRecorded('mixed-quantity', 250, `${mixedInteractionLabel}/quick-250ml`);
+        assert.equal(await page.evaluate(() => window.__plugin.store.events.filter(event => event.itemId === 'mixed-quantity' && event.unit === '毫升').reduce((sum, event) => sum + event.value, 0)), 625, 'manual 375ml followed by quick 250ml records exactly 625ml');
+        assert.equal(await millilitres.locator('.lc-checkin__item-value strong').textContent(), '625', 'the row displays the same 625ml total after mixed recording methods');
+        await page.locator('[data-item-id="mixed-large"] [data-action="quick-record"]').click();
+        await assertRecorded('mixed-large', 1000000000, `${mixedInteractionLabel}/large-quick`);
+        for (const [id, finishValue, extraValue] of [['duration', 12.5, 3.5], ['count', 8, 2]]) {
+            const card = page.locator(`[data-item-id="mixed-${id}"]`);
+            const entry = card.locator('[data-action="toggle-exact"]');
+            if (await entry.getAttribute('aria-expanded') !== 'true') await entry.click();
+            await card.locator('.lc-checkin__amount').fill(String(finishValue));
+            await card.locator('[data-exact-entry] [data-action="record"]').click();
+            await assertRecorded(`mixed-${id}`, finishValue, `${mixedInteractionLabel}/${id}-complete`);
+            const completed = page.locator('[data-action="toggle-completed"]');
+            if (await completed.getAttribute('aria-expanded') === 'false') await completed.click();
+            assert.equal(await card.evaluate(element => element.classList.contains('is-complete')), true, `${id}: fixture has reached its target`);
+            assert.equal(await entry.isVisible(), true, `${id}: manual entry remains after completion`);
+            await entry.click();
+            await card.locator('.lc-checkin__amount').fill(String(extraValue));
+            await card.locator('[data-exact-entry] [data-action="record"]').click();
+            await assertRecorded(`mixed-${id}`, extraValue, `${mixedInteractionLabel}/${id}-extra-after-completion`);
+            assert.equal(await entry.isVisible(), true, `${id}: in-place updates preserve repeated manual recording`);
+        }
+        const limitBinary = page.locator('[data-item-id="mixed-limit-binary"]');
+        await limitBinary.locator('.lc-checkin__item-action > [data-action="record"]').click();
+        const afterUndoLapse = await page.evaluate(async () => { await window.__plugin.mutationQueue; await window.__plugin.saveQueue; return window.__plugin.store.events.filter(event => event.itemId === 'mixed-limit-binary').length; });
+        assert.equal(afterUndoLapse, 0, 'undo lapse removes the actual binary event');
+        assert.equal(await limitBinary.locator('.is-avoided').isVisible(), true, 'a day without a lapse keeps its visible avoided status');
+        await limitBinary.locator('.lc-checkin__item-action > [data-action="record"]').click();
+        await assertRecorded('mixed-limit-binary', 1, `${mixedInteractionLabel}/record-lapse`);
+        await limitBinary.locator('.lc-checkin__item-action > [data-action="record"]').click();
+        const afterSecondUndo = await page.evaluate(async () => { await window.__plugin.mutationQueue; await window.__plugin.saveQueue; return window.__plugin.store.events.filter(event => event.itemId === 'mixed-limit-binary').length; });
+        assert.equal(afterSecondUndo, 0, 'record lapse followed by undo returns to no lapse without adding another event');
+        assert.equal(await limitBinary.locator('.is-avoided').isVisible(), true, 'undo restores the visible avoided status');
+        await limitBinary.locator('[data-action="toggle-exact"]').click();
+        const lapseNote = '说明本次破戒原因，明天调整作息';
+        await limitBinary.locator('.lc-checkin__record-note').fill(lapseNote);
+        assert.match(await limitBinary.locator('[data-exact-entry] [data-action="record"]').innerText(), /破戒/, 'expanded lapse submission uses the correct action label');
+        await limitBinary.locator('[data-exact-entry] [data-action="record"]').click();
+        await assertRecorded('mixed-limit-binary', 1, `${mixedInteractionLabel}/record-lapse-note`);
+        assert.equal(await page.evaluate(() => window.__plugin.store.events.find(event => event.itemId === 'mixed-limit-binary')?.note), lapseNote, 'a first lapse can be recorded with its note');
+        assert.equal(await limitBinary.locator('[data-action="toggle-exact"]').count(), 0, 'an already recorded binary lapse does not offer an inert note submission');
+        await limitBinary.locator('.lc-checkin__item-action > [data-action="record"]').click();
+        await page.evaluate(async () => { await window.__plugin.mutationQueue; await window.__plugin.saveQueue; });
+        assert.equal(await limitBinary.locator('[data-action="toggle-exact"]').isVisible(), true, 'undoing a lapse restores the note entry for the next record');
+        await page.evaluate(() => {
+            const plugin = window.__plugin;
+            const adapterId = 'siyuan-plugin-docktomato';
+            window.__mixedOriginalAdapter = plugin.focusAdapters.get(adapterId);
+            window.__mixedAdapterInstalled = true;
+            window.__mixedFocusCalls = [];
+            plugin.focusAdapters.set(adapterId, {id: adapterId, name: 'QA external timer', canStart: item => item.id === 'mixed-tomato-count', start: async item => { window.__mixedFocusCalls.push({id: item.id, kind: item.kind, tomatoMode: item.tomatoMode}); }, stop: async () => {}});
+        });
+        const beforeTomato = await page.evaluate(() => window.__plugin.store.events.length);
+        await page.locator('[data-item-id="mixed-tomato-count"] [data-action="focus"]').click();
+        await page.waitForFunction(() => window.__mixedFocusCalls.length === 1);
+        await page.evaluate(async () => { await window.__plugin.focusOperation; });
+        assert.deepEqual(await page.evaluate(() => window.__mixedFocusCalls), [{id: 'mixed-tomato-count', kind: 'count', tomatoMode: 'sessions'}], 'count-based tomato habits route through the external adapter with session semantics');
+        assert.equal(await page.locator('[data-focus-timer]').count(), 0, 'a tomato-backed count habit does not accidentally open the built-in duration timer');
+        assert.equal(await page.evaluate(() => window.__plugin.store.events.length), beforeTomato, 'starting an external tomato does not record a session before it completes');
+        console.log(`${mixedInteractionLabel}: manual/quick 625ml, duration/manual decimal, 0.01, post-target recording, lapse undo, large quick value and tomato sessions route ok`);
+    } catch (error) {
+        scenarioFailures.push(`${mixedInteractionLabel}: ${error.message}`);
+        console.error(`FAILED ${mixedInteractionLabel}: ${error.message}`);
+        await screenshot({path: path.join(outputRoot, `${mixedInteractionLabel}-failed.png`)});
+    } finally {
+        await page.evaluate(async () => {
+            const plugin = window.__plugin;
+            await plugin.stopFocus();
+            if (!window.__mixedAdapterInstalled) return;
+            const adapterId = 'siyuan-plugin-docktomato';
+            if (window.__mixedOriginalAdapter) plugin.focusAdapters.set(adapterId, window.__mixedOriginalAdapter);
+            else plugin.focusAdapters.delete(adapterId);
+        });
+    }
+    await page.evaluate(theme => { window.__plugin.appearance = theme; }, qaTheme);
     await resetState();
     await sizeHost(1180, 960);
     /* Capture a unified group like the user screenshot; this only changes the fixture. */
@@ -649,7 +1090,7 @@ const cases = [
         plugin.showToday();
     });
     assert.match(await page.locator('.lc-checkin__overview-streak > strong').textContent(), /^3/, 'warm overview uses three actual completed days');
-    await page.locator('#dock').screenshot({path: path.join(outputRoot, 'today-workbench.png')});
+    await screenshot({path: path.join(outputRoot, 'today-workbench.png')}, page.locator('#dock'));
     if (qaHost === "tab" || qaHost === "dialog") {
         assert.equal(await page.locator('.lc-checkin__topnav-brand').isVisible(), true);
         assert.equal(await page.locator('.lc-checkin__topnav [data-action="close-dialog"]').count(), qaHost === "dialog" ? 1 : 0);
@@ -669,38 +1110,52 @@ const cases = [
         const label = `30-habits-${theme}-${width}`;
         try {
         await sizeHost(width);
-        await page.waitForTimeout(30);
+        await waitForVisibleCards(29);
         const density = await page.locator('.lc-checkin__group-items:not([hidden])').evaluateAll(groups => {
             const cards = groups.flatMap(group => [...group.querySelectorAll('.lc-checkin__item')]);
             const host = document.querySelector('#dock').getBoundingClientRect();
-            return {count: cards.length, maxHeight: Math.max(...cards.map(card => card.getBoundingClientRect().height)), listHeight: groups.reduce((sum, group) => sum + group.getBoundingClientRect().height, 0), firstCardTop: Math.round(cards[0].getBoundingClientRect().top - host.top), columns: Math.max(...groups.map(group => getComputedStyle(group).gridTemplateColumns.split(/\s+/).length))};
+            return {count: cards.length, minHeight: Math.min(...cards.map(card => card.getBoundingClientRect().height)), maxHeight: Math.max(...cards.map(card => card.getBoundingClientRect().height)), minWidth: Math.min(...cards.map(card => card.getBoundingClientRect().width)), listHeight: groups.reduce((sum, group) => sum + group.getBoundingClientRect().height, 0), firstCardTop: Math.round(cards[0].getBoundingClientRect().top - host.top), columns: Math.max(...groups.map(group => getComputedStyle(group).gridTemplateColumns.split(/\s+/).length))};
         });
         assert.equal(density.count, 29, '30 scheduled habits include 29 pending and 1 completed');
-        assert.ok(density.maxHeight <= 120, `30 habits at ${width}: card height budget 120px: ${JSON.stringify(density)}`);
+        assert.ok(density.minWidth > 0 && density.minHeight > 0 && density.listHeight > 0 && density.firstCardTop > 0, `${label}: every measured row must have visible positive geometry ${JSON.stringify(density)}`);
+        const heightBudget = width < 720 ? 94 : 120;
+        assert.ok(density.maxHeight <= heightBudget, `30 habits at ${width}: ordinary-name row height budget ${heightBudget}px: ${JSON.stringify(density)}`);
         assert.ok(density.listHeight <= (width >= 720 ? 1800 : 3500), `30 habits at ${width}: scrolling budget: ${JSON.stringify(density)}`);
+        const groupSurface = await page.locator('.lc-checkin__group-items:not([hidden])').first().evaluate(group => {
+            const style = getComputedStyle(group);
+            const rows = [...group.querySelectorAll('.lc-checkin__item')];
+            return {background: style.backgroundColor, rowGap: style.rowGap, sideBorders: rows.map(row => { const rowStyle = getComputedStyle(row); return [rowStyle.borderLeftWidth, rowStyle.borderRightWidth]; })};
+        });
+        assert.notEqual(groupSurface.background, 'rgba(0, 0, 0, 0)', `${label}: rows share a visible group surface`);
+        assert.equal(groupSurface.rowGap, '0px', `${label}: rows form a continuous list without vertical card gutters`);
+        assert.ok(groupSurface.sideBorders.every(borders => borders.every(width => width === '0px')), `${label}: individual rows do not repeat the outer group border`);
+        const readingProgress = await page.locator('[data-item-id="reading"]').evaluate(card => ({image: getComputedStyle(card).backgroundImage, progress: getComputedStyle(card).getPropertyValue('--item-progress').trim()}));
+        assert.match(readingProgress.image, /linear-gradient/, `${label}: numeric at-least habits show their subtle progress wash`);
+        assert.equal(readingProgress.progress, '50%', `${label}: progress wash reflects the actual 15/30 amount`);
         if (width < 720) {
-            const targets = await page.locator('.lc-checkin__group-items:not([hidden]) .lc-checkin__item-action > :is(.lc-checkin__quick-button, .lc-checkin__record-button, .lc-checkin__focus-button, .lc-checkin__more-button)').evaluateAll(elements => elements.map(element => element.getBoundingClientRect()).filter(rect => rect.width > 0).every(rect => rect.width >= 44 && rect.height >= 44));
+            const targets = await page.locator('.lc-checkin__group-items:not([hidden]) .lc-checkin__item-action > :is(.lc-checkin__focus-primary, .lc-checkin__quick-button, .lc-checkin__record-button, .lc-checkin__more-button)').evaluateAll(elements => elements.length > 0 && elements.map(element => element.getBoundingClientRect()).every(rect => rect.width >= 44 && rect.height >= 44));
             assert.equal(targets, true, 'compact phone controls must keep 44px touch targets');
             assert.ok(density.firstCardTop <= 380, `${label}: first habit must not be pushed below the first screen ${JSON.stringify(density)}`);
         }
         if (width >= 2000) assert.ok(density.columns >= 3, 'wide 30-item lists should use at least three columns');
         await assertLayout(label);
         console.log(`30 habits ${width}: ${JSON.stringify(density)}`);
-        await page.locator('#dock').screenshot({path: path.join(outputRoot, `today-30-items-${width}${theme === qaTheme ? '' : `-${theme}`}.png`)});
+        await screenshot({path: path.join(outputRoot, `today-30-items-${width}${theme === qaTheme ? '' : `-${theme}`}.png`)}, page.locator('#dock'));
         if (width === 320) {
             await page.locator('[data-action="toggle-bulk"]').click();
             await page.locator('[data-action="bulk-all"]').click();
             assert.equal(await page.locator('[data-bulk-check][aria-pressed="true"]').count(), 29, 'select all targets pending habits only');
+            await waitForVisibleCards(29);
             const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(cards => Math.max(...cards.map(card => card.getBoundingClientRect().height)));
-            assert.ok(maxHeight <= 120, `${label}: 30-item selection must retain compact cards (${maxHeight}px)`);
+            assert.ok(maxHeight > 0 && maxHeight <= 94, `${label}: 30-item selection must retain visible compact rows (${maxHeight}px)`);
             await assertLayout(`${label}/bulk`);
-            await page.screenshot({path: path.join(outputRoot, `today-30-items-bulk-${theme}-${width}.png`)});
+            await screenshot({path: path.join(outputRoot, `today-30-items-bulk-${theme}-${width}.png`)});
             await page.locator('[data-action="bulk-exit"]').click();
         }
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
-            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
         if (width === 320) await page.evaluate(() => {
             if (!window.__plugin.bulkMode) return;
@@ -710,6 +1165,35 @@ const cases = [
         });
       }
     }
+    /* Limiting habits must not reward increasing a lapse with a progress wash,
+       nor offer a timer that encourages more of the habit being limited. */
+    await page.evaluate(() => {
+        const plugin = window.__plugin;
+        window.__denseBaseline = structuredClone(plugin.store);
+        const store = structuredClone(plugin.store);
+        const reading = store.items.find(item => item.id === 'reading');
+        reading.direction = 'atMost';
+        reading.target = 10;
+        for (const revision of reading.revisions) revision.target = 10;
+        plugin.store = store;
+        plugin.showToday();
+    });
+    for (const theme of ['light', 'dark']) {
+        const label = `limited-habit-${theme}`;
+        try {
+            await page.evaluate(value => { window.__plugin.appearance = value; window.__plugin.showToday(); }, theme);
+            const limited = page.locator('[data-item-id="reading"]');
+            assert.equal(await limited.getAttribute('data-direction'), 'atMost');
+            assert.equal(await limited.isVisible(), true, '15/10 limiting fixture remains in the pending list');
+            assert.equal(await limited.locator('[data-action="focus"]').count(), 0, `${label}: limiting duration has no focus action`);
+            assert.equal(await limited.evaluate(card => getComputedStyle(card).backgroundImage), 'none', `${label}: increasing a lapse must not receive the progress background`);
+        } catch (error) {
+            scenarioFailures.push(`${label}: ${error.message}`);
+            console.error(`FAILED ${label}: ${error.message}`);
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+        }
+    }
+    await page.evaluate(() => { window.__plugin.store = structuredClone(window.__denseBaseline); window.__plugin.showToday(); });
     await page.evaluate(() => {
         for (const item of window.__plugin.store.items.filter(item => item.id.startsWith('dense-'))) {
             item.name += ' — 一个很长的打卡项目名称 Long habit name with units';
@@ -725,7 +1209,7 @@ const cases = [
         const label = `long-name-${theme}-${width}`;
         try {
         await sizeHost(width);
-        await page.waitForTimeout(30);
+        await waitForVisibleCards(29);
         assert.equal(await page.locator('.lc-checkin--today').evaluate(element => element.scrollWidth > element.clientWidth), false, `dense ${width} overflow`);
         const clipped = await page.locator('.lc-checkin__item').evaluateAll(elements => elements.some(element => element.scrollWidth > element.clientWidth + 1));
         assert.equal(clipped, false, `dense ${width} card overflow`);
@@ -733,7 +1217,7 @@ const cases = [
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
-            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
       }
     }
@@ -762,7 +1246,7 @@ const cases = [
         try {
             await sizeHost(width);
             await goto(surface);
-            await page.waitForTimeout(30);
+            await waitForVisualStability();
             if (surface === 'settings') {
                 const entries = page.locator('[data-inbox-identity]');
                 assert.equal(await entries.count(), 12, 'all pending entries must remain available');
@@ -795,17 +1279,17 @@ const cases = [
                 await page.locator('[data-occasion-form] button[type="submit"]').click({trial: true});
             }
             await assertLayout(label);
-            await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}.png`)});
             console.log(`${label}: populated content and controls ok`);
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
-            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+            await screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
       }
     }
     await browser.close();
     assert.deepEqual(pageErrors, [], 'bundle must not raise page errors');
     assert.deepEqual(scenarioFailures, [], 'all responsive scenarios must pass');
-    console.log(`Workbench: ${cases.length} surface scenarios + 32 interaction states + 16 populated maintenance/history scenarios; record/undo, focus, navigation ownership, both-theme 30-item and long-name cards passed.`);
+    console.log(`Workbench: ${cases.length} surface scenarios + 32 interaction states + 8 theme/palette action-contrast scenarios + 10 mixed-habit layouts + recording-form interactions + 16 populated maintenance/history scenarios; record/undo, labelled focus actions, navigation state, both-theme 30-item density, limiting-habit backgrounds and long-name cards passed.`);
 })();

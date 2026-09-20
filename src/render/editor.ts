@@ -6,11 +6,55 @@ import {getRecordStepInputStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateGroupLabel, templateName, templateNote} from "../catalog";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import type {TodayGroupMode} from "../view-preferences";
-import type {CheckinItem, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore, CompletionSource, TomatoValueMode, UserTemplate} from "../types";
+import type {CheckinItem, CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "../types";
 import {renderSaveStatusView, renderSyncNoticeView, type SaveState} from "./fragments";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
 
 const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
+
+/** Keep the initial and live previews aligned with the action paths on Today. */
+export function describeEditorPreviewActions(input: {
+    kind: CheckinKind;
+    unit: string;
+    recordStep: number;
+    scheduleType: ScheduleType;
+    quotaCountMode?: "dates" | "value";
+    completionSource?: CompletionSource;
+    directionAtMost?: boolean;
+}): {label: string; detail: string} {
+    const atMost = input.directionAtMost && input.scheduleType === "daily";
+    const isBinary = input.kind === "binary" && input.scheduleType !== "quota";
+    const canFocus = (input.kind === "duration" || input.completionSource === "tomato" && input.kind !== "binary") && !atMost;
+    if (canFocus) return {label: `${t("item.focus")} · ${t("item.manualShort")}`, detail: ""};
+    if (isBinary) return {label: `${t(atMost ? "item.recordLapse" : "item.checkin")} · ${t("item.noteShort")}`, detail: ""};
+    const stepText = formatNumber(input.recordStep);
+    const longStep = stepText.length > 4 || [...input.unit].length > 4;
+    return {
+        label: `${longStep ? t("item.record") : t("editor.recordStep", {n: stepText, unit: input.unit})} · ${t("item.exactShort")}`,
+        detail: longStep || input.scheduleType === "quota" && input.quotaCountMode === "dates"
+            ? t("item.quickCustom", {value: stepText, unit: input.unit}) : "",
+    };
+}
+
+export function describeEditorPreviewMeta(input: {
+    kind: CheckinKind;
+    unit: string;
+    target: number;
+    scheduleType: ScheduleType;
+    scheduleLabel: string;
+    quotaAmount?: number;
+    quotaCountMode?: "dates" | "value";
+    directionAtMost?: boolean;
+}): string {
+    const parts = [t(KIND_LABELS[input.kind])];
+    if (input.kind !== "binary" || input.scheduleType === "quota") {
+        const target = formatNumber(input.scheduleType === "quota" ? input.quotaAmount || input.target : input.target);
+        const unit = input.scheduleType === "quota" && input.quotaCountMode === "dates" ? t("common.days") : input.unit;
+        parts.push(input.directionAtMost && input.scheduleType === "daily"
+            ? `0 · ${t("item.limitValue", {value: target, unit})}` : `0 / ${target} ${unit}`);
+    }
+    return [...parts, input.scheduleLabel].join(" · ");
+}
 
 export interface EditorViewContext {
     store: CheckinStore;
@@ -62,6 +106,16 @@ export function renderEditorView(ctx: EditorViewContext): string {
     const initialTimeSlot = item?.timeSlot || "any";
     const initialCompletionSource: CompletionSource = item?.completionSource === "tomato" ? "tomato" : "manual";
     const initialTomatoMode: TomatoValueMode = item?.tomatoMode === "sessions" ? "sessions" : "minutes";
+    const previewActions = describeEditorPreviewActions({
+        kind: selectedKind, unit: selectedUnit, recordStep: selectedRecordStep,
+        scheduleType: schedule.type, quotaCountMode, completionSource: initialCompletionSource,
+        directionAtMost: item?.direction === "atMost",
+    });
+    const previewMeta = describeEditorPreviewMeta({
+        kind: selectedKind, unit: selectedUnit, target: editorTarget,
+        scheduleType: schedule.type, scheduleLabel: formatScheduleLabel(schedule), quotaAmount, quotaCountMode,
+        directionAtMost: item?.direction === "atMost",
+    });
     const advancedSummary = [
         item?.group || t("review.ungrouped"),
         PRIORITY_LABELS[initialPriority] && t(PRIORITY_LABELS[initialPriority]),
@@ -144,8 +198,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <div class="lc-checkin__field-heading"><span>${t("editor.previewLabel")}</span><small>${t("editor.previewHint")}</small></div>
                         <article class="lc-checkin__preview-card" data-editor-preview>
                             <span class="lc-checkin__preview-icon" data-preview-icon>${renderIconMarkup(selectedIcon)}</span>
-                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || t("editor.unnamed"))}</strong><small data-preview-meta>${escapeHtml(selectedKind === "binary" ? `${t("kind.binary")} · ` + formatScheduleLabel(schedule) : `${t(KIND_LABELS[selectedKind])} · 0 / ${formatNumber(editorTarget)} ${selectedUnit} · ${formatScheduleLabel(schedule)}`)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" ? "hidden" : ""}><i></i></span></div>
-                            <span class="lc-checkin__preview-action" data-preview-action>${selectedKind === "binary" ? t("item.checkin") : `+${formatNumber(selectedRecordStep)} ${escapeHtml(selectedUnit)}`}</span>
+                            <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || t("editor.unnamed"))}</strong><small data-preview-meta>${escapeHtml(previewMeta)}</small><small data-preview-record-step ${previewActions.detail ? "" : "hidden"}>${escapeHtml(previewActions.detail)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" && schedule.type !== "quota" ? "hidden" : ""}><i></i></span></div>
+                            <span class="lc-checkin__preview-action" data-preview-action>${escapeHtml(previewActions.label)}</span>
                         </article>
                     </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>

@@ -223,6 +223,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const desiredComplete = !element.classList.contains("is-complete");
             const item = getItemById(host.store, itemId);
             const actionDate = calendarDateFromKey(moment.localDate);
+            if (item?.direction === "atMost" && getItemRevisionForDate(item, actionDate).kind === "binary") {
+                // The icon and labelled lapse control share note/attachment,
+                // snapshot undo and duplicate-submit behavior.
+                element.querySelector<HTMLElement>(".lc-checkin__item-action > [data-action='record']")?.click();
+                return;
+            }
             const expectedRevisionFingerprint = item ? host.revisionFingerprint(item, actionDate) : undefined;
             const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, itemId, actionDate).map((event) => ({...event}));
             host.enqueueMutation(() => host.toggleItem(itemId, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
@@ -236,7 +242,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 showMessage(t("msg.focusAtMostUnsupported"));
                 return;
             }
-            if (host.focusTimerProvider === "docktomato") {
+            if (host.focusTimerProvider === "docktomato" || focusItem.completionSource === "tomato") {
                 if (!host.findFocusAdapter(focusItem, currentCalendarDate(), DOCK_TOMATO_ADAPTER_ID)) {
                     showMessage(t(DOCK_TOMATO_MESSAGE_KEYS[inspectDockTomatoProvider().state]));
                     return;
@@ -311,9 +317,13 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         const lapseEvents = getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate))
                             .filter((event) => !isSkipEvent(event))
                             .map((event) => ({...event}));
+                        if (button.closest("[data-exact-entry]") || lapseEvents.length === 0) {
+                            recordWithDetails(1);
+                            return;
+                        }
                         host.pendingFocusItemId = item.id;
                         host.pulseHaptic();
-                        host.enqueueMutation(() => host.toggleItem(item.id, moment, lapseEvents.length === 0, expectedRevisionFingerprint, lapseEvents));
+                        host.enqueueMutation(() => host.toggleItem(item.id, moment, false, expectedRevisionFingerprint, lapseEvents));
                         return;
                     }
                     /* The expanded submit action always records; it must not

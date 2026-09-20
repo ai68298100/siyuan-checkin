@@ -51,7 +51,14 @@ function runExclusiveAction(button: HTMLElement | null, operation: () => Promise
     });
 }
 
-/* Alt+1~9 直达今日页前九项打卡。 */
+/** Keep keyboard navigation and menu return focus on the visible card action.
+ * Exact-entry submit buttons belong to a disclosure and may be hidden. */
+function visiblePrimaryAction(card: HTMLElement, bulkMode = false): HTMLElement | undefined {
+    const selector = bulkMode ? "[data-bulk-check]" : ".lc-checkin__item-action > .lc-checkin__focus-primary[data-action='focus'], .lc-checkin__item-action > [data-action='record'], .lc-checkin__item-action > [data-action='quick-record']";
+    return [...card.querySelectorAll<HTMLElement>(selector)].find((button) => button.offsetParent !== null && !button.matches(":disabled"));
+}
+
+/* Alt+1~9 follows the primary action: duration starts focus, other kinds record. */
 export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.quickKeyboardBound === "true") return;
     root.dataset.quickKeyboardBound = "true";
@@ -67,6 +74,14 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
         event.preventDefault();
         const date = calendarDateFromKey(dateKey(currentCalendarDate()));
         const revision = getItemRevisionForDate(item, date);
+        if ((revision.kind === "duration" || (item.completionSource === "tomato" && revision.kind !== "binary")) && item.direction !== "atMost") {
+            const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")].find((entry) => entry.dataset.itemId === item.id);
+            const action = card && visiblePrimaryAction(card);
+            if (action?.dataset.action === "focus") action.click();
+            // A filtered, collapsed or busy duration item must not silently
+            // turn a focus shortcut into an unearned manual duration record.
+            return;
+        }
         void host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     });
 }
@@ -97,7 +112,7 @@ export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement):
         const index = activeCard ? cards.indexOf(activeCard) : -1;
         const next = index < 0 ? (key === "j" ? 0 : cards.length - 1) : (index + (key === "j" ? 1 : -1) + cards.length) % cards.length;
         event.preventDefault();
-        (cards[next].querySelector<HTMLElement>(host.bulkMode ? "[data-bulk-check]" : "[data-action='record'], [data-action='quick-record'], [data-action='toggle']") ?? cards[next]).focus();
+        (visiblePrimaryAction(cards[next], host.bulkMode) ?? cards[next]).focus();
     });
 }
 
@@ -217,7 +232,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         const item = getActiveItemById(host.store, card.dataset.itemId || "");
         if (!item) return;
         closeMenus();
-        menuTrigger = card.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']") || undefined;
+        menuTrigger = visiblePrimaryAction(card);
         /* T-1222：当日排期且未完成的项可跳过/取消跳过（D-216 一等记录态）。 */
         const actionDate = currentCalendarDate();
         const scheduledToday = isItemAvailableOnDate(item, actionDate) && isScheduledToday(item, actionDate);

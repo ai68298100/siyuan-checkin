@@ -12,6 +12,7 @@ import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
+import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
 import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate} from "../types";
 
 /* 存储名与 index.ts 保持一致（历史常量，避免跨模块导出）。 */
@@ -222,26 +223,41 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const target = Number(targetInput?.value || option.step);
         const configuredRecordStep = Number(recordStepInput?.value);
         const scheduleType = (scheduleSelect?.value || "daily") as ScheduleType;
+        const quotaCountMode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value === "value" ? "value" : "dates";
+        const quotaAmount = Number(root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.value || 1);
+        const directionAtMost = root.querySelector<HTMLInputElement>("input[name='directionAtMost']")?.checked;
+        const previewActions = describeEditorPreviewActions({
+            kind, unit, recordStep: getRecordStep(kind, unit, configuredRecordStep), scheduleType,
+            quotaCountMode, directionAtMost,
+            completionSource: root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato" ? "tomato" : "manual",
+        });
         let scheduleLabel = t(SCHEDULE_LABELS[scheduleType] || SCHEDULE_LABELS.daily);
         if (scheduleType === "interval") {
             const days = Math.max(1, Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value || 1));
             scheduleLabel = t("schedule.intervalN", {n: formatNumber(days)});
         } else if (scheduleType === "quota") {
             const period = root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.value === "month" ? t("editor.quotaMonthly") : t("editor.quotaWeekly");
-            const amount = Number(root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.value || 1);
-            const mode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value === "value" ? unit : t("editor.quotaDayUnit");
-            scheduleLabel = `${period} ${formatNumber(amount)} ${mode}`;
+            const mode = quotaCountMode === "value" ? unit : t("editor.quotaDayUnit");
+            scheduleLabel = `${period} ${formatNumber(quotaAmount)} ${mode}`;
         }
         const previewName = root.querySelector<HTMLElement>("[data-preview-name]");
         const previewIcon = root.querySelector<HTMLElement>("[data-preview-icon]");
         const previewMeta = root.querySelector<HTMLElement>("[data-preview-meta]");
         const previewAction = root.querySelector<HTMLElement>("[data-preview-action]");
+        const previewRecordStep = root.querySelector<HTMLElement>("[data-preview-record-step]");
         const previewProgress = root.querySelector<HTMLElement>("[data-preview-progress]");
         if (previewName) previewName.textContent = name;
         if (previewIcon) previewIcon.innerHTML = renderIconMarkup(icon);
-        if (previewMeta) previewMeta.textContent = kind === "binary" ? `${t("kind.binary")} · ${scheduleLabel}` : `${t(KIND_LABELS[kind])} · 0 / ${formatNumber(Number.isFinite(target) ? target : option.step)} ${unit} · ${scheduleLabel}`;
-        if (previewAction) previewAction.textContent = kind === "binary" ? t("editor.recordBinary") : t("editor.recordStep", {n: formatNumber(getRecordStep(kind, unit, configuredRecordStep)), unit});
-        if (previewProgress) previewProgress.hidden = kind === "binary";
+        if (previewMeta) previewMeta.textContent = describeEditorPreviewMeta({
+            kind, unit, target: Number.isFinite(target) ? target : option.step,
+            scheduleType, scheduleLabel, quotaAmount, quotaCountMode, directionAtMost,
+        });
+        if (previewAction) previewAction.textContent = previewActions.label;
+        if (previewRecordStep) {
+            previewRecordStep.textContent = previewActions.detail;
+            previewRecordStep.hidden = !previewActions.detail;
+        }
+        if (previewProgress) previewProgress.hidden = kind === "binary" && scheduleType !== "quota";
     };
     const applyCustomIcon = () => {
         const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
@@ -639,10 +655,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", !linked);
         root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", !linked);
         updateAdvancedSummary();
+        updateEditorPreview();
     };
     root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("input", updateAdvancedSummary));
     root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(".lc-checkin__advanced input, .lc-checkin__advanced select").forEach((control) => control.addEventListener("change", updateAdvancedSummary));
     root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.addEventListener("change", updateTomatoFields);
+    root.querySelector<HTMLInputElement>("input[name='directionAtMost']")?.addEventListener("change", updateEditorPreview);
     root.querySelector<HTMLSelectElement>("select[name='tomatoMode']")?.addEventListener("change", updateAdvancedSummary);
     updateConditionalFields();
     updateAnchorInputState();

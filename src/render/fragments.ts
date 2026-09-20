@@ -2,9 +2,10 @@
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
-import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, getEditorStep, formatScheduleLabel} from "../shared";
+import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
 import {uiIcon} from "../ui/icons";
+import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {selectPriorityReminders} from "../features/priority-reminder";
 import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
@@ -19,6 +20,7 @@ export interface TodayItemContext {
     bulkMode: boolean;
     bulkSelected: Set<string>;
     todaySortMode: CheckinItemSortMode;
+    focusTimerItemId?: string;
 }
 
 export interface TodayViewContext extends TodayItemContext {
@@ -110,10 +112,10 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
     const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
     const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
-    const canFocus = revision.kind === "duration" && item.direction !== "atMost";
+    const canFocus = (revision.kind === "duration" || item.completionSource === "tomato" && revision.kind !== "binary") && item.direction !== "atMost";
     const recordStep = getRecordStep(revision.kind, revision.unit, revision.recordStep);
     const rule = evaluateItemRule(ctx.store, item, date);
-    const inputStep = getEditorStep(revision.kind, revision.unit);
+    const inputStep = Math.min(getRecordStepInputStep(revision.kind, revision.unit), Number.isInteger(recordStep) ? 1 : 0.01);
     const scheduleMeta = revision.schedule.type === "interval" || revision.schedule.type === "quota" ? ` · ${formatScheduleLabel(revision.schedule)}` : "";
     const meta = [item.group, t(KIND_LABELS[revision.kind])].filter(Boolean).join(" · ") + scheduleMeta;
     const progressUnit = revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates" ? t("common.days") : revision.unit || t("today.unitDefault");
@@ -126,13 +128,21 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     /* T-1239：at-most 戒除卡——破戒状态决定按钮语义；无破戒即完成（进已完成区）。 */
     const atMost = item.direction === "atMost";
     const lapseExists = atMost ? getEventsForDay(ctx.store, item.id, date).some((ev) => !isSkipEvent(ev)) : false;
+    const canRecordDetails = !isBinary || (atMost ? !lapseExists : !complete);
     const recordLabel = atMost
         ? (lapseExists ? t("item.cancelLapse") : t("item.recordLapse"))
         : complete ? t("item.cancel") : t("item.checkin");
+    const hasTimer = ctx.focusTimerItemId === item.id && completionSource !== "tomato";
+    const focusLabel = t(hasTimer ? "item.focusView" : "item.focus");
+    const focusShortLabel = t(hasTimer ? "item.focusViewShort" : "item.focusShort");
+    const manualLabelKey = revision.kind === "duration" ? "item.manualDuration" : "item.manualEntry";
+    const exactLabel = t(canFocus ? manualLabelKey : isBinary ? "item.noteEntry" : "item.exact");
+    const stepText = formatNumber(recordStep);
+    const longStep = stepText.length > 4 || [...unit].length > 4;
     const icon = isBinary && !ctx.bulkMode
-        ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
+        ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${atMost ? escapeHtml(recordLabel + " · " + item.name) : complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
         : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
-    return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}${skipToday ? " is-skip" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
+    return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}${skipToday ? " is-skip" : ""}" data-item-id="${escapeHtml(item.id)}" data-kind="${revision.kind}" data-direction="${atMost ? "atMost" : "atLeast"}" style="--item-progress: ${percent}%">
             ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
@@ -147,27 +157,29 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}
                 </div>
                 <div class="lc-checkin__item-meta"${scheduleMeta ? " data-has-schedule" : ""}>${escapeHtml(meta)}</div>
-                ${isBinary ? "" : `<div class="lc-checkin__item-value"><strong>${escapeHtml(formatNumber(progress))}</strong><span>/ ${escapeHtml(formatNumber(displayTarget))} ${escapeHtml(progressUnit)}</span>${rule.remaining ? `<small>${escapeHtml(t("today.remainingValue", {value: formatNumber(rule.remaining), unit: progressUnit}))}</small>` : ""}</div>`}
+                ${isBinary ? "" : `<div class="lc-checkin__item-value"><strong>${escapeHtml(formatNumber(progress))}</strong><span>${atMost ? escapeHtml(t("item.limitValue", {value: formatNumber(displayTarget), unit: progressUnit})) : `/ ${escapeHtml(formatNumber(displayTarget))} ${escapeHtml(progressUnit)}`}</span>${!atMost && rule.remaining ? `<small>${escapeHtml(t("today.remainingValue", {value: formatNumber(rule.remaining), unit: progressUnit}))}</small>` : ""}</div>`}
+                ${!isBinary && !canFocus && (longStep || revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates") ? `<div class="lc-checkin__item-step">${escapeHtml(t("item.quickCustom", {value: stepText, unit}))}</div>` : ""}
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
                 ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : `
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
-                ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
-                ${isBinary
+                ${canFocus
+                    ? `<button class="lc-checkin__focus-button lc-checkin__focus-primary" type="button" data-action="focus" aria-label="${escapeHtml(focusLabel + " · " + item.name)}" title="${escapeHtml(focusLabel + " · " + item.name)}">${uiIcon("timer")}<span class="lc-checkin__focus-label">${focusLabel}</span><span class="lc-checkin__focus-label-short" aria-hidden="true">${focusShortLabel}</span></button>`
+                    : isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${atMost ? recordLabel : complete ? t("item.cancel") : t("item.checkin")}</button>`
-                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>`}
-                ${isBinary && complete ? "" : `<button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
+                    : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${stepText}" aria-label="${t("item.recordStep", {value: stepText, unit})}" title="${escapeHtml(t("item.recordStep", {value: stepText, unit}))}">${longStep ? t("item.record") : `+${stepText} <span>${escapeHtml(unit)}</span>`}</button>`}
+                ${canRecordDetails ? `<button class="lc-checkin__more-button lc-checkin__entry-trigger" type="button" data-action="toggle-exact" aria-label="${exactLabel}" title="${exactLabel}" aria-expanded="false">${t(canFocus ? "item.manualShort" : isBinary ? "item.noteShort" : "item.exactShort")}</button>` : ""}
                 ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
                 `}
             </div>
-            ${ctx.bulkMode || isBinary && complete ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
-                ${isBinary ? "" : `<label><span>${t("item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
+            ${ctx.bulkMode || !canRecordDetails ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
+                ${isBinary ? "" : `<label><span>${t(canFocus ? manualLabelKey : "item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>`}
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
                 <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file aria-label="${t("item.photo")}" accept="image/png,image/jpeg,image/webp,image/gif" />${uiIcon("camera")}</label>
-                <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? t("item.checkin") : t("item.record")}</button>
+                <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? t(atMost ? "item.recordLapse" : "item.checkin") : t("item.record")}</button>
             </div>`}
         </article>`;
 }
@@ -377,7 +389,10 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
     const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
-    const focusCandidate = pendingItems.find((item) => item.direction !== "atMost" && getItemRevisionForDate(item, now).kind === "duration");
+    const focusCandidate = pendingItems.find((item) => {
+        const kind = getItemRevisionForDate(item, now).kind;
+        return item.direction !== "atMost" && (kind === "duration" || item.completionSource === "tomato" && kind !== "binary");
+    });
     return `<div class="lc-checkin lc-checkin--today" data-density="${scheduledItems.length > 12 ? "compact" : "comfortable"}" data-bulk="${ctx.bulkMode}" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">
                 <div class="lc-checkin__header-titles">
@@ -391,7 +406,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             </header>
             <section class="lc-checkin__overview" aria-label="${t("today.progressAria")}">
                 <div class="lc-checkin__overview-progress"><div><span class="lc-checkin__overview-label">${t("today.progressAria")}</span><span class="lc-checkin__count" role="status" aria-label="${t("today.progressAria")}">${completed}<span>/</span>${scheduledItems.length}</span><span class="lc-checkin__overview-caption">${t("today.atYourPace")}</span></div><span class="lc-checkin__overview-ring" aria-hidden="true" style="--overview-progress: ${completionRate}%">${completionRate}%</span><div class="lc-checkin__progress" aria-hidden="true"><span style="width: ${completionRate}%"></span></div></div>
-                ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<div class="lc-checkin__overview-streak"><span class="lc-checkin__overview-label" title="${escapeHtml(ctx.bestStreakItem.name)} · ${t("today.bestStreakTitle")}">${escapeHtml(ctx.bestStreakItem.name)} · ${t("today.bestStreakTitle")}</span><strong>${ctx.bestStreakValue}<small>${t("common.days")}</small></strong><span class="lc-checkin__overview-caption">${t("today.everyStepCounts")}</span></div>` : ""}
+                ${ctx.bestStreakValue > 1 && ctx.bestStreakItem ? `<div class="lc-checkin__overview-streak"><span class="lc-checkin__overview-label">${t("today.bestStreakTitle")}</span><strong>${ctx.bestStreakValue}<small>${t("common.days")}</small></strong><span class="lc-checkin__overview-streak-name" title="${escapeHtml(ctx.bestStreakItem.name)}">${escapeHtml(ctx.bestStreakItem.name)}</span></div>` : ""}
                 ${focusCandidate ? `<div class="lc-checkin__overview-focus"><span class="lc-checkin__overview-label">${t("today.focusMoment")}</span><strong>${escapeHtml(focusCandidate.name)}</strong><button type="button" class="lc-checkin__text-button" data-overview-focus="${escapeHtml(focusCandidate.id)}">${uiIcon("timer")}${t("item.focus")}</button></div>` : ""}
             </section>
             ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="${t("today.weekStripAria")}">${weekStrip}</section>` : ""}

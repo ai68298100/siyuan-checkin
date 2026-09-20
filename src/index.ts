@@ -1425,6 +1425,7 @@ export default class CheckinPlugin extends Plugin {
         const ctx = {
             store: this.store,
             currentStreaks,
+            focusTimerItemId: this.focusTimerState?.itemId,
             bulkMode: this.bulkMode,
             bulkSelected: this.bulkSelected,
             todaySortMode: this.todaySortMode,
@@ -1454,6 +1455,7 @@ export default class CheckinPlugin extends Plugin {
                 "[data-bulk-check]",
                 "[data-action='record']",
                 "[data-action='quick-record']",
+                "[data-action='focus']",
             ];
             /* Local patch intentionally handles only same-shape updates (for
                example progress/count changes). Completion transitions are
@@ -1506,9 +1508,13 @@ export default class CheckinPlugin extends Plugin {
                 currentPrimary.textContent = nextPrimary.textContent;
             }
             const currentMore = card.querySelector<HTMLElement>("[data-action='toggle-exact']");
-            if (currentMore) currentMore.hidden = complete;
+            const nextMore = next.querySelector<HTMLElement>("[data-action='toggle-exact']");
+            if (currentMore && nextMore) currentMore.hidden = nextMore.hidden;
             const currentExact = card.querySelector<HTMLElement>("[data-exact-entry]");
-            if (currentExact && complete) currentExact.hidden = true;
+            if (currentExact && complete) {
+                currentExact.hidden = true;
+                currentMore?.setAttribute("aria-expanded", "false");
+            }
             /* Parent section and completion-state changes were rejected during
                preflight above; no card is moved or removed after mutation starts. */
         }
@@ -1691,7 +1697,7 @@ export default class CheckinPlugin extends Plugin {
         this.pendingFocusItemId = undefined;
         if (focusItemId && this.currentPage === "today") {
             const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id='${focusItemId}']`);
-            const focusTarget = card?.querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']");
+            const focusTarget = card?.querySelector<HTMLElement>(".lc-checkin__item-action > :is([data-action='focus'], [data-action='record'], [data-action='quick-record'])");
             if (focusTarget) focusTarget.focus();
         }
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
@@ -1736,8 +1742,8 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { button.innerHTML = uiIcon("insight"); });
         root.querySelectorAll<HTMLElement>("[data-action='edit']").forEach((button) => { button.innerHTML = uiIcon("edit"); });
         root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => replaceOccasionIcon(button, "edit"));
-        root.querySelectorAll<HTMLElement>("[data-action='focus']").forEach((button) => { button.innerHTML = uiIcon("timer"); });
-        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']").forEach((button) => { button.innerHTML = uiIcon("more"); });
+        root.querySelectorAll<HTMLElement>("[data-action='focus']:not(.lc-checkin__focus-primary)").forEach((button) => { button.innerHTML = uiIcon("timer"); });
+        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']:not(.lc-checkin__entry-trigger)").forEach((button) => { button.innerHTML = uiIcon("more"); });
         root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => replaceOccasionIcon(button, "trash"));
         root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => replaceOccasionIcon(button, button.classList.contains("is-on") ? "check" : "circle"));
         root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { button.innerHTML = uiIcon("add"); });
@@ -2200,6 +2206,7 @@ export default class CheckinPlugin extends Plugin {
         this.bestStreakValue = bestStreak;
         return renderTodayView({
             store: this.store,
+            focusTimerItemId: this.focusTimerState?.itemId,
             occasionStore: this.occasionStore,
             currentStreaks: this.currentStreaks,
             bestStreakItem: this.bestStreakItem,
@@ -2351,6 +2358,7 @@ export default class CheckinPlugin extends Plugin {
     private renderItem(item: CheckinItem, date: Date): string {
         return renderItemView(item, date, {
             store: this.store,
+            focusTimerItemId: this.focusTimerState?.itemId,
             currentStreaks: this.currentStreaks,
             bulkMode: this.bulkMode,
             bulkSelected: this.bulkSelected,
@@ -3037,7 +3045,13 @@ export default class CheckinPlugin extends Plugin {
             this.renderBackgroundUpdate();
             return;
         }
-        const complete = isComplete(this.store, item, actionDate);
+        const revision = getItemRevisionForDate(item, actionDate);
+        const binaryAtMost = item.direction === "atMost" && revision.kind === "binary";
+        // For a limiting binary habit the requested toggle state describes
+        // whether a lapse is recorded, while isComplete describes avoidance.
+        const complete = binaryAtMost
+            ? getEventsForDay(this.store, item.id, actionDate).some((event) => !isSkipEvent(event))
+            : isComplete(this.store, item, actionDate);
         if (complete === desiredComplete) {
             return;
         }
@@ -3067,9 +3081,8 @@ export default class CheckinPlugin extends Plugin {
             this.renderBackgroundUpdate();
             return;
         }
-        const revision = getItemRevisionForDate(item, actionDate);
         const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
-        const remaining = revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates"
+        const remaining = binaryAtMost || revision.schedule.type === "quota" && revision.schedule.quota?.countMode === "dates"
             ? 1
             : Math.max(target - getProgress(this.store, item, actionDate), 0.1);
         await this.recordEvent(item, remaining, moment, expectedRevisionFingerprint);
@@ -3079,7 +3092,12 @@ export default class CheckinPlugin extends Plugin {
         const current = getActiveItemById(this.store, item.id);
         const actionDate = calendarDateFromKey(moment.localDate);
         const revision = current ? getItemRevisionForDate(current, actionDate) : undefined;
-        if (!current || !revision || !isItemAvailableOnDate(current, actionDate) || revision.kind === "binary" && isComplete(this.store, current, actionDate)) {
+        if (!current || !revision || !isItemAvailableOnDate(current, actionDate)) {
+            return undefined;
+        }
+        if (revision.kind === "binary" && (current.direction === "atMost"
+            ? getEventsForDay(this.store, current.id, actionDate).some((event) => !isSkipEvent(event))
+            : isComplete(this.store, current, actionDate))) {
             return undefined;
         }
         if (!expectedRevisionFingerprint || this.revisionFingerprint(current, actionDate) !== expectedRevisionFingerprint) {

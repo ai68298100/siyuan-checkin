@@ -98,9 +98,9 @@ assert.match(components, /\.lc-checkin__item:has\(\.lc-checkin__drag-handle\) \.
 assert.match(components, /grid-template-columns: repeat\(auto-fill, minmax\(min\(380px, 100%\), 1fr\)\)/,
     "the shelf minimum card width must protect the name column (380px)");
 const fragments = read("src", "render", "fragments.ts");
-assert.match(fragments, /isBinary && complete \? "" : `<button class="lc-checkin__more-button"/,
+assert.match(fragments, /canRecordDetails \? `<button class="lc-checkin__more-button lc-checkin__entry-trigger"/,
     "binary cards must expose the same exact-entry menu (note/photo) as the other kinds");
-assert.match(fragments, /isBinary \? "" : `<label><span>\$\{t\("item\.thisRecord"\)\}<\/span><input class="lc-checkin__amount"/,
+assert.match(fragments, /isBinary \? "" : `<label><span>\$\{t\(canFocus \? manualLabelKey : "item\.thisRecord"\)\}<\/span><input class="lc-checkin__amount"/,
     "binary items omit the amount field but keep note and photo in the exact-entry panel");
 
 // 守门：弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗下 CSS 宽度可能只有 ~950px）

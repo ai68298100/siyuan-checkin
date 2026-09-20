@@ -4,14 +4,14 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const ts = require("typescript");
 
-function loadModule(path, stubs) {
+function loadModule(path, stubs, globals = {}) {
     const source = fs.readFileSync(path, "utf8");
     const compiled = ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText;
     const module = {exports: {}};
-    new Function("require", "module", "exports", compiled)((id) => {
+    new Function("require", "module", "exports", ...Object.keys(globals), compiled)((id) => {
         if (stubs[id]) return stubs[id];
         throw new Error(`Unexpected dependency: ${id}`);
-    }, module, module.exports);
+    }, module, module.exports, ...Object.values(globals));
     return module.exports;
 }
 
@@ -182,7 +182,82 @@ function makeTimerAdapter() {
         assert.equal(plain, focusMappingFingerprint(host, {...base, name: "改名"}, new Date()), "cosmetic change keeps fingerprint");
     }
 
-    console.log("focus-adapter.test: all assertions passed");
+    /* Reopening the prominent built-in entry must preserve time already spent.
+       A different habit cannot silently steal either a running or paused session. */
+    {
+        const timerCalls = {created: 0, cleared: [], rendered: 0, scrolled: 0};
+        const messages = [];
+        const shared = loadModule("src/shared.ts", {
+            "./i18n": {t: key => key}, "./model": modelStub,
+            "./features/record-notes": {}, "./ui/labels": {}, "./record-step": {},
+        });
+        const timer = loadModule("src/render/focus-timer.ts", {
+            "../i18n": {t: key => key},
+            "../model": {...modelStub, getItemById: modelStub.getActiveItemById},
+            "../shared": shared,
+            "siyuan": {showMessage: text => messages.push(text)},
+        }, {window: {
+            setInterval: () => ++timerCalls.created,
+            clearInterval: id => timerCalls.cleared.push(id),
+            clearTimeout: () => undefined,
+        }});
+        const reading = {id: "read", name: "阅读", kind: "duration", icon: "📖"};
+        const writing = {id: "write", name: "写作", kind: "duration", icon: "✎"};
+        const host = {
+            store: {items: [reading, writing]}, focusTimerMinutes: 25,
+            focusTimerRoot: {querySelector: () => ({scrollIntoView: options => {
+                assert.equal(options.block, "nearest"); timerCalls.scrolled += 1;
+            }})},
+            render: () => { timerCalls.rendered += 1; },
+            recordEvent: () => assert.fail("opening/revealing a timer must not create a record"),
+        };
+        timer.openFocusTimerFor(host, reading.id);
+        const originalState = host.focusTimerState;
+        const originalInterval = host.focusTimerInterval;
+        originalState.remainingSec = 1337;
+        timer.openFocusTimerFor(host, reading.id);
+        assert.equal(host.focusTimerState, originalState);
+        assert.equal(host.focusTimerState.remainingSec, 1337);
+        assert.equal(host.focusTimerState.running, true);
+        assert.equal(host.focusTimerInterval, originalInterval);
+        assert.deepEqual(messages, [], "same-item reopen needs no warning");
+        originalState.running = false;
+        timer.openFocusTimerFor(host, reading.id);
+        assert.equal(host.focusTimerState.running, false, "reveal must not resume a paused timer implicitly");
+        assert.equal(host.focusTimerState.remainingSec, 1337);
+        for (const running of [false, true]) {
+            originalState.running = running;
+            timer.openFocusTimerFor(host, writing.id);
+            assert.equal(host.focusTimerState, originalState);
+            assert.equal(host.focusTimerState.itemId, reading.id);
+            assert.equal(host.focusTimerState.remainingSec, 1337);
+            assert.equal(host.focusTimerState.running, running);
+            assert.equal(host.focusTimerInterval, originalInterval);
+        }
+        assert.deepEqual(messages, ["focus.switchPending", "focus.switchPending"]);
+        assert.equal(timerCalls.created, 1, "repeated entries keep exactly the original heartbeat");
+        assert.deepEqual(timerCalls.cleared, [], "revealing a session never clears its heartbeat");
+        assert.equal(timerCalls.rendered, 5);
+        assert.equal(timerCalls.scrolled, 5, "each entry reveals the existing panel");
+        timer.stopFocusTimerFor(host);
+        assert.deepEqual(timerCalls.cleared, [originalInterval]);
+        timer.openFocusTimerFor(host, writing.id);
+        assert.equal(host.focusTimerState.itemId, writing.id, "another habit can start after explicit session cleanup");
+        assert.equal(timerCalls.created, 2);
+
+        writing.icon = 'https://example.test/icon.png?title=" onerror="alert(1)';
+        writing.name = '<img src=x onerror="alert(2)">';
+        const imagePanel = timer.renderFocusTimerPanelFor(host);
+        assert.match(imagePanel, /<img src="https:\/\/example\.test\/icon\.png\?title=&quot; onerror=&quot;alert\(1\)" alt=""/,
+            "custom image uses the shared escaped image renderer");
+        assert.doesNotMatch(imagePanel, / onerror="|<img src=x/, "user text cannot create executable attributes or markup");
+        writing.icon = '<svg onload="alert(3)">';
+        const textPanel = timer.renderFocusTimerPanelFor(host);
+        assert.match(textPanel, /&lt;svg onload=&quot;alert\(3\)&quot;&gt;/);
+        assert.doesNotMatch(textPanel, /<svg onload=/, "non-image custom icons are escaped text");
+    }
+
+    console.log("focus-adapter.test: all assertions passed (including built-in reopen and custom icons)");
 })().catch((error) => {
     console.error(error);
     process.exit(1);

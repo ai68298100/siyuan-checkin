@@ -11,7 +11,7 @@ export const UI_ICON_PATHS: Record<string, string> = {
     add: "M12 5v14M5 12h14",
     back: "m15 5-7 7 7 7",
     forward: "m9 5 7 7-7 7",
-    search: "m11 5a6 6 0 1 0 3.9 10.6L20 20",
+    search: "M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0z M15 15l6 6",
     external: "M14 5h5v5M19 5l-8 8",
     focus: "M12 6v6l4 2M12 3a9 9 0 1 0 9 9",
     more: "M5 12h.01M12 12h.01M19 12h.01",

@@ -53,3 +53,138 @@ assert.match(fragments, /data-bulk-selection-action[\s\S]*?disabled/, "empty sel
 assert.match(styles, /\.lc-checkin__item-context-menu \{[\s\S]*?position: fixed;/, "context menu is positioned against the viewport");
 
 console.log("Today context-menu checks passed.");
+
+/* Execute the real keyboard/menu bindings with a small DOM boundary. The
+   duration fixture deliberately contains an earlier hidden exact submit:
+   choosing the first record node would focus it or write unearned minutes. */
+const ts = require("typescript");
+const compiled = ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
+const doc = {activeElement: null};
+const items = [
+    {id: "reading", kind: "duration", unit: "分钟", recordStep: 15},
+    {id: "water", kind: "count", unit: "杯", recordStep: 2},
+    {id: "stretch", kind: "binary", unit: "次"},
+];
+const writes = [];
+let focusStarts = 0;
+const host = {
+    currentPage: "today", bulkMode: false, store: {items},
+    enqueueMutation(operation) { return operation(); },
+    recordEvent(item, value) { writes.push([item.id, value]); },
+    revisionFingerprint() { return "same-revision"; },
+};
+const dependencies = {
+    "../i18n": {t: key => key},
+    "../plugin-ops": {getQuickTodayItems: store => store.items},
+    "../model": {
+        getItemRevisionForDate: item => item,
+        getActiveItemById: (store, id) => store.items.find(item => item.id === id),
+        getItemById: (store, id) => store.items.find(item => item.id === id),
+        dateKey: () => "2026-09-20", isComplete: () => false,
+        isItemAvailableOnDate: () => true, isScheduledToday: () => true, getEventsForDay: () => [],
+    },
+    "../shared": {
+        calendarDateFromKey: key => new Date(key), currentCalendarDate: () => new Date("2026-09-20T12:00:00"),
+        captureActionMoment: () => ({occurredAt: "2026-09-20T04:00:00Z", localDate: "2026-09-20"}),
+        getRecordStep: (_kind, _unit, step) => step,
+    },
+};
+const bindings = {};
+const menus = [];
+function element(dataset = {}) {
+    return {
+        dataset, style: {}, isConnected: true, disabled: false, offsetParent: {}, listeners: {},
+        matches(selector) { return selector === ":disabled" && this.disabled; },
+        focus() { doc.activeElement = this; },
+        click() { if (!this.disabled) this.clicked?.(); },
+        addEventListener(type, listener) { (this.listeners[type] ||= []).push(listener); },
+        setAttribute() {},
+        remove() { this.isConnected = false; },
+        getBoundingClientRect() { return {width: 120, height: 200}; },
+        closest(selector) { return selector.includes(".lc-checkin__item") ? this.card || this : null; },
+    };
+}
+doc.createElement = () => {
+    const menu = element();
+    const firstAction = element({menuAction: "edit"});
+    menu.querySelector = () => firstAction;
+    menu.querySelectorAll = () => [firstAction];
+    return menu;
+};
+new Function("require", "exports", "document", "window", compiled)(name => {
+    assert.ok(dependencies[name], `unexpected keyboard dependency ${name}`);
+    return dependencies[name];
+}, bindings, doc, {innerWidth: 1000, innerHeight: 700});
+const cards = items.map(item => {
+    const card = element({itemId: item.id});
+    const exact = element({action: "record"}); exact.offsetParent = null;
+    const primary = element({action: item.kind === "duration" ? "focus" : item.kind === "binary" ? "record" : "quick-record"});
+    const selection = element({bulkCheck: item.id});
+    for (const control of [exact, primary, selection]) control.card = card;
+    card.primary = primary; card.selection = selection;
+    card.querySelectorAll = selector => selector === "[data-bulk-check]" ? [selection]
+        : selector.includes(".lc-checkin__item-action >") ? [primary]
+        : [exact, primary];
+    card.querySelector = () => exact;
+    return card;
+});
+cards[0].primary.clicked = () => { focusStarts += 1; };
+const keyboardRoot = element();
+keyboardRoot.querySelectorAll = selector => selector === ".lc-checkin__item-context-menu" ? menus.filter(menu => menu.isConnected) : cards;
+keyboardRoot.querySelector = selector => keyboardRoot.querySelectorAll(selector)[0] || null;
+keyboardRoot.appendChild = menu => menus.push(menu);
+function dispatch(type, properties) {
+    const event = {defaultPrevented: false, target: keyboardRoot, preventDefault() { this.defaultPrevented = true; }, ...properties};
+    for (const listener of keyboardRoot.listeners[type] || []) listener(event);
+    return event;
+}
+bindings.bindQuickKeyboardFor(host, keyboardRoot);
+bindings.bindPageKeyboardFor(host, keyboardRoot);
+bindings.bindItemContextMenuFor(host, keyboardRoot);
+dispatch("keydown", {key: "1", altKey: true});
+assert.equal(focusStarts, 1, "Alt+1 follows the visible duration focus entry");
+assert.deepEqual(writes, [], "starting focus must not record duration");
+dispatch("keydown", {key: "2", altKey: true});
+dispatch("keydown", {key: "3", altKey: true});
+assert.deepEqual(writes, [["water", 2], ["stretch", 1]], "numeric and completion shortcuts retain their recording semantics");
+cards[0].primary.disabled = true;
+dispatch("keydown", {key: "1", altKey: true});
+cards[0].primary.disabled = false;
+cards[0].primary.offsetParent = null;
+dispatch("keydown", {key: "1", altKey: true});
+cards[0].primary.offsetParent = {};
+assert.equal(focusStarts, 1, "busy or hidden focus entries do not start");
+assert.equal(writes.length, 2, "busy or hidden focus entries never fall back to manual minutes");
+items[0].direction = "atMost";
+dispatch("keydown", {key: "1", altKey: true});
+assert.deepEqual(writes[2], ["reading", 15], "at-most duration keeps the explicit manual lapse shortcut");
+assert.equal(focusStarts, 1, "limiting duration never starts focus");
+delete items[0].direction;
+items[1].completionSource = "tomato";
+items[1].tomatoMode = "sessions";
+cards[1].primary.dataset.action = "focus";
+cards[1].primary.clicked = () => { focusStarts += 1; };
+dispatch("keydown", {key: "2", altKey: true});
+assert.equal(focusStarts, 2, "tomato-linked nonbinary shortcut follows the focus entry");
+assert.equal(writes.length, 3, "tomato session shortcut does not add units or minutes manually");
+delete items[1].completionSource;
+delete items[1].tomatoMode;
+cards[1].primary.dataset.action = "quick-record";
+dispatch("keydown", {key: "j"});
+assert.equal(doc.activeElement, cards[0].primary, "j focuses the visible duration primary, not hidden exact submit");
+dispatch("keydown", {key: "j"});
+assert.equal(doc.activeElement, cards[1].primary);
+dispatch("keydown", {key: "k"});
+assert.equal(doc.activeElement, cards[0].primary);
+dispatch("contextmenu", {target: cards[0], clientX: 20, clientY: 30});
+assert.notEqual(doc.activeElement, cards[0].primary, "menu takes keyboard focus");
+dispatch("keydown", {key: "Escape"});
+assert.equal(doc.activeElement, cards[0].primary, "closing a duration menu returns to the visible focus entry");
+host.bulkMode = true;
+dispatch("keydown", {key: "1", altKey: true});
+assert.equal(focusStarts, 2);
+assert.equal(writes.length, 3, "bulk mode suppresses all quick recording shortcuts");
+doc.activeElement = null;
+dispatch("keydown", {key: "j"});
+assert.equal(doc.activeElement, cards[0].selection, "bulk keyboard movement reaches selection only");
+console.log("Today primary-action keyboard and menu-return behavior checks passed.");

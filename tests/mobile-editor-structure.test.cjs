@@ -11,6 +11,7 @@ const recordStepSource = fs.readFileSync(path.join(root, "src", "record-step.ts"
 const i18n = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+const contentStyles = fs.readFileSync(path.join(root, "src", "ui", "content-responsive.scss"), "utf8");
 assert.ok(!styles.includes("height: 88vh !important"), "mobile dialog shell must not return to legacy index.scss");
 
 // Template management must remain usable without network data and expose a stable keyboard/touch structure.
@@ -47,9 +48,82 @@ assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--e
     "mobile editor scroller must retain safe-area clearance for the fixed action rail");
 assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--editor \.lc-checkin__editor-side\s*\{[\s\S]*align-content:\s*start;[\s\S]*min-width:\s*0;/,
     "mobile editor preview and advanced panels must share a stable aligned rail");
+assert.match(contentStyles, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile\) \.lc-checkin\.lc-checkin--editor > \.lc-checkin__layout\s*\{[^}]*flex:\s*0 0 auto;/,
+    "mobile editor content must retain natural height and real trailing scroll space above the save rail");
 
 for (const width of [320, 360, 390, 430]) {
     assert.ok(width >= 320 && width <= 430, `mobile regression width ${width} must be in the supported range`);
 }
+
+// Exercise the shared preview description and initial renderer with real locale
+// strings. Browser coverage verifies that changing the controls refreshes it.
+const ts = require("typescript");
+const moduleCache = new Map();
+function loadTs(filename) {
+    if (moduleCache.has(filename)) return moduleCache.get(filename).exports;
+    const loaded = {exports: {}};
+    moduleCache.set(filename, loaded);
+    const compiled = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
+        compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+    }).outputText;
+    const localRequire = name => name.startsWith(".")
+        ? loadTs(path.resolve(path.dirname(filename), `${name}.ts`)) : require(name);
+    new Function("require", "module", "exports", compiled)(localRequire, loaded, loaded.exports);
+    return loaded.exports;
+}
+const {describeEditorPreviewActions, describeEditorPreviewMeta, renderEditorView} = loadTs(path.join(root, "src", "render", "editor.ts"));
+const {createDefaultStore, dateKey} = loadTs(path.join(root, "src", "model.ts"));
+const {setPluginLanguage} = loadTs(path.join(root, "src", "i18n.ts"));
+const basePreview = {kind: "quantity", unit: "毫升", recordStep: 250, scheduleType: "daily", completionSource: "manual"};
+const previewCases = [
+    {input: {}, label: "+250 毫升 · 填写", detail: ""},
+    {input: {kind: "duration", unit: "分钟", recordStep: 25}, label: "开始专注 · 记录", detail: ""},
+    {input: {completionSource: "tomato"}, label: "开始专注 · 记录", detail: ""},
+    {input: {kind: "duration", unit: "分钟", recordStep: 25, directionAtMost: true}, label: "+25 分钟 · 填写", detail: ""},
+    {input: {completionSource: "tomato", directionAtMost: true}, label: "+250 毫升 · 填写", detail: ""},
+    {input: {kind: "binary", unit: "次", recordStep: 1}, label: "打卡 · 备注", detail: ""},
+    {input: {kind: "binary", unit: "次", recordStep: 1, completionSource: "tomato"}, label: "打卡 · 备注", detail: ""},
+    {input: {kind: "binary", unit: "次", recordStep: 1, directionAtMost: true}, label: "记破戒 · 备注", detail: ""},
+    {input: {recordStep: 12345}, label: "记录 · 填写", detail: "按 +12345 毫升 记录"},
+    {input: {unit: "个完整学习单元"}, label: "记录 · 填写", detail: "按 +250 个完整学习单元 记录"},
+    {input: {scheduleType: "quota", quotaCountMode: "dates"}, label: "+250 毫升 · 填写", detail: "按 +250 毫升 记录"},
+    {input: {scheduleType: "quota", quotaCountMode: "value"}, label: "+250 毫升 · 填写", detail: ""},
+    {input: {kind: "binary", unit: "次", recordStep: 1, scheduleType: "quota", quotaCountMode: "dates"}, label: "+1 次 · 填写", detail: "按 +1 次 记录"},
+    {input: {kind: "duration", scheduleType: "weekly", directionAtMost: true}, label: "开始专注 · 记录", detail: ""},
+];
+for (const {input, label, detail} of previewCases) {
+    const data = {...basePreview, ...input};
+    assert.deepEqual(describeEditorPreviewActions(data), {label, detail});
+    const store = createDefaultStore();
+    const now = new Date();
+    store.items.push({
+        id: "preview-item", name: "预览测试", icon: "✓", kind: data.kind, target: 1000,
+        unit: data.unit, recordStep: data.recordStep, completionSource: data.completionSource,
+        direction: data.directionAtMost ? "atMost" : undefined,
+        schedule: {type: data.scheduleType, quota: {period: "week", amount: 3, countMode: data.quotaCountMode}},
+        createdAt: now.toISOString(), updatedAt: now.toISOString(), createdDate: dateKey(now), revisions: [], archivePeriods: [],
+    });
+    const html = renderEditorView({store, editingId: "preview-item", userTemplates: [], customIconLibrary: [], appearance: "light", todayGroupMode: "none", saveState: "idle", syncNoticeActive: false});
+    const preview = html.match(/<article[^>]*data-editor-preview>[\s\S]*?<\/article>/)?.[0];
+    assert.ok(preview, "initial HTML must contain the preview");
+    assert.ok(preview.includes(`data-preview-action>${label}</span>`), `initial preview must match: ${label}`);
+    assert.ok(preview.includes(`>${detail}</small>`), "the initial preview must retain the full configured increment");
+    const meta = preview.match(/data-preview-meta>([^<]*)<\/small>/)?.[1] || "";
+    if (data.scheduleType === "quota") {
+        assert.ok(meta.includes(`0 / 3 ${data.quotaCountMode === "dates" ? "天" : data.unit}`), "quota preview must show the period goal and correct progress unit");
+        assert.doesNotMatch(preview, /data-preview-progress hidden/, "binary quotas also need a progress preview");
+    } else if (data.kind !== "binary" && data.directionAtMost && data.scheduleType === "daily") {
+        assert.ok(meta.includes(`0 · 上限 1000 ${data.unit}`), "avoidance preview must describe an upper limit rather than a completion goal");
+    }
+    assert.doesNotMatch(preview, /<button\b|data-action=|tabindex=/, "preview actions must not look interactive to assistive technology");
+}
+assert.match(describeEditorPreviewMeta({...basePreview, target: 2000, scheduleType: "quota", scheduleLabel: "每周", quotaAmount: 3, quotaCountMode: "dates"}), /0 \/ 3 天/);
+assert.match(describeEditorPreviewMeta({...basePreview, target: 2000, scheduleType: "quota", scheduleLabel: "每月", quotaAmount: 600, quotaCountMode: "value"}), /0 \/ 600 毫升/);
+assert.match(describeEditorPreviewMeta({...basePreview, target: 2000, scheduleLabel: "每天", directionAtMost: true}), /0 · 上限 2000 毫升/);
+assert.doesNotMatch(describeEditorPreviewMeta({...basePreview, target: 2000, scheduleType: "weekly", scheduleLabel: "每周", directionAtMost: true}), /上限/);
+setPluginLanguage("en-US");
+assert.deepEqual(describeEditorPreviewActions({...basePreview, kind: "duration"}), {label: "Start focus timer · Log", detail: ""});
+assert.deepEqual(describeEditorPreviewActions({...basePreview, unit: "ml"}), {label: "+250 ml · Enter", detail: ""});
+setPluginLanguage("zh-CN");
 
 console.log("Mobile editor structure checks passed for 320/360/390/430px.");
