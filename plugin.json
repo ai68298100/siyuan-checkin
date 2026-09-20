@@ -17,7 +17,7 @@
     ],
     "displayName": {
         "default": "Lv Check-in",
-        "zh-CN": "小飞驴打卡"
+        "zh-CN": "小驴打卡"
     },
     "description": {
         "default": "A flexible habit and check-in workspace for SiYuan.",
@@ -33,7 +33,7 @@
         "打卡",
         "习惯",
         "目标",
-        "小飞驴打卡",
+        "小驴打卡",
         "check-in",
         "habit"
     ]

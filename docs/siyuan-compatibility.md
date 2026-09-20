@@ -45,7 +45,7 @@ const p = window.siyuan.ws.app.plugins.find(x => x.name === "siyuan-checkin");
 ```
 
 - 第二项为 `11` 即宿主已登记；能力 id 形如 `plugin/frontend/siyuan-checkin/checkin-summary-context`。
-- 若已登记但智能体不调用，去 设置 - 人工智能 - 能力 面板核对策略：分组为「前端 · 插件 · 小飞驴打卡」，被拒绝（deny）的能力对模型不可见；默认策略为允许。
+- 若已登记但智能体不调用，去 设置 - 人工智能 - 能力 面板核对策略：分组为「前端 · 插件 · 小驴打卡」，被拒绝（deny）的能力对模型不可见；默认策略为允许。
 - 注册发生在插件 `onLayoutReady` 末尾：改完插件需重载界面或重新启用插件才会重新登记；智能体对话进行中请新开会话，避免沿用上一轮不可变的能力快照。
 
 智能体行动建议 `checkin-action-suggestions` 仅返回只读建议与结构化 `changes`，所有变更均标记为需要用户确认；建议状态可追踪，插件不会静默修改项目或记录。

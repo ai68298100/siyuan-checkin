@@ -1,4 +1,4 @@
-# 小飞驴打卡 × Task Horizon 合作设计
+# 小驴打卡 × Task Horizon 合作设计
 
 > 目标：把「当天打卡内容」接入 Task Horizon 的日历等视图，并把「任务完成」接入打卡的记录体系，形成任务↔习惯的闭环。
 > 状态：打卡侧 P0 v1 已落地（2026-09-18），可供双方评审。日期摘要 API 与预设模板已就绪，Task Horizon 侧需新增消费层。
@@ -12,7 +12,7 @@
 - 视图：清单/表格/时间轴/看板/日历/白板/主页总览；支持 ICS 订阅与 AI 能力注册。
 - 跨插件经验：与底栏番茄钟联动——经 `globalThis.__dockTomato.stats.queryFocus(options, {signal})` 查询专注统计（能力检测 + 超时 + AbortSignal 取消 + 契约测试 `scripts/focus-statistics-service-contract.test.js` 等）；并有「积分联动奖励」，仅在用户点击原生复选框完成任务时触发。
 
-### 小飞驴打卡（本插件）
+### 小驴打卡（本插件）
 - 公共 API：`window.siyuanCheckin`，协议 `siyuan-checkin`，宿主版本 5（v4 面冻结兼容，本集成 minApiVersion 钉 4），能力协商（18 项能力，含 items.read / items.query / events.read / events.range.read / events.record / occasions.* / summary.* / analytics.read / integrations.events / export.* / focus.adapters）。
 - 集成事件（window 广播）：`checkin:item-created|item-updated|item-deleted|item-archived|event-recorded|event-deleted|analytics-updated|suggestion-workflow-updated`。其中 `item-archived` 仅在自动归档成功后广播，携带项目快照；手动归档保持 `item-updated` 兼容行为。
 - 记录写入：`recordEvent({itemId, value, unit, source:"api", note, externalRef})`——**externalRef 幂等**；新写入返回新事件，重复投递返回已有事件的防御性副本，非法或拒绝才返回 `undefined`，多窗口/重放安全。
