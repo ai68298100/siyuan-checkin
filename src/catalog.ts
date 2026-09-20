@@ -252,6 +252,7 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "戒酒", icon: "🍷", kind: "binary", target: 1, unit: "次", schedule: daily, group: "戒除", priority: "medium", timeSlot: "any", direction: "atMost", note: "今天没碰酒就是赢；应酬破戒如实记下。"},
     {name: "感恩记录", icon: "🫶", kind: "count", target: 3, unit: "件", schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "写下三件值得感谢的小事，再普通也算。"},
     {name: "深呼吸", icon: "🍃", kind: "duration", target: 5, unit: "分钟", schedule: daily, group: "专注", priority: "low", timeSlot: "any", note: "紧张时来一组深呼吸，五分钟就够。"},
+    {name: "情绪自评", icon: "🌤", kind: "custom", target: 5, unit: "分", recordStep: 1, schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "睡前给今天的心情打个分（1~5 分），连续记录更有参考价值。"},
     {name: "写作", icon: "✒", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "创作", priority: "medium", timeSlot: "any", note: "散文、小说或笔记，持续写下去就算数。"},
 ] as const;
 
@@ -319,6 +320,7 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "戒酒": "tpl.quitAlcohol",
     "感恩记录": "tpl.gratitude",
     "深呼吸": "tpl.deepBreaths",
+    "情绪自评": "tpl.emotionScale",
     "写作": "tpl.writing",
 };
 

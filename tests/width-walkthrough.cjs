@@ -19,7 +19,7 @@ const cases = [
     {surface: "editor", width: 1600},
     {surface: "settings", width: 2000},
     {surface: "occasions", width: 2000},
-    ...surfaces.flatMap(surface => [1180, 640, 360, 320].map(width => ({surface, width}))),
+    ...surfaces.flatMap(surface => [280, 1180, 640, 360, 320].map(width => ({surface, width}))),
     {surface: "today", width: 330},
     {surface: "review", width: 330},
     ...surfaces.map(surface => ({surface, width: 844, height: 350, viewportHeight: 390})),

@@ -1018,6 +1018,17 @@
        narrower before a range is applied and cannot bound the panel safely. */
     .lc-checkin__custom-range-disclosure { position: static; }
 
+    /* T-1346：超窄容器（≤319px，dock 实宽/280px 走查发现）——范围条允许换行，
+       避免 Day/Week/Month/Custom 行在英文文案下横向溢出宿主。 */
+    .lc-checkin__header-actions > .lc-checkin__range-tabs {
+        flex-wrap: wrap;
+        max-width: 100%;
+    }
+    .lc-checkin__custom-range-disclosure > summary {
+        white-space: normal;
+        text-align: start;
+    }
+
     .lc-checkin__range-tabs > button,
     .lc-checkin__custom-range-disclosure > summary {
         min-height: var(--lc-review-workspace-control);
