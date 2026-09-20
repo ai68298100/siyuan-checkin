@@ -1560,3 +1560,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1352 日记集成:设置页集成区新增日记写入三件套（启用开关/目标文档 ID 校验保存/写入本期报告按钮,未绑定禁用）;写入路径 appendAnchorNote(appendBlock 只追加)+withBoundedRetry+审计 channel=diary-report+结果提示;报告与回顾导出同一 buildWeeklyReportMarkdown 单一路径（来源筛选/偏差解释全生效）;偏好 view-preferences.diaryReport（opt-in 默认关,enabled 无合法 docId 不物化）;撤销与幂等策略落盘 D-241（不随打卡撤销删除/不自动去重/无定时写入,自动能力立项须新决策）。
 验证:diary-report 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链（修复 templates/template-manager/report-sections/report-deviations/template-gallery 转译清单补 note-anchor 依赖）、双语宽度走查全过;摘要同步（f059efae…）。
+
+2026-09-21 T-1354/T-1355 UI 维护收尾与性能基线:css-audit 工具落盘（scripts/css-audit.cjs,583 token 零死类——历史清理已收净,重复规则 ~4.4KB）;预算重新收紧 D-242（620KB 警告/640KB 硬阻断,替代 D-246 报告口径）;css-hygiene 门禁新增;渲染块性能三档门禁（1k/10k/100k,实测 19/28/232ms 量级）扩展并连文件接入 test:extended。
+验证:checkin-block、css-hygiene、type check、release-assets、test:ui、test:extended 全链、中文宽度走查全过。v19 剩余:T-1353（等隐私决策）。

@@ -125,7 +125,31 @@ const perfStart = process.hrtime.bigint();
 block.buildMonthViewHtml(perfStore, {view: "month"}, asOf);
 block.buildSummaryViewHtml(perfStore, {view: "summary"}, asOf);
 block.buildHeatmapViewHtml(perfStore, {view: "heatmap", year: 2026}, asOf);
+block.buildGroupsViewHtml(perfStore, {view: "groups"}, asOf);
 const perfMs = Number(process.hrtime.bigint() - perfStart) / 1e6;
+/* T-1355 渲染块性能门禁（1k/10k/100k 三档；健康机基线 10k≈30ms，门槛只捕灾难退化）。 */
+const tierFixture = (eventCount) => {
+    const tierStore = model.createDefaultStore();
+    tierStore.items = Array.from({length: 40}, (_, index) => dailyItem(`t${index}`));
+    tierStore.events = Array.from({length: eventCount}, (_, index) => {
+        const month = (index % 12) + 1;
+        const day = (index % 28) + 1;
+        return {id: `tier-${index}`, itemId: `t${index % 40}`, occurredAt: `${perfKey(month, day)}T01:00:00.000Z`, localDate: perfKey(month, day), value: 1, unit: "次", source: "manual"};
+    });
+    return tierStore;
+};
+const tierResults = [1000, 10000, 100000].map((count) => {
+    const tierStore = tierFixture(count);
+    const start = process.hrtime.bigint();
+    block.buildMonthViewHtml(tierStore, {view: "month"}, asOf);
+    block.buildSummaryViewHtml(tierStore, {view: "summary"}, asOf);
+    block.buildHeatmapViewHtml(tierStore, {view: "heatmap", year: 2026}, asOf);
+    block.buildGroupsViewHtml(tierStore, {view: "groups"}, asOf);
+    return {count, ms: Number(process.hrtime.bigint() - start) / 1e6};
+});
+assert.ok(tierResults[0].ms < 500, `1k tier must stay under 500ms (took ${Math.round(tierResults[0].ms)}ms)`);
+assert.ok(tierResults[1].ms < 2000, `10k tier must stay under 2000ms (took ${Math.round(tierResults[1].ms)}ms)`);
+assert.ok(tierResults[2].ms < 8000, `100k tier must stay under 8000ms (took ${Math.round(tierResults[2].ms)}ms)`);
 /* 健康机基线 73ms；整机慢速时按 T-1172 哲学保留 25 倍级灾难退化捕获。 */
 assert.ok(perfMs < 2000, `three views over ~10k events must render under 2000ms (took ${Math.round(perfMs)}ms)`);
 
@@ -210,4 +234,4 @@ assert.match(read("index.ts"), /onJumpItem: \(itemId: string\) => this\.jumpToIt
 assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string\) => void this\.jumpToItemAnchorDoc\(blockId\)/, "host must wire the anchor doc jump");
 assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: location\.doc\}\}\)/, "anchor jump opens the kernel-resolved root doc");
 
-console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, minRate, anchor jumps, neutrality, security and perf (${Math.round(perfMs)}ms for ~10k events).`);
+console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, minRate, anchor jumps, neutrality, security and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);
