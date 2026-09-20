@@ -115,7 +115,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/record-step.ts", "src/view-preferences.ts", "src/catalog.ts", "src/features/templates.ts"].forEach(transpile);
+["src/i18n.ts", "src/record-step.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/catalog.ts", "src/features/templates.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {recordRecentTemplate} = require(path.join(outputRoot, "src/features/templates.js"));
 // eslint-disable-next-line @typescript-eslint/no-var-requires

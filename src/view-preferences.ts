@@ -1,4 +1,5 @@
 import type {CheckinItemSortMode} from "./types";
+import {validateAnchorBlockId} from "./features/note-anchor";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -61,6 +62,8 @@ export interface CheckinViewPreferences {
     pluginLanguage: PluginLanguageSetting;
     /** T-1343 报告导出的来源筛选："" = 全部来源；否则 manual/tomato/api/import。 */
     reportSource: string;
+    /** T-1352 日记集成：把周期报告手动写入用户绑定的思源文档（opt-in，默认关）。 */
+    diaryReport: {enabled: boolean; docId: string};
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -96,6 +99,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     reportSections: {...DEFAULT_REPORT_SECTIONS},
     pluginLanguage: "zh-CN",
     reportSource: "",
+    diaryReport: {enabled: false, docId: ""},
     recentTemplates: [],
 };
 
@@ -177,6 +181,10 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         : [];
     const pluginLanguage = PLUGIN_LANGUAGE_SETTINGS.has(source.pluginLanguage as PluginLanguageSetting) ? source.pluginLanguage as PluginLanguageSetting : DEFAULT_VIEW_PREFERENCES.pluginLanguage;
     const reportSourceFilter = REPORT_SOURCE_VALUES.includes(source.reportSource as typeof REPORT_SOURCE_VALUES[number]) ? (source.reportSource as string) : "";
+    /* T-1352：docId 必须通过块 ID 校验；enabled 在没有合法 docId 时不物化（同 D-157 纪律）。 */
+    const diarySource = (source.diaryReport && typeof source.diaryReport === "object" ? source.diaryReport : {}) as Record<string, unknown>;
+    const diaryDocId = validateAnchorBlockId(diarySource.docId) || "";
+    const diaryReport = {enabled: diarySource.enabled === true && Boolean(diaryDocId), docId: diaryDocId};
     return {
         groupMode,
         sortMode,
@@ -205,6 +213,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         reportSections,
         pluginLanguage,
         reportSource: reportSourceFilter,
+        diaryReport,
         recentTemplates,
     };
 }

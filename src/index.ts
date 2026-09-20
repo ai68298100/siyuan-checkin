@@ -8,7 +8,8 @@ import "./ui/interaction-states.scss";
 import "./ui/review-detail.scss";
 import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
-import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
+import {buildWeeklyReportMarkdown} from "./features/report";
+import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -36,7 +37,7 @@ import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshot
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
-import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
+import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -352,6 +353,8 @@ export default class CheckinPlugin extends Plugin {
     reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
     /* T-1343 报告来源筛选（"" = 全部来源）。 */
     reportSource = "";
+    /* T-1352 日记集成（opt-in 默认关）。 */
+    diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
     /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
     private suspendedAnchors = new Set<string>();
     /* T-1234/T-1236 渲染块监听器清理。 */
@@ -388,6 +391,37 @@ export default class CheckinPlugin extends Plugin {
         this.insightsItemId = itemId;
         this.currentPage = "insights";
         this.render();
+    }
+
+    /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
+    private buildCurrentReportMarkdown(): string {
+        const sourceOptions = this.reportSource ? {source: this.reportSource as "manual" | "tomato" | "api" | "import"} : undefined;
+        const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(this.store, this.summaryRange, undefined, sourceOptions);
+        const titleKey = this.summaryCustomRange ? "report.titleCustom" : this.summaryRange === "day" ? "report.titleDay" : this.summaryRange === "month" ? "report.titleMonth" : this.summaryRange === "week" ? "report.titleWeek" : "report.titleCustom";
+        const title = t("report.titleWithRange", {label: t(titleKey), start: summary.startDate, end: summary.endDate});
+        let comparison;
+        if (this.reportSections.baseline || this.reportSections.deviations) {
+            const previous = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
+            comparison = previous ? buildReviewComparison(summary, sourceOptions ? buildCustomSummaryContext(this.store, previous, undefined, sourceOptions) : buildCustomSummaryContext(this.store, previous)) : undefined;
+        }
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, sourceOptions);
+    }
+
+    /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */
+    async writeDiaryReport(): Promise<void> {
+        const docId = this.diaryReport.enabled ? this.diaryReport.docId : "";
+        if (!docId) {
+            showMessage(t("msg.diaryNotBound"));
+            return;
+        }
+        const markdown = `${this.buildCurrentReportMarkdown()}\n`;
+        const result = await withBoundedRetry(
+            () => appendAnchorNote((url, payload) => this.kernelPost(url, payload), docId, markdown),
+            {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},
+        );
+        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "diary-report", docId, ok: result.ok, reason: result.reason || ""}});
+        this.scheduleAuditPersist();
+        showMessage(result.ok ? t("msg.diaryWritten") : t("msg.diaryWriteFailed", {reason: result.reason || ""}));
     }
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
@@ -1840,6 +1874,7 @@ export default class CheckinPlugin extends Plugin {
             },
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
+            diaryReport: {...this.diaryReport},
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
@@ -1902,6 +1937,32 @@ export default class CheckinPlugin extends Plugin {
             this.focusTimerProvider = "builtin";
             void this.persistViewPreferences().then(() => showMessage(t("set.tomatoFallbackSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
+        });
+        /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
+        root.querySelector<HTMLInputElement>("[data-diary-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && !this.diaryReport.docId) {
+                showMessage(t("msg.diaryNeedDoc"));
+                this.render();
+                return;
+            }
+            this.diaryReport = {...this.diaryReport, enabled: checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-diary-doc']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
+            const docId = validateAnchorBlockId(input?.value);
+            if (!docId) {
+                showMessage(t("msg.diaryDocInvalid"));
+                return;
+            }
+            this.diaryReport = {...this.diaryReport, docId};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.diaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
+            void this.writeDiaryReport();
         });
         root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", () => {
             clearDockTomatoCompletionIssues();
@@ -3725,6 +3786,7 @@ export default class CheckinPlugin extends Plugin {
         this.lastExportAt = preferences.lastExportAt;
         this.reportSections = {...preferences.reportSections};
         this.reportSource = preferences.reportSource;
+        this.diaryReport = {...preferences.diaryReport};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -3780,6 +3842,7 @@ export default class CheckinPlugin extends Plugin {
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
             reportSections: {...this.reportSections},
             reportSource: this.reportSource,
+            diaryReport: {...this.diaryReport},
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

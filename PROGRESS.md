@@ -1557,3 +1557,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1351 渲染块二期:checkin-block 新增 groups 并集作用域+`view:"groups"` 分组聚合视图（完成率排序、未分组显式、minRate 白名单表达式过滤 summary/groups 行——今日完成率单一实现 todayCompletionRate）;跳转增强——summary 行绑定 data-jump-item（→回顾项目洞察）,锚点行 data-jump-anchor-block（→内核 rootID+openTab 打开文档,失败回落洞察;滚动定位参数未验证不传,留真机验证）;渲染层依赖新增 onJumpItem/onJumpItemAnchor,宿主接线 jumpToItemInsights/jumpToItemAnchorDoc。
 验证:checkin-block 门禁扩展（30ms@10k）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（52bb9ef5…）。
+
+2026-09-21 T-1352 日记集成:设置页集成区新增日记写入三件套（启用开关/目标文档 ID 校验保存/写入本期报告按钮,未绑定禁用）;写入路径 appendAnchorNote(appendBlock 只追加)+withBoundedRetry+审计 channel=diary-report+结果提示;报告与回顾导出同一 buildWeeklyReportMarkdown 单一路径（来源筛选/偏差解释全生效）;偏好 view-preferences.diaryReport（opt-in 默认关,enabled 无合法 docId 不物化）;撤销与幂等策略落盘 D-241（不随打卡撤销删除/不自动去重/无定时写入,自动能力立项须新决策）。
+验证:diary-report 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链（修复 templates/template-manager/report-sections/report-deviations/template-gallery 转译清单补 note-anchor 依赖）、双语宽度走查全过;摘要同步（f059efae…）。
