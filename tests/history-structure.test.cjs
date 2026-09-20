@@ -23,7 +23,14 @@ assert.match(styles, /\.lc-checkin__calendar\s*\{/);
 assert.match(styles, /\.lc-checkin__history-selected\s*\{/);
 assert.match(styles, /\.lc-checkin__history-event\s*\{/);
 assert.match(source, /lc-checkin__history-aggregate/);
-assert.match(source, /<details class="lc-checkin__history-details">/);
-assert.match(source, /review\.historyDetails/);
+assert.match(source, /<details class="review-day-totals">/,
+    "per-day aggregate totals stay behind an optional disclosure");
+assert.match(source, /data-history-scope="period"/);
+assert.match(source, /data-history-scope="day"/);
+assert.match(source, /data-history-item/);
+assert.match(source, /data-history-page/,
+    "records must expose true pagination instead of generating an unbounded hidden list");
+assert.doesNotMatch(source, /renderCheckinLogView|fold\("log"/,
+    "the filterable records workspace replaces the duplicate log feed");
 assert.match(styles, /\.lc-checkin__history-aggregate\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
 console.log("History page structure checks passed.");

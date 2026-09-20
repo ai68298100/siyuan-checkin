@@ -266,6 +266,12 @@ const cases = [
         assert.deepEqual(pageErrors, [], 'deep content audit must not raise page errors');
         return;
     }
+    if (process.env.CHECKIN_QA_REVIEW_WORKSPACE === '1') {
+        await require('./review-workspace-browser.cjs')({page, goto, sizeHost, waitForVisualStability, assertLayout, screenshot, outputRoot, qaTheme, qaHost, qaFrontend});
+        await browser.close();
+        assert.deepEqual(pageErrors, [], 'review workspaces must not raise page errors');
+        return;
+    }
     for (const {surface, width, height = 720, viewportHeight = 1000} of cases) {
         const label = `${surface}-${width}${height !== 720 ? `x${height}` : ''}`;
         try {
@@ -286,19 +292,23 @@ const cases = [
             await assertTextContrast(mobileMeta, `${label}/mobile-topbar-progress`);
         }
         if (surface === 'review') {
-            const comparison = page.locator('details.lc-checkin__compare');
-            assert.equal(await comparison.getAttribute('open'), null, 'comparison starts folded so the calendar remains near the summary');
+            await page.locator('[data-review-workspace="overview"]').click();
+            const comparison = page.locator('[data-review-fold="compare"]');
+            if (await comparison.getAttribute('open') !== null) await comparison.locator(':scope > summary').click();
+            assert.equal(await comparison.getAttribute('open'), null, 'comparison is secondary to the overview');
             const summary = comparison.locator(':scope > summary');
             await summary.focus();
             await page.keyboard.press('Enter');
+            await page.waitForSelector('[data-review-fold="compare"]:not([data-review-lazy])');
             assert.equal(await comparison.locator('.lc-checkin__compare-stats > div:visible').count(), 3, 'keyboard expansion preserves all comparison metrics');
             assert.equal(await comparison.locator('.lc-checkin__compare-chart').isVisible(), true, 'comparison chart remains available on narrow surfaces');
             await assertLayout(`${label}/comparison-open`);
             if (width === 320 || width === 1180) await screenshot({path: path.join(outputRoot, `${label}-comparison-open.png`)});
             await summary.click();
-            const disclosure = page.locator('.lc-checkin__review-guidance-disclosure');
+            const disclosure = page.locator('[data-review-fold="report"]');
             assert.equal(await disclosure.getAttribute('open'), null, 'secondary review guidance starts folded');
             await disclosure.locator('summary').click();
+            await page.waitForSelector('[data-review-fold="report"]:not([data-review-lazy])');
             assert.equal(await page.locator('[data-action="preview-agent-suggestion"]').isVisible(), true, 'guidance action remains accessible');
             await assertLayout(`${label}/guidance-open`);
             await disclosure.locator('summary').click();

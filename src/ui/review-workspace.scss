@@ -1,0 +1,870 @@
+/*
+ * Review workspace
+ *
+ * Overview, records and analysis share one reading rhythm. Keep the rules
+ * scoped to the new workspace, after the legacy review/detail layers.
+ */
+.lc-checkin.lc-checkin--review {
+    --lc-review-workspace-gap: 12px;
+    --lc-review-workspace-control: 44px;
+
+    .review-workspace-nav.lc-checkin__review-subnav,
+    .review-workspace-nav {
+        position: relative;
+        inset: auto;
+        z-index: 4;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 4px;
+        width: min(100%, 1180px);
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        margin: 8px auto 14px;
+        padding: 4px;
+        box-sizing: border-box;
+        overflow: visible;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 14px;
+        background: var(--lc-checkin-muted-surface);
+        box-shadow: none;
+        transform: none;
+        isolation: isolate;
+    }
+
+    .review-workspace-nav button[data-review-workspace],
+    .review-workspace-nav.lc-checkin__review-subnav button[data-review-workspace] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        margin: 0;
+        padding: 8px 12px;
+        border: 0;
+        border-radius: 10px;
+        color: var(--lc-checkin-muted);
+        background: transparent;
+        font-size: 13px;
+        font-weight: 680;
+        line-height: 1.35;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: color var(--lc-checkin-motion-fast), background var(--lc-checkin-motion-fast), box-shadow var(--lc-checkin-motion-fast);
+    }
+
+    .review-workspace-nav button[data-review-workspace]:hover {
+        color: var(--lc-checkin-accent-text);
+        background: color-mix(in srgb, var(--lc-checkin-accent-soft) 62%, transparent);
+    }
+
+    .review-workspace-nav button[data-review-workspace][aria-pressed="true"] {
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-surface);
+        box-shadow: 0 1px 4px color-mix(in srgb, var(--lc-checkin-text) 10%, transparent);
+    }
+
+    .review-workspace-nav button[data-review-workspace]:focus-visible,
+    .review-workspace-nav button[data-review-workspace][aria-pressed="true"]:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 1px;
+    }
+
+    /* The host can replace the active panel or toggle its visibility. */
+    [data-review-workspace-panel][hidden],
+    [data-review-workspace-panel][aria-hidden="true"] {
+        display: none !important;
+    }
+
+    [data-review-workspace-panel] {
+        width: min(100%, 1180px);
+        min-width: 0;
+        margin-inline: auto;
+        box-sizing: border-box;
+    }
+
+    [data-review-workspace-panel]:not([hidden]):not([aria-hidden="true"]) {
+        display: grid;
+        gap: var(--lc-review-workspace-gap);
+    }
+
+    [data-review-workspace-panel] :is(h2, h3, h4) {
+        min-width: 0;
+        color: var(--lc-checkin-text);
+        overflow-wrap: anywhere;
+    }
+
+    [data-review-workspace-panel] :is(p, small, .lc-checkin__review-item-meta) {
+        overflow-wrap: anywhere;
+    }
+
+    .review-section-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        min-width: 0;
+        margin: 0;
+        padding: 0 2px;
+        font-size: 15px;
+        font-weight: 740;
+        line-height: 1.45;
+    }
+
+    .review-section-heading > :first-child {
+        min-width: 0;
+        margin: 0;
+        font-size: 15px;
+        font-weight: 740;
+        line-height: 1.45;
+    }
+
+    .review-section-heading > :last-child:not(:first-child) {
+        flex: 0 0 auto;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .review-scope-note {
+        margin: -4px 2px 0;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.55;
+    }
+
+    > .review-scope-note {
+        width: min(100%, 1180px);
+        margin: 0 auto 12px;
+    }
+
+    /* Overview: the first screen contains only the KPI strip, one short
+       summary and the first page of project rows. */
+    [data-review-workspace-panel="overview"] .lc-checkin__summary-stats {
+        width: 100%;
+        margin: 0;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero {
+        grid-template-columns: minmax(0, 1fr);
+        margin: 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero h2 {
+        font-size: 18px;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero-copy {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 3px;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero-copy > :is(h2, p) {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-hero p {
+        margin: 3px 0 0;
+        color: var(--lc-checkin-muted);
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-guidance-disclosure {
+        margin-top: 4px;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-guidance-disclosure > summary {
+        min-height: var(--lc-review-workspace-control);
+        color: var(--lc-checkin-accent-text);
+        font-size: 12px;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-projects,
+    [data-review-workspace-panel="overview"] .lc-checkin__review-project-list {
+        min-width: 0;
+    }
+
+    [data-review-workspace-panel="overview"] .lc-checkin__review-project-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    [data-review-workspace-panel] .lc-checkin__review-sections {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        gap: var(--lc-review-workspace-gap);
+    }
+
+    [data-review-workspace-panel] .lc-checkin__review-fold {
+        margin: 0;
+        padding: 8px 14px;
+        border: 1px solid var(--lc-checkin-border);
+        box-shadow: none;
+    }
+
+    [data-review-workspace-panel] .lc-checkin__review-fold-body {
+        max-height: none;
+        overflow: visible;
+    }
+
+    [data-review-fold="compare"] section.lc-checkin__compare {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+    }
+
+    [data-review-fold="compare"] section.lc-checkin__compare > .lc-checkin__compare-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 12px;
+        padding: 12px 0;
+    }
+
+    [data-review-fold="report"] div.lc-checkin__review-guidance-disclosure > * {
+        display: block;
+    }
+
+    [data-review-fold="report"] .lc-checkin__review-guidance > small {
+        margin: 4px 0;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    [data-review-fold="report"] .lc-checkin__summary-text {
+        margin: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .review-project-tools {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-width: 0;
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--lc-checkin-muted);
+    }
+
+    .review-project-tools :is(input, select) {
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        box-sizing: border-box;
+        font-size: 13px;
+    }
+
+    .review-project-tools > :first-child {
+        flex: 1 1 220px;
+    }
+
+    .review-project-tools > :last-child {
+        flex: 0 1 180px;
+    }
+
+    .review-project-tools > label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        color: var(--lc-checkin-text);
+    }
+
+    .review-project-tools > small {
+        flex: 1 1 0;
+        font-size: 12px;
+        text-align: right;
+    }
+
+    label.review-project-tools {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    label.review-project-tools > select {
+        flex: 0 1 auto;
+        width: min(100%, 360px);
+        max-width: 100%;
+    }
+
+    .review-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: var(--lc-review-workspace-control);
+        margin-top: 2px;
+    }
+
+    .review-pagination > span {
+        min-width: 0;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        line-height: 1.5;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .review-pagination :is(button, a) {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: var(--lc-review-workspace-control);
+        padding: 7px 10px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 10px;
+        color: var(--lc-checkin-muted);
+        background: var(--lc-checkin-surface);
+        font-size: 12px;
+        line-height: 1.3;
+        cursor: pointer;
+    }
+
+    .review-pagination :is(button, a):hover:not(:disabled) {
+        color: var(--lc-checkin-accent-text);
+        border-color: var(--lc-checkin-accent);
+        background: var(--lc-checkin-accent-soft);
+    }
+
+    .review-pagination :is(button, a)[aria-current="page"] {
+        color: var(--lc-checkin-accent-contrast);
+        border-color: var(--lc-checkin-accent-fill);
+        background: var(--lc-checkin-accent-fill);
+    }
+
+    .review-pagination :is(button, a):disabled,
+    .review-pagination :is(button, a)[aria-disabled="true"] {
+        opacity: .45;
+        cursor: default;
+    }
+
+    /* Records: scope switch is deliberately separate from search/filter
+       controls so changing the date range does not reset the query. */
+    .review-record-scopes {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        width: max-content;
+        max-width: 100%;
+        min-height: var(--lc-review-workspace-control);
+        padding: 3px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 11px;
+        background: var(--lc-checkin-muted-surface);
+    }
+
+    .review-record-scopes button {
+        min-width: 72px;
+        min-height: var(--lc-review-workspace-control);
+        padding: 7px 12px;
+        border: 0;
+        border-radius: 8px;
+        color: var(--lc-checkin-muted);
+        background: transparent;
+        font-size: 12px;
+        font-weight: 650;
+        cursor: pointer;
+    }
+
+    .review-record-scopes button[aria-pressed="true"] {
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-surface);
+        box-shadow: var(--lc-checkin-shadow-sm);
+    }
+
+    .review-record-scopes button:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 1px;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout {
+        width: 100%;
+        margin: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout.is-period {
+        display: block;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout.is-period .lc-checkin__review-calendar {
+        display: none;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout.is-period .lc-checkin__review-detail {
+        width: 100%;
+    }
+
+    .review-day-totals {
+        min-width: 0;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 12px;
+        padding-inline: 12px;
+        box-sizing: border-box;
+        background: var(--lc-checkin-surface);
+    }
+
+    .review-day-totals > summary {
+        min-height: var(--lc-review-workspace-control);
+        align-content: center;
+        color: var(--lc-checkin-text);
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.5;
+        cursor: pointer;
+    }
+
+    .review-day-totals > summary:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 2px;
+        border-radius: 6px;
+    }
+
+    .review-day-totals > .lc-checkin__history-aggregate {
+        margin: 0 0 10px;
+        padding: 0;
+        border: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-disclosure {
+        margin: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-disclosure > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 0;
+        padding: 0 2px;
+        min-height: var(--lc-review-workspace-control);
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 650;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-disclosure > summary::after {
+        content: "⌄";
+        color: var(--lc-checkin-muted);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-disclosure[open] > summary::after {
+        transform: rotate(180deg);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-disclosure[open] > summary {
+        color: var(--lc-checkin-accent-text);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-tools {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        align-items: end;
+        margin: 0;
+        background: var(--lc-checkin-surface);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-tools > .lc-checkin__history-search {
+        min-width: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-tools :is(input, select) {
+        width: 100%;
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        box-sizing: border-box;
+        font-size: 13px;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-row {
+        display: contents;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-filter-row label {
+        min-width: 0;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout:not(.is-period) .lc-checkin__history-tools {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__review-layout:not(.is-period) .lc-checkin__history-filter-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    [data-review-workspace-panel="records"] .lc-checkin__history-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 32px;
+    }
+
+    .review-record-tools {
+        display: grid;
+        gap: 0;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+    .review-record-tools > .lc-checkin__history-search {
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        margin: 0;
+    }
+
+    .review-record-tools .lc-checkin__history-search input {
+        min-width: 0;
+        min-height: var(--lc-review-workspace-control);
+        font-size: 13px;
+    }
+
+    .review-record-tools .review-more-filters > summary {
+        justify-content: flex-end;
+        gap: 7px;
+        font-size: 12px;
+    }
+
+    .review-record-tools .review-more-filters:not([open]) > .lc-checkin__history-filter-row {
+        display: none;
+    }
+
+    .review-record-tools .review-more-filters > .lc-checkin__history-filter-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0 0 8px;
+        padding: 10px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 12px;
+        background: var(--lc-checkin-surface);
+    }
+
+    .review-record-tools .lc-checkin__history-filter-row select {
+        min-width: 0;
+        width: 100%;
+        min-height: var(--lc-review-workspace-control);
+        box-sizing: border-box;
+        font-size: 13px;
+    }
+
+    /* Analysis cards are one column even on wide hosts.  A single chart and
+       collapsed secondary sections reduce layout work and make comparison
+       between ranges easier. */
+    [data-review-workspace-panel="analysis"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    [data-review-workspace-panel="analysis"] .review-analysis-trend {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--lc-checkin-text);
+    }
+
+    [data-review-workspace-panel="analysis"] select[data-review-trend] {
+        min-height: var(--lc-review-workspace-control);
+        max-width: 100%;
+        padding-inline: 10px;
+        font-size: 13px;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-grid {
+        width: 100%;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card {
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        background: transparent;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > header > strong {
+        flex: none;
+        white-space: nowrap;
+        overflow-wrap: normal;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card .lc-chart {
+        width: min(100%, 460px);
+        max-width: 460px;
+        max-height: 220px;
+    }
+
+    [data-review-workspace-panel="analysis"] :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) {
+        font-size: 13px;
+    }
+
+    [data-review-workspace-panel="analysis"] :is(.lc-checkin__review-fold, .lc-checkin__year-heatmap) {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        box-sizing: border-box;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__review-fold-body {
+        min-width: 0;
+    }
+
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .review-export-disclosure {
+        position: relative;
+        min-width: 0;
+    }
+
+    .lc-checkin__header-actions > .review-export-disclosure {
+        justify-self: end;
+    }
+
+    .review-export-disclosure > summary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: var(--lc-review-workspace-control);
+        padding: 7px 11px;
+        border-radius: 9px;
+        color: var(--lc-checkin-muted);
+        font-size: 12px;
+        font-weight: 650;
+        line-height: 1.35;
+        cursor: pointer;
+        list-style: none;
+    }
+
+    .review-export-disclosure > summary::-webkit-details-marker { display: none; }
+    .review-export-disclosure:not([open]) > :not(summary) { display: none; }
+
+    .review-export-disclosure > summary:hover,
+    .review-export-disclosure[open] > summary {
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+    }
+
+    .review-export-disclosure > summary:focus-visible {
+        outline: 2px solid var(--lc-checkin-accent);
+        outline-offset: 2px;
+    }
+
+    .review-export-disclosure > :not(summary) {
+        position: absolute;
+        z-index: 8;
+        top: calc(100% + 4px);
+        right: 0;
+        display: grid;
+        gap: 2px;
+        min-width: 180px;
+        width: 250px;
+        max-width: min(92vw, 280px);
+        padding: 6px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 11px;
+        background: var(--lc-checkin-surface);
+        box-shadow: var(--lc-checkin-shadow-md);
+    }
+
+    .review-export-disclosure > .lc-checkin__review-tools {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: stretch;
+        align-items: start;
+    }
+
+    .review-export-disclosure .lc-checkin__review-tool-group {
+        display: grid;
+        gap: 2px;
+        width: 100%;
+    }
+
+    .review-export-disclosure .lc-checkin__review-more > summary {
+        justify-content: space-between;
+        width: 100%;
+        min-height: var(--lc-review-workspace-control);
+        padding-inline: 10px;
+        box-sizing: border-box;
+    }
+
+    .review-export-disclosure .lc-checkin__review-more-menu {
+        position: static;
+        min-width: 0;
+        width: 100%;
+        max-height: 280px;
+        padding: 4px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        border: 0;
+        background: var(--lc-checkin-muted-surface);
+        box-shadow: none;
+    }
+
+    .review-export-disclosure > :not(summary) :is(button, a) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: var(--lc-review-workspace-control);
+        margin: 0;
+        padding: 7px 10px;
+        border: 0;
+        border-radius: 7px;
+        color: var(--lc-checkin-text);
+        background: transparent;
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .review-export-disclosure > :not(summary) :is(button, a):hover {
+        color: var(--lc-checkin-accent-text);
+        background: var(--lc-checkin-accent-soft);
+    }
+}
+
+@container lc5 (max-width: 719px) {
+    .lc-checkin.lc-checkin--review {
+        .lc-checkin__editor-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 6px 8px;
+            align-items: center;
+        }
+
+        .lc-checkin__editor-header > .lc-checkin__header-actions { display: contents; }
+        .lc-checkin__editor-header > .lc-checkin__header-actions > .review-export-disclosure { grid-column: 2; grid-row: 1; }
+        .lc-checkin__editor-header > .lc-checkin__header-actions > .lc-checkin__range-tabs {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            justify-self: stretch;
+            justify-content: flex-start;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .review-workspace-nav.lc-checkin__review-subnav,
+        .review-workspace-nav {
+            width: 100%;
+            margin: 4px 0 10px;
+            border-radius: 12px;
+        }
+
+        .review-workspace-nav button[data-review-workspace],
+        .review-workspace-nav.lc-checkin__review-subnav button[data-review-workspace] {
+            min-height: 44px;
+            padding-inline: 8px;
+            font-size: 12px;
+        }
+
+        .review-section-heading > :first-child { font-size: 14px; }
+        .review-scope-note { font-size: 12px; }
+
+        .review-project-tools {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .review-project-tools > :is(:first-child, :last-child) { flex: 1 1 auto; width: 100%; }
+        .review-project-tools > small { text-align: left; }
+        .review-project-tools > label { flex-wrap: wrap; }
+        label.review-project-tools > select { width: 100%; }
+
+        .review-record-scopes { width: 100%; }
+        .review-record-scopes button { flex: 1 1 0; min-width: 0; min-height: 44px; }
+
+        [data-review-workspace-panel="records"] .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); }
+        [data-review-workspace-panel="records"] .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        [data-review-workspace-panel="records"] .lc-checkin__history-filter-row label { min-width: 0; }
+
+        .review-pagination { flex-wrap: wrap; }
+
+        .review-record-tools .review-more-filters > .lc-checkin__history-filter-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+        .review-export-disclosure > :not(summary) { max-width: min(76vw, 280px); }
+    }
+}
+
+@container lc5 (min-width: 720px) {
+    .lc-checkin.lc-checkin--review .lc-checkin__header-actions {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .lc-checkin.lc-checkin--review .lc-checkin__header-actions > .review-export-disclosure {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="overview"] .lc-checkin__review-project-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .lc-checkin.lc-checkin--review [data-review-fold="compare"] section.lc-checkin__compare > .lc-checkin__compare-body {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        align-items: start;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card {
+        display: grid;
+        grid-template-columns: minmax(220px, .85fr) minmax(0, 1.15fr);
+        align-items: center;
+        gap: 12px 24px;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > header {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-checkin__trend-stats {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: start;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-chart {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+}
+
+/* Mobile hosts already display the page title in their own top bar. Keep
+   range and report tools on one 44px row when that duplicated title is hidden. */
+@container lc5 (max-width: 719px) {
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--review {
+        .lc-checkin__editor-header { gap: 4px; }
+        .lc-checkin__editor-header > .lc-checkin__header-actions > .lc-checkin__range-tabs {
+            grid-column: 1;
+            grid-row: 1;
+            gap: 0;
+            padding: 2px;
+        }
+        .lc-checkin__range-tabs > button,
+        .lc-checkin__custom-range-disclosure > summary {
+            min-width: 0;
+            min-height: 44px;
+            padding-inline: 4px;
+            font-size: 12px;
+        }
+        .lc-checkin__range-tabs > button { flex: 1 1 auto; }
+        .review-export-disclosure > summary { padding-inline: 6px; }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lc-checkin.lc-checkin--review .review-workspace-nav button[data-review-workspace] { transition: none; }
+}

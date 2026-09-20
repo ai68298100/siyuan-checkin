@@ -149,7 +149,8 @@ assert.match(liveStyles, /@container lc5 \(max-width: 719px\) \{[\s\S]*\.lc-chec
 assert.match(liveStyles, /backdrop-filter:\s*blur\(12px\)|backdrop-filter:\s*blur\(14px\)/);
 assert.match(liveStyles, /\.lc-checkin--review \.lc-checkin__summary-stats[^}]*grid-template-columns:\s*repeat\(3/);
 assert.match(liveStyles, /\.lc-checkin__history-event-actions \.lc-checkin__text-button[^}]*min-height:\s*26px/);
-assert.match(reviewSource, /lc-checkin--review[\s\S]*lc-checkin__summary-stats/);
+assert.match(reviewSource, /lc-checkin__summary-stats/, "overview retains its themed summary strip");
+assert.match(reviewSource, /data-review-workspace-panel/, "review themes apply inside the active workspace");
 /* 归档视图外置到 render/archived.ts（15.0-A）：结构断言跟文件走，文案断言跟 i18n 走。 */
 assert.match(archivedSource, /lc-checkin--archived[\s\S]*t\("archived\.eyebrow"\)/);
 assert.match(i18n, /"archived\.eyebrow": "暂不参与今日计划"/);

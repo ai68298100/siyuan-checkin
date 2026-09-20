@@ -6,7 +6,7 @@ import {buildReviewComparison, getPreviousReviewRange, type ReviewComparison} fr
 import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
-import {captureActionMoment} from "../shared";
+import {captureActionMoment, isValidLocalDateInput} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {renderAgentPreviewContent} from "./agent-preview";
 import {createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
@@ -21,6 +21,15 @@ export interface BindPageNavigationHost {
     historyQuery: string;
     historySource: "all" | "manual" | "tomato" | "import" | "api";
     historyOrder: "newest" | "oldest";
+    historyScope: "day" | "period";
+    historyItemId: string;
+    historyPage: number;
+    reviewWorkspace: "overview" | "records" | "analysis";
+    reviewProjectPage: number;
+    reviewProjectOrder: "attention" | "name";
+    reviewTrend: "weekly" | "monthly" | "daily" | "yearly";
+    reviewStrengthItemId: string;
+    heatmapYearOffset: number;
     selectedHistoryDate: string;
     archivedQuery: string;
     summaryRange: "day" | "week" | "month";
@@ -95,14 +104,71 @@ function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): (
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
-    /* 回顾页折叠状态持久化（T-117）：与今日页 data-review-fold 绑定一致。 */
-    root.querySelectorAll<HTMLDetailsElement>("details[data-review-fold]").forEach((details) => details.addEventListener("toggle", () => {
-        const id = details.dataset.reviewFold || "";
-        if (details.open) host.reviewFoldSections.add(id);
-        else host.reviewFoldSections.delete(id);
-        host.reviewFoldTouched = true;
-        void host.persistViewPreferences();
-    }));
+    const reviewScroller = () => root.querySelector<HTMLElement>(".lc-checkin--review");
+    const renderReviewPreservingView = (focusSelector?: string, top = false): void => {
+        const scrollTop = top ? 0 : (reviewScroller()?.scrollTop || 0);
+        host.render();
+        if (focusSelector) root.querySelector<HTMLElement>(focusSelector)?.focus({preventScroll: true});
+        const scroller = reviewScroller();
+        if (scroller) scroller.scrollTop = scrollTop;
+        pinReviewSubnavRail(root, host)();
+    };
+    const renderReviewPage = (headingSelector: string): void => {
+        renderReviewPreservingView();
+        const heading = root.querySelector<HTMLElement>(headingSelector);
+        const scroller = reviewScroller();
+        if (!heading || !scroller) return;
+        heading.tabIndex = -1;
+        heading.focus({preventScroll: true});
+        const railHeight = root.querySelector<HTMLElement>(".review-workspace-nav")?.getBoundingClientRect().height || 0;
+        scroller.scrollTop = Math.max(0, heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - railHeight - 12);
+        pinReviewSubnavRail(root, host)();
+    };
+    const recordActionStillFocused = (surface: HTMLElement | null, ...controls: Array<HTMLElement | null>): boolean => {
+        return !host.disposed && !host.disposing && host.currentPage === "review" && host.reviewWorkspace === "records"
+            && Boolean(surface?.isConnected) && controls.some(control => control && control === root.ownerDocument.activeElement);
+    };
+    const restoreRecordActionFocus = (eventId?: string): void => {
+        const target = (eventId ? root.querySelector<HTMLElement>(`[data-edit-history-event-id="${CSS.escape(eventId)}"]`) : undefined)
+            || root.querySelector<HTMLElement>("[data-edit-history-event-id]")
+            || root.querySelector<HTMLElement>(".lc-checkin__history-date > strong")
+            || root.querySelector<HTMLElement>('[data-review-workspace="records"]');
+        if (target) {
+            if (target.tagName === "STRONG") target.tabIndex = -1;
+            target.focus({preventScroll: true});
+        }
+        pinReviewSubnavRail(root, host)();
+    };
+    const rememberFoldDefaults = (): void => {
+        if (host.reviewFoldTouched) return;
+        // Keep defaults in the other workspace as well as currently rendered
+        // folds: interacting with analysis must not silently close overview.
+        host.reviewFoldSections.add("projects");
+        host.reviewFoldSections.add("trend");
+        root.querySelectorAll<HTMLDetailsElement>("details[data-review-fold]").forEach((details) => {
+            const id = details.dataset.reviewFold || "";
+            if (details.open) host.reviewFoldSections.add(id);
+            else host.reviewFoldSections.delete(id);
+        });
+    };
+    /* Ignore the queued toggle from initial HTML insertion. Only an actual
+       change to the observed open state is a preference or lazy-load action. */
+    root.querySelectorAll<HTMLDetailsElement>("details[data-review-fold]").forEach((details) => {
+        let observedOpen = details.open;
+        details.addEventListener("toggle", () => {
+            if (!details.isConnected || observedOpen === details.open) return;
+            observedOpen = details.open;
+            const id = details.dataset.reviewFold || "";
+            rememberFoldDefaults();
+            if (details.open) host.reviewFoldSections.add(id);
+            else host.reviewFoldSections.delete(id);
+            host.reviewFoldTouched = true;
+            void host.persistViewPreferences();
+            if (details.open && details.dataset.reviewLazy === "true") {
+                renderReviewPreservingView(`[data-review-fold="${CSS.escape(id)}"] > summary`);
+            }
+        });
+    });
     /* 逾期历史「展开全部」（T-117）：解除折叠容器的 hidden 并移除按钮。 */
     root.querySelector<HTMLElement>("[data-overdue-expand]")?.addEventListener("click", (event) => {
         (event.currentTarget as HTMLElement).remove();
@@ -162,6 +228,73 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (host.currentPage === "insights" && host.insightsReturnPage === "review") host.showReview();
         else host.showToday();
     });
+    /* Review workspace controls intentionally keep their state in the session,
+       while the section folds below are persisted view preferences. */
+    const activateWorkspace = (workspace: BindPageNavigationHost["reviewWorkspace"]) => {
+        host.reviewWorkspace = workspace;
+        host.historyPage = 0;
+        host.reviewProjectPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView(`[data-review-workspace="${workspace}"]`, true);
+    };
+    root.querySelectorAll<HTMLElement>("[data-review-workspace]").forEach((button) => button.addEventListener("click", () => {
+        const workspace = button.dataset.reviewWorkspace;
+        if (workspace === "overview" || workspace === "records" || workspace === "analysis") activateWorkspace(workspace);
+    }));
+    root.querySelectorAll<HTMLElement>("[data-history-scope]").forEach((control) => control.addEventListener(control.tagName === "SELECT" ? "change" : "click", () => {
+        const value = control.tagName === "SELECT" ? (control as HTMLSelectElement).value : control.dataset.historyScope;
+        if (value !== "day" && value !== "period") return;
+        host.historyScope = value;
+        host.historyPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView(control.tagName === "SELECT" ? "select[data-history-scope]" : `[data-history-scope="${value}"]`);
+    }));
+    root.querySelector<HTMLSelectElement>("[data-history-item]")?.addEventListener("change", (event) => {
+        host.historyItemId = (event.currentTarget as HTMLSelectElement).value;
+        host.historyPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView("[data-history-item]");
+    });
+    root.querySelectorAll<HTMLElement>("[data-history-page]").forEach((button) => button.addEventListener("click", () => {
+        const page = Number(button.dataset.historyPage);
+        if (!Number.isInteger(page) || page < 0) return;
+        host.historyPage = page;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPage(".lc-checkin__history-date > strong");
+    }));
+    root.querySelector<HTMLSelectElement>("[data-review-project-order]")?.addEventListener("change", (event) => {
+        const value = (event.currentTarget as HTMLSelectElement).value;
+        if (value !== "attention" && value !== "name") return;
+        host.reviewProjectOrder = value;
+        host.reviewProjectPage = 0;
+        renderReviewPreservingView("[data-review-project-order]");
+    });
+    root.querySelectorAll<HTMLElement>("[data-review-project-page]").forEach((button) => button.addEventListener("click", () => {
+        const page = Number(button.dataset.reviewProjectPage);
+        if (!Number.isInteger(page) || page < 0) return;
+        host.reviewProjectPage = page;
+        renderReviewPage('[data-review-fold="projects"] > summary');
+    }));
+    root.querySelectorAll<HTMLElement>("[data-review-trend]").forEach((button) => button.addEventListener(button.tagName === "SELECT" ? "change" : "click", () => {
+        const value = button.tagName === "SELECT" ? (button as HTMLSelectElement).value : button.dataset.reviewTrend;
+        if (value !== "weekly" && value !== "monthly" && value !== "daily" && value !== "yearly") return;
+        host.reviewTrend = value;
+        renderReviewPreservingView(button.tagName === "SELECT" ? "select[data-review-trend]" : `[data-review-trend="${value}"]`);
+    }));
+    root.querySelector<HTMLSelectElement>("[data-review-strength-item]")?.addEventListener("change", (event) => {
+        const itemId = (event.currentTarget as HTMLSelectElement).value;
+        if (itemId && !host.store.items.some((item) => item.id === itemId)) return;
+        host.reviewStrengthItemId = itemId;
+        renderReviewPreservingView("[data-review-strength-item]");
+    });
+    root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const offset = Number(button.dataset.heatmapYear);
+        if (offset === -1) host.heatmapYearOffset -= 1;
+        else if (offset === 1 && host.heatmapYearOffset < 0) host.heatmapYearOffset += 1;
+        else return;
+        renderReviewPreservingView(`[data-heatmap-year="${offset}"]`);
+    }));
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived());
     root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => host.showOccasions());
     root.querySelectorAll<HTMLElement>("[data-review-insights-id]").forEach((button) => button.addEventListener("click", () => {
@@ -177,12 +310,20 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     const syncSubnavPin = pinReviewSubnavRail(root, host);
     root.querySelectorAll<HTMLElement>("[data-review-jump]").forEach((button) => button.addEventListener("click", () => {
         const foldId = button.dataset.reviewJump || "";
-        const target = foldId === "compare"
-            ? root.querySelector<HTMLElement>("details.lc-checkin__compare")
-            : root.querySelector<HTMLElement>(`.lc-checkin__review-sections > details[data-review-fold="${foldId}"]`);
+        const selector = `details[data-review-fold="${CSS.escape(foldId)}"]`;
+        let target = root.querySelector<HTMLDetailsElement>(selector);
+        if (!target) return;
+        rememberFoldDefaults();
+        host.reviewFoldSections.add(foldId);
+        host.reviewFoldTouched = true;
+        void host.persistViewPreferences();
+        if (target.dataset.reviewLazy === "true") {
+            renderReviewPreservingView(`${selector} > summary`);
+            target = root.querySelector<HTMLDetailsElement>(selector);
+        }
         const scroller = target?.closest<HTMLElement>(".lc-checkin");
         if (!target || !scroller) return;
-        if (target instanceof HTMLDetailsElement) target.open = true;
+        target.open = true;
         const margin = Number.parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
         scroller.scrollTop = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - margin;
         syncSubnavPin();
@@ -196,53 +337,71 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     historySearch?.addEventListener("input", () => {
         if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
         const value = historySearch.value;
+        const workspace = host.reviewWorkspace;
         historySearchTimer = window.setTimeout(() => {
-            if (host.disposed || host.disposing || host.currentPage !== "review") return;
+            if (host.disposed || host.disposing || host.currentPage !== "review" || host.reviewWorkspace !== workspace
+                || !historySearch.isConnected || root.querySelector("[data-history-search]") !== historySearch) return;
             host.historyQuery = value;
-            host.render();
+            host.historyPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView("[data-history-search]");
             const nextSearch = root.querySelector<HTMLInputElement>("[data-history-search]");
-            nextSearch?.focus();
             nextSearch?.setSelectionRange(value.length, value.length);
         }, 120);
     });
     root.querySelector<HTMLElement>("[data-action='clear-history-query']")?.addEventListener("click", () => {
         if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
         host.historyQuery = "";
-        host.render();
-        root.querySelector<HTMLInputElement>("[data-history-search]")?.focus();
+        host.historyPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView("[data-history-search]");
     });
     root.querySelector<HTMLElement>("[data-action='clear-history-filters']")?.addEventListener("click", () => {
         if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
         host.historyQuery = "";
         host.historySource = "all";
         host.historyOrder = "newest";
-        host.render();
-        root.querySelector<HTMLInputElement>("[data-history-search]")?.focus();
+        host.historyItemId = "";
+        host.historyPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView("[data-history-search]");
     });
     root.querySelector<HTMLSelectElement>("[data-history-source]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
         if (value === "all" || value === "manual" || value === "tomato" || value === "import" || value === "api") {
             host.historySource = value;
-            host.render();
-            root.querySelector<HTMLSelectElement>("[data-history-source]")?.focus();
+            host.historyPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView("[data-history-source]");
         }
     });
     root.querySelector<HTMLSelectElement>("[data-history-order]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
         if (value === "newest" || value === "oldest") {
             host.historyOrder = value;
-            host.render();
-            root.querySelector<HTMLSelectElement>("[data-history-order]")?.focus();
+            host.historyPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView("[data-history-order]");
         }
     });
     root.querySelectorAll<HTMLElement>("[data-history-month]").forEach((button) => button.addEventListener("click", () => {
+        const scrollTop = reviewScroller()?.scrollTop || 0;
+        host.historyPage = 0;
+        host.historyScope = "day";
+        host.editingHistoryNoteId = undefined;
         host.changeHistoryMonth(Number(button.dataset.historyMonth));
+        root.querySelector<HTMLElement>(`[data-history-month="${button.dataset.historyMonth}"]`)?.focus({preventScroll: true});
+        const scroller = reviewScroller();
+        if (scroller) scroller.scrollTop = scrollTop;
     }));
     root.querySelectorAll<HTMLElement>("[data-history-date]").forEach((button) => button.addEventListener("click", () => {
         const value = button.dataset.historyDate;
         if (value) {
             host.selectedHistoryDate = value;
-            host.render();
+            host.historyScope = "day";
+            host.historyPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView(`[data-history-date="${CSS.escape(value)}"]`);
         }
     }));
     root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
@@ -250,15 +409,22 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const event = getEventById(host.store, eventId);
         if (!event) return;
         const moment = captureActionMoment();
+        const surface = reviewScroller();
+        const visibleIds = [...root.querySelectorAll<HTMLElement>("[data-edit-history-event-id]")].map(control => control.dataset.editHistoryEventId);
+        const recordIndex = visibleIds.indexOf(event.id);
+        const nextFocusId = visibleIds[recordIndex + 1] || visibleIds[recordIndex - 1];
         void host.enqueueMutation(async () => {
             const previous = host.store;
             const next = removeEvents(host.store, [event], moment.occurredAt);
             if (next === host.store) return;
             host.store = next;
             try { await host.persist(); } catch { host.store = previous; showMessage(t("msg.undoFail")); return; }
+            if (host.editingHistoryNoteId === event.id) host.editingHistoryNoteId = undefined;
             host.invalidateSummary();
             host.broadcast({type: "event-deleted", item: getItemById(host.store, event.itemId), deletedEvents: [event]});
+            const restoreFocus = recordActionStillFocused(surface, button);
             host.renderBackgroundUpdate();
+            if (restoreFocus) restoreRecordActionFocus(nextFocusId);
         });
     }));
     root.querySelector<HTMLElement>("[data-history-expand]")?.addEventListener("click", (event) => {
@@ -272,22 +438,44 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const event = getEventById(host.store, button.dataset.editHistoryEventId);
         if (!event) return;
         host.editingHistoryNoteId = event.id;
-        host.render();
+        renderReviewPreservingView();
+        const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input="${CSS.escape(event.id)}"]`);
+        if (input) {
+            let ancestor = input.parentElement;
+            while (ancestor && ancestor !== root) {
+                if (ancestor instanceof HTMLDetailsElement) ancestor.open = true;
+                ancestor = ancestor.parentElement;
+            }
+            input.focus({preventScroll: true});
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
     }));
     root.querySelectorAll<HTMLElement>("[data-save-history-note-id]").forEach((button) => button.addEventListener("click", () => {
         const event = getEventById(host.store, button.dataset.saveHistoryNoteId);
-        const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input='${button.dataset.saveHistoryNoteId}']`);
+        const input = root.querySelector<HTMLTextAreaElement>(`[data-history-note-input="${CSS.escape(button.dataset.saveHistoryNoteId || "")}"]`);
         if (!event || !input) return;
         const note = input.value.trim();
+        const surface = reviewScroller();
         void host.enqueueMutation(async () => {
             const previous = host.store;
             const next = updateEventNote(host.store, event.id, note);
-            if (next === host.store) return;
+            if (next === host.store) {
+                // Saving an unchanged note still finishes editing, without a
+                // write or summary invalidation. Do not clear a newer editor.
+                if (host.editingHistoryNoteId !== event.id) return;
+                host.editingHistoryNoteId = undefined;
+                const restoreFocus = recordActionStillFocused(surface, button, input);
+                host.renderBackgroundUpdate();
+                if (restoreFocus) restoreRecordActionFocus(event.id);
+                return;
+            }
             host.store = next;
             try { await host.persist(); } catch { host.store = previous; showMessage(t("msg.noteSaveFail")); return; }
             host.invalidateSummary();
-            host.editingHistoryNoteId = undefined;
+            if (host.editingHistoryNoteId === event.id) host.editingHistoryNoteId = undefined;
+            const restoreFocus = recordActionStillFocused(surface, button, input);
             host.renderBackgroundUpdate();
+            if (restoreFocus) restoreRecordActionFocus(event.id);
         });
     }));
     const archivedSearch = root.querySelector<HTMLInputElement>("[data-archived-search]");
@@ -393,9 +581,32 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             void host.persistSuggestionWorkflow();
             host.summaryRefreshing = false;
             host.summaryRequestId += 1;
-            host.render();
+            host.historyPage = 0;
+            host.reviewProjectPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView(`[data-summary-range="${range}"]`);
         }
     }));
+    root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget as HTMLFormElement);
+        const startDate = String(data.get("customStartDate") || "");
+        const endDate = String(data.get("customEndDate") || "");
+        if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) {
+            showMessage(t("msg.invalidDateRange"));
+            return;
+        }
+        host.summaryCustomRange = {startDate, endDate};
+        host.summaryText = undefined;
+        host.suggestionWorkflow = undefined;
+        void host.persistSuggestionWorkflow();
+        host.summaryRefreshing = false;
+        host.summaryRequestId += 1;
+        host.historyPage = 0;
+        host.reviewProjectPage = 0;
+        host.editingHistoryNoteId = undefined;
+        renderReviewPreservingView(".lc-checkin__custom-range-disclosure > summary");
+    });
     root.querySelector<HTMLElement>("[data-action='generate-summary']")?.addEventListener("click", () => { if (!host.summaryRefreshing) void host.generateSummary(); });
     const suggestionBusyButtons = new WeakSet<HTMLElement>();
     const finishSuggestionButton = (button: HTMLElement) => {
@@ -522,7 +733,8 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
     const buildCurrentReport = (): string => {
         const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
-        const label = host.summaryRange === "day" ? t("report.titleDay")
+        const label = host.summaryCustomRange ? t("report.titleCustom")
+            : host.summaryRange === "day" ? t("report.titleDay")
             : host.summaryRange === "month" ? t("report.titleMonth")
             : host.summaryRange === "week" ? t("report.titleWeek")
             : t("report.titleCustom");

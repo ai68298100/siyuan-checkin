@@ -1,5 +1,5 @@
 /* 用户反馈 2026-09-19（手机端回顾页）的回归网：
-   ① 工具栏四个控件必须同一行同顶部；② 报告设置/更多 的下拉不能被祖先容器裁掉；
+   ① 报告菜单四个控件纵向排列且可触达；② 报告设置/更多 的下拉不能被祖先容器裁掉；
    ③ 自定义范围展开同样要完整可见；④ 导出在原生容器里必须走「写 /assets + 宿主原生保存」，
    绝不产生 blob 导航（Android WebView 下那就是「点导出，思源重启」）。 */
 import {devices, expect, test} from "@playwright/test";
@@ -37,11 +37,25 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
         const hit = [...document.querySelectorAll("button, a")].find((el) => (el.textContent || "").trim() === "回顾");
         if (hit) hit.click();
     });
-    await page.waitForSelector(".lc-checkin__review-tools", {timeout: 15000});
+    const exportDisclosure = page.locator('.review-export-disclosure');
+    await expect(exportDisclosure).toBeVisible({timeout: 15000});
+    if (!await exportDisclosure.evaluate(element => element.open)) await exportDisclosure.locator('> summary').click();
+    await expect(page.locator('.lc-checkin__review-tools')).toBeVisible();
 
-    const tops = await page.evaluate(() => [...document.querySelectorAll(".lc-checkin__review-tools > .lc-checkin__review-tool-group > *, .lc-checkin__review-tools > .lc-checkin__review-more > summary")].map((el) => Math.round(el.getBoundingClientRect().top)));
-    expect(tops.length, "工具栏控件数量异常").toBe(4);
-    expect(Math.max(...tops) - Math.min(...tops), `① 工具栏顶部不齐：${tops.join(", ")}`).toBe(0);
+    const controls = page.locator(".lc-checkin__review-tool-group > button, .lc-checkin__review-tool-group > details > summary, .lc-checkin__review-tools > .lc-checkin__review-more > summary");
+    await expect(controls, "报告菜单控件数量异常").toHaveCount(4);
+    const boxes = [];
+    for (const control of await controls.all()) {
+        await expect(control).toBeVisible();
+        await control.click({trial: true});
+        const box = await control.boundingBox();
+        expect(box.width, "① 菜单触控宽度").toBeGreaterThanOrEqual(44);
+        expect(box.height, "① 菜单触控高度").toBeGreaterThanOrEqual(44);
+        boxes.push(box);
+    }
+    for (let index = 1; index < boxes.length; index += 1) {
+        expect(boxes[index].y, "① 菜单动作不应重叠").toBeGreaterThanOrEqual(boxes[index - 1].y + boxes[index - 1].height - 1);
+    }
 
     for (const selector of [".lc-checkin__report-settings", ".lc-checkin__review-tools .lc-checkin__review-more:not(.lc-checkin__report-settings)"]) {
         await page.click(`${selector} > summary`);
@@ -49,10 +63,8 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
         await page.click(`${selector} > summary`);
     }
 
-    await page.evaluate(() => {
-        const disclosure = document.querySelector(".lc-checkin__custom-range-disclosure");
-        if (disclosure) disclosure.open = true;
-    });
+    const customRange = page.locator('.lc-checkin__custom-range-disclosure');
+    if (!await customRange.evaluate(element => element.open)) await customRange.locator('> summary').click();
     await expect.poll(() => page.evaluate(() => {
         const panel = document.querySelector(".lc-checkin__custom-range-disclosure .lc-checkin__custom-range");
         if (!panel) return -1;
@@ -61,10 +73,12 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
         return hit && panel.contains(hit) ? 1 : -2;
     }), {timeout: 5000, message: "③ 自定义范围面板被遮挡"}).toBe(1);
+    await customRange.locator('> summary').click();
 
     /* 前序步骤会留下思源的临时提示条（#message）。插件应按其实际边界
        避让，测试不再删除宿主提示内容。 */
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--lc-checkin-host-message-offset").trim()), {timeout: 5000, message: "④ 未建立宿主提示条动态避让变量"}).toMatch(/^\d+px$/);
+    if (!await exportDisclosure.evaluate(element => element.open)) await exportDisclosure.locator('> summary').click();
     await page.locator("[data-action='export-report']").click();
     await expect.poll(() => page.evaluate(() => window.__nativeSaves.length + window.__opens.length), {timeout: 20000, message: "④ 导出没有走宿主原生保存通道"}).toBeGreaterThan(0);
     expect(await page.evaluate(() => window.__blobCalls.length), "④ 原生容器下出现了 blob 下载（正是导致思源重启的路径）").toBe(0);

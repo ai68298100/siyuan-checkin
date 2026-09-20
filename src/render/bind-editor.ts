@@ -3,7 +3,7 @@
    index.ts 通过 bindEditorHandlers(root, this as unknown as BindEditorHost) 接线。 */
 import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model";
-import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary, isValidLocalDateInput} from "../shared";
+import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
 import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateName} from "../catalog";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -440,22 +440,6 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         updateConditionalFields(true);
         ensureEditorVisible(input.closest<HTMLElement>(".lc-checkin__kind-option"));
     }));
-    root.querySelector<HTMLFormElement>("[data-custom-range]")?.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const data = new FormData(event.currentTarget as HTMLFormElement);
-        const startDate = String(data.get("customStartDate") || "");
-        const endDate = String(data.get("customEndDate") || "");
-        if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) {
-            showMessage(t("msg.invalidDateRange"));
-            return;
-        }
-        host.summaryCustomRange = {startDate, endDate};
-        host.summaryText = undefined;
-        host.suggestionWorkflow = undefined;
-        host.summaryRefreshing = false;
-        host.summaryRequestId += 1;
-        host.render();
-    });
     scheduleSelect?.addEventListener("change", () => updateConditionalFields(false));
     unitInput?.addEventListener("change", () => updateConditionalFields(false));
     root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", updateEditorPreview);

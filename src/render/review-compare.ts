@@ -67,13 +67,14 @@ function compareItemRow(entry: ReviewComparisonItem): string {
     return `<div class="lc-checkin__compare-item ${rateTone}" title="${escapeHtml(aria)}"><strong>${escapeHtml(entry.name)}</strong><span class="lc-checkin__compare-item-rate">${escapeHtml(formatNumber(entry.current.completionRate))}%</span><em>${escapeHtml(rateDeltaText(entry.delta.completionRate))}</em>${eventDelta}<i class="lc-checkin__compare-item-bar" aria-hidden="true"><span class="is-base" style="width:${Math.min(100, Math.max(0, entry.baseline.completionRate))}%"></span><span style="width:${Math.min(100, Math.max(0, entry.current.completionRate))}%"></span></i></div>`;
 }
 
-export function renderReviewCompareSection(comparison: ReviewComparison): string {
+export function renderReviewCompareSection(comparison: ReviewComparison, embedded = false): string {
     const bothEmpty = comparison.items.length === 0
         && comparison.current.totalEvents === 0
         && comparison.baseline.totalEvents === 0;
     if (bothEmpty) {
         return `<section class="lc-checkin__compare is-empty" aria-label="${escapeHtml(t("review.compareAria"))}"><small>${escapeHtml(t("review.compareEmpty"))}</small></section>`;
     }
+    if (embedded) return `<section class="lc-checkin__compare"><p class="review-scope-note">${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</p><div class="lc-checkin__compare-body">${compareSummaryChart(comparison)}${compareStats(comparison)}</div></section>`;
     return `<details class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><summary><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__compare-body">${compareSummaryChart(comparison)}${compareStats(comparison)}</div></details>`;
 }
 

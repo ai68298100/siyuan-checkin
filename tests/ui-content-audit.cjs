@@ -78,12 +78,21 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
             ['.lc-checkin__item-step', 12], ['.lc-checkin__overview-label', 12], ['.lc-checkin__priority-reminder-row-text small', 12],
             ['.lc-checkin__group-header > span:first-child', 13],
         ],
-        review: [
-            ['.lc-checkin__review-fold > summary', 14], ['.lc-checkin__log-day h3', 13],
-            ['.lc-checkin__log-main small', 12], ['.lc-checkin__history-event-main > span', 12],
-            ['.lc-checkin__yearheatmap-meta small', 12], ['.lc-checkin__trend-card small', 12],
-            ['.lc-checkin__strength-name', 13], ['.lc-checkin__summary-text', 13],
-            ['.lc-checkin__review-hero-actions .lc-checkin__text-button', 12], ['.lc-checkin__upcoming-row em', 12],
+        'review-overview': [
+            ['.lc-checkin__review-fold > summary', 14], ['.lc-checkin__review-item > strong', 13],
+            ['.lc-checkin__review-item-meta', 12], ['.lc-checkin__summary-text', 13],
+            ['.lc-checkin__review-hero-actions .lc-checkin__text-button', 12],
+            ['.lc-checkin__compare-item > strong', 13],
+        ],
+        'review-records': [
+            ['.lc-checkin__history-event-main > strong', 13], ['.lc-checkin__history-event-main > span', 12],
+            ['.lc-checkin__history-event-note', 13], ['.lc-checkin__history-event-value', 13],
+            ['.lc-checkin__history-date > strong', 14], ['.lc-checkin__history-filter-row label > span', 12],
+        ],
+        'review-analysis': [
+            ['.lc-checkin__review-fold > summary', 14], ['.lc-checkin__yearheatmap-meta small', 12],
+            ['.lc-checkin__trend-card small', 12], ['.lc-checkin__strength-overview strong', 13],
+            ['.lc-checkin__upcoming-row em', 12], ['.lc-checkin__achievement strong', 13],
         ],
         editor: [['.lc-checkin__field > small', 12], ['.lc-checkin__preview-body small', 12], ['.lc-checkin__preview-action', 12], ['.lc-checkin__group-options button', 12]],
         insights: [['.lc-checkin__insight-legend', 12], ['.lc-checkin__insight-grid-range', 12], ['.lc-checkin__coaching-item small', 12]],
@@ -96,6 +105,7 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
         for (const [selector, min] of [...roles[surface], ['.lc-checkin__mobile-nav small', 12]]) {
             const values = await page.locator(selector).evaluateAll(elements => elements.filter(element => element.checkVisibility() && element.getBoundingClientRect().height > 0).map(element => ({text: element.textContent.slice(0, 60), font: parseFloat(getComputedStyle(element).fontSize)})));
             checks.push({selector, min, values});
+            if (surface.startsWith('review-') && selector !== '.lc-checkin__mobile-nav small') assert.ok(values.length > 0, `${surface} must contain visible ${selector}; absent roles must not silently pass`);
             if (!baseline) for (const value of values) assert.ok(value.font >= min - .1, `${surface} ${selector}: expected >=${min}px, got ${JSON.stringify(value)}`);
         }
         assert.ok(checks.some(check => check.values.length > 0), `${surface} must expose populated text roles`);
@@ -107,17 +117,64 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
         await waitForVisualStability();
         await screenshot({path: path.join(out, `${label}.png`)});
     };
+    const expandReviewWorkspace = async workspace => {
+        await page.locator(`[data-review-workspace="${workspace}"]`).click();
+        await page.waitForSelector(`[data-review-workspace-panel="${workspace}"]`);
+        if (workspace === 'records') {
+            await page.locator('[data-history-scope="day"]').click();
+            await page.waitForSelector('[data-history-scope="day"][aria-pressed="true"]');
+        }
+        const expected = {
+            overview: ['projects', 'compare', 'report'], records: [],
+            analysis: ['trend', 'heatmap', 'strength', 'balance', 'achievements', 'reminders', 'upcoming'],
+        }[workspace];
+        const ids = await page.locator('[data-review-fold]').evaluateAll(elements => elements.map(element => element.dataset.reviewFold));
+        assert.deepEqual(ids, expected, `${workspace} must expose every planned section`);
+        // A lazy fold replaces the review DOM. Resolve each locator afresh and
+        // wait for materialization before opening the next fold.
+        for (const id of expected) {
+            const selector = `[data-review-fold="${id}"]`;
+            if (!await page.locator(selector).evaluate(element => element.open)) {
+                await page.locator(`${selector} > summary`).click();
+            }
+            await page.waitForFunction(sectionId => {
+                const section = document.querySelector(`[data-review-fold="${sectionId}"]`);
+                return section?.open && section.dataset.reviewLazy !== 'true';
+            }, id);
+            await waitForVisualStability();
+        }
+        // Inner disclosures do not lazy render, but only become available after
+        // their parent fold has materialized. Menus are tested independently.
+        await page.locator('[data-review-workspace-panel] details:not([data-review-fold])').evaluateAll(elements => elements.forEach(element => { element.open = true; }));
+        await waitForVisualStability();
+    };
     const sizes = [{width: 1180}, {width: 640}, {width: 360}, {width: 320}, {width: 844, height: 350, viewportHeight: 390}];
-    for (const surface of ['today', 'review', 'editor', 'insights', 'archived', 'settings', 'occasions']) {
+    const scenarios = ['today', 'review-overview', 'review-records', 'review-analysis', 'editor', 'insights', 'archived', 'settings', 'occasions'];
+    for (const scenario of scenarios) {
+      const workspace = scenario.startsWith('review-') ? scenario.slice('review-'.length) : undefined;
+      const surface = workspace ? 'review' : scenario;
       for (const size of sizes) {
-        const label = `${surface}-${size.width}${size.height ? 'x350' : ''}`;
+        const label = `${scenario}-${size.width}${size.height ? 'x350' : ''}`;
         try {
             await sizeHost(size.width, size.height || 720, size.viewportHeight || 1000);
+            if (workspace) await page.evaluate(() => {
+                const plugin = window.__plugin;
+                plugin.reviewWorkspace = 'overview';
+                plugin.reviewFoldSections = new Set();
+                plugin.reviewFoldTouched = false;
+                plugin.historyScope = 'period';
+                plugin.historyPage = 0;
+                plugin.historyItemId = '';
+                plugin.historyQuery = '';
+                plugin.historySource = 'all';
+                plugin.historyOrder = 'newest';
+                plugin.reviewProjectPage = 0;
+                plugin.reviewTrend = 'weekly';
+                plugin.reviewStrengthItemId = '';
+            });
             await goto(surface);
             if (surface === 'review') {
-                await page.locator('.lc-checkin--review details').evaluateAll(nodes => nodes.forEach(element => {
-                    if (!element.matches('.lc-checkin__review-more, .lc-checkin__custom-range-disclosure')) element.open = true;
-                }));
+                await expandReviewWorkspace(workspace);
             } else if (surface === 'editor') {
                 await page.locator('[data-advanced]').evaluate(element => { element.open = true; });
             } else if (surface === 'settings' || surface === 'occasions' || surface === 'insights') {
@@ -125,30 +182,38 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
             }
             await waitForVisualStability();
             const rows = await inventory();
-            report.push({label, rows, roles: await checkRoles(surface)});
+            report.push({label, rows, roles: await checkRoles(scenario)});
             fs.writeFileSync(path.join(out, `${label}-fonts.json`), JSON.stringify(rows, null, 2));
             if (!baseline) assert.deepEqual(rows.filter(row => !row.micro && row.font < 11.9).map(row => ({text: row.text, font: row.font, class: row.class})), [], 'all visible non-decorative text must be at least 12px');
             await assertLayout(`content/${label}`);
-            if (!baseline && surface === 'review') {
+            if (!baseline && workspace === 'records') {
                 const geometry = await page.evaluate(() => {
                     const actions = [...document.querySelectorAll('.lc-checkin__history-event-actions')].filter(e => e.checkVisibility()).map(e => [...e.querySelectorAll('button')].map(b => { const r = b.getBoundingClientRect(); return {y: r.y, h: r.height}; }));
-                    const svgFonts = [...document.querySelectorAll('.lc-chart text, .lc-yearheatmap__label')].filter(e => e.checkVisibility()).map(e => parseFloat(getComputedStyle(e).fontSize) * e.getScreenCTM().d);
-                    const logWidths = [...document.querySelectorAll('.lc-checkin__log-main')].filter(e => e.checkVisibility()).map(e => e.getBoundingClientRect().width);
-                    return {actions, svgFonts, logWidths};
+                    const recordWidths = [...document.querySelectorAll('.lc-checkin__history-event-main')].filter(e => e.checkVisibility()).map(e => e.getBoundingClientRect().width);
+                    const longNotes = [...document.querySelectorAll('.lc-checkin__history-event-note')].filter(e => e.checkVisibility()).map(e => ({text: e.textContent, overflow: e.scrollWidth > e.clientWidth + 1}));
+                    return {actions, recordWidths, longNotes};
                 });
                 assert.ok(geometry.actions.length > 0, 'history must have populated actions');
                 for (const buttons of geometry.actions) {
                     assert.equal(buttons.length, 3, 'history exposes three actions');
                     assert.ok(buttons.every(b => b.h >= 44 && Math.abs(b.y - buttons[0].y) < 1), 'history actions stay in one reachable row');
                 }
-                assert.ok(geometry.svgFonts.length > 20, 'populated charts must expose real axis labels');
+                assert.ok(geometry.recordWidths.length > 0 && geometry.recordWidths.every(width => width >= 60), `record body must not collapse into a vertical strip: ${geometry.recordWidths}`);
+                assert.ok(geometry.longNotes.some(note => note.text.includes('LongReference'.repeat(8))), 'the long-note fixture must remain fully present');
+                assert.ok(geometry.longNotes.every(note => !note.overflow), 'long record notes must wrap without horizontal clipping');
+            }
+            if (!baseline && workspace === 'analysis') {
+                const svgFonts = await page.locator('.lc-chart text, .lc-yearheatmap__label').evaluateAll(elements => elements.filter(element => element.checkVisibility()).map(element => parseFloat(getComputedStyle(element).fontSize) * element.getScreenCTM().d));
+                assert.ok(svgFonts.length > 20, 'populated charts must expose real axis labels');
                 /* SVG axes may scale below the 12px DOM role floor inside a
                    narrow chart card; 7.5px is the documented visual minimum
                    for axis/date micro-labels, while normal text is checked
                    separately above. */
-                assert.ok(geometry.svgFonts.every(font => font >= 7.5 && font <= 20), `chart text must stay readable after SVG scaling: ${geometry.svgFonts}`);
-                assert.ok(geometry.logWidths.length > 0 && geometry.logWidths.every(width => width >= 60), `log body must not collapse into a vertical strip: ${geometry.logWidths}`);
+                assert.ok(svgFonts.every(font => font >= 7.5 && font <= 20), `chart text must stay readable after SVG scaling: ${svgFonts}`);
+            }
+            if (!baseline && workspace === 'overview') {
                 assert.ok(await page.locator('.lc-checkin__review-item-icon img').count() > 0, 'custom review icon renders as an image');
+                assert.ok(await page.locator('.lc-checkin__review-item > strong').filter({hasText: 'LongReferenceName'}).count() > 0, 'overview must include the long custom project name');
             }
             if (!baseline && surface === 'insights') {
                 const cells = await page.locator('.lc-checkin__insight-grid > *').evaluateAll(nodes => nodes.map(e => {const r = e.getBoundingClientRect(); return {x: r.x, y: r.y};}));
@@ -162,9 +227,8 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
                     const id = await section.getAttribute('data-review-fold');
                     await captureSection(section, `${label}-${id}`);
                 }
-                await captureSection(page.locator('.lc-checkin__review-detail'), `${label}-history`);
-                await captureSection(page.locator('.lc-checkin__year-heatmap'), `${label}-heatmap`);
-                assert.equal(await page.locator('[data-review-fold]').count() >= 7, true, 'rich fixture must populate review sections');
+                if (workspace === 'records') await captureSection(page.locator('.lc-checkin__review-detail'), `${label}-history`);
+                if (workspace === 'analysis') await captureSection(page.locator('.lc-checkin__year-heatmap'), `${label}-heatmap`);
             }
             if (surface === 'settings' && [320, 1180].includes(size.width)) {
                 for (const section of await page.locator('[data-settings-group]').all()) await captureSection(section, `${label}-${await section.getAttribute('data-settings-group')}`);
@@ -182,5 +246,5 @@ module.exports = async function auditContent({page, goto, sizeHost, waitForVisua
     }
     fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify({qaHost, qaTheme, qaFrontend, baseline, failures, report}, null, 2));
     if (!baseline) assert.deepEqual(failures, [], 'full-content audit must pass');
-    console.log(`Content audit: ${report.length}/35 populated page layouts; ${failures.length} issues${baseline ? ' (baseline, not acceptance)' : ''}.`);
+    console.log(`Content audit: ${report.length}/${scenarios.length * sizes.length} populated page layouts; ${failures.length} issues${baseline ? ' (baseline, not acceptance)' : ''}.`);
 };

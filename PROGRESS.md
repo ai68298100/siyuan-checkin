@@ -1,5 +1,13 @@
 # 进度
 
+2026-09-20 T-1333~T-1336（完成）：回顾三个任务工作区与8项/30条分页完成，重区按需生成、单趋势/单强度图、过滤范围与统计口径均已明确。终审额外修复近30天强度候选随顶部周期变化、跨时区记录归属日漂移、无变化备注保存无法退出、保存/删除后焦点丢失；保存失败保留草稿，离页不夺焦点。320px实截图发现筛选挤掉记录，最后收口为搜索常显、高级筛选默认收起/生效展开，移动周期与报告同排，首屏可见记录操作。
+
+证据：`docs/review-workspace-audit-2026-09-20.md`；最终`review-final-quality.log`完整test:quality exit0（132测试文件、0退役）；两组review-final-workspace各49布局、两组review-final-content各45/45且0 issues；双色review-final-visual exit0且pageErrors=[]；标准review-final-standard-dialog-light-desktop通过42页面+32交互+8配色+10混合布局+16长内容。新增renderer/绑定回归验证默认策略、实际分页、重区无调用、组合过滤、写失败和跨时区。初期旧样式/source守门与visual旧月历路径失败已纠正并完整重跑，不削弱业务验收。
+
+性能边界：同机30项/90天/100k记录的默认HTML3456696→9241字节、SVG36→0、cold renderer1311.36→119.94ms；只含HTML renderer，不含snapshot/DOM/CSS/宿主。真实首屏预览在`.artifacts/review-final-previews/`；最终包SHA256=`32f2ae96412d20f0ab6025cae84d905a76c418f460a28706e5f7bb9332748df7`，CSS587527字节按D-246仅报告。README标记为开发中，发布记录保留原17.2.1发行摘要；本地里程碑提交，不push/发版。B-007/T-023真实思源及设备项保持开放；本轮更新的两份真宿主E2E仅语法检查，未冒充真宿主实跑。
+
+2026-09-20 T-1333~T-1336（进行中）：用户要求从内容、默认展开、筛选、UI、性能和易用性重审回顾页。已发现宽桌面的窄dock误开四区、折叠偏好白名单缺项、日期检索与周期统计范围含糊、项目覆盖百分比被当完成率、重区隐藏仍预渲染、自定义范围/热图年切换未接到review。实施三任务视图与按需渲染、真实分页及明确筛选作用域，不改公共统计/存储语义；现场项保持开放。
+
 2026-09-20 T-1329~T-1332（完成）：确认今日卡片按当天排期总数与容器宽度动态切换（>12 项紧凑、<=719px 强制紧凑、>=1500px 紧凑三列），并完成七页全展开内容审查。回顾修复趋势单位/日活跃说明、历史动作44px同排、日志宽度与长备注、图表 SVG 局部字号、项目/热图/自定义图片；编辑复盘归档修复模板图片 live 更新、目标/单位对齐、7×12 热图；设置/事项修复番茄收件箱小时换算、月/周星期保存和共享第N个序数。导航和今日分组辅助文字统一到12px，正文13–14px。
 
 证据：`docs/ui-full-content-audit-2026-09-20.md`；`ui-full-content-{mobile-light-final5,dialog-light-final7,tab-dark-final7}.log`均35/35、0 issues；双色 `ui-full-visual-{light,dark}-final2.log` exit0；设置/事项、自定义模板、图表与定向测试通过。最终 `pnpm run test:quality`、`pnpm run check:release` exit0，package.zip SHA-256=`a867407cd7f255962738f8b4333cb8cb328496e0791f53d4764292a3f30ee272`，本地未push。真实思源WebView、系统触摸/键盘/安全区及双插件现场联调仍保持开放。

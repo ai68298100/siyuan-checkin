@@ -6,6 +6,7 @@ import "./ui/content-responsive.scss";
 import "./ui/maintenance-responsive.scss";
 import "./ui/interaction-states.scss";
 import "./ui/review-detail.scss";
+import "./ui/review-workspace.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
@@ -332,7 +333,12 @@ export default class CheckinPlugin extends Plugin {
     /* 仅当变更发生在当前日时才尝试 Today 局部刷新；跨日事件必须走完整投影。 */
     private pendingLocalItemDate?: string;
     private collapsedTodayGroups = new Set<string>();
-    /* T-011 回顾页展开的折叠区块（trend/log/upcoming/achievements），空集 = 全部折叠。 */
+    /* Review workspaces are session state; explicit section expansion is persisted. */
+    private reviewWorkspace: "overview" | "records" | "analysis" = "overview";
+    private reviewProjectPage = 0;
+    private reviewProjectOrder: "attention" | "name" = "attention";
+    private reviewTrend: "weekly" | "monthly" | "daily" | "yearly" = "weekly";
+    private reviewStrengthItemId = "";
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
     /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
@@ -400,6 +406,11 @@ export default class CheckinPlugin extends Plugin {
     private jumpToHistoryDate(date: string) {
         if (!isValidLocalDateInput(date)) return;
         this.selectedHistoryDate = date;
+        this.reviewWorkspace = "records";
+        this.historyScope = "day";
+        this.historyPage = 0;
+        this.editingHistoryNoteId = undefined;
+        this.reviewFoldSections.add("calendar");
         this.historyMonth = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1);
         this.showReview();
     }
@@ -462,6 +473,9 @@ export default class CheckinPlugin extends Plugin {
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
+    private historyScope: "day" | "period" = "period";
+    private historyItemId = "";
+    private historyPage = 0;
     private archivedQuery = "";
     private editingHistoryNoteId?: string;
     private summaryRequestId = 0;
@@ -1233,10 +1247,12 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showHistory() {
+        this.reviewWorkspace = "records";
         this.showReview();
     }
 
     private showSummary() {
+        this.reviewWorkspace = "overview";
         this.showReview();
     }
 
@@ -2304,6 +2320,14 @@ export default class CheckinPlugin extends Plugin {
             historyQuery: this.historyQuery,
             historySource: this.historySource,
             historyOrder: this.historyOrder,
+            historyScope: this.historyScope,
+            historyItemId: this.historyItemId,
+            historyPage: this.historyPage,
+            reviewWorkspace: this.reviewWorkspace,
+            reviewProjectPage: this.reviewProjectPage,
+            reviewProjectOrder: this.reviewProjectOrder,
+            reviewTrend: this.reviewTrend,
+            reviewStrengthItemId: this.reviewStrengthItemId,
             heatmapYearOffset: this.heatmapYearOffset,
             reviewFoldSections: this.reviewFoldSections,
             reviewFoldTouched: this.reviewFoldTouched,
@@ -2429,6 +2453,9 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private changeHistoryMonth(offset: number) {
+        this.historyPage = 0;
+        this.historyScope = "day";
+        this.editingHistoryNoteId = undefined;
         changeHistoryMonthFor(this as unknown as PluginOpsHost, offset);
     }
 
@@ -3767,6 +3794,8 @@ export default class CheckinPlugin extends Plugin {
             const [previousYear, previousMonth] = this.currentDateKey.split("-").map(Number);
             const historyWasCurrent = this.historyMonth.getFullYear() === previousYear && this.historyMonth.getMonth() === previousMonth - 1;
             this.currentDateKey = nextDateKey;
+            this.historyPage = 0;
+            this.reviewProjectPage = 0;
             if (historyWasCurrent) {
                 this.historyMonth = new Date(now.getFullYear(), now.getMonth(), 1);
                 this.selectedHistoryDate = nextDateKey;

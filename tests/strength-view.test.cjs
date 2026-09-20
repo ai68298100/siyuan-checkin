@@ -11,7 +11,9 @@ const read = (...parts) => fs.readFileSync(path.join(sourceRoot, ...parts), "utf
 /* 结构守门：回顾页折叠卡、洞察字段、教练规则与 API 边界全部落位。 */
 const reviewSource = read("render", "review.ts");
 assert.match(reviewSource, /fold\("strength"/, "review exposes the strength fold");
-assert.match(reviewSource, /data-review-jump="strength"/, "subnav jumps to strength");
+assert.match(reviewSource, /data-review-strength-item/, "one selector switches the average and individual project strength");
+assert.match(reviewSource, /selectedStrength \? selectedChart : strengthOverview/,
+    "strength renders exactly the selected plot rather than every project chart");
 assert.match(reviewSource, /buildHabitScoreSeries\(/, "review consumes the shared score implementation");
 assert.equal((reviewSource.match(/width: 320, height: 150, labelStride: 7/g) || []).length, 2, "overview and per-item plots share a readable narrow chart coordinate system");
 assert.match(reviewSource, /renderIconMarkup\(iconsById.get/, "review project icons use the same safe image/text rendering as Today");

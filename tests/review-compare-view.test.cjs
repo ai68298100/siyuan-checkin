@@ -12,10 +12,10 @@ assert.match(reviewSource, /getPreviousReviewRange\(\{startDate: summary\.startD
     "review must derive the baseline range from the active summary range");
 assert.match(reviewSource, /buildReviewComparison\(summary, buildCustomSummaryContext\(ctx\.store, previousRange, asOf\)\)/,
     "comparison must consume the shared cutoff when projecting the baseline context");
-assert.match(reviewSource, /renderReviewCompareSection\(comparison\)/,
-    "review must render the comparison strip through the shared view module");
-assert.match(reviewSource, /data-review-jump="compare"/,
-    "subnav must expose the compare fold only when item deltas exist");
+assert.match(reviewSource, /renderReviewCompareSection\(comparison, true\)/,
+    "review embeds comparison without a redundant nested disclosure");
+assert.match(reviewSource, /fold\("compare", t\("review\.compareTitle"\), renderComparison\)/,
+    "comparison is generated only after its overview disclosure opens");
 assert.doesNotMatch(reviewSource, /new Date\(\)/,
     "review must not capture independent current instants");
 
@@ -91,6 +91,15 @@ assert.match(section, /lc-checkin__compare-stat is-down/, "item drop must be mar
 assert.match(section, /lc-checkin__compare-stat is-flat/, "scheduled delta must stay neutral");
 assert.ok(section.includes(">+4</em>"), "event delta must be signed");
 assert.ok(section.includes(`>${t("review.compareBaselineLabel")} 5</span>`), "baseline value must be labelled");
+
+const embedded = renderReviewCompareSection(comparison, true);
+assert.match(embedded, /^<section class="lc-checkin__compare">/,
+    "the workspace's already-open comparison fold must embed a section");
+assert.doesNotMatch(embedded, /<details|<summary/,
+    "users must not need a second expansion to see the selected comparison");
+assert.ok(embedded.includes("2026-08-25 ~ 2026-08-31"), "embedded comparison retains its baseline dates");
+assert.match(embedded, /lc-checkin__compare-chart/, "embedded comparison retains the chart");
+assert.match(embedded, /lc-checkin__compare-stat is-up/, "embedded comparison retains signed statistics");
 
 const rows = renderReviewCompareItems(comparison);
 const rowOrder = [...rows.matchAll(/<strong>([^<]+)<\/strong>/g)].map((match) => match[1]);

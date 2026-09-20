@@ -22,7 +22,11 @@ test("回顾建议可确认执行并撤销", async ({browser}) => {
         const review = [...document.querySelectorAll("button, a")].find((element) => (element.textContent || "").trim() === "回顾");
         review?.click();
     });
-    await page.locator('.lc-checkin__review-guidance-disclosure > summary').click();
+    await page.locator('[data-review-workspace="overview"]').click();
+    const report = page.locator('details[data-review-fold="report"]');
+    if (!await report.evaluate(element => element.open)) await report.locator('> summary').click();
+    await expect(report).toHaveJSProperty('open', true);
+    await expect(report).not.toHaveAttribute('data-review-lazy', 'true');
     await page.waitForSelector("[data-action='preview-agent-suggestion']", {timeout: 15000});
     await page.locator("[data-action='preview-agent-suggestion']").click();
 
