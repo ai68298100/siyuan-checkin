@@ -46,7 +46,7 @@ const packageHash = require("node:crypto").createHash("sha256")
     .digest("hex");
 assert.equal(releaseHash, packageHash, "release notes SHA-256 must match the current package.zip");
 assert.match(packageManifest.scripts["test:quality"], /test:legacy-style/, "quality chain must include legacy style audit");
-assert.equal(packageManifest.description, "SiYuan plugin: 小飞驴打卡", "package metadata must use readable UTF-8 Chinese");
+assert.equal(packageManifest.description, "SiYuan plugin: 小驴打卡", "package metadata must use readable UTF-8 Chinese");
 assert.ok(!/灏忛|鎵撳崱/.test(packageManifest.description), "package metadata must not contain mojibake");
 assert.ok(fs.statSync(path.join(root, "package.zip")).size > 10_000, "package.zip must be a non-empty release archive");
 for (const filename of ["index.js", "index.css", "plugin.json", "README.md", "LICENSE.txt", plugin.icon, plugin.preview]) {
