@@ -1540,3 +1540,5 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1346 两发现收口（界面语言接线 + 模板运行时断言）:①设置页新增「界面语言」（zh-CN/en-US/跟随思源,view-preferences 新增 pluginLanguage 偏好缺省 zh-CN 行为不变,syncPluginLanguage 按宿主 lang 解析 follow,变化时才切换避免无谓重渲染,设置变更即存即生效）;②走查脚本补 CHECKIN_QA_LANG=en-US 英文全矩阵能力,模板区运行时断言（展开器→全显→芯片置顶→重渲染保持）入走查;③修正走查内 14 处硬编码中文期望为双语正则（专注/记录/打卡/备注/破戒/上限/填写/次数/天等——此前英文界面不可达所以从未暴露）。
 验证:英文界面首次全矩阵走查通过（42+32+8+10+16,Edge）;中文走查回归通过;type check、release-assets、i18n-hygiene、settings-navigation、template-gallery、view-preferences 全过。发现:EN 文案布局无错乱,英文界面自此具备发布口径。
+
+2026-09-21 T-1341 API v5 稳定文档包:docs/api-v5.md 正式参考（18 能力清单+签名+上限表+批量写判定顺序+弃用周期+storeVersion 双语义）+ docs/contracts/checkin-api-v5.json 机器可读清单 + tests/api-v5-docs.test.cjs 三方交叉核对（api-contract.ts transpile 逐项比对,接入 test:ui）;api-v5-design.md 标记转正,ecosystem-integration.md 互指。ecosystem-docs/export-identity-docs 回归通过。

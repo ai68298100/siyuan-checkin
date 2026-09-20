@@ -1,0 +1,57 @@
+{
+  "version": 5,
+  "apiProtocol": "siyuan-checkin",
+  "apiObjectName": "siyuanCheckin",
+  "apiVersion": 5,
+  "storeVersion": 2,
+  "storeVersionSemantics": "公共契约版本；与内部 CheckinStore 存储版本（当前 3）无关",
+  "minSupportedConsumerVersion": 4,
+  "deprecationPolicy": "能力移除前至少一个完整大版本在 describe() 中预告，期间行为不变",
+  "capabilities": [
+    {"name": "items.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "items.query", "since": 5, "effect": "read", "localOnly": true},
+    {"name": "events.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "events.range.read", "since": 5, "effect": "read", "localOnly": true},
+    {"name": "events.record", "since": 4, "effect": "write", "localOnly": true},
+    {"name": "events.record.batch", "since": 5, "effect": "write", "localOnly": true},
+    {"name": "occasions.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "occasions.complete", "since": 4, "effect": "write", "localOnly": true},
+    {"name": "summary.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "summary.custom", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "analytics.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "metrics.read", "since": 5, "effect": "read", "localOnly": true},
+    {"name": "summary.providers", "since": 4, "effect": "register", "localOnly": false},
+    {"name": "suggestions.read", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "focus.adapters", "since": 4, "effect": "register", "localOnly": true},
+    {"name": "integrations.events", "since": 4, "effect": "read", "localOnly": true},
+    {"name": "export.json", "since": 4, "effect": "export", "localOnly": true},
+    {"name": "export.csv", "since": 4, "effect": "export", "localOnly": true}
+  ],
+  "events": [
+    "checkin:item-created",
+    "checkin:item-updated",
+    "checkin:event-recorded",
+    "checkin:event-deleted",
+    "checkin:item-deleted",
+    "checkin:item-archived",
+    "checkin:suggestion-workflow-updated",
+    "checkin:analytics-updated"
+  ],
+  "limits": {
+    "eventRange": {"maxDays": 366, "maxPoints": 366, "maxEvents": 5000},
+    "eventsRead": {"maxItemIds": 200, "defaultLimit": 1000, "maxLimit": 5000},
+    "itemsQuery": {"defaultLimit": 200, "maxLimit": 1000},
+    "batchRecord": {"maxItems": 200},
+    "analyticsSnapshotJsonBytes": 524288,
+    "trendWindows": {"week": 52, "month": 24, "day": 366, "year": 10}
+  },
+  "batchResultKinds": ["recorded", "duplicate", "discarded", "blocked", "rejected"],
+  "recordEventResult": {"newEvent": "event-copy", "duplicate": "existing-event-copy", "rejected": "undefined"},
+  "externalRefPrefixes": [
+    {"prefix": "docktomato:", "format": "docktomato:<sessionId>"},
+    {"prefix": "taskhorizon:", "format": "taskhorizon:<blockId>:<localDate>"},
+    {"prefix": "obsidian21:", "format": "obsidian21:<filename>:<localDate>"}
+  ],
+  "identityRulesDoc": "docs/identity-and-merge.md",
+  "referenceDoc": "docs/api-v5.md"
+}

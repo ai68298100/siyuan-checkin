@@ -2,8 +2,9 @@
 
 ## v18 规划任务（2026-09-20 定稿启动，详见 docs/development-roadmap-v18-v22.md）
 
-- [ ] T-1341 API v5 稳定文档包
+- [x] T-1341 API v5 稳定文档包
   - 验收：`api-v5-design.md` 草案转正式文档（类型定义、最小示例、错误码、输入上限、兼容矩阵、`capabilitiesSince`）；契约测试包随文档版本化；storeVersion 双语义显式澄清。
+  - 状态：done（2026-09-21。新增 docs/api-v5.md 正式参考——18 能力清单（since/effect/localOnly）、v5 四能力完整签名、输入上限速查表、批量写判定顺序与 usedFallbackTime/truncated 语义、externalRef 前缀登记、弃用周期承诺（移除前至少一个大版本预告）、storeVersion 双语义（公共 v2 vs 内部 v3）澄清；新增 docs/contracts/checkin-api-v5.json 机器可读清单；新增 tests/api-v5-docs.test.cjs 源码↔清单↔文档三方交叉核对（transpile 真模块逐项比对）接入 test:ui；design 稿标记转正、ecosystem 文档互指。ecosystem-docs/export-identity-docs 回归通过）
 - [ ] T-1342 恢复与并发演练
   - 验收：升级/降级、损坏隔离、双窗口并发、断网重试、恢复点回滚演练记录；《数据诊断与恢复指南》用户可读并从设置页可达。
 - [ ] T-1343 回顾导出增强

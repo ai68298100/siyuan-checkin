@@ -1,6 +1,6 @@
 # 小驴打卡 API v5 设计稿（2026-09-20,T-1274 草案；v5-1 已实施——T-1275）
 
-> 状态:**草案**——仅供评审与下一版本排期,未实现、未承诺发布窗口。
+> 状态:**已实施并转正**——正式参考见 [api-v5.md](api-v5.md)（机器可读清单 [contracts/checkin-api-v5.json](contracts/checkin-api-v5.json)）。本文保留为设计过程记录;能力、限制与结果语义与正式文档冲突时,以后者为准。
 > 输入:v4 契约(`src/api-contract.ts`,14 项能力)与本文件撰写时点已完成的消费端实践(docktomato 桥/D-227、Task Horizon bridge、externalRef 前缀注册 D-211)。
 > 边界:本稿不含「每日摘要写驻留文档」等需隐私评估的事项;不含任何网络/同步能力。
 
