@@ -26,8 +26,16 @@ const cases = [
 ];
 
 (async () => {
+    const runStart = Date.now();
+    /* T-1369：CHECKIN_THROTTLE=6 模拟低端设备 CPU（Chromium CDP 节流），产出低配画像基线。 */
+    const throttleRate = Number(process.env.CHECKIN_THROTTLE || 0);
     const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
     const page = await browser.newPage({viewport: {width: 2040, height: 1000}, deviceScaleFactor: 1});
+    if (throttleRate > 1) {
+        const client = await page.context().newCDPSession(page);
+        await client.send("Emulation.setCPUThrottlingRate", {rate: throttleRate});
+        console.log(`low-end profile: CPU throttled x${throttleRate}`);
+    }
     const pageErrors = [];
     const scenarioFailures = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -1324,5 +1332,8 @@ const cases = [
     await browser.close();
     assert.deepEqual(pageErrors, [], 'bundle must not raise page errors');
     assert.deepEqual(scenarioFailures, [], 'all responsive scenarios must pass');
-    console.log(`Workbench: ${cases.length} surface scenarios + 32 interaction states + 8 theme/palette action-contrast scenarios + 10 mixed-habit layouts + recording-form interactions + 16 populated maintenance/history scenarios; record/undo, labelled focus actions, navigation state, both-theme 30-item density, limiting-habit backgrounds and long-name cards passed.`);
+    const totalMinutes = (Date.now() - runStart) / 60000;
+    /* T-1369：整卷灾难退化门槛——6x 节流下全矩阵仍须在 30 分钟内完成。 */
+    if (throttleRate > 1) assert.ok(totalMinutes < 30, `throttled x${throttleRate} full matrix must finish within 30 minutes (took ${totalMinutes.toFixed(1)} min)`);
+    console.log(`Workbench: ${cases.length} surface scenarios + 32 interaction states + 8 theme/palette action-contrast scenarios + 10 mixed-habit layouts + recording-form interactions + 16 populated maintenance/history scenarios; record/undo, labelled focus actions, navigation state, both-theme 30-item density, limiting-habit backgrounds and long-name cards passed.${throttleRate > 1 ? ` [CPU x${throttleRate}, total ${(Date.now() - runStart) / 60000 | 0} min]` : ""}`);
 })();
