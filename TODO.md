@@ -2670,3 +2670,7 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
 - [x] T-1302 渲染块 month 视图 tooltip 增强——未完成项目名展示
   - 验收:CheckinBlockDayCell 新增 incompleteNames(当日未完成项目名列表);month 视图 title 属性格式升级为 "1/3（缺：阅读、跑步）";hover 即可看到具体缺了哪些项目。
   - 状态:done(checkin-block.ts 类型+收集+渲染三处;checkin-block 测试全过 17ms)
+
+- [x] T-1303 底栏番茄钟作者沟通包准备
+  - 验收:可发送给 5kyfkr 的完整沟通文档,含 6 点修订请求、消费端已就绪清单、测试证据。
+  - 状态:done(docs/docktomato-author-communication.md;用户复制粘贴即可)
