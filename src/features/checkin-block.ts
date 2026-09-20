@@ -16,18 +16,22 @@ import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isCom
 import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
-export type CheckinBlockView = "month" | "heatmap" | "summary";
+export type CheckinBlockView = "month" | "heatmap" | "summary" | "groups";
 
 export interface CheckinBlockConfig {
     view: CheckinBlockView;
     itemIds?: string[];
     group?: string;
+    /** T-1351：多分组并集作用域（与 group 互斥时 groups 优先级更低）。 */
+    groups?: string[];
     /** month 视图目标月（YYYY-MM），缺省 = asOf 所在月。 */
     month?: string;
     /** heatmap 视图目标年，缺省 = asOf 年份。 */
     year?: number;
     /** month/heatmap 单元格色阶阈值（完成比例切分点，升序）。 */
     thresholds?: [number, number, number, number];
+    /** T-1351：白名单表达式——只看今日完成率 ≥ minRate（1~100 整数）的行；summary/groups 生效。 */
+    minRate?: number;
     /** T-1292：文档维度——只统计锚点块位于该文档的项目（思源文档 id）。 */
     docId?: string;
     /** T-1292：笔记本维度——只统计锚点块位于该笔记本的项目（思源笔记本 id）。 */
@@ -40,6 +44,7 @@ export type AnchorDocIndex = Map<string, {doc: string; notebook: string}>;
 export type CheckinBlockParseResult = {ok: true; config: CheckinBlockConfig} | {ok: false; error: string};
 
 const MAX_BLOCK_ITEMS = 50;
+const MAX_BLOCK_GROUPS = 16;
 const DEFAULT_THRESHOLDS: [number, number, number, number] = [0.25, 0.5, 0.75, 1];
 
 export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
@@ -52,7 +57,7 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {ok: false, error: t("block.errorConfig")};
     const source = parsed as Record<string, unknown>;
     const view = source.view;
-    if (view !== "month" && view !== "heatmap" && view !== "summary") return {ok: false, error: t("block.errorView")};
+    if (view !== "month" && view !== "heatmap" && view !== "summary" && view !== "groups") return {ok: false, error: t("block.errorView")};
     const config: CheckinBlockConfig = {view};
     if (Array.isArray(source.itemIds)) {
         const itemIds = source.itemIds.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()).slice(0, MAX_BLOCK_ITEMS);
@@ -60,6 +65,16 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
         if (itemIds.length) config.itemIds = itemIds;
     }
     if (typeof source.group === "string" && source.group.trim()) config.group = source.group.trim().slice(0, 32);
+    /* T-1351：多分组并集；超量与非法输入 fail-closed，不静默放大范围。 */
+    if (Array.isArray(source.groups)) {
+        const groups = source.groups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim().slice(0, 32));
+        if (source.groups.length > MAX_BLOCK_GROUPS) return {ok: false, error: t("block.errorGroups")};
+        const unique = [...new Set(groups)];
+        if (unique.length) config.groups = unique;
+    }
+    /* T-1351：白名单表达式 minRate（1~100 整数）；越界或非法输入忽略，不猜测语义。 */
+    const minRate = Number(source.minRate);
+    if (Number.isFinite(minRate) && minRate >= 1 && minRate <= 100) config.minRate = Math.floor(minRate);
     if (typeof source.month === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(source.month)) config.month = source.month;
     const year = Number(source.year);
     if (Number.isFinite(year) && year >= 1970 && year <= 9999) config.year = Math.floor(year);
@@ -81,9 +96,7 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
     return {ok: true, config};
 }
 
-/* 作用域解析优先级：itemIds > group > docId/notebook（锚点索引） > 全部活跃项目。
-   docId/notebook 需要 anchorIndex（宿主经内核 getBlockInfo 解析并缓存）；
-   无锚点或索引未命中该项目时，视为不在该维度范围内——fail-closed，不静默放大范围。 */
+/* 作用域解析优先级：itemIds > group > groups（多分组并集） > docId/notebook（锚点索引） > 全部活跃项目。 */
 export function resolveBlockItems(store: CheckinStore, config: CheckinBlockConfig, anchorIndex?: AnchorDocIndex): CheckinItem[] {
     const active = store.items.filter((item) => !item.archived);
     if (config.itemIds) {
@@ -91,6 +104,10 @@ export function resolveBlockItems(store: CheckinStore, config: CheckinBlockConfi
         return active.filter((item) => ids.has(item.id));
     }
     if (config.group) return active.filter((item) => (item.group || "") === config.group);
+    if (config.groups?.length) {
+        const groups = new Set(config.groups);
+        return active.filter((item) => groups.has(item.group || ""));
+    }
     if (config.docId || config.notebook) {
         if (!anchorIndex) return [];
         return active.filter((item) => {
@@ -187,13 +204,25 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid" role="list">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)}))}</small></div>`;
 }
 
+/** T-1351：今日完成率（0~100 整数）；完成 = 100，进行中按进度比折算。单一实现供 summary/groups 消费。 */
+export function todayCompletionRate(store: CheckinStore, item: CheckinItem, asOf: Date): number {
+    if (isComplete(store, item, asOf)) return 100;
+    const revision = getItemRevisionForDate(item, asOf);
+    const progress = getProgress(store, item, asOf);
+    const target = revision.target > 0 ? revision.target : 1;
+    return Math.min(100, Math.round((progress / target) * 100));
+}
+
 export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
     const items = resolveBlockItems(store, config, anchorIndex);
     if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
+    const minRate = config.minRate;
+    const filtered = minRate ? items.filter((item) => todayCompletionRate(store, item, asOf) >= minRate) : items;
+    if (minRate && !filtered.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.minRateEmpty", {rate: minRate}))}</div>`;
     const streaks = computeEventStreaks(store, asOf);
     const longestMap = computeLongestStreaks(store, asOf);
     /* 汇总行直接复用模型单一路径（getProgress/isComplete），避免在渲染块里重写完成口径。 */
-    const lines = items.map((item) => {
+    const lines = filtered.map((item) => {
         const progress = getProgress(store, item, asOf);
         const revision = getItemRevisionForDate(item, asOf);
         const complete = isComplete(store, item, asOf);
@@ -205,9 +234,36 @@ export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockCo
         if (streak > 0) streakParts.push(escapeHtml(t("anchor.streakSuffix", {n: streak})));
         if (longest > 1) streakParts.push(escapeHtml(t("block.longestSuffix", {n: longest})));
         const streakHtml = streakParts.length ? `<em>${streakParts.join(" · ")}</em>` : "";
-        return `<div class="lc-checkin__renderblock-row" role="listitem" tabindex="0" data-jump-item="${escapeHtml(item.id)}" aria-label="${escapeHtml(`${item.name} ${stateText}`)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(stateText)} · ${escapeHtml(formatNumber(progress))}/${escapeHtml(formatNumber(target))} ${escapeHtml(revision.unit)}</span>${streakHtml}</div>`;
+        /* T-1351：有已解析锚点的项目行额外携带 data-jump-anchor-block，点击打开锚点所在文档。 */
+        const anchorBlockId = item.noteAnchor?.blockId;
+        const anchorAttr = anchorBlockId && anchorIndex?.has(anchorBlockId) ? ` data-jump-anchor-block="${escapeHtml(anchorBlockId)}"` : "";
+        return `<div class="lc-checkin__renderblock-row" role="listitem" tabindex="0" data-jump-item="${escapeHtml(item.id)}"${anchorAttr} aria-label="${escapeHtml(`${item.name} ${stateText}`)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(stateText)} · ${escapeHtml(formatNumber(progress))}/${escapeHtml(formatNumber(target))} ${escapeHtml(revision.unit)}</span>${streakHtml}</div>`;
     }).join("");
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-summary" role="list">${lines}</div>`;
+}
+
+/** groups 视图（T-1351）：按分组聚合的今日完成率汇总；minRate 过滤低完成率分组。 */
+export function buildGroupsViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
+    const items = resolveBlockItems(store, config, anchorIndex);
+    if (!items.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
+    const groups = new Map<string, {scheduled: number; completed: number; items: number}>();
+    for (const item of items) {
+        const entry = groups.get(item.group || "") || {scheduled: 0, completed: 0, items: 0};
+        entry.items += 1;
+        if (isItemAvailableOnDate(item, asOf) && isScheduledToday(item, asOf)) {
+            entry.scheduled += 1;
+            if (isComplete(store, item, asOf)) entry.completed += 1;
+        }
+        groups.set(item.group || "", entry);
+    }
+    const minRate = config.minRate;
+    const rows = [...groups.entries()]
+        .map(([name, entry]) => ({name, ...entry, rate: entry.scheduled ? Math.round((entry.completed / entry.scheduled) * 100) : 0}))
+        .sort((left, right) => right.rate - left.rate || left.name.localeCompare(right.name));
+    const visible = minRate ? rows.filter((row) => row.rate >= minRate) : rows;
+    if (!visible.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.minRateEmpty", {rate: minRate || 0}))}</div>`;
+    const lines = visible.map((row) => `<div class="lc-checkin__renderblock-row" role="listitem"><strong>${escapeHtml(row.name || t("review.ungrouped"))}</strong><span>${t("block.groupsMeta", {items: row.items, done: row.completed, total: row.scheduled, rate: row.rate})}</span></div>`).join("");
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-groups" role="list">${lines}</div>`;
 }
 
 export function buildHeatmapViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {

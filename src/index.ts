@@ -1,4 +1,4 @@
-import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage, type IProtyle} from "siyuan";
+import {Dialog, fetchSyncPost, getFrontend, openTab, Plugin, showMessage, type IProtyle} from "siyuan";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import "./ui/workbench.scss";
@@ -374,9 +374,36 @@ export default class CheckinPlugin extends Plugin {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
             onJumpDate: (date: string) => this.jumpToHistoryDate(date),
+            /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
+            onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
+            onJumpItemAnchor: (blockId: string) => void this.jumpToItemAnchorDoc(blockId),
             getAnchorIndex: () => new Map(this.anchorDocCache),
             resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),
         };
+    }
+
+    /* T-1351：渲染块项目行跳回顾页洞察。 */
+    private jumpToItemInsights(itemId: string) {
+        if (!getActiveItemById(this.store, itemId)) return;
+        this.insightsItemId = itemId;
+        this.currentPage = "insights";
+        this.render();
+    }
+
+    /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
+       openTab 的 doc 锚点滚动定位未在本仓库验证，故不传未证实参数；任何失败回落项目洞察。 */
+    private async jumpToItemAnchorDoc(blockId: string) {
+        const location = this.anchorDocCache.get(blockId);
+        const item = this.store.items.find((candidate) => candidate.noteAnchor?.blockId === blockId && !candidate.archived);
+        if (!location?.doc) {
+            if (item) this.jumpToItemInsights(item.id);
+            return;
+        }
+        try {
+            await openTab({app: this.app, doc: {id: location.doc}});
+        } catch {
+            if (item) this.jumpToItemInsights(item.id);
+        }
     }
 
     /* T-1292:锚点归属索引(内核 getBlockInfo 解析,会话内缓存;缺失按未命中处理)。 */

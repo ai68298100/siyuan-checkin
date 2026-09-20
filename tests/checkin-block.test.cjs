@@ -161,4 +161,53 @@ setPluginLanguage("en-US");
 assert.equal(t("block.errorConfig"), "Render block config must be a JSON object");
 setPluginLanguage("zh-CN");
 
-console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary views, neutrality, security and perf (${Math.round(perfMs)}ms for ~10k events).`);
+/* ---------- T-1351 渲染块二期：groups 视图 / minRate 表达式 / 锚点行跳转数据 ---------- */
+
+const groupsView = block.parseCheckinBlockConfig('{"view":"groups","groups":["健康","运动"],"minRate":50}');
+assert.equal(groupsView.ok, true);
+if (groupsView.ok) assert.deepEqual(groupsView.config.groups, ["健康", "运动"]);
+
+const overGroups = block.parseCheckinBlockConfig(`{"view":"summary","groups":${JSON.stringify(Array.from({length: 17}, (_, index) => `g${index}`))}}`);
+assert.equal(overGroups.ok, false, "more than 16 groups must be rejected");
+const dupGroups = block.parseCheckinBlockConfig('{"view":"summary","groups":["健康","健康"]}');
+assert.equal(dupGroups.ok && dupGroups.config.groups?.length, 1, "duplicate groups dedupe");
+const badMinRate = block.parseCheckinBlockConfig('{"view":"summary","minRate":180}');
+assert.equal(badMinRate.ok && "minRate" in badMinRate.config, false, "out-of-range minRate is ignored");
+
+const groupsStore = model.createDefaultStore();
+groupsStore.items = [
+    dailyItem("g1", "健康"), dailyItem("g2", "健康"), dailyItem("g3", "运动"), dailyItem("g4"),
+];
+const noScopeGroups = block.buildGroupsViewHtml(groupsStore, {view: "groups"}, asOf);
+assert.match(noScopeGroups, /健康/);
+assert.match(noScopeGroups, /未分组|Ungrouped/, "ungrouped items must aggregate under the explicit ungrouped label");
+const g2Events = [{id: "g2-event", itemId: "g2", occurredAt: `${key(19)}T01:00:00.000Z`, localDate: key(19), value: 1, unit: "次", source: "manual"}];
+const groupsStoreWithEvents = model.appendEvents(groupsStore, g2Events);
+const multiGroup = block.buildGroupsViewHtml(groupsStoreWithEvents, {view: "groups"}, asOf);
+assert.ok(multiGroup.indexOf("健康") < multiGroup.indexOf("运动"), "groups with higher completion rank first");
+
+/* minRate 表达式：summary 与 groups 都过滤；全部被滤掉时给明确空态。 */
+const filteredSummary = block.buildSummaryViewHtml(groupsStoreWithEvents, {view: "summary", minRate: 100}, asOf);
+assert.match(filteredSummary, /g2/, "fully completed item survives minRate=100");
+assert.doesNotMatch(filteredSummary, /g1/, "pending item is filtered out by minRate=100");
+const emptyMinRate = block.buildGroupsViewHtml(groupsStoreWithEvents, {view: "groups", minRate: 100}, asOf);
+assert.match(emptyMinRate, /没有完成率|No entries/, "fully filtered groups must show a readable empty state");
+const unfiltered = block.buildSummaryViewHtml(groupsStore, {view: "summary"}, asOf);
+assert.match(unfiltered, /g1/, "without minRate nothing is filtered");
+
+/* 锚点行：索引命中的项目携带 data-jump-anchor-block。 */
+const anchoredHtml = block.buildSummaryViewHtml(docStore, {view: "summary"}, asOf, anchorIndex);
+assert.match(anchoredHtml, /data-jump-anchor-block="block-1"/, "resolved anchors must expose the anchor jump hook");
+const plainHtml = block.buildSummaryViewHtml(docStore, {view: "summary"}, asOf);
+assert.doesNotMatch(plainHtml, /data-jump-anchor-block/, "unresolved anchors must not fake the anchor hook");
+
+/* 结构守门：渲染层绑定新跳转回调并分发 groups 视图；宿主接线齐全。 */
+assert.match(glueSource, /config\.view === "groups"/, "glue must dispatch the groups view");
+assert.match(glueSource, /onJumpItem\?\./, "glue must delegate item jumps to the host");
+assert.match(glueSource, /onJumpItemAnchor\?\./, "glue must delegate anchor jumps to the host");
+assert.match(glueSource, /data-jump-anchor-block/, "glue must handle the anchor jump hook first");
+assert.match(read("index.ts"), /onJumpItem: \(itemId: string\) => this\.jumpToItemInsights\(itemId\)/, "host must wire the item jump");
+assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string\) => void this\.jumpToItemAnchorDoc\(blockId\)/, "host must wire the anchor doc jump");
+assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: location\.doc\}\}\)/, "anchor jump opens the kernel-resolved root doc");
+
+console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, minRate, anchor jumps, neutrality, security and perf (${Math.round(perfMs)}ms for ~10k events).`);
