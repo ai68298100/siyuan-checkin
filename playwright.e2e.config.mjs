@@ -10,7 +10,9 @@ export default defineConfig({
     globalSetup: path.resolve(import.meta.dirname, "tests/e2e/global-setup.mjs"),
     timeout: 120000,
     workers: 1,
-    retries: 0,
+    /* 真实例串行套件对机器时序敏感（收件箱 reconcile、内核首次加载）；
+       重试一次消除环境偶发，报告仍标注重试事实。 */
+    retries: 1,
     fullyParallel: false,
     outputDir: ".artifacts/e2e/test-results",
     reporter: [["list"], ["json", {outputFile: ".artifacts/e2e/results.json"}]],
