@@ -492,6 +492,11 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                 if (!sessionId) {
                     throw dockTomatoError("DOCK_TOMATO_START_UNCONFIRMED");
                 }
+                /* 校验返回的 active 状态:提供方声称启动成功但状态不是 active 则不接管。 */
+                const resultActive = result && typeof result === "object" ? ownDataValue(result, "active") === true : false;
+                if (!resultActive) {
+                    throw dockTomatoError("DOCK_TOMATO_START_UNCONFIRMED");
+                }
                 /* 启动完成前已卸载/解绑/换绑新 facade:不登记归属,也不用旧调用接管新绑定。 */
                 if (bridgeDisposed || boundFacade !== facade || invalidatedFacades.has(facade)) return;
                 ownedFocus = {provider: facade, sessionId, itemId: context.itemId};
@@ -507,13 +512,11 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
         const detail = customEventDetail(event);
         const rawAvailable = detail && typeof detail === "object" ? ownDataValue(detail, "available") : undefined;
         if (rawAvailable === false) {
-            /* 明确不可用通知:立即失效该 facade 并解绑,不等它从 window 消失。 */
+            /* 明确不可用通知:无条件解绑并清除归属,即使 facade 已从 window 删除。 */
+            invalidatedFacades.clear();
             const candidate = getDockTomatoCandidate(window as DockTomatoHost);
-            if (candidate) {
-                invalidatedFacades.add(candidate);
-                if (ownedFocus?.provider === candidate) ownedFocus = undefined;
-                if (boundFacade === candidate) unbind();
-            }
+            if (candidate) invalidatedFacades.add(candidate);
+            unbind();
         } else {
             if (rawAvailable === true) {
                 const candidate = getDockTomatoCandidate(window as DockTomatoHost);
@@ -542,6 +545,29 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
                     const context = ownDataValue(detail, "context");
                     appendCompletionIssue(decision.reason, exactBoundedText(ownDataValue(context, "itemId"), 160), exactBoundedText(ownDataValue(detail, "sessionId"), 240));
                     scheduleProviderRefresh();
+                }
+                /* missing-item:项目可能因 store 未加载而暂时不可见——先入收件箱等重试,不丢弃。 */
+                if (decision.reason === "missing-item" && host.processDockTomatoCompletion) {
+                    const context = ownDataValue(detail, "context");
+                    const itemId = exactBoundedText(ownDataValue(context, "itemId"), 160);
+                    const rawDur = ownDataValue(detail, "durationMinutes");
+                    const clock = completionClock(ownDataValue(detail, "completedAt"));
+                    if (itemId && clock) {
+                        void host.processDockTomatoCompletion({
+                            identity: exactBoundedText(ownDataValue(detail, "sessionId"), 240) || "",
+                            externalRef: `docktomato:${exactBoundedText(ownDataValue(detail, "sessionId"), 240)}`,
+                            itemId,
+                            itemUnit: exactBoundedText(ownDataValue(context, "itemUnit"), 80) || "分钟",
+                            tomatoMode: exactBoundedText(ownDataValue(context, "tomatoMode"), 24) === "sessions" ? "sessions" : "minutes",
+                            durationMinutes: typeof rawDur === "number" && Number.isFinite(rawDur) ? rawDur : 0,
+                            occurredAt: clock.occurredAt,
+                            localDate: clock.localDate,
+                            state: "pending",
+                            attempts: 0,
+                            receivedAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString(),
+                        });
+                    }
                 }
                 return;
             }

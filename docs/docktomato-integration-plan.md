@@ -51,3 +51,11 @@ Dock Tomato 公开提供 `window.__dockTomatoStatsFacade`（同时挂载到 `win
 **运行测试结果**：`pnpm run check` 通过;`test:quality` 全链 exit 0（129 个测试文件、0 退役）,其中消费端专项 5 个测试文件覆盖：启动后误暂停复现、会话归属与五重守门、available 风暴、迟到启动归属、休息阶段、完成判定矩阵（completedAt/墓碑/归档/atMost/skip）、收件箱合并冲突与重试节奏、宿主通道 undefined 防误判。生产包 SHA-256 `7c00aefb…`（发布说明逐字核对）。
 
 **真实客户端验收结果**：自动化不能替代真实宿主。开始→暂停→继续→完成→打卡全流程、关闭/重开联动、双窗口与移动端行为,仍待与修订后的底栏番茄钟在真实思源桌面端/移动端联调验收（B-007 跟踪）；在完成前,本交付不宣称所有宿主场景不受影响。
+
+## 协议决断：仅 focus 完成事件作为自动记账唯一入口
+
+原方案中 stats 查询路线（`listSessions`/`sessionKey`/`source: "docktomato"`）与 focus 事件路线并存，会造成重复记账和身份不一致。经评审确定：**仅保留 focus 完成事件路线**。stats facade 仅作为以后的只读统计或补偿查询接口，不用于自动记账。
+
+- 完成事件：`tomato:focus-session-completed`，含 `sessionId`、`durationMinutes`、`completedAt`、`context{consumer,itemId,itemUnit,tomatoMode}`。
+- 来源标识：`source: "tomato"`，幂等键 `docktomato:<sessionId>`。
+- 消费端通过 inbox + retry 保障至少一次入账；提供方保证持久化后才发事件。

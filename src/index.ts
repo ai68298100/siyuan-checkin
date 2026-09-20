@@ -1063,7 +1063,13 @@ export default class CheckinPlugin extends Plugin {
             } catch {
                 /* 收件箱读取失败不阻断本条处理:内存态继续,写回时如实报告。 */
             }
-            this.dockTomatoInbox = upsertInboxEntry(stored, entry, unitNow).store;
+            const upsert = upsertInboxEntry(stored, entry, unitNow);
+            if (upsert.outcome === "conflict") {
+                /* 同身份不同载荷:停止写入,保留先接收的数据,不覆盖。 */
+                showMessage(t("msg.dockInboxConflict"));
+                return {kind: "blocked", reason: "payload-conflict"};
+            }
+            this.dockTomatoInbox = upsert.store;
             const inboxPersisted = await this.persistDockTomatoInbox();
             if (!inboxPersisted) {
                 /* 先保存收件箱失败:保留内存待处理项并标记重试,不得显示成已保存。 */
