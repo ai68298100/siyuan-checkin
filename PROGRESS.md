@@ -1566,3 +1566,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 v20 启动：T-1362 智能体审计导出:serializeSuggestionAuditExport（版本化 JSON:信封快照+五类动作统计+归一化审计,不含令牌/nonce）+ downloadSuggestionAuditFor（统一安全导出通道）+ 设置页审计条目统计与导出入口（无记录禁用）;T-1373 来源扩展探索结论:不新增内置来源,扩展走公开 API+前缀登记（与 v21 合并）;T-1363 首批复核无口径冲突。
 验证:agent-audit-export 门禁（接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（c802a56e…）。
+
+2026-09-21 T-1360 建议执行范围扩展:schedule 进入执行白名单——normalizeSuggestionSchedule 结构校验（非法整条丢弃/合法值规范化）+ suggestionValuesEqual 深比较（键序稳定序列化）贯通 build/normalize/apply/revert;差异预览输出本地化排期文案;回顾页重点项目新增「建议改为弹性排期」（daily 且非 at-most → 每周 3 次弹性配额,同一确认流）;历史事件与已确认记录仍不在建议范围（不变式）。
+验证:suggestion-schedule 门禁（新接入 test:ui）、agent-suggestions 旧断言同步、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（ca1b283f…）。

@@ -10,7 +10,7 @@ import {dateKey, getActiveItemById, getEventById, getItemById, removeEvents, upd
 import {currentCalendarDate, captureActionMoment, isValidLocalDateInput} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {renderAgentPreviewContent} from "./agent-preview";
-import {createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
+import {buildSuggestionChange, createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
 import {createSuggestionWorkflow} from "../features/suggestion-workflow";
 import {Dialog, showMessage} from "siyuan";
 
@@ -734,19 +734,12 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             status.textContent = t("agent.historyReady");
         });
     });
-    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => {
-        const button = event.currentTarget as HTMLElement;
+    /* T-1360：本地建议生成器——优先级提升与「daily → 弹性配额」排期下调两类；
+       排期建议只对 daily 且非戒除类项目生成，其余场景给「不可用」的禁用预览。 */
+    const openLocalSuggestionPreview = (button: HTMLElement, build: (item: NonNullable<ReturnType<typeof getActiveItemById>>) => AgentSuggestion | undefined) => {
         const item = getActiveItemById(host.store, button.dataset.suggestionItemId || "");
         const rate = button.dataset.suggestionRate || "0";
-        /* 回顾页的本地建议只调整非高优先级项目的 priority：这是现有建议执行
-           白名单中的纯元数据字段，不会改写历史、目标修订或排期。 */
-        const suggestion: AgentSuggestion | undefined = item && item.priority !== "high" ? {
-            id: `review-priority-${item.id}-${Date.now()}`,
-            title: t("agent.localPriorityTitle", {name: item.name}),
-            reason: t("agent.localPriorityReason", {name: item.name, rate}),
-            changes: [{itemId: item.id, field: "priority", before: item.priority || "medium", after: "high"}],
-            requiresConfirmation: true,
-        } : undefined;
+        const suggestion = item ? build(item) : undefined;
         const changes = suggestion?.changes || [];
         const preview = new Dialog({
             title: t("agent.previewTitle"),
@@ -770,6 +763,35 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                     target.removeAttribute("aria-busy");
                 }
             }
+        });
+    };
+    root.querySelector<HTMLElement>("[data-action='preview-agent-suggestion']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        /* 回顾页的本地建议只调整非高优先级项目的 priority：这是现有建议执行
+           白名单中的纯元数据字段，不会改写历史、目标修订或排期。 */
+        openLocalSuggestionPreview(button, (item) => item.priority !== "high" ? {
+            id: `review-priority-${item.id}-${Date.now()}`,
+            title: t("agent.localPriorityTitle", {name: item.name}),
+            reason: t("agent.localPriorityReason", {name: item.name, rate: button.dataset.suggestionRate || "0"}),
+            changes: [{itemId: item.id, field: "priority", before: item.priority || "medium", after: "high"}],
+            requiresConfirmation: true,
+        } : undefined);
+    });
+    /* T-1360：排期下调建议——daily 且非戒除类（at-most 语义反转，不适用弹性化）的项目
+       改为「每周 3 次」弹性配额；经确认流执行，可撤销。 */
+    root.querySelector<HTMLElement>("[data-action='preview-agent-schedule-suggestion']")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        const rate = button.dataset.suggestionRate || "0";
+        openLocalSuggestionPreview(button, (item) => {
+            if (item.schedule.type !== "daily" || item.direction === "atMost") return undefined;
+            const change = buildSuggestionChange(item, "schedule", {type: "quota", quota: {period: "week", amount: 3, countMode: "dates"}});
+            return change ? {
+                id: `review-schedule-${item.id}-${Date.now()}`,
+                title: t("agent.localScheduleTitle", {name: item.name}),
+                reason: t("agent.localScheduleReason", {name: item.name, rate}),
+                changes: [change],
+                requiresConfirmation: true,
+            } : undefined;
         });
     });
     const reviewBusy = new WeakSet<HTMLElement>();

@@ -338,7 +338,7 @@ export function transitionSuggestionStatus(envelope: AgentSuggestionEnvelope, st
 }
 
 export function buildSuggestionChange(item: CheckinItem, field: keyof CheckinItem, after: unknown): AgentSuggestionChange | undefined {
-    if (!item || !field || Object.is(item[field], after)) return undefined;
+    if (!item || !field || suggestionValuesEqual(field, item[field], after)) return undefined;
     return {itemId: item.id, field, before: item[field], after};
 }
 
@@ -347,7 +347,60 @@ export function summarizeSuggestionImpact(changes: readonly AgentSuggestionChang
     return t("agent.impactSummary", {items: items.size, changes: changes.length});
 }
 
-const ALLOWED_CHANGE_FIELDS: ReadonlySet<keyof CheckinItem> = new Set(["name", "target", "unit", "group", "priority", "timeSlot", "tomatoMode"]);
+/* T-1360：执行白名单加入 schedule——排期调整从此走确认流（差异预览/before 校验/冲突跳过/可撤销）。 */
+const ALLOWED_CHANGE_FIELDS: ReadonlySet<keyof CheckinItem> = new Set(["name", "target", "unit", "group", "priority", "timeSlot", "tomatoMode", "schedule"]);
+
+const SUGGESTION_SCHEDULE_TYPES = new Set(["daily", "weekly", "workdays", "custom", "interval", "quota"]);
+
+/* 排期类型 → i18n 键（与 ui/labels 同名键，避免为预览文案引入模块依赖）。 */
+const SUGGESTION_SCHEDULE_LABEL_KEYS: Record<string, string> = {
+    daily: "schedule.daily", weekly: "schedule.weekly", workdays: "schedule.workdays",
+    custom: "schedule.custom", interval: "schedule.interval", quota: "schedule.quota",
+};
+
+/** T-1360：排期值结构校验与规范化——白名单纪律的一部分，非法排期不得进入建议通道。 */
+export function normalizeSuggestionSchedule(value: unknown): import("./types").CheckinSchedule | undefined {
+    if (!value || typeof value !== "object") return undefined;
+    const source = value as Record<string, unknown>;
+    if (typeof source.type !== "string" || !SUGGESTION_SCHEDULE_TYPES.has(source.type)) return undefined;
+    const schedule: {type: import("./types").ScheduleType; weekdays?: number[]; intervalDays?: number; anchorDate?: string; quota?: {period: "week" | "month"; amount: number; countMode: "dates" | "value"}} = {type: source.type as import("./types").ScheduleType};
+    if (Array.isArray(source.weekdays)) {
+        const weekdays = [...new Set(source.weekdays.filter((day): day is number => Number.isInteger(day) && day >= 0 && day <= 6))].sort((left, right) => left - right);
+        if (weekdays.length) schedule.weekdays = weekdays;
+    }
+    if (Number.isFinite(source.intervalDays) && (source.intervalDays as number) >= 1) schedule.intervalDays = Math.floor(source.intervalDays as number);
+    if (typeof source.anchorDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(source.anchorDate)) schedule.anchorDate = source.anchorDate;
+    if (source.quota && typeof source.quota === "object") {
+        const quota = source.quota as Record<string, unknown>;
+        if ((quota.period === "week" || quota.period === "month") && (quota.countMode === "dates" || quota.countMode === "value") && Number.isFinite(quota.amount) && (quota.amount as number) > 0) {
+            schedule.quota = {period: quota.period as "week" | "month", countMode: quota.countMode as "dates" | "value", amount: Number(quota.amount)};
+        }
+    }
+    if (schedule.type === "weekly" && !schedule.weekdays?.length) return undefined;
+    if (schedule.type === "interval" && !schedule.intervalDays) return undefined;
+    if (schedule.type === "quota" && !schedule.quota) return undefined;
+    return schedule as import("./types").CheckinSchedule;
+}
+
+/** schedule 为嵌套对象，Object.is 会把克隆副本判为不同；深比较走键序稳定的序列化。 */
+export function suggestionValuesEqual(field: keyof CheckinItem, before: unknown, after: unknown): boolean {
+    if (field !== "schedule") return Object.is(before, after);
+    return JSON.stringify(normalizeSuggestionSchedule(before) ?? null) === JSON.stringify(normalizeSuggestionSchedule(after) ?? null);
+}
+
+function suggestionValueText(field: keyof CheckinItem, value: unknown): string {
+    if (field === "schedule") {
+        const schedule = normalizeSuggestionSchedule(value);
+        if (schedule) {
+            if (schedule.type === "quota" && schedule.quota) {
+                const period = schedule.quota.period === "week" ? t("editor.quotaWeekly") : t("editor.quotaMonthly");
+                return `${t(SUGGESTION_SCHEDULE_LABEL_KEYS.quota)} ${schedule.quota.amount} · ${period}`;
+            }
+            return t(SUGGESTION_SCHEDULE_LABEL_KEYS[schedule.type]);
+        }
+    }
+    return value === undefined || value === null ? "未设置" : String(value);
+}
 
 export function normalizeSuggestionChanges(value: unknown, items: readonly CheckinItem[]): AgentSuggestionChange[] {
     if (!Array.isArray(value)) return [];
@@ -355,13 +408,18 @@ export function normalizeSuggestionChanges(value: unknown, items: readonly Check
     return value.filter((entry): entry is AgentSuggestionChange => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as AgentSuggestionChange;
-        return validIds.has(candidate.itemId) && ALLOWED_CHANGE_FIELDS.has(candidate.field) && !Object.is(candidate.before, candidate.after);
-    }).slice(0, 50);
+        return validIds.has(candidate.itemId) && ALLOWED_CHANGE_FIELDS.has(candidate.field) && !suggestionValuesEqual(candidate.field, candidate.before, candidate.after);
+    }).map((change) => (
+        /* T-1360：排期变更规范化——非法排期整条丢弃，合法值统一为规范化形态。 */
+        change.field === "schedule"
+            ? {...change, before: normalizeSuggestionSchedule(change.before), after: normalizeSuggestionSchedule(change.after)}
+            : change
+    )).filter((change) => change.field !== "schedule" || Boolean(change.before && change.after)).slice(0, 50);
 }
 
 export function formatSuggestionChange(change: AgentSuggestionChange): string {
-    const before = change.before === undefined || change.before === null ? "未设置" : String(change.before);
-    const after = change.after === undefined || change.after === null ? "未设置" : String(change.after);
+    const before = change.before === undefined || change.before === null ? "未设置" : suggestionValueText(change.field, change.before);
+    const after = change.after === undefined || change.after === null ? "未设置" : suggestionValueText(change.field, change.after);
     return t("agent.changeSummary", {field: String(change.field), before, after});
 }
 
@@ -399,7 +457,7 @@ export function applyConfirmedSuggestion(store: import("./types").CheckinStore, 
                 conflicts.push(`${change.itemId}:${String(change.field)}`);
                 continue;
             }
-            if (!Object.is(next[change.field], change.before)) {
+            if (!suggestionValuesEqual(change.field, next[change.field], change.before)) {
                 skipped += 1;
                 conflicts.push(`${change.itemId}:${String(change.field)}`);
                 continue;
@@ -423,7 +481,7 @@ export function revertSuggestionApplication(store: import("./types").CheckinStor
         if (!changes.length) return item;
         let next = item;
         for (const change of changes) {
-            if (!ALLOWED_CHANGE_FIELDS.has(change.field) || !Object.is(next[change.field], change.after)) {
+            if (!ALLOWED_CHANGE_FIELDS.has(change.field) || !suggestionValuesEqual(change.field, next[change.field], change.after)) {
                 skipped += 1;
                 conflicts.push(`${change.itemId}:${String(change.field)}`);
                 continue;
