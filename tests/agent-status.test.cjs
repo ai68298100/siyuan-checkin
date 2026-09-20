@@ -63,7 +63,8 @@ const baseContext = {
 const settings = loadSettings();
 const agentRow = (state, count, error) => {
     const html = settings.renderSettingsView({...baseContext, agentCapability: {state, count, error}});
-    const match = html.match(/<div class="lc-checkin__settings-row" data-agent-state="([^"]+)">([\s\S]*?)<\/div>/);
+    /* T-1345 统一依赖钩子后，data-agent-state 之后可跟 data-dependency* 属性。 */
+    const match = html.match(/<div class="lc-checkin__settings-row" data-agent-state="([^"]+)"[^>]*>([\s\S]*?)<\/div>/);
     assert.ok(match, `设置页必须渲染 data-agent-state 行（state=${state}）`);
     return {state: match[1], body: match[2]};
 };

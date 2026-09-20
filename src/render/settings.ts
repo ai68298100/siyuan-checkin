@@ -64,6 +64,11 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     };
     const tomatoStatus = t(diagnosticKey[diagnosticState]);
     const tomatoHealthy = diagnosticState === "ready" || diagnosticState === "running" || diagnosticState === "paused";
+    /* T-1345：三类外部依赖统一状态口径——healthy 可用 / degraded 降级等待 / error 需处理。 */
+    const dependencyBucket = (healthyStates: readonly string[], errorStates: readonly string[], state: string): "healthy" | "degraded" | "error" =>
+        healthyStates.includes(state) ? "healthy" : errorStates.includes(state) ? "error" : "degraded";
+    const tomatoDependencyState = dependencyBucket(["ready", "running", "paused"], ["incompatible-version", "incomplete-api", "missing-capabilities", "error"], diagnosticState);
+    const agentDependencyState = dependencyBucket(["registered"], ["failed"], ctx.agentCapability.state);
     const tomatoDiagnosticDetail = ctx.dockTomatoDiagnostics?.apiVersion != null
         ? t("set.tomatoDiagnosticVersion", {version: ctx.dockTomatoDiagnostics.apiVersion})
         : t("set.tomatoDiagnosticInstall");
@@ -194,10 +199,11 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             label: t("set.groupIntegrations"),
             body: `
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
-                    <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
+                    <div class="lc-checkin__settings-row" data-focus-provider-state="${diagnosticState}" data-dependency="docktomato" data-dependency-state="${tomatoDependencyState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small><small class="lc-checkin__dependency-recovery">${t("set.tomatoRecovery")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span>${tomatoFallback}</span></div>
                     ${completionIssueRow}
                     ${inboxRows}
-                    <div class="lc-checkin__settings-row" data-agent-state="${ctx.agentCapability.state}"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small>${agentWhere}</span><span class="lc-checkin__settings-value" role="status">${agentStatus}</span></div>
+                    <div class="lc-checkin__settings-row" data-agent-state="${ctx.agentCapability.state}" data-dependency="agent" data-dependency-state="${agentDependencyState}"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.agentRecovery")}</small>${agentWhere}</span><span class="lc-checkin__settings-value ${ctx.agentCapability.state === "registered" ? "is-success" : ctx.agentCapability.state === "failed" ? "is-error" : "is-muted"}" role="status">${agentStatus}</span></div>
+                    <div class="lc-checkin__settings-row" data-dependency="taskhorizon" data-dependency-state="healthy"><span class="lc-checkin__settings-label"><span>${t("set.thTitle")}</span><small>${t("set.thHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.thRecovery")}</small></span><span class="lc-checkin__settings-value is-success" role="status">${t("set.thStatus")}</span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
         {

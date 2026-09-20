@@ -13,8 +13,9 @@
   - 状态：done（2026-09-21。①目标偏差解释：review-comparison 新增 buildReviewDeviationNotes 纯函数（±5 个百分点阈值、按幅度稳定排序、上限 3 条、防御缺失 items），报告新增「偏差解释」区块（reportSections.deviations 缺省开，旧偏好自动开启；提升/下降/持平/数据不足四类确定性文案）；基线区块关闭而偏差开启时仍构建比较对象。②来源筛选：analytics 摘要管线新增 SummarySourceOptions（source 过滤当前与基线口径），报告设置菜单新增来源下拉（全部/手动/番茄/API/导入，view-preferences.reportSource 持久化 + 非法值回退全部），筛选口径在报告内显式声明（report.sourceLine）。③批量导出：回顾更多工具新增「导出全部（JSON/CSV/报告）」，顺序触发三个导出，全部走既有安全导出通道。新增 tests/report-deviations.test.cjs（偏差分类/阈值/上限/持平/不足 + 来源过滤线程 + export-all + 偏好归一）接入 test:ui；report-sections 期望同步 deviations 区块。中文+英文宽度走查全过）
 - [ ] T-1344 真实宿主验收清零（依赖用户）
   - 验收：T-023/T-033/T-129/T-1256/T-1173 按 integration-smoke-checklist 逐项关闭；B-007 双插件现场联调。证据进 PROGRESS，浏览器结果不替代真机。
-- [ ] T-1345 设置页状态可观察性收口
+- [x] T-1345 设置页状态可观察性收口
   - 验收：番茄钟/Task Horizon/智能体三类外部依赖的状态、错误原因、重试与恢复提示统一为同一套组件与文案模式。
+  - 状态：done（2026-09-21。设置页三行统一 data-dependency + data-dependency-state 钩子（healthy/degraded/error 三态经 dependencyBucket 显式映射：番茄 ready/running/paused=healthy、版本/API/能力/错误=error、其余=degraded；智能体 registered=healthy、failed=error、其余=degraded），状态值统一 role="status" + is-success/is-muted/is-error 视觉；每行新增统一 class 的恢复/重试提示（番茄：重载刷新+收件箱重试；智能体：核对宿主版本后重载注册；TH：对方缺位不阻塞+合作文档指针）；新增 Task Horizon 提供方就绪行（API v5 · 契约 v1，不冒充运行时握手状态）。新增 tests/dependency-status.test.cjs 接入 test:ui；agent-status 旧正则适配统一钩子）
 - [ ] T-1346 UI 错乱清查与修复
   - 验收：文本截断/重叠/错位/滚动穿透/塌陷/主题切换残留扫描 × 四端双主题 × 关键宽度 × 长文本/英文 i18n/显示缩放；修复即补守门断言；长尾入多端显示台账。
   - 进度（2026-09-20/21）：宽度走查（Edge）浅深双主题 42 页面+32 交互+8 对比度+10 混合+16 长内容全过，含编辑器模板披露高度、芯片点击断言；模板区改动（分批/最近使用/预览摘要）无溢出回归。

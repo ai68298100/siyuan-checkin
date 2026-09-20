@@ -1548,3 +1548,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1343 回顾导出增强:①buildReviewDeviationNotes 纯函数（±5pp 阈值/幅度排序/上限 3/防御缺失）+ 报告「偏差解释」区块（reportSections.deviations 缺省开,四类确定性文案）;②analytics 摘要管线 SummarySourceOptions 来源过滤（当前+基线同口径）,报告设置来源下拉持久化（reportSource）,筛选口径写入报告;③回顾工具栏「导出全部」顺序触发 JSON/CSV/报告。新增 tests/report-deviations.test.cjs 接入 test:ui;report-sections 转译清单补 review-comparison.ts。
 验证:test:ui 全链、中文+英文宽度走查、type check、release-assets 全过;摘要同步（eb5c1763…）。
+
+2026-09-21 T-1345 设置页状态可观察性收口:三类外部依赖（番茄钟/智能体/Task Horizon）统一 data-dependency+data-dependency-state 钩子与 healthy/degraded/error 分桶（dependencyBucket 显式映射表）,状态值统一 role="status"+三档视觉类,每行新增统一恢复/重试提示（lc-checkin__dependency-recovery）;新增 Task Horizon 提供方就绪行（API v5·契约 v1,如实标注"我方就绪"而非运行时握手）。新增 tests/dependency-status.test.cjs 接入 test:ui;agent-status 旧正则适配属性顺序。
+验证:dependency-status、agent-status、test:ui 全链、双语宽度走查、type check、release-assets 全过;摘要同步（59350da4…）。v18 本地可推进任务至此全部完成,剩余 T-1344/T-1347 等用户真机窗口。
