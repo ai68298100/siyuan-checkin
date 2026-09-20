@@ -350,6 +350,8 @@ export default class CheckinPlugin extends Plugin {
     private reviewFoldTouched = false;
     /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
     reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
+    /* T-1343 报告来源筛选（"" = 全部来源）。 */
+    reportSource = "";
     /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
     private suspendedAnchors = new Set<string>();
     /* T-1234/T-1236 渲染块监听器清理。 */
@@ -2364,6 +2366,7 @@ export default class CheckinPlugin extends Plugin {
             agentCapability: {state: this.agentCapabilityState, count: this.agentCapabilityIds.length, error: this.agentCapabilityError},
             summaryProviderNames: [...this.summaryProviders.values()].map(provider => typeof provider.name === "string" ? provider.name.slice(0, 200) : provider.id),
             reportSections: this.reportSections,
+            reportSource: this.reportSource,
             suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
             analysisLastGeneratedAt: analysis.snapshot?.generatedAt,
@@ -3694,6 +3697,7 @@ export default class CheckinPlugin extends Plugin {
         this.weekStripVisible = preferences.showWeekStrip;
         this.lastExportAt = preferences.lastExportAt;
         this.reportSections = {...preferences.reportSections};
+        this.reportSource = preferences.reportSource;
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -3748,6 +3752,7 @@ export default class CheckinPlugin extends Plugin {
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
             reportSections: {...this.reportSections},
+            reportSource: this.reportSource,
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

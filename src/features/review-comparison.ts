@@ -131,3 +131,31 @@ export function buildReviewComparison(current: SummaryContext, baseline: Summary
         items,
     };
 }
+
+/** T-1343：目标偏差解释——从比较结果确定性推导「差在哪」，纯函数不改数据。 */
+export interface ReviewDeviationNote {
+    itemId: string;
+    name: string;
+    kind: "improve" | "decline";
+    rateDelta: number;
+    completedDelta: number;
+}
+
+/** 默认只报告完成率变化 ≥ 5 个百分点的项目；幅度相同按名称、ID 稳定排序。 */
+export function buildReviewDeviationNotes(comparison: ReviewComparison, options?: {minRateDelta?: number; limit?: number}): ReviewDeviationNote[] {
+    const minRateDelta = options?.minRateDelta ?? 5;
+    const limit = options?.limit ?? 3;
+    if (!Number.isFinite(minRateDelta) || minRateDelta < 0 || !Number.isFinite(limit) || limit <= 0) return [];
+    const items = Array.isArray(comparison.items) ? comparison.items : [];
+    return items
+        .filter((item) => Math.abs(item.delta.completionRate) >= minRateDelta)
+        .sort((left, right) => Math.abs(right.delta.completionRate) - Math.abs(left.delta.completionRate) || left.name.localeCompare(right.name) || left.itemId.localeCompare(right.itemId))
+        .slice(0, limit)
+        .map((item) => ({
+            itemId: item.itemId,
+            name: item.name,
+            kind: item.delta.completionRate > 0 ? "improve" as const : "decline" as const,
+            rateDelta: item.delta.completionRate,
+            completedDelta: item.delta.completedDays,
+        }));
+}

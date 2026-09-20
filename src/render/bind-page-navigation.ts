@@ -74,6 +74,8 @@ export interface BindPageNavigationHost {
     downloadExport(format: "json" | "csv"): void;
     downloadReportMarkdown(markdown: string): void;
     reportSections: ReportSectionToggles;
+    /** T-1343 报告来源筛选："" = 全部来源。 */
+    reportSource: string;
     reminderFilter: import("../reminders").ReminderFilter;
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
@@ -786,7 +788,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     };
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
     const buildCurrentReport = (): string => {
-        const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange) : buildSummaryContext(host.store, host.summaryRange);
+        /* T-1343：来源筛选作用于当前与基线两个口径，保证偏差可比。 */
+        const sourceOptions = host.reportSource ? {source: host.reportSource as "manual" | "tomato" | "api" | "import"} : undefined;
+        const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(host.store, host.summaryRange, undefined, sourceOptions);
         const label = host.summaryCustomRange ? t("report.titleCustom")
             : host.summaryRange === "day" ? t("report.titleDay")
             : host.summaryRange === "month" ? t("report.titleMonth")
@@ -794,11 +798,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             : t("report.titleCustom");
         const title = t("report.titleWithRange", {label, start: summary.startDate, end: summary.endDate});
         let comparison: ReviewComparison | undefined;
-        if (host.reportSections.baseline) {
+        if (host.reportSections.baseline || host.reportSections.deviations) {
             const previous = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
-            comparison = previous ? buildReviewComparison(summary, buildCustomSummaryContext(host.store, previous)) : undefined;
+            comparison = previous ? buildReviewComparison(summary, sourceOptions ? buildCustomSummaryContext(host.store, previous, undefined, sourceOptions) : buildCustomSummaryContext(host.store, previous)) : undefined;
         }
-        return buildWeeklyReportMarkdown(summary, title, host.reportSections, comparison);
+        return buildWeeklyReportMarkdown(summary, title, host.reportSections, comparison, sourceOptions);
     };
     root.querySelector<HTMLElement>("[data-action='copy-weekly-report']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
@@ -846,6 +850,18 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             void host.persistViewPreferences();
         });
     });
+    /* T-1343：报告来源筛选改动即写回视图偏好，不触发重渲染。 */
+    root.querySelector<HTMLSelectElement>("[data-report-source]")?.addEventListener("change", (event) => {
+        const value = (event.currentTarget as HTMLSelectElement).value;
+        host.reportSource = ["manual", "tomato", "api", "import"].includes(value) ? value : "";
+        void host.persistViewPreferences();
+    });
+    /* T-1343：批量导出——顺序触发 JSON、CSV 与 Markdown 报告，全部走既有安全导出通道。 */
+    root.querySelector<HTMLElement>("[data-action='export-all']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, async () => {
+        await Promise.resolve(host.downloadExport("json"));
+        await Promise.resolve(host.downloadExport("csv"));
+        host.downloadReportMarkdown(buildCurrentReport());
+    }));
     root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("csv")));
     root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("json")));
 }

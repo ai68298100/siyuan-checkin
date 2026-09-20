@@ -172,25 +172,31 @@ export function getEventsInCustomRange(store: CheckinStore, range: CustomSummary
     return getEventsInDateRange(store, range.startDate, endExclusive);
 }
 
-export function buildSummaryContext(store: CheckinStore, range: SummaryRange, date = new Date()): SummaryContext {
-    const bounds = getDateRange(range, date);
-    return buildSummaryForBounds(store, range, bounds, date);
+/** T-1343：报告来源筛选选项；source 缺省统计全部来源。 */
+export interface SummarySourceOptions {
+    source?: CheckinEvent["source"];
 }
 
-export function buildCustomSummaryContext(store: CheckinStore, range: CustomSummaryRange, asOf = new Date()): SummaryContext {
+export function buildSummaryContext(store: CheckinStore, range: SummaryRange, date = new Date(), options?: SummarySourceOptions): SummaryContext {
+    const bounds = getDateRange(range, date);
+    return buildSummaryForBounds(store, range, bounds, date, options);
+}
+
+export function buildCustomSummaryContext(store: CheckinStore, range: CustomSummaryRange, asOf = new Date(), options?: SummarySourceOptions): SummaryContext {
     const start = dateFromKey(range.startDate);
     const end = dateFromKey(range.endDate);
     if (!start || !end || start > end) {
-        return buildSummaryContext(store, "day", asOf);
+        return buildSummaryContext(store, "day", asOf, options);
     }
-    return buildSummaryForBounds(store, "day", {start, end: addDays(end, 1)}, asOf);
+    return buildSummaryForBounds(store, "day", {start, end: addDays(end, 1)}, asOf, options);
 }
 
-function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds: DateRange, date: Date): SummaryContext {
+function buildSummaryForBounds(store: CheckinStore, range: SummaryRange, bounds: DateRange, date: Date, options?: SummarySourceOptions): SummaryContext {
     const elapsedBounds = {...bounds, end: getElapsedEnd(bounds, date)};
     const itemIds = new Set(store.items.map((item) => item.id));
     const events = getEventsInDateRange(store, dateKey(elapsedBounds.start), dateKey(elapsedBounds.end))
-        .filter((event) => itemIds.has(event.itemId));
+        .filter((event) => itemIds.has(event.itemId))
+        .filter((event) => !options?.source || event.source === options.source);
     const eventsByItem = new Map<string, CheckinEvent[]>();
     events.forEach((event) => {
         const bucket = eventsByItem.get(event.itemId);

@@ -5,9 +5,12 @@
 import {t} from "../i18n";
 import type {SummaryContext} from "../analytics";
 import type {ReviewComparison} from "./review-comparison";
+import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 
 export {DEFAULT_REPORT_SECTIONS};
+
+const REPORT_SOURCES = new Set(["manual", "tomato", "api", "import"]);
 
 function signed(value: number): string {
     if (value > 0) return `+${value}`;
@@ -36,11 +39,16 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
+    options?: {source?: string},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
     lines.push(`## ${title}`);
     lines.push("");
+    /* T-1343：报告可按事件来源筛选；筛选口径在标题下显式声明。 */
+    if (options?.source && REPORT_SOURCES.has(options.source)) {
+        lines.push(`- ${t("report.sourceLine", {source: t(`source.${options.source}`)})}`);
+    }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);
     lines.push(`- ${t("report.lineRange", {start: summary.startDate, end: summary.endDate})}`);
@@ -55,6 +63,24 @@ export function buildWeeklyReportMarkdown(
             })}`);
         } else {
             lines.push(`- ${t("report.baselineMissingNote")}`);
+        }
+    }
+    if (sections.deviations) {
+        lines.push("");
+        lines.push(`### ${t("report.devTitle")}`);
+        if (!comparison) {
+            lines.push(`- ${t("report.devInsufficient")}`);
+        } else {
+            const notes = buildReviewDeviationNotes(comparison);
+            if (notes.length) {
+                for (const note of notes) {
+                    lines.push(`- ${note.kind === "improve"
+                        ? t("report.devImprove", {name: note.name, delta: Math.abs(note.rateDelta)})
+                        : t("report.devDecline", {name: note.name, delta: Math.abs(note.rateDelta)})}`);
+                }
+            } else {
+                lines.push(`- ${t("report.devFlat")}`);
+            }
         }
     }
     if (sections.items && summary.items.length) {

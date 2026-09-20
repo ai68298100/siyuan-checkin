@@ -22,7 +22,7 @@ assert.match(opsSource, /downloadReportMarkdownFor/, "plugin-ops owns the markdo
 assert.match(prefsSource, /reportSections/, "view preferences persist report sections");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-report-sections-"));
-for (const filename of ["i18n.ts", "view-preferences.ts", "features/report.ts"]) {
+for (const filename of ["i18n.ts", "view-preferences.ts", "features/review-comparison.ts", "features/report.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(...filename.split("/")), {
@@ -73,8 +73,8 @@ const thinReport = buildWeeklyReportMarkdown(summary({totalEvents: 3}, [reading]
 assert.ok(thinReport.includes(t("report.singleItemNote")));
 
 /* 偏好归一化：缺省全开，单键关闭被保留，非法形状回落缺省。 */
-assert.deepEqual(normalizeViewPreferences({}).reportSections, {events: true, completion: true, items: true, baseline: true, highlights: true});
-assert.deepEqual(normalizeViewPreferences({reportSections: {events: false, baseline: true}}).reportSections, {events: false, completion: true, items: true, baseline: true, highlights: true});
+assert.deepEqual(normalizeViewPreferences({}).reportSections, {events: true, completion: true, items: true, baseline: true, deviations: true, highlights: true});
+assert.deepEqual(normalizeViewPreferences({reportSections: {events: false, baseline: true}}).reportSections, {events: false, completion: true, items: true, baseline: true, deviations: true, highlights: true});
 assert.deepEqual(normalizeViewPreferences({reportSections: "bogus"}).reportSections, DEFAULT_REPORT_SECTIONS);
 
 /* en-US 键齐全。 */

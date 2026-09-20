@@ -8,8 +8,9 @@
 - [x] T-1342 恢复与并发演练
   - 验收：升级/降级、损坏隔离、双窗口并发、断网重试、恢复点回滚演练记录；《数据诊断与恢复指南》用户可读并从设置页可达。
   - 状态：done（2026-09-21。①设置页数据安全区新增「数据诊断与恢复指南」折叠块（data-recovery-guide）：恢复点回滚、JSON 备份风险预览、损坏停止写入、多窗口存储锁、番茄收件箱积压处理、审计+恢复点双诊断导出六条自助路径，中英双语；②演练证据：升级/降级与损坏隔离由 backup.test.cjs（迁移报告/快照信封/损坏拒绝）与 conflict.test.cjs（双窗口合并/存储锁）覆盖并在 test:quality 全链常绿，断网重试与恢复由保存队列失败续接守门（T-860）与番茄收件箱 1s/5s/30s 重试测试（D-237）覆盖，恢复点回滚由 snapshot restore 校验测试（T-078/T-084）覆盖）
-- [ ] T-1343 回顾导出增强
+- [x] T-1343 回顾导出增强
   - 验收：目标偏差解释（本地确定性生成，数据不足时明说）、导出报告来源筛选、批量导出入口；全部走安全导出通道。
+  - 状态：done（2026-09-21。①目标偏差解释：review-comparison 新增 buildReviewDeviationNotes 纯函数（±5 个百分点阈值、按幅度稳定排序、上限 3 条、防御缺失 items），报告新增「偏差解释」区块（reportSections.deviations 缺省开，旧偏好自动开启；提升/下降/持平/数据不足四类确定性文案）；基线区块关闭而偏差开启时仍构建比较对象。②来源筛选：analytics 摘要管线新增 SummarySourceOptions（source 过滤当前与基线口径），报告设置菜单新增来源下拉（全部/手动/番茄/API/导入，view-preferences.reportSource 持久化 + 非法值回退全部），筛选口径在报告内显式声明（report.sourceLine）。③批量导出：回顾更多工具新增「导出全部（JSON/CSV/报告）」，顺序触发三个导出，全部走既有安全导出通道。新增 tests/report-deviations.test.cjs（偏差分类/阈值/上限/持平/不足 + 来源过滤线程 + export-all + 偏好归一）接入 test:ui；report-sections 期望同步 deviations 区块。中文+英文宽度走查全过）
 - [ ] T-1344 真实宿主验收清零（依赖用户）
   - 验收：T-023/T-033/T-129/T-1256/T-1173 按 integration-smoke-checklist 逐项关闭；B-007 双插件现场联调。证据进 PROGRESS，浏览器结果不替代真机。
 - [ ] T-1345 设置页状态可观察性收口

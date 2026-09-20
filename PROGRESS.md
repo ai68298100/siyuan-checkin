@@ -1545,3 +1545,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1342 恢复与并发演练:设置页数据安全区新增「数据诊断与恢复指南」折叠块（data-recovery-guide,六条自助路径:恢复点/JSON 备份/损坏隔离/多窗口存储锁/番茄收件箱/双诊断导出,中英双语,复用 settings-fold 样式）;演练证据映射到既有常绿测试链（backup/conflict/保存队列重试/番茄收件箱/快照回滚）。
 验证:type check、release-assets、i18n-hygiene、settings-navigation、mobile-release-quality、中文宽度走查全过;发布说明摘要同步（cc682d2b…）。
+
+2026-09-21 T-1343 回顾导出增强:①buildReviewDeviationNotes 纯函数（±5pp 阈值/幅度排序/上限 3/防御缺失）+ 报告「偏差解释」区块（reportSections.deviations 缺省开,四类确定性文案）;②analytics 摘要管线 SummarySourceOptions 来源过滤（当前+基线同口径）,报告设置来源下拉持久化（reportSource）,筛选口径写入报告;③回顾工具栏「导出全部」顺序触发 JSON/CSV/报告。新增 tests/report-deviations.test.cjs 接入 test:ui;report-sections 转译清单补 review-comparison.ts。
+验证:test:ui 全链、中文+英文宽度走查、type check、release-assets 全过;摘要同步（eb5c1763…）。

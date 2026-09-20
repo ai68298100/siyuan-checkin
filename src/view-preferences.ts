@@ -17,6 +17,8 @@ export interface ReportSectionToggles {
     items: boolean;
     baseline: boolean;
     highlights: boolean;
+    /** T-1343：目标偏差解释（对比基线的可读结论）。 */
+    deviations: boolean;
 }
 
 export interface CheckinViewPreferences {
@@ -57,6 +59,8 @@ export interface CheckinViewPreferences {
     reportSections: ReportSectionToggles;
     /** T-1346 插件界面语言设置；缺省 zh-CN，历史偏好无该字段时行为不变。 */
     pluginLanguage: PluginLanguageSetting;
+    /** T-1343 报告导出的来源筛选："" = 全部来源；否则 manual/tomato/api/import。 */
+    reportSource: string;
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -67,6 +71,7 @@ export const DEFAULT_REPORT_SECTIONS: ReportSectionToggles = {
     items: true,
     baseline: true,
     highlights: true,
+    deviations: true,
 };
 
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
@@ -90,6 +95,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     dialogFixedSize: {width: 720, height: 560},
     reportSections: {...DEFAULT_REPORT_SECTIONS},
     pluginLanguage: "zh-CN",
+    reportSource: "",
     recentTemplates: [],
 };
 
@@ -97,6 +103,8 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
 export const RECENT_TEMPLATES_LIMIT = 6;
 
 const PLUGIN_LANGUAGE_SETTINGS = new Set<PluginLanguageSetting>(["zh-CN", "en-US", "follow"]);
+/** T-1343 报告来源筛选的合法值。 */
+export const REPORT_SOURCE_VALUES = ["", "manual", "tomato", "api", "import"] as const;
 
 const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", "createdAt", "updatedAt", "name"]);
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
@@ -162,11 +170,13 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         items: reportSource.items !== false,
         baseline: reportSource.baseline !== false,
         highlights: reportSource.highlights !== false,
+        deviations: reportSource.deviations !== false,
     };
     const recentTemplates = Array.isArray(source.recentTemplates)
         ? [...new Set(source.recentTemplates.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, RECENT_TEMPLATES_LIMIT)
         : [];
     const pluginLanguage = PLUGIN_LANGUAGE_SETTINGS.has(source.pluginLanguage as PluginLanguageSetting) ? source.pluginLanguage as PluginLanguageSetting : DEFAULT_VIEW_PREFERENCES.pluginLanguage;
+    const reportSourceFilter = REPORT_SOURCE_VALUES.includes(source.reportSource as typeof REPORT_SOURCE_VALUES[number]) ? (source.reportSource as string) : "";
     return {
         groupMode,
         sortMode,
@@ -194,6 +204,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         dialogOffset: readOffset(source.dialogOffset),
         reportSections,
         pluginLanguage,
+        reportSource: reportSourceFilter,
         recentTemplates,
     };
 }
