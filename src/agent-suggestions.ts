@@ -382,7 +382,7 @@ function suggestionValueText(field: keyof CheckinItem, value: unknown): string {
             return t(SUGGESTION_SCHEDULE_LABEL_KEYS[schedule.type]);
         }
     }
-    return value === undefined || value === null ? "未设置" : String(value);
+    return value === undefined || value === null ? t("agent.unset") : String(value);
 }
 
 export function normalizeSuggestionChanges(value: unknown, items: readonly CheckinItem[]): AgentSuggestionChange[] {
@@ -401,8 +401,8 @@ export function normalizeSuggestionChanges(value: unknown, items: readonly Check
 }
 
 export function formatSuggestionChange(change: AgentSuggestionChange): string {
-    const before = change.before === undefined || change.before === null ? "未设置" : suggestionValueText(change.field, change.before);
-    const after = change.after === undefined || change.after === null ? "未设置" : suggestionValueText(change.field, change.after);
+    const before = change.before === undefined || change.before === null ? t("agent.unset") : suggestionValueText(change.field, change.before);
+    const after = change.after === undefined || change.after === null ? t("agent.unset") : suggestionValueText(change.field, change.after);
     return t("agent.changeSummary", {field: String(change.field), before, after});
 }
 

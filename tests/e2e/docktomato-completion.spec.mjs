@@ -170,7 +170,9 @@ test('跳过日解析旅程:设置页撤销跳过并计入,同单元落库', asy
 
     await expect.poll(async () => (await recordedEvents(client, item.id)).filter((event) => event.externalRef === `docktomato:${sessionId}`).length, {timeout: 20000}).toBe(1);
     const storeAfter = await client.getFile('checkin-store');
-    expect((storeAfter?.events || []).some((event) => event.itemId === item.id && event.kind === 'skip')).toBe(false);
+    /* T-1369 期间偶发：撤销后同 item skip 事件偶见残留——断言携带全量事件证据，便于根因定位。 */
+    const residualSkips = (storeAfter?.events || []).filter((event) => event.itemId === item.id && event.kind === 'skip');
+    expect(residualSkips, `撤销后不得残留 skip 事件（item=${item.id}）`).toEqual([]);
     expect((storeAfter?.eventTombstones || []).length).toBeGreaterThanOrEqual(1);
     const inboxAfter = await client.getFile('checkin-docktomato-inbox');
     expect((inboxAfter?.items || []).some((entry) => entry.identity === sessionId)).toBe(false);
