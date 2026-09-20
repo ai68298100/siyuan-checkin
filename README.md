@@ -8,7 +8,7 @@
 
 记录每一次行动，再用同一份可追溯数据完成统计、提醒、复盘和跨插件协作。
 
-**当前版本：17.3.0**
+**当前版本：18.0.0**
 
 [最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-17.3.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
