@@ -264,6 +264,27 @@ export function serializeSuggestionAudits(audits: readonly AgentSuggestionAudit[
     return JSON.stringify({version: AGENT_SUGGESTION_AUDIT_VERSION, audits: normalizeSuggestionAudits(audits)});
 }
 
+const AGENT_SUGGESTION_AUDIT_EXPORT_VERSION = 1;
+
+/** T-1362：智能体审计导出——版本化诊断 JSON（信封快照 + 统计 + 归一化审计轨迹）。 */
+export function serializeSuggestionAuditExport(
+    envelope: Pick<AgentSuggestionEnvelope, "id" | "title" | "status" | "createdAt" | "changes">,
+    audits: readonly AgentSuggestionAudit[],
+    exportedAt = new Date().toISOString(),
+): string {
+    const safeAudits = normalizeSuggestionAudits(audits);
+    const stats: Record<AgentSuggestionAudit["action"], number> = {created: 0, confirmed: 0, cancelled: 0, applied: 0, rejected: 0};
+    for (const audit of safeAudits) stats[audit.action] += 1;
+    const exportedAtSafe = Number.isNaN(Date.parse(exportedAt)) ? new Date().toISOString() : exportedAt;
+    return JSON.stringify({
+        version: AGENT_SUGGESTION_AUDIT_EXPORT_VERSION,
+        exportedAt: exportedAtSafe,
+        suggestion: {id: envelope.id, title: envelope.title, status: envelope.status, createdAt: envelope.createdAt, changes: envelope.changes.length},
+        stats,
+        audits: safeAudits,
+    }, null, 2);
+}
+
 export function deserializeSuggestionAudits(value: string): AgentSuggestionAudit[] {
     try {
         const parsed = JSON.parse(value);

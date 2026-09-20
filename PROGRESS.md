@@ -1563,3 +1563,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1354/T-1355 UI 维护收尾与性能基线:css-audit 工具落盘（scripts/css-audit.cjs,583 token 零死类——历史清理已收净,重复规则 ~4.4KB）;预算重新收紧 D-242（620KB 警告/640KB 硬阻断,替代 D-246 报告口径）;css-hygiene 门禁新增;渲染块性能三档门禁（1k/10k/100k,实测 19/28/232ms 量级）扩展并连文件接入 test:extended。
 验证:checkin-block、css-hygiene、type check、release-assets、test:ui、test:extended 全链、中文宽度走查全过。v19 剩余:T-1353（等隐私决策）。
+
+2026-09-21 v20 启动：T-1362 智能体审计导出:serializeSuggestionAuditExport（版本化 JSON:信封快照+五类动作统计+归一化审计,不含令牌/nonce）+ downloadSuggestionAuditFor（统一安全导出通道）+ 设置页审计条目统计与导出入口（无记录禁用）;T-1373 来源扩展探索结论:不新增内置来源,扩展走公开 API+前缀登记（与 v21 合并）;T-1363 首批复核无口径冲突。
+验证:agent-audit-export 门禁（接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（c802a56e…）。

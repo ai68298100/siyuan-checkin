@@ -3,6 +3,7 @@
 import {t} from "./i18n";
 import {saveGeneratedFile} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
+import {serializeSuggestionAuditExport} from "./agent-suggestions";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
 import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
 import {buildObsidianExportFiles, obsidianExternalRef, obsidianHabitName, type ObsidianImportPlan} from "./features/obsidian-habits";
@@ -151,6 +152,11 @@ async function saveLoopExportPair(store: CheckinStore): Promise<void> {
 
 export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void {
     void saveGeneratedFile({fileName: `siyuan-checkin-audit-${dateKey(new Date())}.json`, content: serializeStoreAudit(entries), mime: "application/json;charset=utf-8"});
+}
+
+/** T-1362：智能体建议审计导出（版本化诊断 JSON，走统一安全导出通道）。 */
+export function downloadSuggestionAuditFor(envelope: import("./agent-suggestions").AgentSuggestionEnvelope, audits: readonly import("./agent-suggestions").AgentSuggestionAudit[]): void {
+    void saveGeneratedFile({fileName: `siyuan-checkin-agent-audit-${dateKey(new Date())}.json`, content: serializeSuggestionAuditExport(envelope, audits), mime: "application/json;charset=utf-8"});
 }
 
 export function downloadSnapshotHistoryFor(history: unknown): void {

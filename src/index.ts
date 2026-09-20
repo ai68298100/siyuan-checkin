@@ -35,7 +35,7 @@ import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
@@ -1875,6 +1875,7 @@ export default class CheckinPlugin extends Plugin {
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
             diaryReport: {...this.diaryReport},
+            suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
@@ -2043,6 +2044,11 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.persistAuditBestEffort(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
+        /* T-1362：智能体建议审计导出（版本化诊断 JSON）。 */
+        root.querySelector<HTMLElement>("[data-action='export-agent-audit']")?.addEventListener("click", () => {
+            if (!this.suggestionWorkflow) return;
+            downloadSuggestionAuditFor(this.suggestionWorkflow.envelope, this.suggestionWorkflow.audits);
+        });
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
