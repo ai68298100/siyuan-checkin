@@ -1569,3 +1569,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 T-1360 建议执行范围扩展:schedule 进入执行白名单——normalizeSuggestionSchedule 结构校验（非法整条丢弃/合法值规范化）+ suggestionValuesEqual 深比较（键序稳定序列化）贯通 build/normalize/apply/revert;差异预览输出本地化排期文案;回顾页重点项目新增「建议改为弹性排期」（daily 且非 at-most → 每周 3 次弹性配额,同一确认流）;历史事件与已确认记录仍不在建议范围（不变式）。
 验证:suggestion-schedule 门禁（新接入 test:ui）、agent-suggestions 旧断言同步、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（ca1b283f…）。
+
+2026-09-21 T-1361 机器可读诊断:src/features/diagnostics.ts 纯模块（五原因码+环形 20+序列化往返）;五个失败路径打点（persist/冲突合并/刷新失败/导入拒绝/锁竞争）;公开能力 diagnostics.read（since 5）+ getDiagnostics() 防御副本,manifest/api-v5.md 同步;设置页「数据诊断」行（计数+最新标签+导出）;锁不设超时的设计决策记录（保护长事务,竞争记 lock-contended）。
+验证:diagnostics 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（64cd291f…）。

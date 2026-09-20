@@ -9,6 +9,7 @@ import "./ui/review-detail.scss";
 import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
+import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
@@ -35,7 +36,7 @@ import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
@@ -355,6 +356,24 @@ export default class CheckinPlugin extends Plugin {
     reportSource = "";
     /* T-1352 日记集成（opt-in 默认关）。 */
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
+    /* T-1361 会话诊断（环形容量 20，内存态不落盘；导出经设置页）。 */
+    private diagnostics: CheckinDiagnostic[] = [];
+
+    recordDiagnostic(code: CheckinDiagnosticCode, detail?: string): void {
+        this.diagnostics = appendDiagnostic(this.diagnostics, {code, at: new Date().toISOString(), ...(detail ? {detail: detail.slice(0, 200)} : {})});
+    }
+
+    getDiagnostics(): readonly CheckinDiagnostic[] {
+        return normalizeDiagnostics(this.diagnostics);
+    }
+
+    /* T-1361：最新诊断的本地化标签（含恢复提示）；无诊断返回空串。 */
+    private latestDiagnosticText(): string {
+        const latest = this.diagnostics[this.diagnostics.length - 1];
+        if (!latest) return "";
+        const info = CHECKIN_DIAGNOSTIC_INFO[latest.code];
+        return `${t(info.labelKey)}${latest.detail ? ` · ${latest.detail}` : ""} · ${t(info.recoveryKey)}`;
+    }
     /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
     private suspendedAnchors = new Set<string>();
     /* T-1234/T-1236 渲染块监听器清理。 */
@@ -1876,6 +1895,8 @@ export default class CheckinPlugin extends Plugin {
             palette: this.palette,
             diaryReport: {...this.diaryReport},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
+            diagnosticsCount: this.diagnostics.length,
+            latestDiagnosticText: this.latestDiagnosticText(),
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
@@ -2049,6 +2070,8 @@ export default class CheckinPlugin extends Plugin {
             if (!this.suggestionWorkflow) return;
             downloadSuggestionAuditFor(this.suggestionWorkflow.envelope, this.suggestionWorkflow.audits);
         });
+        /* T-1361：会话诊断导出。 */
+        root.querySelector<HTMLElement>("[data-action='export-diagnostics']")?.addEventListener("click", () => downloadDiagnosticsFor(this.diagnostics));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
@@ -2061,6 +2084,7 @@ export default class CheckinPlugin extends Plugin {
                 const backup = migration;
                 if (validationErrors.length) {
                     this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", validationErrors)});
+                    this.recordDiagnostic("migration-rejected", (validationErrors[0] || "unknown").slice(0, 200));
                     void this.persistAuditBestEffort();
                     showMessage(`恢复失败：${validationErrors.join("；")}`);
                     input.value = "";
@@ -3460,6 +3484,7 @@ export default class CheckinPlugin extends Plugin {
         });
         this.saveQueue = write.catch((error) => {
             this.saveState = "error";
+            this.recordDiagnostic("save-failed", String(error).slice(0, 200));
             showMessage(t("msg.saveDataFail", {error: String(error)}));
             this.renderBackgroundUpdate();
         });
@@ -3901,6 +3926,7 @@ export default class CheckinPlugin extends Plugin {
                     const {remote, merged: latest, conflict} = reconciliation;
                     if (conflict.conflicted) {
                         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "conflict", at: new Date().toISOString(), details: {items: conflict.changedItemIds.length, events: conflict.changedEventIds.length}});
+                        this.recordDiagnostic("version-conflict", `${conflict.changedItemIds.length} items / ${conflict.changedEventIds.length} events`);
                         this.scheduleAuditPersist();
                     }
                     refreshed = reconciliation.localChanged;
@@ -3915,6 +3941,7 @@ export default class CheckinPlugin extends Plugin {
                     }
                 } catch (error) {
                     if (!this.disposing) showMessage(t("msg.refreshFail", {error: String(error)}));
+                    this.recordDiagnostic("load-failed", String(error).slice(0, 200));
                     return undefined as T;
                 }
             }
@@ -3958,7 +3985,11 @@ export default class CheckinPlugin extends Plugin {
         if (!locks) { await write(); return; }
         const flushedMark = "teardown-flushed" as const;
         const acquired = await locks.request<typeof flushedMark>(STORAGE_LOCK_NAME, {mode: "exclusive", ifAvailable: true}, () => write().then(() => flushedMark));
-        if (acquired === undefined) await this.withStorageLock(write);
+        if (acquired === undefined) {
+            /* T-1361：锁竞争信号——另一窗口持有写锁，本次收尾补写退化为普通排队。 */
+            this.recordDiagnostic("lock-contended", "teardown final flush deferred");
+            await this.withStorageLock(write);
+        }
     }
 
     private showSyncNotice() {

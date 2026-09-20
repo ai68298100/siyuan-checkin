@@ -36,6 +36,8 @@ export interface CheckinApi {
     queryItems: (options?: {includeArchived?: boolean; archivedOnly?: boolean; kinds?: CheckinKind[]; limit?: number}) => CheckinItem[];
     /** v5:派生指标门面——当前连续(与成就/洞察同一模型实现)。 */
     getStreaks: (itemIds?: string[]) => readonly {itemId: string; current: number; longest: number}[];
+    /** T-1361:会话诊断原因码(环形容量 20,防御性副本)。 */
+    getDiagnostics: () => readonly {code: string; at: string; detail?: string}[];
     getOccasions: () => Occasion[];
     getTodayOccasions: () => VisibleOccasion[];
     completeOccasion: (id: string, occurrenceDate: string, completed: boolean) => Promise<boolean>;
@@ -94,6 +96,7 @@ export interface CheckinApiHost {
     startFocus(itemId: string): Promise<boolean>;
     stopFocus(): Promise<boolean>;
     stopAdapterSilently(adapter: FocusAdapter): Promise<void>;
+    getDiagnostics(): readonly {code: string; at: string; detail?: string}[];
     invalidateSummary(): void;
     renderBackgroundUpdate(): void;
     suggestionWorkflow?: SuggestionWorkflowState;
@@ -164,6 +167,8 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             }
             return Object.freeze(ids.slice(0, 200).map((itemId) => Object.freeze({itemId, current: current.get(itemId) || 0, longest: longest.get(itemId) || 0})));
         },
+        /* T-1361：会话诊断原因码（环形容量 20；智能体只解释原因，不代为执行）。 */
+        getDiagnostics: () => Object.freeze(host.getDiagnostics().map((entry) => ({...entry}))),
         getOccasions: () => host.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
         getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
         completeOccasion: (id, occurrenceDate, completed) => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)),

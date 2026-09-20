@@ -20,6 +20,7 @@
     {"name": "summary.custom", "since": 4, "effect": "read", "localOnly": true},
     {"name": "analytics.read", "since": 4, "effect": "read", "localOnly": true},
     {"name": "metrics.read", "since": 5, "effect": "read", "localOnly": true},
+    {"name": "diagnostics.read", "since": 5, "effect": "read", "localOnly": true},
     {"name": "summary.providers", "since": 4, "effect": "register", "localOnly": false},
     {"name": "suggestions.read", "since": 4, "effect": "read", "localOnly": true},
     {"name": "focus.adapters", "since": 4, "effect": "register", "localOnly": true},

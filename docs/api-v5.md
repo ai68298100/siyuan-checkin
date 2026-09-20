@@ -45,6 +45,7 @@ if (!checkin.hasCapability("events.record")) return;            // 3. 能力协�
 | `summary.custom` | 4 | read | 是 | `getCustomSummary(range)` |
 | `analytics.read` | 4 | read | 是 | `getAnalyticsSnapshot()` / `getAnalyticsSummary()` / `getStrengthSummary(options?)` |
 | `metrics.read` | 5 | read | 是 | `getStreaks(itemIds?)` |
+| `diagnostics.read` | 5 | read | 是 | `getDiagnostics()` |
 | `summary.providers` | 4 | register | **否** | `registerSummaryProvider(provider)` |
 | `suggestions.read` | 4 | read | 是 | `getSuggestionWorkflow()` / `getSuggestionWorkflowSummary()` |
 | `focus.adapters` | 4 | register | 是 | `registerFocusAdapter(adapter)` |
@@ -116,6 +117,16 @@ getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest:
 ```
 
 连续计算走插件单一实现（`computeEventStreaks`/`computeLongestStreaks`）；**禁止消费端自算 streak**，避免口径漂移。跳过日中性、AUTO 桥接等语义与回顾页展示完全一致。
+
+### diagnostics.read → `getDiagnostics()`
+
+```ts
+getDiagnostics(): readonly CheckinDiagnostic[];
+// CheckinDiagnostic = {code, at, detail?};code ∈ save-failed / load-failed /
+// version-conflict / migration-rejected / lock-contended;容量 20,会话态。
+```
+
+机器可读失败原因码（T-1361）：普通界面据码展示恢复操作；智能体只解释原因与建议顺序，不代为执行。`recoverable=false` 的码（load-failed）应引导用户导出诊断并求助。
 
 ## 5. 输入上限速查
 

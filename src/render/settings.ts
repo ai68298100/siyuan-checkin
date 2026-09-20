@@ -32,6 +32,9 @@ export interface SettingsViewContext {
     diaryReport: {enabled: boolean; docId: string};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
     suggestionWorkflowAudits: number;
+    /** T-1361 会话诊断：条数与最新一条的本地化标签（空串 = 无诊断）。 */
+    diagnosticsCount: number;
+    latestDiagnosticText: string;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
     completedCollapsed: boolean;
@@ -191,6 +194,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.snapshotImport")}</span><small>${t("set.snapshotImportHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-action="import-snapshots" data-import-snapshots accept=".json,application/json" />${t("set.chooseFile")}</label></div>
                     ${snapshotRows ? `<div class="lc-checkin__audit-list lc-checkin__snapshot-list"><ul>${snapshotRows}</ul></div>` : ""}
                     <details class="lc-checkin__settings-fold" data-recovery-guide><summary>${t("set.recoveryGuide")} · <small>${t("set.recoveryGuideHint")}</small><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ul class="lc-checkin__recovery-list"><li>${t("set.recoveryPoints")}</li><li>${t("set.recoveryBackup")}</li><li>${t("set.recoveryCorruption")}</li><li>${t("set.recoveryWindows")}</li><li>${t("set.recoveryInbox")}</li><li>${t("set.recoveryDiagnostics")}</li></ul></details>
+                    <div class="lc-checkin__settings-row" data-diagnostics><span class="lc-checkin__settings-label"><span>${t("set.diagnosticsTitle")}</span><small>${ctx.latestDiagnosticText || t("set.diagnosticsEmpty")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${ctx.diagnosticsCount ? "is-muted" : ""}">${t("set.diagnosticsCount", {n: ctx.diagnosticsCount})}</span><button class="lc-checkin__text-button" type="button" data-action="export-diagnostics" ${ctx.diagnosticsCount ? "" : "disabled"} aria-label="${t("set.diagnosticsExport")}">${t("set.diagnosticsExport")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.audit")}</span><small>${t("set.auditHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="export-audit" ${ctx.auditEntries.length ? "" : "disabled"}>${t("set.exportAudit")}</button><button class="lc-checkin__text-button" type="button" data-action="clear-audit" ${ctx.auditEntries.length ? "" : "disabled"}>${t("set.clearAudit")}</button></span></div>
                     <div class="lc-checkin__audit-list" aria-label="${t("set.audit")}">${auditRows ? `<ul>${auditRows}</ul>` : `<small>${t("set.auditEmpty")}</small>`}</div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.importCsv")}</span><small>${t("set.importCsvHint")}</small></span><label class="lc-checkin__file-button"><input type="file" data-action="import-csv" data-import-csv accept=".csv,text/csv" />${t("set.chooseFile")}</label></div>
