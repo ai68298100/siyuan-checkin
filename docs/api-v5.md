@@ -28,6 +28,7 @@ if (!checkin.hasCapability("events.record")) return;            // 3. 能力协�
 - `describe()`：返回 `{name, protocol, version, storeVersion, capabilities, capabilitiesSince, events}` 快照（全部冻结）。
 - `getCapabilityInfo(name?)`：返回每项能力的 `{available, localOnly, effect}`。**写能力（`effect: "write"`）必须在用户明确要求后调用**；`localOnly: true` 表示数据不出本机。
 - `capabilitiesSince`：每项能力首次出现的协议版本，供 v4 消费方在 v5 宿主上探测「这条能力在我的版本里有没有」。
+- `describe().deprecated`：已宣布弃用的能力数组（当前为空）。弃用流程：进入该数组 ≥ 一个大版本 → 提供迁移说明 → 下一大版本才可移除；期间行为与签名保持不变。
 
 ## 3. 能力清单（18 项）
 
@@ -141,6 +142,36 @@ getDiagnostics(): readonly CheckinDiagnostic[];
 | 分析快照 JSON | ≤ 512 KiB，趋势窗口 周 52/月 24/日 366/年 10 |
 
 超限行为：截断（附 `truncated`）或拒绝（返回空/undefined，不抛异常）；调用方不得依赖异常控制流。
+
+### 5.1 错误与诊断码（T-1365 标准化，稳定枚举）
+
+**错误模型三原则**：读接口有界返回（截断标注/空结果，不抛异常）；写接口逐条显式结果（`kind` + `reason`）；结构化校验失败抛 `TypeError`/`RangeError` 且消息文案稳定可匹配。
+
+**批量写入结果**（`recordEventsBatch`，逐条）：
+
+| kind | 含义 |
+| --- | --- |
+| `recorded` | 新事件已写入 |
+| `duplicate` | 幂等命中，返回已有事件（`eventId` 可用） |
+| `discarded` | 命中墓碑（用户已撤销的记录不复活） |
+| `blocked` | 项目侧拦截，`reason` ∈ `missing-item` / `archived-item` / `at-most-item` / `not-scheduled` / `mapping-changed` |
+| `rejected` | 输入未过结构校验（不进入持久化），`reason` ∈ `invalid-input` / `invalid-item-id` / `invalid-source` / `invalid-value` / `invalid-unit` / `invalid-external-ref` |
+
+**会话诊断码**（`getDiagnostics()`，环形容量 20）：
+
+| code | recoverable | 说明 |
+| --- | --- | --- |
+| `save-failed` | 是 | 主存储写入失败；重试，连续失败导出诊断求助 |
+| `load-failed` | 否 | 读取失败；带诊断导出与恢复点求助，勿反复重试写入 |
+| `version-conflict` | 是 | 多窗口版本冲突；存储锁已自动合并 |
+| `migration-rejected` | 是 | 备份导入被拒；检查文件版本与完整性后重试 |
+| `lock-contended` | 是 | 写锁竞争；操作已自动排队，无需处理 |
+
+诊断码与恢复文案的映射在插件内（`features/diagnostics.ts` 注册表）与机器清单（`manifest.json` 的 `diagnosticCodes`）同步维护；新增码必须过 `tests/diagnostics.test.cjs` 与 `tests/api-v5-docs.test.cjs` 双门禁。
+
+### 5.2 单条 recordEvent 兼容语义（v4 起不变）
+
+新事件 → 事件副本；幂等命中 → 已有事件副本；非法/拒绝 → `undefined`。`undefined` 一律表示「未写入」，以原始 `externalRef` 重试。
 
 ## 6. externalRef 幂等身份
 

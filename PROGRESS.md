@@ -1576,4 +1576,7 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-21 T-1359 项目草案确认流:project-draft.ts 纯模块（normalizeProjectDraft 边界校验/draftFromTemplate 模板派生/summarizeProjectDraft 预览摘要）;排期校验抽至 features/schedule-validate 供建议与草案同源;normalizeSummaryProviderResult 新增 drafts 通道（≤2 份,非法丢弃）;回顾页「项目草案」卡（摘要+检查并保存）→ host.openProjectDraftEditor → 编辑器预填（bind-editor 草案套用后即清除 pending）→ 用户手动 saveForm;模型无直达持久化路径（门禁断言）。
 验证:project-draft 门禁（新接入 test:ui）、type check、release-assets、test:ui 全链、双语宽度走查全过;摘要同步（e523760d…）。
 
+2026-09-21 T-1365/T-1368 错误码标准化与摘要同步脚本化:api-v5.md §5.1 错误模型三原则+批量写原因枚举（blocked×5/rejected×6）+会话诊断码五码表;describe() 新增 deprecated 预告数组（当前空,履行弃用窗口承诺）,manifest 同步 diagnosticCodes/deprecatedCapabilities/batch 原因枚举;api-v5-docs 门禁扩展三方同步断言;scripts/sync-release-digest.cjs + npm run sync:digest 幂等摘要同步（取代手工 sed）。
+验证:api-v5-docs、contract-kit、type check、release-assets、test:ui 全链、双语宽度走查全过。
+
 2026-09-21 v21 启动：T-1364 契约测试包首版:contracts/siyuan-checkin-contract（check-contract.mjs 消费方自测 78 项合规断言:描述符/版本协商/能力面/事件清单/只读方法形状/批量写边界/未知 source 拒绝;manifest.json 字节级同源;README 五项准入清单）;tests/contract-kit.test.cjs 三重守门（manifest 字节一致+合规 mock 全过+4 项变异违规捕获）接入 test:ui。npm 独立发布待发版窗口（push 需用户确认）。

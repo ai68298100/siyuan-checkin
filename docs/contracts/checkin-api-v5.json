@@ -38,6 +38,7 @@
     "checkin:suggestion-workflow-updated",
     "checkin:analytics-updated"
   ],
+  "deprecatedCapabilities": [],
   "limits": {
     "eventRange": {"maxDays": 366, "maxPoints": 366, "maxEvents": 5000},
     "eventsRead": {"maxItemIds": 200, "defaultLimit": 1000, "maxLimit": 5000},
@@ -47,6 +48,14 @@
     "trendWindows": {"week": 52, "month": 24, "day": 366, "year": 10}
   },
   "batchResultKinds": ["recorded", "duplicate", "discarded", "blocked", "rejected"],
+  "batchBlockedReasons": ["missing-item", "archived-item", "at-most-item", "not-scheduled", "mapping-changed"],
+  "batchRejectedReasons": ["invalid-input", "invalid-item-id", "invalid-source", "invalid-value", "invalid-unit", "invalid-external-ref"],
+  "diagnosticCodes": ["save-failed", "load-failed", "version-conflict", "migration-rejected", "lock-contended"],
+  "errorModel": {
+    "read": "有界返回：截断以 truncated 标注，越界/无效输入返回空结果，不抛异常",
+    "write": "显式结果：逐条 kind + reason，undefined 仅出现在单条 recordEvent 的拒绝语义",
+    "validation": "结构化校验失败抛 TypeError/RangeError，消息文案稳定可匹配"
+  },
   "recordEventResult": {"newEvent": "event-copy", "duplicate": "existing-event-copy", "rejected": "undefined"},
   "externalRefPrefixes": [
     {"prefix": "docktomato:", "format": "docktomato:<sessionId>"},

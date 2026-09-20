@@ -5,12 +5,15 @@
 - [x] T-1364 适配器准入清单与契约测试包公开发布
   - 验收：身份、幂等、卸载清理、权限声明、失败隔离五项准入要求成文；契约测试包让消费方在开发期即可自测。
   - 状态：done（2026-09-21，仓库内首版。发布 contracts/siyuan-checkin-contract 包：check-contract.mjs 消费方自测（78 项合规断言：描述符/版本协商/能力面/事件清单/只读方法形状/批量写边界/未知 source 拒绝/令牌不泄漏），manifest.json 与仓库契约清单字节一致（门禁锁定），README 准入清单五项成文+使用说明；tests/contract-kit.test.cjs 三重守门（字节一致+合规 mock 全过+4 项变异违规捕获）接入 test:ui。npm 独立发布待真实发版窗口，push 需用户确认）
-- [ ] T-1365 API 弃用周期与错误码标准化
-  - 验收：能力弃用预告字段、错误码枚举稳定成文、minApiVersion 协商语义明确。（部分前置：弃用窗口承诺与 capabilitiesSince 已随 T-1341 成文；错误码枚举随 T-1361 diagnostics 落地，待并入正式文档）
+- [x] T-1365 API 弃用周期与错误码标准化
+  - 验收：能力弃用预告字段、错误码枚举稳定成文、minApiVersion 协商语义明确。
+  - 状态：done（2026-09-21。①api-v5.md 新增 §5.1 错误与诊断码：错误模型三原则（读=有界返回/写=逐条显式结果/校验=稳定 TypeError/RangeError）、批量写 blocked×5 与 rejected×6 原因枚举表、会话诊断码五码表；②describe() 新增 deprecated 弃用预告数组（当前空，履行"移除前预告一个大版本"承诺），manifest 同步 deprecatedCapabilities + diagnosticCodes + batch 原因枚举；③minApiVersion/capabilitiesSince 协商语义随 T-1341 成文。api-v5-docs 门禁扩展三方同步断言（诊断码/批量原因/弃用字段），contract-kit manifest 同步）
 - [ ] T-1366 思源插件消费方落地
   - 验收：以思源集市插件为主要候选面，契约三件套（文档+bridge 示例+测试包）触达插件作者；至少一个真实落地。依赖：发布+集市触达（用户确认 push）。
 - [ ] T-1367 迁入源扩展：评估 1~2 个主流习惯应用公开导出格式的迁入路径（不逆向私有格式）。
-- [ ] T-1368 发布工程可重复化：预发布→回滚→资产摘要脚本化；check:release 扩展为可复跑发布证据链。
+- [x] T-1368 发布工程可重复化（首批：摘要同步脚本化）
+  - 验收：预发布→回滚→资产摘要脚本化；check:release 扩展为可复跑发布证据链。
+  - 状态：done（首批 2026-09-21。scripts/sync-release-digest.cjs + npm run sync:digest：构建后一键把 package.zip 摘要同步进当前版本发布说明（幂等，已同步即跳过），取代此前每批次的手工 sed 流程；check:release 本身已是可复跑证据链（版本四方一致/BOM/摘要/预算断言）。剩余：回滚演练脚本与资产清单导出并入 v22 长期维护底座（T-1371））
 
 ## v20 规划任务（2026-09-21 启动，详见 docs/development-roadmap-v18-v22.md）
 

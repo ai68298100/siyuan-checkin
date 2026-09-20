@@ -98,6 +98,8 @@ export interface CheckinApiDescriptor {
     capabilities: readonly CheckinCapability[];
     capabilitiesSince: Readonly<Record<CheckinCapability, 4 | 5>>;
     events: readonly typeof CHECKIN_INTEGRATION_EVENTS[number][];
+    /** T-1365 弃用预告：已宣布弃用、移除前至少保留一个大版本的能力（当前为空）。 */
+    deprecated: readonly CheckinCapability[];
 }
 
 const CAPABILITY_INFO: Record<CheckinCapability, CheckinCapabilityInfo> = {
@@ -135,6 +137,7 @@ export function getCheckinApiDescriptor(): Readonly<CheckinApiDescriptor> {
         capabilities: Object.freeze([...CHECKIN_CAPABILITIES]),
         capabilitiesSince: Object.freeze({...CHECKIN_CAPABILITIES_SINCE}),
         events: Object.freeze([...CHECKIN_INTEGRATION_EVENTS]),
+        deprecated: Object.freeze([]),
     });
 }
 
