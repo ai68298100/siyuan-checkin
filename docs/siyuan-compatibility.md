@@ -52,7 +52,7 @@ const p = window.siyuan.ws.app.plugins.find(x => x.name === "siyuan-checkin");
 
 ## 公开 API 版本
 
-`window.siyuanCheckin.version` 当前为 4。版本 2 新增 `getCustomSummaryContext`，版本 3 新增 `summarizeCustom`，版本 4 新增日期事项读取与处理接口（`getOccasions`、`getTodayOccasions`、`completeOccasion`），并提供建议工作流只读查询（`getSuggestionWorkflow`、`getSuggestionWorkflowSummary`）；调用方应先检查版本，再使用这些能力。建议工作流接口不提供任何写入或令牌创建入口。
+`window.siyuanCheckin.version` 当前为 **5**。版本 2 新增 `getCustomSummaryContext`，版本 3 新增 `summarizeCustom`，版本 4 新增日期事项读取与处理接口（`getOccasions`、`getTodayOccasions`、`completeOccasion`），版本 5 增加范围事件读取、幂等批量写入、统一项目投影和指标门面；调用方应先检查版本，再使用这些能力。建议工作流接口不提供任何写入或令牌创建入口，v4 能力继续兼容。
 
 ## 发布前检查
 
