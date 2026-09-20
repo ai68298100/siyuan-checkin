@@ -1605,3 +1605,5 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-21 发版前深度安全扫描（Mimosa deep,static-only）:findingCount 0——13 个依赖包无已知通告,未发现注入/越权/泄露类问题;封印 sha256:1443ac6a…。自查修复 1 处:设置页诊断行 latestDiagnosticText（含错误详情字符串）补 escapeHtml（沿用「innerHTML 注入点全部转义」发布纪律）。
 验证:type check、release-assets、diagnostics、i18n-parity、test:ui 全链通过;摘要同步（77a55195…）。
+
+2026-09-21 v18.0.0 发布前真实内核 E2E 回归:定位本机思源安装（D:\biji\SiYuan,CHECKIN_E2E_KERNEL/APP_DIR 环境变量）;首跑发现 mobile-review-ui 规格期望值过期（工具栏 5 控件——17.3 起助手入口进工具栏,spec 期望停留在 4）,修正规格期望后 **test:e2e 16/16、test:e2e:readonly 1/1 全过**;docktomato-completion:126 首跑单发偶发,隔离复跑与全套复跑均过。发布证据补齐:真实内核行为（含移动端 bundle、导出通道、收件箱旅程）全部在 18.0.0 包上验证。

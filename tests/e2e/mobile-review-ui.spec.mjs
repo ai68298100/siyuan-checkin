@@ -43,7 +43,8 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
     await expect(page.locator('.lc-checkin__review-tools')).toBeVisible();
 
     const controls = page.locator(".lc-checkin__review-tool-group > button, .lc-checkin__review-tool-group > details > summary, .lc-checkin__review-tools > .lc-checkin__review-more > summary");
-    await expect(controls, "报告菜单控件数量异常").toHaveCount(4);
+    /* 5 = 助手入口 + 复制报告 + 导出报告 + 报告设置 + 更多工具（17.3 起助手入口进工具栏）。 */
+    await expect(controls, "报告菜单控件数量异常").toHaveCount(5);
     const boxes = [];
     for (const control of await controls.all()) {
         await expect(control).toBeVisible();
