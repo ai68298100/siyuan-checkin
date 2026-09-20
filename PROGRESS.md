@@ -1542,3 +1542,6 @@ T-1301 摘要回填后全链 exit 0。
 验证:英文界面首次全矩阵走查通过（42+32+8+10+16,Edge）;中文走查回归通过;type check、release-assets、i18n-hygiene、settings-navigation、template-gallery、view-preferences 全过。发现:EN 文案布局无错乱,英文界面自此具备发布口径。
 
 2026-09-21 T-1341 API v5 稳定文档包:docs/api-v5.md 正式参考（18 能力清单+签名+上限表+批量写判定顺序+弃用周期+storeVersion 双语义）+ docs/contracts/checkin-api-v5.json 机器可读清单 + tests/api-v5-docs.test.cjs 三方交叉核对（api-contract.ts transpile 逐项比对,接入 test:ui）;api-v5-design.md 标记转正,ecosystem-integration.md 互指。ecosystem-docs/export-identity-docs 回归通过。
+
+2026-09-21 T-1342 恢复与并发演练:设置页数据安全区新增「数据诊断与恢复指南」折叠块（data-recovery-guide,六条自助路径:恢复点/JSON 备份/损坏隔离/多窗口存储锁/番茄收件箱/双诊断导出,中英双语,复用 settings-fold 样式）;演练证据映射到既有常绿测试链（backup/conflict/保存队列重试/番茄收件箱/快照回滚）。
+验证:type check、release-assets、i18n-hygiene、settings-navigation、mobile-release-quality、中文宽度走查全过;发布说明摘要同步（cc682d2b…）。

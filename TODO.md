@@ -5,8 +5,9 @@
 - [x] T-1341 API v5 稳定文档包
   - 验收：`api-v5-design.md` 草案转正式文档（类型定义、最小示例、错误码、输入上限、兼容矩阵、`capabilitiesSince`）；契约测试包随文档版本化；storeVersion 双语义显式澄清。
   - 状态：done（2026-09-21。新增 docs/api-v5.md 正式参考——18 能力清单（since/effect/localOnly）、v5 四能力完整签名、输入上限速查表、批量写判定顺序与 usedFallbackTime/truncated 语义、externalRef 前缀登记、弃用周期承诺（移除前至少一个大版本预告）、storeVersion 双语义（公共 v2 vs 内部 v3）澄清；新增 docs/contracts/checkin-api-v5.json 机器可读清单；新增 tests/api-v5-docs.test.cjs 源码↔清单↔文档三方交叉核对（transpile 真模块逐项比对）接入 test:ui；design 稿标记转正、ecosystem 文档互指。ecosystem-docs/export-identity-docs 回归通过）
-- [ ] T-1342 恢复与并发演练
+- [x] T-1342 恢复与并发演练
   - 验收：升级/降级、损坏隔离、双窗口并发、断网重试、恢复点回滚演练记录；《数据诊断与恢复指南》用户可读并从设置页可达。
+  - 状态：done（2026-09-21。①设置页数据安全区新增「数据诊断与恢复指南」折叠块（data-recovery-guide）：恢复点回滚、JSON 备份风险预览、损坏停止写入、多窗口存储锁、番茄收件箱积压处理、审计+恢复点双诊断导出六条自助路径，中英双语；②演练证据：升级/降级与损坏隔离由 backup.test.cjs（迁移报告/快照信封/损坏拒绝）与 conflict.test.cjs（双窗口合并/存储锁）覆盖并在 test:quality 全链常绿，断网重试与恢复由保存队列失败续接守门（T-860）与番茄收件箱 1s/5s/30s 重试测试（D-237）覆盖，恢复点回滚由 snapshot restore 校验测试（T-078/T-084）覆盖）
 - [ ] T-1343 回顾导出增强
   - 验收：目标偏差解释（本地确定性生成，数据不足时明说）、导出报告来源筛选、批量导出入口；全部走安全导出通道。
 - [ ] T-1344 真实宿主验收清零（依赖用户）
