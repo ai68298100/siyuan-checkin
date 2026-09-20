@@ -8337,15 +8337,14 @@
    规则继续接管，避免桌面修正回流到手机。
    ============================================================ */
 
-/* 顶栏的可视内容应与 .lc-checkin__layout 的内侧边界重合。
-   48px 是布局左右 padding 的总和；max-width 与 1560px 档的内容列
-   一致，避免宽弹窗出现顶栏从 x=0 开始、主体从 x=143 开始的错位。 */
+/* Paint the full host width; align the contents with padding, so the host
+   background cannot leak through as two blocks beside the navigation. */
 @container lc-dialog (min-width: 720px) {
     .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav {
-        width: min(calc(100% - 48px), 1560px);
-        max-width: 1560px;
-        margin-inline: auto;
-        padding-inline: 24px;
+        width: 100%;
+        max-width: none;
+        margin-inline: 0;
+        padding-inline: max(24px, calc((100% - 1560px) / 2 + 24px));
     }
 }
 
@@ -8614,16 +8613,16 @@
 /* 页签宿主没有 dialog container，因此使用同样的可用宽公式；在
    2000px 以上再放宽到内容阶梯的 1780px 档。 */
 .lc-checkin-tab-host > .lc-checkin__topnav {
-    width: min(calc(100% - 48px), 1560px);
-    max-width: 1560px;
-    margin-inline: auto;
-    padding-inline: 24px;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    padding-inline: max(24px, calc((100% - 1560px) / 2 + 24px));
 }
-@media (min-width: 2000px) {
-    .lc-checkin-tab-host > .lc-checkin__topnav { max-width: 1780px; }
+@container lc-tab (min-width: 2000px) {
+    .lc-checkin-tab-host > .lc-checkin__topnav { padding-inline: max(24px, calc((100% - 1780px) / 2 + 24px)); }
 }
 @container lc-dialog (min-width: 2000px) {
-    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav { max-width: 1780px; }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav { padding-inline: max(24px, calc((100% - 1780px) / 2 + 24px)); }
 }
 
 @container lc5 (min-width: 720px) {

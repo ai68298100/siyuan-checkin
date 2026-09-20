@@ -22,6 +22,7 @@ test("回顾建议可确认执行并撤销", async ({browser}) => {
         const review = [...document.querySelectorAll("button, a")].find((element) => (element.textContent || "").trim() === "回顾");
         review?.click();
     });
+    await page.locator('.lc-checkin__review-guidance-disclosure > summary').click();
     await page.waitForSelector("[data-action='preview-agent-suggestion']", {timeout: 15000});
     await page.locator("[data-action='preview-agent-suggestion']").click();
 

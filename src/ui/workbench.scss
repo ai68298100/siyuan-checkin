@@ -45,6 +45,7 @@
     .lc-checkin__priority-reminder:has(.lc-checkin__priority-reminder-more[open]) { grid-template-columns: minmax(0, 1fr); }
     .lc-checkin__priority-reminder.is-overdue { background: var(--lc-checkin-warm-soft); }
     .lc-checkin__priority-reminder-row.is-primary { padding: 0; }
+    .lc-checkin__reminder-more-count { display: none; }
     .lc-checkin__priority-reminder-row-text { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
     .lc-checkin__priority-reminder-row-text strong { font-size: 13px; }
     .lc-checkin__priority-reminder-row-text small { font-size: 11px; }
@@ -78,6 +79,9 @@
     .lc-checkin__completed-section { border-top: 1px solid var(--lc-checkin-border); padding-top: 16px; margin-top: 22px; }
     .lc-checkin__occasion-banner.is-empty { border: 0; border-top: 1px solid var(--lc-checkin-border); border-radius: 0; box-shadow: none; background: transparent; padding: 16px 0; }
     .lc-checkin__occasion-banner.is-empty .lc-checkin__occasion-banner-icon { background: none; }
+    .lc-checkin__occasion-chip { min-width: 0; max-width: 100%; gap: 8px; }
+    .lc-checkin__occasion-chip strong { min-width: 0; overflow-wrap: anywhere; }
+    .lc-checkin__occasion-chip small { flex: none; white-space: nowrap; }
 }
 
 /* Same quiet surfaces on editing and maintenance screens, without altering
@@ -118,8 +122,15 @@
         .lc-checkin__item-action > :is(.lc-checkin__quick-button, .lc-checkin__record-button) { min-width: 80px; min-height: 40px; }
     }
 }
-@container lc-dialog (max-width: 719px) { .lc-checkin__topnav-brand { display: none; } }
-@container lc-tab (max-width: 719px) { .lc-checkin__topnav-brand { display: none; } }
+@container lc-dialog (max-width: 719px) {
+    .lc-checkin__topnav-brand, .lc-checkin__topnav-tabs { display: none; }
+    .lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) > .lc-checkin__topnav { min-height: 44px; height: 44px; padding: 0 10px; width: 100%; justify-content: flex-end; }
+    .lc-checkin.lc-checkin--today { padding-inline: 0; }
+}
+@container lc-tab (max-width: 719px) {
+    .lc-checkin-tab-host > .lc-checkin__topnav { display: none; }
+    .lc-checkin.lc-checkin--today { padding-inline: 0; }
+}
 
 /* The real mobile host already supplies the page title and completion count.
    Keep a date line and a compact overview so the first habit remains reachable. */
@@ -139,7 +150,7 @@
 
 /* A 30-habit day needs rows, not a wall of tall cards. Keep this after narrow
    host rules so density is consistent in tabs, dialogs, docks and on phones. */
-.lc-checkin.lc-checkin--today[data-density="compact"] {
+@mixin compact-habit-rows {
     .lc-checkin__group-items:not([hidden]) { gap: 8px; }
     .lc-checkin__item {
         grid-template-columns: 32px minmax(0, 1fr) auto;
@@ -156,6 +167,9 @@
     .lc-checkin__item-action { width: auto; gap: 4px; }
     .lc-checkin__item-action > :is(.lc-checkin__quick-button, .lc-checkin__record-button) { min-width: 64px; max-width: 120px; padding-inline: 10px; }
     .lc-checkin__exact-entry:not([hidden]) { margin-top: 10px; }
+}
+.lc-checkin.lc-checkin--today[data-density="compact"] {
+    @include compact-habit-rows;
     .lc-checkin__overview { gap: 10px; margin-bottom: 14px; }
     .lc-checkin__overview > div { min-height: 0; padding: 12px 16px; border-radius: 14px; }
     .lc-checkin__overview-caption { display: none; }
@@ -167,16 +181,47 @@
     .lc-checkin__overview:has(.lc-checkin__overview-streak) { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 }
 @container lc5 (max-width: 719px) {
+    .lc-checkin.lc-checkin--today,
     .lc-checkin.lc-checkin--today[data-density="compact"] {
+        @include compact-habit-rows;
+        .lc-checkin__layout { padding-inline: 10px; }
+        .lc-checkin__layout > .lc-checkin__header { min-height: 0; padding-block: 6px; margin-bottom: 8px; }
+        .lc-checkin__layout { row-gap: 8px; }
+        .lc-checkin__header-actions { width: auto; flex: 0 0 auto; }
+        .lc-checkin__title { font-size: 20px; }
         .lc-checkin__item { grid-template-columns: 28px minmax(0, 1fr) 88px; padding: 10px; gap: 0 7px; }
         .lc-checkin__item-icon { width: 28px; height: 32px; min-height: 32px; }
         button.lc-checkin__item-icon { min-height: 44px; }
-        .lc-checkin__item-action { display: flex; flex-wrap: wrap; width: 88px; gap: 0; justify-content: flex-end; }
+        .lc-checkin__item-action { display: flex; flex-direction: row; flex-wrap: wrap; width: 88px; padding: 0; margin: 0; gap: 0; justify-content: flex-end; }
         .lc-checkin__item-action > :is(.lc-checkin__quick-button, .lc-checkin__record-button) { order: -1; flex: 0 0 88px; width: 88px; min-width: 0; min-height: 44px; padding-inline: 5px; }
         .lc-checkin__item-action:not(:has(.lc-checkin__focus-button)):has(.lc-checkin__more-button) > :is(.lc-checkin__quick-button, .lc-checkin__record-button) { flex-basis: 44px; width: 44px; padding-inline: 2px; }
         .lc-checkin__quick-button > span { display: none; }
         .lc-checkin__item-action > :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__bulk-check, .lc-checkin__drag-handle) { flex: 0 0 44px; width: 44px; min-width: 44px; min-height: 44px; }
         .lc-checkin__item-action > .lc-checkin__drag-handle { display: none; }
+        .lc-checkin__overview:has(.lc-checkin__overview-streak) { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) !important; }
+        .lc-checkin__overview { gap: 8px; margin-bottom: 10px; }
+        .lc-checkin__overview > div { padding: 10px 12px; }
+        .lc-checkin__overview-streak { display: block; }
+        .lc-checkin__overview-streak .lc-checkin__overview-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .lc-checkin__overview-caption { display: none; }
+        .lc-checkin__overview-progress .lc-checkin__count { font-size: 22px; margin-top: 4px; }
+        .lc-checkin__overview-ring { width: 40px; height: 40px; flex-basis: 40px; font-size: 11px; }
         .lc-checkin__overview-streak > strong { font-size: 18px; }
+        .lc-checkin__organize { margin-block: 8px; gap: 6px; }
+        .lc-checkin__today-search { flex-basis: 120px; }
+        .lc-checkin__group { margin-top: 8px; }
+        .lc-checkin__group-header { min-height: 32px; margin-bottom: 6px; }
+        .lc-checkin__list { gap: 8px; }
+        .lc-checkin__item-tag { max-width: 100%; }
+        .lc-checkin__priority-reminder .lc-checkin__text-button { min-height: 44px; margin: 0; }
+        .lc-checkin__priority-reminder-more > summary { min-height: 44px; display: flex; align-items: center; }
+        .lc-checkin__priority-reminder { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
+        .lc-checkin__priority-reminder .lc-checkin__priority-reminder-more { margin: 0; }
+        .lc-checkin__priority-reminder-more:not([open]) > summary { width: 44px; justify-content: center; }
+        .lc-checkin__priority-reminder-more:not([open]) .lc-checkin__reminder-more-label { display: none; }
+        .lc-checkin__priority-reminder-more:not([open]) .lc-checkin__reminder-more-count { display: inline; }
     }
+}
+@container lc5 (min-width: 1500px) {
+    .lc-checkin.lc-checkin--today[data-density="compact"] .lc-checkin__group-items:not([hidden]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

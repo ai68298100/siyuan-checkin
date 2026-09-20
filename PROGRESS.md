@@ -1,5 +1,13 @@
 # 进度
 
+2026-09-20 T-1309~T-1312 / D-243：继续以新设计做全端内容适配。范围扩至今日/回顾/编辑/设置/事项/复盘/归档七页。完成窄端普遍紧凑、2000px多项三列、手机概览双块并排、提醒+N折叠、顶栏全宽消除白角；桌面回顾双栏、建议details、编辑预览与保存栏；设置状态换行/分类横滚/收件箱5条一批；事项主列表+有界表单/长备注展开；归档修复0px选择轨及44px操作。用户强调新设计优先已记D-243。
+
+验收：test:quality完整链exit0（.artifacts/responsive-quality.log）；随后仅样式收尾（侧栏6px遗留padding、事项倒计时不拆字、去掉重复已停用伪元素），最终build、check:release与双色visual-qa均exit0（.artifacts/responsive-build.log、responsive-visual-{light,dark}.log）。最终package.zip SHA-256：7f5c6906a0fa300fab86400ba1a8e4ff3c1dcae4196bbcc0463bdde58f68ec9a。CSS498256 bytes，越过480000告警线但低于520000硬线，未调整门禁。无障碍脚本通过命名/tabindex检查，仍未测出contrast pairs。
+
+浏览器真实构建：dialog/light/desktop、tab/dark/desktop、dock/dark/desktop、dock/light/mobile、dock/dark/mobile，每组42基础+16长内容；含320/360/640/1180和844×350横屏。两主题30项（29待办+1完成）及长名/长单位另测；2000px三列列表约752px、1180px两列约1142px、320/360px卡片最高110px/手机首项约355px；具体数据按宿主见.artifacts/responsive-*.log。收件箱12条按5/10/12展开，30事项、长备注全文、编辑保存命中、归档复选框/动作及建议展开均有断言。独立顶栏检查180场景无两侧空隙或重复可见导航（.artifacts/topbar-corner-diagnostic.jsonl）。
+
+证据边界：本轮未安装到思源、未进行真实内核/双插件/真机验收；review-suggestion E2E仅同步新的展开步骤并通过node --check。B-007/T-023等保持开放。本批本地里程碑完成，下一步真实客户端观感、触摸与系统键盘现场验证，按既定要求不阻塞本地交付。
+
 2026-09-20 T-1306~T-1308 / D-242：用户批准 UI 方向并补充未来 20–30 项容量要求，本批完成桌面导航、今日概览/卡片、编辑器表面统一与 >12 项自动紧凑模式。新增 src/ui/workbench.scss 作为 tokens/components 后的组合层。窄屏普通项约 66px，高度较高的时长项 110px，主要动作至少 44px；长名完整换行，不以固定高度裁掉内容。名称按钮使用独立 data-edit-name，避免旧图标替换器把名称变成铅笔；复盘补入右键/长按菜单。未修改业务存储与番茄时长协议。
 
 验收证据：pnpm run test:quality exit 0（日志 .artifacts/ui-workbench-quality.log，含类型、构建、UI、移动、生态、扩展、性能与本地产物校验）；最终包 SHA-256 f5056a231f49f6e87210f994f9f78b9443c8c79dd52ce0b02544b1f751a60284。CSS 465711 bytes，低于 480000 告警阈值和 520000 硬线（仍超历史 318000 软线）。最终 visual-qa 浅/深各 exit 0，日志 .artifacts/ui-workbench-visual-{light,dark}.log；accessibility-audit exit 0（0 missing names、0 positive tabindex，脚本报告 0 contrast pairs，不宣称完成颜色对比度实测）。

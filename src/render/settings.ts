@@ -105,8 +105,15 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     };
     const inboxEntries = inboxState?.entries ?? [];
     const inboxCapacity = inboxState?.capacity ?? 0;
+    const renderInboxBatch = (offset: number): string => {
+        const next = offset + 5;
+        const rows = inboxEntries.slice(offset, next).map(renderInboxEntry).join("");
+        return next < inboxEntries.length
+            ? `${rows}<details class="lc-checkin__settings-fold lc-checkin__settings-inbox-more"><summary>${t("set.inboxMore", {n: inboxEntries.length - next})}</summary>${renderInboxBatch(next)}</details>`
+            : rows;
+    };
     const inboxRows = inboxEntries.length
-        ? `<div class="lc-checkin__settings-row" data-docktomato-inbox><span class="lc-checkin__settings-label"><span>${t("set.inboxTitle")}</span><small>${t("set.inboxCapacity", {n: inboxEntries.length, total: inboxCapacity})}</small>${inboxEntries.map(renderInboxEntry).join("")}</span></div>`
+        ? `<div class="lc-checkin__settings-row" data-docktomato-inbox><div class="lc-checkin__settings-label"><span>${t("set.inboxTitle")}</span><small>${t("set.inboxCapacity", {n: inboxEntries.length, total: inboxCapacity})}</small>${renderInboxBatch(0)}</div></div>`
         : "";
     const photoEvents = ctx.store.events.filter((event) => event.attachment);
     const photoKb = Math.max(0, Math.round(photoEvents.reduce((sum, event) => sum + (event.attachment?.length || 0), 0) * 0.75 / 1024));

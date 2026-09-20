@@ -79,10 +79,11 @@
 | `ui/tokens.scss` | 全部设计 token（颜色角色/圆角/阴影/动效时长）——新样式禁止写死颜色与时长 |
 | `ui/components.scss` | v5 共享组件层（按钮/输入/卡片/容器查询布局） |
 | `ui/workbench.scss` | 今日工作台、桌面导航与编辑表面的最终组合布局；含多项目紧凑模式 |
+| `ui/content-responsive.scss` / `ui/maintenance-responsive.scss` | 回顾/复盘/编辑与事项/设置的响应布局；沿用同一设计 token |
 
 ## 样式架构
 
-构建内的活层按序加载：`ui/tokens.scss` → `ui/components.scss` → `ui/workbench.scss`。`index.scss` 已退出生产导入；workbench 仅负责本轮界面组合，不复制基础控件实现。
+构建内的活层按序加载：`ui/tokens.scss` → `ui/components.scss` → `ui/workbench.scss` → `ui/content-responsive.scss` → `ui/maintenance-responsive.scss`。`index.scss` 已退出生产导入；后面三层按页面职责组合布局，不复制基础控件实现。
 
 - 宽度决策只认 `@container lc5`（inline-size 容器），禁止 `@media`（D-016）；dock 面板另有 `lc-dialog`/`lc-dock` 容器。
 - 基础移动宿主布局位于 components.scss 末尾；今日页的紧凑排列由 workbench.scss 收口（D-242），使用独立主题 token，不引入宿主颜色。

@@ -2,6 +2,8 @@ import {Dialog, fetchSyncPost, getFrontend, Plugin, showMessage, type IProtyle} 
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import "./ui/workbench.scss";
+import "./ui/content-responsive.scss";
+import "./ui/maintenance-responsive.scss";
 import {getEventsInCustomRange, buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
