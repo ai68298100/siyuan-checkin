@@ -1,0 +1,53 @@
+/* Expanded Today states share the compact card grid without inheriting its
+   small quick-action controls or the header's floating add-button geometry. */
+.lc-checkin.lc-checkin--today {
+    .lc-checkin__exact-entry:not([hidden]) {
+        grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center;
+        gap: 8px; min-width: 0; padding: 10px; margin-top: 8px;
+        border-style: solid; background: var(--lc-checkin-muted-surface);
+    }
+    .lc-checkin__exact-entry > label:not(.lc-checkin__attach-button) { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+    .lc-checkin__exact-entry > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+    .lc-checkin__exact-entry input.lc-checkin__amount { width: 86px; min-width: 0; max-width: 100%; }
+    .lc-checkin__exact-entry input.lc-checkin__record-note { flex: 1 1 150px; width: auto; min-width: 80px; }
+    .lc-checkin__exact-entry :is(input.lc-checkin__amount, input.lc-checkin__record-note, .lc-checkin__record-button) { min-height: 44px; box-sizing: border-box; }
+    .lc-checkin__exact-entry .lc-checkin__record-button { color: var(--lc-checkin-accent-contrast); background: var(--lc-checkin-accent-fill); }
+    .lc-checkin__exact-entry .lc-checkin__attach-button { position: relative; display: grid; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; box-sizing: border-box; }
+    .lc-checkin__attach-button input[type="file"] { width: 1px; min-width: 0; height: 1px; min-height: 0; padding: 0; border: 0; clip-path: inset(50%); }
+    .lc-checkin__attach-button:focus-within { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
+    :is(.lc-checkin__empty, .lc-checkin__today-search-empty, .lc-checkin__all-done) { min-width: 0; min-height: 0; gap: 8px; padding: 20px 16px; border-style: solid; background: var(--lc-checkin-surface); }
+    .lc-checkin__empty :is(.lc-checkin__empty-title, .lc-checkin__empty-description),
+    .lc-checkin__today-search-empty :is(strong, small),
+    .lc-checkin__all-done strong { max-width: 100%; overflow-wrap: anywhere; }
+    .lc-checkin__empty-actions { flex-wrap: wrap; justify-content: center; }
+    .lc-checkin__empty [data-action="add"] { position: static; inset: auto; transform: none; width: auto; height: auto; min-width: 0; max-width: 100%; min-height: 44px; margin: 6px 0 0; padding: 8px 16px; border-radius: 999px; font-size: 13px; line-height: 1.4; white-space: normal; box-shadow: none; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__empty .lc-checkin__empty-description { min-height: 0; padding: 0; }
+    .lc-checkin__empty-actions button,
+    .lc-checkin__today-search-empty button { min-width: 44px; min-height: 44px; white-space: normal; }
+    .lc-checkin__focus-timer { box-sizing: border-box; width: min(100%, 400px); max-width: 100%; padding: 12px; gap: 8px; border-radius: 16px; }
+    .lc-checkin__focus-head strong { min-width: 0; }
+    .lc-checkin__focus-time { font-size: 30px; line-height: 1.2; }
+    .lc-checkin__focus-presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin__focus-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .lc-checkin__focus-timer button { min-width: 0; min-height: 44px; margin: 0; padding: 4px 8px; overflow-wrap: anywhere; white-space: normal; }
+    .lc-checkin__focus-actions [data-action="focus-toggle"] { color: var(--lc-checkin-deep-text); background: color-mix(in srgb, var(--lc-checkin-deep-text) 12%, transparent); }
+    .lc-checkin__focus-actions [data-action="focus-finish"] { color: var(--lc-checkin-deep); background: var(--lc-checkin-gold); }
+}
+
+@container lc5 (max-width: 719px) {
+    .lc-checkin.lc-checkin--today {
+        .lc-checkin__exact-entry:not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) 44px 72px; padding: 8px; gap: 6px; }
+        .lc-checkin__exact-entry > label:not(.lc-checkin__attach-button) { grid-column: span 2; }
+        .lc-checkin__exact-entry input.lc-checkin__record-note { width: 100%; min-width: 0; }
+        .lc-checkin__focus-timer { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; bottom: 8px; }
+        .lc-checkin__focus-time { font-size: 26px; }
+        .lc-checkin__focus-progress,
+        .lc-checkin__focus-presets,
+        .lc-checkin__focus-actions { grid-column: 1 / -1; }
+        :is(.lc-checkin__empty, .lc-checkin__today-search-empty, .lc-checkin__all-done) { padding: 14px 12px; }
+    }
+}
+
+@media (max-height: 480px) {
+    .lc-checkin.lc-checkin--today .lc-checkin__focus-timer { position: static; margin-top: 8px; }
+}

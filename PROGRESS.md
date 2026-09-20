@@ -1,5 +1,15 @@
 # 进度
 
+2026-09-20 T-1313~T-1316 / D-244：继续精修新设计。桌面常规卡片清除空网格行间距、剩余量同行、记录主色强调（约227→177px），保留30项紧凑布局；导航与原生控件字体统一。回顾比较数字同行、跳转栏减框、修复月初空白格将首周撑高的问题（1180px约77→44px）；编辑预览单层横卡与当前类型说明。新增interaction-states.scss专管展开录入、专注和空态，修复首次新建按钮漂到提醒旁成竖排、30px触控控件、短横屏专注可达性。
+
+真实交互验收发现并修复普通完成型展开备注按钮无事件绑定：绑定全部record；完成通过既有recordEvent幂等并携带note/photo，内提交不反转，外按钮保留撤销。现有recording-history-structure测试执行实际绑定/宿主方法/模型，覆盖重复点击、附件、陈旧内提交、撤销和数值校验；quota/atMost既有分支保持。本轮未改番茄钟协议或存储模型。
+
+最终证据：.artifacts/ui-polish-quality.log完整test:quality exit0；.artifacts/ui-polish-visual-{light,dark}.log均exit0；dialog/light/desktop、tab/dark/desktop、dock/dark/desktop、dock/light/mobile、dock/dark/mobile五组真实bundle走查均exit0，每组42页面+24交互+16长内容，另含两主题30项/长名压力场景。日志为.artifacts/ui-polish-{dialog-light,dock-dark-desktop,dock-light-mobile,dock-dark-mobile}.log与.artifacts/interaction-final-tab-dark.log。先前失败日志仅诊断，不作为最终通过证据；fixture恢复已等待mutation/save队列，44px浮点断言使用0.25px容差。
+
+容量：30项最高卡高桌面约74px/窄端110px；手机首项约355px、29待办列表约2702px；桌面1180px两列、2000px三列。新增针对移动顶栏进度及展开提交按钮的实际computed颜色/透明背景合成对比度≥4.5检查，修复黑字顶栏及320px旧白字规则；这只是指定文本覆盖，不声称全站对比度审计。最终CSS506247字节仍在480000告警/520000硬线之间，未调整预算。package.zip SHA-256：ea7476b2963da835651ecd2a28af6c1c56962c1a85f84a257152cbe3a6349766。
+
+本批本地UI里程碑完成；真实思源/触摸/系统键盘和双插件验收未执行，T-023/B-007等保持开放。下一步依据现场反馈继续修正；按用户既定策略不因人工项阻塞本地交付，不push。
+
 2026-09-20 T-1309~T-1312 / D-243：继续以新设计做全端内容适配。范围扩至今日/回顾/编辑/设置/事项/复盘/归档七页。完成窄端普遍紧凑、2000px多项三列、手机概览双块并排、提醒+N折叠、顶栏全宽消除白角；桌面回顾双栏、建议details、编辑预览与保存栏；设置状态换行/分类横滚/收件箱5条一批；事项主列表+有界表单/长备注展开；归档修复0px选择轨及44px操作。用户强调新设计优先已记D-243。
 
 验收：test:quality完整链exit0（.artifacts/responsive-quality.log）；随后仅样式收尾（侧栏6px遗留padding、事项倒计时不拆字、去掉重复已停用伪元素），最终build、check:release与双色visual-qa均exit0（.artifacts/responsive-build.log、responsive-visual-{light,dark}.log）。最终package.zip SHA-256：7f5c6906a0fa300fab86400ba1a8e4ff3c1dcae4196bbcc0463bdde58f68ec9a。CSS498256 bytes，越过480000告警线但低于520000硬线，未调整门禁。无障碍脚本通过命名/tabindex检查，仍未测出contrast pairs。

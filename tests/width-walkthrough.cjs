@@ -162,6 +162,33 @@ const cases = [
         }
         await surface.evaluate(element => { element.scrollTop = 0; });
     };
+    const assertTextContrast = async (locator, label) => {
+        const contrast = await locator.evaluate(element => {
+            // Let the browser parse RGB/color-mix and composite the actual
+            // ancestor backgrounds. This checks named controls, not a blanket
+            // claim that every text/background pair has been audited.
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 1;
+            const ctx = canvas.getContext('2d', {willReadFrequently: true});
+            const rgba = color => {
+                ctx.clearRect(0, 0, 1, 1);
+                ctx.fillStyle = color;
+                ctx.fillRect(0, 0, 1, 1);
+                const pixel = ctx.getImageData(0, 0, 1, 1).data;
+                return [pixel[0], pixel[1], pixel[2], pixel[3] / 255];
+            };
+            const composite = (front, back) => front.slice(0, 3).map((value, index) => value * front[3] + back[index] * (1 - front[3]));
+            const layers = [];
+            for (let node = element; node; node = node.parentElement) layers.push(rgba(getComputedStyle(node).backgroundColor));
+            let background = [255, 255, 255];
+            for (const layer of layers.reverse()) background = composite(layer, background);
+            const foreground = composite(rgba(getComputedStyle(element).color), background);
+            const luminance = color => color.map(value => value / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4).reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+            const light = luminance(foreground), dark = luminance(background);
+            return {text: element.textContent, foreground, background, ratio: (Math.max(light, dark) + .05) / (Math.min(light, dark) + .05)};
+        });
+        assert.ok(contrast.ratio >= 4.5, `${label}: text contrast must meet 4.5:1 ${JSON.stringify(contrast)}`);
+    };
 
     for (const {surface, width, height = 720, viewportHeight = 1000} of cases) {
         const label = `${surface}-${width}${height !== 720 ? `x${height}` : ''}`;
@@ -177,6 +204,10 @@ const cases = [
                 return {left: Math.abs(bar.left - host.left), right: Math.abs(bar.right - host.right)};
             });
             assert.ok(chrome.left <= 1 && chrome.right <= 1, `topbar must paint both corners ${JSON.stringify(chrome)}`);
+        }
+        const mobileMeta = page.locator('.lc-checkin__mobile-topbar .lc-checkin__topbar-meta');
+        if (await mobileMeta.count() && await mobileMeta.isVisible()) {
+            await assertTextContrast(mobileMeta, `${label}/mobile-topbar-progress`);
         }
         if (surface === 'review') {
             const disclosure = page.locator('.lc-checkin__review-guidance-disclosure');
@@ -205,6 +236,9 @@ const cases = [
             if (width < 720) {
                 const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(elements => Math.max(...elements.map(element => element.getBoundingClientRect().height)));
                 assert.ok(maxHeight <= 130, `${label}: even small lists must use compact phone cards (actual ${maxHeight}px)`);
+            } else {
+                const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(elements => Math.max(...elements.map(element => element.getBoundingClientRect().height)));
+                assert.ok(maxHeight <= 200, `${label}: ordinary desktop cards must stay within 200px (actual ${maxHeight}px)`);
             }
         }
         if (surface === "editor") {
@@ -274,6 +308,194 @@ const cases = [
         assert.equal(await page.locator('[data-focus-timer]').isVisible(), true, "overview reuses the real focus entry");
         await page.locator('[data-action="focus-abandon"]').click();
     }
+    /* Expanded and empty states share the same constrained host as cards.
+       Exercise their actual buttons/keyboard handlers, not only static HTML. */
+    const stateCases = [
+        {width: 1180, height: 720, viewportHeight: 1000},
+        {width: 640, height: 720, viewportHeight: 1000},
+        {width: 320, height: 720, viewportHeight: 1000},
+        {width: 844, height: 350, viewportHeight: 390},
+    ];
+    await page.evaluate(async () => {
+        await window.__plugin.mutationQueue;
+        await window.__plugin.saveQueue;
+        window.__stateBaseline = structuredClone(window.__plugin.store);
+    });
+    const resetState = () => page.evaluate(async () => {
+        const plugin = window.__plugin;
+        // A local DOM patch can precede persistence completion. Drain writes
+        // before replacing test fixtures so an older write cannot restore them.
+        await plugin.mutationQueue;
+        await plugin.saveQueue;
+        await plugin.finishFocusTimer(false);
+        plugin.store = structuredClone(window.__stateBaseline);
+        window.__store = structuredClone(plugin.store);
+        plugin.todayQuery = '';
+        plugin.pendingOnly = false;
+        plugin.completedCollapsed = true;
+        plugin.recentRecord = undefined;
+        plugin.celebration = undefined;
+        plugin.showToday();
+    });
+    const assertControlReachable = async (control, label, minHeight = 36) => {
+        await control.scrollIntoViewIfNeeded();
+        const geometry = await control.evaluate(element => {
+            const box = element.getBoundingClientRect();
+            const host = document.querySelector('#dock').getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return {width: box.width, height: box.height, inside: box.left >= host.left - 1 && box.right <= host.right + 1 && box.top >= host.top - 1 && box.bottom <= host.bottom + 1, hit: element === hit || element.contains(hit)};
+        });
+        assert.ok(geometry.inside && geometry.hit && geometry.width >= 43.75 && geometry.height >= minHeight - .25, `${label}: control must remain reachable ${JSON.stringify(geometry)}`);
+    };
+    for (const size of stateCases) {
+      const suffix = `${size.width}${size.height < 500 ? `x${size.height}` : ''}`;
+      for (const state of ['exact', 'binary-note', 'focus', 'search-empty', 'all-done', 'onboarding']) {
+        const label = `today-${state}-${suffix}`;
+        try {
+            await sizeHost(size.width, size.height, size.viewportHeight);
+            await resetState();
+            if (state === 'exact') {
+                const card = page.locator('.lc-checkin__item[data-item-id="water"]');
+                const toggle = card.locator('[data-action="toggle-exact"]');
+                await toggle.click();
+                assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+                const entry = card.locator('[data-exact-entry]');
+                assert.equal(await entry.isVisible(), true);
+                assert.equal(await entry.locator('.lc-checkin__amount').evaluate(element => element === document.activeElement), true, 'opening exact entry focuses the amount');
+                await entry.locator('.lc-checkin__amount').fill('3');
+                const note = '走查备注 — Long note with a URL https://example.test/' + 'reference'.repeat(12);
+                await entry.locator('.lc-checkin__record-note').fill(note);
+                if (size.width < 720 || qaFrontend === 'mobile') {
+                    for (const selector of ['.lc-checkin__amount', '.lc-checkin__record-note', '[data-attach-button]']) {
+                        const box = await entry.locator(selector).boundingBox();
+                        assert.ok(box && box.width >= 43.75 && box.height >= 43.75, `${label}: exact field ${selector} keeps a 44px touch target ${JSON.stringify(box)}`);
+                    }
+                }
+                await assertControlReachable(entry.locator('[data-action="record"]'), `${label}/save`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
+                await assertTextContrast(entry.locator('[data-action="record"]'), `${label}/save`);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await entry.locator('.lc-checkin__amount').press('Enter');
+                await page.waitForFunction(value => window.__plugin.store.events.some(event => event.itemId === 'water' && event.value === 3 && event.note === value), note);
+                await page.waitForFunction(() => document.querySelector('[data-item-id="water"] .lc-checkin__item-value strong')?.textContent === '5');
+                await page.locator('[data-action="undo-record"]').click();
+                await page.waitForFunction(() => document.querySelector('[data-item-id="water"] .lc-checkin__item-value strong')?.textContent === '2');
+            } else if (state === 'binary-note') {
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    plugin.store = {...plugin.store, events: plugin.store.events.filter(event => event.itemId !== 'stretch')};
+                    window.__store = structuredClone(plugin.store);
+                    plugin.showToday();
+                });
+                const card = page.locator('.lc-checkin__item[data-item-id="stretch"]');
+                await card.locator('[data-action="toggle-exact"]').click();
+                const entry = card.locator('[data-exact-entry]');
+                const note = '拉伸完成，记录今天的身体感受。';
+                await entry.locator('.lc-checkin__record-note').fill(note);
+                await assertControlReachable(entry.locator('[data-action="record"]'), `${label}/save`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
+                await assertTextContrast(entry.locator('[data-action="record"]'), `${label}/save`);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await entry.locator('[data-action="record"]').click();
+                await page.waitForFunction(value => window.__plugin.store.events.some(event => event.itemId === 'stretch' && event.value === 1 && event.note === value), note, {timeout: 3000});
+                const saved = await page.evaluate(() => window.__plugin.store.events.filter(event => event.itemId === 'stretch'));
+                assert.equal(saved.length, 1, 'binary expanded submit records once with its note');
+                assert.equal(await page.locator('.lc-checkin__overview-ring').textContent(), '33%');
+                const completed = page.locator('[data-action="toggle-completed"]');
+                if (await completed.getAttribute('aria-expanded') === 'false') await completed.click();
+                await page.locator('.lc-checkin__completed-section [data-item-id="stretch"] .lc-checkin__item-action [data-action="record"]').click();
+                await page.waitForFunction(() => !window.__plugin.store.events.some(event => event.itemId === 'stretch'));
+                assert.equal(await page.locator('.lc-checkin__overview-ring').textContent(), '0%', 'outer binary action keeps its existing undo behavior');
+            } else if (state === 'focus') {
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    plugin.store = {...plugin.store, items: plugin.store.items.map(item => item.id === 'reading' ? {...item, name: '深度阅读与学习整理 — ' + 'LongReadingTitle'.repeat(6)} : item)};
+                    window.__store = structuredClone(plugin.store);
+                    plugin.showToday();
+                });
+                const initialEvents = await page.evaluate(() => window.__plugin.store.events.length);
+                await page.locator('[data-item-id="reading"] [data-action="focus"]').click();
+                const panel = page.locator('[data-focus-timer]');
+                assert.equal(await panel.getAttribute('role'), 'dialog');
+                await panel.locator('[data-focus-timer-minutes="15"]').click();
+                if (size.width < 720 || qaFrontend === 'mobile') {
+                    const presets = await panel.locator('[data-focus-timer-minutes]').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
+                    assert.ok(presets.every(box => box.width >= 43.75 && box.height >= 43.75), `${label}: focus presets keep 44px targets ${JSON.stringify(presets)}`);
+                }
+                await panel.locator('[data-action="focus-toggle"]').click();
+                assert.equal(await page.evaluate(() => window.__plugin.focusTimerState.running), false, 'pause updates live timer state');
+                assert.match(await panel.locator('[data-focus-remaining]').textContent(), /^1[45]:[0-5]\d$/);
+                await assertControlReachable(panel.locator('[data-action="focus-finish"]'), `${label}/finish`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
+                await assertControlReachable(panel.locator('[data-action="focus-abandon"]'), `${label}/abandon`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await panel.locator('[data-action="focus-toggle"]').click();
+                assert.equal(await page.evaluate(() => window.__plugin.focusTimerState.running), true, 'resume updates live timer state');
+                await panel.locator('[data-action="focus-abandon"]').click();
+                assert.equal(await panel.count(), 0);
+                assert.equal(await page.evaluate(() => window.__plugin.store.events.length), initialEvents, 'abandoning focus must not add a record');
+            } else if (state === 'search-empty') {
+                await page.locator('[data-today-search]').fill('NoSuchHabit-不存在的项目');
+                await page.waitForSelector('.lc-checkin__today-search-empty');
+                assert.equal(await page.locator('.lc-checkin__item:visible').count(), 0);
+                const clear = page.locator('.lc-checkin__today-search-empty [data-action="clear-search"]');
+                await assertControlReachable(clear, `${label}/clear`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 36);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await clear.click();
+                assert.equal(await page.locator('[data-today-search]').inputValue(), '');
+                assert.equal(await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').count(), 2, 'clear restores pending habits');
+            } else if (state === 'all-done') {
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    const now = new Date();
+                    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                    plugin.store = {...plugin.store, events: [...plugin.store.events, ...[['water', 6, '杯'], ['reading', 15, '分钟']].map(([itemId, value, unit]) => ({id: `qa-done-${itemId}`, itemId, value, unit, occurredAt: now.toISOString(), localDate, source: 'manual'}))]};
+                    window.__store = structuredClone(plugin.store);
+                    plugin.showToday();
+                });
+                assert.equal(await page.locator('.lc-checkin__overview-ring').textContent(), '100%');
+                assert.equal(await page.locator('.lc-checkin__all-done').isVisible(), true);
+                const toggle = page.locator('[data-action="toggle-completed"]');
+                assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+                await assertControlReachable(toggle, `${label}/completed`);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await toggle.click();
+                assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
+                assert.equal(await page.locator('.lc-checkin__completed-section .lc-checkin__item:visible').count(), 3, 'all completed habits remain accessible');
+                await assertLayout(label);
+            } else {
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    plugin.store = {...plugin.store, items: [], events: []};
+                    window.__store = structuredClone(plugin.store);
+                    plugin.showToday();
+                });
+                assert.equal(await page.locator('.lc-checkin__empty--onboard').isVisible(), true);
+                const add = page.locator('.lc-checkin__empty--onboard [data-action="add"]');
+                await assertControlReachable(add, `${label}/add`, 44);
+                const onboarding = await add.evaluate(button => {
+                    const box = button.getBoundingClientRect();
+                    const steps = button.closest('.lc-checkin__empty--onboard').querySelector('.lc-checkin__onboard-steps').getBoundingClientRect();
+                    const position = getComputedStyle(button).position;
+                    return {position, width: box.width, height: box.height, followsSteps: box.top >= steps.bottom - 1};
+                });
+                assert.ok(!['absolute', 'fixed'].includes(onboarding.position) && onboarding.followsSteps && onboarding.width > onboarding.height, `${label}: first-habit CTA belongs in the onboarding flow ${JSON.stringify(onboarding)}`);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await add.click();
+                assert.equal(await page.locator('.lc-checkin--editor input[name="name"]').inputValue(), '', 'first habit action opens a blank editor');
+            }
+            console.log(`${label}: interaction state ok`);
+        } catch (error) {
+            scenarioFailures.push(`${label}: ${error.message}`);
+            console.error(`FAILED ${label}: ${error.message}`);
+            await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
+        }
+      }
+    }
+    await resetState();
+    await sizeHost(1180, 960);
     /* Capture a unified group like the user screenshot; this only changes the fixture. */
     await page.evaluate(() => {
         const plugin = window.__plugin;
@@ -434,5 +656,5 @@ const cases = [
     await browser.close();
     assert.deepEqual(pageErrors, [], 'bundle must not raise page errors');
     assert.deepEqual(scenarioFailures, [], 'all responsive scenarios must pass');
-    console.log(`Workbench: ${cases.length} surface scenarios + 16 populated maintenance/history scenarios; record/undo, focus, navigation ownership, both-theme 30-item and long-name cards passed.`);
+    console.log(`Workbench: ${cases.length} surface scenarios + 24 interaction states + 16 populated maintenance/history scenarios; record/undo, focus, navigation ownership, both-theme 30-item and long-name cards passed.`);
 })();

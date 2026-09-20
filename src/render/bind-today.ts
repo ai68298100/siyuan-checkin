@@ -287,7 +287,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             };
             reader.readAsDataURL(file);
         });
-        element.querySelector<HTMLElement>("[data-action='record']")?.addEventListener("click", () => {
+        element.querySelectorAll<HTMLElement>("[data-action='record']").forEach((button) => button.addEventListener("click", () => {
             const item = getItemById(host.store, itemId);
             const input = element.querySelector<HTMLInputElement>(".lc-checkin__amount");
             const amount = input ? input.valueAsNumber : 1;
@@ -295,6 +295,16 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const moment = captureActionMoment();
                 const revision = getItemRevisionForDate(item, calendarDateFromKey(moment.localDate));
                 const expectedRevisionFingerprint = host.revisionFingerprint(item, calendarDateFromKey(moment.localDate));
+                const recordWithDetails = (value: number): void => {
+                    const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
+                    const attachment = host.pendingAttachments.get(itemId);
+                    host.pendingAttachments.delete(itemId);
+                    host.pendingFocusItemId = item.id;
+                    host.pulseHaptic();
+                    host.enqueueMutation(() => host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment));
+                    const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
+                    if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
+                };
                 if (revision.kind === "binary") {
                     /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
                     if (item.direction === "atMost") {
@@ -306,7 +316,14 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         host.enqueueMutation(() => host.toggleItem(item.id, moment, lapseEvents.length === 0, expectedRevisionFingerprint, lapseEvents));
                         return;
                     }
-                    const desiredComplete = !element.classList.contains("is-complete");
+                    /* The expanded submit action always records; it must not
+                       become Undo after a queued completion updates this card.
+                       recordEvent keeps the existing binary duplicate guard. */
+                    const desiredComplete = Boolean(button.closest("[data-exact-entry]")) || !element.classList.contains("is-complete");
+                    if (desiredComplete && revision.schedule.type !== "quota") {
+                        recordWithDetails(1);
+                        return;
+                    }
                     const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
                     host.pendingFocusItemId = item.id;
                     host.pulseHaptic();
@@ -318,16 +335,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                     input?.focus();
                     return;
                 }
-                const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
-                const attachment = host.pendingAttachments.get(itemId);
-                host.pendingAttachments.delete(itemId);
-                host.pendingFocusItemId = item.id;
-                host.pulseHaptic();
-                host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint, note, attachment));
-                const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
-                if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
+                recordWithDetails(amount);
             }
-        });
+        }));
     });
     root.querySelectorAll<HTMLElement>("[data-action='toggle-occasion']").forEach((button) => button.addEventListener("click", () => {
         const row = button.closest<HTMLElement>("[data-occasion-id]") || button;

@@ -93,11 +93,21 @@
     color: var(--lc-checkin-text);
     background: var(--lc-checkin-bg);
     color-scheme: light;
-    font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
 
     /* container queries drive every layout decision */
     container: lc5 / inline-size;
 }
+
+/* Host-mounted navigation and native controls share the content typeface. */
+.lc-checkin,
+.lc-checkin__topnav,
+.lc-checkin__mobile-topbar,
+.lc-checkin__mobile-nav {
+    font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+    color: var(--lc-checkin-text);
+}
+.lc-checkin :is(button, input, select, textarea),
+:is(.lc-checkin__topnav, .lc-checkin__mobile-topbar, .lc-checkin__mobile-nav) button { font-family: inherit; }
 
 .lc-checkin[data-appearance="light"] {
     --lc-checkin-accent: #7B85F4;
