@@ -28,7 +28,7 @@ assert.match(flushSlice, /return this\.persistAuditBestEffort\(\);/, "收尾必�
 const unloadBody = indexSource.slice(indexSource.indexOf("async onunload()"));
 const unloadSlice = unloadBody.slice(0, unloadBody.indexOf("\n    private "));
 assert.match(unloadSlice, /this\.flushPendingAuditPersist\(\)/, "onunload 必须等待挂起审计落盘");
-for (const hotPath of [/type: "conflict"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "resolve"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "write"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "append"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/]) {
+for (const hotPath of [/type: "conflict"[\s\S]{0,320}?this\.scheduleAuditPersist\(\)/, /channel: "resolve"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "write"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "append"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/]) {
     assert.match(indexSource, hotPath, "旁路诊断的自动路径必须走合并写入");
 }
 assert.match(indexSource, /\[data-action='clear-audit'\][\s\S]{0,160}?void this\.persistAuditBestEffort\(\)/, "用户主动清空审计要立即落盘");

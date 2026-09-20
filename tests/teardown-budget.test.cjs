@@ -73,7 +73,7 @@ assert.equal(cleanGate.resume(), false, "a teardown with no queued write owes no
     assert.match(flushSlice, /this\.saveData\(STORAGE_NAME, snapshot\)/, "the final flush must write the main store");
     assert.ok(!flushSlice.includes("BACKUP_STORAGE_NAME"), "the final flush must skip snapshot history to save IO");
     assert.match(flushSlice, /ifAvailable: true/, "the final flush must not queue behind another window's lock");
-    assert.match(flushSlice, /if \(acquired === undefined\) await this\.withStorageLock\(write\)/, "the final flush must fall back to the queued lock when busy");
+    assert.match(flushSlice, /if \(acquired === undefined\) \{[^}]*recordDiagnostic\("lock-contended"[^}]*await this\.withStorageLock\(write\);/s, "the final flush must record contention and fall back to the queued lock when busy");
 
     /* 专注计时器：心跳与庆祝延时都归宿主登记，回调必须在拆除后停手。 */
     assert.match(focusSource, /focusCelebrationTimer\?: number/, "the celebration timeout must live on the host so unload can cancel it");

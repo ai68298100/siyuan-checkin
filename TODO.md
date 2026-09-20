@@ -10,7 +10,8 @@
   - 状态：done（2026-09-21。①api-v5.md 新增 §5.1 错误与诊断码：错误模型三原则（读=有界返回/写=逐条显式结果/校验=稳定 TypeError/RangeError）、批量写 blocked×5 与 rejected×6 原因枚举表、会话诊断码五码表；②describe() 新增 deprecated 弃用预告数组（当前空，履行"移除前预告一个大版本"承诺），manifest 同步 deprecatedCapabilities + diagnosticCodes + batch 原因枚举；③minApiVersion/capabilitiesSince 协商语义随 T-1341 成文。api-v5-docs 门禁扩展三方同步断言（诊断码/批量原因/弃用字段），contract-kit manifest 同步）
 - [ ] T-1366 思源插件消费方落地
   - 验收：以思源集市插件为主要候选面，契约三件套（文档+bridge 示例+测试包）触达插件作者；至少一个真实落地。依赖：发布+集市触达（用户确认 push）。
-- [ ] T-1367 迁入源扩展：评估 1~2 个主流习惯应用公开导出格式的迁入路径（不逆向私有格式）。
+- [x] T-1367 迁入源扩展：评估 1~2 个主流习惯应用公开导出格式的迁入路径（不逆向私有格式）。
+  - 状态：done（2026-09-21 评估落盘 docs/migration-formats-evaluation.md。结论：Habitify CSV（P1，官方 29.0 起日志导出）与 Streaks CSV（P2，官方导出/导入、逐完成行+本地时间）可做，映射到事件模型+新前缀 habitify:/streaks: 幂等导入；TickTick 明确不做（官方备份不含习惯数据，绕行违反不逆向边界）；排期/跳过/负向语义不可恢复须导入摘要明说。前置：需真实导出样本核对表头，样本到位前不启动实现）
 - [x] T-1368 发布工程可重复化（首批：摘要同步脚本化）
   - 验收：预发布→回滚→资产摘要脚本化；check:release 扩展为可复跑发布证据链。
   - 状态：done（首批 2026-09-21。scripts/sync-release-digest.cjs + npm run sync:digest：构建后一键把 package.zip 摘要同步进当前版本发布说明（幂等，已同步即跳过），取代此前每批次的手工 sed 流程；check:release 本身已是可复跑证据链（版本四方一致/BOM/摘要/预算断言）。剩余：回滚演练脚本与资产清单导出并入 v22 长期维护底座（T-1371））

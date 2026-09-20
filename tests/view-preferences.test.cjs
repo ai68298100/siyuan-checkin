@@ -45,7 +45,12 @@ function loadTypeScript(filename, globals = {}, imports = {}) {
     vm.runInNewContext(code, {exports, require: (name) => imports[name] || {}, ...globals}, {filename});
     return exports;
 }
-const preferences = loadTypeScript("src/view-preferences.ts");
+const preferences = loadTypeScript("src/view-preferences.ts", {}, {
+    "./features/note-anchor": {
+        // T-1352：与 src/features/note-anchor.ts 同规格的块 ID 校验桩（URL 安全 10~64 位）。
+        validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
+    },
+});
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
 const normalized = preferences.normalizeViewPreferences({reviewFold: [...foldIds, "unknown", "projects", null], reviewFoldTouched: true});
 assert.deepEqual(Array.from(normalized.reviewFold), foldIds, "all review section choices survive normalization without unknown or duplicate ids");
