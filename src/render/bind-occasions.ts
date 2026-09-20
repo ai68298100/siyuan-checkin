@@ -79,6 +79,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             let visible = key === recurrence;
             if (key === "annual-calendar") visible = recurrence === "annual";
             if (key === "annual-nthweek") visible = recurrence === "annual" && form.querySelector<HTMLInputElement>("[name='annualSubtype']")?.value === "nthweek";
+            if (key === "nthweek-ordinal") visible = (recurrence === "annual" && form.querySelector<HTMLInputElement>("[name='annualSubtype']")?.value === "nthweek") || (recurrence === "monthly" && monthlySubtype === "nthweek");
             if (key === "monthly-sub") visible = recurrence === "monthly";
             if (key === "monthly-nthweek") visible = recurrence === "monthly" && monthlySubtype === "nthweek";
             block.hidden = !visible;

@@ -66,7 +66,7 @@
     .lc-checkin__reminder-more-count { display: none; }
     .lc-checkin__priority-reminder-row-text { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
     .lc-checkin__priority-reminder-row-text strong { font-size: 13px; }
-    .lc-checkin__priority-reminder-row-text small { font-size: 11px; }
+    .lc-checkin__priority-reminder-row-text small { font-size: 12px; line-height: 1.5; }
     .lc-checkin__organize { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0; background: transparent; border: 0; box-shadow: none; }
     .lc-checkin__today-search { flex: 0 1 300px; width: auto; max-width: 100%; min-height: 40px; border: 1px solid var(--lc-checkin-border); background: var(--lc-checkin-surface); border-radius: 12px; }
     .lc-checkin__today-search input { font-size: 13px; }
@@ -105,8 +105,8 @@
     .lc-checkin__item-value { order: 2; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin-top: 6px; font-size: 12px; color: var(--lc-checkin-muted); font-variant-numeric: tabular-nums; }
     .lc-checkin__item-value strong { font-size: 26px; font-weight: 650; line-height: 1.2; color: var(--lc-checkin-text); }
     .lc-checkin__item-value > :is(strong, span, small) { min-width: 0; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
-    .lc-checkin__item-value small { flex: 0 1 auto; margin-left: auto; font-size: 11px; }
-    .lc-checkin__item-step { order: 3; margin-top: 4px; color: var(--lc-checkin-muted); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
+    .lc-checkin__item-value small { flex: 0 1 auto; margin-left: auto; font-size: 12px; }
+    .lc-checkin__item-step { order: 3; margin-top: 4px; color: var(--lc-checkin-muted); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
     .lc-checkin__item-progress { order: 4; height: 4px; margin-top: 7px; background: var(--lc-checkin-accent-soft); }
     &[data-density] .lc-checkin__item-action { display: flex; flex-wrap: nowrap; justify-content: flex-end; align-items: center; gap: 8px; width: 100%; max-width: none; overflow: visible; grid-area: action; margin-top: 12px; padding: 0; }
     .lc-checkin__item-action > :is(.lc-checkin__focus-button, .lc-checkin__more-button, .lc-checkin__drag-handle) { flex: 0 0 32px; width: 32px; min-width: 32px; min-height: 36px; }
@@ -202,7 +202,7 @@
     .lc-checkin__item-icon { width: 32px; height: 32px; min-height: 32px; border-radius: 10px; align-self: center; }
     .lc-checkin__item-name { font-size: 14px; line-height: 1.4; }
     .lc-checkin__item-meta:not([data-has-schedule]), .lc-checkin__item-value small { display: none; }
-    .lc-checkin__item-value { margin-top: 4px; gap: 2px 4px; font-size: 11px; overflow-wrap: anywhere; }
+    .lc-checkin__item-value { margin-top: 4px; gap: 2px 4px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
     .lc-checkin__item-value strong { font-size: 17px; }
     .lc-checkin__item-progress { height: 3px; margin-top: 5px; }
     .lc-checkin__item:last-child { border-bottom-color: transparent; }
@@ -246,11 +246,11 @@
         .lc-checkin__overview { gap: 8px; margin-bottom: 10px; }
         .lc-checkin__overview > div { padding: 8px 10px; }
         .lc-checkin__overview-streak { display: block; }
-        .lc-checkin__overview-streak .lc-checkin__overview-label { font-size: 11px; }
-        .lc-checkin__overview-streak-name { margin-top: 3px; font-size: 11px; }
+        .lc-checkin__overview-streak .lc-checkin__overview-label { font-size: 12px; }
+        .lc-checkin__overview-streak-name { margin-top: 3px; font-size: 12px; }
         .lc-checkin__overview-caption { display: none; }
         .lc-checkin__overview-progress .lc-checkin__count { font-size: 22px; margin-top: 4px; }
-        .lc-checkin__overview-ring { width: 40px; height: 40px; flex-basis: 40px; font-size: 11px; }
+        .lc-checkin__overview-ring { width: 40px; height: 40px; flex-basis: 40px; font-size: 12px; }
         .lc-checkin__overview-streak > strong { font-size: 18px; margin-top: 4px; }
         .lc-checkin__organize { margin-block: 4px 0; gap: 6px; }
         .lc-checkin__today-search { flex: 1 1 120px; min-height: 44px; }
@@ -309,3 +309,24 @@
 @container lc5 (min-width: 1500px) {
     .lc-checkin.lc-checkin--today[data-density="compact"] .lc-checkin__group-items:not([hidden]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Readable text roles also apply to nested controls with old compact styles. */
+.lc-checkin.lc-checkin--today[data-density] {
+    .lc-checkin__organize > .lc-checkin__filter-toggle,
+    .lc-checkin__today-filters > summary { font-size: 13px; line-height: 1.4; min-height: 44px; box-sizing: border-box; }
+    .lc-checkin__group-header,
+    .lc-checkin__group-header > span:first-child { font-size: 13px; }
+    .lc-checkin__group-header > em,
+    .lc-checkin__section-count { font-size: 12px; }
+    .lc-checkin__streak-badge { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__priority-reminder .lc-checkin__text-button,
+    .lc-checkin__priority-reminder-more > summary { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__reminder-more-count { font-size: 12px; }
+    .lc-checkin__occasion-chip small { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__item-tag { font-size: 12px; line-height: 1.4; }
+}
+:is(.lc-checkin-dock-host, .lc-checkin-tab-host, .lc-checkin-dialog-host) > .lc-checkin__mobile-nav > button[data-mobile-nav] {
+    grid-template-rows: 28px 15px;
+    > small { font-size: 12px; line-height: 1.2; height: auto; min-height: 15px; }
+}
+:is(.lc-checkin-dock-host, .lc-checkin-tab-host, .lc-checkin-dialog-host) .lc-checkin__rail button[data-mobile-nav] > small { font-size: 12px; line-height: 1.3; }

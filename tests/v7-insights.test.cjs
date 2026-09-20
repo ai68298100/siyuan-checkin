@@ -60,6 +60,22 @@ assert.match(bars, /<rect /);
 assert.match(bars, /lc-chart-value/);
 assert.deepEqual(charts.summarizeTrend({title: "x", unit: "%", points: [{label: "a", value: 20}, {label: "b", value: 50}]}), {current: 50, average: 35, best: 50, delta: 30});
 assert.equal(charts.renderBarChart({title: "空", unit: "条", points: []}), "");
+const activityChart = charts.renderLineChart({title: "近30天活跃", unit: "天", points: [{label: "9/19", value: 0}, {label: "9/20", value: 1}]});
+assert.match(activityChart, />0天<\/text>/, "activity axes start at zero days");
+assert.match(activityChart, />1天<\/text>/, "activity axes show one day instead of 100 percent");
+assert.doesNotMatch(activityChart, /\d+%<\/text>/, "non-percentage data never receives percentage ticks");
+assert.match(activityChart, /cy="12\.0"/, "one active day reaches the graph top instead of collapsing to the zero line");
+assert.match(line, />100%<\/text>/, "completion rate keeps its 0..100 percent scale");
+const longSeries = {title: "strong", unit: "%", points: Array.from({length: 30}, (_, index) => ({label: `day-${index}`, value: index}))};
+const sparseChart = charts.renderLineChart(longSeries, {labelStride: 7});
+const visibleLabels = [...sparseChart.matchAll(/class="lc-chart-label">([^<]+)</g)].map(match => match[1]);
+assert.deepEqual(visibleLabels, ["day-0", "day-7", "day-14", "day-21", "day-29"], "last label replaces the crowded adjacent stride label");
+assert.match(sparseChart, /preserveAspectRatio="xMidYMid meet"/, "capped chart height cannot stretch text horizontally");
+const unsafeSeries = {title: 'custom "<title>', unit: '<unit>', points: [{label: '<label>&', value: 1}]};
+for (const rendered of [charts.renderLineChart(unsafeSeries), charts.renderBarChart(unsafeSeries)]) {
+    assert.doesNotMatch(rendered, /<unit>|<label>|aria-label="custom "<title>/, "custom chart strings are text, never markup");
+    assert.match(rendered, /&lt;label&gt;&amp;/);
+}
 const heatmap = charts.buildYearHeatmap(store(), new Date().getFullYear());
 const heatmapSvg = charts.renderYearHeatmap(heatmap);
 assert.match(heatmapSvg, /class="lc-yearheatmap"/);

@@ -36,6 +36,40 @@ for (const filename of ["model.ts", "record-step.ts", "quota.ts", "rules.ts", "t
 fs.writeFileSync(path.join(path.dirname(output), "reminders.js"), ts.transpileModule(fs.readFileSync("src/reminders.ts", "utf8"), {compilerOptions}).outputText);
 const occasions = require(output);
 const reminders = require(path.join(path.dirname(output), "reminders.js"));
+// Exercise the actual form binding: monthly ordinal must be reachable, and
+// switching recurrence hides irrelevant blocks without dropping its value.
+{
+    const module = {exports: {}};
+    new Function("require", "module", "exports", ts.transpileModule(bindSource, {compilerOptions}).outputText)((id) => {
+        if (id === "../occasions") return occasions;
+        if (["../i18n", "../model", "../shared", "../lunar", "siyuan"].includes(id)) return {};
+        throw new Error(`Unexpected occasion binding dependency ${id}`);
+    }, module, module.exports);
+    const fields = Object.fromEntries(Object.entries({recurrence: "monthly", monthlySubtype: "nthweek", annualSubtype: "byday", annualNth: "3"}).map(([name, value]) => [name, {value, listeners: {}, addEventListener(event, handler) { this.listeners[event] = handler; }}]));
+    const blocks = ["annual-calendar", "annual-nthweek", "monthly-sub", "monthly-nthweek", "nthweek-ordinal", "weekly", "interval"].map(key => ({dataset: {occasionBlock: key}, hidden: false}));
+    const form = {
+        querySelector(selector) { return selector === "[data-occasion-monthly-subtype]" ? fields.monthlySubtype : fields[selector.match(/name='([^']+)'/)?.[1]] || null; },
+        querySelectorAll() { return blocks; }, addEventListener() {},
+    };
+    const root = {
+        querySelector(selector) { return selector === "[data-occasion-form]" ? form : selector === "[data-occasion-recurrence]" ? fields.recurrence : selector === "[data-occasion-monthly-subtype]" ? fields.monthlySubtype : null; },
+        querySelectorAll() { return []; },
+    };
+    module.exports.bindOccasionsHandlers(root, {bindDialogClose() {}, bindMobileNav() {}, syncOccasionLunarHint() {}});
+    const visible = key => !blocks.find(block => block.dataset.occasionBlock === key).hidden;
+    assert.equal(visible("nthweek-ordinal"), true, "monthly Nth weekday exposes the ordinal selector");
+    fields.monthlySubtype.value = "lastday"; fields.monthlySubtype.listeners.change();
+    assert.equal(visible("nthweek-ordinal"), false, "month-end rules do not show an irrelevant ordinal");
+    fields.recurrence.value = "annual"; fields.annualSubtype.value = "nthweek"; fields.recurrence.listeners.change();
+    assert.equal(visible("nthweek-ordinal"), true, "annual Nth weekday shares the same ordinal selector");
+    assert.equal(fields.annualNth.value, "3", "switching recurrence retains the selected ordinal");
+    fields.recurrence.value = "weekly"; fields.recurrence.listeners.change();
+    assert.equal(visible("nthweek-ordinal"), false, "weekly rules hide the ordinal selector");
+    assert.match(viewSource, /data-occasion-block="nthweek-ordinal"[\s\S]*?occ\.nthOccurrence[\s\S]*?name="annualNth"/, "visible ordinal keeps the established form-save field name");
+    assert.equal((viewSource.match(/name="annualNth"/g) || []).length, 1, "annual and monthly must not submit duplicate ordinal controls");
+    const monthlyThirdMonday = occasions.normalizeOccasion({id: "nth-monthly", name: "月度复盘", kind: "scheduled", date: "2026-01-01", recurrence: "monthly", monthlySubtype: "nthweek", nthWeek: 3, weekday: 1, enabled: true});
+    assert.equal(occasions.getOccurrenceDate(monthlyThirdMonday, "2026-09-01"), "2026-09-21", "the selected monthly third Monday maps to its actual date");
+}
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");
 assert.equal(occasions.getVisibleOccasions({version: 1, occasions: [annual]}, new Date(2026, 8, 9, 12))[0].daysUntil, 3);
@@ -111,3 +145,39 @@ const weeklyHistory = reminders.projectOverdueOccurrenceHistory({version: 1, occ
 assert.deepEqual(weeklyHistory.map((entry) => entry.occurrenceDate), ["2026-09-20", "2026-09-13", "2026-09-06"], "weekly history walks every missed week");
 console.log("Overdue occurrence history checks passed.");
 console.log("Occasion model structure checks passed.");
+
+// Hidden weekday selects still participate in FormData; execute the real host
+// save method so changing the visible monthly/weekly field cannot regress.
+(async () => {
+    const sourceFile = ts.createSourceFile("index.ts", indexSource, ts.ScriptTarget.Latest, true);
+    const pluginClass = sourceFile.statements.find(node => ts.isClassDeclaration(node));
+    const method = pluginClass.members.find(node => node.name?.getText(sourceFile) === "saveOccasionForm").getText(sourceFile);
+    const compiled = ts.transpileModule(`class OccasionHost { ${method} }`, {compilerOptions}).outputText;
+    const environment = {...occasions, solarToLunar: () => undefined, t: key => key, showMessage: message => { throw new Error(message); }};
+    const Host = new Function(...Object.keys(environment), `${compiled}\nreturn OccasionHost;`)(...Object.values(environment));
+    const host = new Host();
+    host.occasionStore = {version: 1, occasions: []};
+    let writes = 0;
+    host.persistOccasions = async () => { writes++; };
+    host.render = () => {};
+    const dataFor = (name, recurrence, overrides = {}) => new Map(Object.entries({
+        name, date: "2026-09-01", kind: "scheduled", recurrence, remindBeforeDays: "3",
+        annualNth: "3", annualWeekday: "0", weeklyWeekday: "4", monthlyWeekday: "1", monthlySubtype: "nthweek",
+        ...overrides,
+    }));
+    await host.saveOccasionForm(dataFor("月度第三周一", "monthly"));
+    const monthly = host.occasionStore.occasions.find(item => item.name === "月度第三周一");
+    assert.equal(monthly.weekday, 1, "visible monthly Monday wins over the hidden annual Sunday");
+    assert.equal(monthly.nthWeek, 3, "shared ordinal is saved for monthly rules");
+    assert.equal(occasions.getOccurrenceDate(monthly, "2026-09-01"), "2026-09-21");
+    await host.saveOccasionForm(dataFor("每周四复盘", "weekly"));
+    const weekly = host.occasionStore.occasions.find(item => item.name === "每周四复盘");
+    assert.equal(weekly.weekday, 4, "visible weekly Thursday wins over hidden annual/monthly fields");
+    assert.equal(occasions.getOccurrenceDate(weekly, "2026-09-01"), "2026-09-03");
+    await host.saveOccasionForm(dataFor("母亲节", "annual", {annualMonth: "5", annualNth: "2", annualSubtype: "nthweek"}));
+    const annual = host.occasionStore.occasions.find(item => item.name === "母亲节");
+    assert.equal(annual.weekday, 0, "annual Sunday remains valid despite conflicting hidden fields");
+    assert.equal(annual.nthWeek, 2);
+    assert.equal(writes, 3, "each form selection is persisted once");
+    console.log("Occasion form save checks passed: monthly/weekly/annual use their visible weekday and shared ordinal.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -64,24 +64,29 @@
     .lc-checkin__template-section:not([open]) > .lc-checkin__template-browser { display: none; }
     .lc-checkin__editor-schedule-fields { display: grid; align-content: start; gap: 12px; min-width: 0; }
     .lc-checkin__editor-preview { padding: 12px; background: var(--lc-checkin-surface); border: 1px solid var(--lc-checkin-border); }
-    .lc-checkin__preview-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) fit-content(72px); align-items: center; gap: 6px 10px; padding: 0; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+    .lc-checkin__preview-card { display: grid; grid-template-columns: 34px minmax(0, 1fr) fit-content(110px); align-items: center; gap: 6px 10px; padding: 0; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
     .lc-checkin__preview-icon { display: grid; place-items: center; grid-column: 1; grid-row: 1; width: 34px; height: 34px; border-radius: 11px; background: var(--lc-checkin-accent-soft); font-size: 20px; }
     .lc-checkin__preview-body { display: grid; gap: 4px; min-width: 0; }
     .lc-checkin__preview-body strong { font-size: 14px; line-height: 1.4; }
-    .lc-checkin__preview-body small { font-size: 11px; color: var(--lc-checkin-muted); line-height: 1.45; }
+    .lc-checkin__preview-body small { font-size: 12px; color: var(--lc-checkin-muted); line-height: 1.5; }
     .lc-checkin__preview-body :is(strong, small) { display: block; white-space: normal; overflow-wrap: anywhere; }
-    .lc-checkin__preview-action { grid-column: 3; grid-row: 1; justify-self: end; min-width: 0; max-width: 72px; box-sizing: border-box; padding: 5px 9px; border-radius: 7px; background: var(--lc-checkin-accent-soft); color: var(--lc-checkin-accent-text); font-size: 11px; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__preview-action { grid-column: 3; grid-row: 1; justify-self: end; min-width: 0; max-width: 110px; box-sizing: border-box; padding: 5px 9px; border-radius: 7px; background: var(--lc-checkin-accent-soft); color: var(--lc-checkin-accent-text); font-size: 12px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; text-align: center; }
     .lc-checkin__advanced { background: var(--lc-checkin-surface); border-radius: 16px; }
     .lc-checkin__advanced > summary { background: transparent; color: var(--lc-checkin-text); }
     .lc-checkin__advanced > summary > span:first-child { min-width: 0; }
-    .lc-checkin__advanced > summary small { white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
+    .lc-checkin__advanced > summary small { font-size: 12px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__kind-grid { gap: 4px; padding: 4px; border-radius: 11px; background: var(--lc-checkin-muted-surface); }
     .lc-checkin__kind-option span { align-items: center; justify-content: center; min-height: 44px; padding-inline: 6px; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; text-align: center; }
     .lc-checkin__kind-option input:checked + span { border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); background: var(--lc-checkin-surface); color: var(--lc-checkin-accent-text); box-shadow: 0 1px 3px color-mix(in srgb, var(--lc-checkin-text) 8%, transparent); }
     .lc-checkin__kind-option span small { display: none; }
+    .lc-checkin__kind-option:last-child { grid-column: auto; }
+    .lc-checkin__kind-option span strong { font-size: 13px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__kind-field legend { color: var(--lc-checkin-text); font-size: 13px; }
     .lc-checkin__kind-help { display: block; font-size: 12px; line-height: 1.55; }
     .lc-checkin__organization-fields { align-items: start; }
+    .lc-checkin__field { align-content: start; }
     .lc-checkin__field > :is(small, span) { overflow-wrap: anywhere; line-height: 1.5; }
+    .lc-checkin__field > small { overflow: visible; white-space: normal; text-overflow: clip; }
     .lc-checkin__field > span { font-size: 13px; color: var(--lc-checkin-text); }
     .lc-checkin__field > small { font-size: 12px; }
     .lc-checkin__field:not(.lc-checkin__field-check) > :is(input, select, textarea) { min-width: 0; width: 100%; min-height: 44px; border-radius: 9px; font-size: 14px; box-sizing: border-box; }
@@ -89,7 +94,29 @@
     .lc-checkin__popup-current { width: 30px; height: 30px; border-radius: 8px; }
     .lc-checkin__field :is(input, select, textarea):focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
     .lc-checkin__group-options { display: flex; flex-wrap: wrap; gap: 4px; }
-    .lc-checkin__group-options button { min-height: 28px; padding-inline: 8px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__group-options button { min-height: 32px; padding-inline: 8px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__field-heading > span,
+    .lc-checkin__custom-icon-heading strong { font-size: 13px; line-height: 1.5; }
+    :is(.lc-checkin__field-heading > small, .lc-checkin__template-summary em, .lc-checkin__template-summary small, .lc-checkin__template small, .lc-checkin__result-line, .lc-checkin__advanced > summary small, .lc-checkin__integration-help, .lc-checkin__quota-help, .lc-checkin__editor-history-summary, .lc-checkin__icon-subgroup > small, .lc-checkin__size-cell small, .lc-checkin__custom-icon-heading small, .lc-checkin__custom-icon-tools small, .lc-checkin__custom-library-empty, .lc-checkin__anchor-empty) { font-size: 12px; line-height: 1.5; }
+    :is(.lc-checkin__group-options, .lc-checkin__unit-options, .lc-checkin__filter-row, .lc-checkin__icon-tabs) button { font-size: 12px; line-height: 1.4; }
+    .lc-checkin__icon-tabs button small { font-size: 12px; opacity: 1; color: var(--lc-checkin-muted); }
+    .lc-checkin__icon-panel-heading,
+    .lc-checkin__anchor-create-row label { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__custom-icon-heading { flex-wrap: wrap; }
+    .lc-checkin__field-action,
+    .lc-checkin__custom-icon-row button,
+    .lc-checkin__custom-icon-tools button,
+    .lc-checkin__file-button { min-height: 44px; min-width: 44px; font-size: 13px; box-sizing: border-box; }
+    .lc-checkin__custom-icon-row input,
+    .lc-checkin__anchor-field :is(input, select) { min-width: 0; min-height: 44px; font-size: 14px; }
+    .lc-checkin__anchor-choice { grid-template-columns: minmax(0, 1fr); gap: 3px; min-height: 44px; }
+    .lc-checkin__anchor-choice strong { font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__anchor-choice small { font-size: 12px; }
+    .lc-checkin__template > span img { display: block; width: 24px; height: 24px; object-fit: contain; }
+    .lc-checkin__template-wrap { grid-template-columns: minmax(0, 1fr); gap: 0; overflow: hidden; border: 1px solid var(--lc-checkin-border); border-radius: 10px; background: var(--lc-checkin-surface); }
+    .lc-checkin__template-wrap > .lc-checkin__template { border: 0; border-radius: 0; }
+    .lc-checkin__template-wrap .lc-checkin__template > :is(strong, small) { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+    .lc-checkin__template-delete { position: static; min-height: 44px; padding: 6px 10px; border-top: 1px solid var(--lc-checkin-border); border-radius: 0; font-size: 12px; text-align: right; }
 }
 
 .lc-checkin.lc-checkin--insights {
@@ -101,9 +128,28 @@
     .lc-checkin__insight-stats > div + div { border-left: 1px solid var(--lc-checkin-border); }
     .lc-checkin__insight-stats > div::after { display: none; }
     .lc-checkin__insight-stats span { font-size: 12px; line-height: 1.4; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
-    .lc-checkin__insight-picker select { width: 100%; min-width: 0; }
+    .lc-checkin__eyebrow { display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 1.5; }
+    .lc-checkin__insight-icon { display: grid; place-items: center; flex: 0 0 18px; width: 18px; height: 18px; font-size: 16px; }
+    .lc-checkin__insight-icon img { display: block; width: 18px; height: 18px; object-fit: contain; }
+    .lc-checkin__insight-picker { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__insight-picker select { width: 100%; min-width: 0; min-height: 44px; font-size: 14px; }
     .lc-checkin__insight-section { max-height: none; overflow: visible; border-radius: 16px; }
     .lc-checkin__insight-heading :is(h2, small) { min-width: 0; overflow-wrap: anywhere; }
+    .lc-checkin__insight-section h2 { margin: 0 0 10px; font-size: 14px; line-height: 1.5; }
+    .lc-checkin__insight-heading h2 { margin: 0; }
+    .lc-checkin__insight-heading small,
+    .lc-checkin__insight-legend,
+    .lc-checkin__insight-grid-range,
+    .lc-checkin__insight-restart { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__insight-legend { gap: 6px 10px; }
+    .lc-checkin__insight-legend > span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .lc-checkin__insight-legend i { flex: 0 0 9px; width: 9px; height: 9px; margin: 0; }
+    /* The report is chronological: seven consecutive days per column, twelve
+       columns for 84 days. Dates and cells share the same bounded width. */
+    .lc-checkin__insight-grid,
+    .lc-checkin__insight-grid-range { width: min(100%, 360px); }
+    .lc-checkin__insight-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(7, minmax(0, 1fr)); grid-auto-flow: column; gap: 3px; }
+    .lc-checkin__insight-grid span { width: 100%; height: auto; min-height: 0; aspect-ratio: 1; }
     .lc-checkin__coaching-item :is(strong, span, small) { display: block; white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__coaching-item :is(strong, span) { font-size: 14px; }
     .lc-checkin__coaching-item small { font-size: 12px; }
@@ -111,7 +157,8 @@
     .lc-checkin__coaching-item:is(:first-child, .is-primary) { border-left-color: var(--lc-checkin-accent); background: transparent; }
     .lc-checkin__coaching-item.is-positive { border-left-color: var(--lc-checkin-success-text); }
     .lc-checkin__coaching-item.is-caution { border-left-color: var(--lc-checkin-warning-text); }
-    .lc-checkin__insight-row { gap: 8px; flex-wrap: wrap; }
+    .lc-checkin__insight-row { gap: 6px 12px; flex-wrap: wrap; min-height: 38px; font-size: 13px; line-height: 1.5; }
+    .lc-checkin__insight-row strong { font-size: 13px; white-space: nowrap; }
 }
 
 /* Archived rows have five real children. Retain a selection track instead of
@@ -127,13 +174,21 @@
     .lc-checkin__archived-main > :is(strong, small) { white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
     .lc-checkin__archived-main > strong { font-size: 14px; }
     .lc-checkin__archived-main > small { font-size: 12px; }
+    .lc-checkin__archived-icon img { display: block; width: 24px; height: 24px; object-fit: contain; }
     .lc-checkin__history-row > .lc-checkin__text-button { margin: 0; min-width: 44px; min-height: 44px; border-radius: 7px; }
     .lc-checkin__history-row > [data-action="delete-archived"] { margin-left: 12px; color: var(--lc-checkin-danger-text); }
     .lc-checkin__archived-search { width: 100%; min-width: 0; max-width: 100%; min-height: 44px; border-radius: 10px; box-sizing: border-box; }
+    .lc-checkin__archived-search input { min-height: 42px; font-size: 14px; }
+    .lc-checkin__archived-search button { flex: 0 0 44px; min-width: 44px; min-height: 44px; margin-right: -8px; }
+    .lc-checkin__archived-result,
+    .lc-checkin__eyebrow { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__archived-select-all { min-height: 44px; gap: 8px; font-size: 13px; }
     .lc-checkin__archived-bulk { flex-wrap: wrap; min-width: 0; }
+    .lc-checkin__archived-bulk > button { min-height: 44px; font-size: 13px; }
 }
 @container lc5 (max-width: 719px) {
     .lc-checkin.lc-checkin--archived {
+        .lc-checkin__archived-tools { grid-template-columns: minmax(0, 1fr); }
         .lc-checkin__history-row { grid-template-columns: 44px 34px minmax(0, 1fr); gap: 4px 7px; padding: 8px; }
         .lc-checkin__history-row > [data-action="restore-archived"] { grid-column: 2; grid-row: 2; justify-self: start; }
         .lc-checkin__history-row > [data-action="delete-archived"] { grid-column: 3; grid-row: 2; justify-self: end; }
@@ -203,14 +258,15 @@
         .lc-checkin__kind-option span { min-height: 44px; }
         .lc-checkin__template-summary small { display: none; }
         .lc-checkin__field-check { min-height: 44px; }
-        .lc-checkin__field-check > small { font-size: 11px; }
+        .lc-checkin__field-check > small { font-size: 12px; }
         .lc-checkin__group-options button { min-height: 32px; }
+        .lc-checkin__anchor-create-row { grid-template-columns: minmax(0, 1fr); }
     }
     .lc-checkin.lc-checkin--insights {
         .lc-checkin__insight-stats { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding-block: 8px; }
         .lc-checkin__insight-stats > div:nth-child(n) { grid-column: auto; min-height: 52px; padding: 4px; }
         .lc-checkin__insight-stats strong { font-size: 19px; }
-        .lc-checkin__insight-stats span { font-size: 11px; }
+        .lc-checkin__insight-stats span { font-size: 12px; }
         .lc-checkin__insight-section { padding: 12px; margin-block: 10px; }
         .lc-checkin__insight-picker select { min-height: 44px; font-size: 13px; }
     }

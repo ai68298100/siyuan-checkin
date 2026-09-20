@@ -6,7 +6,7 @@ import {PLUGIN_VERSION} from "../version";
 import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
-import type {DockTomatoInboxEntryView} from "../features/docktomato-inbox";
+import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
 
 let settingsViewSequence = 0;
 
@@ -100,7 +100,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         const stateLabel = entry.state === "blocked"
             ? (entry.blockedReason && completionIssueKeys[entry.blockedReason as DockTomatoCompletionIssueReason] ? t(completionIssueKeys[entry.blockedReason as DockTomatoCompletionIssueReason]) : t("set.inboxStateBlocked"))
             : entry.attempts > 0 ? `${t("set.inboxStatePending")} · ${t("set.inboxAttempts", {n: entry.attempts})}` : t("set.inboxStatePending");
-        const amount = entry.tomatoMode === "sessions" ? `1 ${entry.itemUnit}` : `${formatNumber(entry.durationMinutes)} ${entry.itemUnit}`;
+        const amount = `${formatNumber(dockTomatoCompletionValue(entry.itemUnit, entry.tomatoMode, entry.durationMinutes) ?? 0)} ${entry.itemUnit}`;
         return `<div class="lc-checkin__inbox-entry" data-inbox-identity="${escapeHtml(entry.identity)}"><small>${escapeHtml(entry.itemName || entry.itemId)} · ${escapeHtml(entry.localDate)} · ${escapeHtml(amount)}</small><small class="lc-checkin__settings-value is-muted">${stateLabel}</small><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-inbox-retry="${escapeHtml(entry.identity)}">${t("set.inboxRetry")}</button>${entry.state === "blocked" && entry.blockedReason === "skipped-day" ? `<button class="lc-checkin__text-button" type="button" data-inbox-undo-skip="${escapeHtml(entry.identity)}">${t("set.inboxUndoSkip")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-inbox-discard="${escapeHtml(entry.identity)}">${t("set.inboxDiscard")}</button></span></div>`;
     };
     const inboxEntries = inboxState?.entries ?? [];

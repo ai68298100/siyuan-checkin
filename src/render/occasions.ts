@@ -125,15 +125,15 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>${t("occ.month")}</span><select name="annualMonth">${monthOptions}</select></label>
-                            <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="annualNth">${nthOptions}</select></label>
-                        </div>
-                        <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>${t("occ.weekdayNth")}</span><select name="annualWeekday">${weekdayOptions}</select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="annualWeekday">${weekdayOptions}</select></label>
                             <input type="hidden" name="annualSubtype" value="${annualSubtype}" />
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="monthly-sub"${recurrence === "monthly" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>${t("occ.monthlyMode")}</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>${t("occ.monthlyByday")}</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>${t("occ.monthlyNthweek")}</option><option value="lastday"${sel("lastday", monthlySubtype)}>${t("occ.monthlyLastday")}</option></select></label>
                             <div class="lc-checkin__field" data-occasion-block="monthly-nthweek"${monthlySubtype === "nthweek" ? "" : " hidden"}><span class="lc-checkin__field-label">${t("occ.weekday")}</span><select name="monthlyWeekday" aria-label="${t("occ.weekday")}">${weekdayOptions}</select></div>
+                        </div>
+                        <div class="lc-checkin__form-row" data-occasion-block="nthweek-ordinal"${(recurrence === "annual" && annualSubtype === "nthweek") || (recurrence === "monthly" && monthlySubtype === "nthweek") ? "" : " hidden"}>
+                            <label class="lc-checkin__field"><span>${t("occ.nthOccurrence")}</span><select name="annualNth">${nthOptions}</select></label>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="weekly"${recurrence === "weekly" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="weeklyWeekday">${weekdayOptions}</select></label>

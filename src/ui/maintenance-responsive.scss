@@ -1,5 +1,6 @@
 /* Settings/occasions follow plugin-container widths, not the host viewport. */
 .lc-checkin.lc-checkin--settings {
+    .lc-checkin__eyebrow { font-size: 12px; line-height: 1.5; }
     .lc-checkin__settings-layout { width: 100%; max-width: 1180px; gap: 16px; }
     .lc-checkin__settings-groups { gap: 12px; }
     .lc-checkin__settings-groups > .lc-checkin__settings-card,
@@ -14,6 +15,11 @@
     .lc-checkin__settings-label { gap: 4px; }
     .lc-checkin__settings-label > span { font-weight: 600; }
     .lc-checkin__settings-label small { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__settings-value { font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+    .lc-checkin__kbd,
+    .lc-checkin__kbd-plus { font-size: 12px; }
+    .lc-checkin__kbd-group { justify-self: end; flex-wrap: nowrap; }
+    .lc-checkin__settings-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; }
     .lc-checkin__settings-row :is(select, input[type="number"]) { min-height: 44px; padding-inline: 10px; border-radius: 8px; font-size: 13px; }
     .lc-checkin__settings-row:has(> .lc-checkin__switch) { grid-template-columns: minmax(0, 1fr) 44px; }
     .lc-checkin__settings-row > input.lc-checkin__switch { width: 44px; min-width: 44px; max-width: 44px; height: 44px; min-height: 44px; max-height: 44px; padding: 0; border: solid transparent; border-width: 11px 3px; box-sizing: border-box; background-clip: padding-box; background-size: 38px 22px; background-position: center; background-repeat: no-repeat; }
@@ -26,24 +32,31 @@
     .lc-checkin__settings-row > :is(select, input, button, .lc-checkin__settings-inline, .lc-checkin__settings-value, .lc-checkin__settings-link, .lc-checkin__file-button) { justify-self: end; }
     .lc-checkin__settings-inline { display: flex; flex-wrap: wrap; gap: 6px; overflow: visible; justify-content: flex-end; }
     .lc-checkin__settings-inline > * { min-width: 0; max-width: 100%; }
-    .lc-checkin__settings-card :is(.lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button) { min-height: 44px; border-radius: 8px; white-space: normal; text-align: center; overflow-wrap: anywhere; }
-    .lc-checkin__file-button { position: relative; }
+    .lc-checkin__settings-card :is(.lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button) { width: auto; min-height: 44px; margin-block: 0; border-radius: 8px; font-size: 13px; line-height: 1.5; white-space: normal; text-align: center; overflow-wrap: anywhere; }
+    .lc-checkin__audit-list { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__audit-list small { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__audit-list:not(.lc-checkin__snapshot-list) li:not(.lc-checkin__settings-fold-item) { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: 4px; }
+    .lc-checkin__settings-fold > summary { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; font-size: 13px; line-height: 1.5; }
+    .lc-checkin__file-button { position: relative; display: inline-flex; align-items: center; justify-content: center; }
     .lc-checkin__file-button input[type="file"] { position: absolute; width: 1px; min-width: 0; height: 1px; min-height: 0; padding: 0; border: 0; clip-path: inset(50%); }
     .lc-checkin__file-button:focus-within { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 2px; }
     .lc-checkin__settings-row[data-docktomato-inbox] { grid-template-columns: minmax(0, 1fr); }
     .lc-checkin__inbox-entry { display: grid; gap: 5px; padding-block: 10px; border-bottom: 1px solid var(--lc-checkin-border); }
     .lc-checkin__inbox-entry > small { white-space: normal; overflow-wrap: anywhere; }
     .lc-checkin__inbox-entry > .lc-checkin__settings-inline { justify-content: flex-start; }
-    .lc-checkin__settings-inbox-more > summary { min-height: 40px; display: flex; align-items: center; color: var(--lc-checkin-accent-text); cursor: pointer; }
+    .lc-checkin__settings-inbox-more > summary { min-height: 44px; display: flex; align-items: center; color: var(--lc-checkin-accent-text); cursor: pointer; }
     .lc-checkin__settings-inbox-more > summary::before { content: "+"; margin-right: 8px; }
     .lc-checkin__settings-inbox-more[open] > summary::before { content: "−"; }
 }
 
 .lc-checkin.lc-checkin--occasions {
+    .lc-checkin__eyebrow,
+    .lc-checkin__section-kicker,
+    .lc-checkin__occasion-form-hint { font-size: 12px; line-height: 1.5; }
     .lc-checkin__occasion-manager { gap: 16px; }
     .lc-checkin__occasion-form-panel { scroll-margin-top: 12px; }
     .lc-checkin__occasion-form-panel .lc-checkin__form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .lc-checkin__occasion-form-panel :is(input, select, textarea) { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    .lc-checkin__occasion-form-panel :is(input, select, textarea) { min-width: 0; max-width: 100%; box-sizing: border-box; font-size: 13px; line-height: 1.5; }
     .lc-checkin__occasion-manager-row { align-items: start; padding: 14px 4px; margin: 0; transform: none; border: 0; border-bottom: 1px solid var(--lc-checkin-border); border-radius: 0; background: var(--lc-checkin-surface); }
     .lc-checkin__occasion-manager-row:last-child { border-bottom: 0; }
     .lc-checkin__occasion-manager-row:hover { transform: none; background: var(--lc-checkin-surface); }
@@ -52,7 +65,7 @@
     .lc-checkin__occasion-manager-row.is-disabled::after { display: none; }
     .lc-checkin__occasion-row-title { display: block; }
     .lc-checkin__occasion-row-title strong { white-space: normal; overflow: visible; overflow-wrap: anywhere; font-size: 14px; line-height: 1.4; -webkit-line-clamp: unset; }
-    .lc-checkin__occasion-status { display: inline-block; margin-left: 6px; border-radius: 4px; vertical-align: baseline; font-size: 11px; }
+    .lc-checkin__occasion-status { display: inline-block; margin-left: 6px; border-radius: 4px; vertical-align: baseline; font-size: 12px; }
     .lc-checkin__occasion-icon { display: grid; place-items: center; width: 30px; height: 30px; margin-top: 1px; border-radius: 9px; background: var(--lc-checkin-muted-surface); }
     .lc-checkin__occasion-icon .lc-checkin__glyph { width: 17px; height: 17px; color: var(--lc-checkin-muted); }
     .lc-checkin__occasion-row-date { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 5px; color: var(--lc-checkin-text); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
@@ -82,6 +95,28 @@
     .lc-checkin__occasion-search input { min-height: 44px; padding-inline: 36px 12px; border-radius: 9px; font-size: 13px; }
     .lc-checkin__occasion-filter-fold > summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding-inline: 0; border: 0; border-radius: 0; background: transparent; color: var(--lc-checkin-muted); font-size: 13px; cursor: pointer; }
     .lc-checkin__occasion-filter-fold[open] > summary { color: var(--lc-checkin-accent-text); }
+    .lc-checkin__occasion-filter-fold > summary em,
+    .lc-checkin__occasion-templates-fold > summary em { font-size: 12px; }
+    .lc-checkin__occasion-filter > span { display: block; font-size: 12px; line-height: 1.5; white-space: normal; }
+    .lc-checkin__occasion-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .lc-checkin__occasion-filter select { min-height: 44px; font-size: 13px; }
+    .lc-checkin__occasion-filters > .lc-checkin__text-button { min-height: 44px; font-size: 13px; }
+    .lc-checkin__occasion-templates-fold > summary { min-height: 44px; font-size: 13px; }
+    .lc-checkin__occasion-template-browser-head { flex-wrap: wrap; font-size: 12px; line-height: 1.5; }
+    .lc-checkin__occasion-template-browser-head > span { white-space: normal; overflow: visible; }
+    .lc-checkin__occasion-template-browser-head > em,
+    .lc-checkin__occasion-template-categories button,
+    .lc-checkin__occasion-template-categories button em { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__occasion-template-categories button { min-height: 44px; background: transparent; }
+    .lc-checkin__occasion-template-categories button:hover { background: var(--lc-checkin-muted-surface); }
+    .lc-checkin__occasion-template-categories button.is-active { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
+    .lc-checkin__occasion-template { min-height: 44px; font-size: 13px; line-height: 1.5; }
+    .lc-checkin__occasion-template-name { white-space: normal; overflow-wrap: anywhere; }
+    :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary { width: 44px; height: 44px; border: 0; background: radial-gradient(circle, var(--lc-checkin-muted-surface) 13px, transparent 14px); }
+    :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > div,
+    .lc-checkin__occasion-actions-help > div > span { font-size: 12px; line-height: 1.6; }
+    .lc-checkin__occasion-actions-help > div > span > strong { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__occasion-form-panel .lc-checkin__field-hint { font-size: 12px; line-height: 1.5; }
     .lc-checkin__editor-header > [data-action="new-occasion"] { flex: 0 0 44px; width: 44px; min-width: 44px; max-width: 44px; height: 44px; }
     .lc-checkin__occasion-form-panel form { gap: 10px; }
     .lc-checkin__occasion-form-panel .lc-checkin__field > span { font-size: 13px; font-weight: 600; }
@@ -94,6 +129,10 @@
 .lc-checkin__mobile-topbar [data-action="new-occasion"] { min-width: 44px; min-height: 44px; }
 
 @container lc5 (min-width: 960px) {
+    .lc-checkin.lc-checkin--settings {
+        .lc-checkin__settings-nav { flex-flow: column nowrap; align-items: stretch; margin: 0; overflow-x: hidden; overflow-y: auto; max-height: calc(100vh - 160px); }
+        .lc-checkin__settings-nav button { width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+    }
     .lc-checkin.lc-checkin--occasions {
         /* Keep the wide list primary and the editor bounded. */
         .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr) minmax(340px, 420px); }
@@ -138,6 +177,15 @@
         .lc-checkin__settings-card :is(select, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-link) { min-height: 44px; }
         .lc-checkin__settings-card .lc-checkin__file-button { display: inline-flex; align-items: center; justify-content: center; }
         .lc-checkin__settings-inbox-more > summary { min-height: 44px; }
+        /* Keep descriptions readable below the control instead of squeezing
+           import instructions into half the phone width. */
+        .lc-checkin__settings-row:has(> :is(button, .lc-checkin__file-button, .lc-checkin__kbd-group)) > .lc-checkin__settings-label { display: contents; }
+        .lc-checkin__settings-row:has(> :is(button, .lc-checkin__file-button, .lc-checkin__kbd-group)) > .lc-checkin__settings-label > span { grid-column: 1; grid-row: 1; }
+        .lc-checkin__settings-row:has(> :is(button, .lc-checkin__file-button, .lc-checkin__kbd-group)) > .lc-checkin__settings-label > small { grid-column: 1 / -1; grid-row: 2; }
+        .lc-checkin__settings-row > :is(button, .lc-checkin__file-button, .lc-checkin__kbd-group) { grid-column: 2; grid-row: 1; }
+        .lc-checkin__settings-row:has(> .lc-checkin__kbd-group) { grid-template-columns: minmax(0, 1fr) auto; }
+        .lc-checkin__settings-row:has(> .lc-checkin__settings-inline > button) { grid-template-columns: minmax(0, 1fr); }
+        .lc-checkin__settings-row:has(> .lc-checkin__settings-inline > button) > .lc-checkin__settings-inline { justify-self: stretch; justify-content: flex-start; }
     }
     .lc-checkin.lc-checkin--occasions {
         /* Override the older desktop-dialog 26px action rail. */
@@ -158,6 +206,26 @@
         .lc-checkin__occasion-templates { max-height: 264px; overflow-y: auto; }
         .lc-checkin__occasion-form-panel .lc-checkin__editor-actions { flex-wrap: wrap; gap: 8px; }
         .lc-checkin__occasion-form-panel .lc-checkin__editor-actions button { min-height: 44px; margin: 0; }
+    }
+}
+
+/* Host-specific legacy rules otherwise shrink templates/help on mobile and
+   narrow docks even after the container layout has expanded the controls. */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-dock-host, .lc-checkin-tab-host) .lc-checkin.lc-checkin--occasions {
+    .lc-checkin__occasion-template-browser-head { font-size: 12px; }
+    .lc-checkin__occasion-template-categories button { min-height: 44px; }
+    .lc-checkin__occasion-template { min-height: 44px; font-size: 13px; }
+    .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser { max-height: none; overflow: visible; }
+    :is(.lc-checkin__occasion-help, .lc-checkin__occasion-actions-help) > summary { width: 44px; height: 44px; }
+}
+
+@container lc5 (max-width: 479px) {
+    .lc-checkin.lc-checkin--occasions .lc-checkin__occasion-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lc-checkin.lc-checkin--settings .lc-checkin__settings-row:has(> select) {
+        grid-template-columns: minmax(0, 1fr);
+        > .lc-checkin__settings-label > span { grid-column: 1; grid-row: 1; }
+        > .lc-checkin__settings-label > small { grid-column: 1; grid-row: 2; }
+        > select { grid-column: 1; grid-row: 3; margin-top: 3px; }
     }
 }
 

@@ -87,7 +87,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             if (button.dataset.icon === icon) button.classList.add("is-selected");
         });
         const current = root.querySelector<HTMLElement>("[data-popup-current-icon]");
-        if (current) current.replaceChildren(renderIconMarkup(icon || "✓"));
+        if (current) current.innerHTML = renderIconMarkup(icon || "✓");
         renderIconSizeStrip(icon || "✓");
     };
     const selectIconGroup = (groupId: string) => {

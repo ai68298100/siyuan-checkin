@@ -1,0 +1,274 @@
+/* Review is a reading surface. Keep nested information readable instead of
+   inheriting the old 9–11px compact-card labels or the host's heading sizes. */
+.lc-checkin.lc-checkin--review {
+    --lc-review-body-size: 13px;
+    --lc-review-meta-size: 12px;
+
+    .lc-checkin__eyebrow { font-size: 12px; line-height: 1.4; }
+    .lc-checkin__review-tool-button,
+    .lc-checkin__review-actions .lc-checkin__text-button,
+    .lc-checkin__review-tools button { min-height: 44px; font-size: 12px; }
+
+    .lc-checkin__review-hero-cutoff,
+    .lc-checkin__summary-stats span:not(.lc-checkin__analytics-badge),
+    .lc-checkin__history-result,
+    .lc-checkin__history-date > span,
+    .lc-checkin__history-details > summary em,
+    .lc-checkin__history-filter-row label > span,
+    .lc-checkin__review-item-meta,
+    .lc-checkin__fold-count,
+    .lc-checkin__compare-stat :is(small, span, em),
+    .lc-checkin__compare-chart-legend,
+    .lc-checkin__compare-chart-row > :is(strong, span),
+    .lc-checkin__compare-item :is(small, em),
+    .lc-checkin__compare-item-rate,
+    .lc-checkin__log-day-count,
+    .lc-checkin__log-month > summary > span,
+    .lc-checkin__log-week > summary > span,
+    .lc-checkin__log-main small,
+    .lc-checkin__achievement-category > summary em,
+    .lc-checkin__achievement small,
+    .lc-checkin__reminder-timing,
+    .lc-checkin__trend-card > header small,
+    .lc-checkin__trend-stats small,
+    .lc-checkin__yearheatmap-meta :is(small, em) {
+        font-size: var(--lc-review-meta-size);
+        line-height: 1.5;
+    }
+
+    .lc-checkin__calendar-weekdays span { font-size: 12px; }
+    .lc-checkin__calendar-day { font-size: 13px; }
+    .lc-checkin__calendar-day b { font-size: 10px; line-height: 1.2; }
+    .lc-checkin__history-date { flex-wrap: wrap; row-gap: 4px; }
+    .lc-checkin__history-date > strong { font-size: 14px; line-height: 1.5; }
+    .lc-checkin__history-details > summary { font-size: 13px; min-height: 44px; }
+    .lc-checkin__history-aggregate .lc-checkin__history-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+    .lc-checkin__history-aggregate .lc-checkin__history-row > :is(strong, span) {
+        min-width: 0; font-size: 13px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere;
+    }
+    .lc-checkin__history-event {
+        grid-template-columns: minmax(0, 1fr) fit-content(35%);
+        gap: 6px 10px;
+        padding-block: 10px;
+    }
+    .lc-checkin__history-event-main > strong { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__history-event-main > span {
+        display: block; font-size: 12px; line-height: 1.5; overflow: visible; white-space: normal; overflow-wrap: anywhere;
+    }
+    .lc-checkin__history-event-note {
+        display: block; max-width: none; max-height: none; overflow: visible; -webkit-line-clamp: unset;
+        font-size: 13px; line-height: 1.6; white-space: normal; overflow-wrap: anywhere;
+    }
+    .lc-checkin__history-event-value {
+        grid-column: 2; grid-row: 1; min-width: 0; font-size: 13px; line-height: 1.5;
+        white-space: normal; overflow-wrap: anywhere; text-align: right;
+    }
+    .lc-checkin__history-event-actions {
+        display: flex; flex-direction: row; grid-column: 1 / -1; grid-row: 2;
+        width: auto; min-width: 0; gap: 4px; justify-content: flex-end; align-items: center;
+    }
+    .lc-checkin__history-event-actions .lc-checkin__text-button {
+        flex: 0 0 auto; width: auto; min-width: 44px; min-height: 44px;
+        padding: 8px 10px; margin: 0; font-size: 12px; line-height: 1.4;
+    }
+    .lc-checkin__history-event-actions [data-history-event-id] { color: var(--lc-checkin-danger-text); }
+    .lc-checkin__history-note-editor { font-size: 13px; line-height: 1.6; min-height: 72px; }
+
+    .lc-checkin__compare-chart { gap: 9px; }
+    .lc-checkin__compare-chart-row { grid-template-columns: minmax(60px, .5fr) minmax(0, 1fr) minmax(44px, .45fr); }
+    .lc-checkin__compare-chart-row > :is(strong, span) { min-width: 0; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__compare-item { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; padding: 10px; }
+    .lc-checkin__compare-item > strong {
+        grid-column: 1; font-size: 13px; line-height: 1.5; overflow: visible; white-space: normal; overflow-wrap: anywhere;
+    }
+    .lc-checkin__compare-item-rate { grid-column: 2; grid-row: 1; align-self: start; }
+    .lc-checkin__compare-item > em { grid-column: 1; grid-row: 2; }
+    .lc-checkin__compare-item > small { grid-column: 2; grid-row: 2; text-align: right; }
+    .lc-checkin__compare-item-bar { margin-top: 3px; }
+
+    .lc-checkin__trend-card { min-width: 0; padding: 12px; container: review-chart / inline-size; }
+    .lc-checkin__trend-card > header { gap: 8px; }
+    .lc-checkin__trend-card > header > div { min-width: 0; }
+    .lc-checkin__trend-card h3 { font-size: 14px; line-height: 1.45; }
+    .lc-checkin__trend-card > header > strong { min-width: 0; font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
+    .lc-checkin__trend-stats > span { min-width: 0; gap: 3px; padding: 7px; }
+    .lc-checkin__trend-stats b { font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+    .lc-chart { max-width: 380px; max-height: 190px; margin-inline: auto; }
+    .lc-chart-label, .lc-chart-axis, .lc-chart-value { font-size: 13px; }
+
+    .lc-checkin__strength-overview { padding: 12px; }
+    .lc-checkin__strength-overview > header { gap: 8px; }
+    .lc-checkin__strength-overview strong { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__strength-overview em { font-size: 14px; flex: none; }
+    .lc-checkin__strength-detail > summary { gap: 8px; min-height: 44px; }
+    .lc-checkin__strength-detail > summary strong {
+        min-width: 0; flex: 1; font-size: 13px; line-height: 1.5; overflow: visible; white-space: normal; overflow-wrap: anywhere;
+    }
+    .lc-checkin__strength-detail > summary em { font-size: 13px; flex: none; }
+    .lc-checkin__strength-overview svg,
+    .lc-checkin__strength-detail-body svg { min-width: 0; }
+
+    .lc-checkin__log-month > summary { font-size: 14px; }
+    .lc-checkin__log-week > summary { font-size: 13px; }
+    .lc-checkin__log-day.is-folded > summary h3 {
+        min-width: 0; flex-wrap: wrap; gap: 2px 8px; font-size: 13px; line-height: 1.5; font-weight: 650;
+    }
+    .lc-checkin__log-main > strong { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__log-main :is(strong, small) { white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__log-value { min-width: 0; max-width: 112px; font-size: 13px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__log-subrow { min-width: 0; gap: 6px; padding-block: 7px; font-size: 12px; line-height: 1.5; }
+    .lc-checkin__log-subrow > :is(span, strong) { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__log-subrow > span { font-size: 13px; overflow: visible; }
+    .lc-checkin__log-subrow > strong { max-width: 112px; font-size: 13px; }
+    .lc-checkin__log-group > summary,
+    .lc-checkin__log-row { gap: 6px; padding: 8px; }
+
+    .lc-checkin__log-month > summary,
+    .lc-checkin__log-week > summary,
+    .lc-checkin__log-day.is-folded > summary,
+    .lc-checkin__log-more > summary,
+    .lc-checkin__strength-details-fold > summary,
+    .lc-checkin__compare-item-batch > summary,
+    .lc-checkin__achievement-category > summary {
+        min-height: 44px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
+    }
+    .lc-checkin__log-month > summary { font-size: 14px; }
+    .lc-checkin__achievement { opacity: 1; }
+    .lc-checkin__achievement:not(.is-achieved) .lc-checkin__achievement-icon { opacity: .55; filter: grayscale(.6); }
+    .lc-checkin__achievement strong { font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+    .lc-checkin__achievement-category > .lc-checkin__achievement-grid { grid-template-columns: repeat(auto-fit, minmax(min(112px, 100%), 1fr)); }
+
+    .lc-checkin__yearheatmap-meta { gap: 8px 12px; line-height: 1.5; }
+    .lc-checkin__yearheatmap-scroll { min-width: 0; max-width: 100%; overflow-x: auto; }
+    .lc-yearheatmap { width: 768px; min-width: 768px; max-width: none; }
+    .lc-yearheatmap__label { font-size: 11px; }
+    .lc-checkin__yearheatmap-legend { flex-wrap: wrap; row-gap: 4px; }
+    .lc-checkin__balance-row { min-width: 0; gap: 5px 10px; }
+    .lc-checkin__balance-row > strong { min-width: 0; font-size: 13px; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__balance-row > :is(span, em) { font-size: 12px; }
+    .lc-checkin__reminder-row > strong { font-size: 13px; line-height: 1.5; }
+    .lc-checkin__reminder-row > small { font-size: 13px; line-height: 1.6; }
+    .lc-checkin__reminder-action { min-height: 44px; font-size: 12px; }
+    .lc-checkin__report-option { min-height: 44px; gap: 8px; font-size: 13px; line-height: 1.5; white-space: normal; }
+    .lc-checkin__report-option input { width: 18px; height: 18px; flex: none; }
+    .lc-checkin__custom-range label { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__custom-range input { min-height: 44px; font-size: 13px; }
+    .lc-checkin__summary-text { font-size: 14px; line-height: 1.7; }
+    .lc-checkin__summary-text > small { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__summary-agent { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__eyebrow { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__summary-agent > span:first-child { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+    .lc-checkin__review-tool-button,
+    .lc-checkin__review-more > summary,
+    .lc-checkin__review-subnav button { min-height: 44px; font-size: 12px; }
+    .lc-checkin__review-hero-actions .lc-checkin__text-button { min-height: 44px; font-size: 12px; padding-block: 10px; }
+    .lc-checkin__upcoming-row em { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__upcoming-row strong { font-size: 13px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__suggestion-workflow { min-width: 0; }
+    .lc-checkin__suggestion-workflow header > strong { font-size: 14px; line-height: 1.5; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+    .lc-checkin__suggestion-workflow header > span,
+    .lc-checkin__suggestion-workflow > small { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .lc-checkin__suggestion-workflow > p { font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+    .lc-agent-suggestion-changes li { min-width: 0; flex-wrap: wrap; font-size: 13px; line-height: 1.5; }
+    .lc-agent-suggestion-changes code { font-size: 12px; }
+    .lc-agent-suggestion-changes :is(code, span) { min-width: 0; overflow-wrap: anywhere; }
+    .lc-agent-suggestion-audits summary { min-height: 44px; font-size: 13px; line-height: 1.5; align-content: center; }
+    .lc-agent-suggestion-audits li { grid-template-columns: minmax(0, 1fr); gap: 4px; padding-block: 5px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+    .lc-agent-suggestion-audits time { justify-self: start; }
+    .lc-agent-suggestion-audits small { font-size: 12px; opacity: 1; }
+    .lc-checkin__suggestion-workflow footer button { min-height: 44px; font-size: 13px; }
+    .lc-checkin__review-item-icon > img,
+    .lc-checkin__log-icon > img { display: block; width: 24px; height: 24px; object-fit: contain; }
+
+    /* A log day can sit in the right half of a wide review panel. Keep its
+       summary name readable; put the value on the next line instead of
+       squeezing the name into a few vertical characters. */
+    .lc-checkin__log-group > summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
+    .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; max-width: none; text-align: left; }
+    .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
+}
+
+@container lc5 (max-width: 719px) {
+    .lc-checkin.lc-checkin--review {
+        .lc-checkin__review-item { grid-template-columns: 30px minmax(0, 1fr); grid-template-areas: "icon name" "icon meta" "icon bar"; row-gap: 4px; }
+        .lc-checkin__log-month-body { padding: 6px; }
+        .lc-checkin__log-week-body { padding: 0 6px 6px; }
+        .lc-checkin__log-row, .lc-checkin__log-row.has-thumb { grid-template-columns: 28px minmax(0, 1fr); }
+        .lc-checkin__log-group > summary { grid-template-columns: 28px minmax(0, 1fr) auto; }
+        .lc-checkin__log-row > .lc-checkin__log-icon { grid-column: 1; grid-row: 1; }
+        .lc-checkin__log-row > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+        .lc-checkin__log-row > .lc-checkin__log-value { grid-column: 2; grid-row: 2; max-width: none; }
+        .lc-checkin__log-row.has-thumb > .lc-checkin__log-thumb { grid-column: 1; grid-row: 2; width: 28px; height: 28px; }
+        .lc-checkin__log-row.has-thumb > .lc-checkin__log-icon { grid-column: 1; grid-row: 1; }
+        .lc-checkin__log-row.has-thumb > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+        .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; }
+        .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
+        .lc-checkin__log-value { max-width: 76px; }
+        .lc-checkin__log-group > summary > .lc-checkin__log-value { max-width: none; }
+        .lc-checkin__log-subrow, .lc-checkin__log-subrow.has-thumb { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+        .lc-checkin__log-subrow > time { grid-column: 1; grid-row: 1; }
+        .lc-checkin__log-subrow > strong { grid-column: 2; grid-row: 1; text-align: right; }
+        .lc-checkin__log-subrow > span { grid-column: 1 / -1; grid-row: 2; }
+        .lc-checkin__log-subrow.has-thumb > .lc-checkin__log-thumb { grid-column: 1; grid-row: 2; }
+        .lc-checkin__log-subrow.has-thumb > span { grid-column: 1 / -1; grid-row: 3; }
+    }
+}
+
+@container lc5 (min-width: 480px) {
+    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 13px; }
+}
+
+/* A trend card can be much narrower than the host (for example the right
+   review rail in a 1180px dock). `meet` scales the SVG as a whole, so raise
+   only tiny axis labels in those local cards. */
+@container review-chart (max-width: 300px) {
+    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+}
+@container review-chart (min-width: 301px) and (max-width: 480px) {
+    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+}
+@container lc5 (min-width: 720px) {
+    @container review-chart (max-width: 480px) {
+        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
+    }
+}
+@container lc5 (max-width: 719px) {
+    @container review-chart (max-width: 480px) {
+        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+    }
+}
+
+/* Dock review uses a split calendar/detail rail even when the panel itself is
+   wide. Keep each log day readable in that local rail; tab/dialog preserve
+   their desktop two-column log layout. */
+.lc-checkin.lc-checkin--review .lc-checkin__log-day-body,
+.lc-checkin.lc-checkin--review .lc-checkin__log-more-body { grid-template-columns: minmax(0, 1fr) !important; }
+.lc-checkin-dock-host .lc-checkin--review .lc-checkin__review-project-list {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+@container lc-dock (max-width: 1199px) {
+    .lc-checkin--review .lc-checkin__log-day-body,
+    .lc-checkin--review .lc-checkin__log-more-body { grid-template-columns: minmax(0, 1fr) !important; }
+    .lc-checkin--review .lc-checkin__review-project-list { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin--review .lc-checkin__log-row,
+    .lc-checkin--review .lc-checkin__log-row.has-thumb { grid-template-columns: 30px minmax(0, 1fr); }
+    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
+    .lc-checkin--review .lc-checkin__log-group > summary { grid-template-columns: 30px minmax(0, 1fr) 16px; }
+    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
+    .lc-checkin--review .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
+}
+@container lc5 (max-width: 1199px) {
+    .lc-checkin--review .lc-checkin__log-day-body,
+    .lc-checkin--review .lc-checkin__log-more-body { grid-template-columns: minmax(0, 1fr) !important; }
+    .lc-checkin--review .lc-checkin__review-project-list { grid-template-columns: minmax(0, 1fr); }
+    .lc-checkin--review .lc-checkin__log-row,
+    .lc-checkin--review .lc-checkin__log-row.has-thumb { grid-template-columns: 30px minmax(0, 1fr); }
+    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+    .lc-checkin--review .lc-checkin__log-row > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
+    .lc-checkin--review .lc-checkin__log-group > summary { grid-template-columns: 30px minmax(0, 1fr) 16px; }
+    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-main { grid-column: 2; grid-row: 1; }
+    .lc-checkin--review .lc-checkin__log-group > summary > .lc-checkin__log-value { grid-column: 2; grid-row: 2; justify-self: start; }
+    .lc-checkin--review .lc-checkin__log-group > summary > i { grid-column: 3; grid-row: 1 / span 2; }
+}

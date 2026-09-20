@@ -50,6 +50,8 @@ assert.match(components, /Mobile editor final spacing pass[\s\S]*\.lc-checkin--e
     "mobile editor preview and advanced panels must share a stable aligned rail");
 assert.match(contentStyles, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile\) \.lc-checkin\.lc-checkin--editor > \.lc-checkin__layout\s*\{[^}]*flex:\s*0 0 auto;/,
     "mobile editor content must retain natural height and real trailing scroll space above the save rail");
+assert.match(contentStyles, /\.lc-checkin__field\s*\{[^}]*align-content:\s*start;/,
+    "editor field rows must not stretch labels apart when neighboring unit suggestions wrap");
 
 for (const width of [320, 360, 390, 430]) {
     assert.ok(width >= 320 && width <= 430, `mobile regression width ${width} must be in the supported range`);
@@ -125,5 +127,38 @@ setPluginLanguage("en-US");
 assert.deepEqual(describeEditorPreviewActions({...basePreview, kind: "duration"}), {label: "Start focus timer · Log", detail: ""});
 assert.deepEqual(describeEditorPreviewActions({...basePreview, unit: "ml"}), {label: "+250 ml · Enter", detail: ""});
 setPluginLanguage("zh-CN");
+
+const customTemplateIcon = "data:image/png;base64,aGVsbG8=";
+const customTemplateView = renderEditorView({
+    store: createDefaultStore(), customIconLibrary: [], appearance: "light", todayGroupMode: "none", saveState: "idle", syncNoticeActive: false,
+    userTemplates: [{id: "image-template", name: "图标模板", icon: customTemplateIcon, group: "自定义", note: "", kind: "quantity", target: 500, unit: "ml", schedule: {type: "daily"}}],
+});
+const templateButton = customTemplateView.match(/<button[^>]*data-user-template-id="image-template"[\s\S]*?<\/button>/)?.[0];
+assert.ok(templateButton, "custom templates must render");
+assert.ok(templateButton.includes(`<span><img src="${customTemplateIcon}" alt="" loading="lazy" referrerpolicy="no-referrer" /></span>`), "custom image templates must show an image, not the raw data URI as text");
+
+// Exercise the live icon-selection function, not only initial HTML. DOM
+// replaceChildren(string) inserts text, which used to expose literal <img...>.
+const editorBindingAst = ts.createSourceFile("bind-editor.ts", editorBindings, ts.ScriptTarget.Latest, true);
+let selectIconDeclaration;
+function findSelectIcon(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(editorBindingAst) === "selectIcon") selectIconDeclaration = node.getText(editorBindingAst);
+    ts.forEachChild(node, findSelectIcon);
+}
+findSelectIcon(editorBindingAst);
+assert.ok(selectIconDeclaration, "the live icon selection handler must exist");
+const compiledSelectIcon = ts.transpileModule(`const ${selectIconDeclaration};`, {
+    compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
+}).outputText;
+const {renderIconMarkup} = loadTs(path.join(root, "src", "shared.ts"));
+const currentIcon = {innerHTML: "", replaceChildren(value) { this.textContent = value; }};
+const iconInput = {value: ""};
+const iconRoot = {querySelectorAll: () => [], querySelector: selector => selector === "input[name='icon']" ? iconInput : currentIcon};
+const selectIcon = new Function("root", "renderIconMarkup", "renderIconSizeStrip", `${compiledSelectIcon}; return selectIcon;`)(iconRoot, renderIconMarkup, () => {});
+selectIcon(customTemplateIcon);
+assert.equal(currentIcon.innerHTML, renderIconMarkup(customTemplateIcon), "the live picker must insert the safe image markup as DOM");
+assert.equal(iconInput.value, customTemplateIcon);
+selectIcon('<svg onload="alert(1)">');
+assert.equal(currentIcon.innerHTML, "&lt;svg onload=&quot;alert(1)&quot;&gt;", "text icons must retain the shared escape boundary");
 
 console.log("Mobile editor structure checks passed for 320/360/390/430px.");

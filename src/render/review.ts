@@ -1,7 +1,7 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
-import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote} from "../shared";
+import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
@@ -182,14 +182,14 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             strengthSumPoints.set(point.date, bucket);
         }
         /* 二级明细：每项目一行（名称+当前分），点击 details 展开后才加载折线。 */
-        return `<details class="lc-checkin__strength-detail"><summary><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__strength-detail-body">${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 720, height: 150, labelStride: 5})}</div></details>`;
+        return `<details class="lc-checkin__strength-detail"><summary><strong>${escapeHtml(storeItem.name)}</strong><em>${t("review.strengthPoints", {n: current})}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__strength-detail-body">${renderLineChart({title: storeItem.name, unit: "%", points: series.map((point) => ({label: point.date.slice(5), value: point.score}))}, {width: 320, height: 150, labelStride: 7})}</div></details>`;
     }).join("");
     /* T-1243：汇总图优先——平均强度曲线一张图承载全貌，逐项目折线收进二级 details。 */
     const averagedStrengthSeries = [...strengthSumPoints.entries()]
         .sort((left, right) => left[0].localeCompare(right[0]))
         .map(([date, bucket]) => ({label: date.slice(5), value: Math.round((bucket.sum / bucket.count) * 10) / 10}));
     const strengthOverview = averagedStrengthSeries.length
-        ? renderLineChart({title: t("review.foldStrength"), unit: "%", points: averagedStrengthSeries}, {width: 720, height: 170, labelStride: 5})
+        ? renderLineChart({title: t("review.foldStrength"), unit: "%", points: averagedStrengthSeries}, {width: 320, height: 150, labelStride: 7})
         : "";
     const strengthAverage = strengthCount ? Math.round((strengthSum / strengthCount) * 10) / 10 : 0;
     const strengthHasItems = strengthCount > 0;
@@ -197,7 +197,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const quotaMeta = item.quota
             ? t("review.quotaPeriods", {done: item.quota.completedPeriods, elapsed: item.quota.elapsedPeriods, current: item.quota.current ? `${formatNumber(item.quota.current.progress)}/${formatNumber(item.quota.current.quota)}` : t("review.quotaNone")})
             : t("review.daysRatio", {done: item.completedDays, scheduled: item.scheduledDays, rate: item.completionRate});
-        return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${escapeHtml(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
+        return `<button type="button" class="lc-checkin__review-item" data-review-insights-id="${escapeHtml(item.itemId)}"><span class="lc-checkin__review-item-icon" aria-hidden="true">${renderIconMarkup(iconsById.get(item.itemId) || "✓")}</span><strong>${escapeHtml(item.name)}</strong><span class="lc-checkin__review-item-meta">${escapeHtml(quotaMeta)}</span><i class="lc-checkin__review-item-bar" aria-hidden="true"><span style="width: ${Math.min(100, Math.max(0, item.completionRate))}%"></span></i></button>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.emptyProjects")}</div>`;
     const groupMap = new Map<string, {name: string; completed: number; scheduled: number}>();
     for (const item of summary.items) {
@@ -221,10 +221,10 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const monthlyTrend = ctx.analyticsSnapshot.monthly;
     const dailyTrend = ctx.analyticsSnapshot.daily;
     const yearlyTrend = ctx.analyticsSnapshot.yearly;
-    const trendCard = (series: typeof weeklyTrend, chart: string) => {
+    const trendCard = (series: typeof weeklyTrend, chart: string, helper = t("review.trendCompared")) => {
         const stats = summarizeTrend(series);
         const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";
-        return `<div class="lc-checkin__trend-card"><header><div><h3>${escapeHtml(series.title)}</h3><small>${t("review.trendCompared")}</small></div><strong>${stats.current}${escapeHtml(series.unit)}</strong></header><div class="lc-checkin__trend-stats"><span><small>${t("review.trendAverage")}</small><b>${stats.average}${escapeHtml(series.unit)}</b></span><span><small>${t("review.trendBest")}</small><b>${stats.best}${escapeHtml(series.unit)}</b></span><span class="is-${stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "flat"}"><small>${t("review.trendChange")}</small><b>${direction} ${Math.abs(stats.delta)}${escapeHtml(series.unit)}</b></span></div>${chart}</div>`;
+        return `<div class="lc-checkin__trend-card"><header><div><h3>${escapeHtml(series.title)}</h3><small>${escapeHtml(helper)}</small></div><strong>${stats.current}${escapeHtml(series.unit)}</strong></header><div class="lc-checkin__trend-stats"><span><small>${t("review.trendAverage")}</small><b>${stats.average}${escapeHtml(series.unit)}</b></span><span><small>${t("review.trendBest")}</small><b>${stats.best}${escapeHtml(series.unit)}</b></span><span class="is-${stats.delta > 0 ? "up" : stats.delta < 0 ? "down" : "flat"}"><small>${t("review.trendChange")}</small><b>${direction} ${Math.abs(stats.delta)}${escapeHtml(series.unit)}</b></span></div>${chart}</div>`;
     };
     const achievements = buildAchievements(ctx.store, asOf);
     const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions), ctx.reminderFilter);
@@ -328,7 +328,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
                 <div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div>
                 <div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map((level) => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em><i class="is-skip" aria-hidden="true"></i><em>${t("review.heatmapSkip")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div>
             </details>
-            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
+            ${fold("trend", t("review.foldTrend"), `<div class="lc-checkin__trend-grid">${trendCard(weeklyTrend, renderLineChart(weeklyTrend))}${trendCard(monthlyTrend, renderBarChart(monthlyTrend))}${trendCard(dailyTrend, renderLineChart(dailyTrend, {labelStride: 7}), t("review.trendDailyHint"))}${trendCard(yearlyTrend, renderBarChart(yearlyTrend))}</div>`)}
             ${compareHasItems ? fold("compare", `${t("review.compareTitle")} ${countBadge(comparison!.items.length)}`, compareFoldBody) : ""}
             ${strengthHasItems ? fold("strength", `${t("review.foldStrength")} ${countBadge(strengthCount)}`, `<div class="lc-checkin__strength-overview"><header><strong>${t("review.strengthAverage")}</strong><em>${t("review.strengthPoints", {n: strengthAverage})}</em></header>${strengthOverview}</div><details class="lc-checkin__strength-details-fold"><summary><span>${t("review.strengthPerItem", {n: strengthCount})}</span><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__strength-list">${strengthRows}</div></details>`) : ""}
             ${fold("projects", `${t("review.foldProjects")} ${countBadge(summary.items.length)}`, `<section class="lc-checkin__review-projects"><div class="lc-checkin__review-project-list">${projectRows}</div></section>`)}

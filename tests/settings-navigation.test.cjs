@@ -350,11 +350,13 @@ function assertActive(fixture, expectedId) {
 
 // Rendered settings markup: every category button controls one section, and every section is named by its own heading.
 {
+    const inbox = loadTypeScriptModule("src/features/docktomato-inbox.ts", {"../model": {}}).exports;
     const {exports} = loadTypeScriptModule("src/render/settings.ts", {
         "../i18n": {t: (key) => key},
-        "../shared": {escapeHtml: (value) => String(value)},
+        "../shared": {escapeHtml: (value) => String(value), formatNumber: String},
         "../ui/labels": {SORT_LABELS: {manual: "sort.manual"}},
         "../version": {PLUGIN_VERSION: "test-version"},
+        "../features/docktomato-inbox": inbox,
     });
     const context = {
         store: {items: [], events: []},
@@ -413,6 +415,14 @@ function assertActive(fixture, expectedId) {
     for (const id of firstSurfaceIds) {
         assert.ok(!secondSurfaceIds.has(id), `simultaneous settings surfaces must not reuse ${id}`);
     }
+    const pending = exports.renderSettingsView({...context, dockTomatoInbox: {capacity: 200, entries: [
+        {identity: "hours", itemName: "小时阅读", itemId: "h", itemUnit: "小时", tomatoMode: "minutes", durationMinutes: 30, localDate: "2026-09-20", state: "pending", attempts: 0},
+        {identity: "minutes", itemName: "分钟阅读", itemId: "m", itemUnit: "分钟", tomatoMode: "minutes", durationMinutes: 30, localDate: "2026-09-20", state: "pending", attempts: 0},
+        {identity: "sessions", itemName: "番茄数量", itemId: "s", itemUnit: "个番茄", tomatoMode: "sessions", durationMinutes: 30, localDate: "2026-09-20", state: "pending", attempts: 0},
+    ]}});
+    assert.match(pending, /小时阅读 · 2026-09-20 · 0\.5 小时<\/small>/, "pending hours use the same converted value as the eventual record");
+    assert.match(pending, /分钟阅读 · 2026-09-20 · 30 分钟<\/small>/, "minute mapping remains in minutes");
+    assert.match(pending, /番茄数量 · 2026-09-20 · 1 个番茄<\/small>/, "session mapping preserves its custom unit");
 }
 
 // Integration lifecycle: the plugin owns one cleanup per surface and releases it before replacement and unload.

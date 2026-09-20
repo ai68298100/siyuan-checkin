@@ -13,6 +13,8 @@ const reviewSource = read("render", "review.ts");
 assert.match(reviewSource, /fold\("strength"/, "review exposes the strength fold");
 assert.match(reviewSource, /data-review-jump="strength"/, "subnav jumps to strength");
 assert.match(reviewSource, /buildHabitScoreSeries\(/, "review consumes the shared score implementation");
+assert.equal((reviewSource.match(/width: 320, height: 150, labelStride: 7/g) || []).length, 2, "overview and per-item plots share a readable narrow chart coordinate system");
+assert.match(reviewSource, /renderIconMarkup\(iconsById.get/, "review project icons use the same safe image/text rendering as Today");
 const insightsSource = read("features", "insights.ts");
 assert.match(insightsSource, /strengthScore: number \| null/, "insights expose bounded strength fields");
 assert.match(insightsSource, /collectHabitScoreDays\(store, item/, "insights reuse the shared collector");

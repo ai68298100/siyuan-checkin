@@ -260,6 +260,12 @@ const cases = [
         assert.ok(contrast.ratio >= 4.5, `${label}: text contrast must meet 4.5:1 ${JSON.stringify(contrast)}`);
     };
 
+    if (process.env.CHECKIN_QA_CONTENT_AUDIT === '1') {
+        await require('./ui-content-audit.cjs')({page, goto, sizeHost, waitForVisualStability, assertLayout, screenshot, outputRoot, qaTheme, qaHost, qaFrontend});
+        await browser.close();
+        assert.deepEqual(pageErrors, [], 'deep content audit must not raise page errors');
+        return;
+    }
     for (const {surface, width, height = 720, viewportHeight = 1000} of cases) {
         const label = `${surface}-${width}${height !== 720 ? `x${height}` : ''}`;
         try {
