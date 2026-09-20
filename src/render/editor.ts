@@ -175,6 +175,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
                                 <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--anchor" data-anchor-append-field><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} ${item?.noteAnchor?.blockId ? "" : "disabled"} /><span>${t("editor.anchorAppend")}</span><small>${t("editor.anchorAppendHint")}</small></label>
                             </div>
+                            <div class="lc-checkin__editor-schedule-fields">
                             <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
                             <div class="lc-checkin__weekdays" data-weekdays>${weekdaysFromSunday().map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
                             <div class="lc-checkin__form-row" data-interval-schedule hidden>
@@ -188,6 +189,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 </div>
                                 <label class="lc-checkin__field"><span>${t("editor.countModeLabel")}</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>${t("editor.countModeDates")}</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>${t("editor.countModeValue")}</option></select></label>
                                 <small class="lc-checkin__quota-help" data-quota-help>${t("editor.quotaHelp")}</small>
+                            </div>
                             </div>
                         </div>
                     </details>

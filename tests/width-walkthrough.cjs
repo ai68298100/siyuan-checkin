@@ -210,6 +210,16 @@ const cases = [
             await assertTextContrast(mobileMeta, `${label}/mobile-topbar-progress`);
         }
         if (surface === 'review') {
+            const comparison = page.locator('details.lc-checkin__compare');
+            assert.equal(await comparison.getAttribute('open'), null, 'comparison starts folded so the calendar remains near the summary');
+            const summary = comparison.locator(':scope > summary');
+            await summary.focus();
+            await page.keyboard.press('Enter');
+            assert.equal(await comparison.locator('.lc-checkin__compare-stats > div:visible').count(), 3, 'keyboard expansion preserves all comparison metrics');
+            assert.equal(await comparison.locator('.lc-checkin__compare-chart').isVisible(), true, 'comparison chart remains available on narrow surfaces');
+            await assertLayout(`${label}/comparison-open`);
+            if (width === 320 || width === 1180) await page.screenshot({path: path.join(outputRoot, `${label}-comparison-open.png`)});
+            await summary.click();
             const disclosure = page.locator('.lc-checkin__review-guidance-disclosure');
             assert.equal(await disclosure.getAttribute('open'), null, 'secondary review guidance starts folded');
             await disclosure.locator('summary').click();
@@ -242,6 +252,17 @@ const cases = [
             }
         }
         if (surface === "editor") {
+            if (width === 320 || width === 1180 || height < 500) {
+                const summary = page.locator('[data-template-disclosure] > summary');
+                assert.equal(await summary.isVisible(), true, 'template disclosure must not appear as an empty noninteractive pill');
+                const summaryBox = await summary.boundingBox();
+                assert.ok(summaryBox && summaryBox.height >= (width < 720 || qaFrontend === 'mobile' ? 43.75 : 35.75), `${label}: template disclosure target ${JSON.stringify(summaryBox)}`);
+                await summary.click();
+                const template = page.locator('[data-template-index]').first();
+                await template.click();
+                assert.notEqual(await page.locator('input[name="name"]').inputValue(), '', 'template selection fills the real editor');
+                await goto('editor');
+            }
             await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
                 for (const element of elements) {
                     for (let parent = element.parentElement; parent; parent = parent.parentElement) {
@@ -276,7 +297,24 @@ const cases = [
             }
             await page.locator(".lc-checkin--editor").evaluate((element, theme) => { element.dataset.appearance = theme; }, qaTheme);
         }
-        if (surface === 'occasions') assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 3, 'occasion fixture must exercise actual nonempty list');
+        if (surface === 'occasions') {
+            assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 3, 'occasion fixture must exercise actual nonempty list');
+            if (width === 320 || width === 1180 || height < 500) {
+                const summary = page.locator('.lc-checkin__occasion-filter-fold > summary');
+                assert.equal(await summary.isVisible(), true, 'occasion filtering must have a visible entry');
+                await summary.click();
+                await page.locator('[data-occasion-filter="status"]').selectOption('disabled');
+                assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 1, 'occasion status filtering uses the actual selection');
+                await page.locator('[data-occasion-clear-filters]').click();
+                assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 3);
+                if (width < 720 || qaFrontend === 'mobile') {
+                    const entry = page.locator('[data-action="new-occasion"]:visible');
+                    assert.equal(await entry.count(), 1, 'the active host exposes one visible new-occasion entry');
+                    const target = await entry.boundingBox();
+                    assert.ok(target && target.width >= 43.75 && target.height >= 43.75, `${label}: new occasion action needs a 44px target ${JSON.stringify(target)}`);
+                }
+            }
+        }
         await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
         const layout = await assertLayout(`${qaHost}/${qaTheme}/${label}`);
         console.log(`${label}: overflow ${layout.scrollWidth}/${layout.width} ok`);
@@ -320,6 +358,7 @@ const cases = [
         await window.__plugin.mutationQueue;
         await window.__plugin.saveQueue;
         window.__stateBaseline = structuredClone(window.__plugin.store);
+        window.__stateBaselineView = {group: window.__plugin.todayGroupMode, sort: window.__plugin.todaySortMode};
     });
     const resetState = () => page.evaluate(async () => {
         const plugin = window.__plugin;
@@ -333,6 +372,11 @@ const cases = [
         plugin.todayQuery = '';
         plugin.pendingOnly = false;
         plugin.completedCollapsed = true;
+        plugin.todayGroupMode = window.__stateBaselineView.group;
+        plugin.todaySortMode = window.__stateBaselineView.sort;
+        plugin.bulkMode = false;
+        plugin.bulkSelected.clear();
+        plugin.collapsedTodayGroups.clear();
         plugin.recentRecord = undefined;
         plugin.celebration = undefined;
         plugin.showToday();
@@ -349,18 +393,105 @@ const cases = [
     };
     for (const size of stateCases) {
       const suffix = `${size.width}${size.height < 500 ? `x${size.height}` : ''}`;
-      for (const state of ['exact', 'binary-note', 'focus', 'search-empty', 'all-done', 'onboarding']) {
+      for (const state of ['organize', 'bulk', 'exact', 'binary-note', 'focus', 'search-empty', 'all-done', 'onboarding']) {
         const label = `today-${state}-${suffix}`;
         try {
             await sizeHost(size.width, size.height, size.viewportHeight);
             await resetState();
-            if (state === 'exact') {
+            if (state === 'organize') {
+                assert.equal(await page.evaluate(() => window.__plugin.todayGroupMode), 'none', 'default grouping is explicitly none');
+                assert.equal(await page.locator('[data-group-toggle]').count(), 1, 'two custom groups share one default pending list');
+                const group = page.locator('[data-group-toggle]').first();
+                const groupId = await group.getAttribute('data-group-toggle');
+                if (size.width < 720 || qaFrontend === 'mobile') await assertControlReachable(group, `${label}/group-toggle`, 44);
+                await group.click();
+                assert.equal(await page.locator('[data-group-toggle]').evaluateAll((buttons, id) => buttons.find(button => button.dataset.groupToggle === id)?.getAttribute('aria-expanded'), groupId), 'false', 'group toggle collapses its cards');
+                assert.equal(await page.locator('.lc-checkin__group .lc-checkin__item:visible').count(), 0, 'collapsed cards leave the visible list');
+                await page.locator('[data-group-toggle]').evaluateAll((buttons, id) => buttons.find(button => button.dataset.groupToggle === id)?.focus(), groupId);
+                await page.keyboard.press('Enter');
+                assert.equal(await page.locator('[data-group-toggle]').evaluateAll((buttons, id) => buttons.find(button => button.dataset.groupToggle === id)?.getAttribute('aria-expanded'), groupId), 'true', 'keyboard restores the group');
+                assert.equal(await page.locator('.lc-checkin__group .lc-checkin__item:visible').count(), 2, 'restoring the group reveals both pending habits');
+                const filters = page.locator('[data-today-filters]');
+                await filters.locator(':scope > summary').click();
+                for (const selector of ['[data-group-mode]', '[data-sort-mode]', '[data-action="toggle-pending-only"]']) {
+                    await assertControlReachable(page.locator(selector), `${label}/${selector}`, size.width < 720 || qaFrontend === 'mobile' ? 44 : 30);
+                }
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await page.locator('[data-group-mode]').selectOption('group');
+                assert.equal(await page.locator('[data-group-toggle]').count(), 2, 'custom grouping restores both fixture groups');
+                if (await filters.getAttribute('open') === null) await filters.locator(':scope > summary').click();
+                await page.locator('[data-group-mode]').selectOption('none');
+                assert.equal(await page.locator('[data-group-toggle]').count(), 1, 'none returns to a single pending list');
+                if (await filters.getAttribute('open') === null) await filters.locator(':scope > summary').click();
+                await page.locator('[data-sort-mode]').selectOption('name');
+                assert.equal(await page.evaluate(() => window.__plugin.todaySortMode), 'name');
+            } else if (state === 'bulk') {
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    const store = structuredClone(plugin.store);
+                    const water = store.items.find(item => item.id === 'water');
+                    // Streaks count recording days, not only target completion:
+                    // today's baseline 2/8 already counts as a third day. Start
+                    // this isolated fixture with no water record today so the
+                    // two historical recording days yield exactly two.
+                    store.events = store.events.filter(event => event.itemId !== water.id);
+                    for (let daysAgo = 1; daysAgo <= 2; daysAgo++) {
+                        const date = new Date();
+                        date.setDate(date.getDate() - daysAgo);
+                        const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        water.createdAt = date.toISOString();
+                        water.createdDate = localDate;
+                        for (const revision of water.revisions) revision.effectiveDate = localDate;
+                        store.events.push({id: `bulk-streak-${daysAgo}`, itemId: water.id, value: 8, unit: '杯', occurredAt: date.toISOString(), localDate, source: 'manual'});
+                    }
+                    plugin.store = store;
+                    window.__store = structuredClone(store);
+                    plugin.showToday();
+                });
+                assert.match(await page.locator('[data-item-id="water"] .lc-checkin__streak-badge').textContent(), /2/, 'fixture has a real two-day streak while today remains pending');
+                const originalEvents = await page.evaluate(() => JSON.stringify(window.__plugin.store.events));
+                await page.locator('[data-action="toggle-bulk"]').click();
+                const toolbar = page.locator('[data-bulk-toolbar]');
+                const operations = toolbar.locator('[data-bulk-selection-action]');
+                assert.equal(await operations.evaluateAll(buttons => buttons.every(button => button.disabled)), true, 'empty selection disables batch mutations');
+                const select = page.locator('[data-bulk-check="water"]');
+                assert.equal(await page.locator('.lc-checkin__item button:not([data-bulk-check])').count(), 0, 'including streak badges, cards offer only their selection button in bulk mode');
+                assert.equal(await page.locator('[data-item-id="water"] .lc-checkin__streak-badge').evaluate(element => element.tagName), 'SPAN', 'streak text remains readable without a hidden navigation action');
+                assert.equal(await page.locator('.lc-checkin__item [data-action="record"], .lc-checkin__item [data-action="quick-record"], .lc-checkin__item [data-action="toggle"]').count(), 0, 'batch selection must not retain record actions that could create accidental events');
+                await page.locator('[data-item-id="water"] .lc-checkin__item-name').click();
+                assert.equal(await page.locator('.lc-checkin--editor').count(), 0, 'habit names do not navigate into editing during selection');
+                await page.locator('[data-item-id="water"]').click({button: 'right'});
+                assert.equal(await page.locator('.lc-checkin__item-context-menu').count(), 0, 'right click cannot reopen single-item actions in selection mode');
+                await select.focus();
+                await page.keyboard.press('Alt+1');
+                await page.keyboard.press('e');
+                await page.evaluate(async () => { await window.__plugin.mutationQueue; await window.__plugin.saveQueue; });
+                assert.equal(await page.evaluate(() => window.__plugin.currentPage), 'today', 'edit shortcut does not leave batch selection');
+                assert.equal(await page.evaluate(() => JSON.stringify(window.__plugin.store.events)), originalEvents, 'quick-record shortcut does not mutate records in batch selection');
+                await page.keyboard.press('Space');
+                assert.equal(await select.getAttribute('aria-pressed'), 'true', 'keyboard selects a habit');
+                assert.equal(await operations.evaluateAll(buttons => buttons.every(button => !button.disabled)), true, 'selection enables batch operations');
+                if (size.width < 720 || qaFrontend === 'mobile') {
+                    const targets = await toolbar.locator('button').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
+                    assert.ok(targets.every(box => box.width >= 43.75 && box.height >= 43.75), `${label}: toolbar keeps touch targets ${JSON.stringify(targets)}`);
+                }
+                const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(cards => Math.max(...cards.map(card => card.getBoundingClientRect().height)));
+                assert.ok(maxHeight <= (size.width < 720 ? 120 : 200), `${label}: selecting must not inflate the habit cards (${maxHeight}px)`);
+                await assertLayout(label);
+                await page.screenshot({path: path.join(outputRoot, `${label}.png`)});
+                await toolbar.locator('[data-action="bulk-exit"]').click();
+                assert.equal(await page.locator('[data-bulk-toolbar]').count(), 0);
+                assert.equal(await page.locator('[data-bulk-check]').count(), 0);
+                assert.equal(await page.evaluate(() => JSON.stringify(window.__plugin.store.events)), originalEvents, 'selection and exit do not change events');
+            } else if (state === 'exact') {
                 const card = page.locator('.lc-checkin__item[data-item-id="water"]');
                 const toggle = card.locator('[data-action="toggle-exact"]');
                 await toggle.click();
                 assert.equal(await toggle.getAttribute('aria-expanded'), 'true');
                 const entry = card.locator('[data-exact-entry]');
                 assert.equal(await entry.isVisible(), true);
+                assert.ok((await entry.locator('[data-attach-file]').getAttribute('aria-label'))?.trim(), 'photo upload keeps an accessible input label');
                 assert.equal(await entry.locator('.lc-checkin__amount').evaluate(element => element === document.activeElement), true, 'opening exact entry focuses the amount');
                 await entry.locator('.lc-checkin__amount').fill('3');
                 const note = '走查备注 — Long note with a URL https://example.test/' + 'reference'.repeat(12);
@@ -418,6 +549,10 @@ const cases = [
                 const panel = page.locator('[data-focus-timer]');
                 assert.equal(await panel.getAttribute('role'), 'dialog');
                 await panel.locator('[data-focus-timer-minutes="15"]').click();
+                assert.equal(await panel.locator('[data-focus-timer-minutes][aria-pressed="true"]').count(), 1, 'one focus preset is announced as selected');
+                assert.equal(await panel.locator('[data-focus-timer-minutes="15"]').getAttribute('aria-pressed'), 'true');
+                const presetLabel = await panel.locator('[data-focus-timer-minutes="15"]').getAttribute('aria-label');
+                assert.ok(presetLabel?.includes('15') && /分钟|minute/i.test(presetLabel), 'preset accessible label includes its time unit');
                 if (size.width < 720 || qaFrontend === 'mobile') {
                     const presets = await panel.locator('[data-focus-timer-minutes]').evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
                     assert.ok(presets.every(box => box.width >= 43.75 && box.height >= 43.75), `${label}: focus presets keep 44px targets ${JSON.stringify(presets)}`);
@@ -552,11 +687,27 @@ const cases = [
         await assertLayout(label);
         console.log(`30 habits ${width}: ${JSON.stringify(density)}`);
         await page.locator('#dock').screenshot({path: path.join(outputRoot, `today-30-items-${width}${theme === qaTheme ? '' : `-${theme}`}.png`)});
+        if (width === 320) {
+            await page.locator('[data-action="toggle-bulk"]').click();
+            await page.locator('[data-action="bulk-all"]').click();
+            assert.equal(await page.locator('[data-bulk-check][aria-pressed="true"]').count(), 29, 'select all targets pending habits only');
+            const maxHeight = await page.locator('.lc-checkin__group:not([hidden]) .lc-checkin__item').evaluateAll(cards => Math.max(...cards.map(card => card.getBoundingClientRect().height)));
+            assert.ok(maxHeight <= 120, `${label}: 30-item selection must retain compact cards (${maxHeight}px)`);
+            await assertLayout(`${label}/bulk`);
+            await page.screenshot({path: path.join(outputRoot, `today-30-items-bulk-${theme}-${width}.png`)});
+            await page.locator('[data-action="bulk-exit"]').click();
+        }
         } catch (error) {
             scenarioFailures.push(`${label}: ${error.message}`);
             console.error(`FAILED ${label}: ${error.message}`);
             await page.screenshot({path: path.join(outputRoot, `${label}-failed.png`)});
         }
+        if (width === 320) await page.evaluate(() => {
+            if (!window.__plugin.bulkMode) return;
+            window.__plugin.bulkMode = false;
+            window.__plugin.bulkSelected.clear();
+            window.__plugin.showToday();
+        });
       }
     }
     await page.evaluate(() => {
@@ -656,5 +807,5 @@ const cases = [
     await browser.close();
     assert.deepEqual(pageErrors, [], 'bundle must not raise page errors');
     assert.deepEqual(scenarioFailures, [], 'all responsive scenarios must pass');
-    console.log(`Workbench: ${cases.length} surface scenarios + 24 interaction states + 16 populated maintenance/history scenarios; record/undo, focus, navigation ownership, both-theme 30-item and long-name cards passed.`);
+    console.log(`Workbench: ${cases.length} surface scenarios + 32 interaction states + 16 populated maintenance/history scenarios; record/undo, focus, navigation ownership, both-theme 30-item and long-name cards passed.`);
 })();

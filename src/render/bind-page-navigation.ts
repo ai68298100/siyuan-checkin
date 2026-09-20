@@ -177,7 +177,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     const syncSubnavPin = pinReviewSubnavRail(root, host);
     root.querySelectorAll<HTMLElement>("[data-review-jump]").forEach((button) => button.addEventListener("click", () => {
         const foldId = button.dataset.reviewJump || "";
-        const target = root.querySelector<HTMLElement>(`.lc-checkin__review-sections > details[data-review-fold="${foldId}"]`);
+        const target = foldId === "compare"
+            ? root.querySelector<HTMLElement>("details.lc-checkin__compare")
+            : root.querySelector<HTMLElement>(`.lc-checkin__review-sections > details[data-review-fold="${foldId}"]`);
         const scroller = target?.closest<HTMLElement>(".lc-checkin");
         if (!target || !scroller) return;
         if (target instanceof HTMLDetailsElement) target.open = true;

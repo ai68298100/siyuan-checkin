@@ -70,7 +70,7 @@ export function paintFocusTimer(panel: HTMLElement, state: {remainingSec: number
     const bar = panel.querySelector<HTMLElement>("[data-focus-progress] span");
     if (bar) bar.style.width = `${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%`;
     const toggle = panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']");
-    if (toggle) toggle.textContent = state.running ? "暂停" : "继续";
+    if (toggle) toggle.textContent = t(state.running ? "focus.pause" : "focus.resume");
 }
 
 export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolean): Promise<void> {
@@ -109,18 +109,18 @@ export function renderFocusTimerPanelFor(host: FocusTimerHost): string {
     const item = getItemById(host.store, state.itemId);
     const name = item ? item.name : "专注";
     const icon = item ? item.icon : "⏱";
-    const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
+    const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" aria-label="${t("focus.presetMinutes", {n: minutes})}" aria-pressed="${state.totalSec === minutes * 60}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
     const minutes = Math.floor(state.remainingSec / 60);
     const seconds = state.remainingSec % 60;
     return `<div class="lc-checkin__focus-timer" data-focus-timer role="dialog" aria-label="${t("focus.timerAria")}">
-            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong>${escapeHtml(name)}</strong></div>
+            <div class="lc-checkin__focus-head"><span class="lc-checkin__focus-icon" aria-hidden="true">${escapeHtml(icon)}</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong></div>
             <div class="lc-checkin__focus-time" data-focus-remaining>${minutes}:${String(seconds).padStart(2, "0")}</div>
             <div class="lc-checkin__focus-progress" data-focus-progress><span style="width: ${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%"></span></div>
             <div class="lc-checkin__focus-presets" role="group" aria-label="${t("focus.presetsAria")}">${presets}</div>
             <div class="lc-checkin__focus-actions">
-                <button class="lc-checkin__text-button" type="button" data-action="focus-toggle">${state.running ? "暂停" : "继续"}</button>
-                <button class="lc-checkin__text-button" type="button" data-action="focus-finish">完成</button>
-                <button class="lc-checkin__text-button" type="button" data-action="focus-abandon">放弃</button>
+                <button class="lc-checkin__text-button" type="button" data-action="focus-toggle">${t(state.running ? "focus.pause" : "focus.resume")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="focus-finish">${t("focus.finish")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="focus-abandon">${t("focus.abandon")}</button>
             </div>
         </div>`;
 }
@@ -143,7 +143,10 @@ export function bindFocusTimerPanelFor(host: FocusTimerHost, root: HTMLElement):
         host.focusTimerState.totalSec = minutes * 60;
         host.focusTimerState.remainingSec = minutes * 60;
         host.focusTimerState.running = true;
-        panel.querySelectorAll("[data-focus-timer-minutes]").forEach((entry) => entry.classList.toggle("is-selected", entry === button));
+        panel.querySelectorAll("[data-focus-timer-minutes]").forEach((entry) => {
+            entry.classList.toggle("is-selected", entry === button);
+            entry.setAttribute("aria-pressed", String(entry === button));
+        });
         paintFocusTimer(panel, host.focusTimerState);
     }));
 }

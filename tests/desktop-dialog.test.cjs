@@ -100,7 +100,7 @@ assert.match(components, /grid-template-columns: repeat\(auto-fill, minmax\(min\
 const fragments = read("src", "render", "fragments.ts");
 assert.match(fragments, /isBinary && complete \? "" : `<button class="lc-checkin__more-button"/,
     "binary cards must expose the same exact-entry menu (note/photo) as the other kinds");
-assert.match(fragments, /isBinary \? "" : `<label><span>本次记录<\/span><input class="lc-checkin__amount"/,
+assert.match(fragments, /isBinary \? "" : `<label><span>\$\{t\("item\.thisRecord"\)\}<\/span><input class="lc-checkin__amount"/,
     "binary items omit the amount field but keep note and photo in the exact-entry panel");
 
 // 守门：弹窗宽度档位必须覆盖小弹窗（真机 80% 弹窗下 CSS 宽度可能只有 ~950px）

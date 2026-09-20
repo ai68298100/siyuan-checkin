@@ -168,7 +168,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => host.openTabPage());
     root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        if (value === "group" || value === "time" || value === "priority") {
+        if (value === "none" || value === "group" || value === "time" || value === "priority") {
             host.todayGroupMode = value;
             void host.persistViewPreferences();
             host.render();

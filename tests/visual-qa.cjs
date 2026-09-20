@@ -214,10 +214,11 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "priority"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     const priorityGroupCount = await page.locator("[data-group-toggle]").count();
     await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "group"; el.dispatchEvent(new Event("change", {bubbles: true})); });
+    const customGroupCount = await page.locator("[data-group-toggle]").count();
     await page.click("[data-action='toggle-completed']");
     const completedExpanded = await page.locator(".lc-checkin__completed-section [data-item-id]").count();
     await page.click("[data-action='toggle-completed']");
-    results.groupModes = {timeGroupCount, priorityGroupCount, completedExpanded};
+    results.groupModes = {timeGroupCount, priorityGroupCount, customGroupCount, completedExpanded};
     await openSurface("review", ".lc-checkin__topnav [data-mobile-nav='review']");
     results.history = await inspect("history");
     const currentMonthLabel = await page.locator(".lc-checkin__month-nav strong").textContent();
@@ -811,10 +812,10 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         assert.equal(results.mobileMatrix[width].scrollWidth, results.mobileMatrix[width].clientWidth);
     }
     assert.deepEqual(results.editorState, {initialValueFieldsHidden: true, initialWeekdaysHidden: true, valueFieldsVisible: true, weekdaysVisible: true});
-    assert.equal(results.todayStructure.groupCount, 2);
+    assert.equal(results.todayStructure.groupCount, 1, "the default none grouping renders one pending list");
     assert.equal(results.todayStructure.completedCount, 1);
     assert.equal(results.todayStructure.completedCollapsed, true);
-    assert.deepEqual(results.groupModes, {timeGroupCount: 2, priorityGroupCount: 2, completedExpanded: 1});
+    assert.deepEqual(results.groupModes, {timeGroupCount: 2, priorityGroupCount: 2, customGroupCount: 2, completedExpanded: 1});
     assert.ok(results.editorCatalog.templateCount >= 20);
     assert.ok(results.editorCatalog.iconCount >= 100);
     /* T-116 组件商店：全部 + 9 个内置分组 + 我的图标 = 11 个页签 */

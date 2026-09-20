@@ -167,4 +167,35 @@ assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scs
 /* radius-lg 的真实生效声明在 tokens.scss（20px）；index.scss 里曾有一份死块里的 16px 从未生效 */
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-radius-lg:\s*20px/, "v5 tokens define the large radius");
 assert.ok(!source.includes("cycleDensity"), "density cycler must be removed");
+
+/* Primary quick-record/record/save buttons share these foreground/fill tokens.
+   Resolve the appearance + palette cascade, not isolated palette blocks:
+   dark palettes once inherited dark text over the light palette's dark fill. */
+const tokenBlock = (selector) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = tokens.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`));
+    assert.ok(match, `missing token selector: ${selector}`);
+    return Object.fromEntries([...match[1].matchAll(/(--lc-checkin-[\w-]+):\s*([^;]+);/g)]
+        .map((entry) => [entry[1], entry[2].trim()]));
+};
+const luminance = (hex) => {
+    assert.match(hex, /^#[0-9a-f]{6}$/i, "primary contrast guard expects explicit six-digit color tokens");
+    return hex.slice(1).match(/../g).map((part) => parseInt(part, 16) / 255)
+        .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+        .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+};
+for (const appearance of ["light", "dark"]) {
+    for (const palette of ["lavender", "ocean", "forest", "sunset"]) {
+        const resolved = {...tokenBlock(".lc-checkin"), ...tokenBlock(`.lc-checkin[data-appearance="${appearance}"]`)};
+        if (palette !== "lavender") {
+            Object.assign(resolved, tokenBlock(`.lc-checkin[data-palette="${palette}"]`));
+            if (appearance === "dark") Object.assign(resolved, tokenBlock(`.lc-checkin[data-appearance="dark"][data-palette="${palette}"]`));
+        }
+        const foreground = resolved["--lc-checkin-accent-contrast"];
+        const background = resolved["--lc-checkin-accent-fill"];
+        const a = luminance(foreground), b = luminance(background);
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        assert.ok(ratio >= 4.5, `${appearance}/${palette} primary button contrast ${ratio.toFixed(2)}:1 (${foreground} on ${background}) must be >=4.5:1`);
+    }
+}
 console.log("Modern responsive UI theme checks passed.");

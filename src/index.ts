@@ -2268,12 +2268,14 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private getTodayGroupKey(item: CheckinItem): string {
+        if (this.todayGroupMode === "none") return "__all__";
         if (this.todayGroupMode === "priority") return item.priority || "medium";
         if (this.todayGroupMode === "time") return item.timeSlot || "any";
         return item.group?.trim() || t("review.ungrouped");
     }
 
     private getTodayGroupLabel(key: string): string {
+        if (this.todayGroupMode === "none") return t("today.pendingItems");
         if (this.todayGroupMode === "priority") return t(PRIORITY_LABELS[key as CheckinPriority] || PRIORITY_LABELS.medium);
         if (this.todayGroupMode === "time") return t(TIME_SLOT_LABELS[key as CheckinTimeSlot] || TIME_SLOT_LABELS.any);
         return key;
@@ -3404,6 +3406,7 @@ export default class CheckinPlugin extends Plugin {
             case "review": return t("review.title");
             case "occasions": return t("occasions.title");
             case "archived": return t("archived.title");
+            case "insights": return t("insights.title");
             case "settings": return t("settings.title");
             case "editor": return this.editingId ? t("editor.edit") : t("editor.create");
             default: return t("today.title");

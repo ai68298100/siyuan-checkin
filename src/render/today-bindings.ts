@@ -56,7 +56,7 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
     if (root.dataset.quickKeyboardBound === "true") return;
     root.dataset.quickKeyboardBound = "true";
     root.addEventListener("keydown", (event) => {
-        if (host.currentPage !== "today") return;
+        if (host.currentPage !== "today" || host.bulkMode) return;
         if (event.defaultPrevented || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         const target = event.target as HTMLElement | null;
         if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
@@ -87,6 +87,7 @@ export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement):
         if (!cards.length) return;
         const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".lc-checkin__item[data-item-id]");
         if (key === "e") {
+            if (host.bulkMode) return;
             const item = getItemById(host.store, activeCard?.dataset.itemId);
             if (!item) return;
             event.preventDefault();
@@ -96,7 +97,7 @@ export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement):
         const index = activeCard ? cards.indexOf(activeCard) : -1;
         const next = index < 0 ? (key === "j" ? 0 : cards.length - 1) : (index + (key === "j" ? 1 : -1) + cards.length) % cards.length;
         event.preventDefault();
-        (cards[next].querySelector<HTMLElement>("[data-action='record'], [data-action='quick-record'], [data-action='toggle']") ?? cards[next]).focus();
+        (cards[next].querySelector<HTMLElement>(host.bulkMode ? "[data-bulk-check]" : "[data-action='record'], [data-action='quick-record'], [data-action='toggle']") ?? cards[next]).focus();
     });
 }
 
@@ -118,6 +119,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
             button.classList.toggle("is-selected", selected);
             button.setAttribute("aria-pressed", String(selected));
             button.textContent = selected ? "✓" : "";
+            button.closest(".lc-checkin__item")?.classList.toggle("is-selected", selected);
         });
         const count = host.bulkSelected.size;
         const countLabel = root.querySelector<HTMLElement>("[data-bulk-selected-count]");
@@ -211,7 +213,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         longPressPointerId = undefined;
     };
     const openMenu = (card: HTMLElement, clientX: number, clientY: number) => {
-        if (!card) return;
+        if (!card || host.bulkMode) return;
         const item = getActiveItemById(host.store, card.dataset.itemId || "");
         if (!item) return;
         closeMenus();

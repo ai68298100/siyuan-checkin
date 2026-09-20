@@ -74,7 +74,7 @@ export function renderReviewCompareSection(comparison: ReviewComparison): string
     if (bothEmpty) {
         return `<section class="lc-checkin__compare is-empty" aria-label="${escapeHtml(t("review.compareAria"))}"><small>${escapeHtml(t("review.compareEmpty"))}</small></section>`;
     }
-    return `<section class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><header><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span></header>${compareSummaryChart(comparison)}${compareStats(comparison)}</section>`;
+    return `<details class="lc-checkin__compare" aria-label="${escapeHtml(t("review.compareAria"))}"><summary><strong>${escapeHtml(t("review.compareTitle"))}</strong><span>${escapeHtml(comparison.baseline.startDate)} ~ ${escapeHtml(comparison.baseline.endDate)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__compare-body">${compareSummaryChart(comparison)}${compareStats(comparison)}</div></details>`;
 }
 
 export function renderReviewCompareItems(comparison: ReviewComparison): string {

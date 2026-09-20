@@ -129,15 +129,17 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const recordLabel = atMost
         ? (lapseExists ? t("item.cancelLapse") : t("item.recordLapse"))
         : complete ? t("item.cancel") : t("item.checkin");
-    const icon = isBinary
+    const icon = isBinary && !ctx.bulkMode
         ? `<button class="lc-checkin__item-icon" type="button" data-action="toggle" aria-label="${complete ? t("item.undoAria", {name: item.name}) : t("item.completeAria", {name: item.name})}">${renderIconMarkup(item.icon)}</button>`
         : `<span class="lc-checkin__item-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span>`;
     return `<article class="lc-checkin__item ${complete ? "is-complete" : ""}${skipToday ? " is-skip" : ""}" data-item-id="${escapeHtml(item.id)}" style="--item-progress: ${percent}%">
             ${icon}
             <div class="lc-checkin__item-body">
                 <div class="lc-checkin__item-topline">
-                    <button class="lc-checkin__item-name" type="button" data-edit-name aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}" title="${escapeHtml(t("item.editAria", {name: item.name}))}">${escapeHtml(item.name)}</button>
-                    ${(ctx.currentStreaks.get(item.id) || 0) > 1 ? `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
+                    ${ctx.bulkMode ? `<span class="lc-checkin__item-name">${escapeHtml(item.name)}</span>` : `<button class="lc-checkin__item-name" type="button" data-edit-name aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}" title="${escapeHtml(t("item.editAria", {name: item.name}))}">${escapeHtml(item.name)}</button>`}
+                    ${(ctx.currentStreaks.get(item.id) || 0) > 1 ? ctx.bulkMode
+                        ? `<span class="lc-checkin__streak-badge">🔥 ${ctx.currentStreaks.get(item.id)}</span>`
+                        : `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
                     ${skipToday ? `<span class="lc-checkin__item-tag is-skip-tag">${t("today.skipBadge")}</span>` : ""}
                     ${atMost && !lapseExists ? `<span class="lc-checkin__item-tag is-avoided">${t("today.avoided")}</span>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
@@ -149,21 +151,22 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
+                ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : `
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
-                ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : ""}
                 ${canFocus ? `<button class="lc-checkin__focus-button" type="button" data-action="focus" aria-label="${t("item.focus")}" title="${t("item.focus")}">${uiIcon("timer")}</button>` : ""}
                 ${isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${atMost ? recordLabel : complete ? t("item.cancel") : t("item.checkin")}</button>`
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${formatNumber(recordStep)}" aria-label="${t("item.recordStep", {value: formatNumber(recordStep), unit})}">+${formatNumber(recordStep)} <span>${escapeHtml(unit)}</span></button>`}
                 ${isBinary && complete ? "" : `<button class="lc-checkin__more-button" type="button" data-action="toggle-exact" aria-label="${t("item.exact")}" title="${t("item.exact")}" aria-expanded="false">${uiIcon("more")}</button>`}
                 ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
+                `}
             </div>
-            ${isBinary && complete ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
-                ${isBinary ? "" : `<label><span>本次记录</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
+            ${ctx.bulkMode || isBinary && complete ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
+                ${isBinary ? "" : `<label><span>${t("item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>`}
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />
-                <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file accept="image/png,image/jpeg,image/webp,image/gif" />📷</label>
+                <label class="lc-checkin__attach-button" data-attach-button title="${t("item.photo")}"><input type="file" data-attach-file aria-label="${t("item.photo")}" accept="image/png,image/jpeg,image/webp,image/gif" />${uiIcon("camera")}</label>
                 <button class="lc-checkin__record-button" type="button" data-action="record">${isBinary ? t("item.checkin") : t("item.record")}</button>
             </div>`}
         </article>`;
@@ -263,12 +266,14 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
 }
 
 function todayGroupKeyOf(groupMode: TodayGroupMode, item: CheckinItem): string {
+    if (groupMode === "none") return "__all__";
     if (groupMode === "priority") return item.priority || "medium";
     if (groupMode === "time") return item.timeSlot || "any";
     return item.group?.trim() || t("review.ungrouped");
 }
 
 function todayGroupLabelOf(groupMode: TodayGroupMode, key: string): string {
+    if (groupMode === "none") return t("today.pendingItems");
     if (groupMode === "priority") return t(PRIORITY_LABELS[key as CheckinPriority] || PRIORITY_LABELS.medium);
     if (groupMode === "time") return t(TIME_SLOT_LABELS[key as CheckinTimeSlot] || TIME_SLOT_LABELS.any);
     return key;
@@ -296,7 +301,7 @@ export function renderTodayGroupsView(items: CheckinItem[], date: Date, ctx: Tod
         const collapsed = ctx.collapsedTodayGroups.has(stateKey);
         return `<section class="lc-checkin__group">
                 <button class="lc-checkin__group-header" type="button" data-group-toggle="${escapeHtml(stateKey)}" aria-expanded="${!collapsed}">
-                    <span>${escapeHtml(todayGroupLabelOf(ctx.todayGroupMode, key))}</span><em>${groupItems.length}</em><i>${collapsed ? "⌄" : "⌃"}</i>
+                    <span>${escapeHtml(todayGroupLabelOf(ctx.todayGroupMode, key))}</span><em>${groupItems.length}</em><i aria-hidden="true">${uiIcon("forward")}</i>
                 </button>
                 <div class="lc-checkin__group-items" ${collapsed ? "hidden" : ""}>${groupItems.map((item) => renderItemView(item, date, ctx)).join("")}</div>
             </section>`;
@@ -373,7 +378,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
     const focusCandidate = pendingItems.find((item) => item.direction !== "atMost" && getItemRevisionForDate(item, now).kind === "duration");
-    return `<div class="lc-checkin lc-checkin--today" data-density="${scheduledItems.length > 12 ? "compact" : "comfortable"}" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
+    return `<div class="lc-checkin lc-checkin--today" data-density="${scheduledItems.length > 12 ? "compact" : "comfortable"}" data-bulk="${ctx.bulkMode}" data-appearance="${ctx.appearance}" data-reduced-motion="${ctx.reducedMotion}">
             <header class="lc-checkin__header">
                 <div class="lc-checkin__header-titles">
                     <h1 class="lc-checkin__title">${t("today.title")}</h1>
@@ -396,6 +401,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="${t("today.clearFilter")}" title="${t("today.clearFilter")}">×</button>` : ""}</label>
                 <details class="lc-checkin__today-filters" data-today-filters ${ctx.pendingOnly ? "open" : ""}><summary>${ctx.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
+                    <option value="none" ${ctx.todayGroupMode === "none" ? "selected" : ""}>${t("set.groupNone")}</option>
                     <option value="group" ${ctx.todayGroupMode === "group" ? "selected" : ""}>${t("today.groupCustom")}</option>
                     <option value="time" ${ctx.todayGroupMode === "time" ? "selected" : ""}>${t("today.groupTime")}</option>
                     <option value="priority" ${ctx.todayGroupMode === "priority" ? "selected" : ""}>${t("today.groupPriority")}</option>
