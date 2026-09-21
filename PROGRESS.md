@@ -1617,4 +1617,5 @@ T-1301 摘要回填后全链 exit 0。
 回顾页窄宽度对齐修复:统计周期说明明确使用与工作区相同的最大宽度盒模型；项目卡「按日达成」摘要固定到卡片右侧，避免中间宽度下随名称列偏移。验证:type check、width-walkthrough 全部通过；本轮未生成本地包。
 回顾记录值列对齐修复:记录行右侧值列与操作按钮共用稳定的 176px 网格列并居中，300毫升等数值不再相对操作框偏移。验证:type check、width-walkthrough 全部通过；本轮未生成本地包。
 回顾分析图表布局修复:分析说明恢复与面板同宽；趋势卡取消中间宽度下的左右分栏，让图表占满可用宽度，避免坐标轴被挤压、底部日期轴脱节和右侧空白。验证:type check、width-walkthrough（含 1180px）全部通过；本轮未生成本地包。
+发版后完整回归:发现设置页新增 note-anchor-picker 后，settings-navigation/agent-status 两个独立 TS 测试加载器缺少依赖桩；已补齐并通过完整 test、test:ui、test:mobile、test:ecosystem、test:extended、test:perf、legacy-style、cross-surface、check:release、environment、build。当前版本 18.0.1 发布资产门禁通过（CSS 603671 bytes）；本轮未更新集市包。
 继续验证: `pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf` 全部通过；扩展链覆盖 146 个测试文件、CSS hygiene 585 类零死类、100k 索引/事务/渲染基线，生态链覆盖 API v5、Task Horizon、Dock Tomato、Obsidian，性能实测 10k 全渲染 31ms、100k 批处理 12.4ms。

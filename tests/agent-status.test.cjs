@@ -26,6 +26,7 @@ function loadSettings() {
                 "../ui/labels": {SORT_LABELS: {manual: "sort.manual"}},
                 "../version": {PLUGIN_VERSION: "test-version"},
                 "../features/docktomato-inbox": {},
+                "../features/note-anchor-picker": {collectAnchorChoices: () => []},
             };
             if (!Object.prototype.hasOwnProperty.call(stubs, specifier)) throw new Error(`settings.ts 依赖未预期: ${specifier}`);
             return stubs[specifier];

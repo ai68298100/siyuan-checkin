@@ -351,12 +351,14 @@ function assertActive(fixture, expectedId) {
 // Rendered settings markup: every category button controls one section, and every section is named by its own heading.
 {
     const inbox = loadTypeScriptModule("src/features/docktomato-inbox.ts", {"../model": {}}).exports;
+    const anchorPicker = loadTypeScriptModule("src/features/note-anchor-picker.ts").exports;
     const {exports} = loadTypeScriptModule("src/render/settings.ts", {
         "../i18n": {t: (key) => key},
         "../shared": {escapeHtml: (value) => String(value), formatNumber: String},
         "../ui/labels": {SORT_LABELS: {manual: "sort.manual"}},
         "../version": {PLUGIN_VERSION: "test-version"},
         "../features/docktomato-inbox": inbox,
+        "../features/note-anchor-picker": anchorPicker,
     });
     const context = {
         store: {items: [], events: []},
