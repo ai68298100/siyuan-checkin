@@ -106,21 +106,25 @@ export function renderEditorView(ctx: EditorViewContext): string {
         ? anchorChoices.map((choice) => `<button type="button" class="lc-checkin__anchor-choice" data-anchor-choice="${escapeHtml(choice.blockId)}" data-anchor-search-text="${escapeHtml([choice.blockId, ...choice.labels].join(" "))}"><strong>${escapeHtml(choice.labels.join("、") || t("editor.anchorUntitled"))}</strong><small>${escapeHtml(choice.blockId)}</small></button>`).join("")
         : `<p class="lc-checkin__anchor-empty" data-anchor-empty>${t("editor.anchorNoKnown")}</p>`;
     const templateGroups = [...new Set(CHECKIN_TEMPLATES.map((template) => template.group))];
-    const templateChip = (template: (typeof CHECKIN_TEMPLATES)[number], index: number, overflow: boolean): string => {
+    const templateChip = (template: (typeof CHECKIN_TEMPLATES)[number], index: number, options: {overflow?: boolean; identity?: boolean} = {}): string => {
         const searchText = [templateName(template), templateNote(template), templateGroupLabel(template.group), template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" ");
         const summary = template.target === 1 && template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit} · ${t(SCHEDULE_LABELS[template.schedule.type])}`;
-        return `<button class="lc-checkin__template" type="button" data-template-index="${index}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(templateNote(template))}" aria-label="${t("item.useTemplate", {name: templateName(template)})}" aria-pressed="false"${overflow ? " hidden data-template-overflow" : ""}><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(templateName(template))}</strong><small>${escapeHtml(summary)}</small></button>`;
+        /* data-template-index 仅主列表携带（文档内唯一，供筛选/溢出/定位）；
+           应用钩子统一为 data-template-apply，供委托点击与最近使用/精选行复用。 */
+        const identity = options.identity ? ` data-template-index="${index}"` : "";
+        const overflow = options.overflow ? " hidden data-template-overflow" : "";
+        return `<button class="lc-checkin__template" type="button" data-template-apply="${index}"${identity} data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml(searchText)}" title="${escapeHtml(templateNote(template))}" aria-label="${t("item.useTemplate", {name: templateName(template)})}" aria-pressed="false"${overflow}><span>${escapeHtml(template.icon)}</span><strong>${escapeHtml(templateName(template))}</strong><small>${escapeHtml(summary)}</small></button>`;
     };
     const recentIndexes = (ctx.recentTemplates || [])
         .map((name) => CHECKIN_TEMPLATES.findIndex((template) => template.name === name))
         .filter((index) => index >= 0)
         .slice(0, 6);
-    const recentMarkup = recentIndexes.length ? `<div class="lc-checkin__field-heading" data-template-recent-heading><span>${t("editor.recentTemplates")}</span></div><div class="lc-checkin__templates" data-template-recent>${recentIndexes.map((index) => templateChip(CHECKIN_TEMPLATES[index], index, false)).join("")}</div>` : "";
+    const recentMarkup = recentIndexes.length ? `<div class="lc-checkin__field-heading" data-template-recent-heading><span>${t("editor.recentTemplates")}</span></div><div class="lc-checkin__templates" data-template-recent>${recentIndexes.map((index) => templateChip(CHECKIN_TEMPLATES[index], index, {})).join("")}</div>` : "";
     /* T-1357：精选推荐位——没有最近使用时展示跨类别精选，帮助新用户快速起步。 */
     const recommendedIndexes = recentIndexes.length ? [] : RECOMMENDED_TEMPLATES
         .map((name) => CHECKIN_TEMPLATES.findIndex((template) => template.name === name))
         .filter((index) => index >= 0);
-    const recommendedMarkup = recommendedIndexes.length ? `<div class="lc-checkin__field-heading" data-template-recommended-heading><span>${t("editor.recommendedTemplates")}</span></div><div class="lc-checkin__templates" data-template-recommended>${recommendedIndexes.map((index) => templateChip(CHECKIN_TEMPLATES[index], index, false)).join("")}</div>` : "";
+    const recommendedMarkup = recommendedIndexes.length ? `<div class="lc-checkin__field-heading" data-template-recommended-heading><span>${t("editor.recommendedTemplates")}</span></div><div class="lc-checkin__templates" data-template-recommended>${recommendedIndexes.map((index) => templateChip(CHECKIN_TEMPLATES[index], index, {})).join("")}</div>` : "";
     const userTemplateMarkup = ctx.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>${t("item.myTemplates")}</span><small>${t("item.templateCount", {n: ctx.userTemplates.length})}</small></div><div class="lc-checkin__templates" data-user-template-list>${ctx.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" "))}" title="${escapeHtml(template.note)}" aria-label="${t("item.useMyTemplate", {name: template.name})}"><span>${renderIconMarkup(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit} · ${t(SCHEDULE_LABELS[template.schedule.type])}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="${t("item.deleteTemplate", {name: template.name})}">${t("item.delete")}</button></div>`).join("")}</div>` : "";
     const initialPriority = item?.priority || "medium";
     const initialTimeSlot = item?.timeSlot || "any";
@@ -160,7 +164,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                 ${templateGroups.map((group) => `<button type="button" data-template-group="${escapeHtml(group)}" aria-pressed="false">${escapeHtml(templateGroupLabel(group))}</button>`).join("")}
             </div>
             <div class="lc-checkin__result-line"><span data-template-count aria-live="polite">${t("editor.templateCount", {n: CHECKIN_TEMPLATES.length})}</span><button type="button" data-action="clear-template-filter" hidden>${t("review.clearFilters")}</button></div>
-            <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => templateChip(template, index, index >= TEMPLATE_BATCH_SIZE)).join("")}</div>
+            <div class="lc-checkin__templates" data-template-list>${CHECKIN_TEMPLATES.map((template, index) => templateChip(template, index, {overflow: index >= TEMPLATE_BATCH_SIZE, identity: true})).join("")}</div>
             <button class="lc-checkin__text-button" type="button" data-action="template-show-all" aria-expanded="false"${CHECKIN_TEMPLATES.length > TEMPLATE_BATCH_SIZE ? "" : " hidden"}>${t("editor.templateShowAll", {n: CHECKIN_TEMPLATES.length})}</button>
             ${userTemplateMarkup}
             <div class="lc-checkin__search-empty" data-template-empty hidden><strong>${t("editor.templateEmpty")}</strong><span>${t("editor.templateEmptyHint")}</span><button type="button" data-action="clear-template-filter">${t("editor.viewAll")}</button></div>

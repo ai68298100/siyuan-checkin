@@ -34,14 +34,15 @@ function createZip(entries) {
     return new Promise((resolve, reject) => {
         const zip = new yazl.ZipFile();
         const chunks = [];
-        /* Keep release archives byte-for-byte reproducible. yazl otherwise
-           stamps every entry with the current time, making the package digest
-           change after every build even when all source bytes are identical. */
-        const reproducibleMtime = new Date(1980, 0, 1);
+        /* 集市解压会保留条目 mtime：固定纪元（1980）会让装机文件比用户云同步的任何文件都旧，
+           WebDAV 按时间戳比对即判定"云端较新"→ 下载旧版覆盖 → 已安装版本回退
+           （速切 0.23.1 实故）。改用真实构建时间：装机 mtime 永远新鲜，同步方向正确。
+           代价是 zip 摘要逐次构建不同——发版说明摘要以 sync:digest 同步为准。 */
+        const buildTime = new Date();
         zip.outputStream.on("data", (chunk) => chunks.push(chunk));
         zip.outputStream.on("end", () => resolve(Buffer.concat(chunks)));
         zip.outputStream.on("error", reject);
-        entries.forEach((entry) => zip.addBuffer(Buffer.from(entry.content), entry.name, {mtime: reproducibleMtime}));
+        entries.forEach((entry) => zip.addBuffer(Buffer.from(entry.content), entry.name, {mtime: buildTime}));
         zip.end();
     });
 }

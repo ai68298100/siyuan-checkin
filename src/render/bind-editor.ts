@@ -515,8 +515,8 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             row = browser.querySelector<HTMLElement>("[data-template-recent]");
         }
         if (!heading || !row) return;
-        const index = button.dataset.templateIndex || "";
-        const existing = index ? row.querySelector<HTMLButtonElement>(`[data-template-index='${index}']`) : null;
+        const index = button.dataset.templateApply || "";
+        const existing = index ? row.querySelector<HTMLButtonElement>(`[data-template-apply='${index}']`) : null;
         if (existing) {
             row.insertBefore(existing, row.firstChild);
             return;
@@ -556,13 +556,13 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         applyTemplateFilter();
         templateQuery?.focus();
     }));
-    /* T-1349：委托绑定——「最近使用」克隆芯片无需重新绑定即可复用同一套用流程。 */
+    /* T-1349/T-1357：委托绑定——应用钩子 data-template-apply 同时命中主列表与最近使用/精选行。 */
     root.addEventListener("click", (event) => {
-        const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-index]") : null;
+        const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-apply]") : null;
         if (!button) return;
-        const template = CHECKIN_TEMPLATES[Number(button.dataset.templateIndex)];
+        const template = CHECKIN_TEMPLATES[Number(button.dataset.templateApply)];
         if (!template) return;
-        root.querySelectorAll<HTMLButtonElement>("[data-template-index]").forEach((candidate) => {
+        root.querySelectorAll<HTMLButtonElement>("[data-template-apply]").forEach((candidate) => {
             const selected = candidate === button;
             candidate.classList.toggle("is-selected", selected);
             candidate.setAttribute("aria-pressed", String(selected));

@@ -65,6 +65,8 @@ if (fs.existsSync(versionTs)) {
 
 // 2. 构建 + 全部测试链
 run("pnpm run build");
+/* zip 摘要随每次构建变化：构建后立即同步进发布说明，check:release 才能对上。 */
+run("node scripts/sync-release-digest.cjs");
 for (const chain of ["check", "test", "test:ui", "test:legacy-style", "test:mobile", "test:ecosystem", "test:extended", "test:review-comparison", "test:perf", "check:release"]) {
     run(`pnpm run ${chain}`);
 }

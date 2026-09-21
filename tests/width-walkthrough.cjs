@@ -366,13 +366,13 @@ const cases = [
                 const appliedIndex = await template.getAttribute('data-template-index');
                 await template.click();
                 assert.notEqual(await page.locator('input[name="name"]').inputValue(), '', 'template selection fills the real editor');
-                const lazyRecent = page.locator('[data-template-recent] [data-template-index]');
+                const lazyRecent = page.locator('[data-template-recent] [data-template-apply]');
                 assert.ok(await lazyRecent.count() > 0, 'applying a template must surface the recent row');
-                assert.equal(await lazyRecent.first().getAttribute('data-template-index'), appliedIndex, 'applied template must top the recent row');
+                assert.equal(await lazyRecent.first().getAttribute('data-template-apply'), appliedIndex, 'applied template must top the recent row');
                 await goto('editor');
                 await page.locator('[data-template-disclosure] > summary').click();
-                const persistentRecent = page.locator('[data-template-recent] [data-template-index]').first();
-                assert.equal(await persistentRecent.getAttribute('data-template-index'), appliedIndex, 'recent row must survive a full re-render');
+                const persistentRecent = page.locator('[data-template-recent] [data-template-apply]').first();
+                assert.equal(await persistentRecent.getAttribute('data-template-apply'), appliedIndex, 'recent row must survive a full re-render');
             }
             await page.locator(".lc-checkin__field-check").evaluateAll((elements) => {
                 for (const element of elements) {

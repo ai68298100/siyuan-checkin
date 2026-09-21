@@ -85,7 +85,7 @@ assert.match(editor, /ctx\.recentTemplates \|\| \[\][\s\S]{0,200}findIndex\(\(te
     "recent entries must resolve by stable zh-name anchor, not array index");
 
 /* 绑定层：委托点击、溢出隐藏/展开、筛选态全显、计数走 i18n、最近使用回写。 */
-assert.match(bindEditor, /closest<HTMLButtonElement>\("\[data-template-index\]"\)/, "template apply must use delegated clicks so cloned recent chips work");
+assert.match(bindEditor, /closest<HTMLButtonElement>\("\[data-template-apply\]"\)/, "template apply must use delegated clicks so cloned recent chips work");
 assert.match(bindEditor, /templateOverflowRevealed/, "session-level reveal flag must exist");
 assert.match(bindEditor, /button\.hidden = !matches \|\| \(!templateOverflowRevealed && !filtered && button\.hasAttribute\("data-template-overflow"\)\)/,
     "overflow chips stay hidden until revealed or filtered");
