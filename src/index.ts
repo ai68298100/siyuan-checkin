@@ -59,7 +59,7 @@ import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, a
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
-import type {CheckinAppearance, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, CheckinAvatar, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
@@ -209,6 +209,7 @@ export default class CheckinPlugin extends Plugin {
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
     private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
+    private avatar: CheckinAvatar = DEFAULT_VIEW_PREFERENCES.avatar;
     private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
     private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
     private dialogRect?: {width: number; height: number} = DEFAULT_VIEW_PREFERENCES.dialogRect;
@@ -1908,6 +1909,7 @@ export default class CheckinPlugin extends Plugin {
             },
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
+            avatar: this.avatar,
             diaryReport: {...this.diaryReport},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
@@ -2041,6 +2043,10 @@ export default class CheckinPlugin extends Plugin {
                 void this.persistViewPreferences().then(() => showMessage(t("msg.accentSaved"))).catch(() => showMessage(t("msg.accentSaveFail")));
                 this.render();
             }
+        });
+        root.querySelector<HTMLSelectElement>("[data-setting-avatar]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value as CheckinAvatar;
+            if (["check", "star", "horse", "leaf", "sun", "target"].includes(value)) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
         });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
@@ -2356,7 +2362,8 @@ export default class CheckinPlugin extends Plugin {
         const dialogActions = ownsDialogChrome
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span aria-hidden="true">${uiIcon("check")}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        const avatar = this.avatar === "check" ? uiIcon("check") : this.avatar === "star" ? "★" : this.avatar === "horse" ? "🐴" : this.avatar === "leaf" ? "🌿" : this.avatar === "sun" ? "☀" : "🎯";
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
@@ -3830,6 +3837,7 @@ export default class CheckinPlugin extends Plugin {
         this.dialogSizeMode = preferences.dialogSizeMode;
         this.dialogScale = preferences.dialogScale;
         this.palette = preferences.palette;
+        this.avatar = preferences.avatar;
         this.dialogFixedSize = {...preferences.dialogFixedSize};
         this.reducedMotion = preferences.reducedMotion;
         this.hapticFeedback = preferences.hapticFeedback;
@@ -3895,6 +3903,7 @@ export default class CheckinPlugin extends Plugin {
             dialogSizeMode: this.dialogSizeMode,
             dialogScale: this.dialogScale,
             palette: this.palette,
+            avatar: this.avatar,
             dialogFixedSize: {...this.dialogFixedSize},
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,

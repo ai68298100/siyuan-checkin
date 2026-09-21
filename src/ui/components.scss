@@ -2231,6 +2231,7 @@
  .lc-checkin__history-event-actions { min-width: 0; }
 }
 .lc-checkin__history-empty { padding: 10px; color: var(--lc-checkin-muted); font-size: 11px; }
+.lc-checkin__topnav-avatar { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 11px; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-size: 19px; line-height: 1; }
 
 /* Fourteenth narrow-surface pass: Today card visual polish and mobile surface hierarchy. */
 @container lc5 (max-width: 600px) {

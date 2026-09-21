@@ -10,6 +10,7 @@ export type CheckinPalette = "lavender" | "ocean" | "forest" | "sunset";
 export type FocusTimerProvider = "builtin" | "docktomato";
 /** T-1346：插件界面语言；"follow" 按思源界面语言自动选择（en* → en-US）。 */
 export type PluginLanguageSetting = "zh-CN" | "en-US" | "follow";
+export type CheckinAvatar = "check" | "star" | "horse" | "leaf" | "sun" | "target";
 
 /** T-1217 周报/月报包含的区块；缺省全开，关闭项不进入报告输出。 */
 export interface ReportSectionToggles {
@@ -46,6 +47,7 @@ export interface CheckinViewPreferences {
     dialogSizeMode: DialogSizeMode;
     /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
     palette: CheckinPalette;
+    avatar: CheckinAvatar;
     /** ISO timestamp of the last JSON/CSV export, drives the gentle backup reminder. */
     lastExportAt?: string;
     /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
@@ -94,6 +96,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     showWeekStrip: false,
     dialogSizeMode: "auto",
     palette: "lavender",
+    avatar: "check",
     dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
     reportSections: {...DEFAULT_REPORT_SECTIONS},
@@ -114,6 +117,7 @@ const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", 
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
 const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "docktomato"]);
+const AVATARS = new Set<CheckinAvatar>(["check", "star", "horse", "leaf", "sun", "target"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
     const parsed = typeof value === "number" ? value : Number(value);
@@ -144,6 +148,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     const palette = PALETTES.has(source.palette as CheckinPalette) ? source.palette as CheckinPalette : DEFAULT_VIEW_PREFERENCES.palette;
+    const avatar = AVATARS.has(source.avatar as CheckinAvatar) ? source.avatar as CheckinAvatar : DEFAULT_VIEW_PREFERENCES.avatar;
     const legacySize = (source as {dialogSize?: unknown}).dialogSize;
     const fixedSource = (source.dialogFixedSize && typeof source.dialogFixedSize === "object" ? source.dialogFixedSize : legacySize && typeof legacySize === "object" ? legacySize : {}) as Record<string, unknown>;
     const readRect = (value: unknown, minWidth: number, minHeight: number, maxWidth: number, maxHeight: number): {width: number; height: number} | undefined => {
@@ -201,6 +206,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         pendingOnly,
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
         palette,
+        avatar,
         showWeekStrip: source.showWeekStrip === true,
         dialogSizeMode,
         dialogScale: clampNumber(source.dialogScale, 50, 100, DEFAULT_VIEW_PREFERENCES.dialogScale),

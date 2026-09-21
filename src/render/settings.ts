@@ -3,7 +3,7 @@ import {t} from "../i18n";
 import {escapeHtml, formatNumber} from "../shared";
 import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
-import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "../view-preferences";
+import type {CheckinAppearance, CheckinAvatar, CheckinPalette, DialogSizeMode, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
@@ -28,6 +28,7 @@ export interface SettingsViewContext {
     dockTomatoCompletionIssues?: readonly DockTomatoCompletionIssue[];
     dockTomatoInbox?: {capacity: number; entries: readonly DockTomatoInboxEntryView[]};
     palette: CheckinPalette;
+    avatar: CheckinAvatar;
     /** T-1352 日记集成（opt-in 默认关）。 */
     diaryReport: {enabled: boolean; docId: string};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
@@ -153,7 +154,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.language")}</span><small>${t("set.languageHint")}</small></span><select data-setting-language aria-label="${t("set.language")}"><option value="zh-CN" ${ctx.pluginLanguage === "zh-CN" ? "selected" : ""}>${t("set.languageZh")}</option><option value="en-US" ${ctx.pluginLanguage === "en-US" ? "selected" : ""}>${t("set.languageEn")}</option><option value="follow" ${ctx.pluginLanguage === "follow" ? "selected" : ""}>${t("set.languageFollow")}</option></select></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reduceMotion")}</span><small>${t("set.reduceMotionHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${ctx.reducedMotion ? "checked" : ""} /></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.haptic")}</span><small>${t("set.hapticHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-haptic ${ctx.hapticFeedback ? "checked" : ""} /></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.accent")}</span><small>${t("set.accentHint")}</small></span><select data-setting-palette aria-label="${t("set.accent")}"><option value="lavender"${ctx.palette === "lavender" ? " selected" : ""}>${t("set.paletteLavender")}</option><option value="ocean"${ctx.palette === "ocean" ? " selected" : ""}>${t("set.paletteOcean")}</option><option value="forest"${ctx.palette === "forest" ? " selected" : ""}>${t("set.paletteForest")}</option><option value="sunset"${ctx.palette === "sunset" ? " selected" : ""}>${t("set.paletteSunset")}</option></select></label>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.accent")}</span><small>${t("set.accentHint")}</small></span><select data-setting-palette aria-label="${t("set.accent")}"><option value="lavender"${ctx.palette === "lavender" ? " selected" : ""}>${t("set.paletteLavender")}</option><option value="ocean"${ctx.palette === "ocean" ? " selected" : ""}>${t("set.paletteOcean")}</option><option value="forest"${ctx.palette === "forest" ? " selected" : ""}>${t("set.paletteForest")}</option><option value="sunset"${ctx.palette === "sunset" ? " selected" : ""}>${t("set.paletteSunset")}</option></select></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>左上角头像</span><small>选择桌面顶栏显示的图标</small></span><select data-setting-avatar aria-label="左上角头像"><option value="check"${ctx.avatar === "check" ? " selected" : ""}>✓ 勾选</option><option value="star"${ctx.avatar === "star" ? " selected" : ""}>★ 星标</option><option value="horse"${ctx.avatar === "horse" ? " selected" : ""}>🐴 小驴</option><option value="leaf"${ctx.avatar === "leaf" ? " selected" : ""}>🌿 绿叶</option><option value="sun"${ctx.avatar === "sun" ? " selected" : ""}>☀ 太阳</option><option value="target"${ctx.avatar === "target" ? " selected" : ""}>🎯 目标</option></select></label>`,
         },
         {
             id: "today",
