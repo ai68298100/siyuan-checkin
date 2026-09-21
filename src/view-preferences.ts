@@ -48,6 +48,7 @@ export interface CheckinViewPreferences {
     /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
     palette: CheckinPalette;
     avatar: string;
+    avatarImage?: string;
     /** ISO timestamp of the last JSON/CSV export, drives the gentle backup reminder. */
     lastExportAt?: string;
     /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
@@ -97,6 +98,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     dialogSizeMode: "auto",
     palette: "lavender",
     avatar: "check",
+    avatarImage: undefined,
     dialogScale: 90,
     dialogFixedSize: {width: 720, height: 560},
     reportSections: {...DEFAULT_REPORT_SECTIONS},
@@ -207,6 +209,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
         palette,
         avatar,
+        avatarImage: typeof source.avatarImage === "string" && source.avatarImage.startsWith("data:image/") ? source.avatarImage.slice(0, 1_000_000) : undefined,
         showWeekStrip: source.showWeekStrip === true,
         dialogSizeMode,
         dialogScale: clampNumber(source.dialogScale, 50, 100, DEFAULT_VIEW_PREFERENCES.dialogScale),
