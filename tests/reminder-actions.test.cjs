@@ -25,7 +25,9 @@ const stored = JSON.parse(reminders.serializeReminderUserActions([
 ]));
 assert.equal(stored.version, 1);
 assert.deepEqual(stored.actions, [{id: "occasion:a:2026-09-14", action: "skip", at: "2026-09-14T01:00:00.000Z"}], "invalid entries are dropped");
-assert.equal(reminders.normalizeReminderUserActions(Array.from({length: 600}, (_, index) => ({id: `r${index}`, action: "snooze", at: "2026-09-14T01:00:00.000Z"}))).length, 200, "action log stays bounded");
+/* T-1219 snooze 有 7 天物理清理：夹具用动态时间（1 小时前），固定日期会随真实时间过期。 */
+const freshIso = new Date(Date.now() - 3600000).toISOString();
+assert.equal(reminders.normalizeReminderUserActions(Array.from({length: 600}, (_, index) => ({id: `r${index}`, action: "snooze", at: freshIso}))).length, 200, "action log stays bounded");
 
 /* —— applyReminderActions 语义 —— */
 const today = "2026-09-14";

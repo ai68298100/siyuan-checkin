@@ -10,8 +10,14 @@
 
 **当前版本：18.0.0**
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-17.3.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.0.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
+</div>
+
+---
+
+<div align="center">
+<img src="preview.png" alt="小驴打卡 v18 界面预览：今日 / 回顾 / 新建模板 / 深色主题" width="920" />
 </div>
 
 ---
@@ -48,35 +54,31 @@
 
 核心功能不依赖网络或 AI：即使没有智能体、番茄钟或其他插件，手动打卡、统计、导出、恢复和提醒仍然可以独立运行。插件不包含 `kernel.js`，不声明 `kernels`，也不启用 `publish.data`；打卡记录、恢复点、审计信息和显示偏好属于插件自己的本地数据。
 
-## 17.3.0 要点
+## 18.0.0 要点
 
-回顾页按实际任务拆为概览、记录、分析三个视图，减少首屏堆叠，同时保留完整历史与深入分析能力。
+本版本聚合模板体系、笔记原生、受控智能体与生态准入四个方向的交付。主存储结构不变，可直接从 17.3.0 升级。
 
-- **概览**：周期指标、简短总结和项目汇总；项目每页 8 项，对比与完整报告默认收起。
-- **记录**：按周期或日期查找，组合使用项目、来源、关键词和排序，每页 30 条；保留备注编辑与撤销。
-- **分析**：默认展示一张可切换趋势图；热图、强度、分类、成就及提醒按需展开，不在首屏堆叠。
+- **模板体系**：内置模板扩充到 **61 个**（健康/学习/运动/工作/生活/戒除/专注/创作八类，中英双语），新建页新增「最近使用」与「精选推荐」，分批展示不再一次平铺全部。
+- **界面语言**：设置可选 中文 / English / 跟随思源；英文界面完成与中文同标准的全端走查审计。
+- **回顾导出增强**：报告自动生成目标偏差解释（提升/下降/持平/数据不足），支持按事件来源筛选（当期与基线同口径），新增「导出全部」（JSON + CSV + 报告）。
+- **受控智能体**：排期调整类建议经确认后执行、可撤销；智能体可起草新项目（进入普通编辑器检查后由你保存，不直接写入）；建议审计轨迹可导出诊断 JSON。
+- **日记集成（默认关）**：把本周/本月报告手动写入你绑定的思源文档，只追加、不改动既有内容。
+- **数据诊断**：保存失败、版本冲突、导入被拒等输出结构化原因码，设置页可查最新状态并导出诊断 JSON；恢复指南内置。
+- **渲染块升级**：`​```checkin``` 块支持多分组聚合视图、完成率阈值过滤与项目/锚点跳转。
+- **生态自测包**：第三方插件可用 `siyuan-checkin-contract` 包在开发期自测 API 兼容性（78 项断言 + 五项准入清单）。
 
-新增可点击的近期计划节奏、按日期分段记录和图表数值表；项目按日目标与周期配额分别表达。回顾助手可复制带精确日期和提问方向的内容，在思源智能体对话中继续；已接入总结提供者时也可在插件内生成，结果按日期与数据版本匹配，过期和失败状态明确显示。使用说明与验证边界见 [图形与回顾助手说明](docs/review-visual-agent-refinement-2026-09-20.md)。
+完整条目见 [18.0.0 变更记录](docs/v18.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-18.0.0.md)。
 
-各区明确时间跨度，记录筛选不改变周期报告。设计取舍与验证边界见 [回顾页整理说明](docs/review-workspace-audit-2026-09-20.md)。
+## 历史版本摘要
 
-完整条目见 [17.3.0 变更记录](docs/v17.3.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-17.3.0.md)。
+### 17.2.x / 17.3.0 维护重点
 
-## 17.2.1 要点
-- 底栏番茄钟联动修复（会话归属/按会话停止/完成回写收件箱与手动管理）、公开 API 升级到 **v5**（范围事件读、幂等批量写、统一项目投影、指标门面）、Obsidian Habit Tracker 21 迁入通道、最低思源版本校准为 3.8.4。
-- **打卡工作台 UI 收口**：今日、回顾、新建、复盘、归档、事项和设置统一淡紫蓝画布、白卡、紫罗兰强调色；桌面使用工作台/页签布局，dock、弹窗和移动端使用同一套响应式层级，移动端保留中间“新建”主操作位。
-- **多项目密度自适应**：当天排期超过 12 项自动切换紧凑卡片；容器宽度不超过 719px 时强制紧凑；宽屏紧凑布局在至少 1500px 时使用三列。长名称、长单位和长备注自然换行，不用固定高度裁切内容。
-- **时长与番茄钟双路径**：时长项目和非二值番茄来源项目在卡片上同时提供“专注”和“记录”；手动记录不要求先启动计时。可选择自带专注计时器或兼容的底栏番茄钟，番茄分钟/会话按项目单位正确回写并以稳定会话 ID 幂等去重。
-- **自定义记录更完整**：支持完成一次、次数、时长、数量和自定义数值；步长可使用小数（最低 0.01），毫升、公里、页、元等单位以及大数值、长单位均保留完整表达。自定义图片图标在今日、回顾、模板和归档中按图片显示，不泄漏 URI。
-- **回顾页细节打磨**：趋势图按真实单位显示坐标，日活跃明确表示“每日有记录为 1 天，无记录为 0 天”；年度热图保持 7 行 × 12 列；历史操作按钮保持 44px 可触控，日志、项目名称、备注和报告建议支持完整换行。
-- **事项与设置维护**：月度/年度第 N 个星期共用可见序数字段，周/月星期选择不会被隐藏字段覆盖；番茄钟收件箱按单位换算显示（例如 30 分钟显示为 0.5 小时）；设置页、模板、筛选、快照和审计长文本适配窄屏。
-
-- **卸载收尾有界**：思源给同一插件实例的 `onload`/`onLayoutReady`/`onDataChanged`/`onunload`/`uninstall` 共用 5 秒拆除预算且不代清插件自有定时器；本版本自带 3.6 秒排空 + 900 毫秒补写，队列变更合并为一次落盘，排不进去时明确提示而非静默丢失（D-220）。
-- **多窗口写放大消除**：接收方不再原样重写建议工作流，审计诊断按 1.5 秒窗口合并写入；实测一次跨窗口变更的辅助存储写入由 2 次降为 0 次（D-221）。
-- **移动端回顾页**：工具栏四控件同一基线并去掉双层胶囊；「报告设置」「更多」「自定义范围」浮层不再被头部 `overflow:hidden` 与失效的层叠上下文裁掉（D-224）。
-- **原生容器导出通道**：手机端导出先写工作区 `assets/` 再交系统保存面板，杜绝 `blob:` 导航导致思源重启；桌面与浏览器行为不变（D-224）。
-- **智能体状态自证**：设置页区分「宿主不支持 / 正在初始化 / 注册中断（附原因）/ 已注册 11 项能力」，注册与存储读取解耦，不再把数据读取失败误报成「未检测到入口」（D-223）。
-- **真实例验证**：新增独立工作区 + 真内核 + 真插件的端到端链（7 + 1 用例），并补齐 6 个测试文件，测试清单 125 个文件。
+- **回顾工作区**：概览/记录/分析三任务视图，首屏只展示当前任务需要的内容；趋势、热图、强度、对比按需展开。
+- **统计口径**：跳过日不进入完成率分母；按日目标与周期配额分别表达；配额不再显示不可比较的完成率差值。
+- **公开 API v5**：范围事件读、幂等批量写、统一项目投影、指标门面与 `capabilitiesSince` 版本协商。
+- **番茄钟联动修复**：会话归属、按会话停止、完成回写收件箱与手动管理旅程。
+- **原生容器导出通道**：手机端导出先写工作区 `assets/` 再交系统保存面板，杜绝 `blob:` 导航导致思源重启。
+- **智能体状态自证**：设置页区分宿主支持状态与注册失败原因，注册与存储读取解耦。
 
 ## 历史版本摘要
 
@@ -191,7 +193,7 @@
 | **新建** | 创建或编辑打卡项目，配置类型、目标、单位、步长、计划、来源、番茄计量方式、分组和自定义图标；支持内置模板与“我的模板”。 |
 | **日期事项** | 管理生日、纪念日、账单、续费、节日和其他固定日期事项；当天可以完成，逾期和即将到来的事项进入提醒中心。 |
 | **归档** | 搜索和恢复暂时不参与今日计划的项目；归档不会删除历史事件。 |
-| **设置** | 主题、减少动效、弹窗尺寸、默认专注方式、导入/恢复点、审计和显示偏好重置。 |
+| **设置** | 主题、界面语言（中/EN/跟随思源）、减少动效、弹窗尺寸、默认专注方式、日记集成、数据诊断、导入/恢复点、审计和显示偏好重置。 |
 
 桌面端可以把今日页固定为原生页签或打开 dock；快速弹窗适合临时记录。移动端采用单列内容和五列等宽底栏，底部“新建”位于中间操作位，并适配安全区与软键盘。回顾、设置和事项的长内容在自己的滚动区域内展开，不把整页压缩成不可读的小字。
 
@@ -206,9 +208,13 @@
 - **自定义**：使用自定义单位记录任意数值，支持小数步长、长单位和大数值。
 - **戒除类**：负向目标（如戒烟、限制咖啡频次）——不记录即成功、记录即破戒，连击按连续无破戒日计算，跳过日两者皆非。
 
-计划支持每天、工作日、指定星期、间隔天数和周期配额（配额达成后剩余日自动视为完成，连击跨周期桥接）。项目可以设置分组、优先级、时间段、目标、单位、步长、备注、完成来源和归档状态。时长项目可选择自带专注计时器或底栏番茄钟来源；番茄来源的非二值项目也保留手动记录入口。新建页提供 45 个内置模板（健康、运动、学习、工作、生活、创作、专注、戒除），常用配置可保存为“我的模板”。
+计划支持每天、工作日、指定星期、间隔天数和周期配额（配额达成后剩余日自动视为完成，连击跨周期桥接）。项目可以设置分组、优先级、时间段、目标、单位、步长、备注、完成来源和归档状态。时长项目可选择自带专注计时器或底栏番茄钟来源；番茄来源的非二值项目也保留手动记录入口。新建页提供 **61 个内置模板**（健康、运动、学习、工作、生活、创作、专注、戒除八类，中英双语），并配有「最近使用」与「精选推荐」；常用配置可保存为“我的模板”。
 
 ### 图标与模板
+
+<div align="center">
+<img src="docs/images/editor-light.png" alt="新建页模板库：61 个内置模板，分类筛选与搜索" width="720" />
+</div>
 
 图标选择器按通用、健康、运动、学习、工作、生活、创作、目标、专注与心情分类，支持关键词搜索和自定义图标库。模板和图标在本地保存，清理或迁移前可从设置页导出数据。
 
@@ -270,6 +276,7 @@ if (checkin.hasCapability("events.record")) {
 - `events.record`、`events.record.batch`、`occasions.complete`：在用户明确要求后写入本地记录（v5 批量写单次持久化、结果与输入一一对应：recorded/duplicate/discarded/blocked/rejected，单批上限 200）；
 - `summary.read`、`summary.custom`、`analytics.read`：读取日/周/月、自定义范围和分析快照；
 - `metrics.read`：读取习惯强度与当前连续等派生指标（与插件内同一模型实现）；
+- `diagnostics.read`：读取会话诊断原因码（保存失败/版本冲突/导入被拒/锁竞争等，智能体只解释原因与建议顺序）；
 - `export.json`、`export.csv`：导出本地数据；
 - `focus.adapters`、`summary.providers`：注册专注或总结适配器；
 - `suggestions.read`、`integrations.events`：读取建议工作流快照并订阅规范事件。
@@ -277,7 +284,7 @@ if (checkin.hasCapability("events.record")) {
 Task Horizon 等日历/任务插件可使用 `getEventRangeSummary({startDate, endDateExclusive}, {maxEvents?, maxPoints?})` 获取有界的本地日期聚合（半开区间，默认最多 366 天、5,000 条事件和 366 个日期点），返回值不包含备注、附件或私有事件对象。任务联动可使用内置「任务打卡」模板，并通过 `externalRef: taskhorizon:<blockId>:<localDate>` 保证重复回放不重复记账；完整边界见 [Task Horizon 合作契约](docs/checkin-taskhorizon-cooperation.md)。
 对 `taskhorizon:` 前缀，写入边界还会校验块 ID、有效本地日期和 `source: "api"`；非法或来源错误的键会安全拒绝，通用 `externalRef` 前缀不受影响。
 `recordEvent` 对重复 externalRef 返回已有事件的防御性副本，只有非法或拒绝才返回 `undefined`；调用方应沿用原 externalRef，不要因重复结果创建新身份。
-双方联调可直接使用 [Task Horizon v1 机器可读契约](docs/contracts/task-horizon-v1.json)，其中包含能力、方法、刷新事件白名单和摘要上限。
+双方联调可直接使用 [Task Horizon v1 机器可读契约](docs/contracts/task-horizon-v1.json)，其中包含能力、方法、刷新事件白名单和摘要上限。第三方接入开发期可使用 [契约自测包](contracts/siyuan-checkin-contract/)（`runContractChecks`，78 项断言 + 五项准入清单）先行自测兼容性。
 
 当前设置页明确提供“自带番茄钟”和“底栏番茄钟插件”两个选择。兼容版底栏番茄钟通过版本化 focus facade 提供开始/停止专注，并在记录持久化后返回稳定会话；小驴打卡使用 `source: "tomato"` 与 `docktomato:<sessionId>` 幂等写入完成事件。旧的泛化“番茄钟插件”偏好会自动迁移到“底栏番茄钟插件”，但只有适配器 ID 精确匹配时才会启用，避免误调用其他番茄钟。未加载兼容版、宿主不支持或调用失败时，手动打卡和内置专注流程仍可用。完整字段、事件和安全边界见[生态集成契约](docs/ecosystem-integration.md)。
 
@@ -341,15 +348,12 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [17.0.0 变更记录](docs/v17.0.0-change-log.md) · [16.0.0 变更记录](docs/v16.0.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
-- [当前状态与开发路线](docs/development-roadmap-current.md) · [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
-- [模块地图与使用指南](docs/architecture.md) · [大版本开发路线](docs/development-roadmap-2026.md)
-- [仓库布局与整理规则](docs/repository-layout.md) · [发布说明归档](docs/releases/)
-- [4.0 UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 产品路线](docs/archive/ui-product-roadmap.md)
-- [生态集成与 API](docs/ecosystem-integration.md) · [思源兼容矩阵](docs/siyuan-compatibility.md)
-- [全页 UI 内容审查记录（2026-09-20）](docs/ui-full-content-audit-2026-09-20.md)
-- [AI 集成计划](docs/ai-integration-plan.md) · [2.0 迁移说明](docs/v2.0-migration-notes.md) · [2.0 变更记录](docs/v2.0-change-log.md)
-- [UI 重构路线](docs/archive/ui-redesign-roadmap.md) · [发布回滚说明](docs/release-rollback.md)
+- [18.0.0 变更记录](docs/v18.0.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
+- [五大版本规划 v18~v22](docs/development-roadmap-v18-v22.md) · [当前状态与开发路线](docs/development-roadmap-current.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
+- [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
+- [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)
+- [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [迁移源评估](docs/migration-formats-evaluation.md) · [同步设计评审](docs/sync-design-review.md)
+- [历史路线归档](docs/archive/) · [UI 产品路线（归档）](docs/archive/ui-product-roadmap.md) · [全页 UI 内容审查记录（2026-09-20）](docs/ui-full-content-audit-2026-09-20.md) · [AI 集成计划](docs/ai-integration-plan.md)
 
 ## License
 
