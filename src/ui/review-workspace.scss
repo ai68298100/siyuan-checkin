@@ -963,6 +963,12 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
+    [data-review-workspace-panel="analysis"] > .review-scope-note {
+        width: calc(100% - 136px);
+        box-sizing: border-box;
+        margin-inline: auto;
+    }
+
     [data-review-workspace-panel="analysis"] .review-analysis-trend {
         display: flex;
         align-items: center;
@@ -1036,7 +1042,7 @@
     }
 
     [data-review-workspace-panel="analysis"] :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) {
-        font-size: 12px;
+        font-size: 10px;
     }
 
     [data-review-workspace-panel="analysis"] :is(.lc-checkin__review-fold, .lc-checkin__year-heatmap) {
@@ -1256,6 +1262,7 @@
 
         .review-section-heading > :first-child { font-size: 14px; }
         .review-scope-note { font-size: 12px; }
+        [data-review-workspace-panel="analysis"] > .review-scope-note { width: 100%; }
 
         .review-project-tools {
             align-items: stretch;
