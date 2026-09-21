@@ -2007,6 +2007,22 @@ export default class CheckinPlugin extends Plugin {
             const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
             if (value && input) input.value = value;
         });
+        root.querySelector<HTMLElement>("[data-action='create-diary-doc']")?.addEventListener("click", async () => {
+            const title = window.prompt(t("set.diaryCreate"));
+            if (!title?.trim()) return;
+            try {
+                const notebooks = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; closed?: boolean}>}};
+                const notebook = notebooks.code === 0 ? notebooks.data?.notebooks?.find((entry) => entry.id && !entry.closed)?.id : "";
+                if (!notebook) throw new Error("no-notebook");
+                const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path: `/${title.trim().replace(/[\\/]/g, "／").slice(0, 80)}`, markdown: ""}) as unknown as {code?: number; data?: unknown};
+                const docId = response.code === 0 && typeof response.data === "string" ? response.data : "";
+                if (!docId) throw new Error("create-doc-failed");
+                this.diaryReport = {...this.diaryReport, docId};
+                await this.persistViewPreferences();
+                showMessage(t("msg.diaryDocSaved"));
+                this.render();
+            } catch { showMessage(t("msg.diaryDocInvalid")); }
+        });
         root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
             void this.writeDiaryReport();
         });
