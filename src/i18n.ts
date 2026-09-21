@@ -395,6 +395,8 @@ const zhCN: Dict = {
     "review.assistantUnsupported": "当前宿主未提供智能体能力入口",
     "review.assistantFailed": "能力注册未完成，可在设置中查看原因",
     "review.assistantNoProvider": "尚未接入总结提供者",
+    "review.assistantProviderHow": "如何接入总结提供者",
+    "review.assistantProviderHowHint": "由其他思源插件调用注册接口提供 summarize 实现；注册后重新打开回顾页即可使用扩展总结。",
     "review.assistantGoal": "发给思源智能体的提问方向",
     "review.assistantGoal.summary": "总结本期",
     "review.assistantGoal.patterns": "寻找规律",

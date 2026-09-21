@@ -511,6 +511,17 @@
     button[data-action="review-assistant"] { justify-self: start; }
 
     .review-assistant-status button { justify-self: start; margin: 4px 0 0; }
+    .review-assistant-provider-help {
+        min-width: 0;
+        margin-top: 4px;
+        padding: 8px 10px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 9px;
+        background: var(--lc-checkin-muted-surface);
+    }
+    .review-assistant-provider-help > summary { cursor: pointer; color: var(--lc-checkin-accent-text); }
+    .review-assistant-provider-help p { margin: 6px 0; line-height: 1.5; }
+    .review-assistant-provider-help code { display: block; overflow-wrap: anywhere; color: var(--lc-checkin-text); font-size: 11px; }
     .review-assistant [data-action="copy-review-prompt"] {
         color: var(--lc-checkin-accent-contrast);
         border-color: var(--lc-checkin-accent-fill);
@@ -995,6 +1006,33 @@
         min-height: 180px;
         max-height: 220px;
         object-fit: contain;
+    }
+
+    /* Desktop review density: keep numeric values and actions in a stable
+       right rail so long names never push controls out of their row. */
+    [data-review-workspace-panel="records"] .lc-checkin__history-event-actions {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        padding: 4px 6px;
+        border: 1px solid var(--lc-checkin-border);
+        border-radius: 8px;
+        background: var(--lc-checkin-muted-surface);
+    }
+    [data-review-workspace-panel="records"] .lc-checkin__history-event-actions .lc-checkin__text-button {
+        min-height: 30px;
+        padding: 4px 7px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-chart {
+        display: block;
+        width: min(100%, 520px);
+        max-width: 520px;
+        height: 190px;
+        min-height: 0;
+        margin-inline: auto;
     }
 
     [data-review-workspace-panel="analysis"] :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) {
