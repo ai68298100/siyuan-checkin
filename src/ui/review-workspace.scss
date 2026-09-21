@@ -974,7 +974,7 @@
     }
 
     [data-review-workspace-panel="analysis"] > .review-scope-note {
-        width: calc(100% - 136px);
+        width: 100%;
         box-sizing: border-box;
         margin-inline: auto;
     }
@@ -1380,23 +1380,17 @@
         align-items: start;
     }
     .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-        align-items: center;
-        gap: 12px 24px;
+        display: block;
     }
     .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > header {
-        grid-column: 1;
-        grid-row: 1;
+        display: flex;
     }
     .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-checkin__trend-stats {
-        grid-column: 1;
-        grid-row: 2;
-        align-self: start;
+        display: grid;
     }
     .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-chart {
-        grid-column: 2;
-        grid-row: 1 / span 2;
+        width: 100%;
+        max-width: none;
     }
 }
 
