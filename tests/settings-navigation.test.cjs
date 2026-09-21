@@ -372,6 +372,8 @@ function assertActive(fixture, expectedId) {
         focusTimerAdapterIds: [],
         focusTimerBusy: false,
         palette: "lavender",
+        avatar: "star",
+        avatarImage: undefined,
         todayGroupMode: "none",
         todaySortMode: "manual",
         completedCollapsed: false,
@@ -406,6 +408,12 @@ function assertActive(fixture, expectedId) {
     }
     assert.equal(buttonTags.filter((tag) => attribute(tag, "aria-current") === "true").length, 1,
         "exactly one category should be current on first render");
+    assert.match(html, /<option value="star" selected>set\.avatarPresetStar<\/option>/,
+        "the avatar preset select must preserve the active preset after a re-render");
+    assert.match(html, /<option value="">set\.avatarCustomOption<\/option>/,
+        "the avatar select must expose a localized custom-text state");
+    assert.doesNotMatch(html, /✓ 勾选|★ 星标|🐴 小驴|🌿 绿叶|☀ 太阳|🎯 目标/,
+        "avatar preset labels must not bypass the i18n dictionary");
     const firstSurfaceIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
     const secondSurfaceIds = new Set([...secondSurfaceHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
     assert.equal(firstSurfaceIds.size, [...html.matchAll(/\bid="([^"]+)"/g)].length,

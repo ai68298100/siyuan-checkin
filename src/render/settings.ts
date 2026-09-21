@@ -8,6 +8,15 @@ import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
 
+const AVATAR_PRESETS = [
+    ["check", "set.avatarPresetCheck"],
+    ["star", "set.avatarPresetStar"],
+    ["horse", "set.avatarPresetHorse"],
+    ["leaf", "set.avatarPresetLeaf"],
+    ["sun", "set.avatarPresetSun"],
+    ["target", "set.avatarPresetTarget"],
+] as const;
+
 let settingsViewSequence = 0;
 
 export interface SettingsViewContext {
@@ -156,7 +165,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reduceMotion")}</span><small>${t("set.reduceMotionHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-motion ${ctx.reducedMotion ? "checked" : ""} /></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.haptic")}</span><small>${t("set.hapticHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-haptic ${ctx.hapticFeedback ? "checked" : ""} /></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.accent")}</span><small>${t("set.accentHint")}</small></span><select data-setting-palette aria-label="${t("set.accent")}"><option value="lavender"${ctx.palette === "lavender" ? " selected" : ""}>${t("set.paletteLavender")}</option><option value="ocean"${ctx.palette === "ocean" ? " selected" : ""}>${t("set.paletteOcean")}</option><option value="forest"${ctx.palette === "forest" ? " selected" : ""}>${t("set.paletteForest")}</option><option value="sunset"${ctx.palette === "sunset" ? " selected" : ""}>${t("set.paletteSunset")}</option></select></label>
-                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.avatar")}</span><small>${t("set.avatarHint")}</small></span><span class="lc-checkin__settings-inline"><select data-setting-avatar aria-label="${t("set.avatarPresetAria")}"><option value="check">✓ 勾选</option><option value="star">★ 星标</option><option value="horse">🐴 小驴</option><option value="leaf">🌿 绿叶</option><option value="sun">☀ 太阳</option><option value="target">🎯 目标</option></select><input data-setting-avatar-custom type="text" maxlength="8" value="${(ctx.avatar || "check").length > 2 || !["check","star","horse","leaf","sun","target"].includes(ctx.avatar || "check") ? (ctx.avatar || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;") : ""}" placeholder="${t("set.avatarCustomPlaceholder")}" aria-label="${t("set.avatarCustomAria")}" /><input data-setting-avatar-file type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="${t("set.avatarUploadAria")}" />${ctx.avatarImage ? `<button class="lc-checkin__text-button" type="button" data-setting-avatar-clear>${t("set.avatarClear")}</button>` : ""}</span></label>`,
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.avatar")}</span><small>${t("set.avatarHint")}</small></span><span class="lc-checkin__settings-inline"><select data-setting-avatar aria-label="${t("set.avatarPresetAria")}"><option value=""${AVATAR_PRESETS.some(([value]) => value === (ctx.avatar || "check")) ? "" : " selected"}>${t("set.avatarCustomOption")}</option>${AVATAR_PRESETS.map(([value, label]) => `<option value="${value}"${value === (ctx.avatar || "check") ? " selected" : ""}>${t(label)}</option>`).join("")}</select><input data-setting-avatar-custom type="text" maxlength="8" value="${(ctx.avatar || "check").length > 2 || !AVATAR_PRESETS.some(([value]) => value === (ctx.avatar || "check")) ? (ctx.avatar || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;") : ""}" placeholder="${t("set.avatarCustomPlaceholder")}" aria-label="${t("set.avatarCustomAria")}" /><input data-setting-avatar-file type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label="${t("set.avatarUploadAria")}" />${ctx.avatarImage ? `<button class="lc-checkin__text-button" type="button" data-setting-avatar-clear>${t("set.avatarClear")}</button>` : ""}</span></label>`,
         },
         {
             id: "today",
