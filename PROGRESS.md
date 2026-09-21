@@ -1612,3 +1612,4 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-21 头像设置尾项收口:预设选项改为完整 i18n（中英 1498 对键保持对等），新增「自定义文字」占位态；设置页重渲染按当前 avatar 值恢复 selected，未知/自定义值不再误显示为首个「勾选」；设置导航门禁新增本地化标签、selected 状态与无硬编码中文断言。决策记录 D-244 明确照片优先显示、显式清除后恢复文字/预设的单一可见来源语义。
 验证:pnpm run check、test:ui（含 settings-navigation、i18n-hygiene、i18n-parity）全过。
 随后复跑发布资产门禁发现头像改动后的 package.zip 摘要漂移，已用 `pnpm run sync:digest` 同步 18.0.1 发布说明并通过 `pnpm run check:release`（CSS 602895 bytes，按 D-246 仅报告体积）。
+继续验证: `pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf` 全部通过；扩展链覆盖 146 个测试文件、CSS hygiene 585 类零死类、100k 索引/事务/渲染基线，生态链覆盖 API v5、Task Horizon、Dock Tomato、Obsidian，性能实测 10k 全渲染 31ms、100k 批处理 12.4ms。
