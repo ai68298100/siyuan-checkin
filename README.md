@@ -8,9 +8,9 @@
 
 记录每一次行动，再用同一份可追溯数据完成统计、提醒、复盘和跨插件协作。
 
-**当前版本：18.0.0**
+**当前版本：18.0.1**
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.0.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.0.1.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -54,7 +54,7 @@
 
 核心功能不依赖网络或 AI：即使没有智能体、番茄钟或其他插件，手动打卡、统计、导出、恢复和提醒仍然可以独立运行。插件不包含 `kernel.js`，不声明 `kernels`，也不启用 `publish.data`；打卡记录、恢复点、审计信息和显示偏好属于插件自己的本地数据。
 
-## 18.0.0 要点
+## 18.0.1 要点
 
 本版本聚合模板体系、笔记原生、受控智能体与生态准入四个方向的交付。主存储结构不变，可直接从 17.3.0 升级。
 
@@ -67,7 +67,7 @@
 - **渲染块升级**：`​```checkin``` 块支持多分组聚合视图、完成率阈值过滤与项目/锚点跳转。
 - **生态自测包**：第三方插件可用 `siyuan-checkin-contract` 包在开发期自测 API 兼容性（78 项断言 + 五项准入清单）。
 
-完整条目见 [18.0.0 变更记录](docs/v18.0.0-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-18.0.0.md)。
+完整条目见 [18.0.1 变更记录](docs/v18.0.1-change-log.md) 和 [GitHub 发布说明](docs/releases/release-notes-18.0.1.md)。
 
 ## 历史版本摘要
 
@@ -348,7 +348,7 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [18.0.0 变更记录](docs/v18.0.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
+- [18.0.1 变更记录](docs/v18.0.1-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
 - [五大版本规划 v18~v22](docs/development-roadmap-v18-v22.md) · [当前状态与开发路线](docs/development-roadmap-current.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)
