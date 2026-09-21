@@ -2221,9 +2221,9 @@
 .lc-checkin__history-event-main > span::first-letter { font-variant-numeric: tabular-nums; }
 .lc-checkin__history-event-value { min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
 .lc-checkin__history-event-actions { min-width: 112px; justify-content: flex-end; }
-.lc-checkin--review .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) 112px; align-items: start; min-height: 48px; }
+.lc-checkin--review .lc-checkin__history-event { grid-template-columns: minmax(0, 1fr) minmax(176px, auto); align-items: start; min-height: 48px; }
 .lc-checkin--review .lc-checkin__history-event-value { grid-column: 2; grid-row: 1; padding-top: 2px; text-align: center; }
-.lc-checkin--review .lc-checkin__history-event-actions { grid-column: 2; grid-row: 2; min-width: 0; justify-content: flex-end; }
+.lc-checkin--review .lc-checkin__history-event-actions { grid-column: 2; grid-row: 2; min-width: 0; justify-content: center; }
 @container lc5 (max-width: 720px) {
  .lc-checkin__history-event { grid-template-columns: minmax(0,1fr) minmax(56px,auto); }
  .lc-checkin__history-event-main > span { max-width: 34ch; }
