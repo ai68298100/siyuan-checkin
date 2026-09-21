@@ -352,6 +352,7 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 - [五大版本规划 v18~v22](docs/development-roadmap-v18-v22.md) · [当前状态与开发路线](docs/development-roadmap-current.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)
+- [v2.0 变更记录](docs/v2.0-change-log.md) · [v2.0 迁移说明](docs/v2.0-migration-notes.md) · [UI 重构路线（归档）](docs/archive/ui-redesign-roadmap.md)
 - [习惯体系融合路线](docs/roadmap-habit-evolution-2026-09.md) · [竞品调研笔记](docs/benchmark-habit-apps-2026-09.md) · [迁移源评估](docs/migration-formats-evaluation.md) · [同步设计评审](docs/sync-design-review.md)
 - [历史路线归档](docs/archive/) · [UI 产品路线（归档）](docs/archive/ui-product-roadmap.md) · [全页 UI 内容审查记录（2026-09-20）](docs/ui-full-content-audit-2026-09-20.md) · [AI 集成计划](docs/ai-integration-plan.md)
 
