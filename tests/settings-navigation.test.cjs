@@ -414,6 +414,9 @@ function assertActive(fixture, expectedId) {
         "the avatar select must expose a localized custom-text state");
     assert.doesNotMatch(html, /✓ 勾选|★ 星标|🐴 小驴|🌿 绿叶|☀ 太阳|🎯 目标/,
         "avatar preset labels must not bypass the i18n dictionary");
+    const indexSource = read("src", "index.ts");
+    assert.match(indexSource, /file\.size > 700 \* 1024/, "avatar uploads must reject oversized files before FileReader");
+    assert.match(indexSource, /reader\.result\.length <= 1_000_000/, "avatar data URLs must be stored intact rather than truncated");
     const firstSurfaceIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
     const secondSurfaceIds = new Set([...secondSurfaceHtml.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
     assert.equal(firstSurfaceIds.size, [...html.matchAll(/\bid="([^"]+)"/g)].length,

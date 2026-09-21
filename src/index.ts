@@ -2057,8 +2057,9 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-avatar-file]")?.addEventListener("change", (event) => {
             const file = (event.currentTarget as HTMLInputElement).files?.[0];
             if (!file || !file.type.startsWith("image/")) return;
+            if (file.size > 700 * 1024) { showMessage(t("set.avatarTooLarge")); (event.currentTarget as HTMLInputElement).value = ""; return; }
             const reader = new FileReader();
-            reader.onload = () => { if (typeof reader.result === "string") { this.avatarImage = reader.result.slice(0, 1_000_000); void this.persistViewPreferences(); this.render(); } };
+            reader.onload = () => { if (typeof reader.result === "string" && reader.result.length <= 1_000_000) { this.avatarImage = reader.result; void this.persistViewPreferences(); this.render(); } };
             reader.readAsDataURL(file);
         });
         root.querySelector<HTMLElement>("[data-setting-avatar-clear]")?.addEventListener("click", () => { this.avatarImage = undefined; void this.persistViewPreferences(); this.render(); });
