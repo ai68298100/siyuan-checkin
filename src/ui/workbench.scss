@@ -274,8 +274,13 @@
         .lc-checkin__priority-reminder-more:not([open]) .lc-checkin__reminder-more-label { display: none; }
         .lc-checkin__priority-reminder-more:not([open]) .lc-checkin__reminder-more-count { display: inline; }
         .lc-checkin__occasion-banner { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; }
-        .lc-checkin__occasion-banner-body { display: contents; }
-        .lc-checkin__occasion-banner-body > strong { grid-column: 2; }
+        /* Keep the empty-state copy in the content track.  `display: contents`
+           lets the small hint participate in the outer grid auto-placement;
+           on narrow WebViews it gets assigned to the icon column and wraps
+           one character per line (the misaligned block seen on phones). */
+        .lc-checkin__occasion-banner-body { display: grid; grid-column: 2; min-width: 0; align-content: center; gap: 2px; }
+        .lc-checkin__occasion-banner-body > strong,
+        .lc-checkin__occasion-banner-body > small { grid-column: 1; min-width: 0; }
         .lc-checkin__occasion-banner > .lc-checkin__text-button { grid-column: 3; grid-row: 1; min-height: 44px; margin: 0; }
         .lc-checkin__occasion-chips { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr); }
         .lc-checkin__occasion-chip { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; padding: 8px 10px; }

@@ -93,6 +93,14 @@ const initializedRhythmScrollers = new WeakSet<HTMLElement>();
     缩放与非缩放环境行为一致。返回同步函数供跳转点击在 scrollIntoView 后
     显式调用（其滚动事件可能不触发本监听）。 */
 function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): () => void {
+    /* Mobile hosts use the native page scroll path.  Applying a per-scroll
+       transform to the review subnav there makes WebView compositing fight
+       the touch gesture (the scroll position visibly oscillates and the page
+       can no longer advance).  The transform workaround is only needed for
+       zoomed desktop surfaces where sticky positioning is broken. */
+    if (root.classList?.contains("lc-checkin-host--mobile") || root.classList?.contains("lc-checkin-dialog-host--mobile")) {
+        return () => undefined;
+    }
     const subnav = root.querySelector<HTMLElement>(".lc-checkin__review-subnav");
     const scroller = subnav?.closest<HTMLElement>(".lc-checkin");
     const sync = () => {

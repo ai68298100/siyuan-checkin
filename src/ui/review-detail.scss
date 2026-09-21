@@ -222,10 +222,10 @@
    review rail in a 1180px dock). `meet` scales the SVG as a whole, so raise
    only tiny axis labels in those local cards. */
 @container review-chart (max-width: 300px) {
-    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 11px; }
 }
 @container review-chart (min-width: 301px) and (max-width: 480px) {
-    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
 }
 @container lc5 (min-width: 720px) {
     @container review-chart (max-width: 480px) {
@@ -234,7 +234,7 @@
 }
 @container lc5 (max-width: 719px) {
     @container review-chart (max-width: 480px) {
-        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 18px; }
+        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
     }
 }
 

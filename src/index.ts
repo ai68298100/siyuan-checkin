@@ -3781,13 +3781,22 @@ export default class CheckinPlugin extends Plugin {
     /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void {
         if (!id) return;
+        const previous = this.reminderUserActions;
         this.reminderUserActions = action === "restore"
             ? clearReminderUserActions(this.reminderUserActions, id)
             : normalizeReminderUserActions([...this.reminderUserActions, {id, action, at: new Date().toISOString()}]);
-        void this.saveData(REMINDER_ACTIONS_NAME, serializeReminderUserActions(this.reminderUserActions)).catch(() => showMessage(t("msg.saveFailedShort")));
+        const serialized = serializeReminderUserActions(this.reminderUserActions);
+        void this.saveData(REMINDER_ACTIONS_NAME, serialized).then(() => {
+            this.render();
+        }).catch(() => {
+            // Keep the reminder center consistent with durable state when the
+            // independent action store is unavailable.
+            this.reminderUserActions = previous;
+            showMessage(t("msg.saveFailedShort"));
+            this.render();
+        });
         const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions).find((entry) => entry.id === id)?.title;
         if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
-        this.render();
     }
 
     private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {

@@ -1220,6 +1220,14 @@
     span { display: block; height: 100%; border-radius: inherit; background: var(--lc-checkin-accent); }
 }
 .lc-checkin__item-action { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; }
+.lc-checkin :is(.lc-checkin__header-actions, .lc-checkin__group-header, .lc-checkin__priority-reminder-row, .lc-checkin__occasion-banner, .lc-checkin__section-heading, .lc-checkin__editor-actions) {
+    align-items: center;
+}
+.lc-checkin :is(.lc-checkin__header-actions, .lc-checkin__group-header, .lc-checkin__priority-reminder-row, .lc-checkin__occasion-banner, .lc-checkin__section-heading, .lc-checkin__editor-actions) > :is(button, .lc-checkin__text-button, .lc-checkin__small-button) {
+    box-sizing: border-box;
+    margin-top: 0;
+    vertical-align: middle;
+}
 .lc-checkin__reminder-center { padding: 10px 12px; }
 .lc-checkin__reminder-heading select { min-height: 30px; padding: 0 24px 0 8px; }
 .lc-checkin__reminder-list { display: grid; gap: 4px; margin-top: 6px; }

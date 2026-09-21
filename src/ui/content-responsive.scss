@@ -227,6 +227,21 @@
 }
 
 @container lc5 (max-width: 719px) {
+    /* Longer translated section labels need room at narrow dock widths.
+       Let them wrap instead of inheriting the desktop single-line ellipsis,
+       while keeping help and count controls in their existing columns. */
+    .lc-checkin__section-heading > div,
+    .lc-checkin__section-heading strong {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .lc-checkin__section-heading strong {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.4;
+    }
     .lc-checkin.lc-checkin--review {
         .lc-checkin__summary-stats { padding-block: 8px; }
         .lc-checkin__summary-stats > div { padding-inline: 10px; }
