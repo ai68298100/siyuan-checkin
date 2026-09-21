@@ -59,7 +59,7 @@ import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, a
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
-import type {CheckinAppearance, CheckinAvatar, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
+import type {CheckinAppearance, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
 import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
@@ -209,7 +209,7 @@ export default class CheckinPlugin extends Plugin {
     private appearance: CheckinAppearance = DEFAULT_VIEW_PREFERENCES.appearance;
     private dialogSizeMode: DialogSizeMode = DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
-    private avatar: CheckinAvatar = DEFAULT_VIEW_PREFERENCES.avatar;
+    private avatar: string = DEFAULT_VIEW_PREFERENCES.avatar;
     private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
     private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
     private dialogRect?: {width: number; height: number} = DEFAULT_VIEW_PREFERENCES.dialogRect;
@@ -2045,7 +2045,7 @@ export default class CheckinPlugin extends Plugin {
             }
         });
         root.querySelector<HTMLSelectElement>("[data-setting-avatar]")?.addEventListener("change", (event) => {
-            const value = (event.currentTarget as HTMLSelectElement).value as CheckinAvatar;
+            const value = (event.currentTarget as HTMLSelectElement).value;
             if (["check", "star", "horse", "leaf", "sun", "target"].includes(value)) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
         });
         root.querySelector<HTMLInputElement>("[data-setting-avatar-custom]")?.addEventListener("change", (event) => {
