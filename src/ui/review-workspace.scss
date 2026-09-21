@@ -134,6 +134,8 @@
 
     > .review-scope-note {
         width: min(100%, 1180px);
+        max-width: 1180px;
+        box-sizing: border-box;
         margin: 0 auto 12px;
     }
 
@@ -341,6 +343,14 @@
         color: var(--lc-checkin-muted);
         font-size: 12px;
         line-height: 1.5;
+    }
+
+    /* Keep the completion summary anchored to the card's right edge at
+       narrow/intermediate widths instead of following the text column. */
+    [data-review-workspace-panel] .lc-checkin__review-item-meta {
+        justify-self: end;
+        min-width: 0;
+        text-align: right;
     }
 
     [data-review-workspace-panel] .lc-checkin__review-sections {
