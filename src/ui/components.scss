@@ -4105,6 +4105,8 @@
 .lc-checkin__diary-doc-controls { flex-wrap: wrap; justify-content: flex-end; }
 .lc-checkin__diary-doc-controls select { min-width: 180px; max-width: 240px; }
 .lc-checkin__diary-doc-controls .lc-checkin__diary-doc { width: 220px; }
+.lc-checkin__diary-create { display: flex; flex-basis: 100%; justify-content: flex-end; gap: 6px; }
+.lc-checkin__diary-create input { width: 220px; }
 .lc-checkin__audit-list ul { display: grid; gap: 6px; margin: 4px 0 10px; padding: 0; list-style: none; }
 .lc-checkin__audit-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px; border: 1px solid var(--lc-checkin-border); border-radius: 10px; background: var(--lc-checkin-surface-soft); }
 .lc-checkin__audit-list li > span { display: grid; min-width: 0; gap: 2px; }

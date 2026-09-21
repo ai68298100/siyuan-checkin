@@ -2007,9 +2007,14 @@ export default class CheckinPlugin extends Plugin {
             const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
             if (value && input) input.value = value;
         });
+        root.querySelector<HTMLElement>("[data-action='toggle-create-diary-doc']")?.addEventListener("click", () => {
+            const row = root.querySelector<HTMLElement>("[data-diary-create]");
+            row?.toggleAttribute("hidden");
+            if (row && !row.hidden) row.querySelector<HTMLInputElement>("[data-diary-create-title]")?.focus();
+        });
         root.querySelector<HTMLElement>("[data-action='create-diary-doc']")?.addEventListener("click", async () => {
-            const title = window.prompt(t("set.diaryCreate"));
-            if (!title?.trim()) return;
+            const title = root.querySelector<HTMLInputElement>("[data-diary-create-title]")?.value.trim() || "";
+            if (!title) return;
             try {
                 const notebooks = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; closed?: boolean}>}};
                 const notebook = notebooks.code === 0 ? notebooks.data?.notebooks?.find((entry) => entry.id && !entry.closed)?.id : "";
