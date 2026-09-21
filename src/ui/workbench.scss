@@ -73,7 +73,7 @@
     .lc-checkin__today-search button { flex: 0 0 44px; min-width: 44px; min-height: 44px; padding: 0; border-radius: 999px; }
     .lc-checkin__today-search:has(button) { height: auto; min-height: 46px; }
     .lc-checkin__today-filters { flex: 0 0 auto; margin: 0; }
-    .lc-checkin__today-filters > summary { min-height: 44px; padding: 7px 14px; border-radius: 12px; background: var(--lc-checkin-surface); font-size: 13px; }
+    .lc-checkin__today-filters > summary { display: flex; align-items: center; justify-content: center; min-height: 44px; box-sizing: border-box; padding: 7px 14px; border-radius: 12px; background: var(--lc-checkin-surface); font-size: 13px; line-height: 1.35; }
     .lc-checkin__today-filters[open] { flex: 1 1 340px; }
     .lc-checkin__filter-toggle { min-height: 44px; border-radius: 12px; background: var(--lc-checkin-surface); font-size: 13px; }
     .lc-checkin__today-filter-fields { padding: 10px 0; gap: 10px; }
