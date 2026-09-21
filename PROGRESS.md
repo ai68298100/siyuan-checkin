@@ -1613,4 +1613,5 @@ T-1301 摘要回填后全链 exit 0。
 验证:pnpm run check、test:ui（含 settings-navigation、i18n-hygiene、i18n-parity）全过。
 随后复跑发布资产门禁发现头像改动后的 package.zip 摘要漂移，已用 `pnpm run sync:digest` 同步 18.0.1 发布说明并通过 `pnpm run check:release`（CSS 602895 bytes，按 D-246 仅报告体积）。
 图片 bug 复核:发现头像上传原实现会把大图片 data URL 静默截断为 1,000,000 字符，可能保存损坏图片；已改为 FileReader 前拒绝 >700 KB 文件，并拒绝超出内部字符上限的结果，补充设置门禁断言与中英提示。验证:check、test:ui、build、sync:digest、check:release 全过。
+筛选框中文输入修复:搜索输入在中文 IME composition 期间不再触发重渲染，compositionend 后再应用筛选，避免拼音被打断并变成英文。验证:check、view-preferences 门禁通过；本轮未生成本地包。
 继续验证: `pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf` 全部通过；扩展链覆盖 146 个测试文件、CSS hygiene 585 类零死类、100k 索引/事务/渲染基线，生态链覆盖 API v5、Task Horizon、Dock Tomato、Obsidian，性能实测 10k 全渲染 31ms、100k 批处理 12.4ms。

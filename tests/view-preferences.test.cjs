@@ -21,6 +21,8 @@ assert.match(source, /source\.focusTimerProvider === "plugin" \? "docktomato"/, 
 assert.match(source, /\["builtin", "docktomato"\]/, "only the built-in timer and Dock Tomato are selectable providers");
 assert.match(source, /FOCUS_TIMER_PROVIDERS/, "focus timer provider must be normalized");
 const bindToday = fs.readFileSync("src/render/bind-today.ts", "utf8");
+assert.match(bindToday, /compositionstart/, "today search must preserve IME composition");
+assert.match(bindToday, /compositionend/, "today search must apply query after IME composition");
 assert.match(bindToday, /pulseHaptic\(\): void;/, "the today host must expose the haptic pulse");
 assert.ok((bindToday.match(/host\.pulseHaptic\(\)/g) || []).length >= 3, "record tap sites must pulse the haptic");
 const settingsSource2 = fs.readFileSync("src/render/settings.ts", "utf8");

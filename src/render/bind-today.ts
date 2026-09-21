@@ -112,7 +112,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     host.bindMobileNav(root);
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
     let searchTimer: number | undefined;
-    search?.addEventListener("input", () => {
+    let composing = false;
+    const applySearch = () => {
+        if (!search) return;
         if (searchTimer !== undefined) window.clearTimeout(searchTimer);
         const value = search.value;
         searchTimer = window.setTimeout(() => {
@@ -120,6 +122,11 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.render();
             host.focusTodaySearch(value.length);
         }, 120);
+    };
+    search?.addEventListener("compositionstart", () => { composing = true; });
+    search?.addEventListener("compositionend", () => { composing = false; applySearch(); });
+    search?.addEventListener("input", () => {
+        if (!composing) applySearch();
     });
     root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
         host.todayQuery = "";
