@@ -2048,6 +2048,10 @@ export default class CheckinPlugin extends Plugin {
             const value = (event.currentTarget as HTMLSelectElement).value as CheckinAvatar;
             if (["check", "star", "horse", "leaf", "sun", "target"].includes(value)) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
         });
+        root.querySelector<HTMLInputElement>("[data-setting-avatar-custom]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLInputElement).value.trim().slice(0, 8);
+            if (value) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
+        });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
@@ -2362,7 +2366,7 @@ export default class CheckinPlugin extends Plugin {
         const dialogActions = ownsDialogChrome
             ? `<div class="lc-checkin__topnav-actions">${fullscreen}<button class="lc-checkin__topnav-action" type="button" data-action="close-dialog" aria-label="${t("common.closeQuickWindow")}" title="${t("common.closeQuickWindow")}">${uiIcon("close")}</button></div>`
             : "";
-        const avatar = this.avatar === "check" ? uiIcon("check") : this.avatar === "star" ? "★" : this.avatar === "horse" ? "🐴" : this.avatar === "leaf" ? "🌿" : this.avatar === "sun" ? "☀" : "🎯";
+        const avatar = this.avatar === "check" ? uiIcon("check") : escapeHtml(this.avatar);
         return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 

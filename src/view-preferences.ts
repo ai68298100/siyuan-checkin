@@ -47,7 +47,7 @@ export interface CheckinViewPreferences {
     dialogSizeMode: DialogSizeMode;
     /** Accent palette. Colors are fixed per palette and do not follow the host theme. */
     palette: CheckinPalette;
-    avatar: CheckinAvatar;
+    avatar: string;
     /** ISO timestamp of the last JSON/CSV export, drives the gentle backup reminder. */
     lastExportAt?: string;
     /** Percentage of the host window when dialogSizeMode is "percent" (50–100). */
@@ -117,7 +117,6 @@ const SORT_MODES = new Set<CheckinItemSortMode>(["manual", "group", "priority", 
 const DIALOG_SIZE_MODES = new Set<DialogSizeMode>(["auto", "percent", "fullscreen", "fixed"]);
 const PALETTES = new Set<CheckinPalette>(["lavender", "ocean", "forest", "sunset"]);
 const FOCUS_TIMER_PROVIDERS = new Set<FocusTimerProvider>(["builtin", "docktomato"]);
-const AVATARS = new Set<CheckinAvatar>(["check", "star", "horse", "leaf", "sun", "target"]);
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
     const parsed = typeof value === "number" ? value : Number(value);
@@ -148,7 +147,8 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const pendingOnly = typeof source.pendingOnly === "boolean" ? source.pendingOnly : false;
     const dialogSizeMode = DIALOG_SIZE_MODES.has(source.dialogSizeMode as DialogSizeMode) ? source.dialogSizeMode as DialogSizeMode : DEFAULT_VIEW_PREFERENCES.dialogSizeMode;
     const palette = PALETTES.has(source.palette as CheckinPalette) ? source.palette as CheckinPalette : DEFAULT_VIEW_PREFERENCES.palette;
-    const avatar = AVATARS.has(source.avatar as CheckinAvatar) ? source.avatar as CheckinAvatar : DEFAULT_VIEW_PREFERENCES.avatar;
+    const avatar = typeof source.avatar === "string" && source.avatar.trim().length > 0
+        ? source.avatar.trim().slice(0, 8) : DEFAULT_VIEW_PREFERENCES.avatar;
     const legacySize = (source as {dialogSize?: unknown}).dialogSize;
     const fixedSource = (source.dialogFixedSize && typeof source.dialogFixedSize === "object" ? source.dialogFixedSize : legacySize && typeof legacySize === "object" ? legacySize : {}) as Record<string, unknown>;
     const readRect = (value: unknown, minWidth: number, minHeight: number, maxWidth: number, maxHeight: number): {width: number; height: number} | undefined => {
