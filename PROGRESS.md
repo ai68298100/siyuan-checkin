@@ -1611,3 +1611,4 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-21 v18.0.0 发布前真实内核 E2E 回归:定位本机思源安装（D:\biji\SiYuan,CHECKIN_E2E_KERNEL/APP_DIR 环境变量）;首跑发现 mobile-review-ui 规格期望值过期（工具栏 5 控件——17.3 起助手入口进工具栏,spec 期望停留在 4）,修正规格期望后 **test:e2e 16/16、test:e2e:readonly 1/1 全过**;docktomato-completion:126 首跑单发偶发,隔离复跑与全套复跑均过。发布证据补齐:真实内核行为（含移动端 bundle、导出通道、收件箱旅程）全部在 18.0.0 包上验证。
 2026-09-21 头像设置尾项收口:预设选项改为完整 i18n（中英 1498 对键保持对等），新增「自定义文字」占位态；设置页重渲染按当前 avatar 值恢复 selected，未知/自定义值不再误显示为首个「勾选」；设置导航门禁新增本地化标签、selected 状态与无硬编码中文断言。决策记录 D-244 明确照片优先显示、显式清除后恢复文字/预设的单一可见来源语义。
 验证:pnpm run check、test:ui（含 settings-navigation、i18n-hygiene、i18n-parity）全过。
+随后复跑发布资产门禁发现头像改动后的 package.zip 摘要漂移，已用 `pnpm run sync:digest` 同步 18.0.1 发布说明并通过 `pnpm run check:release`（CSS 602895 bytes，按 D-246 仅报告体积）。
