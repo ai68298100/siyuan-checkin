@@ -1330,13 +1330,13 @@
 @container review-records (min-width: 600px) {
     .lc-checkin.lc-checkin--review [data-review-workspace-panel="records"] {
         .lc-checkin__history-event {
-            grid-template-columns: minmax(0, 1fr) fit-content(24%) auto;
+            grid-template-columns: minmax(0, 1fr) minmax(96px, 120px) auto;
             align-items: center;
             gap: 8px 16px;
         }
         .lc-checkin__history-event-actions { grid-column: 3; grid-row: 1; }
         .lc-checkin__history-event:has(> .lc-checkin__history-thumb) {
-            grid-template-columns: 44px minmax(0, 1fr) fit-content(24%) auto;
+            grid-template-columns: 44px minmax(0, 1fr) minmax(96px, 120px) auto;
         }
         .lc-checkin__history-event:has(> .lc-checkin__history-thumb) > .lc-checkin__history-event-actions {
             grid-column: 4;
