@@ -3,7 +3,7 @@ import {t} from "../i18n";
 import {escapeHtml, formatNumber} from "../shared";
 import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
-import type {CheckinAppearance, CheckinAvatar, CheckinPalette, DialogSizeMode, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "../view-preferences";
+import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "../view-preferences";
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
@@ -28,7 +28,7 @@ export interface SettingsViewContext {
     dockTomatoCompletionIssues?: readonly DockTomatoCompletionIssue[];
     dockTomatoInbox?: {capacity: number; entries: readonly DockTomatoInboxEntryView[]};
     palette: CheckinPalette;
-    avatar: CheckinAvatar;
+    avatar: string;
     /** T-1352 日记集成（opt-in 默认关）。 */
     diaryReport: {enabled: boolean; docId: string};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
