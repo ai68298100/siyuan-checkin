@@ -294,6 +294,12 @@
     flex: 0 0 auto;
 }
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin.lc-checkin--review {
+    /* Review is a single native page scroller on phones. Avoid rubber-band
+       chaining and animated settling feeding back into the host WebView. */
+    overscroll-behavior-y: none;
+    scroll-behavior: auto;
+    transform: none !important;
+    will-change: auto;
     .lc-checkin__range-tabs button,
     .lc-checkin__custom-range-disclosure > summary,
     .lc-checkin__review-tool-button,
