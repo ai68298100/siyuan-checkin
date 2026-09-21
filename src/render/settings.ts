@@ -7,6 +7,7 @@ import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvid
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
+import {collectAnchorChoices} from "../features/note-anchor-picker";
 
 const AVATAR_PRESETS = [
     ["check", "set.avatarPresetCheck"],
@@ -95,6 +96,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         : "";
     /* T-1352：日记集成缺省值——旧调用方/测试未传该字段时按「未启用」渲染。 */
     const diary = ctx.diaryReport || {enabled: false, docId: ""};
+    const diaryChoices = collectAnchorChoices(ctx.store.items);
+    const diaryChoiceOptions = diaryChoices.map((choice) => `<option value="${escapeHtml(choice.blockId)}">${escapeHtml(choice.labels.join("、") || choice.blockId)}</option>`).join("");
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
         "invalid-event": "set.tomatoIssueInvalidEvent",
         "unsupported-version": "set.tomatoIssueVersion",
@@ -228,7 +231,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agentAuditTitle")}</span><small>${t("set.agentAuditHint")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${ctx.suggestionWorkflowAudits ? "is-muted" : ""}">${t("set.agentAuditCount", {n: ctx.suggestionWorkflowAudits})}</span><button class="lc-checkin__text-button" type="button" data-action="export-agent-audit" ${ctx.suggestionWorkflowAudits ? "" : "disabled"} aria-label="${t("set.agentAuditExport")}">${t("set.agentAuditExport")}</button></span></div>
                     <div class="lc-checkin__settings-row" data-dependency="taskhorizon" data-dependency-state="healthy"><span class="lc-checkin__settings-label"><span>${t("set.thTitle")}</span><small>${t("set.thHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.thRecovery")}</small></span><span class="lc-checkin__settings-value is-success" role="status">${t("set.thStatus")}</span></div>
                     <div class="lc-checkin__settings-row" data-diary-integration><span class="lc-checkin__settings-label"><span>${t("set.diaryTitle")}</span><small>${t("set.diaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-diary-toggle ${diary.enabled ? "checked" : ""} aria-label="${t("set.diaryToggle")}" /></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryDoc")}</span><small>${t("set.diaryDocHint")}${diary.docId && !diary.enabled ? ` · ${t("set.diaryDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="text" class="lc-checkin__diary-doc" data-diary-doc value="${escapeHtml(diary.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.diaryDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-diary-doc">${t("set.diarySave")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryDoc")}</span><small>${t("set.diaryDocHint")}${diary.docId && !diary.enabled ? ` · ${t("set.diaryDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline lc-checkin__diary-doc-controls"><select data-diary-choice aria-label="${t("set.diaryDoc")}"><option value="">${t("set.diaryDocChoose")}</option>${diaryChoiceOptions}</select><input type="text" class="lc-checkin__diary-doc" data-diary-doc value="${escapeHtml(diary.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.diaryDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-diary-doc">${t("set.diarySave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.enabled && diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },

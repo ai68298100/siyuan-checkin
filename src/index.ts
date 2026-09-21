@@ -2002,6 +2002,11 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences().then(() => showMessage(t("msg.diaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
         });
+        root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
+            if (value && input) input.value = value;
+        });
         root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
             void this.writeDiaryReport();
         });
