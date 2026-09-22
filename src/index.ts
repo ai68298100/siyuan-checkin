@@ -44,6 +44,7 @@ import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
+import {HEALTH_INGEST_INTERVAL_MS, buildHealthExternalRef, parseHealthInboxRows, planHealthIngest} from "./features/health-inbox";
 import {normalizeSourceGovernance, settleSegmentsToDays} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -371,6 +372,9 @@ export default class CheckinPlugin extends Plugin {
     summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
     /* T-1384 思阅联动（opt-in 默认关）。 */
     sireaderIntegration = {...DEFAULT_VIEW_PREFERENCES.sireaderIntegration};
+    /* T-1403 健康收件箱（opt-in 默认关）。 */
+    healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
+    private healthInboxTimer?: number;
     private sireaderTracker?: SireaderFocusTracker;
     private readonly handleSireaderLifecycle = (event: Event) => {
         const type = (event as CustomEvent).type as SireaderLifecycleType;
@@ -595,6 +599,34 @@ export default class CheckinPlugin extends Plugin {
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
             const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "sireader", externalRef}, moment, fingerprint));
+            if (recorded) {
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            }
+        }
+    }
+
+    /* T-1403 健康收件箱：轮询用户绑定文档，解析「health:指标:日期 数值」行，幂等入库（source api）。
+       同 metric+日期 只入一条（外部自动化经公开 API 的既定语义）；行保留在文档中由用户归档。 */
+    private async ingestHealthInbox(): Promise<void> {
+        const governance = this.healthInbox;
+        if (!governance.enabled || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' LIMIT 500`});
+        const entries = parseHealthInboxRows((response as {data?: Array<{content?: string}>}).data || []);
+        if (!entries.length) return;
+        const existing = new Set<string>();
+        for (const entry of entries) {
+            if (this.store.events.some((event) => event.source === "api" && event.externalRef === entry.externalRef)) existing.add(entry.externalRef);
+        }
+        const plan = planHealthIngest(entries, existing);
+        for (const entry of plan.pending) {
+            const itemId = entry.metric === "steps" ? governance.stepsItemId : governance.weightItemId;
+            if (!itemId) continue;
+            const item = getActiveItemById(this.store, itemId);
+            if (!item) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef: entry.externalRef}, moment, fingerprint));
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -857,6 +889,7 @@ export default class CheckinPlugin extends Plugin {
         });
         window.addEventListener("focus", this.handleWindowFocus);
         this.bindSireaderListeners();
+        this.healthInboxTimer = window.setInterval(() => void this.ingestHealthInbox(), HEALTH_INGEST_INTERVAL_MS);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -1025,6 +1058,10 @@ export default class CheckinPlugin extends Plugin {
         });
         window.removeEventListener("focus", this.handleWindowFocus);
         this.unbindSireaderListeners();
+        if (this.healthInboxTimer !== undefined) {
+            window.clearInterval(this.healthInboxTimer);
+            this.healthInboxTimer = undefined;
+        }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
         if (this.mobileTopBarRetryTimer !== undefined) {
@@ -2073,6 +2110,7 @@ export default class CheckinPlugin extends Plugin {
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
+            healthInbox: {...this.healthInbox},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
             latestDiagnosticText: this.latestDiagnosticText(),
@@ -2211,6 +2249,37 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences().then(() => showMessage(t("msg.sireaderSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
         });
+        root.querySelector<HTMLInputElement>("[data-health-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && !this.healthInbox.docId) {
+                showMessage(t("msg.healthNeedDoc"));
+                this.render();
+                return;
+            }
+            this.healthInbox = {...this.healthInbox, enabled: checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-health-doc']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-health-doc]");
+            const docId = validateAnchorBlockId(input?.value);
+            if (!docId) {
+                showMessage(t("msg.healthDocInvalid"));
+                return;
+            }
+            this.healthInbox = {...this.healthInbox, docId};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.healthDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        for (const [selector, key] of [["[data-health-steps-item]", "stepsItemId"], ["[data-health-weight-item]", "weightItemId"]] as const) {
+            root.querySelector<HTMLSelectElement>(selector)?.addEventListener("change", (event) => {
+                const value = (event.currentTarget as HTMLSelectElement).value;
+                this.healthInbox = {...this.healthInbox, [key]: value};
+                void this.persistViewPreferences();
+                if (this.healthInbox.enabled) void this.ingestHealthInbox();
+                this.render();
+            });
+        }
         root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
@@ -4184,6 +4253,7 @@ export default class CheckinPlugin extends Plugin {
         this.diaryReport = {...preferences.diaryReport};
         this.summaryResident = {...preferences.summaryResident};
         this.sireaderIntegration = {...preferences.sireaderIntegration};
+        this.healthInbox = {...preferences.healthInbox};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -4252,6 +4322,7 @@ export default class CheckinPlugin extends Plugin {
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
+            healthInbox: {...this.healthInbox},
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

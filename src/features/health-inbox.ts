@@ -1,0 +1,100 @@
+/* T-1403 健康数据收件箱（D-262）——C 类外部 push 的中转管道纯核心。
+   架构事实：快捷指令只能 HTTP 到思源内核，无法触达插件渲染进程的 recordEvent；
+   因此交付形态是「收件箱文档中转」：快捷指令经内核公开 appendBlock 把一行
+   「health:指标:日期 数值」追加到用户绑定的收件箱文档，
+   插件按有界周期轮询该文档、解析行、按 externalRef 幂等入库（source "api"）。
+   纪律：
+   - 只解析严格匹配的行，坏行忽略不报错（fail-closed）；
+   - 幂等：同 metric+日期 已存在（source api + externalRef）即跳过，同日重复 push
+     或多窗口轮询都收敛为一条；首次入库后同日修正值不再覆盖（更正走历史删除）；
+   - 行保留在收件箱文档中，插件不改写用户文档；解析无状态、确定性，可回放。 */
+
+import {validateAnchorBlockId} from "./note-anchor";
+
+export type HealthInboxMetric = "steps" | "weight";
+
+export const HEALTH_INBOX_METRICS: readonly HealthInboxMetric[] = ["steps", "weight"];
+
+/** 轮询周期（毫秒）：收件箱按有界间隔轮询，保存设置后立即摄取一次。 */
+export const HEALTH_INGEST_INTERVAL_MS = 300_000;
+/** 单次摄取最多解析的行数（有界）。 */
+export const HEALTH_INBOX_MAX_ROWS = 500;
+
+export interface HealthInboxEntry {
+    metric: HealthInboxMetric;
+    localDate: string;
+    value: number;
+    externalRef: string;
+}
+
+/** 写入身份三段式：health / 指标 / 日期（parseExternalRef 的 prefix=health, identity=metric, date）。 */
+const REF_TEMPLATE = "health:%M:%D";
+
+export function buildHealthExternalRef(metric: HealthInboxMetric, localDate: string): string {
+    return REF_TEMPLATE.replace("%M", metric).replace("%D", localDate);
+}
+
+/** 严格行格式：health:steps:YYYY-MM-DD 数值 或 health:weight:YYYY-MM-DD 数值。 */
+const LINE_PATTERN = /^health:(steps|weight):([0-9]{4}-[0-9]{2}-[0-9]{2})[ \t]+([0-9]+(?:\.[0-9]+)?)$/;
+
+/** 解析一行收件箱内容；非严格匹配返回 undefined。 */
+export function parseHealthInboxLine(content: unknown): HealthInboxEntry | undefined {
+    if (typeof content !== "string") return undefined;
+    const match = content.trim().match(LINE_PATTERN);
+    if (!match) return undefined;
+    const metric = match[1] as HealthInboxMetric;
+    const localDate = match[2];
+    const value = Number(match[3]);
+    if (!Number.isFinite(value) || value < 0) return undefined;
+    return {metric, localDate, value, externalRef: buildHealthExternalRef(metric, localDate)};
+}
+
+export interface HealthInboxRow {
+    content?: string;
+}
+
+/** 从内核 SQL 行中解析全部合法条目（按行序去重：同 metric+日期 取首条）。 */
+export function parseHealthInboxRows(rows: readonly HealthInboxRow[]): HealthInboxEntry[] {
+    if (!Array.isArray(rows)) return [];
+    const seen = new Set<string>();
+    const entries: HealthInboxEntry[] = [];
+    for (const row of rows.slice(0, HEALTH_INBOX_MAX_ROWS)) {
+        const entry = parseHealthInboxLine(row?.content);
+        if (!entry || seen.has(entry.externalRef)) continue;
+        seen.add(entry.externalRef);
+        entries.push(entry);
+    }
+    return entries;
+}
+
+export interface HealthIngestPlan {
+    pending: HealthInboxEntry[];
+    skippedCount: number;
+}
+
+/** 摄取计划：过滤已入库身份（source api + externalRef）后的待写清单。 */
+export function planHealthIngest(entries: readonly HealthInboxEntry[], writtenRefs: ReadonlySet<string>): HealthIngestPlan {
+    const pending: HealthInboxEntry[] = [];
+    let skippedCount = 0;
+    for (const entry of entries) {
+        if (writtenRefs.has(entry.externalRef)) {
+            skippedCount += 1;
+            continue;
+        }
+        pending.push(entry);
+    }
+    return {pending, skippedCount};
+}
+
+/** 偏好归一：docId 走块 ID 校验；enabled 无合法 docId 不物化；项目映射可选。 */
+export function normalizeHealthInboxPreference(source: unknown): {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string} {
+    const entry = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
+    const docId = validateAnchorBlockId(entry.docId) || "";
+    const itemId = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 160) : "";
+    return {
+        enabled: entry.enabled === true && Boolean(docId),
+        docId,
+        stepsItemId: itemId(entry.stepsItemId),
+        weightItemId: itemId(entry.weightItemId),
+    };
+}

@@ -52,12 +52,18 @@ const summaryResidentModule = loadTypeScript("src/features/summary-resident.ts",
         validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
     },
 });
+const healthInboxModule = loadTypeScript("src/features/health-inbox.ts", {}, {
+    "./note-anchor": {
+        validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
+    },
+});
 const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/note-anchor": {
         // T-1352：与 src/features/note-anchor.ts 同规格的块 ID 校验桩（URL 安全 10~64 位）。
         validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
     },
     "./features/summary-resident": summaryResidentModule,
+    "./features/health-inbox": healthInboxModule,
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";

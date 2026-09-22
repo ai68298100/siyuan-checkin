@@ -1,6 +1,7 @@
 import type {CheckinItemSortMode} from "./types";
 import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
+import {normalizeHealthInboxPreference} from "./features/health-inbox";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -72,6 +73,8 @@ export interface CheckinViewPreferences {
     summaryResident: {enabled: boolean; docId: string};
     /** T-1384 思阅联动（opt-in，默认关）：有效阅读分钟达阈值后每日一次幂等写入。 */
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。 */
+    healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -112,6 +115,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     diaryReport: {enabled: false, docId: ""},
     summaryResident: {enabled: false, docId: ""},
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
+    healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     recentTemplates: [],
 };
 
@@ -206,6 +210,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const diaryDocId = validateAnchorBlockId(diarySource.docId) || "";
     const diaryReport = {enabled: diarySource.enabled === true && Boolean(diaryDocId), docId: diaryDocId};
     const summaryResident = normalizeSummaryResidentPreference(source.summaryResident);
+    const healthInbox = normalizeHealthInboxPreference(source.healthInbox);
     /* T-1384：思阅联动——enabled 无有效 itemId 不物化；阈值钳制 1~1440（缺省 30）。 */
     const sireaderSource = (source.sireaderIntegration && typeof source.sireaderIntegration === "object" ? source.sireaderIntegration : {}) as Record<string, unknown>;
     const sireaderItemId = typeof sireaderSource.itemId === "string" ? sireaderSource.itemId.trim().slice(0, 160) : "";
@@ -245,6 +250,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         diaryReport,
         summaryResident,
         sireaderIntegration,
+        healthInbox,
         recentTemplates,
     };
 }

@@ -46,6 +46,8 @@ export interface SettingsViewContext {
     summaryResident: {enabled: boolean; docId: string};
     /** T-1384 思阅联动（opt-in 默认关）。 */
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    /** T-1403 健康收件箱（opt-in 默认关）。 */
+    healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
     suggestionWorkflowAudits: number;
     /** T-1361 会话诊断：条数与最新一条的本地化标签（空串 = 无诊断）。 */
@@ -106,6 +108,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const sireader = ctx.sireaderIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
     const sireaderItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
         .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === sireader.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    /* T-1403：健康收件箱缺省值，同上。 */
+    const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
+    const healthItemOptions = (selectedId: string) => ctx.store.items.filter((item) => !item.archived).slice(0, 200)
+        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     const diaryChoices = collectAnchorChoices(ctx.store.items);
     const diaryChoiceOptions = diaryChoices.map((choice) => `<option value="${escapeHtml(choice.blockId)}">${escapeHtml(choice.labels.join("、") || choice.blockId)}</option>`).join("");
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
@@ -249,6 +255,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-sireader-integration><span class="lc-checkin__settings-label"><span>${t("set.sireaderTitle")}</span><small>${t("set.sireaderHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-sireader-toggle ${sireader.enabled ? "checked" : ""} aria-label="${t("set.sireaderToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderItem")}</span><small>${t("set.sireaderItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-sireader-item aria-label="${t("set.sireaderItem")}"><option value="">${t("set.sireaderItemChoose")}</option>${sireaderItemOptions}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderThreshold")}</span><small>${t("set.sireaderThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-sireader-threshold value="${sireader.thresholdMinutes}" aria-label="${t("set.sireaderThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-sireader">${t("set.sireaderSave")}</button></span></div>
+                    <div class="lc-checkin__settings-row" data-health-inbox><span class="lc-checkin__settings-label"><span>${t("set.healthTitle")}</span><small>${t("set.healthHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-health-toggle ${healthInbox.enabled ? "checked" : ""} aria-label="${t("set.healthToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthDoc")}</span><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthStepsItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-steps-item aria-label="${t("set.healthStepsItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.stepsItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthWeightItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-weight-item aria-label="${t("set.healthWeightItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.weightItemId)}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
         {
