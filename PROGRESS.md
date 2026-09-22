@@ -1634,3 +1634,5 @@ T-1301 摘要回填后全链 exit 0。
 回顾分析图表布局修复:分析说明恢复与面板同宽；趋势卡取消中间宽度下的左右分栏，让图表占满可用宽度，避免坐标轴被挤压、底部日期轴脱节和右侧空白。验证:type check、width-walkthrough（含 1180px）全部通过；本轮未生成本地包。
 发版后完整回归:发现设置页新增 note-anchor-picker 后，settings-navigation/agent-status 两个独立 TS 测试加载器缺少依赖桩；已补齐并通过完整 test、test:ui、test:mobile、test:ecosystem、test:extended、test:perf、legacy-style、cross-surface、check:release、environment、build。当前版本 18.0.1 发布资产门禁通过（CSS 603671 bytes）；本轮未更新集市包。
 继续验证: `pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf` 全部通过；扩展链覆盖 146 个测试文件、CSS hygiene 585 类零死类、100k 索引/事务/渲染基线，生态链覆盖 API v5、Task Horizon、Dock Tomato、Obsidian，性能实测 10k 全渲染 31ms、100k 批处理 12.4ms。
+
+2026-09-22 外部插件联动规划补充（T-1395/D-255）：将思阅、思播、Task Horizon 等合作方的缺失公开能力纳入“本地安全 fallback + 上游公开 API issue/PR”双轨。新增 T-1395，要求能力发现/版本、事件或查询语义、隐私边界、contract fixture、文档示例、旧版降级和桌面/移动/多窗口/重载验收；上游 API 合并、发布、真实宿主验证前不把 fallback 升级为默认稳定路径。两条路径必须指定唯一 canonical source，并以 `source + externalRef` 幂等，禁止同一指标重复累计。本轮只更新计划、路线、决策和阻塞记录，未修改运行代码、未创建/提交/push 任何外部 PR。
