@@ -8,9 +8,9 @@
 
 记录每一次行动，再用同一份可追溯数据完成统计、提醒、复盘和跨插件协作。
 
-**当前版本：18.0.1**
+**当前版本：18.0.2**
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.0.1.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.0.2.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -54,7 +54,21 @@
 
 核心功能不依赖网络或 AI：即使没有智能体、番茄钟或其他插件，手动打卡、统计、导出、恢复和提醒仍然可以独立运行。插件不包含 `kernel.js`，不声明 `kernels`，也不启用 `publish.data`；打卡记录、恢复点、审计信息和显示偏好属于插件自己的本地数据。
 
-## 18.0.1 要点
+## 18.0.2 要点
+
+本次小版本收口回顾布局、中文输入、头像编辑和日记设置的体验问题，可直接从 18.0.1 升级。
+
+- **回顾适配**：修正统计周期与内容对齐、记录数值垂直居中、图表随容器宽度展开及窄屏字号；调整移动端回顾滚动。
+- **中文输入**：今日搜索在拼音组合期间保留输入节点，防止旧搜索计时器中断输入。
+- **头像设置**：支持预设、文字和照片头像；照片可拖动取景、缩放、重置或取消，损坏或超长图片数据不会被截断保存。
+- **日记文档**：可搜索选择目标文档，也可选择打开的笔记本新建文档；失败原因分别提示，保留手填文档 ID。
+- **回顾助手**：复制提问后尝试打开思源智能体面板；面板不可用时保留复制结果并提示手动打开。
+
+间隔复习、项目文档绑定、每日日记、同类产品及闪卡联动已纳入[后续调研计划](docs/roadmap-checkin-research-2026-09.md)，尚未实施新的研究功能。真实思源宿主、Android 输入与触控、只读/发布服务及双插件联调仍有待验收项，详见[18.0.2 发布说明](docs/releases/release-notes-18.0.2.md)。
+
+完整条目见 [18.0.2 变更记录](docs/v18.0.2-change-log.md)。
+
+### 18.0.1 功能基础
 
 本版本聚合模板体系、笔记原生、受控智能体与生态准入四个方向的交付。主存储结构不变，可直接从 17.3.0 升级。
 
@@ -348,7 +362,7 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [18.0.1 变更记录](docs/v18.0.1-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
+- [18.0.2 变更记录](docs/v18.0.2-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
 - [五大版本规划 v18~v22](docs/development-roadmap-v18-v22.md) · [当前状态与开发路线](docs/development-roadmap-current.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)

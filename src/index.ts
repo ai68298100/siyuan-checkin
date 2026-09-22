@@ -72,6 +72,7 @@ import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectD
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
+import {runDiarySearchRequest} from "./features/diary-search";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef} from "./ecosystem";
 
@@ -2034,16 +2035,17 @@ export default class CheckinPlugin extends Plugin {
             diarySearchTimer = setTimeout(async () => {
                 const select = root.querySelector<HTMLSelectElement>("[data-diary-choice]");
                 if (!select || !query) return;
-                try {
-                    const response = await fetchSyncPost("/api/filetree/searchDocs", {k: query, flashcard: false, excludeIDs: []}) as unknown as {code?: number; data?: Array<{id?: string; content?: string; hPath?: string}> | {blocks?: Array<{id?: string; content?: string; hPath?: string}>}};
-                    if (!select.isConnected || request !== diarySearchRequest) return;
-                    const blocks = response.code === 0
-                        ? Array.isArray(response.data) ? response.data : response.data?.blocks || []
-                        : [];
-                    select.innerHTML = `<option value="">${escapeHtml(t("set.diaryDocChoose"))}</option>` + blocks.slice(0, 50).filter((block) => block.id).map((block) => `<option value="${escapeHtml(block.id || "")}">${escapeHtml(block.hPath || block.content || block.id || "")}</option>`).join("");
-                } catch {
-                    if (select.isConnected && request === diarySearchRequest) showMessage(t("msg.diarySearchFailed"));
-                }
+                await runDiarySearchRequest({
+                    query,
+                    request,
+                    isCurrent: (currentRequest) => currentRequest === diarySearchRequest,
+                    getSelect: () => select,
+                    post: (url, payload) => fetchSyncPost(url, payload) as unknown as Promise<{code?: number; data?: Array<{id?: string; content?: string; hPath?: string}> | {blocks?: Array<{id?: string; content?: string; hPath?: string}>}}>,
+                    render: (currentSelect, blocks) => {
+                        currentSelect.innerHTML = `<option value="">${escapeHtml(t("set.diaryDocChoose"))}</option>` + blocks.filter((block) => block.id).map((block) => `<option value="${escapeHtml(block.id || "")}">${escapeHtml(block.hPath || block.content || block.id || "")}</option>`).join("");
+                    },
+                    onFailure: () => showMessage(t("msg.diarySearchFailed")),
+                });
             }, 180);
         });
         let diaryNotebookRequest = 0;
