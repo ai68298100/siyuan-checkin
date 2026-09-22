@@ -1,5 +1,15 @@
 # 决策
 
+## D-260：思阅适配器 MVP 落地口径（T-1384，2026-09-23）
+
+- **新事件来源 `sireader`**：`CheckinEvent.source` 枚举扩展第四外部来源（manual/tomato/import/api 之上）。它是内部适配器保留来源——`recordExternalEvent` 白名单放行（含 normalize 与多窗口合并白名单，保证来源不被降级为 manual），但公开 API facade `recordEvent` 把输入中的 `source: "sireader"` 强制回落 `"api"`，外部消费方不能伪造。
+- **写入身份**：`sireader:<itemId>:<localDate>`（每日一次幂等键），登记进 `EXTERNAL_REF_PREFIX_REGISTRY`；重复写入由既有 `source + externalRef` 去重兜底，删除走既有墓碑与撤销路径（可撤销）。
+- **计时口径**：只消费思阅公开生命周期事件（reader:open/focus/blur/close，源码级证据），有效时长 = 有焦点区间墙上时间，分钟向下取整（宁少记不多记）；open 亦可开始焦点（阅读器打开即聚焦）；重复 focus 不重启计时；空闲 blur/close 忽略；时间倒流忽略。
+- **跨日与重载**：片段按 localDate 预切分（框架接入层契约，一段一日）；重载/卸载时在飞焦点区间直接丢弃（fail-closed 少记），未写入的已累计分钟不跨会话保留。
+- **写入时机**：每次焦点片段完成后结算；当日 countedValue ≥ 阈值（默认 30 分钟，1~1440 钳制）且当日未写过时写入一次（值为结算时点累计分钟数，MVP 不做日内更新，后续 T-1387 评估）。
+- **opt-in 与作用面**：`sireaderIntegration {enabled, itemId, thresholdMinutes}` 偏好默认关，enabled 无有效 itemId 不物化；MVP 单项目映射，多来源/多映射治理 UX 归 T-1386。设置页三行（开关/项目/阈值）双语。
+- **上游契约**：思阅生命周期事件为源码级证据未成官方契约，适配器按研究结论保持 opt-in + 可撤销；上游公开 API 提案归 T-1395/D-255。真实宿主验收（桌面/移动/重载/双插件）归 T-1388，验收前不宣传为稳定功能。
+
 ## D-259：Task Horizon 日历可见性字段与只读投影落地口径（2026-09-23）
 
 - **字段语义（T-1390）**：`CheckinItem.taskHorizonCalendarVisible?: false`——类型上只允许 `false`；缺省/true 不写字段（旧数据零迁移、与 normalizeItem 规范字段集合逐键一致）；仅显式 false 物化。只控制外部日历投影，不删除本地数据、不复用 `archived`、不影响 `recordEvent` 任务回写（显示与写回分离，沿用 D-254）。

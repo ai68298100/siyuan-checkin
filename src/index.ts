@@ -43,6 +43,8 @@ import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDia
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
+import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
+import {normalizeSourceGovernance, settleSegmentsToDays} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -367,6 +369,13 @@ export default class CheckinPlugin extends Plugin {
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
     /* T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
+    /* T-1384 思阅联动（opt-in 默认关）。 */
+    sireaderIntegration = {...DEFAULT_VIEW_PREFERENCES.sireaderIntegration};
+    private sireaderTracker?: SireaderFocusTracker;
+    private readonly handleSireaderLifecycle = (event: Event) => {
+        const type = (event as CustomEvent).type as SireaderLifecycleType;
+        this.ingestSireaderLifecycle(type, Date.now());
+    };
     private summaryResidentInFlight = false;
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
@@ -491,7 +500,7 @@ export default class CheckinPlugin extends Plugin {
             for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
                 sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
             }
-            const sources = (["manual", "tomato", "api", "import"] as const)
+            const sources = (["manual", "tomato", "api", "import", "sireader"] as const)
                 .filter((key) => (sourceCounts.get(key) || 0) > 0)
                 .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
             const markdown = `${buildDailySummaryLine({
@@ -525,6 +534,66 @@ export default class CheckinPlugin extends Plugin {
             showMessage(t("msg.summaryWritten"));
         } else if (result.reason && result.reason !== "busy") {
             showMessage(t("msg.summaryWriteFailed", {reason: result.reason}));
+        }
+    }
+
+    /* T-1384 思阅联动：生命周期事件 → 焦点片段 → 结算 → 每日一次幂等写入（opt-in 默认关）。
+       监听思阅公开事件 reader:open/focus/blur/close；无事件信号时不做任何事。 */
+    private bindSireaderListeners(): void {
+        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close"]) {
+            window.addEventListener(type, this.handleSireaderLifecycle);
+        }
+    }
+
+    private unbindSireaderListeners(): void {
+        for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close"]) {
+            window.removeEventListener(type, this.handleSireaderLifecycle);
+        }
+        /* 重载/卸载：在飞焦点区间直接丢弃（fail-closed 少记）；已写入当日由 externalRef 幂等兜底。 */
+        this.sireaderTracker?.discardInFlight();
+        this.sireaderTracker = undefined;
+    }
+
+    private ingestSireaderLifecycle(type: SireaderLifecycleType, atMs: number): void {
+        const governance = this.sireaderIntegration;
+        if (!governance.enabled || !governance.itemId || this.disposed || this.disposing || !this.acceptingOperations) return;
+        if (!this.sireaderTracker) {
+            this.sireaderTracker = new SireaderFocusTracker({
+                toLocalDate: (ms) => dateKey(new Date(ms)),
+                nextMidnight: (ms) => {
+                    const at = new Date(ms);
+                    return new Date(at.getFullYear(), at.getMonth(), at.getDate() + 1).getTime();
+                },
+            });
+        }
+        const segments = this.sireaderTracker.handle(type, atMs);
+        if (segments.length) void this.writeSireaderSegments(segments);
+    }
+
+    /* 片段 → 结算 → 资格日写入。每日一次：同 source+externalRef 已存在即跳过（幂等，可经历史删除撤销）。 */
+    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>): Promise<void> {
+        const governance = this.sireaderIntegration;
+        if (!governance.enabled || !governance.itemId) return;
+        const item = getActiveItemById(this.store, governance.itemId);
+        if (!item) return;
+        const refFor = (localDate: string) => buildSireaderExternalRef(governance.itemId, localDate);
+        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "sireader" && event.externalRef === ref);
+        const settlement = settleSegmentsToDays(
+            segments.map((segment) => ({externalRef: refFor(segment.localDate), localDate: segment.localDate, value: segment.minutes})),
+            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
+            segments.map((segment) => refFor(segment.localDate)).filter((ref) => alreadyWritten(ref)),
+        );
+        for (const day of settlement.days) {
+            if (!day.qualifies) continue;
+            const externalRef = refFor(day.localDate);
+            if (!externalRef || alreadyWritten(externalRef)) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "sireader", externalRef}, moment, fingerprint));
+            if (recorded) {
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            }
         }
     }
 
@@ -782,6 +851,7 @@ export default class CheckinPlugin extends Plugin {
             dockTomatoTombstonedIdentities: () => this.collectDockTomatoTombstonedIdentities(),
         });
         window.addEventListener("focus", this.handleWindowFocus);
+        this.bindSireaderListeners();
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -949,6 +1019,7 @@ export default class CheckinPlugin extends Plugin {
             this.settingsNavigationCleanups.delete(root);
         });
         window.removeEventListener("focus", this.handleWindowFocus);
+        this.unbindSireaderListeners();
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
         if (this.mobileTopBarRetryTimer !== undefined) {
@@ -1046,7 +1117,7 @@ export default class CheckinPlugin extends Plugin {
         if (!Number.isFinite(value) || value < 0) {
             return undefined;
         }
-        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" ? input.source : "api";
+        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" ? input.source : "api";
         const externalRef = typeof input.externalRef === "string" && input.externalRef ? input.externalRef : undefined;
         const taskHorizonRef = externalRef?.trim();
         if (taskHorizonRef?.startsWith("taskhorizon:") && (source !== "api" || !isTaskHorizonExternalRef(taskHorizonRef))) {
@@ -1996,6 +2067,7 @@ export default class CheckinPlugin extends Plugin {
             avatarImage: this.avatarImage,
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
+            sireaderIntegration: {...this.sireaderIntegration},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
             latestDiagnosticText: this.latestDiagnosticText(),
@@ -2109,6 +2181,30 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
             void this.writeSummaryResidentNow();
+        });
+        root.querySelector<HTMLInputElement>("[data-sireader-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && !this.sireaderIntegration.itemId) {
+                showMessage(t("msg.sireaderNeedItem"));
+                this.render();
+                return;
+            }
+            this.sireaderIntegration = {...this.sireaderIntegration, enabled: checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLSelectElement>("[data-sireader-item]")?.addEventListener("change", (event) => {
+            const itemId = (event.currentTarget as HTMLSelectElement).value;
+            this.sireaderIntegration = {...this.sireaderIntegration, itemId, enabled: itemId ? this.sireaderIntegration.enabled : false};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-sireader']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-sireader-threshold]");
+            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
+            this.sireaderIntegration = {...this.sireaderIntegration, thresholdMinutes};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.sireaderSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -4082,6 +4178,7 @@ export default class CheckinPlugin extends Plugin {
         this.reportSource = preferences.reportSource;
         this.diaryReport = {...preferences.diaryReport};
         this.summaryResident = {...preferences.summaryResident};
+        this.sireaderIntegration = {...preferences.sireaderIntegration};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -4149,6 +4246,7 @@ export default class CheckinPlugin extends Plugin {
             reportSource: this.reportSource,
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
+            sireaderIntegration: {...this.sireaderIntegration},
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

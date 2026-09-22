@@ -13,6 +13,7 @@ const sourceLabels: Record<CheckinEvent["source"], string> = {
     tomato: "专注记录",
     import: "导入记录",
     api: "外部记录",
+    sireader: "思阅阅读",
 };
 
 /** Expects normalized events; the caller selects the item and date range first. */

@@ -71,7 +71,8 @@
   - 范围：来源描述符（key/能力/隐私等级/渠道）、统一结算层接口（片段→当日汇总，纯函数无 IO）、身份层复用（source + externalRef 不立第二套）、治理层通用组件规格；先补设计和契约测试夹具，不接真实写入；同时登记思阅/思播缺失公开 API 的 issue/PR 契约草案。
   - 状态：done（2026-09-23。`src/features/source-framework.ts` 冻结三面契约：SourceDescriptor（前缀级 key 校验/四渠道/四状态/能力协商）、SourceGovernanceConfig（opt-in 默认关/阈值/封顶/映射≤16）、settleSegmentsToDays 结算单一路径（跨日预切分归接入层、externalRef 幂等 first-wins、封顶与阈值只约束资格不改写历史、确定性无时钟、fail-closed 计数不抛异常、5000 片段批上限）；身份层委托既有 EXTERNAL_REF_PREFIX_REGISTRY 不另立注册表；框架文档 §七 冻结契约成文；tests/source-framework.test.cjs 入 test:ui。上游 issue/PR 草案按 D-255/T-1395 归口（思阅/思播缺口已在 cross-plugin 研究文档成文，发出前需用户授权）。未接任何真实写入。）
   - 备注：思阅/思播缺失公开 API 的 issue/PR 契约草案起草归 T-1395。
-- [ ] T-1384 思阅适配器 MVP：消费阅读生命周期事件，完成片段结算、跨日、重载恢复、每日一次幂等写入；opt-in，真实桌面/移动端验收后再发布；上游 API 未发布前只作为可撤销 fallback。
+- [x] T-1384 思阅适配器 MVP：消费阅读生命周期事件，完成片段结算、跨日、重载恢复、每日一次幂等写入；opt-in，真实桌面/移动端验收后再发布；上游 API 未发布前只作为可撤销 fallback。
+  - 状态：done（2026-09-23，D-260。`src/features/sireader-adapter.ts` 焦点计时器纯核心：open/focus/blur/close 配对、重复 focus/空闲 blur/时间倒流守卫、跨日按 localDate 预切分、分钟向下取整、重载丢弃在飞区间；宿主接线 listener 绑定/拆除、片段→框架结算→资格日写入（`sireader:<itemId>:<localDate>` 每日一次幂等，值=结算时点累计分钟）；source 枚举扩展 `sireader`（内部保留来源：normalize/合并/recordExternalEvent 白名单放行，facade 强制回落 api 防伪造）+ 前缀注册表 + 来源标签四处；偏好 `sireaderIntegration` 默认关（enabled 无 itemId 不物化，阈值钳制 1~1440）；设置页三行双语。tests/sireader-adapter.test.cjs 入 test:ui。真实宿主验收归 T-1388。）
 - [ ] T-1385 思播适配器评估与实现：优先等待/验证公开事件契约并推动上游 API 方案；只有 controller 轮询时先保留实验/仅观察模式，不默认自动写入。
 - [ ] T-1386 来源联动设置与项目映射 UX：来源、阈值、范围、隐私说明、累计预览、禁用/断开/重试；不把标题或 URL 作为必填配置。
 - [ ] T-1387 事件幂等、撤销与诊断：新 source 前缀注册、跨窗口并发、失败重试、墓碑、卸载清理、导出诊断和回滚矩阵。

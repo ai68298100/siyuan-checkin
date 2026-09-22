@@ -44,6 +44,8 @@ export interface SettingsViewContext {
     diaryReport: {enabled: boolean; docId: string};
     /** T-1353 摘要驻留（opt-in 默认关）。 */
     summaryResident: {enabled: boolean; docId: string};
+    /** T-1384 思阅联动（opt-in 默认关）。 */
+    sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
     suggestionWorkflowAudits: number;
     /** T-1361 会话诊断：条数与最新一条的本地化标签（空串 = 无诊断）。 */
@@ -100,6 +102,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const diary = ctx.diaryReport || {enabled: false, docId: ""};
     /* T-1353：摘要驻留缺省值，同上。 */
     const summaryResident = ctx.summaryResident || {enabled: false, docId: ""};
+    /* T-1384：思阅联动缺省值，同上。 */
+    const sireader = ctx.sireaderIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
+    const sireaderItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
+        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === sireader.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     const diaryChoices = collectAnchorChoices(ctx.store.items);
     const diaryChoiceOptions = diaryChoices.map((choice) => `<option value="${escapeHtml(choice.blockId)}">${escapeHtml(choice.labels.join("、") || choice.blockId)}</option>`).join("");
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
@@ -240,6 +246,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-summary-resident><span class="lc-checkin__settings-label"><span>${t("set.summaryTitle")}</span><small>${t("set.summaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-summary-toggle ${summaryResident.enabled ? "checked" : ""} aria-label="${t("set.summaryToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryDoc")}</span><small>${t("set.summaryDocHint")}${summaryResident.docId && !summaryResident.enabled ? ` · ${t("set.summaryDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="text" data-summary-doc value="${escapeHtml(summaryResident.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.summaryDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-summary-doc">${t("set.summarySave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryWriteNow")}</span><small>${t("set.summaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-summary-now" ${summaryResident.enabled && summaryResident.docId ? "" : "disabled"}>${t("set.summaryWriteNow")}</button></div>
+                    <div class="lc-checkin__settings-row" data-sireader-integration><span class="lc-checkin__settings-label"><span>${t("set.sireaderTitle")}</span><small>${t("set.sireaderHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-sireader-toggle ${sireader.enabled ? "checked" : ""} aria-label="${t("set.sireaderToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderItem")}</span><small>${t("set.sireaderItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-sireader-item aria-label="${t("set.sireaderItem")}"><option value="">${t("set.sireaderItemChoose")}</option>${sireaderItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderThreshold")}</span><small>${t("set.sireaderThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-sireader-threshold value="${sireader.thresholdMinutes}" aria-label="${t("set.sireaderThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-sireader">${t("set.sireaderSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
         {

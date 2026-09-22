@@ -70,6 +70,8 @@ export interface CheckinViewPreferences {
     diaryReport: {enabled: boolean; docId: string};
     /** T-1353 摘要驻留：每日把当天汇总单行追加进用户绑定的思源文档（opt-in，默认关）。 */
     summaryResident: {enabled: boolean; docId: string};
+    /** T-1384 思阅联动（opt-in，默认关）：有效阅读分钟达阈值后每日一次幂等写入。 */
+    sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -109,6 +111,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     reportSource: "",
     diaryReport: {enabled: false, docId: ""},
     summaryResident: {enabled: false, docId: ""},
+    sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     recentTemplates: [],
 };
 
@@ -203,6 +206,11 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const diaryDocId = validateAnchorBlockId(diarySource.docId) || "";
     const diaryReport = {enabled: diarySource.enabled === true && Boolean(diaryDocId), docId: diaryDocId};
     const summaryResident = normalizeSummaryResidentPreference(source.summaryResident);
+    /* T-1384：思阅联动——enabled 无有效 itemId 不物化；阈值钳制 1~1440（缺省 30）。 */
+    const sireaderSource = (source.sireaderIntegration && typeof source.sireaderIntegration === "object" ? source.sireaderIntegration : {}) as Record<string, unknown>;
+    const sireaderItemId = typeof sireaderSource.itemId === "string" ? sireaderSource.itemId.trim().slice(0, 160) : "";
+    const sireaderThreshold = clampNumber(sireaderSource.thresholdMinutes, 1, 1440, DEFAULT_VIEW_PREFERENCES.sireaderIntegration.thresholdMinutes);
+    const sireaderIntegration = {enabled: sireaderSource.enabled === true && Boolean(sireaderItemId), itemId: sireaderItemId, thresholdMinutes: sireaderThreshold};
     return {
         groupMode,
         sortMode,
@@ -236,6 +244,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         reportSource: reportSourceFilter,
         diaryReport,
         summaryResident,
+        sireaderIntegration,
         recentTemplates,
     };
 }

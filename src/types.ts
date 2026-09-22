@@ -94,7 +94,8 @@ export interface CheckinEvent {
     localDate: string;
     value: number;
     unit: string;
-    source: "manual" | "tomato" | "import" | "api";
+    /** D-216 之外：sireader=思阅适配器（T-1384，内部写入，外部 API 不可伪造）。 */
+    source: "manual" | "tomato" | "import" | "api" | "sireader";
     note?: string;
     /** Optional photo attachment as a data URL (\u2264 ~500KB binary). */
     attachment?: string;

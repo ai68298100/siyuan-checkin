@@ -926,7 +926,7 @@ function normalizeEvent(value: unknown): CheckinEvent | undefined {
     if (!Number.isFinite(numericValue) || numericValue < 0) {
         return undefined;
     }
-    const source = value.source === "tomato" || value.source === "import" || value.source === "api" ? value.source : "manual";
+    const source = value.source === "tomato" || value.source === "import" || value.source === "api" || value.source === "sireader" ? value.source : "manual";
     const occurredAt = typeof value.occurredAt === "string" && value.occurredAt
         ? normalizeTimestamp(value.occurredAt)
         : new Date().toISOString();
@@ -962,7 +962,7 @@ function normalizeEventTombstones(value: unknown): CheckinEventTombstone[] {
         if (!deletedAt) return;
         const tombstone: CheckinEventTombstone = {eventId: candidate.eventId.trim(), deletedAt};
         if (typeof candidate.itemId === "string" && candidate.itemId.trim()
-            && (candidate.source === "manual" || candidate.source === "tomato" || candidate.source === "import" || candidate.source === "api")
+            && (candidate.source === "manual" || candidate.source === "tomato" || candidate.source === "import" || candidate.source === "api" || candidate.source === "sireader")
             && typeof candidate.externalRef === "string" && candidate.externalRef) {
             Object.assign(tombstone, {
                 itemId: candidate.itemId,
