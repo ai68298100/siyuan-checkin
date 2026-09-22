@@ -382,8 +382,11 @@ export default class CheckinPlugin extends Plugin {
     private siplayerTracker?: SiplayerPlaybackTracker;
     private siplayerTimer?: number;
     private readonly handleSireaderLifecycle = (event: Event) => {
-        const type = (event as CustomEvent).type as SireaderLifecycleType;
-        this.ingestSireaderLifecycle(type, Date.now());
+        /* 事件名为 reader:open/focus/blur/close；剥离前缀映射为生命周期动作。 */
+        const raw = (event as CustomEvent).type;
+        const type = (["reader:open", "reader:focus", "reader:blur", "reader:close"] as const).find((name) => name === raw);
+        if (!type) return;
+        this.ingestSireaderLifecycle(type.replace("reader:", "") as SireaderLifecycleType, Date.now());
     };
     private summaryResidentInFlight = false;
     private readonly summaryResidentWritten = new Set<string>();
