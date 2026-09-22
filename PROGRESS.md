@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-23 T-1400 生态调研循环·第二轮：三路并行（easy-tracker 源码深挖 / 修仙打卡 v0.9.6 发布包静态分析 / 轻量增量扫描），结论落盘 benchmark 文档 §十一。**采纳 1 项**：极简「今日视图」渲染块（T-1412）——三格概览（今日状态/streak/最近漏卡日）+ 一键打卡按钮（祝贺态）+ itemIds 多项目寻址（easy-tracker 无此能力，是其单数据流模式的正面替代），源：easy-tracker 源码深挖（109★ 市场验证的形态，复用现有渲染块框架代价低）。**深挖结论：轻量积分不做、维持 RPG 边界**（修仙打卡负面机制——惩罚按钮/失败放大扣分/掉境界/补签收费——是其经济闭环必要部分，剥离后空洞化；唯一可接受形态已登记为条件批次 T-1413，触发=用户显式提出）。**延后 3**：HabitHeat 统计维度、月条带可视化（monthly-tracker）、OpenHabitTracker 下轮补评。纯调研轮，未改运行代码。
+
 2026-09-23 v18.1.0 真实内核 E2E 补录：定位到本机 SiYuan-Kernel（D:/biji/SiYuan，3.8.5-beta.5）并补齐 CHECKIN_E2E_KERNEL，`test:e2e` **16/16 通过**（真实内核 + 独立工作区装入 v18.1.0 生产包：API v5 真实可用与批量写重载幂等、Dock Tomato 完成入账/幂等/跳过留痕/移动端 bundle、双窗口对等同步、插件禁用重启数据完整、渲染块 fail-closed、建议确认撤销）、`test:e2e:readonly` 1/1（只读不落盘不崩溃）。已补录进 release-validation-18.1.0.md——真实内核自动化证据与手动真机验收（T-1344/T-1388）分开记录。
 
 2026-09-23 T-1411（完成庆祝动效，T-1400 第一轮采纳③，D-263 克制原则首批落地）：完成打卡时 recent-record 反馈条的 ✓ 徽标轻弹一次——`lc-checkin-check-pop` 360ms ease-out 纯 transform keyframes（scale 0.4→1.18→1，无任何盒模型属性，零布局跳动）；双闸禁用：插件 reducedMotion 偏好经 toast 自带的 `data-reduced-motion` 属性 + 系统 `prefers-reduced-motion: no-preference` 媒体查询，任一命中即不播。 restraint 断言入 checkin-toast 守门（双闸选择器文本、keyframes 纯 transform、恰好一处声明+一处定义、时长 360ms）。CSS 体积 +261 字节（605333/620KB 预算内）；check/css-hygiene/ui-theme 绿。T-1400 第一轮三项采纳（T-1409/T-1410/T-1411）全部落地。
