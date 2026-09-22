@@ -46,6 +46,8 @@ export interface SettingsViewContext {
     summaryResident: {enabled: boolean; docId: string};
     /** T-1384 思阅联动（opt-in 默认关）。 */
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    /** T-1385 思播联动（实验，opt-in 默认关）。 */
+    siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1403 健康收件箱（opt-in 默认关）。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
@@ -108,6 +110,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const sireader = ctx.sireaderIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
     const sireaderItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
         .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === sireader.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    /* T-1385：思播联动缺省值，同上。 */
+    const siplayer = ctx.siplayerIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
+    const siplayerItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
+        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === siplayer.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     /* T-1403：健康收件箱缺省值，同上。 */
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
     const healthItemOptions = (selectedId: string) => ctx.store.items.filter((item) => !item.archived).slice(0, 200)
@@ -259,6 +265,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthDoc")}</span><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthStepsItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-steps-item aria-label="${t("set.healthStepsItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.stepsItemId)}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthWeightItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-weight-item aria-label="${t("set.healthWeightItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.weightItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row" data-siplayer-integration><span class="lc-checkin__settings-label"><span>${t("set.siplayerTitle")}</span><small>${t("set.siplayerHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-siplayer-toggle ${siplayer.enabled ? "checked" : ""} aria-label="${t("set.siplayerToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerItem")}</span><small>${t("set.siplayerItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-siplayer-item aria-label="${t("set.siplayerItem")}"><option value="">${t("set.siplayerItemChoose")}</option>${siplayerItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerThreshold")}</span><small>${t("set.siplayerThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-siplayer-threshold value="${siplayer.thresholdMinutes}" aria-label="${t("set.siplayerThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-siplayer">${t("set.siplayerSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },
         {

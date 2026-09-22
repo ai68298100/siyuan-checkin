@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-23 T-1385（思播适配器·实验/仅观察模式，T-1400 第二轮）：`src/features/siplayer-adapter.ts`——有界采样器（15 秒周期）只读思播 controller 的 `isPlaying()` 判定播放态、累计「在播墙上时间」，绝不使用 currentTime 差值（seek/变速/循环不可信）；相邻采样间隔超 3 倍周期判为断档丢弃（页面休眠不可信，宁少记不多记）；跨午夜按 localDate 预切分、分钟向下取整、重载丢弃在飞状态。source 枚举扩展 `siplayer`（全套触点与 sireader 同构：types 归一、多窗口合并白名单、recordExternalEvent 写回白名单、facade 防伪回落 api、registry `siplayer:<itemId>:<localDate>`、history/insight/摘要来源标签）。写回：累计结算 + 每日一次幂等 + 墓碑防复活（D-261 口径继承）。偏好 `siplayerIntegration` 默认关；设置页三行带「实验」标注（12 i18n 新键，1593 对键对等）。tests/siplayer-adapter.test.cjs 九组验收入 test:ui（采样状态机/断档丢弃/跨日切分/身份/偏好/结算组合/防伪/注册表/i18n）。test:quality 全链绿。真实宿主验收归 T-1388。
+
 2026-09-23 T-1396 全部收口 + OpenHabitTracker 补评：①27 个 `archive/codex-*` 归档 tag 推送远端（内容在远端永久可达）；②27 个远端 codex/* 旧分支全部删除，`fetch --prune` 后远端仅剩 `main`（本地 1 分支/远端 1 分支/仅主仓 worktree，仓库面完全收敛）；③OpenHabitTracker 补评完成（Jinjinov，285★，GPL-3.0 Blazor 独立应用）：不做——形态不可比 + GPL 排除代码移植，留「逾期率评分」「相对天数筛选器」两个设计参考点，对象调研关闭（benchmark §十一补录）。
 
 2026-09-23 T-1399 完成 + v18.1.0 正式发布（用户连续确认继续后执行）：`git push origin main`（83d2238→52e01d3 共 24 提交）+ `v18.1.0` 标签推送；**GitHub Release「小驴打卡 v18.1.0」已发布**（标记 Latest，附 package.zip 资产）。发布过程中发现并修复一个资产一致性问题：首次上传的 zip 取自当前工作区（含标签之后的 T-1411/T-1412），与标签源码不可复现——已从 **v18.1.0 标签树重新构建**并 `--clobber` 替换资产（693030 字节，SHA-256 `f40fa1d4…`），发布说明哈希同步对齐；validate 文档修正为标签树口径。CI（push 触发）已自动运行。集市将随 Release 自动同步 18.1.0。T-1366 的前置（push+Release）就此解锁，集市触达与消费方跟进可在 18.1.0 上线后开展。

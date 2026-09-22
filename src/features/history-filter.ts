@@ -20,6 +20,7 @@ export const HISTORY_SOURCE_LABELS: Readonly<Record<CheckinEvent["source"], stri
     import: "导入记录",
     api: "外部记录",
     sireader: "思阅阅读",
+    siplayer: "思播观看",
 };
 
 /** Filters normalized history records without mutating the supplied records or events. */

@@ -73,6 +73,8 @@ export interface CheckinViewPreferences {
     summaryResident: {enabled: boolean; docId: string};
     /** T-1384 思阅联动（opt-in，默认关）：有效阅读分钟达阈值后每日一次幂等写入。 */
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    /** T-1385 思播联动（实验，opt-in 默认关）：有效播放分钟达阈值后每日一次幂等写入。 */
+    siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
@@ -115,6 +117,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     diaryReport: {enabled: false, docId: ""},
     summaryResident: {enabled: false, docId: ""},
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
+    siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     recentTemplates: [],
 };
@@ -216,6 +219,11 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const sireaderItemId = typeof sireaderSource.itemId === "string" ? sireaderSource.itemId.trim().slice(0, 160) : "";
     const sireaderThreshold = clampNumber(sireaderSource.thresholdMinutes, 1, 1440, DEFAULT_VIEW_PREFERENCES.sireaderIntegration.thresholdMinutes);
     const sireaderIntegration = {enabled: sireaderSource.enabled === true && Boolean(sireaderItemId), itemId: sireaderItemId, thresholdMinutes: sireaderThreshold};
+    /* T-1385：思播联动——同 sireader 口径。 */
+    const siplayerSource = (source.siplayerIntegration && typeof source.siplayerIntegration === "object" ? source.siplayerIntegration : {}) as Record<string, unknown>;
+    const siplayerItemId = typeof siplayerSource.itemId === "string" ? siplayerSource.itemId.trim().slice(0, 160) : "";
+    const siplayerThreshold = clampNumber(siplayerSource.thresholdMinutes, 1, 1440, DEFAULT_VIEW_PREFERENCES.siplayerIntegration.thresholdMinutes);
+    const siplayerIntegration = {enabled: siplayerSource.enabled === true && Boolean(siplayerItemId), itemId: siplayerItemId, thresholdMinutes: siplayerThreshold};
     return {
         groupMode,
         sortMode,
@@ -250,6 +258,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         diaryReport,
         summaryResident,
         sireaderIntegration,
+        siplayerIntegration,
         healthInbox,
         recentTemplates,
     };

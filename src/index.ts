@@ -44,6 +44,7 @@ import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
+import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, buildHealthExternalRef, parseHealthInboxRows, planHealthIngest} from "./features/health-inbox";
 import {normalizeSourceGovernance, settleSegmentsToDays} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
@@ -376,6 +377,10 @@ export default class CheckinPlugin extends Plugin {
     healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
     private healthInboxTimer?: number;
     private sireaderTracker?: SireaderFocusTracker;
+    /* T-1385 思播联动（实验，opt-in 默认关）。 */
+    siplayerIntegration = {...DEFAULT_VIEW_PREFERENCES.siplayerIntegration};
+    private siplayerTracker?: SiplayerPlaybackTracker;
+    private siplayerTimer?: number;
     private readonly handleSireaderLifecycle = (event: Event) => {
         const type = (event as CustomEvent).type as SireaderLifecycleType;
         this.ingestSireaderLifecycle(type, Date.now());
@@ -505,7 +510,7 @@ export default class CheckinPlugin extends Plugin {
             for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
                 sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
             }
-            const sources = (["manual", "tomato", "api", "import", "sireader"] as const)
+            const sources = (["manual", "tomato", "api", "import", "sireader", "siplayer"] as const)
                 .filter((key) => (sourceCounts.get(key) || 0) > 0)
                 .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
             const markdown = `${buildDailySummaryLine({
@@ -539,6 +544,73 @@ export default class CheckinPlugin extends Plugin {
             showMessage(t("msg.summaryWritten"));
         } else if (result.reason && result.reason !== "busy") {
             showMessage(t("msg.summaryWriteFailed", {reason: result.reason}));
+        }
+    }
+
+    /* T-1385 思播联动：有界采样器轮询思播 controller（实验路径，opt-in 默认关）。
+       只读 isPlaying 判定播放态并累计墙上时间；不读 currentTime（seek/变速不可信）。 */
+    private startSiplayerSampler(): void {
+        if (this.siplayerTimer !== undefined) return;
+        this.siplayerTimer = window.setInterval(() => this.tickSiplayerSampler(), 15_000);
+    }
+
+    private stopSiplayerSampler(): void {
+        if (this.siplayerTimer === undefined) return;
+        window.clearInterval(this.siplayerTimer);
+        this.siplayerTimer = undefined;
+        this.siplayerTracker?.discardInFlight();
+    }
+
+    private tickSiplayerSampler(): void {
+        const governance = this.siplayerIntegration;
+        if (!governance.enabled || !governance.itemId || this.disposed || this.disposing || !this.acceptingOperations) return;
+        const controller = (window as unknown as {siyuanMediaPlayer?: {controller?: {isPlaying?: () => boolean}}}).siyuanMediaPlayer?.controller;
+        let playing = false;
+        try {
+            playing = typeof controller?.isPlaying === "function" ? controller.isPlaying() === true : false;
+        } catch {
+            playing = false;
+        }
+        if (!this.siplayerTracker) {
+            this.siplayerTracker = new SiplayerPlaybackTracker({
+                toLocalDate: (ms) => dateKey(new Date(ms)),
+                nextMidnight: (ms) => {
+                    const at = new Date(ms);
+                    return new Date(at.getFullYear(), at.getMonth(), at.getDate() + 1).getTime();
+                },
+                sampleIntervalMs: 15_000,
+            });
+        }
+        const segments = this.siplayerTracker.sample(playing, Date.now());
+        if (segments.length) void this.writeSiplayerSegments(segments);
+    }
+
+    /* 累计结算 + 每日一次幂等写入：与思阅同构（见 writeSireaderSegments 注释）。 */
+    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>): Promise<void> {
+        const governance = this.siplayerIntegration;
+        if (!governance.enabled || !governance.itemId) return;
+        const item = getActiveItemById(this.store, governance.itemId);
+        if (!item) return;
+        const refFor = (localDate: string) => buildSiplayerExternalRef(governance.itemId, localDate);
+        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "siplayer" && event.externalRef === ref);
+        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === ref);
+        const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
+        const settlement = settleSegmentsToDays(
+            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: this.siplayerTracker?.dayTotal(localDate) ?? 0})),
+            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
+            touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
+        );
+        for (const day of settlement.days) {
+            if (!day.qualifies) continue;
+            const externalRef = refFor(day.localDate);
+            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "siplayer", externalRef}, moment, fingerprint));
+            if (recorded) {
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            }
         }
     }
 
@@ -916,6 +988,7 @@ export default class CheckinPlugin extends Plugin {
         window.addEventListener("focus", this.handleWindowFocus);
         this.bindSireaderListeners();
         this.healthInboxTimer = window.setInterval(() => void this.ingestHealthInbox(), HEALTH_INGEST_INTERVAL_MS);
+        this.startSiplayerSampler();
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -1084,6 +1157,7 @@ export default class CheckinPlugin extends Plugin {
         });
         window.removeEventListener("focus", this.handleWindowFocus);
         this.unbindSireaderListeners();
+        this.stopSiplayerSampler();
         if (this.healthInboxTimer !== undefined) {
             window.clearInterval(this.healthInboxTimer);
             this.healthInboxTimer = undefined;
@@ -1185,7 +1259,7 @@ export default class CheckinPlugin extends Plugin {
         if (!Number.isFinite(value) || value < 0) {
             return undefined;
         }
-        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" ? input.source : "api";
+        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" || input.source === "siplayer" ? input.source : "api";
         const externalRef = typeof input.externalRef === "string" && input.externalRef ? input.externalRef : undefined;
         const taskHorizonRef = externalRef?.trim();
         if (taskHorizonRef?.startsWith("taskhorizon:") && (source !== "api" || !isTaskHorizonExternalRef(taskHorizonRef))) {
@@ -2136,6 +2210,7 @@ export default class CheckinPlugin extends Plugin {
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
+            siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
@@ -2273,6 +2348,30 @@ export default class CheckinPlugin extends Plugin {
             const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
             this.sireaderIntegration = {...this.sireaderIntegration, thresholdMinutes};
             void this.persistViewPreferences().then(() => showMessage(t("msg.sireaderSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLInputElement>("[data-siplayer-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && !this.siplayerIntegration.itemId) {
+                showMessage(t("msg.siplayerNeedItem"));
+                this.render();
+                return;
+            }
+            this.siplayerIntegration = {...this.siplayerIntegration, enabled: checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLSelectElement>("[data-siplayer-item]")?.addEventListener("change", (event) => {
+            const itemId = (event.currentTarget as HTMLSelectElement).value;
+            this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId ? this.siplayerIntegration.enabled : false};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-siplayer']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-siplayer-threshold]");
+            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
+            this.siplayerIntegration = {...this.siplayerIntegration, thresholdMinutes};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.siplayerSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
         });
         root.querySelector<HTMLInputElement>("[data-health-toggle]")?.addEventListener("change", (event) => {
@@ -4283,6 +4382,7 @@ export default class CheckinPlugin extends Plugin {
         this.diaryReport = {...preferences.diaryReport};
         this.summaryResident = {...preferences.summaryResident};
         this.sireaderIntegration = {...preferences.sireaderIntegration};
+        this.siplayerIntegration = {...preferences.siplayerIntegration};
         this.healthInbox = {...preferences.healthInbox};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
@@ -4352,6 +4452,7 @@ export default class CheckinPlugin extends Plugin {
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
+            siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],

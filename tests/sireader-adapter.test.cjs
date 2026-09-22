@@ -144,9 +144,9 @@ assert.ok(indexSource.includes("this.bindSireaderListeners();") && indexSource.i
 assert.ok(indexSource.includes('source: "sireader", externalRef'), "write path must stamp the sireader source and externalRef");
 assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === ref'), "daily write must be guarded by the existing identity");
 assert.ok(indexSource.includes("this.store.eventTombstones.some"), "deleted (tombstoned) sireader days must be pre-checked before writing");
-assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader"]'), "summary resident source counts must include sireader");
+assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer"]'), "summary resident source counts must include sireader and siplayer");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /input\.source === "sireader" \? \{source: "api"/, "public API input must not be able to mint sireader events");
+assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \? \{source: "api"/, "public API input must not be able to mint sireader or siplayer events");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"/, "sireader prefix must be registered in the identity registry");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");
