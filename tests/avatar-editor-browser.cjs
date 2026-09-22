@@ -20,7 +20,7 @@ fs.mkdirSync(outputRoot, {recursive: true});
         page.on("pageerror", error => errors.push(error.message));
         await page.setContent('<main class="lc-checkin" data-appearance="light"><button id="opener">Upload</button></main>');
         await page.addStyleTag({content: css});
-        await page.addScriptTag({content: `window.__modules = {}; (() => {const exports = {}; ${compile("src/i18n.ts")} window.__modules.i18n = exports;})(); (() => {const exports = {}; const require = name => name === '../i18n' ? window.__modules.i18n : {}; ${compile("src/render/avatar-editor.ts")} window.__editor = exports;})(); (() => {const exports = {}; const require = () => ({validateAnchorBlockId: () => undefined}); ${compile("src/view-preferences.ts")} window.__preferences = exports;})();`});
+        await page.addScriptTag({content: `window.__modules = {}; (() => {const exports = {}; ${compile("src/i18n.ts")} window.__modules.i18n = exports;})(); (() => {const exports = {}; const require = name => name === '../i18n' ? window.__modules.i18n : {}; ${compile("src/render/avatar-editor.ts")} window.__editor = exports;})(); (() => {const exports = {}; const require = () => ({validateAnchorBlockId: () => undefined}); ${compile("src/features/summary-resident.ts")} window.__modules.summaryResident = exports;})(); (() => {const exports = {}; const require = name => name === './features/summary-resident' ? window.__modules.summaryResident : {validateAnchorBlockId: () => undefined}; ${compile("src/view-preferences.ts")} window.__preferences = exports;})();`});
         await page.evaluate(() => {
             window.__saved = [];
             window.__failSave = false;
