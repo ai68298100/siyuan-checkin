@@ -570,7 +570,10 @@ export default class CheckinPlugin extends Plugin {
         if (segments.length) void this.writeSireaderSegments(segments);
     }
 
-    /* 片段 → 结算 → 资格日写入。每日一次：同 source+externalRef 已存在即跳过（幂等，可经历史删除撤销）。 */
+    /* 片段 → 按日累计结算 → 资格日写入。语义（D-261）：
+       - 结算按「当日累计分钟」而非单批片段——跨多段达标也能触发（如 20+20 过 30 阈值）；
+       - 每日一次：同 source+externalRef 已存在即跳过；被用户删除（墓碑）的当日身份永不重写（可撤销）；
+       - 失败自愈：写入失败不重试，下次生命周期事件以新的累计值重新结算。 */
     private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>): Promise<void> {
         const governance = this.sireaderIntegration;
         if (!governance.enabled || !governance.itemId) return;
@@ -578,15 +581,17 @@ export default class CheckinPlugin extends Plugin {
         if (!item) return;
         const refFor = (localDate: string) => buildSireaderExternalRef(governance.itemId, localDate);
         const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "sireader" && event.externalRef === ref);
+        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === ref);
+        const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
         const settlement = settleSegmentsToDays(
-            segments.map((segment) => ({externalRef: refFor(segment.localDate), localDate: segment.localDate, value: segment.minutes})),
+            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: this.sireaderTracker?.dayTotal(localDate) ?? 0})),
             normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
-            segments.map((segment) => refFor(segment.localDate)).filter((ref) => alreadyWritten(ref)),
+            touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
         );
         for (const day of settlement.days) {
             if (!day.qualifies) continue;
             const externalRef = refFor(day.localDate);
-            if (!externalRef || alreadyWritten(externalRef)) continue;
+            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
             const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "sireader", externalRef}, moment, fingerprint));

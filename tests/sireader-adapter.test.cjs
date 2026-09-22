@@ -75,25 +75,75 @@ assert.equal(normalizeViewPreferences({sireaderIntegration: {enabled: true, item
 assert.equal(normalizeViewPreferences({sireaderIntegration: {enabled: true, itemId: "read", thresholdMinutes: 9999}}).sireaderIntegration.thresholdMinutes, 1440);
 assert.deepEqual(normalizeViewPreferences({sireaderIntegration: "on"}).sireaderIntegration.itemId, "");
 
-/* 组合：计时器片段 → 框架结算 → 只写未写过的资格日（宿主 writeSireaderSegments 同逻辑）。 */
+/* 组合：计时器片段 → 按日累计结算 → 只写未写过的资格日（T-1387 宿主同逻辑）。 */
 const governance = normalizeSourceGovernance({enabled: true, thresholdValue: 30, itemIds: ["read"]});
-const segments = [{localDate: "2026-09-22", minutes: 35}, {localDate: "2026-09-23", minutes: 12}];
 const refFor = (localDate) => buildSireaderExternalRef("read", localDate);
-const writtenRefs = new Set([refFor("2026-09-23")]);
-const settlement = settleSegmentsToDays(
-    segments.map((segment) => ({externalRef: refFor(segment.localDate), localDate: segment.localDate, value: segment.minutes})),
+
+/* 累计结算：20 分与 20 分两段各自不到阈值，按日累计 40 才达标（D-261 修复的回归锚）。 */
+const tracker2 = makeTracker();
+const settleForHost = (localDates) => settleSegmentsToDays(
+    localDates.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker2.dayTotal(localDate)})),
     governance,
-    segments.map((segment) => refFor(segment.localDate)).filter((ref) => writtenRefs.has(ref)),
+    localDates.map(refFor).filter((ref) => writtenRefs.has(ref)),
 );
-const qualifyingUnwritten = settlement.days.filter((day) => day.qualifies && !writtenRefs.has(refFor(day.localDate)));
-assert.deepEqual(qualifyingUnwritten.map((day) => day.localDate), ["2026-09-22"], "only the unwritten qualifying day is written");
-assert.equal(qualifyingUnwritten[0].countedValue, 35, "counted value carries the accumulated minutes");
+const writtenRefs = new Set();
+tracker2.handle("focus", DAY1 + 10 * MIN);
+tracker2.handle("blur", DAY1 + 30 * MIN);
+tracker2.handle("focus", DAY1 + 40 * MIN);
+tracker2.handle("blur", DAY1 + 60 * MIN);
+assert.equal(tracker2.dayTotal("2026-09-22"), 40, "two 20-minute sessions accumulate 40 minutes on the tracker");
+const firstSettlement = settleForHost(["2026-09-22"]);
+assert.equal(firstSettlement.days[0].qualifies, true, "cumulative 40 crosses the 30 threshold even though each session is below");
+assert.equal(firstSettlement.days[0].countedValue, 40, "write value carries the cumulative minutes");
+
+/* 已写当日再结算必须跳过（每日一次幂等）。 */
+writtenRefs.add(refFor("2026-09-22"));
+const secondSettlement = settleForHost(["2026-09-22"]);
+const secondWritable = secondSettlement.days.filter((day) => day.qualifies && !writtenRefs.has(refFor(day.localDate)));
+assert.equal(secondWritable.length, 0, "written day never rewrites");
+
+/* T-1387 验收：删除不复活（墓碑身份在 appendEvents 被拒）。 */
+const model = require(path.join(outputRoot, "src/model.js"));
+const makeEvent = (overrides = {}) => ({id: `e-${Math.random().toString(36).slice(2, 8)}`, itemId: "read", occurredAt: "2026-09-22T08:00:00Z", localDate: "2026-09-22", value: 35, unit: "分钟", source: "sireader", externalRef: refFor("2026-09-22"), kind: "checkin", ...overrides});
+const storeWithTombstone = model.normalizeStore({
+    version: 3,
+    items: [{id: "read", name: "阅读", kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, createdAt: "2026-09-01T00:00:00Z", createdDate: "2026-09-01"}],
+    events: [],
+    eventTombstones: [{eventId: "e-deleted", deletedAt: "2026-09-23T00:00:00Z", itemId: "read", source: "sireader", externalRef: refFor("2026-09-22")}],
+});
+const resurrected = model.appendEvents(storeWithTombstone, [makeEvent()]);
+assert.equal(resurrected.events.length, 0, "a tombstoned sireader identity must never resurrect after user deletion");
+
+/* T-1387 验收：跨窗口并发——两个窗口各自写入同身份事件，合并后收敛为一条。 */
+const readItem = {id: "read", name: "阅读", kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, createdAt: "2026-09-01T00:00:00Z", createdDate: "2026-09-01"};
+const windowA = model.normalizeStore({version: 3, items: [readItem], events: [makeEvent({id: "win-a"})]});
+const windowB = model.normalizeStore({version: 3, items: [readItem], events: [makeEvent({id: "win-b"})]});
+const merged = model.mergeNormalizedStores(windowA, windowB);
+const sireaderEvents = merged.events.filter((event) => event.source === "sireader");
+assert.equal(sireaderEvents.length, 1, "duplicate sireader identities from two windows converge to one event");
+assert.ok(sireaderEvents[0].externalRef === refFor("2026-09-22"));
+
+/* T-1387 验收：失败自愈——写入失败后同输入重复结算仍给出资格日（宿主下次事件自动重试）。 */
+const retrySettlement = settleSegmentsToDays(
+    [{externalRef: refFor("2026-09-24"), localDate: "2026-09-24", value: 40}],
+    governance,
+    [],
+);
+assert.equal(retrySettlement.days[0].qualifies, true, "unwritten qualifying day stays eligible until the write succeeds");
+const retryAgain = settleSegmentsToDays(
+    [{externalRef: refFor("2026-09-24"), localDate: "2026-09-24", value: 40}],
+    governance,
+    [],
+);
+assert.equal(JSON.stringify(retryAgain), JSON.stringify(retrySettlement), "settlement determinism makes retry self-healing");
+
 
 /* 接线断言：监听绑定/拆除、结算→写入路径、每日一次守卫、facade 防伪、注册表、设置结构。 */
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
 assert.ok(indexSource.includes("this.bindSireaderListeners();") && indexSource.includes("this.unbindSireaderListeners();"), "sireader listeners must be bound at startup and unbound at teardown");
 assert.ok(indexSource.includes('source: "sireader", externalRef'), "write path must stamp the sireader source and externalRef");
 assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === ref'), "daily write must be guarded by the existing identity");
+assert.ok(indexSource.includes("this.store.eventTombstones.some"), "deleted (tombstoned) sireader days must be pre-checked before writing");
 assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader"]'), "summary resident source counts must include sireader");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
 assert.match(apiSource, /input\.source === "sireader" \? \{source: "api"/, "public API input must not be able to mint sireader events");

@@ -1,5 +1,13 @@
 # 决策
 
+## D-261：框架来源事件写入路径的可信性口径（T-1387，2026-09-23）
+
+- **按日累计结算**：思阅（及后续时长类来源）的资格判定以「当日累计分钟」为准，而非单批片段——20+20 两段也能过 30 阈值；写入值 = 达标时点的当日累计分钟数。宿主结算输入统一用 `SireaderFocusTracker.dayTotal(localDate)`，不再用增量片段（修复 T-1384 首版缺陷）。
+- **删除即永久（可撤销闭环）**：用户删除某来源当日事件产生墓碑（itemId+source+externalRef 三元组）；写入路径预检 `eventTombstones`，墓碑身份永不重写；模型层 `appendEvents` 亦拒绝墓碑身份事件（双保险）。用户删除打卡后，同日继续阅读不会复活记录。
+- **失败自愈**：写入失败（指纹不匹配/持久化失败）不引入显式重试器——只要当日未写成功，下次生命周期事件会以新的当日累计值重新结算并再次尝试；结算层确定性保证重试无副作用。
+- **跨窗口并发**：两窗口同日各写一条同 externalRef 事件时，合并层 `deduplicateExternalRefs` 按 `itemId+source+externalRef` 身份收敛为一条（canonical 选择器择优），配合存储通知与 `recordExternalEvent` 的存量身份去重，最终收敛有界。
+- **口径不变**：上游契约（T-1395 双轨）、每来源一次/日、分钟取整、重载丢弃在飞区间等 D-260 口径全部维持。
+
 ## D-260：思阅适配器 MVP 落地口径（T-1384，2026-09-23）
 
 - **新事件来源 `sireader`**：`CheckinEvent.source` 枚举扩展第四外部来源（manual/tomato/import/api 之上）。它是内部适配器保留来源——`recordExternalEvent` 白名单放行（含 normalize 与多窗口合并白名单，保证来源不被降级为 manual），但公开 API facade `recordEvent` 把输入中的 `source: "sireader"` 强制回落 `"api"`，外部消费方不能伪造。

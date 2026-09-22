@@ -75,7 +75,8 @@
   - 状态：done（2026-09-23，D-260。`src/features/sireader-adapter.ts` 焦点计时器纯核心：open/focus/blur/close 配对、重复 focus/空闲 blur/时间倒流守卫、跨日按 localDate 预切分、分钟向下取整、重载丢弃在飞区间；宿主接线 listener 绑定/拆除、片段→框架结算→资格日写入（`sireader:<itemId>:<localDate>` 每日一次幂等，值=结算时点累计分钟）；source 枚举扩展 `sireader`（内部保留来源：normalize/合并/recordExternalEvent 白名单放行，facade 强制回落 api 防伪造）+ 前缀注册表 + 来源标签四处；偏好 `sireaderIntegration` 默认关（enabled 无 itemId 不物化，阈值钳制 1~1440）；设置页三行双语。tests/sireader-adapter.test.cjs 入 test:ui。真实宿主验收归 T-1388。）
 - [ ] T-1385 思播适配器评估与实现：优先等待/验证公开事件契约并推动上游 API 方案；只有 controller 轮询时先保留实验/仅观察模式，不默认自动写入。
 - [ ] T-1386 来源联动设置与项目映射 UX：来源、阈值、范围、隐私说明、累计预览、禁用/断开/重试；不把标题或 URL 作为必填配置。
-- [ ] T-1387 事件幂等、撤销与诊断：新 source 前缀注册、跨窗口并发、失败重试、墓碑、卸载清理、导出诊断和回滚矩阵。
+- [x] T-1387 事件幂等、撤销与诊断：新 source 前缀注册、跨窗口并发、失败重试、墓碑、卸载清理、导出诊断和回滚矩阵。
+  - 状态：done（2026-09-23，D-261。前缀注册=T-1384 已落（sireader 注册表+四处白名单+facade 防伪）；**修复累计结算缺陷**——资格判定改为按「当日累计分钟」（tracker.dayTotal），20+20 跨段达标可用，写入值=达标时点累计；**墓碑防复活双保险**——宿主预检 eventTombstones + 模型 appendEvents 拒绝墓碑身份，用户删除后同日阅读不再重写；**失败自愈**——不设显式重试器，未写成功的资格日在下次生命周期事件以新累计值自动重结算（结算确定性保证无副作用）；跨窗口并发由合并层 deduplicateExternalRefs 按 itemId+source+externalRef 收敛为单条（新增回归测试）；卸载清理 T-1384 已落（unbind+discardInFlight）。诊断码枚举不变（无新增失败面，自愈路径不产生用户可见错误）。tests/sireader-adapter.test.cjs 扩展累计结算/墓碑不复活/跨窗口收敛/自愈重试四组验收。）
 - [ ] T-1388 真实宿主验收与小版本决策：桌面页签/dock、独立窗口、Android、插件缺失/升级/重载、暂停/seek/循环/切集、跨日和时区；证据齐全后再决定进入哪个 v18.x 小版本。
 - [x] T-1401 外部应用来源评估批（B/C 类，2026-09-22 用户指示登记）：微信读书、Keep、手机健康中心三来源的官方导出格式取证、指标语义与接入渠道评估（健康中心优先评估快捷指令经公开 API push 的 C 类路径）；产出「做/延后/不做」评估卡（T-1378 同款格式，含用户收益、适配代价、验证方法与防双重累计分析）；评估完成前不写接入代码。
   - 状态：done（2026-09-23，docs/external-source-evaluation-2026-09.md。三路并行取证。**重大发现：微信读书已上线官方 Agent API**（`i.weread.qq.com` Bearer Key，腾讯官方域名，主流工具已迁移），完读事件+划线计数=做（条件批次），阅读时长=延后（当月按日可行，推翻「无官方时长」旧结论）；Keep=不做（无自助导出/无个人 API，仅客服 xlsx，第三方全靠私有接口）；健康中心 iOS 步数+体重=做（快捷指令经公开 API push 的文档级零代码交付），睡眠/Android 延后，锻炼时长不做。框架学习：新增第五渠道形态 official-pull（出站拉取官方 API），随 T-1402 实现时入枚举。评估完成，未写任何接入代码。）
