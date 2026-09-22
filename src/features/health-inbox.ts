@@ -27,18 +27,17 @@ export interface HealthInboxEntry {
     externalRef: string;
 }
 
-/** 写入身份三段式：health / 指标 / 日期（parseExternalRef 的 prefix=health, identity=metric, date）。 */
-const REF_TEMPLATE = "health:%M:%D";
-
-export function buildHealthExternalRef(metric: HealthInboxMetric, localDate: string): string {
-    return REF_TEMPLATE.replace("%M", metric).replace("%D", localDate);
+/** 写入身份四段式：health / 项目 / 指标 / 日期（身份含 itemId，同日换绑项目不互相顶账）。 */
+export function buildHealthExternalRef(itemId: string, metric: HealthInboxMetric, localDate: string): string {
+    const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
+    return safeItem && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(localDate) ? `health:${safeItem}:${metric}:${localDate}` : "";
 }
 
 /** 严格行格式：health:steps:YYYY-MM-DD 数值 或 health:weight:YYYY-MM-DD 数值。 */
 const LINE_PATTERN = /^health:(steps|weight):([0-9]{4}-[0-9]{2}-[0-9]{2})[ \t]+([0-9]+(?:\.[0-9]+)?)$/;
 
 /** 解析一行收件箱内容；非严格匹配返回 undefined。 */
-export function parseHealthInboxLine(content: unknown): HealthInboxEntry | undefined {
+export function parseHealthInboxLine(content: unknown): Omit<HealthInboxEntry, "externalRef"> | undefined {
     if (typeof content !== "string") return undefined;
     const match = content.trim().match(LINE_PATTERN);
     if (!match) return undefined;
@@ -46,44 +45,25 @@ export function parseHealthInboxLine(content: unknown): HealthInboxEntry | undef
     const localDate = match[2];
     const value = Number(match[3]);
     if (!Number.isFinite(value) || value < 0) return undefined;
-    return {metric, localDate, value, externalRef: buildHealthExternalRef(metric, localDate)};
+    return {metric, localDate, value};
 }
 
 export interface HealthInboxRow {
     content?: string;
 }
 
-/** 从内核 SQL 行中解析全部合法条目（按行序去重：同 metric+日期 取首条）。 */
-export function parseHealthInboxRows(rows: readonly HealthInboxRow[]): HealthInboxEntry[] {
+/** 从内核 SQL 行中解析全部合法条目（按 metric+日期 去重取首条）。 */
+export function parseHealthInboxRows(rows: readonly HealthInboxRow[]): Array<Omit<HealthInboxEntry, "externalRef">> {
     if (!Array.isArray(rows)) return [];
     const seen = new Set<string>();
-    const entries: HealthInboxEntry[] = [];
+    const entries: Array<Omit<HealthInboxEntry, "externalRef">> = [];
     for (const row of rows.slice(0, HEALTH_INBOX_MAX_ROWS)) {
         const entry = parseHealthInboxLine(row?.content);
-        if (!entry || seen.has(entry.externalRef)) continue;
-        seen.add(entry.externalRef);
+        if (!entry || seen.has(`${entry.metric}:${entry.localDate}`)) continue;
+        seen.add(`${entry.metric}:${entry.localDate}`);
         entries.push(entry);
     }
     return entries;
-}
-
-export interface HealthIngestPlan {
-    pending: HealthInboxEntry[];
-    skippedCount: number;
-}
-
-/** 摄取计划：过滤已入库身份（source api + externalRef）后的待写清单。 */
-export function planHealthIngest(entries: readonly HealthInboxEntry[], writtenRefs: ReadonlySet<string>): HealthIngestPlan {
-    const pending: HealthInboxEntry[] = [];
-    let skippedCount = 0;
-    for (const entry of entries) {
-        if (writtenRefs.has(entry.externalRef)) {
-            skippedCount += 1;
-            continue;
-        }
-        pending.push(entry);
-    }
-    return {pending, skippedCount};
 }
 
 /** 偏好归一：docId 走块 ID 校验；enabled 无合法 docId 不物化；项目映射可选。 */

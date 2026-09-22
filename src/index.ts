@@ -45,7 +45,7 @@ import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNote
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
-import {HEALTH_INGEST_INTERVAL_MS, buildHealthExternalRef, parseHealthInboxRows, planHealthIngest} from "./features/health-inbox";
+import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -376,6 +376,7 @@ export default class CheckinPlugin extends Plugin {
     /* T-1403 健康收件箱（opt-in 默认关）。 */
     healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
     private healthInboxTimer?: number;
+    private healthInboxStartupTimers: number[] = [];
     private sireaderTracker?: SireaderFocusTracker;
     /* T-1385 思播联动（实验，opt-in 默认关）。 */
     siplayerIntegration = {...DEFAULT_VIEW_PREFERENCES.siplayerIntegration};
@@ -690,19 +691,17 @@ export default class CheckinPlugin extends Plugin {
         const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' LIMIT 500`});
         const entries = parseHealthInboxRows((response as {data?: Array<{content?: string}>}).data || []);
         if (!entries.length) return;
-        const existing = new Set<string>();
         for (const entry of entries) {
-            if (this.store.events.some((event) => event.source === "api" && event.externalRef === entry.externalRef)) existing.add(entry.externalRef);
-        }
-        const plan = planHealthIngest(entries, existing);
-        for (const entry of plan.pending) {
             const itemId = entry.metric === "steps" ? governance.stepsItemId : governance.weightItemId;
             if (!itemId) continue;
             const item = getActiveItemById(this.store, itemId);
             if (!item) continue;
+            /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
+            const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
+            if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef: entry.externalRef}, moment, fingerprint));
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -992,6 +991,11 @@ export default class CheckinPlugin extends Plugin {
         this.bindSireaderListeners();
         this.healthInboxTimer = window.setInterval(() => void this.ingestHealthInbox(), HEALTH_INGEST_INTERVAL_MS);
         this.startSiplayerSampler();
+        /* T-1403：就绪后分三级补摄取（2s/10s/30s）——快机器立即收漏，慢机器多重尝试；
+           摄取幂等（同 externalRef 跳过），不会重复记账。 */
+        for (const delay of [2_000, 10_000, 30_000]) {
+            this.healthInboxStartupTimers.push(window.setTimeout(() => void this.ingestHealthInbox(), delay));
+        }
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -1164,6 +1168,9 @@ export default class CheckinPlugin extends Plugin {
         if (this.healthInboxTimer !== undefined) {
             window.clearInterval(this.healthInboxTimer);
             this.healthInboxTimer = undefined;
+        }
+        for (const timer of this.healthInboxStartupTimers.splice(0)) {
+            window.clearTimeout(timer);
         }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;

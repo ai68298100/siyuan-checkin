@@ -18,8 +18,8 @@ const inbox = require(path.join(outputRoot, "src/features/health-inbox.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 
 /* 行解析：合法步数/体重（含小数）、坏行 fail-closed。 */
-assert.deepEqual(inbox.parseHealthInboxLine("health:steps:2026-09-23 8432"), {metric: "steps", localDate: "2026-09-23", value: 8432, externalRef: "health:steps:2026-09-23"});
-assert.deepEqual(inbox.parseHealthInboxLine("  health:weight:2026-09-23 72.5  "), {metric: "weight", localDate: "2026-09-23", value: 72.5, externalRef: "health:weight:2026-09-23"});
+assert.deepEqual(inbox.parseHealthInboxLine("health:steps:2026-09-23 8432"), {metric: "steps", localDate: "2026-09-23", value: 8432});
+assert.deepEqual(inbox.parseHealthInboxLine("  health:weight:2026-09-23 72.5  "), {metric: "weight", localDate: "2026-09-23", value: 72.5});
 assert.equal(inbox.parseHealthInboxLine("- 2026-09-23 随手记"), undefined, "user prose must not parse");
 assert.equal(inbox.parseHealthInboxLine("health:sleep:2026-09-23 8"), undefined, "unknown metric rejected");
 assert.equal(inbox.parseHealthInboxLine("health:steps:2026/09/23 100"), undefined, "bad date rejected");
@@ -33,11 +33,11 @@ const entries = inbox.parseHealthInboxRows(rows);
 assert.equal(entries.length, 2, "duplicate identities dedupe to the first row");
 assert.equal(entries[0].value, 100, "first occurrence wins");
 
-/* 摄取计划：已入库身份跳过并计数。 */
-const plan = inbox.planHealthIngest(entries, new Set(["health:steps:2026-09-23"]));
-assert.equal(plan.pending.length, 1, "only unwritten entries stay pending");
-assert.equal(plan.pending[0].metric, "weight");
-assert.equal(plan.skippedCount, 1, "skipped entries are counted");
+/* 摄取去重：已写入身份（项目×指标×日期）跳过（宿主 writeHealthIngest 同逻辑内联）。 */
+const written = new Set(["health:walk:steps:2026-09-23"]);
+const pending = entries.filter((entry) => !written.has("health:walk:" + entry.metric + ":" + entry.localDate));
+assert.equal(pending.length, 1, "only unwritten entries stay pending");
+assert.equal(pending[0].metric, "weight");
 
 /* 偏好归一：默认关；enabled 无合法 docId 不物化。 */
 assert.deepEqual(normalizeViewPreferences({}).healthInbox, {enabled: false, docId: "", stepsItemId: "", weightItemId: ""});
@@ -46,13 +46,14 @@ assert.deepEqual(normalizeViewPreferences({healthInbox: {enabled: true, docId: "
 
 /* 注册表：health 前缀登记（运行时解析由 external-ref 套件覆盖）；行身份为严格三段式。 */
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8"), /prefix: "health"/, "health prefix must be registered");
-assert.equal(inbox.parseHealthInboxRows([{content: "health:steps:2026-09-23 100"}])[0].externalRef, "health:steps:2026-09-23", "identity is the strict three-segment form parseExternalRef accepts");
+/* 身份在写回时按 项目×指标×日期 组装（健康:<itemId>:<指标>:<日期>）。 */
+assert.equal(inbox.parseHealthInboxRows([{content: "health:steps:2026-09-23 100"}])[0].externalRef, undefined, "parse no longer carries identity; the host composes it per bound item");
 
 /* 宿主接线：轮询定时器、SQL 收件箱查询、api 来源写入、设置结构与偏好持久化。 */
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
 assert.ok(indexSource.includes("HEALTH_INGEST_INTERVAL_MS"), "polling interval must come from the feature module");
 assert.ok(indexSource.includes("content LIKE 'health:%'"), "inbox query must scope to the bound document and health lines");
-assert.ok(indexSource.includes('source: "api", externalRef: entry.externalRef'), "health writes must use the public api source with the inbox identity");
+assert.ok(indexSource.includes('source: "api", externalRef'), "health writes must use the public api source with the composed identity");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
 for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc", "save-health-doc", "data-health-steps-item", "data-health-weight-item"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
