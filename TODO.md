@@ -32,10 +32,11 @@
 
 本轮全面盘点本地/远端/规划状态后新增登记；均为维护或规划任务，不改变运行代码、数据结构与公开 API。
 
-- [ ] T-1396 分支与遗留工作区清理（低优先级，可稍晚处理）
+- [x] T-1396 分支与遗留工作区清理（本地与 worktree 全部完成；仅剩远端分支删除待用户确认）
   - 范围：本地 42 个历史分支（17 个已合并 main 可直接删；25 个未合并需逐个 `git log main..<branch>` 核对内容是否已被 main 覆盖或仍有留存价值）；远端 19 个 codex/* 分支；约 10 个遗留 worktree（`~/.codex/worktrees/` 下 8 个 detached + `D:/AI/Codex/siyuan-checkin-*` 6 个挂分支的附属目录）。
   - 验收：挂在 worktree 上的分支先移除 worktree 再删；未合并分支逐个核对并记录处置（删除/打归档 tag/保留）；远端分支清理在本地清完后经用户确认再 push 删除；清理后 `git branch -a` 与 worktree 列表复核。
-  - 进度（2026-09-23 本地侧完成）：worktree 18→3（16 个干净的全部移除；**2 个脏的保留待用户处置**——`~/.codex/worktrees/e9d3`（改动 README.md/src/ecosystem.ts）与 `D:/AI/Codex/siyuan-checkin-catalog`（改动 plugin.json））；本地分支 43→1（17 个已合并 `-d` 删除；27 个未合并分支全部为 2026-09 上旬 v0.x 时代历史分支，独有提交 1~30 个，已逐个打 `archive/codex-*` 归档 tag（27 个）后删除，内容可经 tag 完整恢复）。**剩余待用户**：①两个脏 worktree 的处置（查看/丢弃改动）；②远端 28 个分支删除（`git push origin --delete <branch>`，需逐个确认后执行，可整体放弃保持现状）。
+  - 进度（2026-09-23 本地侧完成）：worktree 18→3（16 个干净的全部移除；2 个脏的保留待处置）；本地分支 43→1（17 个已合并 `-d` 删除；27 个未合并分支全部为 2026-09 上旬 v0.x 时代历史分支，独有提交 1~30 个，已逐个打 `archive/codex-*` 归档 tag（27 个）后删除，内容可经 tag 完整恢复）。
+  - 收尾（2026-09-23 第二批）：两个脏 worktree 处置完成——e9d3 为已被主干 `src/agent-capabilities.ts` 正式实现覆盖的智能体 effects 原型（219 行 diff 存档 `docs/archive/e9d3-agent-capability-effects-prototype.patch` 后移除）；catalog 为 plugin.json 纯行尾差异（`--ignore-cr-at-eol` 确认零内容变更，移除）。worktree 最终仅剩主仓。**仅剩远端 28 个分支删除待用户确认**（清单 `git branch -r` 可查；确认后逐条 `git push origin --delete`）。
 - [x] T-1397 研究结论批次拆分登记（T-1378 后续）
   - 依据 `docs/roadmap-checkin-research-2026-09.md` 第九节归纳卡：把「v18.1.x 文档锚点体验收口」「v18.2.x 日记只读与手动确认收口」拆为正式任务登记（见下方批次节，T-1404～T-1408）。
   - 条件批次只登记触发条件不排期：「v18.3.x 闪卡人工入口」（前提：宿主稳定打开/复习入口通过现场验收；2026-09-22 T-1397 补充研究已更新触发信号——等 v3.9.0 发布且 `/api/flashcard/*`/`openTab cardIDs` 进入官方文档，旧 `/api/riff/*` 在重构分支已全部移除，见 research 文档主题 E 补充记录）、「v19.x 独立复习模式」（前提：明确知识复习需求 + 离线回放样例，固定 FSRS 版本另做迁移评估；注：宿主底层已是 FSRS，届时优先评估复用而非并行）。

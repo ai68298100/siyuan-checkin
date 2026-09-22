@@ -1,0 +1,219 @@
+diff --git a/README.md b/README.md
+index 90db6d4..15b1505 100644
+--- a/README.md
++++ b/README.md
+@@ -135,3 +135,5 @@ corepack pnpm run build
+ ## 设计边界
+ 
+ 小驴打卡不内置完整番茄钟、任务管理器、社交、排行榜或强制积分系统。番茄钟、任务视图、日历和智能体都是可插拔的外部能力；小驴打卡只维护自己的记录事实和稳定的数据协议。
++
++智能体能力的调用边界、确认参数、超时降级和完整示例见 [docs/agent-capabilities.md](docs/agent-capabilities.md)。
+diff --git a/src/ecosystem.ts b/src/ecosystem.ts
+index d54f2f5..863b777 100644
+--- a/src/ecosystem.ts
++++ b/src/ecosystem.ts
+@@ -29,6 +29,35 @@ export interface AgentCapabilityHost {
+     addAgentCapability?: (options: unknown) => unknown;
+ }
+ 
++/** Effects declared by a capability. The host uses these flags to decide whether
++ * a user confirmation is required before invoking it. */
++export interface AgentCapabilityEffects {
++    localRead?: boolean;
++    localWrite?: boolean;
++    dataEgress?: boolean;
++    externalCost?: boolean;
++    requiresConfirmation?: boolean;
++}
++
++/** A capability that only reads local data and can safely be exposed by default. */
++export interface ReadonlyAgentCapability {
++    name: string;
++    effects: AgentCapabilityEffects;
++}
++
++export const AGENT_CAPABILITY_VERSION = 1;
++
++export function isReadonlyAgentCapability(capability: Partial<ReadonlyAgentCapability> | undefined): boolean {
++    return Boolean(capability?.name && capability.effects?.localRead === true && capability.effects.localWrite !== true);
++}
++
++/** Require an explicit user acknowledgement for every local write. */
++export function requireAgentConfirmation(args: Record<string, unknown>, field = "confirmed"): {ok: true} | {ok: false; error: string} {
++    return args[field] === true
++        ? {ok: true}
++        : {ok: false, error: "此操作会修改本地打卡数据，请先取得用户明确确认（confirmed: true）。"};
++}
++
+ export interface AgentCapabilityProbe {
+     supported: boolean;
+     register: (options: unknown) => {registered: boolean; error?: string};
+@@ -46,10 +75,15 @@ export function probeAgentCapabilityHost(host: AgentCapabilityHost | undefined):
+     };
+ }
+ 
+-export function registerAgentCapabilities(probe: AgentCapabilityProbe, capabilities: readonly {name: string; effects?: {localRead?: boolean; localWrite?: boolean}}[]): {registered: string[]; skipped: string[]; errors: string[]} {
++export function registerAgentCapabilities(probe: AgentCapabilityProbe, capabilities: readonly {name: string; effects?: AgentCapabilityEffects}[]): {registered: string[]; skipped: string[]; errors: string[]} {
+     const registered: string[] = [], skipped: string[] = [], errors: string[] = [];
+     for (const capability of capabilities) {
+-        if (!capability || !capability.name || (capability.effects?.localWrite && capability.effects.localRead === false)) { skipped.push(capability?.name || "unknown"); continue; }
++        if (!capability || !capability.name
++            || (capability.effects?.localWrite && capability.effects.localRead === false)
++            || (capability.effects?.localWrite && capability.effects.requiresConfirmation !== true)) {
++            skipped.push(capability?.name || "unknown");
++            continue;
++        }
+         const result = probe.register(capability);
+         if (result.registered) registered.push(capability.name); else if (result.error) errors.push(`${capability.name}: ${result.error}`); else skipped.push(capability.name);
+     }
+@@ -57,11 +91,18 @@ export function registerAgentCapabilities(probe: AgentCapabilityProbe, capabilit
+ }
+ 
+ export async function safeAgentCall<T>(call: () => Promise<T> | T, timeoutMs = 12000): Promise<{ok: true; value: T} | {ok: false; error: string; offline: true}> {
++    const limit = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 12000;
++    let timer: ReturnType<typeof setTimeout> | undefined;
+     try {
+-        const value = await Promise.race([Promise.resolve().then(call), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("智能体调用超时")), timeoutMs))]);
++        const value = await Promise.race([
++            Promise.resolve().then(call),
++            new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("智能体调用超时")), limit); }),
++        ]);
+         return {ok: true, value};
+     } catch (error) {
+         return {ok: false, error: String(error instanceof Error ? error.message : error), offline: true};
++    } finally {
++        if (timer) clearTimeout(timer);
+     }
+ }
+ 
+diff --git a/src/index.ts b/src/index.ts
+index 36c3f88..a761534 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -20,6 +20,7 @@ import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate} from "./f
+ import type {CheckinViewPreferences, TodayGroupMode} from "./view-preferences";
+ import {createDefaultOccasionStore, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME} from "./occasions";
+ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
++import {AGENT_CAPABILITY_VERSION, requireAgentConfirmation, safeAgentCall} from "./ecosystem";
+ 
+ const STORAGE_NAME = "checkin-store";
+ const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
+@@ -30,6 +31,7 @@ const TAB_TYPE = "checkin";
+ const QUICK_DIALOG_HOTKEY = "⌥⇧C";
+ const API_VERSION = 4;
+ const SUMMARY_TIMEOUT_MS = 30000;
++const AGENT_READ_TIMEOUT_MS = 8000;
+ let fallbackStorageQueue: Promise<void> = Promise.resolve();
+ 
+ const KIND_LABELS: Record<CheckinKind, string> = {
+@@ -856,11 +858,12 @@ export default class CheckinPlugin extends Plugin {
+         const plugin = this as Plugin & {
+             addAgentCapability?: (options: {
+                 name: string;
++                version?: number;
+                 title?: string;
+                 description: string;
+                 inputSchema: Record<string, unknown>;
+                 outputSchema?: Record<string, unknown>;
+-                effects?: {localRead?: boolean; localWrite?: boolean; dataEgress?: boolean; externalCost?: boolean};
++                effects?: {localRead?: boolean; localWrite?: boolean; dataEgress?: boolean; externalCost?: boolean; requiresConfirmation?: boolean};
+                 handler: (args: Record<string, unknown>) => Promise<{result?: string; structuredContent?: unknown; error?: string}>;
+             }) => string;
+         };
+@@ -868,6 +871,7 @@ export default class CheckinPlugin extends Plugin {
+         try {
+             plugin.addAgentCapability({
+                 name: "checkin-summary-context",
++                version: AGENT_CAPABILITY_VERSION,
+                 title: "读取小驴打卡复盘上下文",
+                 description: "读取小驴打卡的日、周、月或自定义日期范围数据，用于生成复盘、趋势和完成率分析。该能力只读本插件数据，不会写入记录，也不会自行访问外部网络。",
+                 inputSchema: {
+@@ -887,15 +891,20 @@ export default class CheckinPlugin extends Plugin {
+                         const startDate = typeof args.startDate === "string" ? args.startDate : "";
+                         const endDate = typeof args.endDate === "string" ? args.endDate : "";
+                         if (!isValidLocalDateInput(startDate) || !isValidLocalDateInput(endDate) || startDate > endDate) return {error: "自定义日期范围无效，请使用 YYYY-MM-DD。"};
+-                        const context = this.api?.getCustomSummaryContext({startDate, endDate});
++                        const response = await safeAgentCall(() => this.api?.getCustomSummaryContext({startDate, endDate}), AGENT_READ_TIMEOUT_MS);
++                        if (!response.ok) return {error: `只读总结暂不可用，已降级到本地总结：${response.error}`, structuredContent: {offline: true, range: {startDate, endDate}}};
++                        const context = response.value;
+                         return context ? {result: `小驴打卡自定义范围 ${startDate} 至 ${endDate}，共 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
+                     }
+-                    const context = this.api?.getSummaryContext(range);
++                    const response = await safeAgentCall(() => this.api?.getSummaryContext(range), AGENT_READ_TIMEOUT_MS);
++                    if (!response.ok) return {error: `只读总结暂不可用，已降级到本地总结：${response.error}`, structuredContent: {offline: true, range}};
++                    const context = response.value;
+                     return context ? {result: `小驴打卡${range === "day" ? "今日" : range === "month" ? "本月" : "本周"}共有 ${context.totalEvents} 条记录。`, structuredContent: context} : {error: "打卡数据尚未准备好。"};
+                 },
+             });
+             plugin.addAgentCapability({
+                 name: "checkin-list-items",
++                version: AGENT_CAPABILITY_VERSION,
+                 title: "列出小驴打卡项目",
+                 description: "列出当前可用的打卡项目及其类型、目标、单位、分组、优先级和频率，帮助智能体选择正确的项目。该能力只读本插件数据。",
+                 inputSchema: {
+@@ -929,6 +938,7 @@ export default class CheckinPlugin extends Plugin {
+             });
+             plugin.addAgentCapability({
+                 name: "checkin-item-insights",
++                version: AGENT_CAPABILITY_VERSION,
+                 title: "读取单项打卡洞察",
+                 description: "读取指定打卡项目的完成率、连续记录、周期趋势和明细，用于回答某个习惯的表现、波动和复盘问题。该能力只读本插件数据。",
+                 inputSchema: {
+@@ -937,6 +947,7 @@ export default class CheckinPlugin extends Plugin {
+                         itemId: {type: "string", description: "打卡项目 ID，可先调用 checkin-list-items 获取"},
+                         days: {type: "integer", minimum: 7, maximum: 366, description: "回看天数，默认为 84，范围 7-366"},
+                     },
++                    confirmed: {type: "boolean", const: true, description: "用户已明确确认此次本地写入"},
+                     required: ["itemId"],
+                     additionalProperties: false,
+                 },
+@@ -948,7 +959,9 @@ export default class CheckinPlugin extends Plugin {
+                     if (!item) return {error: "找不到对应的未归档打卡项目，请先调用 checkin-list-items。"};
+                     const requestedDays = typeof args.days === "number" && Number.isFinite(args.days) ? Math.round(args.days) : 84;
+                     const days = Math.max(7, Math.min(366, requestedDays));
+-                    const report = buildHabitInsights(this.store, item.id, {days, asOf: currentCalendarDate()});
++                    const response = await safeAgentCall(() => buildHabitInsights(this.store, item.id, {days, asOf: currentCalendarDate()}), AGENT_READ_TIMEOUT_MS);
++                    if (!response.ok) return {error: `单项洞察暂不可用，已降级到本地复盘：${response.error}`, structuredContent: {offline: true, itemId: item.id, days}};
++                    const report = response.value;
+                     const suggestions = buildCoachingSuggestions(report);
+                     const rate = report.aggregates.completionRate === null ? "暂无" : `${report.aggregates.completionRate}%`;
+                     return {
+@@ -970,6 +983,7 @@ export default class CheckinPlugin extends Plugin {
+             });
+             plugin.addAgentCapability({
+                 name: "checkin-record-event",
++                version: AGENT_CAPABILITY_VERSION,
+                 title: "记录一次小驴打卡",
+                 description: "在用户明确要求执行时，为指定打卡项目记录一次进度。会遵守项目的日程、类型、单位和完成状态，并使用插件现有并发锁持久化。该能力会修改本地打卡数据。",
+                 inputSchema: {
+@@ -980,12 +994,15 @@ export default class CheckinPlugin extends Plugin {
+                         unit: {type: "string", description: "单位，必须与项目当前版本一致；省略时自动使用项目单位"},
+                         note: {type: "string", maxLength: 500, description: "可选备注"},
+                     },
++                    confirmed: {type: "boolean", const: true, description: "User explicitly confirmed local write"},
+                     required: ["itemId"],
+                     additionalProperties: false,
+                 },
+                 outputSchema: {type: "object"},
+-                effects: {localRead: true, localWrite: true, dataEgress: true, externalCost: false},
++                effects: {localRead: true, localWrite: true, dataEgress: true, externalCost: false, requiresConfirmation: true},
+                 handler: async (args) => {
++                    const confirmation = requireAgentConfirmation(args);
++                    if (!confirmation.ok) return {error: confirmation.error};
+                     if (!this.acceptingOperations || this.disposed || this.initializationState !== "ready") return {error: "打卡数据尚未准备好。"};
+                     const itemId = typeof args.itemId === "string" ? args.itemId.trim() : "";
+                     const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+diff --git a/tests/ecosystem.test.cjs b/tests/ecosystem.test.cjs
+index 5f9a1ff..c27189f 100644
+--- a/tests/ecosystem.test.cjs
++++ b/tests/ecosystem.test.cjs
+@@ -34,4 +34,9 @@ const unsupported = api.probeAgentCapabilityHost({}); assert.equal(unsupported.s
+ const supported = api.probeAgentCapabilityHost({addAgentCapability: () => "ok"}); assert.equal(supported.supported, true); assert.equal(supported.register({name: "demo"}).registered, true);
+ const failing = api.probeAgentCapabilityHost({addAgentCapability: () => { throw new Error("blocked"); }}); assert.equal(failing.register({}).error, "blocked");
+ const registered = api.registerAgentCapabilities(supported, [{name: "summary"}, {name: "record", effects: {localWrite: true, localRead: false}}, {name: "insight"}]); assert.deepEqual(registered.registered, ["summary", "insight"]); assert.deepEqual(registered.skipped, ["record"]);
++assert.equal(api.AGENT_CAPABILITY_VERSION, 1);
++assert.equal(api.isReadonlyAgentCapability({name: "summary", effects: {localRead: true}}), true);
++assert.equal(api.isReadonlyAgentCapability({name: "record", effects: {localRead: true, localWrite: true}}), false);
++assert.deepEqual(api.requireAgentConfirmation({}), {ok: false, error: "此操作会修改本地打卡数据，请先取得用户明确确认（confirmed: true）。"});
++assert.deepEqual(api.requireAgentConfirmation({confirmed: true}), {ok: true});
+ api.safeAgentCall(() => "ok").then((result) => { assert.deepEqual(result, {ok: true, value: "ok"}); return api.safeAgentCall(() => { throw new Error("offline"); }); }).then((result) => { assert.equal(result.offline, true); assert.equal(result.error, "offline"); console.log("Integration ecosystem checks passed."); fs.rmSync(path.dirname(output), {recursive: true, force: true}); });

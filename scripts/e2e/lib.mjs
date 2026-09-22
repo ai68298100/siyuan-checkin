@@ -33,6 +33,7 @@ export function resolveInstall() {
     candidates.push(
         path.join(programFiles, "SiYuan", "resources", "kernel", "SiYuan-Kernel.exe"),
         "D:\\RJ\\SiYuan\\resources\\kernel\\SiYuan-Kernel.exe",
+        "D:\\biji\\SiYuan\\resources\\kernel\\SiYuan-Kernel.exe",
         "C:\\Program Files\\SiYuan\\resources\\kernel\\SiYuan-Kernel.exe",
         "/Applications/SiYuan.app/Contents/Resources/kernel/SiYuan-Kernel",
     );
