@@ -86,6 +86,26 @@ assert.equal(
     const failing = async () => ({code: -1, msg: "block-not-found"});
     assert.equal((await anchor.resolveAnchorBlock(failing, "ABCdef123-_456789012345")).reason, "block-not-found", "resolution failures surface the kernel reason");
 
+    /* v18.1.x：解析成功携带根文档信息（rootID/box），供跳转跟随块移动与缓存刷新。 */
+    const resolving = async () => ({code: 0, data: {rootID: "20260923090000-rootdoc", box: "20250101120000-notebook"}});
+    const resolvedInfo = await anchor.resolveAnchorBlock(resolving, "ABCdef123-_456789012345");
+    assert.equal(resolvedInfo.ok, true);
+    assert.equal(resolvedInfo.rootID, "20260923090000-rootdoc", "success returns the owning root document");
+    assert.equal(resolvedInfo.notebook, "20250101120000-notebook", "success returns the owning notebook");
+    const missingRoot = async () => ({code: 0, data: {}});
+    const resolvedBare = await anchor.resolveAnchorBlock(missingRoot, "ABCdef123-_456789012345");
+    assert.equal(resolvedBare.ok, true, "resolution still succeeds without root info");
+    assert.equal(resolvedBare.rootID, undefined, "missing rootID stays undefined, never fabricated");
+
+    /* 跳转重解析与缓存一致性接线（index.ts）。 */
+    assert.match(indexSource, /const fresh = await resolveAnchorBlock\(/, "anchor jump must re-resolve before opening (block moves are followed)");
+    assert.match(indexSource, /this\.anchorDocCache\.set\(blockId, \{doc: resolved\.rootID/, "writeback resolution must refresh the jump cache");
+    assert.match(indexSource, /this\.anchorDocCache\.delete\(blockId\)/, "failed resolution must invalidate the stale cache entry");
+    assert.match(indexSource, /msg\.anchorUnreachable/, "unreachable anchors degrade to insights with a readable message");
+    for (const key of ["msg.anchorUnreachable"]) {
+        assert.equal(fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+    }
+
     /* 有界重试：首败重试一次，两败返回最后原因。 */
     let attempts = 0;
     const flaky = async () => { attempts += 1; return attempts < 2 ? {ok: false, reason: "timeout"} : {ok: true}; };

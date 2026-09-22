@@ -232,6 +232,7 @@ assert.match(glueSource, /onJumpItemAnchor\?\./, "glue must delegate anchor jump
 assert.match(glueSource, /data-jump-anchor-block/, "glue must handle the anchor jump hook first");
 assert.match(read("index.ts"), /onJumpItem: \(itemId: string\) => this\.jumpToItemInsights\(itemId\)/, "host must wire the item jump");
 assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string\) => void this\.jumpToItemAnchorDoc\(blockId\)/, "host must wire the anchor doc jump");
-assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: location\.doc\}\}\)/, "anchor jump opens the kernel-resolved root doc");
+assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: doc\}\}\)/, "anchor jump opens the freshly re-resolved root doc (v18.1.x: moves are followed)");
+assert.match(read("index.ts"), /const fresh = await resolveAnchorBlock\(/, "anchor jump must re-resolve the block before opening");
 
 console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, minRate, anchor jumps, neutrality, security and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);

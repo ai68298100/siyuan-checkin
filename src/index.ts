@@ -636,15 +636,28 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
        openTab 的 doc 锚点滚动定位未在本仓库验证，故不传未证实参数；任何失败回落项目洞察。 */
+    /* v18.1.x（T-1375 §八）：打开锚点文档前按 blockId 重新解析——块被移动后跟随新根文档，
+       不信任会话缓存；重解析失败时回落缓存，再回落项目洞察并给出可读提示。 */
     private async jumpToItemAnchorDoc(blockId: string) {
-        const location = this.anchorDocCache.get(blockId);
         const item = this.store.items.find((candidate) => candidate.noteAnchor?.blockId === blockId && !candidate.archived);
-        if (!location?.doc) {
+        let doc = "";
+        const fresh = await resolveAnchorBlock((url, payload) => this.kernelPost(url, payload), blockId);
+        if (fresh.ok && fresh.rootID) {
+            doc = fresh.rootID;
+            if (fresh.notebook) this.anchorDocCache.set(blockId, {doc: fresh.rootID, notebook: fresh.notebook});
+        } else {
+            /* 重解析失败（网络抖动或块已删除）：本次跳转回落陈旧缓存，缓存失效待下次重解析。 */
+            doc = this.anchorDocCache.get(blockId)?.doc || "";
+            this.anchorDocCache.delete(blockId);
+            this.anchorDocAttempted.delete(blockId);
+        }
+        if (!doc) {
+            if (item) showMessage(t("msg.anchorUnreachable"));
             if (item) this.jumpToItemInsights(item.id);
             return;
         }
         try {
-            await openTab({app: this.app, doc: {id: location.doc}});
+            await openTab({app: this.app, doc: {id: doc}});
         } catch {
             if (item) this.jumpToItemInsights(item.id);
         }
@@ -3990,14 +4003,18 @@ export default class CheckinPlugin extends Plugin {
             ? (info.value !== undefined && info.unit ? `${t("anchor.stateDone")} ${formatNumber(info.value)} ${info.unit}` : t("anchor.stateDone"))
             : info.state === "skip" ? t("anchor.stateSkip") : t("anchor.stateUnskip");
         const value = buildAnchorAttrValue(dateKey(now), `${stateText}${streak > 1 ? ` · ${t("anchor.streakSuffix", {n: streak})}` : ""}`);
-        /* T-1233 悬挂检测：块已被删除/不可达时重试无意义——直接挂起并审计。 */
+        /* T-1233 悬挂检测：块已被删除/不可达时重试无意义——直接挂起并审计。
+           v18.1.x：解析成功同时刷新归属文档缓存（块移动后跳转跟随新根文档）；失败清缓存允许恢复。 */
         const resolved = await resolveAnchorBlock((url, payload) => this.kernelPost(url, payload), blockId);
         if (!resolved.ok) {
+            this.anchorDocCache.delete(blockId);
+            this.anchorDocAttempted.delete(blockId);
             this.suspendedAnchors.add(suspendKey);
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {itemId: item.id, blockId, channel: "resolve", reason: resolved.reason || "unknown"}});
             this.scheduleAuditPersist();
             return;
         }
+        if (resolved.rootID) this.anchorDocCache.set(blockId, {doc: resolved.rootID, notebook: resolved.notebook || ""});
         const result = await withBoundedRetry(
             () => writeAnchorAttr((url, payload) => this.kernelPost(url, payload), blockId, value),
             {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},

@@ -44,10 +44,17 @@ async function postKernel(post: KernelPost, url: string, payload: unknown): Prom
 
 const ok = (response: KernelPostResult): boolean => response?.code === 0;
 
-/** 解析锚点块是否仍存在（T-1233 悬挂检测的基础；文档块同样有 info）。 */
-export async function resolveAnchorBlock(post: KernelPost, blockId: string): Promise<{ok: boolean; reason?: string}> {
+/** 解析锚点块（T-1233 悬挂检测的基础；T-1387/v18.1.x 起同时返回根文档信息：
+    rootID 用于打开归属文档，块被移动后重解析即可跟随，不依赖陈旧缓存）。 */
+export async function resolveAnchorBlock(post: KernelPost, blockId: string): Promise<{ok: boolean; reason?: string; rootID?: string; notebook?: string}> {
     const response = await postKernel(post, "/api/block/getBlockInfo", {id: blockId});
-    return ok(response) ? {ok: true} : {ok: false, reason: response?.msg || "block-not-found"};
+    if (!ok(response)) return {ok: false, reason: response?.msg || "block-not-found"};
+    const data = (response as {data?: {rootID?: unknown; box?: unknown}}).data || {};
+    return {
+        ok: true,
+        ...(data.rootID ? {rootID: String(data.rootID)} : {}),
+        ...(data.box ? {notebook: String(data.box)} : {}),
+    };
 }
 
 /** 写状态属性（合并语义，只动本插件键）。 */
