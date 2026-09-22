@@ -331,6 +331,8 @@ export interface YearHeatmap {
     days: YearHeatmapDay[];
     max: number;
     total: number;
+    /** T-1410：四级色阶的 adaptive 阈值（正数日条数的 25/50/75 百分位，level = count > threshold）。 */
+    thresholds: [number, number, number];
 }
 
 export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap {
@@ -351,17 +353,22 @@ export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap
         counts.set(event.localDate, count);
         max = Math.max(max, count);
     }
+    /* T-1410：四级色阶按「有记录日」的条数分布自适应分级（nearest-rank 百分位 25/50/75），
+       替代固定绝对阈值——低频用户同样能看到完整的四级层次，高频日随分布自然进入高档。 */
+    const positive = [...counts.values()].sort((left, right) => left - right);
+    const percentile = (p: number): number => positive.length ? positive[Math.min(positive.length - 1, Math.ceil(p * positive.length) - 1)] : 0;
+    const thresholds: [number, number, number] = [percentile(0.25), percentile(0.5), percentile(0.75)];
     const days: YearHeatmapDay[] = [];
     const cursor = new Date(year, 0, 1);
     while (cursor.getFullYear() === year) {
         const key = dateKey(cursor);
         const count = counts.get(key) || 0;
         let level = 0;
-        if (count > 0) level = count >= Math.max(6, Math.ceil(max * 0.75)) ? 4 : count >= Math.max(3, Math.ceil(max * 0.5)) ? 3 : count >= 2 ? 2 : 1;
+        if (count > 0) level = count > thresholds[2] ? 4 : count > thresholds[1] ? 3 : count > thresholds[0] ? 2 : 1;
         days.push({date: key, count, level, ...(level === 0 && skips.has(key) ? {skip: true} : {})});
         cursor.setDate(cursor.getDate() + 1);
     }
-    return {year, days, max, total};
+    return {year, days, max, total, thresholds};
 }
 
 /** 年度热力图 SVG：列为周、行为星期（周一在上）。 */

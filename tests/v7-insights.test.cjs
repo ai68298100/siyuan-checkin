@@ -84,6 +84,38 @@ assert.match(heatmapSvg, /class="lc-yearheatmap"/);
 assert.equal((heatmapSvg.match(/月<\/text>/g) || []).length, 12, "year heatmap labels all months");
 assert.match(heatmapSvg, /每格一天/);
 
+// T-1410：四级色阶按有记录日的条数分布自适应分级（nearest-rank 百分位 25/50/75）
+const scaleStore = (spec) => {
+    const events = [];
+    let seq = 0;
+    for (const [count, day] of spec) {
+        for (let index = 0; index < count; index += 1) {
+            seq += 1;
+            events.push({id: `s${seq}`, itemId: "a", occurredAt: `2026-01-${String(day).padStart(2, "0")}T08:00:00Z`, localDate: `2026-01-${String(day).padStart(2, "0")}`, value: 1, unit: "次", source: "manual"});
+        }
+    }
+    return {version: 1, items: [], events};
+};
+const levelsOf = (heatmap) => heatmap.days.reduce((tally, day) => { tally[day.level] = (tally[day.level] || 0) + 1; return tally; }, {});
+
+/* 分层分布：四档全部出现，档位随分布自然划分。 */
+const layered = charts.buildYearHeatmap(scaleStore([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8], [3, 11], [3, 12], [3, 13], [3, 14], [3, 15], [3, 16], [6, 21], [6, 22], [6, 23], [6, 24], [10, 25], [10, 26]]), 2026);
+assert.deepEqual(layered.thresholds, [1, 3, 6], "thresholds are the 25/50/75 percentiles of positive-day counts");
+assert.deepEqual([levelsOf(layered)[1], levelsOf(layered)[2], levelsOf(layered)[3], levelsOf(layered)[4]], [8, 6, 4, 2], "levels split along the distribution quartiles");
+
+/* 低频用户自适应收益：1~2 条/天的分布也能出现高档（旧绝对阈值下 2 条永远只到 level 2）。 */
+const lowFreq = charts.buildYearHeatmap(scaleStore([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [2, 11], [2, 12]]), 2026);
+assert.equal(lowFreq.days.some((day) => day.level >= 3), true, "low-frequency users still reach high levels adaptively");
+
+/* 均匀分布：全部同值时收敛为单一层次；空年全为 0。 */
+const uniform = charts.buildYearHeatmap(scaleStore([[1, 1], [1, 2], [1, 3]]), 2026);
+assert.equal([...uniform.days.filter((day) => day.count > 0)].every((day) => day.level === 1), true, "uniform counts stay at level 1");
+const empty = charts.buildYearHeatmap(scaleStore([]), 2026);
+assert.deepEqual(empty.thresholds, [0, 0, 0]);
+assert.equal(empty.days.every((day) => day.level === 0), true, "empty year has no colored cells");
+/* 确定性：同输入两次构建结果一致。 */
+assert.equal(JSON.stringify(charts.buildYearHeatmap(scaleStore([[1, 1], [1, 2], [1, 3], [1, 4], [1, 5], [1, 6], [1, 7], [1, 8], [3, 11], [3, 12], [3, 13], [3, 14], [3, 15], [3, 16], [6, 21], [6, 22], [6, 23], [6, 24], [10, 25], [10, 26]]), 2026)), JSON.stringify(layered), "adaptive scale is deterministic");
+
 // 成就引擎：从种子数据推导达成状态
 const achievements = buildAchievements(store());
 const first = achievements.find((entry) => entry.id === "first");
