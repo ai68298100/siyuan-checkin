@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-22 状态盘点与新待办登记：核对本地/远端差异（main 领先远端 3 个 docs 提交；v18.0.0～v18.0.3 标签均已在远端；GitHub 无开放 issue/PR）、v18～v22 规划任务状态（本地任务与 v22 决策件全部完成，剩余集中在真实宿主验收、T-1353 隐私决策与外部联动实现）与分支遗留面（本地 42 分支其中 17 已合并、25 未合并待核对、19 远端分支、约 10 个遗留 worktree）。新增登记 T-1396（分支与 worktree 清理，低优先级）、T-1397（研究结论批次拆分登记）、T-1398（回滚演练脚本化与资产清单导出）、T-1399（积压 docs 提交推送，待用户确认）；未改运行代码、数据结构、公开 API，未生成包、未推送。
+
 2026-09-22 T-1389（Task Horizon 日历可见性与打卡内容联动研究）：核对 `src/ecosystem.ts`、公开 API v5、Task Horizon v1 机器契约、bridge 示例、`CheckinItem`/编辑器及现有 contract test。确认当前按日期聚合摘要无法支持项目级隐藏；登记推荐模型：项目级 `taskHorizonCalendarVisible` 缺省 true，隐藏只影响 Task Horizon 日历投影，归档/删除/本地统计/历史事件/任务完成回写保持独立；长期优先新增有界项目×日期只读投影，旧 v1 消费方不得误显示隐藏项目。已新增 `docs/roadmap-task-horizon-calendar-visibility-2026-09.md`，并同步 TODO、开发路线和 D-254；T-1390～T-1394 仅登记，未改运行代码、数据结构、公开 API、机器契约，未生成包、未推送。
 
 2026-09-22 T-1382（思阅 / 思播联动研究）：完成 `mm-o/siyuan-sireader` v2.2.8 与 `mm-o/siyuan-media-player` v2.0.4 的集市元数据、源码/发布包取证。思阅确认有阅读统计和 `reader:open/focus/blur/close` 生命周期事件，但无公开统计 getter；思播确认 `window.siyuanMediaPlayer.controller` 可查询当前媒体/时间/播放状态，但当前发布包没有稳定的累计播放时长事件契约。结论：思阅可作为 opt-in 适配器 MVP，思播先做公开契约/真实宿主验证，均不读取私有存储；T-1383～T-1388 已登记，未改代码、数据结构、公开 API，未生成包、未推送。详见 `docs/roadmap-cross-plugin-study-2026-09.md`。
