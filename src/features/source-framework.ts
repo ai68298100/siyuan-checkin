@@ -74,6 +74,16 @@ export const SOURCE_FRAMEWORK_LIMITS = Object.freeze({
     maxItems: 16,
 }) as Readonly<{maxSegments: number; maxItems: number; maxRefLength: number}>;
 
+/** T-1386 治理可观测性：某来源当日已写入的分钟合计（0 = 尚未写入）。
+    供设置页「今日累计」预览与外部来源状态展示；纯函数、O(events) 单遍扫描。 */
+export function sourceDayMinutes(store: Pick<import("../types").CheckinStore, "events">, source: string, itemId: string, localDate: string): number {
+    let total = 0;
+    for (const event of store.events) {
+        if (event.source === source && event.itemId === itemId && event.localDate === localDate) total += event.value;
+    }
+    return total;
+}
+
 const SOURCE_KEY_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
 const DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 const SOURCE_CHANNELS = new Set<SourceChannel>(["plugin-event", "import-file", "api-push", "manual"]);

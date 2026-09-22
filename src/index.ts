@@ -46,7 +46,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, buildHealthExternalRef, parseHealthInboxRows, planHealthIngest} from "./features/health-inbox";
-import {normalizeSourceGovernance, settleSegmentsToDays} from "./features/source-framework";
+import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -2212,6 +2212,9 @@ export default class CheckinPlugin extends Plugin {
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
+            /* T-1386 治理可观测性：来源当日已写入分钟（来源行的「今日累计」预览）。 */
+            sireaderTodayMinutes: sourceDayMinutes(this.store, "sireader", this.sireaderIntegration.itemId, dateKey(currentCalendarDate())),
+            siplayerTodayMinutes: sourceDayMinutes(this.store, "siplayer", this.siplayerIntegration.itemId, dateKey(currentCalendarDate())),
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
             latestDiagnosticText: this.latestDiagnosticText(),
