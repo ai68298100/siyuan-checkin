@@ -59,3 +59,56 @@
 - **T-1387** 幂等/撤销/诊断 = 身份层框架化验收。
 - **T-1388** 真机验收按来源逐节执行，框架本身以思阅租户现场证据为准。
 - **新增 T-1401 外部应用来源评估批**（B/C 类）：微信读书、Keep、手机健康中心三来源的导出格式取证、指标语义、C 类快捷指令示例；产出「做/延后/不做」评估卡（T-1378 同款格式），评估完成前不写接入代码。
+
+## 七、冻结契约（T-1383 交付，2026-09-23）
+
+实现于 `src/features/source-framework.ts`（纯函数、无 IO、无时钟，守门 `tests/source-framework.test.cjs`）。以下形状即接入层适配器的验收基线，变更须先补决策与迁移说明。
+
+### 1. 登记层——来源描述符
+
+```ts
+interface SourceDescriptor {
+    key: string;            // ^[a-z][a-z0-9-]{1,31}$；亦是 externalRef 前缀（如 sireader）
+    name: string;
+    channel: "plugin-event" | "import-file" | "api-push" | "manual";
+    privacy: "local-only" | "reads-shared-doc";
+    status: "planned" | "experimental" | "stable" | "disabled";
+    capabilities: string[]; // ≤16，能力协商与降级依据
+}
+```
+
+`normalizeSourceDescriptor` 非法输入返回 undefined（fail-closed）；`status` 缺省 `planned`。来源写入事件前，其 key 必须在 `ecosystem.ts` 的 `EXTERNAL_REF_PREFIX_REGISTRY` 登记（`prefix:identity:date` 三段式）——框架不另立身份注册表。
+
+### 2. 治理层——来源配置
+
+```ts
+interface SourceGovernanceConfig {
+    enabled: boolean;        // 默认 false：自动写入必须用户显式开启
+    thresholdValue: number;  // 达标阈值，0 = 任何非零记录达标
+    dailyCapValue: number;   // 每日封顶，0 = 不封顶
+    itemIds: string[];       // 目标项目映射，去重 ≤16
+}
+```
+
+### 3. 结算层——片段 → 当日汇总
+
+```ts
+interface SourceSegment { externalRef: string; localDate: string; value: number; }
+interface SettledDay { localDate: string; rawValue: number; countedValue: number; qualifies: boolean; segmentCount: number; }
+settleSegmentsToDays(segments, config, alreadyCountedRefs?): {
+    days: SettledDay[]; appliedRefs: string[]; duplicateRefs: string[]; invalidSegmentCount: number;
+}
+```
+
+冻结语义：
+
+1. **跨日预切分是接入层契约**：适配器产出的片段必须已按 localDate 归属、一段一日；结算层不做时间窗拆分（来源语义各异，拆分口径归适配器并各自测试）。
+2. **幂等**：externalRef 已出现在 `alreadyCountedRefs`（历史已写入身份，重载后仍在）或批内重复时只计一次；first occurrence wins。
+3. **判定**：`countedValue = min(rawValue, cap)`（cap=0 不封顶）；`qualifies = countedValue ≥ threshold && countedValue > 0`。封顶与阈值只约束资格与计数，永不改写片段或历史事件。
+4. **确定性**：days 按 localDate 升序、appliedRefs 按首次出现顺序；无时钟读取，同输入两次结算结果逐字节一致（可离线回放）。
+5. **fail-closed**：非法片段（坏日期/负值/空或超长 ref/跨日段）计数入 `invalidSegmentCount`，不抛异常；单批 >5000 片段整批拒绝并计数。
+6. **隐私**：片段与结算结果不含备注、正文、标题等用户内容；ref 是 opaque 身份。
+
+### 4. 身份层复用
+
+唯一身份入口 = 既有 `EXTERNAL_REF_PREFIX_REGISTRY`（`prefix:identity:date`）。思阅/思播适配器落地时登记 `sireader:` / `siplayer:` 前缀（T-1387 验收）；框架层只做长度与非空校验，不重复解析语义。
