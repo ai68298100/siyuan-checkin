@@ -100,7 +100,7 @@ function fixture(kind = "binary", direction) {
         if (model.isComplete(host.store, host.store.items[0], shared.currentCalendarDate())) classes.add("is-complete");
         else classes.delete("is-complete");
     };
-    for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav", "pulseHaptic", "invalidateSummary", "broadcast", "writebackNoteAnchor", "setRecentRecord", "maybeAutoArchiveAfterRecord"]) host[name] = () => {};
+    for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav", "pulseHaptic", "invalidateSummary", "broadcast", "writebackNoteAnchor", "writeSummaryResidentForDate", "setRecentRecord", "maybeAutoArchiveAfterRecord"]) host[name] = () => {};
     host.renderBackgroundUpdate();
     bindTodayHandlers(rootNode, host);
     return {host, inner, outer, icon, note, amount, classes, get persists() { return persists; }, flush: async () => { while (queue.length) await queue.shift()(); }};
