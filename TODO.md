@@ -34,14 +34,17 @@
 
 - [x] T-1389 Task Horizon 日历可见性模型与双方契约研究
   - 交付：现有 API/bridge/数据模型证据；默认显示、项目级隐藏、归档/删除/历史、SKIP、at-most、quota、时区、回写解耦与旧消费者降级语义；推荐新增 `calendar.read`/`getCalendarProjection` 方向；未修改业务代码、数据结构、公开 API 或 `task-horizon-v1.json`。
-- [ ] T-1390 项目级可见性字段与默认迁移
+- [x] T-1390 项目级可见性字段与默认迁移
   - 验收：`CheckinItem` 缺省视为显示；仅保存关闭值以避免批量重写；编辑器保存、冲突指纹、导入/导出、旧数据和多窗口合并一致；不复用 `archived`。
-- [ ] T-1391 Task Horizon 日历只读投影与统一状态口径
+  - 状态：done（2026-09-23，D-259。类型 `taskHorizonCalendarVisible?: false` 仅物化显式 false；normalizeItem/save-form 两侧字段集合逐键一致，写后校验指纹不受影响；itemFingerprint 全量 JSON 天然覆盖并发冲突；导入/导出/多窗口经既有归一化与合并链一致）。
+- [x] T-1391 Task Horizon 日历只读投影与统一状态口径
   - 验收：有界项目×日期投影只返回必要摘要；服务端过滤隐藏项目；排期、quota、SKIP、at-most、修订生效日、归档、localDate 和截断限制由小驴统一计算；manifest、API 文档和 contract test 同步。
+  - 状态：done（2026-09-23，D-259。新增 v5 能力 `calendar.read` + `getCalendarProjection`（366 天/200 项目上限、truncated 显式）；状态单一路径复用模型层实现，六态含 logged；manifest×2 与 api-v5.md 三方同步，api-v5-docs/contract-kit/api-contract 门禁全绿）。
 - [ ] T-1392 Task Horizon 消费端图层、刷新与降级
   - 验收：能力协商、缓存/Abort/单飞、四类刷新事件、隐藏开关即时消失/恢复、legacy 消费方不误显示隐藏项目、插件缺失/超时可诊断；不读取 Task Horizon 私有数据。
-- [ ] T-1393 日历显示开关的编辑器与设置 UX
+- [x] T-1393 日历显示开关的编辑器与设置 UX
   - 验收：高级区项目级开关默认开启，说明“只影响任务管理器日历”；双语、ARIA、窄屏、保存失败回滚和重载一致；不新增全局开关替代项目设置。
+  - 状态：done（2026-09-23，D-259。编辑器高级区 `data-taskhorizon-visible-field` 开关缺省勾选、aria-label、双语（editor.thVisible/thVisibleHint 1544 对键保持）、窄屏沿用既有 field-check 布局；保存失败回滚走 save-form 既有 persist 失败路径；不设全局开关）。
 - [ ] T-1394 双向联动边界、幂等与真实宿主验收
   - 验收：显示开关与任务完成回写解耦；`taskhorizon:<blockId>:<localDate>` 重放/墓碑/补录日期/跨午夜/删除/归档/多窗口一致；双方 contract test 及思源桌面/页签/dock/Android 现场证据齐全后，再决定进入哪个 v18.x 小版本。
 

@@ -1,5 +1,14 @@
 # 决策
 
+## D-259：Task Horizon 日历可见性字段与只读投影落地口径（2026-09-23）
+
+- **字段语义（T-1390）**：`CheckinItem.taskHorizonCalendarVisible?: false`——类型上只允许 `false`；缺省/true 不写字段（旧数据零迁移、与 normalizeItem 规范字段集合逐键一致）；仅显式 false 物化。只控制外部日历投影，不删除本地数据、不复用 `archived`、不影响 `recordEvent` 任务回写（显示与写回分离，沿用 D-254）。
+- **投影能力（T-1391）**：新增 v5 能力 `calendar.read`（since 5）与方法 `getCalendarProjection({startDate, endDateExclusive})`——有界项目×日期只读投影，服务端过滤隐藏与归档项目（消费方不得读全量后自行过滤）；区间 ≤366 天、项目 ≤200，超限 `truncated` 显式标注；不含备注/附件/externalRef。
+- **状态单一路径**：排期/配额/SKIP/atMost/修订生效日/日期归属全部由小驴侧计算（复用 isScheduledToday/isItemAvailableOnDate/isComplete/evaluateQuotaSchedule 单一实现），状态 ∈ complete/pending/skipped/at-most-safe/at-most-breach/logged；SKIP 中性、atMost 专用状态不套百分比、quota 只投影真实贡献日 + item 级 quotaRate、非排期日不伪造计划项。
+- **UX（T-1393）**：编辑器高级区开关「在任务管理器日历中显示（Task Horizon）」，缺省勾选；取消勾选仅保存 false；保存走既有冲突指纹（itemFingerprint 全量 JSON）与失败回滚路径，保存成功广播 item-updated 供消费方刷新。
+- **契约同步**：docs/api-v5.md（能力表 20 项、方法签名 §4、上限表 §5、变更记录）、docs/contracts/checkin-api-v5.json 与 contracts/siyuan-checkin-contract/manifest.json 字节一致（新增 calendarProjection limits）；`task-horizon-v1.json` 机器契约未动——新能力待双方评审后进 v2，旧消费方不宣称项目级隐藏（T-1392/T-1394 保持开放）。
+- **真机验证记录**：T-1353 摘要驻留幂等查询已在本地思源真内核（v3.8.5-beta.5，主工作区 API）现场验证：同日标记行精确命中 1 行、用户相似行（同日无标记）不干扰、跨日不误报、重复查询稳定；验证用临时笔记本已删除。
+
 ## D-258：外部打卡来源采用统筹框架，逐个攻破（2026-09-22，用户指示）
 
 - 联动开发不按单个插件各搞一套：统一「登记→接入→结算→身份→治理」五段管道与四类接入渠道（思源插件事件 / 官方导出文件 / 公开 API push / 手动兜底），设计底稿见 docs/external-source-framework-2026-09.md。

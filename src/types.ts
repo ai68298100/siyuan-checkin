@@ -82,6 +82,9 @@ export interface CheckinItem {
     direction?: "atMost";
     /** T-1231 笔记锚点（opt-in）：打卡状态回写的目标块（文档 ID 亦是合法块 ID）。 */
     noteAnchor?: {blockId: string; appendNotes?: boolean};
+    /** T-1390（D-259）：Task Horizon 日历显示策略；缺省/true=显示，仅物化 false（隐藏）。
+        只控制外部日历投影，不影响本地项目、事件、统计、导出或任务完成回写。 */
+    taskHorizonCalendarVisible?: false;
 }
 
 export interface CheckinEvent {

@@ -30,7 +30,7 @@ if (!checkin.hasCapability("events.record")) return;            // 3. 能力协�
 - `capabilitiesSince`：每项能力首次出现的协议版本，供 v4 消费方在 v5 宿主上探测「这条能力在我的版本里有没有」。
 - `describe().deprecated`：已宣布弃用的能力数组（当前为空）。弃用流程：进入该数组 ≥ 一个大版本 → 提供迁移说明 → 下一大版本才可移除；期间行为与签名保持不变。
 
-## 3. 能力清单（18 项）
+## 3. 能力清单（20 项）
 
 | 能力 | 自版本 | effect | localOnly | 主要方法 |
 | --- | --- | --- | --- | --- |
@@ -53,6 +53,7 @@ if (!checkin.hasCapability("events.record")) return;            // 3. 能力协�
 | `integrations.events` | 4 | read | 是 | 事件订阅（见 §7） |
 | `export.json` | 4 | export | 是 | JSON 备份导出 |
 | `export.csv` | 4 | export | 是 | CSV 记录导出 |
+| `calendar.read` | 5 | read | 是 | `getCalendarProjection(range)` |
 
 返回值一律为**受校验的防御性副本**（冻结/克隆），外部修改不会影响插件内部状态，也不得依赖内部对象引用。
 
@@ -129,6 +130,25 @@ getDiagnostics(): readonly CheckinDiagnostic[];
 
 机器可读失败原因码（T-1361）：普通界面据码展示恢复操作；智能体只解释原因与建议顺序，不代为执行。`recoverable=false` 的码（load-failed）应引导用户导出诊断并求助。
 
+### calendar.read → `getCalendarProjection(range)`
+
+```ts
+getCalendarProjection(range: {startDate: string; endDateExclusive: string}): CalendarProjection;
+// CalendarProjection = {startDate, endDateExclusive, items, totalItems, truncated}
+// CalendarProjectionItem = {itemId, name, icon, kind, direction?, unit, scheduleType,
+//   points, quotaRate?}
+// CalendarProjectionPoint = {date, status, value, target, unit, progress?}
+// status ∈ complete / pending / skipped / at-most-safe / at-most-breach / logged
+```
+
+T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费方（如 Task Horizon 的「打卡」图层）。语义纪律：
+
+- **服务端过滤**：仅返回 `taskHorizonCalendarVisible !== false` 且未归档的项目；消费方不得读全量后自行过滤。项目级隐藏在编辑器高级区设置，只影响本投影，不删除本地数据、不复用归档、不影响 `recordEvent` 任务回写。
+- **状态单一路径**：排期、配额、SKIP、atMost、修订生效日与日期归属（只用 `localDate` 与本地排期，不从 UTC 反推）全部由小驴侧计算；消费方只呈现，不自算完成率。
+- **状态语义**：`skipped` 为中性跳过（不渲染为失败）；`at-most-safe/at-most-breach` 为负向习惯专用（不套至少型百分比）；quota 项目只有真实贡献日生成点，周期完成比在 `quotaRate`；`logged` 为非排期日的真实记录（无排期日不伪造计划项）。
+- **有界**：区间 ≤ 366 天、项目 ≤ 200；超限截断并置 `truncated`，`totalItems` 为截断前可见项目总数。
+- **不含隐私字段**：投影不含备注、附件、externalRef 或内部身份；只读、无副作用、不注册事件。
+
 ## 5. 输入上限速查
 
 | 接口 | 上限 |
@@ -138,6 +158,7 @@ getDiagnostics(): readonly CheckinDiagnostic[];
 | `getEventsInRange` limit | 默认 1000 / ≤ 5000 |
 | `recordEventsBatch` 单批 | ≤ 200 条 |
 | `queryItems` limit | 默认 200 / ≤ 1000 |
+| `getCalendarProjection` 区间 / 项目 | ≤ 366 天 / ≤ 200 项目 |
 | `getEventRangeSummary`（v4） | 366 天 / 366 点 / 5000 事件 |
 | 分析快照 JSON | ≤ 512 KiB，趋势窗口 周 52/月 24/日 366/年 10 |
 
@@ -200,5 +221,5 @@ getDiagnostics(): readonly CheckinDiagnostic[];
 
 ## 变更记录
 
-- v5（2026-09）：新增 `items.query`、`events.range.read`、`events.record.batch`、`metrics.read` 与 `capabilitiesSince` 协商补强；externalRef 登记处新增 `obsidian21`。
+- v5（2026-09）：新增 `items.query`、`events.range.read`、`events.record.batch`、`metrics.read` 与 `capabilitiesSince` 协商补强；externalRef 登记处新增 `obsidian21`；同月新增 `calendar.read` 日历投影能力（T-1391）。
 - v4（冻结）：14 项能力与 8 个集成事件。

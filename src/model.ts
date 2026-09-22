@@ -876,6 +876,8 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         ...(direction ? {direction} : {}),
         ...(normalizeNoteAnchor(value.noteAnchor) ? {noteAnchor: normalizeNoteAnchor(value.noteAnchor)} : {}),
         ...(normalizeAutoArchive(value.autoArchive) ? {autoArchive: normalizeAutoArchive(value.autoArchive)} : {}),
+        /* T-1390（D-259）：仅物化显式 false；缺省/true 不写字段，旧数据无需批量迁移。 */
+        ...(value.taskHorizonCalendarVisible === false ? {taskHorizonCalendarVisible: false as const} : {}),
     };
 }
 

@@ -26,7 +26,8 @@
     {"name": "focus.adapters", "since": 4, "effect": "register", "localOnly": true},
     {"name": "integrations.events", "since": 4, "effect": "read", "localOnly": true},
     {"name": "export.json", "since": 4, "effect": "export", "localOnly": true},
-    {"name": "export.csv", "since": 4, "effect": "export", "localOnly": true}
+    {"name": "export.csv", "since": 4, "effect": "export", "localOnly": true},
+    {"name": "calendar.read", "since": 5, "effect": "read", "localOnly": true}
   ],
   "events": [
     "checkin:item-created",
@@ -44,6 +45,7 @@
     "eventsRead": {"maxItemIds": 200, "defaultLimit": 1000, "maxLimit": 5000},
     "itemsQuery": {"defaultLimit": 200, "maxLimit": 1000},
     "batchRecord": {"maxItems": 200},
+    "calendarProjection": {"maxDays": 366, "maxItems": 200},
     "analyticsSnapshotJsonBytes": 524288,
     "trendWindows": {"week": 52, "month": 24, "day": 366, "year": 10}
   },

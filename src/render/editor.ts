@@ -253,6 +253,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 </div>
                                 ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
                                 <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--anchor" data-anchor-append-field><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} ${item?.noteAnchor?.blockId ? "" : "disabled"} /><span>${t("editor.anchorAppend")}</span><small>${t("editor.anchorAppendHint")}</small></label>
+                                <label class="lc-checkin__field lc-checkin__field-check" data-taskhorizon-visible-field><input name="taskHorizonVisible" type="checkbox" ${item?.taskHorizonCalendarVisible !== false ? "checked" : ""} aria-label="${t("editor.thVisible")}" /><span>${t("editor.thVisible")}</span><small>${t("editor.thVisibleHint")}</small></label>
                             </div>
                             <div class="lc-checkin__editor-schedule-fields">
                             <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>

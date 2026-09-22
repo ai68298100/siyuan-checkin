@@ -57,6 +57,7 @@ export const CHECKIN_CAPABILITIES = [
     "integrations.events",
     "export.json",
     "export.csv",
+    "calendar.read",
 ] as const;
 
 export type CheckinCapability = typeof CHECKIN_CAPABILITIES[number];
@@ -82,6 +83,7 @@ export const CHECKIN_CAPABILITIES_SINCE: Readonly<Record<CheckinCapability, 4 | 
     "integrations.events": 4,
     "export.json": 4,
     "export.csv": 4,
+    "calendar.read": 5,
 }) as Readonly<Record<CheckinCapability, 4 | 5>>;
 
 export interface CheckinCapabilityInfo {
@@ -122,6 +124,7 @@ const CAPABILITY_INFO: Record<CheckinCapability, CheckinCapabilityInfo> = {
     "integrations.events": {available: true, localOnly: true, effect: "read"},
     "export.json": {available: true, localOnly: true, effect: "export"},
     "export.csv": {available: true, localOnly: true, effect: "export"},
+    "calendar.read": {available: true, localOnly: true, effect: "read"},
 };
 
 export function getCheckinCapabilityInfo(): Readonly<Record<CheckinCapability, CheckinCapabilityInfo>> {

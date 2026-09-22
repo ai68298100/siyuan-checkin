@@ -13,6 +13,7 @@ import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, type FocusAdapter, type SummaryPr
 import {normalizeSummaryProviderResult} from "./agent-suggestions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, hasCheckinCapability, getCheckinApiDescriptor, getCheckinCapabilityInfo, type CheckinCapability, type CheckinApiDescriptor, type CheckinCapabilityInfo} from "./api-contract";
 import {cloneSuggestionWorkflow, workflowSummary, workflowUpdatedAt, type SuggestionWorkflowState} from "./features/suggestion-workflow";
+import {buildCalendarProjection, type CalendarProjection} from "./features/calendar-projection";
 import {buildAnalyticsSnapshot, cloneAnalyticsSnapshot, summarizeAnalyticsSnapshot, type AnalyticsSnapshot, type AnalyticsSnapshotSummary} from "./charts";
 
 export interface CheckinApi {
@@ -30,6 +31,8 @@ export interface CheckinApi {
     getEvents: () => CheckinEvent[];
     /** Bounded local-date projection; range is half-open [startDate, endDateExclusive). */
     getEventRangeSummary: (range: {startDate: string; endDateExclusive: string}, options?: EventRangeSummaryOptions) => EventRangeSummary;
+    /** T-1391（calendar.read）：有界项目×日期只读日历投影；隐藏项目（taskHorizonCalendarVisible=false）与归档项目在服务端过滤。 */
+    getCalendarProjection: (range: {startDate: string; endDateExclusive: string}) => CalendarProjection;
     /** v5:有界日期区间事件读(半开区间,升序);truncated=true 表示达到 limit 截断。 */
     getEventsInRange: (range: {startDate: string; endDateExclusive: string}, options?: {itemIds?: string[]; source?: CheckinEvent["source"]; includeSkips?: boolean; limit?: number}) => {events: CheckinEvent[]; truncated: boolean};
     /** v5:统一项目投影(归档语义二选一 + 类型过滤 + 限量)。 */
@@ -139,6 +142,14 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         getItems: () => host.store.items.filter((item) => !item.archived).map((item) => host.cloneItem(item)),
         getEvents: () => host.store.events.map((event) => ({...event})),
         getEventRangeSummary: (range, options) => getEventRangeSummary(host.store, range, options),
+        /* T-1391（calendar.read）：服务端过滤隐藏/归档项目；纯数据快照，无备注/附件/externalRef。 */
+        getCalendarProjection: (range) => {
+            const projection = buildCalendarProjection(host.store, range);
+            return {
+                ...projection,
+                items: projection.items.map((item) => ({...item, points: item.points.map((point) => ({...point}))})),
+            };
+        },
         /* v5-1（D-240）：有界范围事件读——去重/过滤纪律与内部消费方一致,返回事件快照防 getter 逃逸。 */
         getEventsInRange: (range, options) => {
             if (!range || !isValidLocalDateInput(range.startDate) || !isValidLocalDateInput(range.endDateExclusive)) {
