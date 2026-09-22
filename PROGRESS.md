@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-22 T-1389（Task Horizon 日历可见性与打卡内容联动研究）：核对 `src/ecosystem.ts`、公开 API v5、Task Horizon v1 机器契约、bridge 示例、`CheckinItem`/编辑器及现有 contract test。确认当前按日期聚合摘要无法支持项目级隐藏；登记推荐模型：项目级 `taskHorizonCalendarVisible` 缺省 true，隐藏只影响 Task Horizon 日历投影，归档/删除/本地统计/历史事件/任务完成回写保持独立；长期优先新增有界项目×日期只读投影，旧 v1 消费方不得误显示隐藏项目。已新增 `docs/roadmap-task-horizon-calendar-visibility-2026-09.md`，并同步 TODO、开发路线和 D-254；T-1390～T-1394 仅登记，未改运行代码、数据结构、公开 API、机器契约，未生成包、未推送。
+
 2026-09-22 T-1382（思阅 / 思播联动研究）：完成 `mm-o/siyuan-sireader` v2.2.8 与 `mm-o/siyuan-media-player` v2.0.4 的集市元数据、源码/发布包取证。思阅确认有阅读统计和 `reader:open/focus/blur/close` 生命周期事件，但无公开统计 getter；思播确认 `window.siyuanMediaPlayer.controller` 可查询当前媒体/时间/播放状态，但当前发布包没有稳定的累计播放时长事件契约。结论：思阅可作为 opt-in 适配器 MVP，思播先做公开契约/真实宿主验证，均不读取私有存储；T-1383～T-1388 已登记，未改代码、数据结构、公开 API，未生成包、未推送。详见 `docs/roadmap-cross-plugin-study-2026-09.md`。
 
 2026-09-22 T-1381（v18.0.3 本地发布）：研究收口补丁版本统一为 18.0.3；完整 `pnpm run test:quality` exit 0，生产包内容与版本通过 `check:release`。`package.zip` 684657 字节，SHA-256=`69a882c840f4ef500d03e46f9a2c63971cfd7aff766a4f0ba6d6f33083a8fd13`。本版本只更新研究结论与后续开发边界，不改变运行行为、数据结构或公开 API；本地提交和标签完成后不自动 push。

@@ -1,5 +1,13 @@
 # 决策
 
+## D-254：Task Horizon 日历显示与任务回写采用两个独立语义（2026-09-22）
+
+- T-1389 研究确认：当前 Task Horizon v1 只读 `getEventRangeSummary()` 是按日期聚合，无法表达“某个打卡项目不显示”；`CheckinItem` 与 `queryItems()` 也没有项目级外部日历可见性字段，因此不能只做一个 UI checkbox 后宣称功能完成。
+- 推荐新增项目级 `taskHorizonCalendarVisible?: boolean`，缺省/`true` 表示显示，仅物化 `false` 以保持旧数据无需批量迁移。该字段只控制 Task Horizon「打卡」日历的只读投影；小驴本地项目、事件、统计、回顾、导出和提醒保持不变。
+- **显示与写回必须分离**：隐藏不等于归档、删除或禁止 Task Horizon `recordEvent()`；任务完成写回仍由明确的目标映射、能力协商和 `taskhorizon:<blockId>:<localDate>` 幂等身份控制。未来若要限制写回，必须新增独立开关和契约，不能复用显示开关。
+- 日历长期采用项目×日期的只读投影，由小驴侧统一计算排期、quota、SKIP、at-most、修订生效日和 localDate；不把历史事件复制成 Task Horizon 原生任务，不让消费方自行重算完成口径。优先评审新增有界 `calendar.read` / `getCalendarProjection`；在双方契约冻结前不改 `task-horizon-v1.json`。
+- T-1390～T-1394 仅登记开发计划，不代表开工；旧消费者未协商新能力时不得误显示被隐藏项目，浏览器假宿主结果不能替代思源桌面/页签/dock/Android 及多窗口现场证据。
+
 ## D-253：思阅 / 思播时长联动先定适配边界，不读取插件私有数据（2026-09-22）
 
 - T-1382 取证确认：思阅（v2.2.8）有阅读统计实现和 `reader:open/focus/blur/close` 事件，但 `window.sireader` 没有统计读取能力；思播（v2.0.4）有 `window.siyuanMediaPlayer.controller` 的当前媒体/时间/播放状态查询，当前发布包没有稳定的累计播放时长事件清单。旧日志对思播第三方事件 API 的声明不能替代当前版本化契约。

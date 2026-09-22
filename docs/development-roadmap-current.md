@@ -70,6 +70,8 @@
 - 使用 `taskhorizon:<blockId>:<localDate>` 幂等身份，重复回放不重复记账；
 - 双方互置契约测试和刷新事件测试。
 
+2026-09-22 新增日历可见性规划（T-1389～T-1394）：现有 v1 `getEventRangeSummary()` 只能按日期聚合，不能表达单项目隐藏；后续以项目级 `taskHorizonCalendarVisible`（缺省 true）和有界项目×日期只读投影补齐。隐藏只影响 Task Horizon「打卡」日历图层，不删除小驴事件、不复用归档、不默认关闭任务完成回写；显示与写回若未来都要控制，必须是两个独立开关。T-1389 已完成研究和计划登记，T-1390～T-1394 未开工，详见 [日历可见性规划](roadmap-task-horizon-calendar-visibility-2026-09.md)。
+
 对方没有排期时，本插件继续维护契约夹具、诊断和降级路径，不把外部等待变成版本阻塞。
 
 ### 2. API v5 稳定化

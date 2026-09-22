@@ -1,5 +1,22 @@
 # TODO
 
+## Task Horizon 日历可见性与打卡内容联动规划（2026-09-22；研究完成，功能未开工）
+
+详细结论、现状证据、推荐语义、投影口径、API 方向、边界与验收矩阵见 [小驴打卡 × Task Horizon 日历可见性规划](docs/roadmap-task-horizon-calendar-visibility-2026-09.md)。结论：现有 Task Horizon v1 聚合摘要可证明联动方向可行，但不能表达“某个打卡项目不显示”；应新增项目级 `taskHorizonCalendarVisible`（缺省 true）和有界项目×日期只读投影。隐藏只影响 Task Horizon 日历展示，不复用归档/删除，也不默认关闭任务完成回写。以下任务只登记，不代表已开始实现。
+
+- [x] T-1389 Task Horizon 日历可见性模型与双方契约研究
+  - 交付：现有 API/bridge/数据模型证据；默认显示、项目级隐藏、归档/删除/历史、SKIP、at-most、quota、时区、回写解耦与旧消费者降级语义；推荐新增 `calendar.read`/`getCalendarProjection` 方向；未修改业务代码、数据结构、公开 API 或 `task-horizon-v1.json`。
+- [ ] T-1390 项目级可见性字段与默认迁移
+  - 验收：`CheckinItem` 缺省视为显示；仅保存关闭值以避免批量重写；编辑器保存、冲突指纹、导入/导出、旧数据和多窗口合并一致；不复用 `archived`。
+- [ ] T-1391 Task Horizon 日历只读投影与统一状态口径
+  - 验收：有界项目×日期投影只返回必要摘要；服务端过滤隐藏项目；排期、quota、SKIP、at-most、修订生效日、归档、localDate 和截断限制由小驴统一计算；manifest、API 文档和 contract test 同步。
+- [ ] T-1392 Task Horizon 消费端图层、刷新与降级
+  - 验收：能力协商、缓存/Abort/单飞、四类刷新事件、隐藏开关即时消失/恢复、legacy 消费方不误显示隐藏项目、插件缺失/超时可诊断；不读取 Task Horizon 私有数据。
+- [ ] T-1393 日历显示开关的编辑器与设置 UX
+  - 验收：高级区项目级开关默认开启，说明“只影响任务管理器日历”；双语、ARIA、窄屏、保存失败回滚和重载一致；不新增全局开关替代项目设置。
+- [ ] T-1394 双向联动边界、幂等与真实宿主验收
+  - 验收：显示开关与任务完成回写解耦；`taskhorizon:<blockId>:<localDate>` 重放/墓碑/补录日期/跨午夜/删除/归档/多窗口一致；双方 contract test 及思源桌面/页签/dock/Android 现场证据齐全后，再决定进入哪个 v18.x 小版本。
+
 ## 思阅 / 思播外部时长联动研究与后续计划（2026-09-22；研究完成，功能未开工）
 
 详细证据与边界见 [思阅 / 思播与小驴打卡联动可行性研究](docs/roadmap-cross-plugin-study-2026-09.md)。结论：思阅可基于公开阅读生命周期事件由小驴侧计时，具备 MVP 可行性；思播虽有播放器 controller 查询能力，但当前发布包没有可依赖的累计播放时长事件契约，需先完成公开契约/真实宿主验证。两者都不得读取对方私有存储；自动完成必须 opt-in、使用新 source 前缀和稳定 `externalRef`、可诊断可撤销。以下任务只登记，不代表已经实现。
