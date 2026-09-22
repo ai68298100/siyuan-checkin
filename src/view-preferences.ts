@@ -1,5 +1,6 @@
 import type {CheckinItemSortMode} from "./types";
 import {validateAnchorBlockId} from "./features/note-anchor";
+import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -67,6 +68,8 @@ export interface CheckinViewPreferences {
     reportSource: string;
     /** T-1352 日记集成：把周期报告手动写入用户绑定的思源文档（opt-in，默认关）。 */
     diaryReport: {enabled: boolean; docId: string};
+    /** T-1353 摘要驻留：每日把当天汇总单行追加进用户绑定的思源文档（opt-in，默认关）。 */
+    summaryResident: {enabled: boolean; docId: string};
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -105,6 +108,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     pluginLanguage: "zh-CN",
     reportSource: "",
     diaryReport: {enabled: false, docId: ""},
+    summaryResident: {enabled: false, docId: ""},
     recentTemplates: [],
 };
 
@@ -198,6 +202,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const diarySource = (source.diaryReport && typeof source.diaryReport === "object" ? source.diaryReport : {}) as Record<string, unknown>;
     const diaryDocId = validateAnchorBlockId(diarySource.docId) || "";
     const diaryReport = {enabled: diarySource.enabled === true && Boolean(diaryDocId), docId: diaryDocId};
+    const summaryResident = normalizeSummaryResidentPreference(source.summaryResident);
     return {
         groupMode,
         sortMode,
@@ -230,6 +235,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         pluginLanguage,
         reportSource: reportSourceFilter,
         diaryReport,
+        summaryResident,
         recentTemplates,
     };
 }

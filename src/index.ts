@@ -42,6 +42,7 @@ import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_M
 import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
+import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
@@ -364,6 +365,10 @@ export default class CheckinPlugin extends Plugin {
     reportSource = "";
     /* T-1352 日记集成（opt-in 默认关）。 */
     diaryReport = {...DEFAULT_VIEW_PREFERENCES.diaryReport};
+    /* T-1353 摘要驻留（opt-in 默认关）。 */
+    summaryResident = {...DEFAULT_VIEW_PREFERENCES.summaryResident};
+    private summaryResidentInFlight = false;
+    private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
     private pendingProjectDraft?: ProjectDraft;
@@ -463,6 +468,64 @@ export default class CheckinPlugin extends Plugin {
         this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "diary-report", docId, ok: result.ok, reason: result.reason || ""}});
         this.scheduleAuditPersist();
         showMessage(result.ok ? t("msg.diaryWritten") : t("msg.diaryWriteFailed", {reason: result.reason || ""}));
+    }
+
+    /* T-1353 摘要驻留：每日首次打卡后旁路追加当天汇总单行（opt-in 默认关）。
+       幂等：写入前按 文档+日期+标记 查询既有行，命中即跳过；失败有界重试后只进审计，
+       不提示不回滚（旁路纪律同锚点回写）。 */
+    private async writeSummaryResidentForDate(localDate: string): Promise<{ok: boolean; duplicate: boolean; reason?: string}> {
+        const docId = this.summaryResident.enabled ? this.summaryResident.docId : "";
+        if (!docId || this.disposed || this.disposing || !this.acceptingOperations) return {ok: false, duplicate: false};
+        if (this.summaryResidentInFlight || this.summaryResidentWritten.has(localDate)) return {ok: false, duplicate: false, reason: "busy"};
+        this.summaryResidentInFlight = true;
+        try {
+            const existing = await this.kernelPost("/api/query/sql", {stmt: buildSummaryDuplicateQuery(docId, localDate)});
+            if (extractSummaryRows(existing).length > 0) {
+                this.summaryResidentWritten.add(localDate);
+                return {ok: true, duplicate: true};
+            }
+            const dayStart = calendarDateFromKey(localDate);
+            const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1);
+            const summary = buildSummaryContext(this.store, "day", dayStart);
+            const sourceCounts = new Map<string, number>();
+            for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
+                sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
+            }
+            const sources = (["manual", "tomato", "api", "import"] as const)
+                .filter((key) => (sourceCounts.get(key) || 0) > 0)
+                .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
+            const markdown = `${buildDailySummaryLine({
+                date: localDate,
+                completed: summary.completedItems,
+                scheduled: summary.scheduledItems,
+                recordsText: t("summary.residentRecords", {n: summary.totalEvents}),
+                sources,
+            })}\n`;
+            const result = await withBoundedRetry(
+                () => appendAnchorNote((url, payload) => this.kernelPost(url, payload), docId, markdown),
+                {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},
+            );
+            this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "summary-resident", docId, date: localDate, ok: result.ok, reason: result.reason || ""}});
+            this.scheduleAuditPersist();
+            if (result.ok) this.summaryResidentWritten.add(localDate);
+            return {ok: result.ok, duplicate: false, reason: result.ok ? undefined : result.reason};
+        } finally {
+            this.summaryResidentInFlight = false;
+        }
+    }
+
+    /* 设置页手动补写今日摘要：与自动路径同一幂等门槛，重复点击不会重复追加。 */
+    private async writeSummaryResidentNow(): Promise<void> {
+        if (!this.summaryResident.enabled || !this.summaryResident.docId) {
+            showMessage(t("msg.summaryNotBound"));
+            return;
+        }
+        const result = await this.writeSummaryResidentForDate(dateKey(currentCalendarDate()));
+        if (result.ok) {
+            showMessage(t("msg.summaryWritten"));
+        } else if (result.reason && result.reason !== "busy") {
+            showMessage(t("msg.summaryWriteFailed", {reason: result.reason}));
+        }
     }
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
@@ -1932,6 +1995,7 @@ export default class CheckinPlugin extends Plugin {
             avatar: this.avatar,
             avatarImage: this.avatarImage,
             diaryReport: {...this.diaryReport},
+            summaryResident: {...this.summaryResident},
             suggestionWorkflowAudits: this.suggestionWorkflow?.audits.length || 0,
             diagnosticsCount: this.diagnostics.length,
             latestDiagnosticText: this.latestDiagnosticText(),
@@ -2020,6 +2084,31 @@ export default class CheckinPlugin extends Plugin {
             this.diaryReport = {...this.diaryReport, docId};
             void this.persistViewPreferences().then(() => showMessage(t("msg.diaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
+        });
+        root.querySelector<HTMLInputElement>("[data-summary-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && !this.summaryResident.docId) {
+                showMessage(t("msg.summaryNeedDoc"));
+                this.render();
+                return;
+            }
+            this.summaryResident = {...this.summaryResident, enabled: checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-summary-doc']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-summary-doc]");
+            const docId = validateAnchorBlockId(input?.value);
+            if (!docId) {
+                showMessage(t("msg.summaryDocInvalid"));
+                return;
+            }
+            this.summaryResident = {...this.summaryResident, docId};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.summaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
+            void this.writeSummaryResidentNow();
         });
         root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -3501,6 +3590,7 @@ export default class CheckinPlugin extends Plugin {
         this.broadcast({type: "event-recorded", item: current, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
         void this.writebackNoteAnchor(current, {state: "done", value, unit: revision.unit});
+        void this.writeSummaryResidentForDate(event.localDate);
         if (current.noteAnchor?.appendNotes && event.note) {
             void this.appendNoteToAnchor(current, buildAnchorNoteMarkdown({date: event.localDate, itemName: current.name, stateText: t("anchor.stateDone"), note: event.note}));
         }
@@ -3991,6 +4081,7 @@ export default class CheckinPlugin extends Plugin {
         this.reportSections = {...preferences.reportSections};
         this.reportSource = preferences.reportSource;
         this.diaryReport = {...preferences.diaryReport};
+        this.summaryResident = {...preferences.summaryResident};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -4057,6 +4148,7 @@ export default class CheckinPlugin extends Plugin {
             reportSections: {...this.reportSections},
             reportSource: this.reportSource,
             diaryReport: {...this.diaryReport},
+            summaryResident: {...this.summaryResident},
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };
