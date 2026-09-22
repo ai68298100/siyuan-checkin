@@ -3320,12 +3320,23 @@
 }
 .lc-checkin__recent-record span { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
 .lc-checkin__recent-record i { display: grid; place-items: center; flex: none; width: 17px; height: 17px; border-radius: 50%; color: #fff; background: var(--lc-checkin-success); font-size: 9px; font-style: normal; }
+/* T-1411（D-263 克制动效）：完成打卡时 ✓ 徽标轻弹一次——纯 transform，360ms，
+   插件 reducedMotion 偏好（data-reduced-motion）与系统 prefers-reduced-motion 双闸禁用。 */
+@media (prefers-reduced-motion: no-preference) {
+    .lc-checkin__recent-record:not([data-reduced-motion="true"]) i { animation: lc-checkin-check-pop 360ms ease-out both; }
+}
 .lc-checkin__recent-record small { color: var(--lc-checkin-muted); }
 .lc-checkin__recent-record button { flex: none; }
 
 @keyframes lc-checkin-toast-in {
     from { opacity: 0; transform: translate(-50%, 4px); }
     to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes lc-checkin-check-pop {
+    0% { transform: scale(0.4); }
+    60% { transform: scale(1.18); }
+    100% { transform: scale(1); }
 }
 
 /* 手机/窄面板给底部导航让出空间，toast 仍保持在窗口内而非顶部。 */

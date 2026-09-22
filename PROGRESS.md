@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-23 T-1411（完成庆祝动效，T-1400 第一轮采纳③，D-263 克制原则首批落地）：完成打卡时 recent-record 反馈条的 ✓ 徽标轻弹一次——`lc-checkin-check-pop` 360ms ease-out 纯 transform keyframes（scale 0.4→1.18→1，无任何盒模型属性，零布局跳动）；双闸禁用：插件 reducedMotion 偏好经 toast 自带的 `data-reduced-motion` 属性 + 系统 `prefers-reduced-motion: no-preference` 媒体查询，任一命中即不播。 restraint 断言入 checkin-toast 守门（双闸选择器文本、keyframes 纯 transform、恰好一处声明+一处定义、时长 360ms）。CSS 体积 +261 字节（605333/620KB 预算内）；check/css-hygiene/ui-theme 绿。T-1400 第一轮三项采纳（T-1409/T-1410/T-1411）全部落地。
+
 2026-09-23 v18.1.0 本地发布准备：版本四方（package.json/plugin.json/src/version.ts/README）提升 18.1.0；新增 docs/v18.1.0-change-log.md（新增功能/改进/公开 API/工程质量/明确不变五节）与 docs/releases/release-notes-18.1.0.md（用户向更新内容 + 升级边界 + SHA-256）；发布验收文档 docs/release-validation-18.1.0.md 成文。完整 test:quality 以 18.1.0 口径 exit 0——release-assets 四方版本一致、package.zip 693030 字节 SHA-256 `b61342f6a9775e89b86f66eec5d32fb852e1f3d7face4e25a9553859b7f78542` 与发布说明及资产清单一致、回滚演练 4 步通过。本地提交 + 标签 v18.1.0 完成；远端 push 与 GitHub Release 待用户确认（含此前积压的 21 个提交）。
 
 2026-09-23 T-1410（热力图四级色阶自适应，T-1400 第一轮采纳②）：`buildYearHeatmap` 的四级阈值从固定绝对值（≥2/≥3/≥max×0.75）改为**按「有记录日」条数分布的 nearest-rank 百分位 25/50/75 自适应**，阈值随 `YearHeatmap.thresholds` 暴露；渲染类名（is-level-1..4/is-skip/is-empty）与双主题色不变，对比度门禁沿用。低频用户收益：1~2 条/天的分布在旧阈值下永远只到 level 2，新方案可呈现完整四档层次。v7-insights 守门扩展五组断言（分层分布 8/6/4/2、低频自适应收益、均匀分布收敛 level 1、空年 thresholds [0,0,0]、确定性回放）；skip-semantics/review-workspace/analytics-snapshot 邻接套件全绿。采纳③完成庆祝动效按 D-263 克制原则拆出为收尾批次 T-1411。test:quality 全链绿。

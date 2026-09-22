@@ -39,4 +39,11 @@ assert.doesNotMatch(todayBindings, /toggle-completed'[\s\S]{0,700}host\.render\(
 assert.doesNotMatch(fragments, /revision\.recordStep\s*\?\?\s*item\.recordStep/, "historical cards must not borrow the current quick-record amount");
 assert.match(fragments, /getRecordStep\(revision\.kind, revision\.unit, revision\.recordStep\)/, "cards must use the amount effective on their rendered date");
 
+/* T-1411（D-263 克制动效）：✓ 徽标轻弹——双闸禁用、纯 transform、单元素、时长有界。 */
+assert.match(components, /@media \(prefers-reduced-motion: no-preference\) \{\s*\.lc-checkin__recent-record:not\(\[data-reduced-motion="true"\]\) i \{ animation: lc-checkin-check-pop 360ms ease-out both; \}\s*\}/, "check pop must be gated by both the plugin preference and the OS media query");
+assert.match(components, /@keyframes lc-checkin-check-pop \{\s*0% \{ transform: scale\(0\.4\); \}\s*60% \{ transform: scale\(1\.18\); \}\s*100% \{ transform: scale\(1\); \}\s*\}/, "pop keyframes must stay transform-only");
+const popBlock = components.match(/@keyframes lc-checkin-check-pop \{[\s\S]*?\n\}/)?.[0] || "";
+assert.ok(!/(width|height|top|left|margin|padding)\s*[:;]/.test(popBlock), "pop keyframes must not shift layout");
+assert.equal((components.match(/lc-checkin-check-pop/g) || []).length, 2, "restraint: exactly one declaration and one keyframes definition");
+
 console.log("Check-in toast checks passed.");
