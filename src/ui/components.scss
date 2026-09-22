@@ -4731,12 +4731,12 @@
 .lc-checkin__trend-stats b { color: var(--lc-checkin-text); font-size: 11px; font-variant-numeric: tabular-nums; }
 .lc-checkin__trend-stats .is-up b { color: var(--lc-checkin-success-text); }
 .lc-checkin__trend-stats .is-down b { color: var(--lc-checkin-danger-text); }
-.lc-chart { display: block; width: 100%; height: auto; }
-.lc-chart-label { fill: var(--lc-checkin-muted); font-size: 7px; }
-.lc-chart-axis { fill: var(--lc-checkin-muted); font-size: 6px; }
+.lc-chart { display: block; width: 100%; height: 190px; }
+.lc-chart-label { fill: var(--lc-checkin-muted); font-size: 12px; }
+.lc-chart-axis { fill: var(--lc-checkin-muted); font-size: 12px; }
 .lc-chart-grid { stroke: var(--lc-checkin-border); stroke-width: .6; stroke-dasharray: 2 3; }
 .lc-chart-area { fill: color-mix(in srgb, var(--lc-checkin-accent) 11%, transparent); }
-.lc-chart-value { fill: var(--lc-checkin-muted); font-size: 6px; font-weight: 550; }
+.lc-chart-value { fill: var(--lc-checkin-muted); font-size: 12px; font-weight: 550; }
 
 .lc-checkin__achievement-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
 .lc-checkin__achievement {
@@ -10479,4 +10479,58 @@ details.lc-checkin__log-day.is-folded > summary:hover { color: var(--lc-checkin-
     .lc-checkin__log-week > summary > span { grid-column: 1; grid-row: 2; }
     .lc-checkin__log-month > summary > i,
     .lc-checkin__log-week > summary > i { grid-column: 2; grid-row: 1 / span 2; }
+}
+/* Local photo cropping is a native modal, above dock/tab/quick-dialog surfaces. */
+dialog.lc-checkin.lc-checkin__avatar-editor {
+    width: min(440px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+    height: fit-content;
+    flex: none;
+    min-height: 0;
+    max-height: calc(100dvh - 24px);
+    margin: auto;
+    padding: 20px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: 18px;
+    box-shadow: var(--lc-checkin-shadow-lg);
+    gap: 12px;
+    container-type: normal;
+    overscroll-behavior: contain;
+    & > * { flex-shrink: 0; }
+    &::backdrop { background: rgb(20 20 35 / 50%); }
+    &:not([open]) { display: none; }
+    h2, p { margin: 0; }
+    h2 { font-size: 18px; }
+    p { font-size: 13px; color: var(--lc-checkin-muted); }
+    [data-avatar-status]:empty { display: none; }
+    [data-avatar-crop] {
+        display: block;
+        width: min(100%, 256px);
+        height: auto;
+        aspect-ratio: 1;
+        margin-inline: auto;
+        border-radius: 12px;
+        background: var(--lc-checkin-muted-surface);
+        touch-action: none;
+        cursor: grab;
+        &:active { cursor: grabbing; }
+        &:focus-visible { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: 3px; }
+    }
+    .lc-checkin__avatar-editor-tools {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        label { flex: 1; min-width: 0; font-size: 14px; }
+        input { display: block; width: 100%; min-height: 36px; margin: 0; padding: 0; }
+        output { float: right; font-variant-numeric: tabular-nums; }
+        canvas { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 14px; background: var(--lc-checkin-muted-surface); }
+    }
+    .lc-checkin__avatar-editor-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        button { min-height: 40px; }
+    }
 }

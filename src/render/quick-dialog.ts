@@ -3,6 +3,7 @@
 import {t} from "../i18n";
 import {getFrontend, showMessage, Dialog} from "siyuan";
 import type {DialogSizeMode} from "../view-preferences";
+import {disposeResponsiveCharts} from "../ui/responsive-charts";
 
 export interface QuickDialogHost {
     disposed: boolean;
@@ -24,6 +25,8 @@ export interface QuickDialogHost {
     mobileTopBarButton?: HTMLElement;
     mobileTopBarRetryTimer?: number;
     speedSwitchQuickActionDisposers: Array<() => void>;
+    /** Some launcher versions register successfully without returning a disposer. */
+    speedSwitchQuickActionsRegistered?: boolean;
     speedSwitchRetryTimer?: number;
     app?: unknown;
     render(): void;
@@ -266,6 +269,7 @@ export function closeQuickDialogFor(host: QuickDialogHost): void {
 
 export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dialog): void {
     if (host.quickDialog !== dialog) return;
+    if (host.quickDialogElement) disposeResponsiveCharts(host.quickDialogElement);
     host.quickDialogViewportCleanup?.();
     host.quickDialogViewportCleanup = undefined;
     host.quickDialogFrameCleanup?.();
@@ -320,7 +324,7 @@ interface SpeedSwitchPluginLike {
 
 /** Register optional launcher actions when 小驴速切 is installed. */
 export function ensureSpeedSwitchQuickActionsFor(host: QuickDialogHost): void {
-    if (host.disposed || host.disposing || host.speedSwitchQuickActionDisposers.length) return;
+    if (host.disposed || host.disposing || host.speedSwitchQuickActionsRegistered || host.speedSwitchQuickActionDisposers.length) return;
     const plugins = (host.app as unknown as {plugins?: unknown} | undefined)?.plugins;
     const candidates = Array.isArray(plugins)
         ? plugins
@@ -353,6 +357,9 @@ export function ensureSpeedSwitchQuickActionsFor(host: QuickDialogHost): void {
         });
         if (typeof dispose === "function") host.speedSwitchQuickActionDisposers.push(dispose);
     });
+    /* The launcher contract permits a void return. Keep an explicit success
+       marker so focus/refresh retries cannot register duplicate actions. */
+    host.speedSwitchQuickActionsRegistered = true;
 }
 
 export function bindQuickDialogViewportFor(host: QuickDialogHost, dialog: Dialog): void {

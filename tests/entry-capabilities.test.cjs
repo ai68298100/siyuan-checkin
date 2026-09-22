@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const vm = require("node:vm");
+const ts = require("typescript");
 const source = fs.readFileSync("src/index.ts", "utf8");
 const sharedSource = fs.readFileSync("src/shared.ts", "utf8");
 const agentSource = fs.readFileSync("src/agent-capabilities.ts", "utf8");
@@ -51,5 +53,47 @@ assert.match(agentSource, /今日可用的打卡项目/);
 assert.match(agentSource, /buildCoachingSuggestions\(report\)/);
 assert.match(agentSource, /suggestions,/);
 assert.match(agentSource, /自定义日期范围无效，请使用 YYYY-MM-DD/);
+
+/* Exercise the optional launcher's public registration contract. A successful
+   void return must be just as idempotent as a returned cleanup function. */
+const quickDialogModule = {exports: {}};
+const retryCallbacks = [];
+vm.runInNewContext(ts.transpileModule(quickDialogSource, {compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2020,
+}}).outputText, {
+    exports: quickDialogModule.exports,
+    module: quickDialogModule,
+    require: id => id === "../i18n" ? {t: key => key} : {},
+    window: {setTimeout: callback => {retryCallbacks.push(callback); return retryCallbacks.length;}},
+});
+const registerLauncher = quickDialogModule.exports.ensureSpeedSwitchQuickActionsFor;
+for (const returnsCleanup of [false, true]) {
+    const registrations = [];
+    let cleanupCount = 0;
+    const host = {
+        disposed: false, disposing: false, speedSwitchQuickActionDisposers: [],
+        app: {plugins: [{name: "siyuan-speed-switch", registerQuickAction(options) {
+            registrations.push(options);
+            return returnsCleanup ? () => cleanupCount++ : undefined;
+        }}]},
+    };
+    registerLauncher(host);
+    registerLauncher(host);
+    assert.equal(registrations.length, 1, `launcher returning ${returnsCleanup ? "cleanup" : "void"} registers once`);
+    assert.equal(registrations[0].id, "xiaolv-checkin-open");
+    assert.deepEqual(Array.from(registrations[0].targets), ["desktop", "sidebar", "mobile"]);
+    assert.equal(host.speedSwitchQuickActionDisposers.length, returnsCleanup ? 1 : 0);
+    host.speedSwitchQuickActionDisposers.forEach(dispose => dispose());
+    assert.equal(cleanupCount, returnsCleanup ? 1 : 0, "real cleanup remains available to plugin teardown");
+}
+const lateHost = {disposed: false, disposing: false, speedSwitchQuickActionDisposers: [], app: {plugins: []}};
+registerLauncher(lateHost);
+assert.equal(retryCallbacks.length, 1, "missing launcher retains the existing delayed discovery path");
+let lateRegistrations = 0;
+lateHost.app.plugins.push({name: "siyuan-speed-switch", registerQuickAction() {lateRegistrations++;}});
+retryCallbacks[0]();
+registerLauncher(lateHost);
+assert.equal(lateRegistrations, 1, "late discovery is also idempotent without a disposer");
 console.log("Entry capability structure checks passed.");
 require("./review-assistant.test.cjs");

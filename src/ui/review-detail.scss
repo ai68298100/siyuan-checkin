@@ -93,8 +93,8 @@
     .lc-checkin__trend-card > header > strong { min-width: 0; font-size: 20px; line-height: 1.3; overflow-wrap: anywhere; }
     .lc-checkin__trend-stats > span { min-width: 0; gap: 3px; padding: 7px; }
     .lc-checkin__trend-stats b { font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-    .lc-chart { max-width: 380px; max-height: 190px; margin-inline: auto; }
-    .lc-chart-label, .lc-chart-axis, .lc-chart-value { font-size: 13px; }
+    .lc-chart { width: 100%; max-width: none; height: 190px; min-height: 0; max-height: none; margin-inline: 0; }
+    .lc-chart-label, .lc-chart-axis, .lc-chart-value { font-size: 12px; }
 
     .lc-checkin__strength-overview { padding: 12px; }
     .lc-checkin__strength-overview > header { gap: 8px; }
@@ -211,30 +211,6 @@
         .lc-checkin__log-subrow > span { grid-column: 1 / -1; grid-row: 2; }
         .lc-checkin__log-subrow.has-thumb > .lc-checkin__log-thumb { grid-column: 1; grid-row: 2; }
         .lc-checkin__log-subrow.has-thumb > span { grid-column: 1 / -1; grid-row: 3; }
-    }
-}
-
-@container lc5 (min-width: 480px) {
-    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 13px; }
-}
-
-/* A trend card can be much narrower than the host (for example the right
-   review rail in a 1180px dock). `meet` scales the SVG as a whole, so raise
-   only tiny axis labels in those local cards. */
-@container review-chart (max-width: 300px) {
-    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 11px; }
-}
-@container review-chart (min-width: 301px) and (max-width: 480px) {
-    .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
-}
-@container lc5 (min-width: 720px) {
-    @container review-chart (max-width: 480px) {
-        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
-    }
-}
-@container lc5 (max-width: 719px) {
-    @container review-chart (max-width: 480px) {
-        .lc-checkin.lc-checkin--review :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) { font-size: 12px; }
     }
 }
 

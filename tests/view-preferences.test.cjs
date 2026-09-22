@@ -54,6 +54,12 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     },
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
+const validAvatar = "data:image/png;base64,iVBORw0KGgo=";
+assert.equal(preferences.normalizeViewPreferences({avatarImage: validAvatar}).avatarImage, validAvatar, "complete avatar data survives preference reload unchanged");
+assert.equal(preferences.normalizeViewPreferences({avatarImage: "data:image/png;base64," + "A".repeat(1_000_000)}).avatarImage, undefined, "oversized avatar data is rejected, never truncated into a broken image");
+for (const avatarImage of ["data:image/png;base64,", "data:image/png;base64,AAA", "data:image/svg+xml;base64,AAAA", "https://example.com/photo.png", "data:image/png;base64,AA!="]) {
+    assert.equal(preferences.normalizeViewPreferences({avatarImage}).avatarImage, undefined, "invalid or remote avatar sources are rejected");
+}
 const normalized = preferences.normalizeViewPreferences({reviewFold: [...foldIds, "unknown", "projects", null], reviewFoldTouched: true});
 assert.deepEqual(Array.from(normalized.reviewFold), foldIds, "all review section choices survive normalization without unknown or duplicate ids");
 assert.equal(normalized.reviewFoldTouched, true);
@@ -92,6 +98,7 @@ class Details extends Element {
 }
 const messages = [];
 const imports = {
+    "../ui/responsive-charts": {bindResponsiveCharts() {}},
     "../i18n": {t: (key) => key},
     "../model": {
         dateKey: () => "2026-09-20",
@@ -190,6 +197,7 @@ host.render = function render() {
         new Element({reviewAssistantGoal: ""}, "SELECT"), new Element({action: "review-assistant"}),
         new Element({reviewRhythmDate: "2026-09-18"}), new Element({reviewRhythmDate: "2026-09-21"}),
         new Element({reviewRhythmDate: "invalid"}), new Element({action: "copy-review-prompt"}),
+        new Element({action: "copy-open-review-agent"}),
         new Element({reviewAssistantPrompt: ""}, "TEXTAREA"),
         ...host.store.events.flatMap(event => [new Element({editHistoryEventId: event.id}), new Element({historyEventId: event.id})]),
     ];
@@ -241,6 +249,20 @@ control("historyItem").fire("change");
 assert.equal(host.historyItemId, "reading");
 assert.equal(host.historyPage, 0);
 surface.scrollTop = 280;
+const imeSearch = control("historySearch");
+const beforeImeRender = host.renderCount;
+imeSearch.value = "h"; imeSearch.fire("input");
+const pendingImeCallback = [...timers.values()].at(-1);
+imeSearch.fire("compositionstart");
+pendingImeCallback();
+assert.equal(host.renderCount, beforeImeRender, "history search never replaces the composing input");
+imeSearch.value = "喝"; imeSearch.fire("compositionend");
+imeSearch.fire("compositionstart");
+imeSearch.value = "喝水"; imeSearch.fire("input");
+assert.equal(host.renderCount, beforeImeRender);
+imeSearch.fire("compositionend");
+[...timers.values()].at(-1)();
+assert.equal(host.historyQuery, "喝水", "history search applies the final Chinese query");
 control("historySearch").value = "chapter";
 control("historySearch").fire("input");
 const searchCallback = [...timers.values()].at(-1);
@@ -444,6 +466,18 @@ console.log("Review preferences and navigation behavior passed: full fold persis
     assert.ok(copied[0].includes('"startDate":"2026-09-02","endDate":"2026-09-12"'));
     assert.equal(focused, copy);
     assert.equal(copy.attributes.disabled, undefined);
+    let opens = 0;
+    const agentFocus = new Element({}, "DIV");
+    host.openReviewAgent = () => { opens++; agentFocus.focus(); return true; };
+    const copyOpen = control("action", "copy-open-review-agent");
+    copyOpen.fire("click"); copyOpen.fire("click");
+    await flushTools();
+    assert.equal(opens, 1, "copy-and-open ignores repeat clicks while copying");
+    assert.equal(focused, agentFocus, "handoff never pulls focus back from SiYuan Agent");
+    assert.equal(messages.at(-1), "review.assistantOpened");
+    host.openReviewAgent = () => false;
+    copyOpen.fire("click"); await flushTools();
+    assert.equal(messages.at(-1), "review.assistantOpenUnavailable", "unsupported host keeps the copied prompt and tells the truth");
     clipboardWriter = async () => { throw new Error("clipboard denied"); };
     copy.fire("click");
     await flushTools();
@@ -451,6 +485,16 @@ console.log("Review preferences and navigation behavior passed: full fold persis
     assert.equal(prompt.parentElement.open, true, "clipboard denial reveals the manually copyable prompt");
     assert.equal(prompt.selected, true);
     assert.equal(focused, prompt, "clipboard fallback keeps the selected prompt focused after busy cleanup");
+    host.openReviewAgent = () => { opens++; return true; };
+    copyOpen.fire("click"); await flushTools();
+    assert.equal(opens, 1, "clipboard failure must not open Agent or leave the manual fallback");
+    let resolveClipboard;
+    clipboardWriter = () => new Promise(resolve => { resolveClipboard = resolve; });
+    copyOpen.fire("click"); await Promise.resolve();
+    host.currentPage = "settings";
+    resolveClipboard(); await flushTools();
+    assert.equal(opens, 1, "late clipboard success after navigation must not open Agent");
+    host.currentPage = "review";
     let rejectClipboard;
     clipboardWriter = () => new Promise((resolve, reject) => { rejectClipboard = reject; });
     copy.fire("click");

@@ -1,4 +1,6 @@
 import {Dialog, fetchSyncPost, getFrontend, openTab, Plugin, showMessage, type IProtyle} from "siyuan";
+import {disposeResponsiveCharts} from "./ui/responsive-charts";
+import {openSiYuanAgent} from "./integrations/agent-navigation";
 import "./ui/tokens.scss";
 import "./ui/components.scss";
 import "./ui/workbench.scss";
@@ -52,6 +54,7 @@ import {clearReminderUserActions, deserializeReminderUserActions, normalizeRemin
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
 import {bindSettingsNavigationFor} from "./render/settings-navigation";
+import {openAvatarEditor} from "./render/avatar-editor";
 import {renderEditorView} from "./render/editor";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
@@ -211,6 +214,7 @@ export default class CheckinPlugin extends Plugin {
     private palette: CheckinPalette = DEFAULT_VIEW_PREFERENCES.palette;
     private avatar: string = DEFAULT_VIEW_PREFERENCES.avatar;
     private avatarImage: string | undefined = DEFAULT_VIEW_PREFERENCES.avatarImage;
+    private closeAvatarEditor?: () => void;
     private dialogScale = DEFAULT_VIEW_PREFERENCES.dialogScale;
     private dialogFixedSize = {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize};
     private dialogRect?: {width: number; height: number} = DEFAULT_VIEW_PREFERENCES.dialogRect;
@@ -606,6 +610,7 @@ export default class CheckinPlugin extends Plugin {
     private mobileTopBarButton?: HTMLElement;
     private mobileTopBarRetryTimer?: number;
     private speedSwitchQuickActionDisposers: Array<() => void> = [];
+    private speedSwitchQuickActionsRegistered = false;
     private speedSwitchRetryTimer?: number;
     private editingOccasionId?: string;
     private readyResolver?: (ready: boolean) => void;
@@ -657,6 +662,7 @@ export default class CheckinPlugin extends Plugin {
                 plugin.renderBackgroundUpdate();
             },
             destroy: function () {
+                if (plugin.dockElement) disposeResponsiveCharts(plugin.dockElement);
                 plugin.dockElement = undefined;
             },
         });
@@ -676,6 +682,7 @@ export default class CheckinPlugin extends Plugin {
                 }
             },
             destroy: function (this: {element: Element; tab: {close: () => void}}) {
+                disposeResponsiveCharts(this.element as HTMLElement);
                 if (plugin.tabElement === this.element) {
                     plugin.tabElement = undefined;
                     if (plugin.tabInstance === this.tab) {
@@ -853,6 +860,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     async onunload() {
+        this.closeAvatarEditor?.();
         this.disposing = true;
         /* 拆除预算由宿主统一计时，这里从 onunload 入口开始自计一个更小的预算，
            让队列排空与补写都在被强制销毁之前给出确定的结果或提示。 */
@@ -871,6 +879,7 @@ export default class CheckinPlugin extends Plugin {
         this.stopHostMessageOffsetWatcher();
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
             if (!root) return;
+            disposeResponsiveCharts(root);
             const cleanup = this.settingsNavigationCleanups.get(root);
             cleanup?.();
             this.settingsNavigationCleanups.delete(root);
@@ -883,6 +892,7 @@ export default class CheckinPlugin extends Plugin {
             this.mobileTopBarRetryTimer = undefined;
         }
         this.speedSwitchQuickActionDisposers.splice(0).forEach((dispose) => dispose());
+        this.speedSwitchQuickActionsRegistered = false;
         if (this.speedSwitchRetryTimer !== undefined) {
             window.clearTimeout(this.speedSwitchRetryTimer);
             this.speedSwitchRetryTimer = undefined;
@@ -1414,6 +1424,13 @@ export default class CheckinPlugin extends Plugin {
         openQuickDialogFor(this as unknown as QuickDialogHost);
     }
 
+    private openReviewAgent(): boolean {
+        if (this.disposed || this.disposing || this.currentPage !== "review") return false;
+        if (!openSiYuanAgent()) return false;
+        this.closeQuickDialog();
+        return true;
+    }
+
     private closeQuickDialog() {
         closeQuickDialogFor(this as unknown as QuickDialogHost);
     }
@@ -1728,6 +1745,7 @@ export default class CheckinPlugin extends Plugin {
         root.classList.toggle("lc-checkin-host--mobile", this.isMobileFrontend);
         /* 页面重绘会替换 .lc-checkin 内容；先释放设置分类栏的 scroll/
            observer 监听，避免旧 root 被异步回调短暂保活。 */
+        disposeResponsiveCharts(root);
         const cleanupSettingsNavigation = this.settingsNavigationCleanups.get(root);
         if (cleanupSettingsNavigation) {
             cleanupSettingsNavigation();
@@ -2007,26 +2025,92 @@ export default class CheckinPlugin extends Plugin {
             const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
             if (value && input) input.value = value;
         });
+        let diarySearchTimer: ReturnType<typeof setTimeout> | undefined;
+        let diarySearchRequest = 0;
+        root.querySelector<HTMLInputElement>("[data-diary-search]")?.addEventListener("input", (event) => {
+            const query = (event.currentTarget as HTMLInputElement).value.trim();
+            if (diarySearchTimer) clearTimeout(diarySearchTimer);
+            const request = ++diarySearchRequest;
+            diarySearchTimer = setTimeout(async () => {
+                const select = root.querySelector<HTMLSelectElement>("[data-diary-choice]");
+                if (!select || !query) return;
+                try {
+                    const response = await fetchSyncPost("/api/filetree/searchDocs", {k: query, flashcard: false, excludeIDs: []}) as unknown as {code?: number; data?: {blocks?: Array<{id?: string; content?: string; hPath?: string}>}};
+                    if (!select.isConnected || request !== diarySearchRequest) return;
+                    const blocks = response.code === 0 ? response.data?.blocks || [] : [];
+                    select.innerHTML = `<option value="">${escapeHtml(t("set.diaryDocChoose"))}</option>` + blocks.slice(0, 50).filter((block) => block.id).map((block) => `<option value="${escapeHtml(block.id || "")}">${escapeHtml(block.hPath || block.content || block.id || "")}</option>`).join("");
+                } catch {
+                    if (select.isConnected && request === diarySearchRequest) showMessage(t("msg.diarySearchFailed"));
+                }
+            }, 180);
+        });
+        let diaryNotebookRequest = 0;
+        const loadDiaryNotebooks = async () => {
+            const select = root.querySelector<HTMLSelectElement>("[data-diary-notebook]");
+            if (!select || select.dataset.loading === "true") return;
+            const request = ++diaryNotebookRequest;
+            select.dataset.loading = "true";
+            select.disabled = true;
+            select.replaceChildren(new Option(t("set.diaryNotebookLoading"), ""));
+            try {
+                const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
+                if (!select.isConnected || request !== diaryNotebookRequest) return;
+                const notebooks = response.code === 0
+                    ? (response.data?.notebooks || []).filter((entry) => entry.id && !entry.closed)
+                    : [];
+                select.replaceChildren(...(notebooks.length
+                    ? [new Option(t("set.diaryNotebookChoose"), ""), ...notebooks.map((notebook) => new Option(notebook.name || notebook.id || "", notebook.id || ""))]
+                    : [new Option(t("set.diaryNotebookFailed"), "")]));
+                select.disabled = !notebooks.length;
+                select.dataset.loaded = notebooks.length ? "true" : "error";
+            } catch {
+                if (!select.isConnected || request !== diaryNotebookRequest) return;
+                select.replaceChildren(new Option(t("set.diaryNotebookFailed"), ""));
+                select.disabled = true;
+                select.dataset.loaded = "error";
+            } finally {
+                if (select.isConnected && request === diaryNotebookRequest) delete select.dataset.loading;
+            }
+        };
         root.querySelector<HTMLElement>("[data-action='toggle-create-diary-doc']")?.addEventListener("click", () => {
             const row = root.querySelector<HTMLElement>("[data-diary-create]");
             row?.toggleAttribute("hidden");
-            if (row && !row.hidden) row.querySelector<HTMLInputElement>("[data-diary-create-title]")?.focus();
+            if (row && !row.hidden) {
+                void loadDiaryNotebooks();
+                row.querySelector<HTMLInputElement>("[data-diary-create-title]")?.focus();
+            }
         });
         root.querySelector<HTMLElement>("[data-action='create-diary-doc']")?.addEventListener("click", async () => {
-            const title = root.querySelector<HTMLInputElement>("[data-diary-create-title]")?.value.trim() || "";
-            if (!title) return;
+            const titleInput = root.querySelector<HTMLInputElement>("[data-diary-create-title]");
+            const title = titleInput?.value.trim() || "";
+            if (!title) {
+                showMessage(t("msg.diaryTitleRequired"));
+                titleInput?.focus();
+                return;
+            }
+            const notebook = root.querySelector<HTMLSelectElement>("[data-diary-notebook]")?.value || "";
+            if (!notebook) {
+                showMessage(t("msg.diaryNoNotebook"));
+                return;
+            }
             try {
-                const notebooks = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; closed?: boolean}>}};
-                const notebook = notebooks.code === 0 ? notebooks.data?.notebooks?.find((entry) => entry.id && !entry.closed)?.id : "";
-                if (!notebook) throw new Error("no-notebook");
                 const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path: `/${title.trim().replace(/[\\/]/g, "／").slice(0, 80)}`, markdown: ""}) as unknown as {code?: number; data?: unknown};
                 const docId = response.code === 0 && typeof response.data === "string" ? response.data : "";
-                if (!docId) throw new Error("create-doc-failed");
+                if (!docId) {
+                    showMessage(t("msg.diaryCreateFailed"));
+                    return;
+                }
                 this.diaryReport = {...this.diaryReport, docId};
-                await this.persistViewPreferences();
+                try {
+                    await this.persistViewPreferences();
+                } catch {
+                    showMessage(t("msg.diarySaveFailed"));
+                    this.render();
+                    return;
+                }
                 showMessage(t("msg.diaryDocSaved"));
                 this.render();
-            } catch { showMessage(t("msg.diaryDocInvalid")); }
+            } catch { showMessage(t("msg.diaryCreateFailed")); }
         });
         root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
             void this.writeDiaryReport();
@@ -2081,14 +2165,21 @@ export default class CheckinPlugin extends Plugin {
             if (value) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
         });
         root.querySelector<HTMLInputElement>("[data-setting-avatar-file]")?.addEventListener("change", (event) => {
-            const file = (event.currentTarget as HTMLInputElement).files?.[0];
-            if (!file || !file.type.startsWith("image/")) return;
-            if (file.size > 700 * 1024) { showMessage(t("set.avatarTooLarge")); (event.currentTarget as HTMLInputElement).value = ""; return; }
-            const reader = new FileReader();
-            reader.onload = () => { if (typeof reader.result === "string" && reader.result.length <= 1_000_000) { this.avatarImage = reader.result; void this.persistViewPreferences(); this.render(); } };
-            reader.readAsDataURL(file);
+            const input = event.currentTarget as HTMLInputElement;
+            const file = input.files?.[0];
+            input.value = "";
+            if (!file) return;
+            this.closeAvatarEditor?.();
+            this.closeAvatarEditor = openAvatarEditor(file, root, (image) => this.saveAvatarImage(image));
         });
-        root.querySelector<HTMLElement>("[data-setting-avatar-clear]")?.addEventListener("click", () => { this.avatarImage = undefined; void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLElement>("[data-setting-avatar-edit]")?.addEventListener("click", () => {
+            if (!this.avatarImage) return;
+            this.closeAvatarEditor?.();
+            this.closeAvatarEditor = openAvatarEditor(this.avatarImage, root, (image) => this.saveAvatarImage(image));
+        });
+        root.querySelector<HTMLElement>("[data-setting-avatar-clear]")?.addEventListener("click", () => {
+            void this.saveAvatarImage(undefined).catch(() => showMessage(t("set.avatarEditorSaveFailed")));
+        });
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
@@ -3925,7 +4016,15 @@ export default class CheckinPlugin extends Plugin {
         try { navigator.vibrate(10); } catch { /* 个别 WebView 限制非手势振动，忽略 */ }
     }
 
-    private persistViewPreferences(): Promise<void> {
+    private async saveAvatarImage(avatarImage: string | undefined): Promise<void> {
+        if (this.disposed || this.disposing || !this.storageReady) throw new Error("avatar-storage-unavailable");
+        await this.persistViewPreferences({avatarImage});
+        if (this.disposed || this.disposing) return;
+        this.avatarImage = avatarImage;
+        this.render();
+    }
+
+    private persistViewPreferences(avatarOverride?: {avatarImage: string | undefined}): Promise<void> {
         if (this.disposed || !this.storageReady) return Promise.resolve();
         const preferences: CheckinViewPreferences = {
             groupMode: this.todayGroupMode,
@@ -3947,7 +4046,7 @@ export default class CheckinPlugin extends Plugin {
             dialogScale: this.dialogScale,
             palette: this.palette,
             avatar: this.avatar,
-            avatarImage: this.avatarImage,
+            avatarImage: avatarOverride ? avatarOverride.avatarImage : this.avatarImage,
             dialogFixedSize: {...this.dialogFixedSize},
             dialogRect: this.dialogRect ? {...this.dialogRect} : undefined,
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,

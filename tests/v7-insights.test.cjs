@@ -64,12 +64,14 @@ const activityChart = charts.renderLineChart({title: "近30天活跃", unit: "�
 assert.match(activityChart, />0天<\/text>/, "activity axes start at zero days");
 assert.match(activityChart, />1天<\/text>/, "activity axes show one day instead of 100 percent");
 assert.doesNotMatch(activityChart, /\d+%<\/text>/, "non-percentage data never receives percentage ticks");
-assert.match(activityChart, /cy="12\.0"/, "one active day reaches the graph top instead of collapsing to the zero line");
+const topTick = Math.min(...[...activityChart.matchAll(/class="lc-chart-grid"[^>]+y1="([\d.]+)"/g)].map(match => Number(match[1])));
+const activeDayY = [...activityChart.matchAll(/<circle[^>]+cy="([\d.]+)"/g)].at(-1);
+assert.equal(Number(activeDayY[1]), topTick, "one active day reaches the graph top instead of collapsing to the zero line");
 assert.match(line, />100%<\/text>/, "completion rate keeps its 0..100 percent scale");
 const longSeries = {title: "strong", unit: "%", points: Array.from({length: 30}, (_, index) => ({label: `day-${index}`, value: index}))};
 const sparseChart = charts.renderLineChart(longSeries, {labelStride: 7});
 const visibleLabels = [...sparseChart.matchAll(/class="lc-chart-label">([^<]+)</g)].map(match => match[1]);
-assert.deepEqual(visibleLabels, ["day-0", "day-7", "day-14", "day-21", "day-29"], "last label replaces the crowded adjacent stride label");
+assert.deepEqual(visibleLabels, ["day-0", "day-7", "day-14", "day-29"], "dates are thinned to leave readable space before the final label");
 assert.match(sparseChart, /preserveAspectRatio="xMidYMid meet"/, "capped chart height cannot stretch text horizontally");
 const unsafeSeries = {title: 'custom "<title>', unit: '<unit>', points: [{label: '<label>&', value: 1}]};
 for (const rendered of [charts.renderLineChart(unsafeSeries), charts.renderBarChart(unsafeSeries)]) {

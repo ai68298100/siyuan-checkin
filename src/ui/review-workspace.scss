@@ -132,7 +132,7 @@
         line-height: 1.55;
     }
 
-    > .review-scope-note {
+    > .lc-checkin__layout > .review-scope-note {
         width: min(100%, 1180px);
         max-width: 1180px;
         box-sizing: border-box;
@@ -1015,15 +1015,6 @@
         overflow-wrap: normal;
     }
 
-    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card .lc-chart {
-        width: 100%;
-        max-width: none;
-        min-width: 0;
-        min-height: 180px;
-        max-height: 220px;
-        object-fit: contain;
-    }
-
     /* Desktop review density: keep numeric values and actions in a stable
        right rail so long names never push controls out of their row. */
     [data-review-workspace-panel="records"] .lc-checkin__history-event-actions {
@@ -1042,19 +1033,6 @@
         line-height: 1.2;
         white-space: nowrap;
     }
-    [data-review-workspace-panel="analysis"] .lc-checkin__trend-card > .lc-chart {
-        display: block;
-        width: 100%;
-        max-width: none;
-        height: 190px;
-        min-height: 0;
-        margin-inline: auto;
-    }
-
-    [data-review-workspace-panel="analysis"] :is(.lc-chart-label, .lc-chart-axis, .lc-chart-value) {
-        font-size: 10px;
-    }
-
     [data-review-workspace-panel="analysis"] :is(.lc-checkin__review-fold, .lc-checkin__year-heatmap) {
         width: 100%;
         min-width: 0;
@@ -1345,6 +1323,9 @@
             gap: 8px 16px;
         }
         .lc-checkin__history-event-actions { grid-column: 3; grid-row: 1; }
+        .lc-checkin__history-event-value,
+        .lc-checkin__history-event-actions { align-self: center; }
+        .lc-checkin__history-event-value { padding-top: 0; }
         .lc-checkin__history-event:has(> .lc-checkin__history-thumb) {
             grid-template-columns: 44px minmax(0, 1fr) minmax(96px, 120px) auto;
         }

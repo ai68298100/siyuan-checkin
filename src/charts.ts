@@ -227,54 +227,91 @@ export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new
     return {title: "年度记录数", unit: "条", points};
 }
 
-/** 折线图 SVG：紫罗兰线条 + 数据点，宽度自适应（viewBox）。 */
-export function renderLineChart(series: TrendSeries, options: {width?: number; height?: number; labelStride?: number} = {}): string {
+export interface ChartOptions {
+    width?: number;
+    height?: number;
+    labelStride?: number;
+    /** Runtime redraws reuse the original data attribute. */
+    responsive?: boolean;
+}
+
+const chartTextWidth = (text: string): number => Array.from(text).reduce((width, character) => width + (/[^\x00-\x7f]/.test(character) ? 12 : 7), 0);
+
+/** Keep the first/last dates, then add labels only if their actual slots fit. */
+function chartLabelIndices(series: TrendSeries, positions: number[], width: number, stride = 1): Set<number> {
+    const last = series.points.length - 1;
+    const indices = new Set([0, last]);
+    const bounds = (index: number): [number, number] => {
+        const textWidth = chartTextWidth(series.points[index].label);
+        const left = Math.max(0, Math.min(width - textWidth, positions[index] - textWidth / 2));
+        return [left, left + textWidth];
+    };
+    const lastLeft = bounds(last)[0];
+    let previousRight = bounds(0)[1];
+    for (let index = Math.max(1, stride); index < last; index += Math.max(1, stride)) {
+        const [left, right] = bounds(index);
+        if (left < previousRight + 12 || right + 12 > lastLeft) continue;
+        indices.add(index);
+        previousRight = right;
+    }
+    return indices;
+}
+
+function chartData(kind: "line" | "bar", series: TrendSeries, options: ChartOptions): string {
+    return options.responsive === false ? "" : ` data-responsive-chart="${escapeChartText(JSON.stringify({kind, series, labelStride: options.labelStride}))}"`;
+}
+
+/** Coordinates are recalculated in CSS pixels on resize; text never scales. */
+export function renderLineChart(series: TrendSeries, options: ChartOptions = {}): string {
     const width = options.width ?? 320;
-    const height = options.height ?? 120;
-    const padX = 42;
-    const padTop = 12;
-    const padBottom = 22;
+    const height = options.height ?? 190;
+    const padTop = 14;
+    const padBottom = 28;
     const values = series.points.map((point) => point.value);
     const percentage = series.unit === "%";
     const max = Math.max(percentage ? 100 : 1, ...values);
     if (!series.points.length) return "";
+    const tickStep = Math.max(1, Math.ceil(max / 4));
+    const ticks = percentage ? [0, 25, 50, 75, 100] : [...new Set([0, tickStep, tickStep * 2, tickStep * 3, max].filter((value) => value <= max))].sort((a, b) => a - b);
+    const padX = Math.min(width * .4, Math.max(...ticks.map(value => chartTextWidth(`${value}${series.unit}`))) + 10);
+    const plotRight = width - 12;
     const plotBottom = height - padBottom;
-    const stepX = series.points.length > 1 ? (width - padX * 2) / (series.points.length - 1) : 0;
+    const stepX = series.points.length > 1 ? (plotRight - padX) / (series.points.length - 1) : 0;
     const scaleY = (value: number): number => plotBottom - (value / max) * (plotBottom - padTop);
     const coords = series.points.map((point, index) => `${(padX + index * stepX).toFixed(1)},${scaleY(point.value).toFixed(1)}`);
     /* Activity is measured in days, not percentages. Preserve the percentage
        scale for rates; ordinary quantities use their actual unit and range. */
-    const tickStep = Math.max(1, Math.ceil(max / 4));
-    const ticks = percentage ? [0, 25, 50, 75, 100] : [...new Set([0, tickStep, tickStep * 2, tickStep * 3, max].filter((value) => value <= max))].sort((a, b) => a - b);
-    const grid = ticks.map((value) => { const y = scaleY(value); return `<line class="lc-chart-grid" x1="${padX}" x2="${width - padX}" y1="${y}" y2="${y}"/><text class="lc-chart-axis" x="${padX - 5}" y="${y + 3}" text-anchor="end">${value}${escapeChartText(series.unit)}</text>`; }).join("");
-    const area = `${padX},${plotBottom} ${coords.join(" ")} ${width - padX},${plotBottom}`;
+    const grid = ticks.map((value) => { const y = scaleY(value); return `<line class="lc-chart-grid" x1="${padX}" x2="${plotRight}" y1="${y}" y2="${y}"/><text class="lc-chart-axis" x="${padX - 5}" y="${y + 4}" text-anchor="end">${value}${escapeChartText(series.unit)}</text>`; }).join("");
+    const area = `${padX},${plotBottom} ${coords.join(" ")} ${plotRight},${plotBottom}`;
     const dots = series.points.map((point, index) => `<circle cx="${(padX + index * stepX).toFixed(1)}" cy="${scaleY(point.value).toFixed(1)}" r="3" fill="currentColor"><title>${escapeChartText(point.label)}：${point.value}${escapeChartText(series.unit)}</title></circle>`).join("");
     /* labelStride：长序列（如 30 天强度曲线）按步长稀疏标注，避免文字重叠。 */
     const stride = Math.max(1, options.labelStride ?? 2);
     const last = series.points.length - 1;
-    const labels = series.points.map((point, index) => index === last || (index % stride === 0 && (index === 0 || last - index >= stride)) ? `<text x="${(padX + index * stepX).toFixed(1)}" y="${height - 5}" text-anchor="middle" class="lc-chart-label">${escapeChartText(point.label)}</text>` : "").join("");
-    return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeChartText(series.title)}" preserveAspectRatio="xMidYMid meet">` +
+    const labelIndices = chartLabelIndices(series, series.points.map((point, index) => padX + index * stepX + (index === 0 ? chartTextWidth(point.label) / 2 : index === last ? -chartTextWidth(point.label) / 2 : 0)), width, stride);
+    const labels = series.points.map((point, index) => labelIndices.has(index) ? `<text x="${(padX + index * stepX).toFixed(1)}" y="${height - 7}" text-anchor="${index === 0 ? "start" : index === last ? "end" : "middle"}" class="lc-chart-label">${escapeChartText(point.label)}</text>` : "").join("");
+    return `<svg class="lc-chart"${chartData("line", series, options)} viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeChartText(series.title)}" preserveAspectRatio="xMidYMid meet">` +
         `${grid}<polygon class="lc-chart-area" points="${area}"/><polyline points="${coords.join(" ")}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` +
         `${dots}${labels}</svg>`;
 }
 
 /** 柱状图 SVG。 */
-export function renderBarChart(series: TrendSeries, options: {width?: number; height?: number} = {}): string {
+export function renderBarChart(series: TrendSeries, options: ChartOptions = {}): string {
     const width = options.width ?? 320;
-    const height = options.height ?? 120;
-    const pad = 22;
+    const height = options.height ?? 190;
+    const pad = 12;
     const max = Math.max(1, ...series.points.map((point) => point.value));
     if (!series.points.length) return "";
     const slot = (width - pad * 2) / series.points.length;
     const barWidth = Math.min(28, slot * 0.6);
+    const labelIndices = chartLabelIndices(series, series.points.map((_, index) => pad + (index + .5) * slot), width);
     const bars = series.points.map((point, index) => {
-        const barHeight = Math.max(point.value > 0 ? 2 : 0, (point.value / max) * (height - pad * 2 - 10));
+        const barHeight = Math.max(point.value > 0 ? 2 : 0, (point.value / max) * (height - 50));
         const x = pad + index * slot + (slot - barWidth) / 2;
-        const y = height - pad - 10 - barHeight;
-        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="4" fill="currentColor" opacity="0.85"><title>${escapeChartText(point.label)}：${point.value}${escapeChartText(series.unit)}</title></rect><text x="${(x + barWidth / 2).toFixed(1)}" y="${Math.max(9, y - 4).toFixed(1)}" text-anchor="middle" class="lc-chart-value">${point.value}</text>` +
-            `<text x="${(x + barWidth / 2).toFixed(1)}" y="${height - 2}" text-anchor="middle" class="lc-chart-label">${escapeChartText(point.label)}</text>`;
+        const y = height - 28 - barHeight;
+        return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="4" fill="currentColor" opacity="0.85"><title>${escapeChartText(point.label)}：${point.value}${escapeChartText(series.unit)}</title></rect>` + (labelIndices.has(index) ? `<text x="${(x + barWidth / 2).toFixed(1)}" y="${Math.max(13, y - 5).toFixed(1)}" text-anchor="middle" class="lc-chart-value">${point.value}</text>` +
+            `<text x="${(x + barWidth / 2).toFixed(1)}" y="${height - 7}" text-anchor="middle" class="lc-chart-label">${escapeChartText(point.label)}</text>` : "");
     }).join("");
-    return `<svg class="lc-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeChartText(series.title)}" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
+    return `<svg class="lc-chart"${chartData("bar", series, options)} viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeChartText(series.title)}" preserveAspectRatio="xMidYMid meet">${bars}</svg>`;
 }
 
 /* ============================================================

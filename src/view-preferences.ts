@@ -125,6 +125,12 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
     return Number.isFinite(parsed) ? Math.min(max, Math.max(min, Math.round(parsed))) : fallback;
 }
 
+export function normalizeAvatarImage(value: unknown): string | undefined {
+    if (typeof value !== "string" || value.length > 1_000_000) return undefined;
+    const match = /^data:image\/(?:png|jpeg|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/.exec(value);
+    return match && match[1].length % 4 === 0 ? value : undefined;
+}
+
 export function normalizeViewPreferences(value: unknown): CheckinViewPreferences {
     if (!value || typeof value !== "object") return {...DEFAULT_VIEW_PREFERENCES};
     const source = value as Record<string, unknown>;
@@ -209,7 +215,8 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         lastExportAt: typeof source.lastExportAt === "string" ? source.lastExportAt : undefined,
         palette,
         avatar,
-        avatarImage: typeof source.avatarImage === "string" && source.avatarImage.startsWith("data:image/") ? source.avatarImage.slice(0, 1_000_000) : undefined,
+        // Keep complete raster data URLs or reject them; truncation corrupts persisted avatars.
+        avatarImage: normalizeAvatarImage(source.avatarImage),
         showWeekStrip: source.showWeekStrip === true,
         dialogSizeMode,
         dialogScale: clampNumber(source.dialogScale, 50, 100, DEFAULT_VIEW_PREFERENCES.dialogScale),

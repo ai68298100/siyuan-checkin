@@ -14,6 +14,9 @@ import type {OccasionStore} from "../occasions";
 import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 
 export interface BindTodayHost {
+    disposed?: boolean;
+    disposing?: boolean;
+    currentPage?: string;
     store: CheckinStore;
     occasionStore: OccasionStore;
     insightsReturnPage: "today" | "review";
@@ -113,22 +116,31 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
     let searchTimer: number | undefined;
     let composing = false;
+    const cancelSearch = () => {
+        if (searchTimer !== undefined) window.clearTimeout(searchTimer);
+        searchTimer = undefined;
+    };
     const applySearch = () => {
         if (!search) return;
-        if (searchTimer !== undefined) window.clearTimeout(searchTimer);
+        cancelSearch();
         const value = search.value;
         searchTimer = window.setTimeout(() => {
+            searchTimer = undefined;
+            if (composing || host.disposed || host.disposing || (host.currentPage && host.currentPage !== "today")
+                || !search.isConnected || root.querySelector("[data-today-search]") !== search) return;
             host.todayQuery = value;
             host.render();
             host.focusTodaySearch(value.length);
         }, 120);
     };
-    search?.addEventListener("compositionstart", () => { composing = true; });
+    search?.addEventListener("compositionstart", () => { composing = true; cancelSearch(); });
     search?.addEventListener("compositionend", () => { composing = false; applySearch(); });
-    search?.addEventListener("input", () => {
-        if (!composing) applySearch();
+    search?.addEventListener("input", (event) => {
+        if (composing || (event as InputEvent).isComposing) cancelSearch();
+        else applySearch();
     });
     root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
+        cancelSearch();
         host.todayQuery = "";
         host.render();
         host.focusTodaySearch();

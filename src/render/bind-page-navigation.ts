@@ -13,8 +13,10 @@ import {renderAgentPreviewContent} from "./agent-preview";
 import {buildSuggestionChange, createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
 import {createSuggestionWorkflow} from "../features/suggestion-workflow";
 import {Dialog, showMessage} from "siyuan";
+import {bindResponsiveCharts} from "../ui/responsive-charts";
 
 export interface BindPageNavigationHost {
+    openReviewAgent(): boolean;
     store: import("../types").CheckinStore;
     currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     insightsItemId?: string;
@@ -120,6 +122,7 @@ function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): (
 }
 
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
+    bindResponsiveCharts(root);
     host.bindDialogClose(root);
     host.bindMobileNav(root);
     const rhythm = root.querySelector<HTMLElement>(".review-rhythm-days");
@@ -395,12 +398,19 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
     let historySearchTimer: number | undefined;
-    historySearch?.addEventListener("input", () => {
+    let historyComposing = false;
+    const cancelHistorySearch = () => {
         if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+        historySearchTimer = undefined;
+    };
+    const applyHistorySearch = () => {
+        if (!historySearch) return;
+        cancelHistorySearch();
         const value = historySearch.value;
         const workspace = host.reviewWorkspace;
         historySearchTimer = window.setTimeout(() => {
-            if (host.disposed || host.disposing || host.currentPage !== "review" || host.reviewWorkspace !== workspace
+            historySearchTimer = undefined;
+            if (historyComposing || host.disposed || host.disposing || host.currentPage !== "review" || host.reviewWorkspace !== workspace
                 || !historySearch.isConnected || root.querySelector("[data-history-search]") !== historySearch) return;
             host.historyQuery = value;
             host.historyPage = 0;
@@ -409,16 +419,22 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             const nextSearch = root.querySelector<HTMLInputElement>("[data-history-search]");
             nextSearch?.setSelectionRange(value.length, value.length);
         }, 120);
+    };
+    historySearch?.addEventListener("compositionstart", () => { historyComposing = true; cancelHistorySearch(); });
+    historySearch?.addEventListener("compositionend", () => { historyComposing = false; applyHistorySearch(); });
+    historySearch?.addEventListener("input", (event) => {
+        if (historyComposing || (event as InputEvent).isComposing) cancelHistorySearch();
+        else applyHistorySearch();
     });
     root.querySelector<HTMLElement>("[data-action='clear-history-query']")?.addEventListener("click", () => {
-        if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+        cancelHistorySearch();
         host.historyQuery = "";
         host.historyPage = 0;
         host.editingHistoryNoteId = undefined;
         renderReviewPreservingView("[data-history-search]");
     });
     root.querySelector<HTMLElement>("[data-action='clear-history-filters']")?.addEventListener("click", () => {
-        if (historySearchTimer !== undefined) window.clearTimeout(historySearchTimer);
+        cancelHistorySearch();
         host.historyQuery = "";
         host.historySource = "all";
         host.historyOrder = "newest";
@@ -811,7 +827,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (draft) host.openProjectDraftEditor(draft);
     }));
     const reviewBusy = new WeakSet<HTMLElement>();
-    const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown, preservePromptFocus = false) => {
+    const runReviewTool = (button: HTMLElement, operation: () => Promise<unknown> | unknown, preservePromptFocus = false, restoreFocus = () => true) => {
         if (reviewBusy.has(button)) return;
         reviewBusy.add(button);
         button.setAttribute("aria-busy", "true");
@@ -821,7 +837,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             if (!button.isConnected) return;
             button.removeAttribute("aria-busy");
             button.removeAttribute("disabled");
-            if (!preservePromptFocus || root.ownerDocument.activeElement !== root.querySelector("[data-review-assistant-prompt]")) button.focus();
+            if (restoreFocus() && (!preservePromptFocus || root.ownerDocument.activeElement !== root.querySelector("[data-review-assistant-prompt]"))) button.focus();
         });
     };
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
@@ -850,15 +866,20 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             catch { showMessage(t("msg.clipboardFail")); }
         });
     });
-    root.querySelector<HTMLElement>("[data-action='copy-review-prompt']")?.addEventListener("click", (event) => {
+    for (const action of ["copy-review-prompt", "copy-open-review-agent"]) root.querySelector<HTMLElement>(`[data-action='${action}']`)?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
+        let opened = false;
         runReviewTool(button, async () => {
             const asOf = currentCalendarDate();
             const context = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange, asOf) : buildSummaryContext(host.store, host.summaryRange, asOf);
             const prompt = buildReviewPrompt(context, host.reviewAssistantGoal);
             try {
                 await navigator.clipboard.writeText(prompt);
-                showMessage(t("review.assistantPromptCopied"));
+                if (!button.isConnected || host.currentPage !== "review" || host.disposed || host.disposing) return;
+                if (action === "copy-open-review-agent") {
+                    try { opened = host.openReviewAgent(); } catch { opened = false; }
+                    showMessage(t(opened ? "review.assistantOpened" : "review.assistantOpenUnavailable"));
+                } else showMessage(t("review.assistantPromptCopied"));
             } catch {
                 if (!button.isConnected || host.currentPage !== "review") return;
                 const text = root.querySelector<HTMLTextAreaElement>("[data-review-assistant-prompt]");
@@ -873,7 +894,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                 }
                 showMessage(t("review.assistantCopyFailed"));
             }
-        }, true);
+        }, true, () => !opened);
     });
     root.querySelector<HTMLElement>("[data-action='export-report']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;

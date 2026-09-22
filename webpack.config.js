@@ -77,8 +77,9 @@ module.exports = (env, argv) => {
                 // needlessly adds about 1 KiB to every build.
                 include: /\.js$/,
             }),
-            new PackageZipPlugin(),
         );
+        // Validation builds share production output without creating an installable archive.
+        if (!env?.noPackage) plugins.push(new PackageZipPlugin());
     }
 
     return {
