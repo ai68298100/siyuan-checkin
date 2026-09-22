@@ -59,7 +59,8 @@
   - 来源：T-1368/T-1371 状态注记的共同遗留。范围：预发布→回滚演练形成可复跑脚本；发布资产清单（ZIP 内容 + SHA-256）导出脚本化并入 `check:release` 证据链。
   - 验收：演练与清单脚本在本地全流程可复跑；不改变发布包内容结构。
   - 状态：done（2026-09-23。`scripts/export-release-manifest.cjs`：dist 逐文件 + package.zip 整体的字节数/SHA-256/版本/git 提交 → `.artifacts/release-manifest.json`；`scripts/rollback-rehearsal.cjs`：临时目录内四步演练（预发布快照→坏版本发布+漂移检测→回滚→逐文件完整性复核+版本不复用断言），证据落 `.artifacts/rollback-rehearsal.json`，失败非零退出；二者接入 `check:release`（release:manifest → release:rehearsal → release-assets 测试逐条核对清单），每次质量链自动重演回滚并核对清单漂移；release-rollback.md 补脚本章节。不改变发布包内容结构。）
-- [ ] T-1399 积压 docs 提交推送（待用户确认）
+- [x] T-1399 积压提交推送（用户确认，2026-09-23 执行）
+  - 状态：done（`git push origin main` + `v18.1.0` 标签推送完成；**GitHub Release「小驴打卡 v18.1.0」已创建并附 package.zip 资产**（693985 字节，SHA-256 与发布说明/资产清单一致），按惯例标记 Latest；CI 已在推送后自动运行。集市将随 Release 自动同步 18.1.0。）
   - 内容：main 领先远端 3 个 docs 提交（52f1f99 思阅/思播研究、2751f1d Task Horizon 可见性规划、28a054a 上游 API 协同规划）；v18.0.0～v18.0.3 标签均已在远端，无发布物缺口。
   - 验收：用户确认后 `git push origin main`；不做 force push；push 后核对远端 main 与本地一致。
 

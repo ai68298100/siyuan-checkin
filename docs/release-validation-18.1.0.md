@@ -10,7 +10,7 @@
 
 - `pnpm run test:quality` exit 0（154 个测试文件）：环境检查、类型检查、生产构建、digest 同步、主测试、UI（63 文件含新增 summary-resident/calendar-projection/source-framework/sireader-adapter/health-inbox/streak-tolerance 六个守门）、legacy-style、移动端结构（320~430px + 横屏）、生态契约（含 task-horizon contract/bridge）、扩展（含 100k 性能基线）、对比度/无障碍、review-comparison、perf、`check:release` 三段（资产清单 → 回滚演练 → 发布资源校验）。
 - 版本四方一致：`package.json`、`plugin.json`、`src/version.ts`、`dist/plugin.json` 及 README 均为 18.1.0。
-- 生产 `package.zip` 693030 字节，SHA-256 `b61342f6a9775e89b86f66eec5d32fb852e1f3d7face4e25a9553859b7f78542`，与发布说明及 `.artifacts/release-manifest.json`（10 资产逐文件哈希）一致。
+- 生产 `package.zip` 693030 字节（**以 v18.1.0 标签树构建**，与发布资产字节一致），SHA-256 `f40fa1d46c1edd986c7bd1b6efee95c9bdeb7b061f4daf6bc7fc8d6e48cc03ab`，与发布说明及 `.artifacts/release-manifest.json` 逐文件哈希核对方式一致；资产与标签源码严格对应（T-1411/T-1412 在标签之后提交，随下一版本发布）。
 - 回滚演练：预发布快照 → 坏版本漂移检测（版本复用 + 未知文件）→ 回滚 → 逐文件完整性复核，4 步通过。
 - 本地真内核验证（3.8.5-beta.5 主工作区）：摘要驻留幂等 SQL 同日精确命中/相似行不干扰/跨日不误报；验证用临时笔记本已清理。
 - **真实内核 E2E（2026-09-23 补录）**：以本机 SiYuan-Kernel（3.8.5-beta.5）+ 独立工作区装入 v18.1.0 生产包，`test:e2e` 16/16 通过（API v5 真实可用、批量写落盘与重载幂等、Dock Tomato 完成入账/幂等/跳过留痕、双窗口对等同步、移动端 bundle 打卡、插件禁用/重启数据完整、渲染块真实渲染、建议确认与撤销），`test:e2e:readonly` 1/1 通过（只读实例不落盘不崩溃）。此为真实内核自动化证据，不替代手动真机触控/安全区验收。
