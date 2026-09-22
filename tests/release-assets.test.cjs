@@ -71,4 +71,33 @@ for (const surface of ["today", "history", "summary", "settings", "occasions", "
    Report actual bytes; retain content/asset checks and performance tests. */
 const builtCssBytes = fs.statSync(path.join(root, "dist", "index.css")).size;
 assert.ok(builtCssBytes > 0, "built CSS must not be empty");
+/* T-1398：发布资产清单——check:release 先生成 .artifacts/release-manifest.json，
+   此处逐条核对 dist/ 与 package.zip 的字节数与 SHA-256 必须与清单一致（清单漂移即失败）。 */
+const manifestPath = path.join(root, ".artifacts", "release-manifest.json");
+assert.ok(fs.existsSync(manifestPath), "release manifest missing — check:release must run release:manifest first");
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+assert.equal(manifest.version, RELEASE_VERSION, "manifest version must match the release");
+const sha256Of = (buffer) => require("node:crypto").createHash("sha256").update(buffer).digest("hex");
+const actualAssets = new Map();
+const walkDist = (dir, prefix = "") => {
+    for (const name of fs.readdirSync(dir).sort()) {
+        const absolute = path.join(dir, name);
+        const relative = prefix ? `${prefix}/${name}` : name;
+        if (fs.statSync(absolute).isDirectory()) walkDist(absolute, relative);
+        else actualAssets.set(relative, sha256Of(fs.readFileSync(absolute)));
+    }
+};
+walkDist(path.join(root, "dist"));
+for (const entry of manifest.assets) {
+    if (entry.path === "package.zip") continue;
+    assert.equal(actualAssets.get(entry.path), entry.sha256, `manifest drift for dist/${entry.path}`);
+    assert.equal(entry.bytes, fs.statSync(path.join(root, "dist", entry.path)).size, `manifest byte count drift for dist/${entry.path}`);
+    actualAssets.delete(entry.path);
+}
+assert.equal(actualAssets.size, 0, `dist files missing from the manifest: ${[...actualAssets.keys()].join(", ")}`);
+if (fs.existsSync(path.join(root, "package.zip"))) {
+    const zipEntry = manifest.assets.find((entry) => entry.path === "package.zip");
+    assert.ok(zipEntry, "manifest must include package.zip");
+    assert.equal(zipEntry.sha256, packageHash, "manifest package.zip hash must match the current archive");
+}
 console.log(`Release assets: v${plugin.version} checks passed (css ${builtCssBytes} bytes; size reported only per D-246).`);

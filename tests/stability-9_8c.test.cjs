@@ -42,7 +42,12 @@ check("package manager is pinned", () => assert.match(pkg.packageManager, /^pnpm
 check("supported Node floor is declared", () => assert.match(pkg.engines.node, /^>=\d+/));
 check("production build command is explicit", () => assert.match(pkg.scripts.build, /webpack.+--mode production/));
 check("type check does not emit", () => assert.equal(pkg.scripts.check, "tsc --noEmit"));
-check("release assets have a dedicated gate", () => assert.equal(pkg.scripts["check:release"], "node tests/release-assets.test.cjs"));
+check("release assets have a dedicated gate", () => {
+    /* T-1398：证据链三段——清单生成 → 回滚演练 → 发布资产校验。 */
+    assert.equal(pkg.scripts["check:release"], "pnpm run release:manifest && pnpm run release:rehearsal && node tests/release-assets.test.cjs");
+    assert.equal(pkg.scripts["release:manifest"], "node scripts/export-release-manifest.cjs");
+    assert.equal(pkg.scripts["release:rehearsal"], "node scripts/rollback-rehearsal.cjs");
+});
 check("environment has a dedicated probe", () => assert.equal(pkg.scripts["check:environment"], "node scripts/environment-check.cjs"));
 check("quality chain starts with environment probing", () => assert(pkg.scripts["test:quality"].startsWith("pnpm run check:environment")));
 check("quality chain covers ecosystem contracts", () => assert.match(pkg.scripts["test:quality"], /pnpm run test:ecosystem/));

@@ -37,9 +37,10 @@
 - [x] T-1407 v18.2.x 日记只读与手动确认收口（交付度核对）
   - 状态：done（2026-09-23 核对：T-1352 日记集成（搜索/新建/预览选择/手动写入本期报告）与 T-1353 摘要驻留已交付全部本地可做项——摘要展示=设置页三件套、预览=文档搜索选择、幂等=有界重试+审计、周期报告保持用户主动触发；剩余仅真机读取验证归 T-1344。无新增工作。）
 - [ ] T-1408 v18.2.x 真机验收（外部依赖）：日记写入与摘要驻留的真机读取/写入证据，归 T-1344 真机窗口。
-- [ ] T-1398 发布工程收尾：回滚演练脚本化与资产清单导出
+- [x] T-1398 发布工程收尾：回滚演练脚本化与资产清单导出
   - 来源：T-1368/T-1371 状态注记的共同遗留。范围：预发布→回滚演练形成可复跑脚本；发布资产清单（ZIP 内容 + SHA-256）导出脚本化并入 `check:release` 证据链。
   - 验收：演练与清单脚本在本地全流程可复跑；不改变发布包内容结构。
+  - 状态：done（2026-09-23。`scripts/export-release-manifest.cjs`：dist 逐文件 + package.zip 整体的字节数/SHA-256/版本/git 提交 → `.artifacts/release-manifest.json`；`scripts/rollback-rehearsal.cjs`：临时目录内四步演练（预发布快照→坏版本发布+漂移检测→回滚→逐文件完整性复核+版本不复用断言），证据落 `.artifacts/rollback-rehearsal.json`，失败非零退出；二者接入 `check:release`（release:manifest → release:rehearsal → release-assets 测试逐条核对清单），每次质量链自动重演回滚并核对清单漂移；release-rollback.md 补脚本章节。不改变发布包内容结构。）
 - [ ] T-1399 积压 docs 提交推送（待用户确认）
   - 内容：main 领先远端 3 个 docs 提交（52f1f99 思阅/思播研究、2751f1d Task Horizon 可见性规划、28a054a 上游 API 协同规划）；v18.0.0～v18.0.3 标签均已在远端，无发布物缺口。
   - 验收：用户确认后 `git push origin main`；不做 force push；push 后核对远端 main 与本地一致。

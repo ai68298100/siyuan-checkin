@@ -15,3 +15,8 @@
 4. 在 Release 描述中说明受影响功能、修复范围和升级路径。
 
 插件存储采用向后读取策略；回滚代码版本不会主动删除用户数据。涉及存储结构变更时，必须先增加迁移回归测试，再决定是否发布。
+
+## 演练与资产清单（T-1398，可复跑脚本）
+
+- `pnpm run release:manifest`：生成 `.artifacts/release-manifest.json`——dist/ 逐文件与 package.zip 的字节数 + SHA-256，含版本、git 提交与生成时间。`check:release` 每次运行都会重新生成并逐条核对（清单漂移即失败），发布说明中的 ZIP SHA-256 应与清单中 `package.zip` 条目一致。
+- `pnpm run release:rehearsal`：回滚演练——在临时目录演练「预发布快照 → 坏版本发布（版本复用 + 未知文件） → 漂移检测 → 回滚 → 逐文件完整性复核」，产出 `.artifacts/rollback-rehearsal.json` 证据；任何一步失败即非零退出。已并入 `check:release`，每次质量链都会重演一遍回滚流程。
