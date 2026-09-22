@@ -10323,6 +10323,28 @@ details:not([open]) > :not(summary) { display: none !important; }
     color: var(--lc-checkin-muted);
     font-size: 9.5px;
 }
+/* T-1412 今日视图渲染块：每项目一行的概览 + 打卡按钮。 */
+.lc-checkin__renderblock-today-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 4px 4px;
+    border-bottom: 1px solid color-mix(in srgb, var(--lc-checkin-border) 55%, transparent);
+    font-size: 11px;
+}
+.lc-checkin__renderblock-today-row:last-child { border-bottom: 0; }
+.lc-checkin__renderblock-today-icon { flex: none; }
+.lc-checkin__renderblock-today-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.lc-checkin__renderblock-today-status,
+.lc-checkin__renderblock-today-streak,
+.lc-checkin__renderblock-today-missed { flex: none; color: var(--lc-checkin-muted); font-size: 10px; }
+.lc-checkin__renderblock-today-done { flex: none; color: var(--lc-checkin-success); font-weight: 600; }
+.lc-checkin__renderblock-today-record { flex: none; min-height: 24px; padding: 2px 8px; }
+.lc-checkin__renderblock-today-summary {
+    color: var(--lc-checkin-muted);
+    font-size: 9.5px;
+}
 .lc-checkin__renderblock-summary {
     display: grid;
     gap: 6px;

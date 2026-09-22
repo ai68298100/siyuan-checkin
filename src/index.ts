@@ -18,7 +18,7 @@ import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
-import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, type ActionMoment} from "./shared";
+import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, getRecordStep, type ActionMoment} from "./shared";
 import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
@@ -439,6 +439,7 @@ export default class CheckinPlugin extends Plugin {
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string) => void this.jumpToItemAnchorDoc(blockId),
+            onBlockTodayRecord: (itemId: string) => void this.recordBlockToday(itemId),
             getAnchorIndex: () => new Map(this.anchorDocCache),
             resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),
         };
@@ -638,6 +639,18 @@ export default class CheckinPlugin extends Plugin {
        openTab 的 doc 锚点滚动定位未在本仓库验证，故不传未证实参数；任何失败回落项目洞察。 */
     /* v18.1.x（T-1375 §八）：打开锚点文档前按 blockId 重新解析——块被移动后跟随新根文档，
        不信任会话缓存；重解析失败时回落缓存，再回落项目洞察并给出可读提示。 */
+    /* T-1412：today 渲染块打卡按钮 → 既有手动打卡通道（修订指纹冲突检查/审计/撤销不变）。 */
+    private async recordBlockToday(itemId: string): Promise<void> {
+        if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        const item = getActiveItemById(this.store, itemId);
+        if (!item) return;
+        const actionDate = currentCalendarDate();
+        const revision = getItemRevisionForDate(item, actionDate);
+        const value = revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep);
+        const fingerprint = this.revisionFingerprint(item, actionDate);
+        await this.recordEvent(item, value, captureActionMoment(), fingerprint);
+    }
+
     private async jumpToItemAnchorDoc(blockId: string) {
         const item = this.store.items.find((candidate) => candidate.noteAnchor?.blockId === blockId && !candidate.archived);
         let doc = "";

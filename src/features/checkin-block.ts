@@ -16,7 +16,7 @@ import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isCom
 import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
-export type CheckinBlockView = "month" | "heatmap" | "summary" | "groups";
+export type CheckinBlockView = "month" | "heatmap" | "summary" | "groups" | "today";
 
 export interface CheckinBlockConfig {
     view: CheckinBlockView;
@@ -57,13 +57,15 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {ok: false, error: t("block.errorConfig")};
     const source = parsed as Record<string, unknown>;
     const view = source.view;
-    if (view !== "month" && view !== "heatmap" && view !== "summary" && view !== "groups") return {ok: false, error: t("block.errorView")};
+    if (view !== "month" && view !== "heatmap" && view !== "summary" && view !== "groups" && view !== "today") return {ok: false, error: t("block.errorView")};
     const config: CheckinBlockConfig = {view};
     if (Array.isArray(source.itemIds)) {
         const itemIds = source.itemIds.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()).slice(0, MAX_BLOCK_ITEMS);
         if (source.itemIds.length > MAX_BLOCK_ITEMS) return {ok: false, error: t("block.errorItems")};
         if (itemIds.length) config.itemIds = itemIds;
     }
+    /* T-1412：today 视图必须显式指定项目（多项目寻址必选，不做隐式全量）。 */
+    if (view === "today" && !config.itemIds?.length) return {ok: false, error: t("block.errorItems")};
     if (typeof source.group === "string" && source.group.trim()) config.group = source.group.trim().slice(0, 32);
     /* T-1351：多分组并集；超量与非法输入 fail-closed，不静默放大范围。 */
     if (Array.isArray(source.groups)) {
@@ -240,6 +242,74 @@ export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockCo
         return `<div class="lc-checkin__renderblock-row" role="listitem" tabindex="0" data-jump-item="${escapeHtml(item.id)}"${anchorAttr} aria-label="${escapeHtml(`${item.name} ${stateText}`)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(stateText)} · ${escapeHtml(formatNumber(progress))}/${escapeHtml(formatNumber(target))} ${escapeHtml(revision.unit)}</span>${streakHtml}</div>`;
     }).join("");
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-summary" role="list">${lines}</div>`;
+}
+
+/** today 视图（T-1412，第二轮采纳）：极简今日概览——每项目一行的状态/连续/漏卡信息
+    与一键打卡按钮（完成后祝贺态）。状态与连续复用模型层单一实现。
+    按钮仅输出 data-block-record 标记，写回由宿主经既有 recordEvent 通道完成（幂等/审计不变）。 */
+export interface TodayViewRow {
+    itemId: string;
+    name: string;
+    icon: string;
+    complete: boolean;
+    progressText: string;
+    streak: number;
+    lastMissedDate?: string;
+}
+
+/** 单项目回溯找「最近漏卡日」：从昨天向前扫，命中第一个完成日即停（更早的缺口不再算漏卡）。 */
+export function findLastMissedDate(store: CheckinStore, item: CheckinItem, asOf: Date): string | undefined {
+    const skipDays = getSkipDatesForItem(store, item.id);
+    const check = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 12);
+    let guard = 0;
+    while (guard < 365) {
+        guard += 1;
+        check.setDate(check.getDate() - 1);
+        if (!isItemAvailableOnDate(item, check) || !isScheduledToday(item, check)) continue;
+        if (isComplete(store, item, check)) return undefined;
+        if (skipDays.has(dateKey(check))) continue;
+        return dateKey(check);
+    }
+    return undefined;
+}
+
+export function buildTodayRows(store: CheckinStore, items: CheckinItem[], asOf: Date): TodayViewRow[] {
+    const streaks = computeEventStreaks(store, asOf);
+    const rows: TodayViewRow[] = [];
+    for (const item of items.filter((entry) => !entry.archived).slice(0, 5)) {
+        const complete = isComplete(store, item, asOf);
+        const revision = getItemRevisionForDate(item, asOf);
+        const progress = getProgress(store, item, asOf);
+        const progressText = complete
+            ? t("block.todayDone")
+            : revision.schedule.type === "quota"
+                ? `${Math.round(progress * 100)}%`
+                : `${formatNumber(progress)}/${formatNumber(revision.target)} ${revision.unit}`;
+        rows.push({
+            itemId: item.id,
+            name: item.name,
+            icon: item.icon,
+            complete,
+            progressText,
+            streak: streaks.get(item.id) || 0,
+            lastMissedDate: items.length === 1 ? findLastMissedDate(store, item, asOf) : undefined,
+        });
+    }
+    return rows;
+}
+
+export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date): string {
+    const items = resolveBlockItems(store, config);
+    const rows = buildTodayRows(store, items, asOf);
+    if (!rows.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
+    const body = rows.map((row) => {
+        const action = row.complete
+            ? `<span class="lc-checkin__renderblock-today-done">${escapeHtml(t("block.todayCongrats"))}</span>`
+            : `<button class="lc-checkin__text-button lc-checkin__renderblock-today-record" type="button" data-block-record="${escapeHtml(row.itemId)}">${escapeHtml(t("block.todayRecord"))}</button>`;
+        const missed = row.lastMissedDate ? `<small class="lc-checkin__renderblock-today-missed">${escapeHtml(t("block.todayLastMissed", {date: row.lastMissedDate}))}</small>` : "";
+        return `<div class="lc-checkin__renderblock-today-row" data-item-id="${escapeHtml(row.itemId)}"><span class="lc-checkin__renderblock-today-icon" aria-hidden="true">${escapeHtml(row.icon)}</span><span class="lc-checkin__renderblock-today-name">${escapeHtml(row.name)}</span><span class="lc-checkin__renderblock-today-status">${escapeHtml(row.progressText)}</span><span class="lc-checkin__renderblock-today-streak">${escapeHtml(t("block.todayStreak", {n: row.streak}))}</span>${missed}${action}</div>`;
+    }).join("");
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-today">${body}</div>`;
 }
 
 /** groups 视图（T-1351）：按分组聚合的今日完成率汇总；minRate 过滤低完成率分组。 */

@@ -67,6 +67,13 @@ const badThresholds = block.parseCheckinBlockConfig('{"view":"month","thresholds
 assert.ok(badThresholds.ok);
 if (badThresholds.ok) assert.deepEqual(badThresholds.config.thresholds, [0.25, 0.5, 0.75, 1], "non-ascending thresholds fall back to defaults");
 
+/* T-1412：today 视图——itemIds 必填（fail-closed 多项目寻址）。 */
+const todayNoItems = block.parseCheckinBlockConfig('{"view":"today"}');
+assert.equal(todayNoItems.ok, false, "today view requires explicit itemIds");
+assert.equal(todayNoItems.ok ? "" : todayNoItems.error, t("block.errorItems"));
+const todayConfig = block.parseCheckinBlockConfig('{"view":"today","itemIds":["a","b"]}');
+assert.equal(todayConfig.ok, true);
+
 /* 作用域解析。 */
 const all = block.resolveBlockItems(store, {view: "summary"});
 assert.equal(all.length, 3, "archived items are excluded");
@@ -87,6 +94,29 @@ assert.ok(emptyMonth.includes(t("block.empty")));
 const monthA = block.buildMonthViewHtml(store, {view: "month", itemIds: ["a"]}, asOf);
 assert.match(monthA, /is-skip[^>]*data-jump-date="2026-09-16"/, "skip-only day renders neutral");
 assert.match(monthA, /is-level-4[^>]*data-jump-date="2026-09-15"/, "done day renders top level for single scope");
+
+/* T-1412：today 视图渲染——完成项祝贺态、未完成项按钮、streak 单一实现、最近漏卡日。 */
+const todayHtml = block.buildTodayViewHtml(store, {view: "today", itemIds: ["a", "b"]}, asOf);
+assert.match(todayHtml, /data-block-record="b"/, "pending item renders a record button");
+assert.doesNotMatch(todayHtml, /data-block-record="a"/, "completed item shows congrats instead of a button");
+assert.ok(todayHtml.includes(t("block.todayCongrats")), "congrats state uses the localized text");
+const todayRows = block.buildTodayRows(store, [store.items[0], store.items[1]], asOf);
+assert.equal(todayRows[0].complete, true, "item a is complete on 09-19");
+assert.equal(todayRows[0].streak, model.computeEventStreaks(store, asOf).get("a"), "streak rides the single implementation");
+assert.equal(todayRows[0].lastMissedDate, undefined, "multi-row view omits last-missed");
+const singleRow = block.buildTodayRows(store, [store.items[0]], asOf)[0];
+assert.equal(singleRow.lastMissedDate, "2026-09-18", "yesterday's missed scheduled day is the last miss even though today is done");
+const pendingSingle = block.buildTodayRows(store, [store.items[1]], asOf)[0];
+assert.equal(pendingSingle.lastMissedDate, "2026-09-18", "scan starts from yesterday: today's incompleteness is the status cell's job");
+/* 接线：胶水节流 + 宿主回调 + i18n。 */
+assert.match(glueSource, /data-block-record/, "glue routes today record buttons");
+assert.match(glueSource, /data-record-pending/, "record button throttles double clicks");
+assert.match(glueSource, /onBlockTodayRecord/, "record buttons delegate to the host write path");
+assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string\) => void this\.recordBlockToday\(itemId\)/, "host must wire the block record callback");
+assert.match(read("index.ts"), /private async recordBlockToday/, "host implements the block record path via recordEvent");
+for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord"]) {
+    assert.equal(read("i18n.ts").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+}
 
 /* 热力视图：today 标记；跳过日混有真实完成时不标中性。 */
 const heatmapHtml = block.buildHeatmapViewHtml(store, {view: "heatmap", year: 2026}, asOf);

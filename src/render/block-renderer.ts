@@ -9,6 +9,7 @@ import {
     buildHeatmapViewHtml,
     buildMonthViewHtml,
     buildSummaryViewHtml,
+    buildTodayViewHtml,
     parseCheckinBlockConfig,
     type AnchorDocIndex,
     type CheckinBlockConfig,
@@ -25,6 +26,8 @@ export interface BlockRendererDeps {
     onJumpItemAnchor?(blockId: string): void;
     /** T-1292：锚点→文档归属索引的同步缓存读；未命中条目不在返回值中。 */
     getAnchorIndex?(): AnchorDocIndex;
+    /** T-1412：today 视图打卡按钮 → 宿主经既有 recordEvent 通道写入（幂等/审计不变）。 */
+    onBlockTodayRecord?(itemId: string): void;
     /** T-1292：索引未命中的锚点异步解析（内核 /api/block/getBlockInfo，宿主缓存）；
         完成后由本函数的实现方触发一次强制重渲染。 */
     resolveAnchorDocs?(blockIds: string[]): Promise<void>;
@@ -76,6 +79,7 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, a
     if (config.view === "month") return buildMonthViewHtml(store, config, asOf, anchorIndex);
     if (config.view === "heatmap") return buildHeatmapViewHtml(store, config, asOf, anchorIndex);
     if (config.view === "groups") return buildGroupsViewHtml(store, config, asOf, anchorIndex);
+    if (config.view === "today") return buildTodayViewHtml(store, config, asOf);
     return buildSummaryViewHtml(store, config, asOf, anchorIndex);
 }
 
@@ -135,6 +139,14 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             preview.innerHTML = buildPreviewHtml(parsed.config, deps, anchorIndex);
         }
         preview.addEventListener("click", (event) => {
+            /* T-1412：today 视图打卡按钮——节流防连点（写入后由宿主广播触发整块重渲染解除）。 */
+            const recordTarget = (event.target as HTMLElement).closest("[data-block-record]");
+            if (recordTarget) {
+                if (recordTarget.getAttribute("data-record-pending")) return;
+                recordTarget.setAttribute("data-record-pending", "true");
+                deps.onBlockTodayRecord?.(recordTarget.getAttribute("data-block-record") || "");
+                return;
+            }
             /* T-1351：锚点行优先打开所在文档（依赖已解析的缓存索引），否则回落项目洞察。 */
             const anchorTarget = (event.target as HTMLElement).closest("[data-jump-anchor-block]");
             if (anchorTarget) {

@@ -6,8 +6,7 @@ import fs from "node:fs";
 import {expect, test} from "@playwright/test";
 import {createClient, makeTestItem, openCheckin, seedStore, snapshotStore} from "./helpers/app.mjs";
 
-test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page}) => {
-    const client = createClient();
+test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page}) => {    const client = createClient();
     await openCheckin(page);
 
     /* 真实笔记本与文档:文档 id 本身即合法块 id,可直接作为锚点。 */
@@ -52,4 +51,41 @@ test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page
     }, {timeout: 20000}).toEqual({hit: true, missIsEmpty: true, nameCount: 2, monthRendered: 1, heatmapRendered: 1, errorShown: 1});
 
     fs.writeFileSync(".artifacts/render-dump-final.json", JSON.stringify({ok: true, item: item.name}));
+});
+
+test("渲染块:today 视图一键打卡真实写回,缺 itemIds fail-closed", async ({page}) => {
+    const client = createClient();
+    await openCheckin(page);
+
+    const item = makeTestItem("todayblock");
+    await seedStore(client, await snapshotStore(page), [item]);
+    await page.reload();
+    await openCheckin(page);
+    await expect.poll(() => page.evaluate((id) => window.siyuanCheckin.getItems().some((entry) => entry.id === id), item.id), {timeout: 20000}).toBe(true);
+
+    await page.evaluate((itemId) => {
+        const host = document.createElement("div");
+        host.setAttribute("data-e2e-renderhost", "true");
+        host.innerHTML =
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">${JSON.stringify({view: "today", itemIds: [itemId]})}</div></code></pre></div>` +
+            `<div class="code-block"><div class="protyle-action__language">checkin</div><pre><code class="hljs"><div contenteditable="true">{"view":"today"}</div></code></pre></div>`;
+        document.body.append(host);
+        window.dispatchEvent(new CustomEvent("checkin:event-recorded"));
+    }, item.id);
+
+    /* 行渲染 + 按钮存在；缺 itemIds 的块 fail-closed 出错误提示。 */
+    const button = page.locator(`[data-block-record="${item.id}"]`);
+    await expect.poll(async () => await button.count(), {timeout: 20000}).toBe(1);
+    await expect.poll(async () => await page.locator("[data-checkin-preview] [role='alert']").count(), {timeout: 20000}).toBeGreaterThanOrEqual(1);
+
+    /* 点击 → 经宿主 recordEvent 真实落盘（当天 localDate）。 */
+    await button.click();
+    const dayKey = new Date().toLocaleDateString("sv-SE");
+    await expect.poll(async () => {
+        const snapshot = await snapshotStore(page);
+        return snapshot.events.some((event) => event.itemId === item.id && event.localDate === dayKey);
+    }, {timeout: 20000}).toBe(true);
+
+    /* 宿主广播刷新后按钮变祝贺态（不再渲染按钮）。 */
+    await expect.poll(async () => await page.locator(`[data-block-record="${item.id}"]`).count(), {timeout: 20000}).toBe(0);
 });
