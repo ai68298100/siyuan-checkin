@@ -2,6 +2,10 @@
 
 > 调研方式：三路并行——① GitHub 开源项目源码深读（Loop Habit Tracker / Table Habit / Habitica 等）；② 应用商店商业竞品（Habitify / Streaks / Forest / 滴答清单 / 小日常 / 时光序 / Atoms 等）；③ 笔记生态同类插件（思源集市 / Obsidian / Logseq / Notion 模板）。本文件是结论沉淀，为后续版本开发提供依据。
 
+> **证据口径说明（2026-09-22）**：本文早期段落保留历史调研上下文，其中星数、价格、下载量和“维护停滞/已弃维护”等判断没有统一的时间戳，不能作为当前状态或选型依据。本次增量只把固定 commit/tag、仓库内许可证、实际源码/CHANGELOG 和可访问的 release 页面作为证据；没有核验的效果、用户规模、商业定价和因果关系均降级为待核查线索。新结论不继承旧段落的“标杆/最好/最成功”等强断言。
+
+> **增量研究口径（2026-09-22）**：本文件新增的复核只采用公开 README、源码、官方文档、发行页或 issue 可复现的事实；不把当前星数、价格或营销描述当作能力契约。版本/提交以访问当天能确认的页面为准，未实测的宿主行为标为待验收。
+
 ---
 
 ## 一、开源项目源码精华
@@ -105,7 +109,7 @@ let nextDelta = (0.9747 ** currVal) * (dir === 'down' ? -1 : 1);
 | Atoms | 《掌控习惯》官方 | 身份认同式打卡（"完成阅读=我是读者"）、习惯栈 | 贵、免费 1 个习惯 | $10/月 |
 | Way of Life | 三色月历链 | 绿/红/黄跳过标记、一眼可读 | 高级功能仍简陋 | 买断 |
 
-**"让人坚持下来"的行为设计机制汇总**：
+**历史观察（非本轮验证）**：
 
 1. 链条/连续天数——损失厌恶是第一驱动力（Streaks/Way of Life）
 2. **宽容机制是刚需**：skip/rest day/freeze，「外部原因不该断链」被反复验证；跳过≠失败，防 what-the-hell 破罐破摔（Loop「–」、Way of Life 黄格）
@@ -235,3 +239,58 @@ let nextDelta = (0.9747 ** currVal) * (dir === 'down' ? -1 : 1);
 - 断签容忍真名是 `maxGap`（数字，默认 0，非 gapStyle）：允许连续 N 天缺勤不断签——缺勤日以**降低不透明度**渲染，计数只算真实打勾日；频率对照表：每周 3 次→3、每周→6、双周→13、每月→30。
 - 网格：`daysToShow` 默认 21（名字由来）、`firstDisplayedDate` / `lastDisplayedDate`、`color`、`showStreaks`、`matchLineLength`；点击日期跳日记（Daily Notes / Periodic Notes）。
 - 对我们的映射：AUTO 弹性补全（v16.3）在语义上强于 maxGap（按配额周期推导而非固定容忍 N 天）；但「缺勤日淡化渲染 + 计数只算真实完成」的呈现值得渲染块月历吸收——跳过中性色已有，~~断签淡化列入 v18 渲染块迭代候选~~——**2026-09-20 评估后关闭（T-1276）**：核查发现我们的 quota 完成口径是回溯性的（周期达标后,达标日之前的期内剩余日经 isComplete 也已全部渲染为完成色），即 AUTO 回溯完成在呈现上强于 maxGap 的淡化容忍，「缺签缺口」在本语义下不存在；按 D-051 可证明性原则不引入死代码。其 frontmatter entries 格式仍可作 Obsidian 迁入通道（优先级低于 Loop CSV）。
+
+## 八、2026-09-22 一手资料复核（T-1377）
+
+本节只记录本轮实际访问的仓库、固定提交/tag、仓库许可证、源码/CHANGELOG 证据和公开 release 页面。仓库的最新提交或 release 只能证明该时间点可观察到的状态，不能推出长期维护质量、用户规模、效果或未来兼容性；下列“采用/延后/不做”是对小驴的适配判断。
+
+### 1. 习惯算法与迁移
+
+| 项目 | 固定证据与源码观察 | 可吸收能力 | 对小驴的适配代价与验证方法 | 结论 |
+| --- | --- | --- | --- | --- |
+| [Loop Habit Tracker](https://github.com/iSoron/uhabits/tree/7e993e17b2b674d4b5b1291ebd18677b74810df2) | `uhabits` HEAD `7e993e17b2b674d4b5b1291ebd18677b74810df2`（2026-07-21，可从 `git log` 复核）；`LICENSE.txt` 为 GPL-3.0；[v2.3.1 release](https://github.com/iSoron/uhabits/releases/tag/v2.3.1) 可访问。`Score.kt` 使用频率、前值和当日值计算指数衰减；`HabitsCSVExporter.kt` 输出 `Habits.csv`、每项 `Scores.csv/Checkmarks.csv`，记录 `Date,Value,Notes`。 | 将“频率 + 跳过/未知 + 分数投影”作为可解释的只读统计；把 Loop ZIP/CSV 当迁移输入，并保留 Notes。 | GPL-3.0 与本插件代码/分发边界需由发布者复核；CSV 的数值/频率、未知/跳过和历史日期需映射到现有事件，不能把 Loop score 当小驴复习调度。验证：固定样本导入后逐日比对事件数、日期、值、备注和重复导入幂等。 | **采用**：CSV 迁移和统计口径可作为独立适配层；算法不直接移植为新调度。 |
+| [Table Habit / mhabit](https://github.com/FriesI23/mhabit/tree/1f532849b3ea5d43aecf948dbc1d206aa42f2d36) | HEAD `1f532849b3ea5d43aecf948dbc1d206aa42f2d36`（2026-09-21）；仓库 Apache-2.0；[v1.27.9+198 release](https://github.com/FriesI23/mhabit/releases/tag/v1.27.9%2B198) 可访问。`lib/models/loop_import.dart` 解析 Loop 的 name/type/frequency/target/archived 和日期记录；`record.dart` 保存 record UUID、parent UUID、reason；`change_record_status_action.dart` 明确 `unknown → done → skip → deleted` 状态链。 | 导入时保留原始频率、归档、记录原因和稳定外部身份；把“未知/跳过/删除”分开，而不是把缺失当失败。 | 其存储是本地数据库而非小驴 JSON；Apache-2.0 允许性需与具体依赖/分发一起复核。验证：Loop CSV 迁入→导出→再迁入，检查状态链、reason、UUID 映射和删除墓碑。 | **采用**：作为迁移字段和状态测试参考；不复制数据库或 Flutter UI。 |
+
+### 2. 笔记内声明式追踪与断签容忍
+
+| 项目 | 固定证据与源码观察 | 可吸收能力 | 对小驴的适配代价与验证方法 | 结论 |
+| --- | --- | --- | --- | --- |
+| [Obsidian Tracker](https://github.com/pyrochlore/obsidian-tracker/tree/933fa7537580fe79ecf567e83d5cb45ba18139e0) | HEAD `933fa7537580fe79e83d5cb45ba18139e0`（2026-03-02）；`LICENSE` 为 MIT；`manifest.json/package.json` 为 1.19.0；[1.19.0 release](https://github.com/pyrochlore/obsidian-tracker/releases/tag/1.19.0) 可访问。`docs/Expressions.md` 列出 `dataset()`、`sum()`、`maxStreak()`、`currentStreak()` 等白名单函数，并记录 1.9.0 起模板变量迁移到表达式。 | 继续扩展渲染块时，可吸收“声明式数据集 + 白名单纯函数 + 月历/趋势输出”三件套；表达式结果可复算且不需要复制正文。 | 思源块查询和小驴事件模型不同，不能开放任意 JS 或照搬 Obsidian frontmatter；需要限制数据集数量、函数和运行时间。验证：同一 JSON 快照在桌面/Android、明暗主题下输出一致；非法函数、超量数据和循环表达式必须拒绝。 | **采用**：只吸收白名单表达式和数据集设计；不移植其存储/运行时。 |
+| [Habit Tracker 21](https://github.com/zincplusplus/habit-tracker/tree/8303d6091ab26a19f6b83d32cbac701d705b6223) | HEAD `8303d6091ab26a19f6b83d32cbac701d705b6223`（2026-05-24）；仓库 `LICENSE` 为 GPL-3.0；`manifest.json` 当前版本字段为 2.4.1；[2.4.2 release](https://github.com/zincplusplus/habit-tracker/releases/tag/2.4.2) 可访问。`Habit.svelte` 从 Markdown frontmatter 的 `entries` 读取/写入日期数组；`maxGap` 只影响连续展示和计数；设置可点击日期打开 Daily Notes/Periodic Notes。 | 将“缺勤日淡化、真实完成日计数、日期格跳转”作为渲染交互参考；frontmatter `entries` 可作为低优先级迁入样本。 | 一习惯一文件与小驴集中 store 不同；GPL-3.0 兼容和写入 frontmatter 的并发/人工编辑语义需隔离。验证：读取 test-vault 中空 entries、无 frontmatter、跨月和 DST 样本；确认不自动创建或覆盖用户文档。 | **延后**：只在渲染块/迁移专项需要时吸收；不新增 per-file 数据模型。 |
+
+### 3. 思源任务、习惯和日记插件
+
+| 项目 | 固定证据与源码观察 | 可吸收能力 | 对小驴的适配代价与验证方法 | 结论 |
+| --- | --- | --- | --- | --- |
+| [Task Note Management](https://github.com/Achuan-2/siyuan-plugin-task-note-management/tree/04fb9491ae2dc160805005d50f351b9958623a7b) | HEAD `04fb9491ae2dc160805005d50f351b9958623a7b`（2026-09-16）；`LICENSE` 为 AGPL-3.0；`plugin.json` 版本 7.1.1；[v7.1.1 release](https://github.com/Achuan-2/siyuan-plugin-task-note-management/releases/tag/v7.1.1) 可访问。`habitUtils.ts` 有 daily/weekly/monthly/yearly/custom/ebbinghaus 频率、番茄自动打卡和 `habitMemoBlockId`；`habitMemoBlockSync.ts` 使用 `appendBlock`/`insertBlock`/`updateBlock`/`setBlockAttrs`，并为同步条目生成 `memoSyncKey`。CHANGELOG 的 v7.1.1（2026-09-15）还记录思源 3.8.4 适配。 | “打卡模式与文档回写模式分离”、稳定同步键、番茄完成来源、Ebbinghaus 只作为用户选择的排期入口，均可作为需求对照。 | AGPL-3.0、私有数据结构和同步块清理语义不能直接复制；小驴已有 noteAnchor/日记报告，需避免第二套绑定字段和正文自动复制。验证：真实思源桌面/Android 上用公开 API 测试绑定、移动、删除、只读块、重复写入和撤销；浏览器模拟不算宿主验收。 | **采用**：吸收“绑定/回写分离 + 幂等键”原则；不复制其实现。旧文“转付费后停滞”已由本轮提交证据纠正。 |
+| [Bullet Journal](https://github.com/MoonBottle/siyuan-plugin-bullet-journal/tree/9ec42221333786fd05adfdb9cdfb968b5211af36) | HEAD `9ec42221333786fd05adfdb9cdfb968b5211af36`（2026-07-07）；`LICENSE` 为 AGPL-3.0；源码 `src/kernel/habitSchedule.ts` 支持 daily/weekly/n_per_week/every_n_days/weekly_days/**ebbinghaus** 等频率，`useHabitWorkspace.ts` 按 blockId/docId 打开并可对已归档习惯禁用打卡；`api.ts` 封装 `insertBlock/appendBlock/setBlockAttrs/query/sql`。`plugin.json` 版本 0.14.2；[v0.14.2 release](https://github.com/MoonBottle/siyuan-plugin-bullet-journal/releases/tag/v0.14.2) 可访问，tag 解引用 commit 为 `bc4afe2e5cd798bd222ed02fbec35831ce2ba0b7`。 | 习惯实体与块 ID 绑定、归档后禁止操作、统一 API 封装和自然语言/日记场景的入口可作为联动设计参考。 | AGPL-3.0 与小驴许可边界需单独复核；其 Ebbinghaus 规则是固定 `[1,2,4,7,15]`/完成次数推导，不能当普适科学或替换现有 interval；API SQL/写入依赖真实宿主。验证：固定 commit 的单测 + 真实思源多窗口/Android 复核，检查块移动/删除和重复日期。 | **延后**：只借鉴块 ID/归档降级和研究样例；不直接复制 Ebbinghaus 或 API 层。 |
+| [Diary Calendar](https://github.com/xushuo97/diary-calendar/tree/98c818a69b1041cf98d85a0103b27eb230b08685) | HEAD/tag `98c818a69b1041cf98d85a0103b27eb230b08685`（v0.1.8，2026-08-29）；`LICENSE` 为 MIT；`plugin.json` 版本 0.1.8，桌面前端声明；源码 `api.ts` 以 `/日记日历/<年>/<月>/<YYYY-MM-DD>` 建立日记文档，查询 `hpath`，写入采用删除子块再 `insertBlock`，并提供周/月文档。`theme.ts` 使用 MutationObserver 和 3 秒定时同步主题。 | 日记路径、按 hpath 定位、批量按月份查询、日/周/月分层可作为 T-1376 路由对照；“先找文档再创建”比按标题猜测更可靠。 | 其写入会清空并重建子块，不能作为小驴只追加报告的默认语义；SQL 依赖宿主；主题轮询不应带入小驴。验证：真实宿主检查未建日记、多个笔记本、历史补记、手工内容和多窗口；确认失败不创建空文档且不覆盖正文。 | **采用**：只吸收 hpath/幂等定位和日记层级证据；**不做**清空重写与常驻主题轮询。 |
+
+### 4. 采用/延后/不做矩阵（本轮推荐）
+
+| 借鉴点 | 用户收益 | 适配代价 | 验证方法 | 推荐 |
+| --- | --- | --- | --- | --- |
+| Loop/mhabit CSV 导入 | 用户可带着历史记录迁入，降低数据锁定 | 字段、状态、备注、频率和许可证边界映射 | 固定 CSV fixture、导入/导出往返、重复导入/异常行 | **采用**，独立迁移任务 |
+| 白名单数据集/表达式 | 在思源文档内看趋势，减少重复抄写 | 查询上限、函数语义、Android 性能和安全沙箱 | 纯函数快照、恶意表达式拒绝、桌面/Android | **采用**，沿现有渲染块路线 |
+| 缺勤淡化和日期跳转 | 减少断签内疚，回到当日日记更快 | 日期/时区、宿主打开能力、主题一致性 | 真实日记路径和 DST/移动端走查 | **采用**，只做展示与跳转 |
+| 绑定/回写分离、同步键 | 降低重复写入和误删，用户能控制文档 | 需要现有 noteAnchor 与日记报告共存 | 多窗口、移动/删除、撤销和只读宿主验收 | **采用**，不新增第二绑定体系 |
+| 固定 Ebbinghaus/FSRS/SM-2 调度 | 可能改善知识复习的提醒 | 反馈字段、迁移、算法版本和调度所有权 | T-1374 回放矩阵；与闪卡宿主隔离 | **延后**，普通习惯不启用 |
+| 复制竞品私有 DB、SQL 或整篇正文重写 | 短期减少开发 | 破坏可迁移性、权限、用户内容和宿主兼容 | 无法证明公开稳定契约 | **不做** |
+| 账号/云同步、社交/RPG、后台常驻轮询 | 可能增加留存或跨端便利 | 超出本地优先、隐私和维护边界 | 需要另立项和用户授权 | **不做** |
+
+**本轮边界**：上述仓库均为源码/文档复核，不等于在思源真实桌面或 Android 中运行了第三方插件；版本、许可证和宿主兼容性在实现前仍需重新核对。T-1377 的结论只提供候选输入，最终范围由 T-1378 结合 T-1374～T-1379 决定。
+
+## 八、T-1377 增量复核与吸收边界（2026-09-22）
+
+本节只记录本轮能由公开页面复核的增量。`版本/提交` 是访问当天页面可见的标识；没有固定版本或可复现测试的内容不进入实现契约。星数、价格和商店宣传不作为立项依据。
+
+| 来源（公开证据） | 复核事实（截至 2026-09-22） | 可吸收 | 延后 | 不做 |
+| --- | --- | --- | --- | --- |
+| [Loop Habit Tracker](https://github.com/iSoron/uhabits)；[跳过/CSV 讨论](https://github.com/iSoron/uhabits/discussions/689) | 公开仓库与讨论可复核五态记录、频率和导出线索；跳过不是失败，频率与导出是用户可迁移的边界。 | 保持 SKIP 中性、公开 CSV/JSON 迁移的可解释身份；继续用现有事件模型。 | 重新设计强度/频率公式，需离线回放和迁移样本。 | 复制 Android 专属后台提醒、服务或数据库格式。 |
+| [Table Habit README](https://github.com/FriesI23/mhabit) 与 [User Guide](https://github.com/FriesI23/mhabit/wiki/User-Guide)；公开 release 页面显示 `v1.24.2+156` | 支持正/负习惯、日/周/月/滚动窗口目标、人类可读 JSON 导入导出、WebDAV；导入数据被当作新习惯，不能当同步。 | 借鉴导出/导入的“来源 + 新身份 + 可回退”说明，保留本地优先。 | 更复杂的成长曲线、WebDAV 和跨设备同步。 | 把导入数据静默合并，或把 WebDAV 变成插件必需服务。 |
+| [Obsidian Tracker Concepts](https://github.com/pyrochlore/obsidian-tracker/blob/master/docs/Concepts.md)、[InputParameters](https://github.com/pyrochlore/obsidian-tracker/blob/master/docs/InputParameters.md)（master，访问日） | 声明式代码块从标签/frontmatter/任务等来源读取，并提供 `summary`、`month`、`maxStreak()` 等纯展示能力。 | 继续坚持白名单数据集、纯函数求值、月历日期点击跳转和只读降级。 | 任意表达式、跨库文件扫描、用户自定义脚本。 | 开放任意 JavaScript、隐式复制笔记正文。 |
+| [Achuan-2 task-note-management](https://github.com/Achuan-2/siyuan-plugin-task-note-management)（公开仓库，访问日） | README 明确把任务、文档/块提醒、日历、番茄和习惯组合在一起；公开首页不能证明每条同步实现的错误/迁移语义。 | 借鉴“业务对象显式指向笔记”的入口和来源标识，沿用本插件的 `noteAnchor`/失败隔离。 | 任务、番茄、习惯的全家桶联动，先逐条核对公开 API 和权限。 | 复制私有存储、后台提醒或未公开内核调用。 |
+| [Obsidian Spaced Repetition](https://github.com/st3v3nmw/obsidian-spaced-repetition)（README，访问日） | 同时提供卡片、整篇笔记、当前笔记和强化练习入口，说明“材料入口”和“卡片调度”可以分层。 | 将指定文档作为人工打开/复习材料入口；调度仍归宿主或独立 review 模式。 | 源笔记移动/重命名、调度元数据与思源块 ID 的迁移验证。 | 把文件标签模型直接当作思源绑定模型，或同时维护两套 due。 |
+| [SiYuan v3.8.4 API 文档](https://github.com/siyuan-note/siyuan/blob/v3.8.4/docs/API.md) 与 [router.go](https://github.com/siyuan-note/siyuan/blob/v3.8.4/kernel/api/router.go) | 文档列出 `appendBlock`、块属性和文档创建等公开专节；源码还注册日记/Riff 路由，但源码路由不自动获得公开稳定性。 | 以 API 文档专节作为兼容准入；源码只用于研究和版本锁定。 | 日记 source-only 路由、Riff due 查询、复习事件需真实宿主验证。 | DOM/SQL 逆向、后台轮询、把源码路由写进长期插件契约。 |
+
+**统一吸收规则。** 低风险借鉴必须能映射到现有事件模型、`localDate`、本地存储和已有测试：SKIP 中性、确定性导入身份、白名单只读聚合、明确来源链接可以进入候选实现；表达式引擎、跨插件自动打卡、提醒和复习联动需要独立 API/权限/失败证据；账号、云同步、RPG 惩罚、传感器和后台常驻不进入本地优先路线。竞品有某功能本身不是需求证据，只有用户收益、适配代价、公开接口和回退方法同时清楚时，才可拆成后续 TODO。
