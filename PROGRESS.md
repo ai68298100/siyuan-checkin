@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-23 v18.1.0 本地发布准备：版本四方（package.json/plugin.json/src/version.ts/README）提升 18.1.0；新增 docs/v18.1.0-change-log.md（新增功能/改进/公开 API/工程质量/明确不变五节）与 docs/releases/release-notes-18.1.0.md（用户向更新内容 + 升级边界 + SHA-256）；发布验收文档 docs/release-validation-18.1.0.md 成文。完整 test:quality 以 18.1.0 口径 exit 0——release-assets 四方版本一致、package.zip 693030 字节 SHA-256 `b61342f6a9775e89b86f66eec5d32fb852e1f3d7face4e25a9553859b7f78542` 与发布说明及资产清单一致、回滚演练 4 步通过。本地提交 + 标签 v18.1.0 完成；远端 push 与 GitHub Release 待用户确认（含此前积压的 21 个提交）。
+
 2026-09-23 T-1410（热力图四级色阶自适应，T-1400 第一轮采纳②）：`buildYearHeatmap` 的四级阈值从固定绝对值（≥2/≥3/≥max×0.75）改为**按「有记录日」条数分布的 nearest-rank 百分位 25/50/75 自适应**，阈值随 `YearHeatmap.thresholds` 暴露；渲染类名（is-level-1..4/is-skip/is-empty）与双主题色不变，对比度门禁沿用。低频用户收益：1~2 条/天的分布在旧阈值下永远只到 level 2，新方案可呈现完整四档层次。v7-insights 守门扩展五组断言（分层分布 8/6/4/2、低频自适应收益、均匀分布收敛 level 1、空年 thresholds [0,0,0]、确定性回放）；skip-semantics/review-workspace/analytics-snapshot 邻接套件全绿。采纳③完成庆祝动效按 D-263 克制原则拆出为收尾批次 T-1411。test:quality 全链绿。
 
 2026-09-23 T-1409（容错连续计数 maxGap，T-1400 第一轮采纳①落地）：`CheckinItem.streakTolerance?: number` 仅物化 1~30 整数（缺省/0=严格断链，历史行为零变化）；连续计数单一实现扩展容错缺口语义——`computeEventStreaks` 回溯与 `computeLongestStreaks` 正向扫描同规则：漏打排期日且缺口 <N 时桥接不断链、缺口不计入连续值，真实完成/quota 派生完成重置缺口，SKIP 中性桥接不消耗容错；`streakToleranceFor` 显式排除 at-most（无破戒日语径）与 quota（AUTO 周期桥接路径），不叠加。洞察页/渲染块 summary/API getStreaks/今日徽章全部经单一实现自动同口径。编辑器高级区「漏打容错（天）」输入（留空=严格，1~30 钳制，双语）。tests/streak-tolerance.test.cjs 九组验收（严格缺省回归/桥接/上限/缺口重置/SKIP 独立/at-most 与 quota 排除/钳制/消费方同口径/i18n）入 test:ui。缺口日淡显标注随 T-1410 收尾轮处理（D-263）。test:quality 全链绿。
