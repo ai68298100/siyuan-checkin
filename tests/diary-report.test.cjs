@@ -60,11 +60,14 @@ assert.match(indexSource, /msg\.diarySaveFailed/, "preference persistence failur
 assert.match(indexSource, /diaryNotebookRequest/, "stale notebook responses must not populate a replaced settings surface");
 assert.match(indexSource, /\/api\/filetree\/searchDocs/, "diary search must use the documented host route");
 assert.match(indexSource, /k: query, flashcard: false, excludeIDs: \[\]/, "diary search payload must remain bounded to the route contract");
+assert.match(indexSource, /Array\.isArray\(response\.data\)/, "diary search must read the v3.8.4 array response");
+assert.match(indexSource, /response\.data\?\.blocks/, "diary search may tolerate legacy wrapped responses");
 assert.match(indexSource, /blocks\.slice\(0, 50\)/, "diary search must cap projected results");
 
 /* 兼容边界必须和实现同步：searchDocs 是宿主路由增强，不冒充插件公开 API。 */
 assert.match(compatibility, /`POST \/api\/filetree\/searchDocs`/, "compatibility docs must register the diary search route");
 assert.match(compatibility, /flashcard: false/, "compatibility docs must record the search payload");
+assert.match(compatibility, /成功响应的 `data` 数组/, "compatibility docs must record the v3.8.4 response shape");
 assert.match(compatibility, /最多显示前 50 条/, "compatibility docs must record the result cap");
 assert.match(compatibility, /msg\.diarySearchFailed/, "compatibility docs must describe the failed-search fallback");
 assert.match(compatibility, /宿主路由兼容增强/, "compatibility docs must distinguish host-route compatibility from plugin API");

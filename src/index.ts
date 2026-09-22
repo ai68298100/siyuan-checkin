@@ -2035,9 +2035,11 @@ export default class CheckinPlugin extends Plugin {
                 const select = root.querySelector<HTMLSelectElement>("[data-diary-choice]");
                 if (!select || !query) return;
                 try {
-                    const response = await fetchSyncPost("/api/filetree/searchDocs", {k: query, flashcard: false, excludeIDs: []}) as unknown as {code?: number; data?: {blocks?: Array<{id?: string; content?: string; hPath?: string}>}};
+                    const response = await fetchSyncPost("/api/filetree/searchDocs", {k: query, flashcard: false, excludeIDs: []}) as unknown as {code?: number; data?: Array<{id?: string; content?: string; hPath?: string}> | {blocks?: Array<{id?: string; content?: string; hPath?: string}>}};
                     if (!select.isConnected || request !== diarySearchRequest) return;
-                    const blocks = response.code === 0 ? response.data?.blocks || [] : [];
+                    const blocks = response.code === 0
+                        ? Array.isArray(response.data) ? response.data : response.data?.blocks || []
+                        : [];
                     select.innerHTML = `<option value="">${escapeHtml(t("set.diaryDocChoose"))}</option>` + blocks.slice(0, 50).filter((block) => block.id).map((block) => `<option value="${escapeHtml(block.id || "")}">${escapeHtml(block.hPath || block.content || block.id || "")}</option>`).join("");
                 } catch {
                     if (select.isConnected && request === diarySearchRequest) showMessage(t("msg.diarySearchFailed"));

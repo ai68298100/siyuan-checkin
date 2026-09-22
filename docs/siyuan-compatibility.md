@@ -14,7 +14,7 @@
 
 锚点编辑器的「新建文档」只使用思源 API 文档列出的 `POST /api/notebook/lsNotebooks` 与 `POST /api/filetree/createDocWithMd`；锚点选择仍只投影插件已经保存的绑定。日记设置页在用户输入搜索词时，可选调用思源 v3.8.4 已有的 `POST /api/filetree/searchDocs` 路由；这属于宿主路由兼容增强，不改变插件公开 API，也不作为低于 3.8.4 的承诺。
 
-日记搜索的兼容边界固定为：请求 `{k, flashcard: false, excludeIDs: []}`，成功响应只投影 `data.blocks` 中的 `id`、`hPath`、`content`，界面最多显示前 50 条；该路由受思源内核认证保护，插件经宿主的 `kernelPost` 通道调用。响应失败、请求异常或宿主没有该路由时保留手填文档 ID，并提示 `msg.diarySearchFailed`。新建文档仍按 `lsNotebooks → 选择 closed=false → createDocWithMd` 的公开 API 链路执行。v3.8.4 的路由注册见 [router.go](https://github.com/siyuan-note/siyuan/blob/v3.8.4/kernel/api/router.go)，文件树实现见 [file.go](https://github.com/siyuan-note/siyuan/blob/v3.8.4/kernel/model/file.go)；这两份源码证据用于兼容性登记，不能替代真实思源桌面端、移动端和只读/发布服务验收。未把 `/api/search/fullTextSearchBlock` 或 SQL 路由当作跨版本公共依赖。
+日记搜索的兼容边界固定为：请求 `{k, flashcard: false, excludeIDs: []}`，v3.8.4 成功响应的 `data` 数组只投影其中的 `id`、`hPath`、`content`，界面最多显示前 50 条；实现同时容忍旧宿主把数组包在 `data.blocks` 中。该路由受思源内核认证保护，插件经宿主的 `kernelPost` 通道调用。响应失败、请求异常或宿主没有该路由时保留手填文档 ID，并提示 `msg.diarySearchFailed`。新建文档仍按 `lsNotebooks → 选择 closed=false → createDocWithMd` 的公开 API 链路执行。v3.8.4 的路由注册见 [router.go](https://github.com/siyuan-note/siyuan/blob/v3.8.4/kernel/api/router.go)，文件树实现见 [file.go](https://github.com/siyuan-note/siyuan/blob/v3.8.4/kernel/model/file.go)；这两份源码证据用于兼容性登记，不能替代真实思源桌面端、移动端和只读/发布服务验收。未把 `/api/search/fullTextSearchBlock` 或 SQL 路由当作跨版本公共依赖。
 
 以下三处确实依赖思源内部 DOM，改动宿主结构时只会降级为「不显示」，不会损坏数据，但必须如实登记：
 
