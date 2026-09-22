@@ -526,6 +526,7 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             streaks.set(item.id, 0);
             continue;
         }
+        const tolerance = streakToleranceFor(item, todayDate);
         const skipDays = getSkipDatesForItem(store, item.id);
         /* T-1239（D-219）：at-most 被动戒除——连续 = 连续无破戒日；
            破戒日断链、跳过日桥接、回溯止于项目创建日；无事件不等于中断。 */
@@ -574,21 +575,39 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             continue;
         }
         let streak = 0;
+        let gap = 0;
         let guard = 0;
         const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)), 12);
         while (guard < 36500) {
             guard += 1;
             const key = dateKey(check);
-            if (realDays.has(key)) streak += 1;
-            else if (skipDays.has(key)) {
-                /* 跳过日中性桥接：不加成、不断链。 */
-            } else if (isAuto(key)) streak += 1;
-            else break;
+            if (realDays.has(key)) {
+                streak += 1;
+                gap = 0;
+            } else if (skipDays.has(key)) {
+                /* 跳过日中性桥接：不加成、不断链，也不消耗容错缺口。 */
+            } else if (isAuto(key)) {
+                streak += 1;
+                gap = 0;
+            } else if (tolerance > 0 && gap < tolerance && isItemAvailableOnDate(item, check) && isScheduledToday(item, check)) {
+                /* T-1409 容错缺口（maxGap）：漏打的排期日在容错范围内不断链、不计数；
+                   真实完成日重置缺口；SKIP 与缺口相互独立。 */
+                gap += 1;
+            } else break;
             check.setDate(check.getDate() - 1);
         }
         streaks.set(item.id, streak);
     }
     return streaks;
+}
+
+/** T-1409 容错连续：每项目 opt-in 的漏打容错天数（1~30）；at-most 与 quota 排期沿用
+    各自现有口径（无破戒日/周期派生），不叠加容错。缺省/0 = 严格断链（历史行为）。 */
+function streakToleranceFor(item: CheckinItem, asOf: Date): number {
+    if (item.direction === "atMost") return 0;
+    if (getItemRevisionForDate(item, asOf).schedule.type === "quota") return 0;
+    const tolerance = Math.floor(Number(item.streakTolerance));
+    return Number.isFinite(tolerance) && tolerance >= 1 ? Math.min(30, tolerance) : 0;
 }
 
 /** v5-3（T-1280）：历史最长连续——与 computeEventStreaks 同一套状态语义
@@ -646,7 +665,9 @@ export function computeLongestStreaks(store: CheckinStore, asOf = new Date()): M
         }
         let run = 0;
         let max = 0;
+        let gap = 0;
         let guard = 0;
+        const tolerance = streakToleranceFor(item, todayDate);
         const check = new Date(Number(item.createdDate.slice(0, 4)), Number(item.createdDate.slice(5, 7)) - 1, Number(item.createdDate.slice(8, 10)), 12);
         while (guard < 36500) {
             guard += 1;
@@ -654,14 +675,20 @@ export function computeLongestStreaks(store: CheckinStore, asOf = new Date()): M
             if (key > today) break;
             if (realDays.has(key)) {
                 run += 1;
+                gap = 0;
                 max = Math.max(max, run);
             } else if (skipDays.has(key)) {
                 /* 跳过日中性桥接:不加成、不断链。 */
             } else if (isAuto(key)) {
                 run += 1;
+                gap = 0;
                 max = Math.max(max, run);
+            } else if (tolerance > 0 && gap < tolerance && isItemAvailableOnDate(item, check) && isScheduledToday(item, check)) {
+                /* T-1409 容错缺口：与当前连续同一套语义，缺口不计入 run。 */
+                gap += 1;
             } else {
                 run = 0;
+                gap = 0;
             }
             check.setDate(check.getDate() + 1);
         }
@@ -878,6 +905,10 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         ...(normalizeAutoArchive(value.autoArchive) ? {autoArchive: normalizeAutoArchive(value.autoArchive)} : {}),
         /* T-1390（D-259）：仅物化显式 false；缺省/true 不写字段，旧数据无需批量迁移。 */
         ...(value.taskHorizonCalendarVisible === false ? {taskHorizonCalendarVisible: false as const} : {}),
+        /* T-1409 容错连续：仅物化 1~30 的整数；缺省/0 表示严格断链。 */
+        ...(Number.isFinite(Number(value.streakTolerance)) && Math.floor(Number(value.streakTolerance)) >= 1
+            ? {streakTolerance: Math.min(30, Math.floor(Number(value.streakTolerance)))}
+            : {}),
     };
 }
 

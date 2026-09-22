@@ -81,6 +81,8 @@ export async function saveEditorForm(
     const direction = data.get("directionAtMost") === "on" && scheduleType === "daily" ? "atMost" as const : undefined;
     /* T-1390（D-259）：Task Horizon 日历显示——勾选为缺省（不写字段），取消勾选仅物化 false。 */
     const taskHorizonCalendarVisible = data.get("taskHorizonVisible") === "on";
+    /* T-1409 容错连续：留空=严格断链（不物化）；1~30 取整。 */
+    const streakTolerance = Math.max(0, Math.min(30, Math.round(Number(data.get("streakToleranceDays")) || 0)));
     const sortOrder = existing?.sortOrder ?? host.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
     const revision: CheckinItemRevision = {
         effectiveDate: submittedAt.localDate,
@@ -128,6 +130,7 @@ export async function saveEditorForm(
         ...(direction ? {direction} : {}),
         ...(anchorBlockId ? {noteAnchor: {blockId: anchorBlockId, ...(anchorAppendNotes ? {appendNotes: true} : {})}} : {}),
         ...(!taskHorizonCalendarVisible ? {taskHorizonCalendarVisible: false as const} : {}),
+        ...(streakTolerance >= 1 ? {streakTolerance} : {}),
     };
     const previous = host.store;
     host.store = {

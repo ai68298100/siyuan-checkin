@@ -9,9 +9,10 @@
   - 扫描面：思源集市插件（Bazaar 全量 + 新上架增量）、Obsidian 社区插件（habit/tracking/复习类）、Logseq/Notion/Anytype 等笔记生态、独立习惯应用（Habitify/Loop/Streaks/TickTick/everyday 等新版本增量）、GitHub（habit-tracker / streak / check-in 主题与 trending 增量）；以 `docs/benchmark-habit-apps-2026-09.md` 与 `roadmap-checkin-research-2026-09.md` 为基线，只做增量取证，不重复已评估项。
   - 每轮流程：①增量扫描（新应用/新版本/新插件，标注来源等级与日期）→ ②候选清单（每项：用户收益、适配代价、验证方法、与五类型/六排期/at-most 语义可映射性）→ ③评估卡：做/延后/不做 + 证据，按推荐自动采用并记决策 → ④每轮只挑 1～3 个最合适项拆批次开发 → ⑤完整质量链 + 四端双主题矩阵 + 发布 → ⑥复盘并更新 benchmark 文档 → 下一轮。
   - 边界：继承既有「明确不做」（RPG 化、账号体系、云同步、传感器后台、万能写入口、逆向私有格式、复制商业收费墙功能）；吸收项必须过本地优先、事件不可变、计分单一实现、API 纪律、模板不触数据模型五条原则；真实宿主验收始终是发布前置门槛。
-- [ ] T-1409 容错连续计数 maxGap（第一轮采纳①，源：Habit Tracker 21）
+- [x] T-1409 容错连续计数 maxGap（第一轮采纳①，源：Habit Tracker 21）
   - 语义：每项目 opt-in 的「容错缺口 N 天」——二值/至少型习惯在排期日漏打但缺口 ≤N 天时，连续计数不断（缺口日淡显标注）；与 SKIP（显式请假）正交；at-most/quota 语义沿用各自现有口径不叠加。
   - 验收：streak 纯函数单一实现扩展（含 maxGap=0 缺省行为不变）、编辑器高级区开关+天数输入（双语）、洞察/渲染块/API getStreaks 同口径、跨时区/补记/撤销矩阵、与弹性周期 AUTO 桥接共存测试。
+  - 状态：done（2026-09-23。`CheckinItem.streakTolerance?: number` 仅物化 1~30 整数（缺省/0=严格断链，历史行为零变化）；`computeEventStreaks` 回溯与 `computeLongestStreaks` 正向扫描同步扩展「容错缺口」语义——漏打排期日缺口 <N 桥接不计数、真实完成/派生完成重置缺口、SKIP 中性不消耗容错、at-most 与 quota 排期（`streakToleranceFor` 显式排除）沿用各自口径；洞察/渲染块/API getStreaks/今日徽章经单一实现自动同口径；编辑器高级区「漏打容错（天）」输入（留空=严格，1~30 钳制）双语。tests/streak-tolerance.test.cjs 九组验收入 test:ui。缺口日「淡显标注」属 UI 展示，随 T-1410 动效收尾轮按 D-263 克制原则一并处理。）
 - [ ] T-1410 热力图四级色阶自适应 + 完成庆祝动效（第一轮采纳②③，源：TCOTC/heatmap + Loop v2.3.0）
   - 语义：热力图色阶按百分位自适应 4 级（数值型随值缩放强度）；完成打卡轻量庆祝反馈，reducedMotion 偏好或用户关闭时不播。
   - 验收：charts 纯函数色阶分级可回放、四端双主题对比度门禁、动效尊重 reducedMotion 且不触发布局跳动、性能门禁不回退。

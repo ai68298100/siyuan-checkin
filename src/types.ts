@@ -85,6 +85,9 @@ export interface CheckinItem {
     /** T-1390（D-259）：Task Horizon 日历显示策略；缺省/true=显示，仅物化 false（隐藏）。
         只控制外部日历投影，不影响本地项目、事件、统计、导出或任务完成回写。 */
     taskHorizonCalendarVisible?: false;
+    /** T-1409 容错连续（maxGap）：排期日漏打 ≤N 天不断签（缺口不计数）；缺省/0=严格断链。
+        仅物化 1~30；at-most 与 quota 排期不叠加。 */
+    streakTolerance?: number;
 }
 
 export interface CheckinEvent {
