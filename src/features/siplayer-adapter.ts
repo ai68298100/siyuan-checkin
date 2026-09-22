@@ -24,11 +24,12 @@ export interface SiplayerTrackerOptions {
     sampleIntervalMs: number;
 }
 
-/** 单项目会话内累计（分钟）。 */
+/** 单项目会话内累计。内部按毫秒累计、对外按「向下取整分钟」暴露——
+    采样周期（15s）短于分钟粒度，若按段取整会丢失全部时长（T-1385 修复）。 */
 export class SiplayerPlaybackTracker {
     private playingSince?: number;
     private lastSampleAt?: number;
-    private readonly dayMinutes = new Map<string, number>();
+    private readonly dayMs = new Map<string, number>();
 
     constructor(private readonly options: SiplayerTrackerOptions) {}
 
@@ -36,8 +37,9 @@ export class SiplayerPlaybackTracker {
         return this.playingSince !== undefined;
     }
 
+    /** 该日已累计的向下取整分钟数。 */
     dayTotal(localDate: string): number {
-        return this.dayMinutes.get(localDate) || 0;
+        return Math.floor((this.dayMs.get(localDate) || 0) / 60_000);
     }
 
     /**
@@ -86,12 +88,13 @@ export class SiplayerPlaybackTracker {
             totals.set(localDate, (totals.get(localDate) || 0) + (sliceEnd - cursor));
             cursor = sliceEnd;
         }
+        /* 毫秒累计、整分钟晋升：晋升时产出段（携带该日累计分钟），不再丢秒。 */
         const segments: SiplayerSegment[] = [];
         for (const [localDate, ms] of totals) {
-            const minutes = Math.floor(ms / 60_000);
-            if (minutes <= 0) continue;
-            this.dayMinutes.set(localDate, (this.dayMinutes.get(localDate) || 0) + minutes);
-            segments.push({localDate, minutes});
+            const before = this.dayMs.get(localDate) || 0;
+            this.dayMs.set(localDate, before + ms);
+            const promoted = Math.floor((before + ms) / 60_000);
+            if (promoted > Math.floor(before / 60_000)) segments.push({localDate, minutes: promoted});
         }
         return segments.sort((left, right) => left.localDate.localeCompare(right.localDate));
     }

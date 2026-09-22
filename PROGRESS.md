@@ -1,5 +1,7 @@
 # 进度
 
+2026-09-23 T-1385 缺陷修复 + 思播真实内核 E2E：**发现并修复严重设计缺陷**——采样周期 15 秒短于分钟粒度，原实现的「按段向下取整」导致每段取整后全为 0 分钟、`dayMinutes` 永不累计，适配器在生产节奏下完全失效。修复为毫秒累计 + 整分钟晋升（`dayMs` 累计、`dayTotal` 向下取整、晋升时产出携带累计分钟的段）；写回结算输入本就取 `dayTotal` 累计值，语义自洽。新增 tests/e2e/siplayer.spec.mjs：注入受控假 controller（isPlaying 由测试驱动）→ 真实内核下 75 秒在播采样 → 断言跨阈值写回落盘（source siplayer + 当日身份）→ 同日再次跨阈值不重复记账 → 重载保留。E2E 首跑失败还揪出「dist 未随修复重建」的流程点。test:quality 全链绿。真实思播插件同装与 seek/循环/变速矩阵归 T-1388。
+
 2026-09-23 思阅适配器真实内核 E2E（新增）+ 事件前缀映射缺陷修复：新增 tests/e2e/sireader.spec.mjs——真实内核里种入启用偏好与项目 → 注入 reader:open/blur 生命周期事件（跨越 1 分钟阈值）→ 断言写回落盘（source sireader + `sireader:<itemId>:<localDate>` 身份）→ 页面重载后事件仍在 → 同日再次跨阈值不重复记账（幂等）。**过程中抓到并修复一个真实缺陷**：接线层把原始事件名 `reader:open` 直接透传给采样器，状态机只认 `open/focus/blur/close`——导致所有在播区间被判为暂停、永远无法累计；修复为显式白名单映射（剥离前缀 + 未知事件忽略）。此缺陷单测未能覆盖（单测直接以动作名调用采样器），E2E 级别才暴露——真实宿主管线验证的价值实证。test:quality 全链绿；E2E 主套件 18 用例（1 例时序敏感标记 flaky 后重试通过，单独复跑稳定）。真实思阅插件同装验收仍归 T-1388。
 
 2026-09-23 v18.2.0 正式发布：版本四方（package.json/plugin.json/src/version.ts/README）提升 18.2.0；新增 docs/v18.2.0-change-log.md（今日视图渲染块/思播实验联动/庆祝动效/maxGap/色阶自适应五节）与 docs/releases/release-notes-18.2.0.md；发布验收文档 docs/release-validation-18.2.0.md 成文。完整 test:quality 以 18.2.0 口径 exit 0——package.zip 695073 字节 SHA-256 `5bf8f27819b1e3e0fd214a16010e3ad8811a7d726fafc8e6d544bda709f1db9f` 与发布说明及资产清单一致、回滚演练 4 步通过。推送 main + v18.2.0 标签，**GitHub Release「小驴打卡 v18.2.0」已发布并附 package.zip**（标记 Latest），CI 运行中。集市将自动同步。

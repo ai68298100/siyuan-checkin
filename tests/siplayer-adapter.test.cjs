@@ -34,18 +34,18 @@ const makeTracker = () => new adapter.SiplayerPlaybackTracker({toLocalDate, next
 const tracker = makeTracker();
 assert.deepEqual(tracker.sample(true, DAY1 + 10 * MIN), [], "playing start produces no segments yet");
 assert.deepEqual(tracker.sample(true, DAY1 + 25 * MIN), [{localDate: "2026-09-24", minutes: 15}], "each bounded playing interval settles as it goes");
-assert.deepEqual(tracker.sample(false, DAY1 + 55 * MIN), [{localDate: "2026-09-24", minutes: 30}], "pause finalizes 30 played minutes (25→55)");
+assert.deepEqual(tracker.sample(false, DAY1 + 55 * MIN), [{localDate: "2026-09-24", minutes: 45}], "pause finalizes with cumulative minutes (15+30)");
 assert.equal(tracker.dayTotal("2026-09-24"), 45, "15 + 30 minutes accumulate across intervals");
 
 /* 断档：采样间隔超 3 倍周期（45 分钟），区间丢弃并重新锚定；随后有界段正常累计。 */
 assert.deepEqual(tracker.sample(true, DAY1 + 300 * MIN), [], "playing resumes after a long gap (re-anchor only)");
 assert.deepEqual(tracker.sample(false, DAY1 + 380 * MIN), [], "80-minute sampling gap exceeds the bound and is discarded");
 assert.deepEqual(tracker.sample(true, DAY1 + 385 * MIN), [], "playing re-anchors after the discard");
-assert.deepEqual(tracker.sample(false, DAY1 + 390 * MIN), [{localDate: "2026-09-24", minutes: 5}], "after re-anchor a bounded span accumulates");
+assert.deepEqual(tracker.sample(false, DAY1 + 390 * MIN), [{localDate: "2026-09-24", minutes: 50}], "after re-anchor a bounded span accumulates (cumulative 50)");
 
 /* absent 状态（controller 缺失/抛错）与暂停同义：结段不累计。 */
 tracker.sample(true, DAY1 + 400 * MIN);
-assert.deepEqual(tracker.sample(false, DAY1 + 430 * MIN), [{localDate: "2026-09-24", minutes: 30}]);
+assert.deepEqual(tracker.sample(false, DAY1 + 430 * MIN), [{localDate: "2026-09-24", minutes: 80}], "cumulative grows to 80 minutes");
 
 /* 跨午夜切分：在播期间每 30 分钟一次采样（≤3 倍周期），23:30 起播、次日 00:30 暂停。 */
 tracker.sample(true, DAY2 + 23 * 60 * MIN + 30 * MIN);
@@ -58,6 +58,17 @@ tracker.sample(true, DAY2 + 10 * MIN);
 tracker.discardInFlight();
 assert.equal(tracker.playing, false);
 assert.deepEqual(tracker.sample(false, DAY2 + 60 * MIN), [], "discarded in-flight focus must not accumulate");
+
+/* 回归锚（生产节奏）：15 秒采样周期下毫秒累计仍能晋升分钟——
+   旧实现按段向下取整，15 秒段永远为 0 分钟，适配器在生产节奏下完全失效。 */
+const FAST = 15_000;
+const fastTracker = new adapter.SiplayerPlaybackTracker({toLocalDate, nextMidnight, sampleIntervalMs: FAST});
+fastTracker.sample(true, DAY1 + 100 * MIN);
+let promoted = [];
+for (let at = DAY1 + 100 * MIN + FAST; at <= DAY1 + 100 * MIN + 75_000; at += FAST) {
+    promoted.push(...fastTracker.sample(true, at));
+}
+assert.equal(fastTracker.dayTotal("2026-09-24"), 1, "five 15-second samples promote to 1 minute");
 
 /* 写入身份与偏好归一。 */
 assert.equal(adapter.buildSiplayerExternalRef("watch", "2026-09-24"), "siplayer:watch:2026-09-24");
