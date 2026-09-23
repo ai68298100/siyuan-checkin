@@ -116,6 +116,11 @@
   - 接入：回顾页报告设置菜单新增选择器（默认+已存视图）、「保存当前为视图」（prompt 命名）与「删除视图」按钮，绑改动即持久化。
   - 测试：view-scope.test.cjs 消费守门扩展（偏好字段/三方法/上限/选择器与按钮/7 键双语）。
   - 状态：done（2026-09-24 第二切片，A8 泳道收口）。命名视图只存查询偏好不复制事件；真实 surface 交互保持 host-pending。
+- [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
+  - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
+  - 测试：`tests/context-normalization.test.cjs`——关键词归一化（中英/大小写/空文本）、聚合排序与 other 兜底、日期范围、样本不足守卫、报告接线守门、纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（104 模块全绿）；diary-report 导出路径守门同步含 contextAggregation。
+  - 状态：done（2026-09-24 第二切片，A3 泳道收口）。真实用户是否写备注属使用反馈，保持开放。
 - [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。

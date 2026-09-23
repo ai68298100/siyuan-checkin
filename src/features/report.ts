@@ -8,6 +8,7 @@ import type {ReviewComparison} from "./review-comparison";
 import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 import type {ViewScopeDescription} from "./view-scope";
+import type {ContextAggregation} from "./context-normalization";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -40,12 +41,21 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
     lines.push(`## ${title}`);
     lines.push("");
+    /* T-1433 · R-20.2：跳过原因分布——从既有备注词元聚合，样本不足时显式提示仅供参考。 */
+    if (options?.contextAggregation && options.contextAggregation.totalNotes > 0) {
+        const aggregation = options.contextAggregation;
+        lines.push(`- ${t("report.contextTitle", {n: aggregation.totalNotes})}`);
+        for (const entry of aggregation.tokens) {
+            lines.push(`  - ${t(`report.contextToken.${entry.token}`, {n: entry.count})}`);
+        }
+        if (!aggregation.sufficient) lines.push(`  - ${t("report.contextInsufficient")}`);
+    }
     /* T-1343：报告可按事件来源筛选；筛选口径在标题下显式声明。 */
     if (options?.source && REPORT_SOURCES.has(options.source)) {
         lines.push(`- ${t("report.sourceLine", {source: t(`source.${options.source}`)})}`);

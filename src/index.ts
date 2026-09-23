@@ -37,6 +37,7 @@ import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/blo
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
+import {aggregateSkipContext} from "./features/context-normalization";
 import {collectLifecycleFacts, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
@@ -494,7 +495,12 @@ export default class CheckinPlugin extends Plugin {
             const previous = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
             comparison = previous ? buildReviewComparison(summary, sourceOptions ? buildCustomSummaryContext(this.store, previous, undefined, sourceOptions) : buildCustomSummaryContext(this.store, previous)) : undefined;
         }
-        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope});
+        /* T-1433 · R-20.2：跳过原因分布——区间内跳过事件的既有备注词元聚合（只读，不影响事实）。 */
+        const skipSlices = getEventsInDateRange(this.store, summary.startDate, summary.endDate)
+            .filter((event) => isSkipEvent(event) && typeof event.note === "string" && event.note.trim())
+            .map((event) => ({note: event.note, localDate: event.localDate}));
+        const contextAggregation = aggregateSkipContext(skipSlices);
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation});
     }
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */
