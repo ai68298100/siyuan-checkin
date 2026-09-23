@@ -1,7 +1,7 @@
 # 模块地图与使用指南
 
 > 目标：不读实现也能知道每个模块管什么、被谁用、改动时要动哪些地方。
-> 依赖图与体量用 `node scripts/module-map.cjs` 重新生成（2026-09-14 基线：入口 2184 行 TS + 三层 SCSS）。
+> 依赖图与体量用 `node scripts/module-map.cjs` 重新生成；文中的行数和目录数量属于历史快照，不是接口契约，当前版本以脚本和源码为准。
 
 ## 分层总览
 
@@ -61,7 +61,7 @@
 
 | 模块 | 职责 |
 | --- | --- |
-| `api.ts` / `api-contract.ts` | `window.siyuanCheckin`（协议 v4）：能力协商、recordEvent 去重、describe |
+| `api.ts` / `api-contract.ts` | `window.siyuanCheckin`（协议 v5，兼容 v4）：能力协商、recordEvent 去重、describe |
 | `ecosystem.ts` | 智能体能力注册（`addAgentCapability`）与事件订阅 |
 | `integrations.ts` | 事件名常量、来源白名单、外部事件的单位/版本校验 |
 | `agent-capabilities.ts` / `agent-suggestions.ts` | 只读查询能力声明与行动建议/分析缓存（独立键存储，失败降级本地） |
@@ -72,7 +72,7 @@
 | --- | --- |
 | `shared.ts` | 跨页工具：escapeHtml、数字/日期格式化、备注渲染 |
 | `i18n.ts` | 中英双字典；文案一律走 `t(key)`，不允许写死在视图里 |
-| `catalog.ts` / `ui/labels.ts` / `ui/icons.ts` | 24 个内置模板目录、类型/时段/排序标签、图标库 |
+| `catalog.ts` / `ui/labels.ts` / `ui/icons.ts` | 内置模板目录（数量以 catalog.ts 当前源码为准）、类型/时段/排序标签、图标库 |
 | `view-preferences.ts` | 显示偏好（主题/分组/排序/弹窗尺寸…）的规范化与默认值 |
 | `lunar.ts` | 农历换算 |
 | `export.ts` | JSON/CSV 导出、CSV 导入解析、快照恢复预检（公式注入净化） |

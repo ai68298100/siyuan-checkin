@@ -1,7 +1,8 @@
 # 小驴打卡 · 代码仓库全景分析
 
 > 分析基线：v12.0.1（`package.json` / `plugin.json` 同版本），思源最低兼容 v3.4.2。
-> 源码规模：`src/` 共 60 个 TS 文件约 14400 行，其中入口 `src/index.ts` 2483 行；`tests/` 74 个 `.cjs` 守门脚本。
+> 源码规模和测试脚本数量随版本变化；请用 module-map 和 test-suite-coverage 脚本生成当前统计，本文行数只作定位快照。
+> 本文的版本、行数、文件数量和 `index.ts:<line>` 定位均来自上述历史快照；当前版本为 v18.2.1，最低完整验证基线为思源 v3.8.4，修改代码时应以当前源码和自动化脚本结果为准。
 > 本文基于源码实读，与仓库内 `docs/architecture.md`（模块地图）互补：那份讲"改哪里"，这份讲"怎么跑起来"。
 
 ---
@@ -137,7 +138,7 @@ render/focus-timer.ts / focus-adapter.ts            内置专注计时 / 外部�
 
 ## 7. 对外集成：`window.siyuanCheckin`
 
-协议 `siyuan-checkin`，**API 版本 4**（`api-contract.ts`）。设计上刻意让接入方**按能力协商而不是猜版本号**：
+协议 `siyuan-checkin`，**API 版本 5（兼容 v4）**（`api-contract.ts`）。设计上刻意让接入方**按能力协商而不是猜版本号**：
 
 ```js
 const checkin = window.siyuanCheckin;
@@ -201,7 +202,7 @@ if (checkin.hasCapability("events.record")) {
 ## 10. 构建与质量保障
 
 - **构建**：Webpack + esbuild-loader + `sass`；`siyuan` 声明为 `externals`（运行时由宿主注入，不打进包）；生产构建输出 `dist/` 并通过自定义 `PackageZipPlugin`（yazl）直接产出 `package.zip`。CSS 走 `MiniCssExtractPlugin` + esbuild 压缩，**有硬体积预算**，超线会阻断发布。
-- **测试**：74 个 `.cjs` 脚本，用原生 `node` + `assert` 跑，不引入测试框架。分链：`test`（领域/迁移/生态/交互）、`test:ui`（UI 结构/响应式/文档/稳定性）、`test:mobile`（模板/键盘/旋转/触控）、`test:ecosystem`（API/事件/偏好文档）、`test:perf`（大事件量性能基线）。
+- **测试**：`tests/` 下的守门脚本使用原生 `node` + `assert`，不引入测试框架；实际覆盖数量由 `test-suite-coverage` 自动核对，不在文档中写死。分链：`test`（领域/迁移/生态/交互）、`test:ui`（UI 结构/响应式/文档/稳定性）、`test:mobile`（模板/键盘/旋转/触控）、`test:ecosystem`（API/事件/偏好文档）、`test:perf`（大事件量性能基线）。
 - **视觉走查**：需要显式指定浏览器（`CHECKIN_BROWSER`），`CHECKIN_QA_THEME=dark` 切主题；`tests/width-walkthrough.cjs` 做多宽度走查。README 明确声明：截图结果**不能**当作真实客户端兼容证明。
 
 ---

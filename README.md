@@ -85,9 +85,9 @@
 - **日记文档**：可搜索选择目标文档，也可选择打开的笔记本新建文档；失败原因分别提示，保留手填文档 ID。
 - **回顾助手**：复制提问后尝试打开思源智能体面板；面板不可用时保留复制结果并提示手动打开。
 
-间隔复习、项目文档绑定、每日日记、同类产品及闪卡联动的研究结论见[研究路线](docs/roadmap-checkin-research-2026-09.md)，尚未实施新的研究功能。真实思源宿主、Android 输入与触控、只读/发布服务及双插件联调仍有待验收项，详见[18.0.2 发布说明](docs/releases/release-notes-18.0.2.md)。
+间隔复习、项目文档绑定、每日日记、同类产品及闪卡联动的研究结论见[研究路线](docs/roadmap-checkin-research-2026-09.md)；采用项已拆入当前实现批次，剩余项按真实宿主、外部排期或用户决策保持开放。完整战略和执行路线见[产品战略](docs/roadmap-product-strategy-2026-09.md)与[落地路线](docs/implementation-roadmap-product-strategy-2026-09.md)。真实思源宿主、Android 输入与触控、只读/发布服务及双插件联调仍有待验收项，详见[18.2.1 发布说明](docs/releases/release-notes-18.2.1.md)。
 
-完整条目见 [18.0.2 变更记录](docs/v18.0.2-change-log.md)。
+完整条目见 [18.1.0 变更记录](docs/v18.1.0-change-log.md) 和 [18.1.0 发布说明](docs/releases/release-notes-18.1.0.md)。
 
 ### 18.0.1 功能基础
 
@@ -243,12 +243,12 @@
 - **自定义**：使用自定义单位记录任意数值，支持小数步长、长单位和大数值。
 - **戒除类**：负向目标（如戒烟、限制咖啡频次）——不记录即成功、记录即破戒，连击按连续无破戒日计算，跳过日两者皆非。
 
-计划支持每天、工作日、指定星期、间隔天数和周期配额（配额达成后剩余日自动视为完成，连击跨周期桥接）。项目可以设置分组、优先级、时间段、目标、单位、步长、备注、完成来源和归档状态。时长项目可选择自带专注计时器或底栏番茄钟来源；番茄来源的非二值项目也保留手动记录入口。新建页提供 **61 个内置模板**（健康、运动、学习、工作、生活、创作、专注、戒除八类，中英双语），并配有「最近使用」与「精选推荐」；常用配置可保存为“我的模板”。
+计划支持每天、工作日、指定星期、间隔天数和周期配额（配额达成后剩余日自动视为完成，连击跨周期桥接）。项目可以设置分组、优先级、时间段、目标、单位、步长、备注、完成来源和归档状态。时长项目可选择自带专注计时器或底栏番茄钟来源；番茄来源的非二值项目也保留手动记录入口。新建页提供内置模板库（健康、运动、学习、工作、生活、创作、专注、戒除八类，中英双语），并配有「最近使用」与「精选推荐」；常用配置可保存为“我的模板”。当前模板数量以 `src/catalog.ts` 为准（现有 61 个）。
 
 ### 图标与模板
 
 <div align="center">
-<img src="docs/images/editor-light.png" alt="新建页模板库：61 个内置模板，分类筛选与搜索" width="720" />
+<img src="docs/images/editor-light.png" alt="新建页模板库：分类筛选与搜索" width="720" />
 </div>
 
 图标选择器按通用、健康、运动、学习、工作、生活、创作、目标、专注与心情分类，支持关键词搜索和自定义图标库。模板和图标在本地保存，清理或迁移前可从设置页导出数据。
@@ -383,8 +383,8 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [18.0.2 变更记录](docs/v18.0.2-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
-- [五大版本规划 v18~v22](docs/development-roadmap-v18-v22.md) · [当前状态与开发路线](docs/development-roadmap-current.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
+- [18.2.1 变更记录](docs/v18.2.1-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
+- [当前状态与开发路线](docs/development-roadmap-current.md) · [产品战略与生态调研](docs/roadmap-product-strategy-2026-09.md) · [战略落地执行路线](docs/implementation-roadmap-product-strategy-2026-09.md) · [v18~v22 已交付基线](docs/development-roadmap-v18-v22.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)
 - [v2.0 变更记录](docs/v2.0-change-log.md) · [v2.0 迁移说明](docs/v2.0-migration-notes.md) · [UI 重构路线（归档）](docs/archive/ui-redesign-roadmap.md)
