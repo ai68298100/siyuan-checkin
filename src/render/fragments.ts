@@ -46,6 +46,8 @@ export interface TodayViewContext extends TodayItemContext {
     priorityReminderExpanded?: boolean;
     /** 专注提供方可用性（T-1420 行动台降级提示用）。 */
     focusAvailable?: boolean;
+    /** T-1421 安静时段生效中：优先提醒条降级为页内安静呈现。 */
+    reminderQuiet?: boolean;
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -85,7 +87,7 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
         </section>`;
 }
 
-export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false): string {
+export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false, quiet = false): string {
     const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
     const entry = entries[0];
     if (!entry) return "";
@@ -93,14 +95,15 @@ export function renderPriorityReminderView(store: CheckinStore, occasionStore: O
     const row = (item: typeof entry, primary = false) => {
         const itemOverdue = item.status === "overdue";
         const itemSource = item.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
-        const itemTiming = itemOverdue ? t("today.priorityOverdue") : t("today.priorityToday");
+        /* T-1421 安静时段：降级为页内安静呈现——条目仍可见，紧迫标签换成安静说明。 */
+        const itemTiming = quiet ? t("today.reminderQuiet") : itemOverdue ? t("today.priorityOverdue") : t("today.priorityToday");
         const itemAction = item.source === "checkin" ? t("today.priorityOpen") : t("today.priorityOccasion");
         const ariaLabel = primary ? t("today.priorityActionAria", {name: item.title}) : t("today.priorityItemAria", {name: item.title});
-        return `<div class="lc-checkin__priority-reminder-row${primary ? " is-primary" : ""}"><span class="lc-checkin__priority-reminder-row-mark" aria-hidden="true">${itemOverdue ? "!" : "→"}</span><span class="lc-checkin__priority-reminder-row-text"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(itemSource)} · ${escapeHtml(itemTiming)}</small></span><button type="button" class="lc-checkin__text-button" data-priority-reminder-action data-priority-source="${item.source}" data-priority-id="${escapeHtml(item.sourceId)}" aria-label="${escapeHtml(ariaLabel)}">${escapeHtml(itemAction)}</button></div>`;
+        return `<div class="lc-checkin__priority-reminder-row${primary ? " is-primary" : ""}"><span class="lc-checkin__priority-reminder-row-mark" aria-hidden="true">${itemOverdue && !quiet ? "!" : "→"}</span><span class="lc-checkin__priority-reminder-row-text"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(itemSource)} · ${escapeHtml(itemTiming)}</small></span><button type="button" class="lc-checkin__text-button" data-priority-reminder-action data-priority-source="${item.source}" data-priority-id="${escapeHtml(item.sourceId)}" aria-label="${escapeHtml(ariaLabel)}">${escapeHtml(itemAction)}</button></div>`;
     };
     const remaining = entries.slice(1, 6);
     const more = remaining.length ? `<details class="lc-checkin__priority-reminder-more"${expanded ? " open" : ""}><summary aria-label="${escapeHtml(t("today.priorityMoreAria", {n: remaining.length}))}"><span class="lc-checkin__reminder-more-label">${t("today.priorityMore", {n: remaining.length})}</span><span class="lc-checkin__reminder-more-count" aria-hidden="true">+${remaining.length}</span></summary><div>${remaining.map((item) => row(item)).join("")}</div></details>` : "";
-    return `<section class="lc-checkin__priority-reminder is-${entry.status}" data-priority-reminder data-priority-count="${entries.length}" role="status" aria-live="polite" aria-label="${escapeHtml(t("today.priorityTitle"))}">${row(entry, true)}${more}</section>`;
+    return `<section class="lc-checkin__priority-reminder is-${entry.status}${quiet ? " is-quiet" : ""}" data-priority-reminder data-priority-count="${entries.length}" role="status" aria-live="polite" aria-label="${escapeHtml(t("today.priorityTitle"))}">${row(entry, true)}${more}</section>`;
 }
 
 export function renderSaveStatusView(state: SaveState): string {
@@ -439,7 +442,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.reducedMotion);
     const saveStatus = renderSaveStatusView(ctx.saveState);
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
-    const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true);
+    const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true, ctx.reminderQuiet === true);
     const occasionIsToday = getVisibleOccasions(ctx.occasionStore, now).some((item) => item.status === "today");
     const focusCandidate = pendingItems.find((item) => {
         const kind = getItemRevisionForDate(item, now).kind;

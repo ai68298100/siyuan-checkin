@@ -59,10 +59,11 @@
   - 接入：fragments.renderTodayView 构建投影并经 renderTodayDashboardStrip 渲染只读摘要条（data-today-dashboard：完成进度/跳过数/下一步/专注降级提示），插在周条与保存状态之间；记录、撤销、失败回滚路径不变；优先提醒条目仍由 renderPriorityReminderView 单一路径呈现，行动台只计数。i18n 新增 5 键中英双语（parity 1602/1602），workbench.scss 6 条轻样式（复用既有 token）。
   - 测试：`tests/today-dashboard.test.cjs`——空态/待处理/完成/SKIP 中性/quota 达标与落后/at-most 干净与破戒置顶/提醒计数/专注三态降级/两次构建深度相等确定性/截断与 total 保留/missedDate 透出/接线与 i18n 结构守门/纯度审计（零 import + 无时钟）。挂 `pnpm test` 主链；模块入架构守门无时钟清单。
   - 状态：done（2026-09-24。真实思源与 Android 上的行动台观感、焦点与触控保持 host-pending）。
-- [ ] T-1421 提醒注意力增强：安静时段与通知防抖（R-A2 第二切片）
-  - 语义：reminders.ts 增加用户可控安静时段（HH:MM 窗口，窗口内提醒降级为页内呈现不触发通知）与重复通知防抖（同一提醒实例在窗口期内只呈现一次，状态显式存储）；来源解释（每条提醒带 reasonCode）；依赖缺失降级已有基础（focus-unavailable 模式）。
-  - 验收：纯函数 + 偏好归一化 + 设置页开关（双语）+ 跨日窗口（如 22:00–07:00）回放矩阵 + 结构守门；不新增后台常驻、不直接发送系统通知。
-  - 归类 `local-auto`；排在 R-A2 收尾，与 T-1420 的 dashboard 输入对接（attention 段注入 quiet 标志）。
+- [x] T-1421 提醒注意力增强：安静时段与通知防抖（R-A2 第二切片，2026-09-24 开工并完成）
+  - 安静时段：新增零依赖纯模块 `src/features/reminder-preferences.ts`——reminderMinutesOfDay 严格解析、normalizeReminderQuietHours 非法回落、isWithinQuietHours 半开窗口（支持跨午夜 22:00–07:00，start===end 空窗口，禁用即不安静）；偏好字段 `reminderQuietHours`（默认关）入 view-preferences 归一化；设置页「今天」组新增开关+起止时间输入（time 输入，双向绑定 persist）；优先提醒条在窗口内切 `is-quiet` 变体（紧迫标签换安静说明、去感叹标记），条目仍页内可见——只影响呈现强度不改事实。
+  - 防抖：`ReminderUserAction` 增量扩展可选 `expiresAt`——提醒中心新增「延后2小时」按钮（defer），宿主写 `{action:"snooze", at, expiresAt: now+2h}`，applyReminderActions 带 expiresAt 时以到期时间为准（同日内亦可到期），无 expiresAt 的历史 snooze 沿用当日语义零迁移；normalize 对非法 expiresAt（早于 at / 超 7 天）丢弃回落。复用既有独立存储与保存队列，无新存储键。
+  - 测试：`tests/reminder-quiet.test.cjs`——解析/归一化/跨午夜逐半小时回放/半开边界/空窗口/防抖到期与历史兼容/非法 expiresAt 丢弃/接线与 i18n 守门，入 `pnpm test` 主链；模块入架构守门无时钟清单（95 模块全绿）；提醒中心签名守门（reminder-actions.test.cjs）同步升级含 defer。
+  - 状态：done（2026-09-24。真实宿主通知观感归 host-pending；不新增后台常驻、不直接发送系统通知的边界不变）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

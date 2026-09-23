@@ -85,7 +85,7 @@ assert.match(navigation, /\[data-reminder-action\]/, "reminder actions must be b
 assert.match(navigation, /host\.reminderUserAction\(id, action\)/, "actions must delegate to the host");
 const plugin = fs.readFileSync("src/index.ts", "utf8");
 assert.match(plugin, /REMINDER_ACTIONS_NAME = "checkin-reminder-actions"/, "actions need an isolated storage key");
-assert.match(plugin, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore"\)/, "host must implement the action handler");
+assert.match(plugin, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore" \| "defer"\)/, "host must implement the action handler (incl. T-1421 defer)");
 const styles = fs.readFileSync("src/ui/components.scss", "utf8");
 assert.match(styles, /\.lc-checkin__reminder-action\b/, "text action buttons need their own pill style");
 /* v4 层退役后提醒中心基础布局曾整体缺席（D-051 教训）：活层必须保留行网格与标签样式。 */

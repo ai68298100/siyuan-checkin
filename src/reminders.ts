@@ -189,7 +189,7 @@ export function projectReminderCenter(store: CheckinStore, occasions: OccasionSt
         });
     }
     const entries = [...occasionEntries, ...projectCheckinReminders(store, date)];
-    return applyReminderActions(sortReminderEntries(entries), userActions, today);
+    return applyReminderActions(sortReminderEntries(entries), userActions, today, date.toISOString());
 }
 
 function differenceInLocalDays(from: string, to: string): number {
@@ -198,16 +198,20 @@ function differenceInLocalDays(from: string, to: string): number {
 
 /* 11.0-C 延期与跳过：用户动作按稳定实例 ID 记录在独立存储里，投影只读地应用，
    绝不改动打卡或事项数据。snooze 仅在记录当日的本地日期内生效，跨日自动过期
-   回到计算状态；skip 对该次实例持续生效；已完成是终态，任何动作都不能改写。 */
+   回到计算状态；skip 对该次实例持续生效；已完成是终态，任何动作都不能改写。
+   T-1421 防抖：snooze 可选携带 expiresAt（ISO 时间）——在到期前该实例只呈现
+   为已延期（重复通知防抖），到期后自动回到计算状态；不带 expiresAt 的历史
+   snooze 沿用当日语义，旧存储零迁移。 */
 export type ReminderUserActionType = "snooze" | "skip";
-export interface ReminderUserAction { id: string; action: ReminderUserActionType; at: string; }
+export interface ReminderUserAction { id: string; action: ReminderUserActionType; at: string; /** 可选防抖到期时间（ISO）；缺省沿用当日语义。 */ expiresAt?: string; }
 
 export function normalizeReminderUserActions(value: unknown, limit = 200, now: Date = new Date()): ReminderUserAction[] {
     if (!Array.isArray(value)) return [];
     const max = Math.max(1, Math.min(500, Math.floor(limit)));
     /* T-1219：snooze 只在记录当日的本地日期内生效（applyReminderActions），
        超过 7 天的 snooze 已不可能再被投影到，物理清理防止历史堆积；
-       skip 对该次实例持续生效，不受时效清理。 */
+       skip 对该次实例持续生效，不受时效清理。
+       T-1421：expiresAt 必须不早于 at 且不超过 at+7 天，否则丢弃该字段（回落当日语义）。 */
     const snoozeCutoff = now.getTime() - 7 * 86400000;
     return value.filter((entry): entry is ReminderUserAction => {
         if (!entry || typeof entry !== "object") return false;
@@ -216,7 +220,14 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
             && (candidate.action === "snooze" || candidate.action === "skip")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
     }).filter((entry) => entry.action === "skip" || Date.parse(entry.at) >= snoozeCutoff)
-        .slice(-max).map((entry) => ({id: entry.id, action: entry.action, at: entry.at}));
+        .slice(-max).map((entry) => {
+            if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
+            const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
+            const issuedAt = Date.parse(entry.at);
+            const expiry = Date.parse(expiresAt);
+            if (Number.isNaN(expiry) || expiry < issuedAt || expiry - issuedAt > 7 * 86400000) return {id: entry.id, action: entry.action, at: entry.at};
+            return {id: entry.id, action: entry.action, at: entry.at, expiresAt};
+        });
 }
 
 export function serializeReminderUserActions(actions: readonly ReminderUserAction[]): string {
@@ -235,13 +246,22 @@ export function clearReminderUserActions(actions: readonly ReminderUserAction[],
     return actions.filter((entry) => entry.id !== id);
 }
 
-export function applyReminderActions(entries: readonly ReminderEntry[], actions: readonly ReminderUserAction[], today: string): ReminderEntry[] {
+/** 应用用户动作。now 为显式 ISO 时间（由调用方从投影日期取得），用于防抖到期判定；
+    缺省空串时仅当日语义生效（与旧调用兼容）。 */
+export function applyReminderActions(entries: readonly ReminderEntry[], actions: readonly ReminderUserAction[], today: string, now = ""): ReminderEntry[] {
     const latest = new Map<string, ReminderUserAction>();
     for (const action of actions) latest.set(action.id, action);
     return entries.map((entry) => {
         const action = latest.get(entry.id);
         if (!action || entry.status === "completed") return entry;
         if (action.action === "skip") return {...entry, status: "skipped"};
+        /* T-1421 防抖：带 expiresAt 的 snooze 以到期时间为准（窗口内已延期、到期回到
+           计算状态，同日内亦可到期）；不带 expiresAt 的历史 snooze 沿用当日语义。 */
+        if (typeof action.expiresAt === "string") {
+            const expiry = Date.parse(action.expiresAt);
+            const currentTime = now === "" ? Number.NaN : Date.parse(now);
+            return Number.isFinite(expiry) && Number.isFinite(currentTime) && currentTime <= expiry ? {...entry, status: "snoozed"} : entry;
+        }
         return action.at.slice(0, 10) === today ? {...entry, status: "snoozed"} : entry;
     });
 }

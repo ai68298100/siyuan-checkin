@@ -73,6 +73,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/source-framework.ts", // D-258：结算层可离线回放
     "src/features/calendar-projection.ts",
     "src/features/today-dashboard.ts",
+    "src/features/reminder-preferences.ts",
     "src/features/habit-score.ts",
     "src/features/sireader-adapter.ts", // 身份/结算纯函数面
     "src/features/siplayer-adapter.ts",

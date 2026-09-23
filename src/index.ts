@@ -30,6 +30,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
+import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -348,6 +349,7 @@ export default class CheckinPlugin extends Plugin {
     }
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
+    private reminderQuietHours: ReminderQuietHours = {...DEFAULT_VIEW_PREFERENCES.reminderQuietHours};
     private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     private pendingFocusItemId?: string;
     private pendingLocalItemId?: string;
@@ -2203,6 +2205,7 @@ export default class CheckinPlugin extends Plugin {
             reducedMotion: this.reducedMotion,
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
+            reminderQuietHours: this.reminderQuietHours,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
             dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
@@ -2279,6 +2282,19 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.pluginLanguageSetting = value; this.syncPluginLanguage(); void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
+        /* T-1421 提醒安静时段：开关与起止时间；非法时间输入由归一化回落默认值。 */
+        root.querySelector<HTMLInputElement>("[data-setting-quiet]")?.addEventListener("change", (event) => {
+            this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, enabled: (event.currentTarget as HTMLInputElement).checked});
+            void this.persistViewPreferences();
+        });
+        for (const bound of ["start", "end"] as const) {
+            root.querySelector<HTMLInputElement>(`[data-setting-quiet-${bound}]`)?.addEventListener("change", (event) => {
+                const value = (event.currentTarget as HTMLInputElement).value;
+                this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, [bound]: value});
+                void this.persistViewPreferences();
+                this.render();
+            });
+        }
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "builtin" || value === "docktomato") {
@@ -2905,6 +2921,12 @@ export default class CheckinPlugin extends Plugin {
         return computeStreaksValue(this.store);
     }
 
+    /** T-1421 安静时段判定：由当前时间与偏好窗口决定；只影响呈现强度。 */
+    private isReminderQuietNow(): boolean {
+        const now = new Date();
+        return isWithinQuietHours(now.getHours() * 60 + now.getMinutes(), this.reminderQuietHours);
+    }
+
     /* 方法体外置于 render/fragments.ts（T-022）；壳内仅保留连续记录状态赋值。 */
     private renderToday(): string {
         this.currentStreaks = this.computeStreaks();
@@ -2941,6 +2963,7 @@ export default class CheckinPlugin extends Plugin {
             reminderUserActions: this.reminderUserActions,
             priorityReminderExpanded: this.priorityReminderExpanded,
             focusAvailable: Boolean(this.focusTimerProvider),
+            reminderQuiet: this.isReminderQuietNow(),
         });
     }
 
@@ -4326,12 +4349,19 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
-    reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void {
+    reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void {
         if (!id) return;
         const previous = this.reminderUserActions;
+        /* T-1421 防抖：defer = 带 2 小时 expiresAt 的 snooze，窗口内该实例只呈现为已延期。 */
+        const nowMs = Date.now();
+        const actionRecord = action === "restore"
+            ? undefined
+            : action === "defer"
+                ? {id, action: "snooze" as const, at: new Date(nowMs).toISOString(), expiresAt: new Date(nowMs + 2 * 3600000).toISOString()}
+                : {id, action, at: new Date(nowMs).toISOString()};
         this.reminderUserActions = action === "restore"
             ? clearReminderUserActions(this.reminderUserActions, id)
-            : normalizeReminderUserActions([...this.reminderUserActions, {id, action, at: new Date().toISOString()}]);
+            : normalizeReminderUserActions([...this.reminderUserActions, actionRecord]);
         const serialized = serializeReminderUserActions(this.reminderUserActions);
         void this.saveData(REMINDER_ACTIONS_NAME, serialized).then(() => {
             this.render();
@@ -4383,6 +4413,7 @@ export default class CheckinPlugin extends Plugin {
         this.reducedMotion = preferences.reducedMotion;
         this.hapticFeedback = preferences.hapticFeedback;
         this.focusTimerProvider = preferences.focusTimerProvider;
+        this.reminderQuietHours = normalizeReminderQuietHours(preferences.reminderQuietHours);
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
@@ -4468,6 +4499,7 @@ export default class CheckinPlugin extends Plugin {
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
+            reminderQuietHours: this.reminderQuietHours,
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

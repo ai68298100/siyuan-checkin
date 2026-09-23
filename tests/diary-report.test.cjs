@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/view-preferences.ts", "src/features/diary-search.ts"].forEach(transpile);
+["src/i18n.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/reminder-preferences.ts", "src/view-preferences.ts", "src/features/diary-search.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {runDiarySearchRequest} = require(path.join(outputRoot, "src/features/diary-search.js"));

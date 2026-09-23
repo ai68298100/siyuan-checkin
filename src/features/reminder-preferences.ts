@@ -1,0 +1,53 @@
+/* T-1421 · R-A2 提醒安静时段——偏好纯函数面（零依赖、无时钟）。
+   纪律：
+   - 安静时段只影响「呈现强度」，不影响事实：窗口内的优先提醒仍页内可见
+     （is-quiet 降级变体），不消失、不删除、不改变打卡/逾期语义；
+   - 不新增后台常驻、不直接发送系统通知（既有边界）；
+   - 窗口支持跨午夜（如 22:00–07:00）；全部函数显式接收分钟数/配置，
+     不读取隐式时钟，非法输入 fail-closed 回落默认值；
+   - 被 view-preferences（偏好归一化）与提醒条渲染消费；独立成模块是为了
+     避免 view-preferences 引入 reminders 的重依赖集（测试固定模块集约束）。 */
+
+export interface ReminderQuietHours {
+    enabled: boolean;
+    /** "HH:MM" 24 小时制窗口起点。 */
+    start: string;
+    /** "HH:MM" 24 小时制窗口终点；可早于 start 表示跨午夜。 */
+    end: string;
+}
+
+export const DEFAULT_REMINDER_QUIET_HOURS: ReminderQuietHours = {enabled: false, start: "22:00", end: "07:00"};
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** 严格解析 "HH:MM" 为当日内分钟数（0–1439）；非法返回 undefined。 */
+export function reminderMinutesOfDay(time: string): number | undefined {
+    if (typeof time !== "string" || !TIME_PATTERN.test(time)) return undefined;
+    const segments = time.split(":");
+    const hours = Number(segments[0]);
+    const minutes = Number(segments[1]);
+    return hours * 60 + minutes;
+}
+
+/** 归一化安静时段偏好：非法/缺失字段安全回落默认值（默认关）。 */
+export function normalizeReminderQuietHours(value: unknown): ReminderQuietHours {
+    if (!value || typeof value !== "object") return {...DEFAULT_REMINDER_QUIET_HOURS};
+    const source = value as Record<string, unknown>;
+    const start = typeof source.start === "string" && reminderMinutesOfDay(source.start) !== undefined ? source.start : DEFAULT_REMINDER_QUIET_HOURS.start;
+    const end = typeof source.end === "string" && reminderMinutesOfDay(source.end) !== undefined ? source.end : DEFAULT_REMINDER_QUIET_HOURS.end;
+    return {enabled: source.enabled === true, start, end};
+}
+
+/** 判断当日分钟数是否落在安静窗口内。
+    start === end 视为空窗口（永不安静）；start > end 为跨午夜窗口
+    （如 22:00–07:00：minutes ≥ 22:00 或 < 07:00）。 */
+export function isWithinQuietHours(minutesOfDay: number, quietWindow: ReminderQuietHours): boolean {
+    if (!quietWindow.enabled) return false;
+    if (!Number.isInteger(minutesOfDay) || minutesOfDay < 0 || minutesOfDay > 1439) return false;
+    const start = reminderMinutesOfDay(quietWindow.start);
+    const end = reminderMinutesOfDay(quietWindow.end);
+    if (start === undefined || end === undefined) return false;
+    if (start === end) return false;
+    if (start < end) return minutesOfDay >= start && minutesOfDay < end;
+    return minutesOfDay >= start || minutesOfDay < end;
+}

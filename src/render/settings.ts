@@ -30,6 +30,8 @@ export interface SettingsViewContext {
     pluginLanguage: PluginLanguageSetting;
     reducedMotion: boolean;
     hapticFeedback: boolean;
+    /** T-1421 提醒安静时段（可选：旧桩/旧上下文缺省按关闭处理）。 */
+    reminderQuietHours?: {enabled: boolean; start: string; end: string};
     focusTimerProvider: FocusTimerProvider;
     focusTimerAdapterCount?: number;
     focusTimerAdapterIds?: readonly string[];
@@ -207,6 +209,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sortModeLabel")}</span><small>${t("set.sortModeHint")}</small></span><select data-setting-sort aria-label="${t("set.sortModeLabel")}">${Object.entries(SORT_LABELS).map(([value, label]) => `<option value="${value}" ${ctx.todaySortMode === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.expandCompleted")}</span><small>${t("set.expandCompletedHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-completed ${!ctx.completedCollapsed ? "checked" : ""} /></label>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.weekStrip")}</span><small>${t("set.weekStripHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-weekstrip ${ctx.weekStripVisible ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reminderQuiet")}</span><small>${t("set.reminderQuietHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-setting-quiet ${ctx.reminderQuietHours?.enabled ? "checked" : ""} /></label>
+                    <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.reminderQuietWindow")}</span><small>${t("set.reminderQuietWindowHint")}</small></span><span class="lc-checkin__settings-inline"><input data-setting-quiet-start type="time" value="${ctx.reminderQuietHours?.start || "22:00"}" aria-label="${t("set.reminderQuietStartAria")}" />${t("set.reminderQuietUntil")}<input data-setting-quiet-end type="time" value="${ctx.reminderQuietHours?.end || "07:00"}" aria-label="${t("set.reminderQuietEndAria")}" /></span></label>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetView")}</span><small>${t("set.resetViewHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-view-preferences">${t("set.reset")}</button></div>`,
         },
         {

@@ -22,7 +22,7 @@ assert.match(opsSource, /downloadReportMarkdownFor/, "plugin-ops owns the markdo
 assert.match(prefsSource, /reportSections/, "view preferences persist report sections");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-report-sections-"));
-for (const filename of ["date-keys.ts", "i18n.ts", "view-preferences.ts", "features/note-anchor.ts", "features/summary-resident.ts", "features/health-inbox.ts", "features/review-comparison.ts", "features/report.ts"]) {
+for (const filename of ["date-keys.ts", "i18n.ts", "view-preferences.ts", "features/reminder-preferences.ts", "features/note-anchor.ts", "features/summary-resident.ts", "features/health-inbox.ts", "features/review-comparison.ts", "features/report.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(...filename.split("/")), {

@@ -82,7 +82,7 @@ export interface BindPageNavigationHost {
     projectDrafts: import("../features/project-draft").ProjectDraft[];
     openProjectDraftEditor(draft: import("../features/project-draft").ProjectDraft): void;
     reminderFilter: import("../reminders").ReminderFilter;
-    reminderUserAction(id: string, action: "snooze" | "skip" | "restore"): void;
+    reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void;
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
 }
 
@@ -254,7 +254,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelectorAll<HTMLButtonElement>("[data-reminder-action]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.reminderId || "";
         const action = button.dataset.reminderAction;
-        if (!id || (action !== "snooze" && action !== "skip" && action !== "restore")) return;
+        if (!id || (action !== "snooze" && action !== "skip" && action !== "restore" && action !== "defer")) return;
         host.reminderUserAction(id, action);
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
