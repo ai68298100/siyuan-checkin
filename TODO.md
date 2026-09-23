@@ -89,6 +89,11 @@
   - 接入：今日 at-most 卡片新增里程碑标签（is-milestone，戒断第 N 天 · 下一关 M 天，title 展示已达成级）——cleanDays 复用现有连续无破戒口径（currentStreaks 单一实现）；i18n 3 键中英双语（parity 1622/1622）。
   - 测试：`tests/pace-projection.test.cjs`——backlog 口径（SKIP 排除/证据日期/阈值 50%）、quota 独立与封顶、里程碑阶梯边界（0/1/14/45/400）、破戒历史去重、判别入口分发、确定性、消费守门、纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（99 模块全绿）。
   - 状态：done（2026-09-24 第一切片：事实切片由调用方经 model 算好传入的投影层模式；洞察/渲染块/API getStreaks 同口径接入归 A4/A5 批次）。
+- [x] T-1416 渲染块一键插入预设（R-A4 第一切片，第三轮调研采纳②，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/block-presets.ts`——4 个上下文自洽预设（summary 全部项目汇总/month 月历/heatmap 年度热力图/groups 分组概览，缺省即当前项目集/当前月/当前年，无需用户先填 itemIds）；`blockPresetMarkdown` 生成围栏；`validateBlockPresetRoundtrip` 注入真实解析器做插入前守门（从围栏提取内容镜像真实摄入路径，view 被篡改或解析失败即拒绝插入）。today 视图强制 itemIds 不提供通用预设（避免插入即错误块）。
+  - 接入：命令面板注册 4 个预设命令（langKey：blockPresetSummary/Month/Heatmap/Groups，dist i18n 契约键同步）；宿主 `insertCheckinBlockPreset` 经内核公开 `/api/block/insertBlock` 把预设追加到当前编辑器文档末尾（getCurrentEditor 防御式解析 rootID，拿不到编辑器降级提示；插入成功/失败 toast）。i18n 6 键中英双语（parity 1628/1628）。
+  - 测试：`tests/block-presets.test.cjs`——描述符契约（id/langKey 唯一、dist 契约对齐）、往返一致（真实解析器）、围栏格式、坏预设拒绝、纯度审计、接线守门（index 通道/dist 守门同步），入 `pnpm test` 主链；模块入架构守门无时钟清单（100 模块全绿）。
+  - 状态：done（2026-09-24 第一切片）。真实宿主插入体验（光标落点、protyle 刷新时序）保持 host-pending，可用 e2e 隔离内核环境补充真实内核自动化证据。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

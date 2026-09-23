@@ -61,7 +61,8 @@ for (const filename of ["index.js", "index.css", "plugin.json", "README.md", "LI
 for (const filename of ["zh_CN.json", "en_US.json"]) {
     const i18nPath = path.join(root, "dist", "i18n", filename);
     assert.ok(fs.existsSync(i18nPath), `dist i18n asset missing: ${filename}`);
-    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(i18nPath, "utf8"))).sort(), ["dock.title", "entry.topBar", "openCheckin", "openCheckinTab"].sort(), `dist i18n keys must stay complete: ${filename}`);
+    /* T-1416：新增渲染块一键插入预设命令的 4 个 langKey（命令面板标题）。 */
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(i18nPath, "utf8"))).sort(), ["dock.title", "entry.topBar", "openCheckin", "openCheckinTab", "blockPresetSummary", "blockPresetMonth", "blockPresetHeatmap", "blockPresetGroups"].sort(), `dist i18n keys must stay complete: ${filename}`);
 }
 const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
 for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {

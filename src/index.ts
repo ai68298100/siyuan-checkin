@@ -32,6 +32,7 @@ import type {HistorySortOrder, HistorySourceFilter} from "./features/history-fil
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
+import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/block-presets";
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
@@ -1000,6 +1001,10 @@ export default class CheckinPlugin extends Plugin {
                 callback: executor,
                 ...(entry.globalCallback ? {globalCallback: executor} : {}),
             });
+        }
+        /* T-1416：渲染块一键插入预设——命令面板 4 个预设，插入走内核公开 insertBlock 通道。 */
+        for (const preset of BLOCK_PRESETS) {
+            this.addCommand({langKey: preset.langKey, callback: () => void this.insertCheckinBlockPreset(preset.id)});
         }
 
         this.api = this.createApi();
@@ -2956,6 +2961,25 @@ export default class CheckinPlugin extends Plugin {
     firstSuccessSkipGuidance(): void {
         this.advanceFirstSuccess("skip-guidance");
         this.render();
+    }
+
+    /** T-1416：把预设渲染块追加进当前编辑器文档末尾；拿不到编辑器则降级提示（fail-closed）。 */
+    private async insertCheckinBlockPreset(id: string): Promise<void> {
+        const preset = getBlockPreset(id);
+        if (!preset) return;
+        const editor = (this.app as {getCurrentEditor?: () => {editor?: {protyle?: {block?: {rootID?: string}}}} | undefined} | undefined)?.getCurrentEditor?.();
+        const rootID = editor?.editor?.protyle?.block?.rootID;
+        if (!rootID) {
+            showMessage(t("blockPreset.noEditor"), 2600);
+            return;
+        }
+        try {
+            const response = await fetchSyncPost("/api/block/insertBlock", {data: blockPresetMarkdown(preset), dataType: "markdown", parentID: rootID});
+            if (!response || response.code !== 0) throw new Error(response?.msg || "insert-block-failed");
+            showMessage(t("blockPreset.inserted"), 2200);
+        } catch {
+            showMessage(t("msg.saveFailedShort"), 2600);
+        }
     }
 
     /** T-1421 安静时段判定：由当前时间与偏好窗口决定；只影响呈现强度。 */
