@@ -54,6 +54,15 @@
   - 测试：`tests/date-keys.test.cjs`——校验 16 例、DST 双时区（Asia/Shanghai、America/New_York 含 EDT/EST 边界与同一时刻跨日）、闰日、跨午夜跨年、半开区间方向语义、等价回放（新旧公式逐点一致含 DST 月份）、序列连续性、纯度审计。挂 `pnpm test` 主链。
   - 文档：architecture.md 新增「日期语义契约」节；api-v5.md 补 localDate 契约与统计截止时间条款。
   - 状态：done（2026-09-24。model.ts 内部私有 localCalendarDayNumber 留待后续批次收敛至 date-keys，本批不动 model 核心；reminders.ts 的 snooze 7 天窗口为毫秒时长语义非日期差，明确不在替换范围）。
+- [x] T-1420 今日行动台纯投影（R-A2/R-10.3 第一切片，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/today-dashboard.ts`——事实输入由调用方经 model.ts 单一实现算好（isComplete/getProgress/evaluateQuotaSchedule/跳过事件/at-most 破戒/连续天数/最近漏卡日），投影层只做编排：状态归并（breach/actionable/skipped/done + reasonCode 八种）、三段固定排序（now[破戒置顶]→deferred→done，名称 zh-CN→itemId 平局裁决）、totals（含 completionRate）、nextAction（破戒/待办优先→全部完成转回顾→空日程 undefined）、专注提供方缺失降级（focus-unavailable）、分段截断与 truncated 汇总。
+  - 接入：fragments.renderTodayView 构建投影并经 renderTodayDashboardStrip 渲染只读摘要条（data-today-dashboard：完成进度/跳过数/下一步/专注降级提示），插在周条与保存状态之间；记录、撤销、失败回滚路径不变；优先提醒条目仍由 renderPriorityReminderView 单一路径呈现，行动台只计数。i18n 新增 5 键中英双语（parity 1602/1602），workbench.scss 6 条轻样式（复用既有 token）。
+  - 测试：`tests/today-dashboard.test.cjs`——空态/待处理/完成/SKIP 中性/quota 达标与落后/at-most 干净与破戒置顶/提醒计数/专注三态降级/两次构建深度相等确定性/截断与 total 保留/missedDate 透出/接线与 i18n 结构守门/纯度审计（零 import + 无时钟）。挂 `pnpm test` 主链；模块入架构守门无时钟清单。
+  - 状态：done（2026-09-24。真实思源与 Android 上的行动台观感、焦点与触控保持 host-pending）。
+- [ ] T-1421 提醒注意力增强：安静时段与通知防抖（R-A2 第二切片）
+  - 语义：reminders.ts 增加用户可控安静时段（HH:MM 窗口，窗口内提醒降级为页内呈现不触发通知）与重复通知防抖（同一提醒实例在窗口期内只呈现一次，状态显式存储）；来源解释（每条提醒带 reasonCode）；依赖缺失降级已有基础（focus-unavailable 模式）。
+  - 验收：纯函数 + 偏好归一化 + 设置页开关（双语）+ 跨日窗口（如 22:00–07:00）回放矩阵 + 结构守门；不新增后台常驻、不直接发送系统通知。
+  - 归类 `local-auto`；排在 R-A2 收尾，与 T-1420 的 dashboard 输入对接（attention 段注入 quiet 标志）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

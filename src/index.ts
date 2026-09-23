@@ -2940,6 +2940,7 @@ export default class CheckinPlugin extends Plugin {
             reducedMotion: this.reducedMotion,
             reminderUserActions: this.reminderUserActions,
             priorityReminderExpanded: this.priorityReminderExpanded,
+            focusAvailable: Boolean(this.focusTimerProvider),
         });
     }
 

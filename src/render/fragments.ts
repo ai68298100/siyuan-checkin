@@ -2,6 +2,7 @@
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
 import {daysBetweenHalfOpen} from "../date-keys";
+import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
@@ -43,6 +44,8 @@ export interface TodayViewContext extends TodayItemContext {
     bestStreakValue: number;
     reminderUserActions?: ReminderUserAction[];
     priorityReminderExpanded?: boolean;
+    /** 专注提供方可用性（T-1420 行动台降级提示用）。 */
+    focusAvailable?: boolean;
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -321,6 +324,21 @@ export function renderTodayGroupsView(items: CheckinItem[], date: Date, ctx: Tod
     }).join("");
 }
 
+/** T-1420 今日行动台摘要条：只读 console——呈现完成进度、跳过数、下一步与专注降级提示；
+    记录仍走原卡片路径（撤销/失败回滚不变），条目呈现不复制优先提醒卡（只计数）。 */
+function renderTodayDashboardStrip(dashboard: TodayDashboard, nextItemName: string | undefined): string {
+    if (!dashboard.totals.scheduled) return "";
+    const parts = [`<span class="lc-checkin__console-totals">${t("today.consoleTotals", {done: dashboard.totals.done, scheduled: dashboard.totals.scheduled})}</span>`];
+    if (dashboard.totals.skipped) parts.push(`<span class="lc-checkin__console-skipped">${t("today.consoleSkipped", {count: dashboard.totals.skipped})}</span>`);
+    if (dashboard.nextAction?.type === "record" && nextItemName) {
+        parts.push(`<span class="lc-checkin__console-next">${t("today.consoleNext", {name: escapeHtml(nextItemName)})}</span>`);
+    } else if (dashboard.nextAction?.type === "review") {
+        parts.push(`<span class="lc-checkin__console-next">${t("today.consoleAllDone")}</span>`);
+    }
+    if (!dashboard.focus.available) parts.push(`<span class="lc-checkin__console-focus-warning">${t("today.consoleFocusMissing")}</span>`);
+    return `<section class="lc-checkin__console" data-today-dashboard aria-label="${t("today.consoleTotals", {done: dashboard.totals.done, scheduled: dashboard.totals.scheduled})}">${parts.join("")}</section>`;
+}
+
 export function renderTodayView(ctx: TodayViewContext): string {
     const now = currentCalendarDate();
     const activeItems = ctx.store.items.filter((item) => !item.archived);
@@ -334,6 +352,39 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const completedItems = sortCheckinItems(filteredItems.filter((item) => isComplete(ctx.store, item, now)), ctx.todaySortMode);
     const completed = scheduledItems.filter((item) => isComplete(ctx.store, item, now)).length;
     const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
+    /* T-1420 今日行动台投影：事实经 model 单一实现计算，编排排序委托投影层。 */
+    const dashboard = buildTodayDashboard({
+        today: dateKey(now),
+        items: scheduledItems.map((item) => {
+            const revision = getItemRevisionForDate(item, now);
+            const progress = getProgress(ctx.store, item, now);
+            return {
+                itemId: item.id,
+                name: item.name,
+                icon: item.icon,
+                ...(item.group ? {group: item.group} : {}),
+                completed: isComplete(ctx.store, item, now),
+                skippedToday: getEventsForDay(ctx.store, item.id, now).some((event) => isSkipEvent(event)),
+                progress,
+                target: revision.target,
+                unit: item.unit,
+                ...(item.schedule.type === "quota" && item.schedule.quota ? {quota: {contributed: progress, amount: item.schedule.quota.amount}} : {}),
+                ...(item.direction === "atMost" ? {atMost: {breached: item.kind === "binary" ? progress > 0 : progress > revision.target}} : {}),
+                streak: ctx.currentStreaks.get(item.id),
+            };
+        }),
+        attention: selectPriorityReminders(projectReminderCenter(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [])).map((entry) => ({
+            id: entry.id,
+            title: entry.title,
+            severity: entry.status === "overdue" ? "overdue" as const : "today" as const,
+            daysUntil: entry.daysUntil,
+        })),
+        focus: {available: ctx.focusAvailable === true},
+    });
+    const dashboardStrip = renderTodayDashboardStrip(
+        dashboard,
+        dashboard.nextAction?.itemId ? scheduledItems.find((item) => item.id === dashboard.nextAction?.itemId)?.name : undefined,
+    );
     const weekStrip = Array.from({length: 7}, (_, index) => {
         const day = new Date(now);
         day.setDate(now.getDate() - (6 - index));
@@ -411,6 +462,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 ${focusCandidate ? `<div class="lc-checkin__overview-focus"><span class="lc-checkin__overview-label">${t("today.focusMoment")}</span><strong>${escapeHtml(focusCandidate.name)}</strong><button type="button" class="lc-checkin__text-button" data-overview-focus="${escapeHtml(focusCandidate.id)}">${uiIcon("timer")}${t("item.focus")}</button></div>` : ""}
             </section>
             ${ctx.weekStripVisible ? `<section class="lc-checkin__week-strip" aria-label="${t("today.weekStripAria")}">${weekStrip}</section>` : ""}
+            ${dashboardStrip}
             ${saveStatus}
             ${priorityReminder}
             ${occasionIsToday ? occasionBanner : ""}

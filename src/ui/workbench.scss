@@ -58,6 +58,10 @@
     .lc-checkin__overview-focus > strong { display: block; margin-block: 9px; font-size: 16px; overflow-wrap: anywhere; }
     .lc-checkin__overview-focus button { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 5px 12px; min-height: 34px; border-radius: 999px; background: var(--lc-checkin-accent-soft); color: var(--lc-checkin-accent-text); }
     .lc-checkin__overview-focus svg { width: 16px; height: 16px; }
+    .lc-checkin__console { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 14px; padding: 8px 14px; border-radius: 12px; background: var(--lc-checkin-muted-surface); }
+    .lc-checkin__console-totals { font-size: 13px; font-weight: 600; }
+    .lc-checkin__console-skipped, .lc-checkin__console-next, .lc-checkin__console-focus-warning { font-size: 12px; color: var(--lc-checkin-muted); }
+    .lc-checkin__console-focus-warning { color: var(--lc-checkin-warm-text); }
     .lc-checkin__priority-reminder { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 16px; border: 0; border-radius: 12px; padding: 8px 14px; margin-bottom: 14px; background: var(--lc-checkin-muted-surface); box-shadow: none; }
     .lc-checkin__priority-reminder .lc-checkin__priority-reminder-more { margin: 0; padding: 0; border: 0; }
     .lc-checkin__priority-reminder:has(.lc-checkin__priority-reminder-more[open]) { grid-template-columns: minmax(0, 1fr); }
