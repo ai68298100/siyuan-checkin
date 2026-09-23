@@ -104,6 +104,11 @@
   - 接入：`deleteItemWithRecords` 删除确认经 collectLifecycleFacts+projectLifecycleImpact 注入影响补充说明（外部身份保留/锚点清理/联动解除/恢复点+墓碑保护），i18n 1 键中英双语（parity 1631/1631）。
   - 测试：`tests/lifecycle-projection.test.cjs`——三动作影响/身份保留/空项目边界/批量汇总/事实收集/确定性/接线守门/纯度，入 `pnpm test` 主链；模块入架构守门无时钟清单（102 模块全绿）。
   - 状态：done（2026-09-24 第一切片）。只做预览不执行写操作（写入走 deleteItemsCascade/setItemArchived 既有通道）；真实工作区恢复演练仍为用户验收。A9 后续：归档确认同口径接入与恢复点回放深化。
+- [x] T-1430 本地隐私与控制中心（R-A10 第一切片，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/privacy-scope.ts`——① 导出前敏感字段审计（备注/图片附件计数、幂等身份声明、头像照片由调用方显式传参）；② 来源断开保留规则（断开=停止采集，已落盘事件与幂等身份全部保留，重连经 externalRef 防重复累计；无幂等口径的来源如实声明 none）；③ 控制面汇总（文档写入 diary-report/summary-resident + 外部来源 sireader/siplayer/health 五通道开关与目标聚合，`telemetry: "none"` 零遥测常量声明）。
+  - 接入：① JSON/CSV 导出经 downloadExportFor 审计敏感字段，有内容时 toast 披露（零值不打扰）；② 思阅/思播/健康三个集成开关关闭时 toast 披露保留事件数与幂等身份数（重连不重复累计）。i18n 2 键中英双语（parity 1633/1633）。
+  - 测试：`tests/privacy-scope.test.cjs`——敏感字段计数与空字段/头像显式传参/断开保留与重连口径/控制面汇总与空配置回落/零遥测常量/确定性/接线守门（导出审计+三处断开披露+双语）/纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（103 模块全绿）。
+  - 状态：done（2026-09-24 第一切片）。不新增遥测、不读取第三方私有存储；真实隐私取舍与用户工作区删除确认保持开放。
 - [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。

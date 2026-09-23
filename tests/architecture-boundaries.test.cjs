@@ -81,6 +81,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/block-presets.ts",
     "src/features/import-preview.ts",
     "src/features/lifecycle-projection.ts",
+    "src/features/privacy-scope.ts",
     "src/features/habit-score.ts",
     "src/features/sireader-adapter.ts", // 身份/结算纯函数面
     "src/features/siplayer-adapter.ts",

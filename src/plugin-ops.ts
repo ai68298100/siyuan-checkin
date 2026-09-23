@@ -6,6 +6,7 @@ import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, norma
 import {serializeSuggestionAuditExport} from "./agent-suggestions";
 import {serializeDiagnostics} from "./features/diagnostics";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
+import {auditExportSensitiveFields, hasSensitiveContent} from "./features/privacy-scope";
 import {serializeLoopCheckmarksCsv, serializeLoopHabitsCsv, type LoopImportPlan} from "./features/loop-csv";
 import {buildObsidianExportFiles, obsidianExternalRef, obsidianHabitName, type ObsidianImportPlan} from "./features/obsidian-habits";
 import {currentCalendarDate, captureActionMoment} from "./shared";
@@ -118,10 +119,16 @@ export async function restoreItemFor(host: PluginOpsHost, itemId: string): Promi
     if (restored && expectedItem) showMessage(t("msg.restoredNamed", {name: expectedItem.name}));
 }
 
+/* T-1430 · R-A10：导出前敏感字段审计——备注/图片/头像照片如实披露给用户。 */
 export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv"): void {
     host.lastExportAt = new Date().toISOString();
     void host.persistViewPreferences();
-    const content = format === "json" ? serializeJson(host.cloneStore()) : serializeCsv(host.cloneStore());
+    const cloned = host.cloneStore();
+    const content = format === "json" ? serializeJson(cloned) : serializeCsv(cloned);
+    const audit = auditExportSensitiveFields(cloned);
+    if (hasSensitiveContent(audit)) {
+        showMessage(t("msg.exportSensitiveAudit", {notes: audit.notes, attachments: audit.attachments, avatar: audit.avatarImages}), 3200);
+    }
     void saveGeneratedFile({fileName: `siyuan-checkin-${dateKey(new Date())}.${format}`, content, mime: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
 }
 

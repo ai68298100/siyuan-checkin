@@ -37,6 +37,7 @@ import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuc
 import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
 import {collectLifecycleFacts, projectLifecycleImpact} from "./features/lifecycle-projection";
+import {planSourceDisconnect} from "./features/privacy-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -2394,6 +2395,11 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.sireaderIntegration = {...this.sireaderIntegration, enabled: checked};
+            if (!checked) {
+                /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
+                const disconnectPlan = planSourceDisconnect("sireader", this.store.events);
+                if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思阅", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+            }
             void this.persistViewPreferences();
             this.render();
         });
@@ -2418,6 +2424,11 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.siplayerIntegration = {...this.siplayerIntegration, enabled: checked};
+            if (!checked) {
+                /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
+                const disconnectPlan = planSourceDisconnect("siplayer", this.store.events);
+                if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思播", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+            }
             void this.persistViewPreferences();
             this.render();
         });
@@ -2442,6 +2453,11 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.healthInbox = {...this.healthInbox, enabled: checked};
+            if (!checked) {
+                /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
+                const disconnectPlan = planSourceDisconnect("health", this.store.events);
+                if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "健康", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+            }
             void this.persistViewPreferences();
             this.render();
         });
