@@ -48,6 +48,8 @@ export interface TodayViewContext extends TodayItemContext {
     focusAvailable?: boolean;
     /** T-1421 安静时段生效中：优先提醒条降级为页内安静呈现。 */
     reminderQuiet?: boolean;
+    /** T-1424 用户已跳过新手引导：空态不再显示三步引导。 */
+    firstSuccessSkipped?: boolean;
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -403,7 +405,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
         ? t("today.pendingEmpty")
         : query ? t("today.queryCompleted") : t("today.allDone");
     const date = now.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "long"});
-    const list = !activeItems.length && ctx.store.items.length ? `
+    const list = !activeItems.length && (ctx.store.items.length || ctx.firstSuccessSkipped === true) ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">▱</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyActiveTitle")}</div>
@@ -420,6 +422,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                     <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc")}</small></div></li>
                 </ol>
                 <button class="lc-checkin__text-button" type="button" data-action="add">${t("today.addFirst")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">◷</div>

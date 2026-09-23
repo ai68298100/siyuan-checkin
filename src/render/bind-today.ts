@@ -53,6 +53,8 @@ export interface BindTodayHost {
     openTabPage(): void;
     showEditor(item?: CheckinItem): void;
     revisionFingerprint(item: CheckinItem, date: Date): string;
+    /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
+    firstSuccessSkipGuidance(): void;
     /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
     pulseHaptic(): void;
     /** 打卡后焦点归位（T-114）：记录刚操作的打卡项，重渲染后焦点还原到该卡主按钮。 */
@@ -164,6 +166,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.render();
     });
     root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory());
+    root.querySelector<HTMLElement>("[data-action='skip-onboard']")?.addEventListener("click", () => host.firstSuccessSkipGuidance());
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived());
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();

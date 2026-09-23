@@ -3,6 +3,7 @@ import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 import {normalizeHealthInboxPreference} from "./features/health-inbox";
 import {normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
+import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -80,6 +81,8 @@ export interface CheckinViewPreferences {
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1421 提醒安静时段（默认关）：窗口内优先提醒降级为页内安静呈现，不改变事实。 */
     reminderQuietHours: ReminderQuietHours;
+    /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
+    firstSuccess: FirstSuccessState;
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -123,6 +126,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
+    firstSuccess: {stage: "not-started", skipped: false},
     recentTemplates: [],
 };
 
@@ -265,6 +269,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         siplayerIntegration,
         healthInbox,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),
+        firstSuccess: normalizeFirstSuccessState(source.firstSuccess),
         recentTemplates,
     };
 }

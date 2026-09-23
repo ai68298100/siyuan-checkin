@@ -15,7 +15,7 @@ const transpile = (relative) => {
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
     return target;
 };
-["src/date-keys.ts", "src/i18n.ts", "src/record-step.ts", "src/features/reminder-preferences.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/catalog.ts", "src/features/templates.ts", "src/features/review-comparison.ts", "src/features/report.ts"].forEach(transpile);
+["src/date-keys.ts", "src/i18n.ts", "src/record-step.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/catalog.ts", "src/features/templates.ts", "src/features/review-comparison.ts", "src/features/report.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {buildReviewDeviationNotes} = require(path.join(outputRoot, "src/features/review-comparison.js"));
 // eslint-disable-next-line @typescript-eslint/no-var-requires

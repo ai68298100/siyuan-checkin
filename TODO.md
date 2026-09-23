@@ -74,10 +74,11 @@
   - 接入：index.ts onload 命令注册改为描述符驱动——执行器键与宿主回调映射分离，surface 交集判定 registrable（mobile 前端自然不注册页签入口），行为等价（openCheckin 全端+热键+全局回调；openCheckinTab 仅桌面）；langKey 不变（dist i18n 契约键 release-assets 守门）；孤儿热键常量 QUICK_DIALOG_HOTKEY 随重构移除（值入描述符）。隐藏集管理 UI（surface 级展示开关/恢复路径）待截图门解除后接入，纯函数已备。
   - 测试：`tests/quick-entry-capabilities.test.cjs`——显示/执行/图标/能力四者独立、未知第三方 unverified、图标 fallback、surface 过滤、恢复配置、分区确定性、本插件描述符契约（移动端只注册 openCheckin）、接线守门，入 `pnpm test` 主链；模块入架构守门无时钟清单（96 模块全绿）；entry-capabilities 守门同步描述符驱动断言。
   - 状态：done（2026-09-24。截图视觉改动与实际隐藏管理 UI 仍受「截图齐全 + 明确开始」门控）。
-- [ ] T-1424 新手首次成功路径状态机（R-A12 第二切片，映射 R-10.5 本地可验证部分）
-  - 语义：纯状态机 idle → 项目已建（模板/空白）→ 首次记录完成 → 反馈已展示 → 回顾已访问；skip-guidance/reset 事件；状态入现有偏好存储（可选字段+归一化，默认不激活），旧偏好零迁移。
-  - 验收：状态机纯函数+事件回放确定性、偏好归一化兼容、消费接线（今日空态引导/摘要条次级提示）结构守门、双语 i18n；不自动创建示例数据（重置示例数据为用户显式动作）。
-  - 归类 `local-auto`；真实首次使用反馈保持 host-pending。
+- [x] T-1424 新手首次成功路径状态机（R-A12 第二切片，映射 R-10.5 本地可验证部分，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/first-success.ts`——五阶段旅程（not-started → item-created → recorded → feedback-shown → review-visited）+ 六事件（四前进 + skip-guidance + reset）；单调前进（防御性：记录发生即蕴含项目已建）、skip 粘性（阶段仍随真实行为前进，指标不失真）、reset 唯一回退（用户显式动作，不自动创建示例数据）；normalizeFirstSuccessState 非法回落，旧偏好零迁移。
+  - 接入：偏好字段 `firstSuccess`（缺省 not-started/skipped=false）；宿主四处推进钩子（新建项目保存/首次记录 setRecentRecord/反馈展示/打开回顾），幂等事件零写入（next === current 直接返回）；今日空态三步引导新增「跳过引导」按钮（skipped 粘性后空态回落到归档/新建变体，不再显示引导）。
+  - 测试：`tests/first-success.test.cjs`——完整旅程/单调性/skip 粘性与幂等/reset/归一化兼容/确定性/接线守门（偏好字段、四处钩子、跳过按钮、绑定、双语 i18n）/纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（97 模块全绿）；14 个转译 view-preferences 的加载器同步 first-success。
+  - 状态：done（2026-09-24。真实首次使用反馈保持 host-pending；渐进式展开的进阶 UI 待截图门解除后接状态机消费）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

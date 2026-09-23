@@ -32,6 +32,7 @@ import type {HistorySortOrder, HistorySourceFilter} from "./features/history-fil
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
+import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -350,6 +351,7 @@ export default class CheckinPlugin extends Plugin {
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     private reminderQuietHours: ReminderQuietHours = {...DEFAULT_VIEW_PREFERENCES.reminderQuietHours};
+    private firstSuccessState: FirstSuccessState = normalizeFirstSuccessState(undefined);
     private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     private pendingFocusItemId?: string;
     private pendingLocalItemId?: string;
@@ -1664,6 +1666,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private showReview() {
+        this.advanceFirstSuccess("review-visited");
         showReviewFor(this as unknown as NavigationHost);
     }
 
@@ -2932,6 +2935,19 @@ export default class CheckinPlugin extends Plugin {
         return computeStreaksValue(this.store);
     }
 
+    /** T-1424 首次成功旅程推进：阶段实际变化才落盘（幂等事件零写入）。 */
+    private advanceFirstSuccess(event: "item-created" | "record-done" | "feedback-shown" | "review-visited" | "skip-guidance"): void {
+        const next = transitionFirstSuccess(this.firstSuccessState, event);
+        if (next === this.firstSuccessState) return;
+        this.firstSuccessState = next;
+        void this.persistViewPreferences();
+    }
+
+    firstSuccessSkipGuidance(): void {
+        this.advanceFirstSuccess("skip-guidance");
+        this.render();
+    }
+
     /** T-1421 安静时段判定：由当前时间与偏好窗口决定；只影响呈现强度。 */
     private isReminderQuietNow(): boolean {
         const now = new Date();
@@ -2975,6 +2991,7 @@ export default class CheckinPlugin extends Plugin {
             priorityReminderExpanded: this.priorityReminderExpanded,
             focusAvailable: Boolean(this.focusTimerProvider),
             reminderQuiet: this.isReminderQuietNow(),
+            firstSuccessSkipped: isFirstSuccessSuppressed(this.firstSuccessState),
         });
     }
 
@@ -3662,6 +3679,7 @@ export default class CheckinPlugin extends Plugin {
         /* T-1231：解绑时清除旧锚点块上的本插件属性（尽力而为，不阻断保存）。 */
         const previousAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
+        if (!editingId) this.advanceFirstSuccess("item-created");
         const newAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         if (previousAnchor && (!newAnchor || newAnchor.blockId !== previousAnchor.blockId)) {
             this.suspendedAnchors.delete(`${editingId}:${previousAnchor.blockId}`);
@@ -3957,6 +3975,8 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private setRecentRecord(record: RecentRecord) {
+        this.advanceFirstSuccess("record-done");
+        this.advanceFirstSuccess("feedback-shown");
         this.recentRecord = record;
         if (this.recentRecordTimer !== undefined) window.clearTimeout(this.recentRecordTimer);
         this.recentRecordTimer = window.setTimeout(() => {
@@ -4425,6 +4445,7 @@ export default class CheckinPlugin extends Plugin {
         this.hapticFeedback = preferences.hapticFeedback;
         this.focusTimerProvider = preferences.focusTimerProvider;
         this.reminderQuietHours = normalizeReminderQuietHours(preferences.reminderQuietHours);
+        this.firstSuccessState = normalizeFirstSuccessState(preferences.firstSuccess);
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
@@ -4511,6 +4532,7 @@ export default class CheckinPlugin extends Plugin {
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             reminderQuietHours: this.reminderQuietHours,
+            firstSuccess: this.firstSuccessState,
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };

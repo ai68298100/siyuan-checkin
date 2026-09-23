@@ -75,6 +75,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/today-dashboard.ts",
     "src/features/reminder-preferences.ts",
     "src/features/quick-entry-capabilities.ts",
+    "src/features/first-success.ts",
     "src/features/habit-score.ts",
     "src/features/sireader-adapter.ts", // 身份/结算纯函数面
     "src/features/siplayer-adapter.ts",
