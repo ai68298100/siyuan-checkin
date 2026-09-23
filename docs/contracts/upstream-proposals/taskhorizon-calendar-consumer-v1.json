@@ -1,0 +1,35 @@
+{
+  "status": "draft",
+  "proposal": "taskhorizon-calendar-consumer",
+  "version": 1,
+  "updatedAt": "2026-09-23",
+  "direction": "provider-side API is stable and shipped; this draft specifies the consumer layer Task Horizon would add",
+  "targetPlugin": "Task Horizon",
+  "consumes": {
+    "provider": "siyuan-checkin",
+    "protocol": "siyuan-checkin",
+    "minApiVersion": 5,
+    "capabilities": ["calendar.read"],
+    "method": "getCalendarProjection",
+    "input": {"startDate": "YYYY-MM-DD", "endDateExclusive": "YYYY-MM-DD"},
+    "bounds": {"maxDays": 366, "maxItems": 200, "truncatedFlag": true},
+    "statuses": ["complete", "pending", "logged", "skipped", "at-most-safe", "at-most-breach"],
+    "serverSideFilter": ["items with taskHorizonCalendarVisible === false", "archived items"],
+    "projectionPrivacy": "pure data snapshot: no notes, no attachments, no externalRef"
+  },
+  "consumerRules": [
+    "capability negotiation on protocol/version>=5/calendar.read before enabling the layer",
+    "timeout + AbortSignal + single-flight on every query (dockTomato queryFocus discipline)",
+    "refresh only on checkin:event-recorded, checkin:analytics-updated, checkin:item-archived, checkin:item-updated",
+    "degrade to hidden layer on missing plugin, missing capability, timeout or error; auto-refresh on recovery",
+    "legacy v4-only consumers must not surface hidden items from stale caches: keep legacy aggregate or hide the fine-grained layer",
+    "display-only: never writes task state back from the projection; task completion write-back stays on recordEvent with taskhorizon:<blockId>:<localDate>, decoupled from the visibility switch"
+  ],
+  "acceptance": [
+    "dual-side contract fixtures",
+    "desktop tab/dock, separate window, Android",
+    "visibility toggle hides/restores immediately",
+    "hidden items absent from every legacy consumption path",
+    "Task Horizon missing/reload/upgrade leaves siyuan-checkin unaffected"
+  ]
+}

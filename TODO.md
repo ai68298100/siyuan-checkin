@@ -90,12 +90,13 @@
 
 联动不能只靠小驴打卡侧的适配器猜测对方内部行为。对于思阅、思播、Task Horizon 等合作插件缺失的最小公开能力，先形成版本化、可探测、可测试、可降级的公开契约，再视维护入口准备 issue/PR；上游未合并、未发布或未通过真实思源宿主验收前，本地 fallback 只能作为 opt-in 实验/仅观察路径，不能冒充稳定契约或默认自动写入。详细原则见 [思阅 / 思播与小驴打卡联动可行性研究](docs/roadmap-cross-plugin-study-2026-09.md) 和 [Task Horizon 日历可见性规划](docs/roadmap-task-horizon-calendar-visibility-2026-09.md)。
 
-- [ ] **T-1395 合作插件公开 API 协同与 PR 双轨保障**
+- [x] **T-1395 合作插件公开 API 协同与 PR 双轨保障**
   - 范围：盘点每个联动方缺失的最小公开能力；优先设计能力发现、版本、事件/查询语义、隐私边界和旧版 fallback；为有开源维护入口的插件准备 issue/PR 方案、patch 草案、contract fixture 和最小示例，但不未经用户授权提交外部仓库。
   - 思阅：在小驴侧生命周期计时 fallback 之外，准备公开阅读生命周期/有效时长结算 API 提案，冻结 focus、blur、窗口可见性、切页签、移动端关闭、跨日和累计口径；不要求对方暴露私有统计文件。
   - 思播：在 controller 轮询实验之外，优先准备公开 `play`/`pause`/`ended`/`progress` 或有效播放时长 API 提案，明确 seek、循环、变速、暂停和切集不能把 `currentTime` 差值直接当观看时长。
   - Task Horizon：若消费端缺少 `calendar.read`、投影刷新或能力降级所需公开接口，准备对方消费端 API/bridge PR 方案；先用双方 contract fixture 验证，合并发布并通过真实宿主验收后才升级为稳定主路径。
   - 双轨准入：上游 API 合并不等于可立即发布；必须同时具备契约文档、版本/能力发现、单元与 contract test、最小示例、桌面/移动/多窗口/重载验收、隐私说明和兼容旧版本的 fallback。上游 API 与本地 fallback 并存时指定唯一 canonical source，并以 `source + externalRef` 幂等，禁止同一指标双重累计。
+  - 状态：done（本地草案部分，2026-09-23。`docs/upstream-api-proposals-2026-09.md` 三份提案正文（思阅生命周期/结算 API、思播播放事件/有效时长 API、Task Horizon 日历投影消费层）+ 三份 draft 夹具 `docs/contracts/upstream-proposals/{sireader-lifecycle,siplayer-playback,taskhorizon-calendar-consumer}-v1.json` + calendar.read 最小消费示例；守门 `tests/upstream-proposals.test.cjs` 校验夹具 draft 状态/结构、文档↔夹具互相引用、双轨纪律与隐私红线成文、夹具引用的前缀（EXTERNAL_REF_PREFIX_REGISTRY）/能力（calendar.read since 5）/刷新事件/投影六态/隐藏过滤与真实代码一致——草案只能引用事实不可虚构契约；接入 test:ui 与 test:ecosystem。**外部 issue/PR 一律未提交，等用户逐次授权**；canonical source 切换遵循「合并→发布→真实宿主验收」三关。）
 
 ## 思阅 / 思播外部时长联动研究与后续计划（2026-09-22；研究完成，功能未开工；2026-09-22 用户指示提升为来源统筹框架）
 

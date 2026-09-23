@@ -1692,3 +1692,6 @@ T-1301 摘要回填后全链 exit 0。
 继续验证: `pnpm run test:extended`、`pnpm run test:ecosystem`、`pnpm run test:perf` 全部通过；扩展链覆盖 146 个测试文件、CSS hygiene 585 类零死类、100k 索引/事务/渲染基线，生态链覆盖 API v5、Task Horizon、Dock Tomato、Obsidian，性能实测 10k 全渲染 31ms、100k 批处理 12.4ms。
 
 2026-09-22 外部插件联动规划补充（T-1395/D-255）：将思阅、思播、Task Horizon 等合作方的缺失公开能力纳入“本地安全 fallback + 上游公开 API issue/PR”双轨。新增 T-1395，要求能力发现/版本、事件或查询语义、隐私边界、contract fixture、文档示例、旧版降级和桌面/移动/多窗口/重载验收；上游 API 合并、发布、真实宿主验证前不把 fallback 升级为默认稳定路径。两条路径必须指定唯一 canonical source，并以 `source + externalRef` 幂等，禁止同一指标重复累计。本轮只更新计划、路线、决策和阻塞记录，未修改运行代码、未创建/提交/push 任何外部 PR。
+
+2026-09-23 T-1395 上游公开 API 协同（本地草案部分）:docs/upstream-api-proposals-2026-09.md 三份提案——思阅（window.sireader 集成描述+4 生命周期事件 payload 冻结+可选 getSessionFocus 结算查询;有效时长=焦点+可见墙上时间）、思播（siplayer-integration 能力发现+play/pause/ended/progress 事件+可选 getEffectivePlayback;红线=currentTime 差值≠观看时长）、Task Horizon（方向反转:我方 calendar.read 已稳定,提案对方消费层——协商/超时/AbortSignal/单飞/四事件刷新白名单/降级隐藏/legacy 不误显示/只读解耦）;三份 draft 夹具 docs/contracts/upstream-proposals/*-v1.json;守门 tests/upstream-proposals.test.cjs 强制夹具 draft 状态、文档↔夹具↔真实代码三方同步（前缀注册表、calendar.read since 5、刷新事件、投影六态与隐藏过滤）;接入 test:ui 与 test:ecosystem。D-255 双轨纪律成文:草案≠契约,合并→发布→真实宿主验收三关前 fallback 不升级,唯一 canonical source,externalRef 幂等禁双计。
+验证:test:ecosystem 全链（含新守门）、test-suite-coverage 156 文件、stability-9_8c 通过。外部 issue/PR 零提交,等用户授权。运行代码零改动（纯文档+夹具+守门）。
