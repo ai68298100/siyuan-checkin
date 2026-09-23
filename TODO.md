@@ -99,6 +99,10 @@
   - 接入：Loop 与 Obsidian 两个导入处理器在 window.confirm 前构建统一预览，确认文案追加重名合并警告与语义损耗计数；不再只依赖应用后 duplicates 事后发现。
   - 测试：`tests/import-preview.test.cjs`——Loop 损耗词表与跳过条目/Obsidian 名称派生与颜色 maxGap 损耗/重名冲突/汇总与确定性/接线守门/纯度（运行时零导入），入 `pnpm test` 主链；模块入架构守门无时钟清单（101 模块全绿）。
   - 状态：done（2026-09-24 第一切片）。A4 后续：范围导出与诊断包范围化、部分失败/回滚的预览深化，等真实使用反馈排批。
+- [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
+  - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
+  - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。
+  - 状态：done（2026-09-24 第一切片）。真实 Task Horizon 联调、上游 issue/PR 与双向现场验证仍归 external/host-pending；不把 mock 结果写成真实联调完成。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

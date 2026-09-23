@@ -35,6 +35,9 @@
         const recordInFlight = new Map();
         let retryInFlight;
         const refreshInFlight = new Map();
+        let projectionMode = "summary-fallback";
+        const projectionCache = new Map();
+        const projectionInFlight = new Map();
 
         const reportError = (phase, error) => {
             if (typeof options.onError !== "function") return;
@@ -74,7 +77,7 @@
 
         const start = () => {
             if (stopped) return Promise.resolve({ready: false, reason: "stopped"});
-            if (started) return Promise.resolve({ready: true, itemId: targetItemId});
+            if (started) return Promise.resolve({ready: true, itemId: targetItemId, projectionMode});
             if (startInFlight) return startInFlight;
             const run = (async () => {
                 if (!checkin || typeof checkin.whenReady !== "function") return {ready: false, reason: "unavailable"};
@@ -90,6 +93,13 @@
                 try { ready = await checkin.whenReady(); } catch (error) { reportError("ready", error); return {ready: false, reason: "ready-error"}; }
                 if (stopped) return {ready: false, reason: "stopped"};
                 if (!ready) return {ready: false, reason: "not-ready"};
+                /* T-1428（R-40.2）：calendar.read 能力发现——v5 宿主走投影，旧 v4 宿主
+                   显式降级 summary-fallback（旧消费者不会因缺少新能力而失效）。 */
+                try {
+                    projectionMode = typeof checkin.hasCapability === "function"
+                        && checkin.hasCapability("calendar.read")
+                        && typeof checkin.getCalendarProjection === "function" ? "calendar.read" : "summary-fallback";
+                } catch (error) { reportError("capability", error); projectionMode = "summary-fallback"; }
                 let capabilities;
                 try {
                     capabilities = typeof checkin.hasCapability === "function"
@@ -123,6 +133,7 @@
                         unsubscribe = checkin.subscribe((event) => {
                             try {
                                 if (event && REFRESH_EVENTS.has(event.type)) void refresh().catch((error) => reportError("refresh", error));
+                            projectionCache.clear();
                             } catch (error) {
                                 reportError("event", error);
                             }
@@ -144,7 +155,7 @@
                     return {ready: false, reason: "stopped"};
                 }
                 started = true;
-                return {ready: true, itemId: targetItemId};
+                return {ready: true, itemId: targetItemId, projectionMode};
             })();
             let startPromise;
             startInFlight = startPromise = run.finally(() => {
@@ -214,13 +225,69 @@
 
         const getPendingCompletions = () => [...pending.values()].map((payload) => ({...payload}));
 
+        /* T-1428（R-40.2）：calendar.read 投影消费——单飞合流 + 事件失效缓存 +
+           超时/Abort 守卫。v4 宿主（能力缺失）显式拒绝并给出 reason，不猜测新字段。 */
+        const getProjection = (range = {}, callOptions = {}) => {
+            if (stopped) return Promise.resolve({abandoned: true, reason: "stopped"});
+            if (projectionMode !== "calendar.read" || typeof checkin.getCalendarProjection !== "function") {
+                return Promise.resolve({abandoned: true, reason: "capability-missing"});
+            }
+            if (callOptions.signal && callOptions.signal.aborted) {
+                return Promise.resolve({abandoned: true, reason: "aborted"});
+            }
+            const exclusiveEnd = (() => {
+                if (typeof range.endDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(range.endDate)) return undefined;
+                const day = new Date(`${range.endDate}T00:00:00Z`);
+                if (Number.isNaN(day.valueOf())) return undefined;
+                day.setUTCDate(day.getUTCDate() + 1);
+                return day.toISOString().slice(0, 10);
+            })();
+            const key = JSON.stringify([range.startDate, exclusiveEnd, range.itemIds || null]);
+            const cached = projectionCache.get(key);
+            if (cached) return Promise.resolve({data: cached});
+            const existing = projectionInFlight.get(key);
+            if (existing) return existing;
+            const timeoutMs = Number.isFinite(options.projectionTimeoutMs) ? options.projectionTimeoutMs : undefined;
+            const run = (async () => {
+                try {
+                    const data = await Promise.race([
+                        Promise.resolve(checkin.getCalendarProjection({startDate: range.startDate, endDateExclusive: exclusiveEnd})),
+                        ...(timeoutMs !== undefined
+                            ? [new Promise((resolve) => { const timer = setTimeout(() => resolve({abandoned: true, reason: "timeout"}), timeoutMs); if (typeof timer.unref === "function") timer.unref(); })]
+                            : []),
+                        ...(callOptions.signal
+                            ? [new Promise((resolve) => { callOptions.signal.addEventListener("abort", () => resolve({abandoned: true, reason: "aborted"}), {once: true}); if (callOptions.signal.aborted) resolve({abandoned: true, reason: "aborted"}); })]
+                            : []),
+                    ]);
+                    if (data && data.abandoned) return data;
+                    if (stopped) return undefined;
+                    projectionCache.set(key, data);
+                    if (projectionCache.size > 16) projectionCache.delete(projectionCache.keys().next().value);
+                    return {data};
+                } catch (error) {
+                    reportError("projection", error);
+                    return {abandoned: true, reason: "error", error: String(error instanceof Error ? error.message : error)};
+                }
+            })();
+            let projectionPromise;
+            projectionPromise = run.finally(() => {
+                if (projectionInFlight.get(key) === projectionPromise) projectionInFlight.delete(key);
+            });
+            projectionInFlight.set(key, projectionPromise);
+            return projectionPromise;
+        };
+
+        const getStatus = () => ({stopped, projectionMode, projectionCacheSize: projectionCache.size, pending: pending.size});
+
         const stop = () => {
             stopped = true;
             started = false;
             cleanupSubscription();
+            projectionCache.clear();
+            projectionInFlight.clear();
         };
 
-        return {start, refresh, recordTaskCompletion, retryPending, getPendingCompletions, stop};
+        return {start, refresh, getProjection, getStatus, recordTaskCompletion, retryPending, getPendingCompletions, stop};
     }
 
     return {createTaskHorizonBridge};
