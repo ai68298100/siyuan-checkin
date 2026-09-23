@@ -35,6 +35,7 @@ import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} fro
 import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/block-presets";
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
+import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -2756,7 +2757,10 @@ export default class CheckinPlugin extends Plugin {
                 if (!checkmarksCsv && !habitsCsv) { showMessage(t("msg.loopBadHeader")); return; }
                 const plan = buildLoopImportPlan(habitsCsv, checkmarksCsv || "");
                 if (!plan.habits.length) { showMessage(t("msg.loopNoItems")); return; }
-                if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}))) { input.value = ""; return; }
+                /* T-1427 · R-30.4：应用前统一预览——重名合并与语义损耗先行声明。 */
+                const loopPreview = summarizeImportPreview(buildLoopImportPreview(plan, this.store.items.filter((item) => !item.archived).map((item) => item.name)));
+                const loopWarn = (loopPreview.conflictCount ? t("msg.importConflictsWarn", {n: loopPreview.conflictCount}) : "") + (loopPreview.lossyCount ? t("msg.importLossyNote", {n: loopPreview.lossyCount}) : "");
+                if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}) + loopWarn)) { input.value = ""; return; }
                 const report = this.importLoopPlan(plan);
                 await this.persist();
                 showMessage(t("msg.loopDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
@@ -2788,7 +2792,10 @@ export default class CheckinPlugin extends Plugin {
                 }
                 if (!habits.length) { showMessage(t("msg.obsidianNoItems")); return; }
                 const plan = buildObsidianImportPlan(habits);
-                if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}))) { input.value = ""; return; }
+                /* T-1427 · R-30.4：应用前统一预览——重名合并与语义损耗先行声明。 */
+                const obsidianPreview = summarizeImportPreview(buildObsidianImportPreview(plan, this.store.items.filter((item) => !item.archived).map((item) => item.name)));
+                const obsidianWarn = (obsidianPreview.conflictCount ? t("msg.importConflictsWarn", {n: obsidianPreview.conflictCount}) : "") + (obsidianPreview.lossyCount ? t("msg.importLossyNote", {n: obsidianPreview.lossyCount}) : "");
+                if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}) + obsidianWarn)) { input.value = ""; return; }
                 const report = importObsidianHabitsInto(this.store, plan);
                 await this.persist();
                 showMessage(t("msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));

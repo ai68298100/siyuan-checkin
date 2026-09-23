@@ -94,6 +94,11 @@
   - 接入：命令面板注册 4 个预设命令（langKey：blockPresetSummary/Month/Heatmap/Groups，dist i18n 契约键同步）；宿主 `insertCheckinBlockPreset` 经内核公开 `/api/block/insertBlock` 把预设追加到当前编辑器文档末尾（getCurrentEditor 防御式解析 rootID，拿不到编辑器降级提示；插入成功/失败 toast）。i18n 6 键中英双语（parity 1628/1628）。
   - 测试：`tests/block-presets.test.cjs`——描述符契约（id/langKey 唯一、dist 契约对齐）、往返一致（真实解析器）、围栏格式、坏预设拒绝、纯度审计、接线守门（index 通道/dist 守门同步），入 `pnpm test` 主链；模块入架构守门无时钟清单（100 模块全绿）。
   - 状态：done（2026-09-24 第一切片）。真实宿主插入体验（光标落点、protyle 刷新时序）保持 host-pending，可用 e2e 隔离内核环境补充真实内核自动化证据。
+- [x] T-1427 导入预览统一模型（R-A4 第二切片，映射 R-30.4，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/import-preview.ts`（plan 类型 type-only 导入，运行时零依赖）——把 LoopImportPlan/ObsidianImportPlan 统一映射为 ImportPreview：逐项可迁移记录数、语义损耗词表（v1 冻结：schedule-degraded/unmappable-frequency/unknown-cells/archived-flag/color/max-gap）、现有项目重名冲突（应用时合并写入既有项目的预期先行声明）、身份口径如实声明（Loop=项目+日期+值内容匹配；Obsidian=obsidian21 externalRef 幂等）。
+  - 接入：Loop 与 Obsidian 两个导入处理器在 window.confirm 前构建统一预览，确认文案追加重名合并警告与语义损耗计数；不再只依赖应用后 duplicates 事后发现。
+  - 测试：`tests/import-preview.test.cjs`——Loop 损耗词表与跳过条目/Obsidian 名称派生与颜色 maxGap 损耗/重名冲突/汇总与确定性/接线守门/纯度（运行时零导入），入 `pnpm test` 主链；模块入架构守门无时钟清单（101 模块全绿）。
+  - 状态：done（2026-09-24 第一切片）。A4 后续：范围导出与诊断包范围化、部分失败/回滚的预览深化，等真实使用反馈排批。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 
