@@ -3,6 +3,7 @@
 import {t, getPluginLocale} from "../i18n";
 import {daysBetweenHalfOpen} from "../date-keys";
 import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
+import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
@@ -139,6 +140,8 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     /* T-1239：at-most 戒除卡——破戒状态决定按钮语义；无破戒即完成（进已完成区）。 */
     const atMost = item.direction === "atMost";
     const lapseExists = atMost ? getEventsForDay(ctx.store, item.id, date).some((ev) => !isSkipEvent(ev)) : false;
+    /* T-1415 戒断里程碑：at-most 卡展示当前戒断天数与最近达成级（口径=现有连续无破戒）。 */
+    const abstinence = atMost ? abstinenceMilestones(ctx.currentStreaks.get(item.id) || 0) : undefined;
     const canRecordDetails = !isBinary || (atMost ? !lapseExists : !complete);
     const recordLabel = atMost
         ? (lapseExists ? t("item.cancelLapse") : t("item.recordLapse"))
@@ -163,6 +166,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                         : `<button class="lc-checkin__streak-badge" type="button" data-streak-insights="${item.id}" title="${t("item.insightsTitle")}">🔥 ${ctx.currentStreaks.get(item.id)}</button>` : ""}
                     ${skipToday ? `<span class="lc-checkin__item-tag is-skip-tag">${t("today.skipBadge")}</span>` : ""}
                     ${atMost && !lapseExists ? `<span class="lc-checkin__item-tag is-avoided">${t("today.avoided")}</span>` : ""}
+                    ${abstinence && abstinence.cleanDays >= 1 ? `<span class="lc-checkin__item-tag is-milestone" title="${escapeHtml(abstinence.achieved > 0 ? t("item.milestoneTitle", {achieved: abstinence.achieved, next: abstinence.next ?? 0}) : t("today.abstinenceNext", {n: abstinence.next ?? 0}))}">${t("today.abstinenceDay", {n: abstinence.cleanDays})}${abstinence.next ? ` · ${t("today.abstinenceNext", {n: abstinence.next})}` : ""}</span>` : ""}
                     ${priority === "high" ? `<span class="lc-checkin__item-tag is-high">${t("priority.high")}</span>` : ""}
                     ${timeSlot !== "any" ? `<span class="lc-checkin__item-tag">${t(TIME_SLOT_LABELS[timeSlot])}</span>` : ""}
                     ${completionSource === "tomato" ? `<span class="lc-checkin__item-tag is-tomato">${item.tomatoMode === "sessions" ? t("item.tomatoSessions") : t("item.tomatoMinutes")}</span>` : ""}

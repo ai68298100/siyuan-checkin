@@ -84,6 +84,11 @@
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 viewScope 描述——报告头部新增「统计范围」行（范围/过滤器数/缺失条件/截断标记），随既有来源筛选行一起显式声明口径；index 调用点构建 ViewScope 并以当前 store 解析（knownItemIds/knownGroups/knownSources 注入）。i18n 6 键中英双语（parity 1619/1619）。
   - 测试：`tests/view-scope.test.cjs`——归一化 fail-closed/钳制截断/相对日期跨年解析/缺失条件/描述词元/消费守门/纯度（运行时依赖仅 date-keys），入 `pnpm test` 主链；模块入架构守门无时钟清单（98 模块全绿）；diary-report 导出路径守门同步含 viewScope。
   - 状态：done（2026-09-24 第一切片）。A8 后续切片：命名保存视图（多视图存储+选择器 UI）与范围导出，等真实使用反馈或用户点单后排批。
+- [x] T-1415 戒断里程碑投影 + T-1426 节奏/恢复投影 pace-projection（R-A3 第一切片，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/pace-projection.ts`——三套口径独立（R-20.1 v1 冻结）：① 普通 at-least `backlogRate`（未完成已到期有效排期/已到期有效排期，SKIP 日不算机会不算失败，证据日期=漏掉的排期日升序回放，≥50% 判积压）；② quota 独立输出贡献/目标/进度（封顶 100，零目标无除零）；③ at-most 恢复状态（in-recovery/lapsed）+ 破戒日历史（升序去重可回放）+ **戒断里程碑阶梯**（1/3/7/14/30/60/90/180/365，输出最近达成级/下一级/进度）。
+  - 接入：今日 at-most 卡片新增里程碑标签（is-milestone，戒断第 N 天 · 下一关 M 天，title 展示已达成级）——cleanDays 复用现有连续无破戒口径（currentStreaks 单一实现）；i18n 3 键中英双语（parity 1622/1622）。
+  - 测试：`tests/pace-projection.test.cjs`——backlog 口径（SKIP 排除/证据日期/阈值 50%）、quota 独立与封顶、里程碑阶梯边界（0/1/14/45/400）、破戒历史去重、判别入口分发、确定性、消费守门、纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（99 模块全绿）。
+  - 状态：done（2026-09-24 第一切片：事实切片由调用方经 model 算好传入的投影层模式；洞察/渲染块/API getStreaks 同口径接入归 A4/A5 批次）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 
