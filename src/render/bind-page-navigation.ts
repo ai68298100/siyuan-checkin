@@ -78,6 +78,12 @@ export interface BindPageNavigationHost {
     reportSections: ReportSectionToggles;
     /** T-1360 报告来源筛选："" = 全部来源。 */
     reportSource: string;
+    /** T-1432 · R-A8 命名保存视图。 */
+    savedViews: Array<{id: string; name: string}>;
+    activeSavedViewId?: string;
+    applySavedView(id: string): void;
+    saveCurrentView(name: string): void;
+    deleteSavedView(id: string): void;
     /** T-1359 智能体项目草案与编辑器检查流。 */
     projectDrafts: import("../features/project-draft").ProjectDraft[];
     openProjectDraftEditor(draft: import("../features/project-draft").ProjectDraft): void;
@@ -914,6 +920,18 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const value = (event.currentTarget as HTMLSelectElement).value;
         host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : "";
         void host.persistViewPreferences();
+    });
+    /* T-1432 · R-A8：命名保存视图——应用/保存/删除。 */
+    root.querySelector<HTMLSelectElement>("[data-saved-view]")?.addEventListener("change", (event) => {
+        host.applySavedView((event.currentTarget as HTMLSelectElement).value);
+    });
+    root.querySelector<HTMLElement>("[data-action='save-saved-view']")?.addEventListener("click", () => {
+        const name = window.prompt(t("review.savedViewSavePrompt"), "");
+        if (name && name.trim()) host.saveCurrentView(name);
+    });
+    root.querySelector<HTMLElement>("[data-action='delete-saved-view']")?.addEventListener("click", () => {
+        const id = root.querySelector<HTMLSelectElement>("[data-saved-view]")?.value || "";
+        if (id) host.deleteSavedView(id);
     });
     /* T-1343：批量导出——顺序触发 JSON、CSV 与 Markdown 报告，全部走既有安全导出通道。 */
     root.querySelector<HTMLElement>("[data-action='export-all']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, async () => {

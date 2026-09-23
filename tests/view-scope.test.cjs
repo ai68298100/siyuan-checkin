@@ -102,6 +102,25 @@ for (const key of ["report.scopeLabel", "report.scopeRelativeDays", "report.scop
     assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
 
+/* —— 7. 命名保存视图接线（R-A8 第二切片）：偏好/应用/保存/删除/选择器/双语 —— */
+const viewPrefSource = fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8");
+assert.match(viewPrefSource, /savedViews: Array<\{id: string; name: string; scope: ViewScopeV1\}>;/, "偏好接口必须有命名保存视图字段");
+assert.match(viewPrefSource, /savedViews: \(Array\.isArray\(source\.savedViews\)/, "保存视图必须经归一化（上限 10 + scope fail-closed）");
+assert.match(indexSource, /applySavedView\(id: string\): void/, "宿主必须实现应用保存视图");
+assert.match(indexSource, /saveCurrentView\(rawName: string\): void/, "宿主必须实现保存当前视图");
+assert.match(indexSource, /deleteSavedView\(id: string\): void/, "宿主必须实现删除保存视图");
+assert.match(indexSource, /this\.savedViews\.length >= 10/, "保存上限 10 必须有界");
+const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+assert.match(reviewSource, /data-saved-view/, "回顾页必须有保存视图选择器");
+assert.match(reviewSource, /data-action="save-saved-view"/, "必须提供保存当前为视图入口");
+assert.match(reviewSource, /data-action="delete-saved-view"/, "必须提供删除视图入口");
+const navBindSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
+assert.match(navBindSource, /data-saved-view/, "选择器必须绑定应用方法");
+for (const key of ["review.savedViewLabel", "review.savedViewDefault", "review.savedViewSave", "review.savedViewSavePrompt", "review.savedViewDelete", "msg.savedViewSaved", "msg.savedViewLimit"]) {
+    const occurrences = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8").split(`"${key}"`).length - 1;
+    assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+
 /* —— 7. 纯度：仅依赖 date-keys，无时钟读取 —— */
 const moduleSource = fs.readFileSync(path.join(root, "src", "features", "view-scope.ts"), "utf8");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");

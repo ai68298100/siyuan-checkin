@@ -59,6 +59,7 @@ const healthInboxModule = loadTypeScript("src/features/health-inbox.ts", {}, {
 });
 const reminderPreferencesModule = loadTypeScript("src/features/reminder-preferences.ts", {}, {});
 const firstSuccessModule = loadTypeScript("src/features/first-success.ts", {}, {});
+const viewScopeModule = loadTypeScript("src/features/view-scope.ts", {}, {"../date-keys": {addDays: (key) => key}});
 const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/note-anchor": {
         // T-1352：与 src/features/note-anchor.ts 同规格的块 ID 校验桩（URL 安全 10~64 位）。
@@ -68,6 +69,7 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/health-inbox": healthInboxModule,
     "./features/reminder-preferences": reminderPreferencesModule,
     "./features/first-success": firstSuccessModule,
+    "./features/view-scope": viewScopeModule,
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";

@@ -4,6 +4,7 @@ import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 import {normalizeHealthInboxPreference} from "./features/health-inbox";
 import {normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
+import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -83,6 +84,8 @@ export interface CheckinViewPreferences {
     reminderQuietHours: ReminderQuietHours;
     /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
     firstSuccess: FirstSuccessState;
+    /** T-1432 · R-A8 命名保存视图：只存查询偏好（相对天数范围+来源），上限 10。 */
+    savedViews: Array<{id: string; name: string; scope: ViewScopeV1}>;
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
 }
@@ -127,6 +130,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
     firstSuccess: {stage: "not-started", skipped: false},
+    savedViews: [],
     recentTemplates: [],
 };
 
@@ -270,6 +274,15 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         healthInbox,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),
         firstSuccess: normalizeFirstSuccessState(source.firstSuccess),
+        /* T-1432 · R-A8：命名保存视图——上限 10，非法条目丢弃，scope 经 normalizeViewScope fail-closed。 */
+        savedViews: (Array.isArray(source.savedViews) ? source.savedViews : []).slice(0, 10).flatMap((entry) => {
+            if (!entry || typeof entry !== "object") return [];
+            const candidate = entry as Record<string, unknown>;
+            const id = typeof candidate.id === "string" && candidate.id.trim() ? candidate.id.trim().slice(0, 64) : "";
+            const name = typeof candidate.name === "string" && candidate.name.trim() ? candidate.name.trim().slice(0, 60) : "";
+            if (!id || !name) return [];
+            return [{id, name, scope: normalizeViewScope(candidate.scope).scope}];
+        }),
         recentTemplates,
     };
 }

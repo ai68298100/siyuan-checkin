@@ -31,10 +31,11 @@ import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSumm
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
+import {addDays, daysBetweenHalfOpen} from "./date-keys";
 import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
 import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/block-presets";
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
-import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
+import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
 import {collectLifecycleFacts, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
@@ -356,6 +357,8 @@ export default class CheckinPlugin extends Plugin {
     private reducedMotion = DEFAULT_VIEW_PREFERENCES.reducedMotion;
     private hapticFeedback = DEFAULT_VIEW_PREFERENCES.hapticFeedback;
     private reminderQuietHours: ReminderQuietHours = {...DEFAULT_VIEW_PREFERENCES.reminderQuietHours};
+    savedViews: Array<{id: string; name: string; scope: ViewScopeV1}> = [];
+    activeSavedViewId?: string;
     private firstSuccessState: FirstSuccessState = normalizeFirstSuccessState(undefined);
     private focusTimerProvider: FocusTimerProvider = DEFAULT_VIEW_PREFERENCES.focusTimerProvider;
     private pendingFocusItemId?: string;
@@ -2987,6 +2990,58 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
+    /** T-1432 · R-A8：应用命名保存视图——相对天数解析为显式区间，来源随视图切换。 */
+    applySavedView(id: string): void {
+        const view = this.savedViews.find((entry) => entry.id === id);
+        if (!id || !view) {
+            this.summaryCustomRange = undefined;
+            this.reportSource = "";
+            void this.persistViewPreferences();
+            this.render();
+            return;
+        }
+        this.activeSavedViewId = view.id;
+        if (view.scope.range.kind === "relative-days") {
+            const today = dateKey(new Date());
+            const start = addDays(today, -(view.scope.range.days - 1));
+            this.summaryCustomRange = start ? {startDate: start, endDate: today} : undefined;
+        } else {
+            this.summaryCustomRange = undefined;
+        }
+        this.reportSource = view.scope.sources[0] || "";
+        void this.persistViewPreferences();
+        this.render();
+    }
+
+    saveCurrentView(rawName: string): void {
+        const name = rawName.trim().slice(0, 60);
+        if (!name) return;
+        if (this.savedViews.length >= 10) {
+            showMessage(t("msg.savedViewLimit"), 2600);
+            return;
+        }
+        let days: number;
+        if (this.summaryCustomRange) {
+            days = (daysBetweenHalfOpen(this.summaryCustomRange.startDate, this.summaryCustomRange.endDate) ?? 0) + 1;
+        } else {
+            days = this.summaryRange === "day" ? 1 : this.summaryRange === "week" ? 7 : 30;
+        }
+        const scope = normalizeViewScope({version: 1, range: {kind: "relative-days", days}, itemIds: [], groups: [], sources: this.reportSource ? [this.reportSource] : [], status: "all"}).scope;
+        const view = {id: makeId("view"), name, scope};
+        this.savedViews = [...this.savedViews, view];
+        this.activeSavedViewId = view.id;
+        void this.persistViewPreferences();
+        showMessage(t("msg.savedViewSaved", {name}), 2200);
+        this.render();
+    }
+
+    deleteSavedView(id: string): void {
+        this.savedViews = this.savedViews.filter((entry) => entry.id !== id);
+        if (this.activeSavedViewId === id) this.activeSavedViewId = undefined;
+        void this.persistViewPreferences();
+        this.render();
+    }
+
     /** T-1416：把预设渲染块追加进当前编辑器文档末尾；拿不到编辑器则降级提示（fail-closed）。 */
     private async insertCheckinBlockPreset(id: string): Promise<void> {
         const preset = getBlockPreset(id);
@@ -3151,6 +3206,8 @@ export default class CheckinPlugin extends Plugin {
             summaryProviderNames: [...this.summaryProviders.values()].map(provider => typeof provider.name === "string" ? provider.name.slice(0, 200) : provider.id),
             reportSections: this.reportSections,
             reportSource: this.reportSource,
+            savedViews: (this.savedViews || []).map(({id, name}) => ({id, name})),
+            activeSavedViewId: this.activeSavedViewId,
             projectDrafts: this.projectDrafts,
             suggestionWorkflow: this.suggestionWorkflow,
             summaryRefreshing: this.summaryRefreshing,
@@ -4507,6 +4564,8 @@ export default class CheckinPlugin extends Plugin {
         this.focusTimerProvider = preferences.focusTimerProvider;
         this.reminderQuietHours = normalizeReminderQuietHours(preferences.reminderQuietHours);
         this.firstSuccessState = normalizeFirstSuccessState(preferences.firstSuccess);
+        this.savedViews = preferences.savedViews;
+        this.activeSavedViewId = undefined;
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
         this.collapsedTodayGroups = new Set(preferences.collapsedGroups);
@@ -4594,6 +4653,7 @@ export default class CheckinPlugin extends Plugin {
             healthInbox: {...this.healthInbox},
             reminderQuietHours: this.reminderQuietHours,
             firstSuccess: this.firstSuccessState,
+            savedViews: this.savedViews,
             pluginLanguage: this.pluginLanguageSetting,
             recentTemplates: [...this.recentTemplates],
         };
