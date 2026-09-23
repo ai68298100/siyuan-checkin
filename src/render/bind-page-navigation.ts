@@ -843,7 +843,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* T-1217 报告：当前范围摘要 + 可选上一周期基线；标题与区块开关走偏好与字典。 */
     const buildCurrentReport = (): string => {
         /* T-1343：来源筛选作用于当前与基线两个口径，保证偏差可比。 */
-        const sourceOptions = host.reportSource ? {source: host.reportSource as "manual" | "tomato" | "api" | "import"} : undefined;
+        const sourceOptions = host.reportSource ? {source: host.reportSource as "manual" | "tomato" | "api" | "import" | "sireader" | "siplayer"} : undefined;
         const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(host.store, host.summaryRange, undefined, sourceOptions);
         const label = host.summaryCustomRange ? t("report.titleCustom")
             : host.summaryRange === "day" ? t("report.titleDay")
@@ -912,7 +912,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* T-1343：报告来源筛选改动即写回视图偏好，不触发重渲染。 */
     root.querySelector<HTMLSelectElement>("[data-report-source]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        host.reportSource = ["manual", "tomato", "api", "import"].includes(value) ? value : "";
+        host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : "";
         void host.persistViewPreferences();
     });
     /* T-1343：批量导出——顺序触发 JSON、CSV 与 Markdown 报告，全部走既有安全导出通道。 */

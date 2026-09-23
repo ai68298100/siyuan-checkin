@@ -83,7 +83,7 @@ assert.match(bind, /const sourceOptions = host\.reportSource \? \{source: host\.
 assert.match(bind, /host\.reportSections\.baseline \|\| host\.reportSections\.deviations/, "deviations need the baseline comparison even when the baseline block is off");
 assert.match(bind, /buildWeeklyReportMarkdown\(summary, title, host\.reportSections, comparison, sourceOptions\)/, "report builder must receive the source option");
 assert.match(bind, /data-report-source/, "source select must be bound");
-assert.match(bind, /\["manual", "tomato", "api", "import"\]\.includes\(value\)/, "source values must be validated against the registry");
+assert.match(bind, /\["manual", "tomato", "api", "import", "sireader", "siplayer"\]\.includes\(value\)/, "source values must be validated against the registry");
 assert.match(bind, /data-action='export-all'/, "export-all must be bound");
 assert.match(bind, /host\.downloadExport\("json"\)[\s\S]{0,120}host\.downloadExport\("csv"\)[\s\S]{0,160}host\.downloadReportMarkdown\(buildCurrentReport\(\)\)/, "export-all must run JSON, CSV and report in order");
 assert.match(reviewView, /deviations: "report\.optDeviations"/, "report settings must expose the deviations toggle");
