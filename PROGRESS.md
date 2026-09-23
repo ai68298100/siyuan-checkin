@@ -1695,3 +1695,7 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-23 T-1395 上游公开 API 协同（本地草案部分）:docs/upstream-api-proposals-2026-09.md 三份提案——思阅（window.sireader 集成描述+4 生命周期事件 payload 冻结+可选 getSessionFocus 结算查询;有效时长=焦点+可见墙上时间）、思播（siplayer-integration 能力发现+play/pause/ended/progress 事件+可选 getEffectivePlayback;红线=currentTime 差值≠观看时长）、Task Horizon（方向反转:我方 calendar.read 已稳定,提案对方消费层——协商/超时/AbortSignal/单飞/四事件刷新白名单/降级隐藏/legacy 不误显示/只读解耦）;三份 draft 夹具 docs/contracts/upstream-proposals/*-v1.json;守门 tests/upstream-proposals.test.cjs 强制夹具 draft 状态、文档↔夹具↔真实代码三方同步（前缀注册表、calendar.read since 5、刷新事件、投影六态与隐藏过滤）;接入 test:ui 与 test:ecosystem。D-255 双轨纪律成文:草案≠契约,合并→发布→真实宿主验收三关前 fallback 不升级,唯一 canonical source,externalRef 幂等禁双计。
 验证:test:ecosystem 全链（含新守门）、test-suite-coverage 156 文件、stability-9_8c 通过。外部 issue/PR 零提交,等用户授权。运行代码零改动（纯文档+夹具+守门）。
+
+2026-09-23 v18.2.1 发版准备（本地完成，待用户 push）:外部来源体验收口——思播采样毫秒累计修复（15 秒采样此前永远到不了 1 分钟）、健康收件箱按项目身份防串档 + 启动 ingest、设置页五组外部来源折叠面板 + 思阅/思播今日分钟预览（T-1386）、回顾报告来源筛选扩展思阅/思播、三套真实内核 E2E、T-1395 上游 API 提案（纯文档）。版本四方升级 18.2.1（package/plugin/version.ts/README）；新增 v18.2.1-change-log 与 release-notes-18.2.1（digest 450a481f…经 sync:digest 回填）；README 新增 18.2.1 要点、18.2.0 降级。
+验证:升版前完整 test:quality 全绿；升版后构建、release:manifest（10 资产 v18.2.1）、rollback rehearsal、release-assets、stability-9_8c、tsc、i18n-parity 1597 对、ui-docs/export-identity-docs/ecosystem-docs/preferences-docs 全过。
+状态:awaiting user push confirmation。发布执行:push origin main + tag v18.2.1 → GitHub Release 附 package.zip 标记 Latest（先向用户核对）。

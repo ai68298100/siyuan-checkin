@@ -66,6 +66,13 @@
   - 内容：main 领先远端 3 个 docs 提交（52f1f99 思阅/思播研究、2751f1d Task Horizon 可见性规划、28a054a 上游 API 协同规划）；v18.0.0～v18.0.3 标签均已在远端，无发布物缺口。
   - 验收：用户确认后 `git push origin main`；不做 force push；push 后核对远端 main 与本地一致。
 
+## v18.2.1 发布（2026-09-23 本地准备完成，待用户 push）
+
+- [x] T-1414 v18.2.1 发布准备（外部来源体验收口）
+  - 内容：v18.2.0 之后 7 个提交——思播采样毫秒累计修复、健康收件箱按项目身份修复 + 启动 ingest、设置页五组外部来源折叠面板 + 今日分钟预览（T-1386）、回顾报告来源筛选扩展思阅/思播、思阅/思播/健康真实内核 E2E、T-1395 上游 API 提案（纯文档）。
+  - 状态：done（2026-09-23。版本四方升级 18.2.0→18.2.1（package.json/plugin.json/src/version.ts/README）；新增 docs/v18.2.1-change-log.md 与 docs/releases/release-notes-18.2.1.md（SHA-256 经 sync:digest 回填 450a481f…）；README 顶部当前版本、18.2.1 要点节、18.2.0 降级与链接更新。完整 test:quality 链全绿后升版，构建 + release:manifest + rollback rehearsal + release-assets v18.2.1 复跑全过（css 607269 字节），README 相关文档守门复跑全过。本地提交，未 push。）
+  - 发布执行（等用户确认）：`git push origin main` + `git tag v18.2.1 && git push origin v18.2.1` → 按惯例建 GitHub Release「小驴打卡 v18.2.1」附 package.zip（SHA-256 与发布说明/资产清单核对一致）并标记 Latest。
+
 ## Task Horizon 日历可见性与打卡内容联动规划（2026-09-22；研究完成，功能未开工）
 
 详细结论、现状证据、推荐语义、投影口径、API 方向、边界与验收矩阵见 [小驴打卡 × Task Horizon 日历可见性规划](docs/roadmap-task-horizon-calendar-visibility-2026-09.md)。结论：现有 Task Horizon v1 聚合摘要可证明联动方向可行，但不能表达“某个打卡项目不显示”；应新增项目级 `taskHorizonCalendarVisible`（缺省 true）和有界项目×日期只读投影。隐藏只影响 Task Horizon 日历展示，不复用归档/删除，也不默认关闭任务完成回写。以下任务只登记，不代表已开始实现。
