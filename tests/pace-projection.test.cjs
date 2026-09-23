@@ -101,7 +101,28 @@ const moduleSource = fs.readFileSync(path.join(root, "src", "features", "pace-pr
 assert.doesNotMatch(moduleSource, /^import /m, "投影模块保持零依赖");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");
 
-/* —— 8. 消费守门：今日卡片里程碑标签 + summary 渲染块 + API getStreaks 同口径 + i18n 双语 —— */
+/* —— 9. 失速排名（R-20.3）：过滤零漏卡、漏卡次数降序、平局稳定、截断 —— */
+{
+    const facts = [
+        {itemId: "a", name: "冥想", dueOpportunities: 10, missedCount: 0},
+        {itemId: "b", name: "晨跑", dueOpportunities: 8, missedCount: 3},
+        {itemId: "c", name: "阅读", dueOpportunities: 8, missedCount: 3},
+        {itemId: "d", name: "戒糖", dueOpportunities: 8, missedCount: 5, lastMissedDate: "2026-09-23"},
+    ];
+    const ranked = pp.rankStalledItems(facts, 10);
+    assert.equal(ranked.length, 3, "零漏卡项目不进排名");
+    assert.equal(ranked[0].itemId, "d", "漏卡次数降序");
+    assert.equal(ranked[1].itemId, "b", "同次数按名称 zh-CN 稳定平局（晨跑 < 阅读）");
+    assert.equal(ranked[1].backlogRate, 38, "38% = 3/8 四舍五入");
+    assert.equal(ranked[0].lastMissedDate, "2026-09-23", "证据日期透出");
+    const capped = pp.rankStalledItems(facts, 2);
+    assert.equal(capped.length, 2, "limit 截断");
+    assert.deepEqual(pp.rankStalledItems(facts, 10), pp.rankStalledItems(facts, 10), "同一输入两次排名深度相等");
+    const empty = pp.rankStalledItems([], 5);
+    assert.equal(empty.length, 0);
+}
+
+/* —— 10. 消费守门：今日卡片里程碑标签 + summary 渲染块 + API getStreaks 同口径 + 报告失速节 + i18n 双语 —— */
 const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 assert.match(fragmentsSource, /abstinenceMilestones/, "今日卡片必须消费戒断里程碑投影");
 assert.match(fragmentsSource, /is-milestone/, "里程碑标签类必须在位");

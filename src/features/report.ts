@@ -9,6 +9,7 @@ import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 import type {ViewScopeDescription} from "./view-scope";
 import type {ContextAggregation} from "./context-normalization";
+import type {StalledItemRank} from "./pace-projection";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -41,7 +42,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -69,6 +70,13 @@ export function buildWeeklyReportMarkdown(
         if (scope.missingCount) parts.push(t("report.scopeMissing", {n: scope.missingCount}));
         if (scope.truncated) parts.push(t("report.scopeTruncated"));
         lines.push(`- ${parts.join(" · ")}`);
+    }
+    /* T-1436 · R-20.3：失速项目行动卡——只列漏掉 ≥1 次的项目，附证据（漏卡次数/最近漏卡日）。 */
+    if (options?.stalledItems?.length) {
+        lines.push(`- ${t("report.stalledTitle")}`);
+        for (const item of options.stalledItems) {
+            lines.push(`  - ${t("report.stalledLine", {name: item.name, missed: item.missedCount, due: item.dueOpportunities, rate: item.backlogRate, last: item.lastMissedDate ?? ""})}`);
+        }
     }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);

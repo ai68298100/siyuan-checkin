@@ -38,6 +38,7 @@ import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuc
 import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
 import {aggregateSkipContext} from "./features/context-normalization";
+import {abstinenceMilestones, rankStalledItems} from "./features/pace-projection";
 import {collectLifecycleFacts, projectLifecycleBatch, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
@@ -500,7 +501,31 @@ export default class CheckinPlugin extends Plugin {
             .filter((event) => isSkipEvent(event) && typeof event.note === "string" && event.note.trim())
             .map((event) => ({note: event.note, localDate: event.localDate}));
         const contextAggregation = aggregateSkipContext(skipSlices);
-        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation});
+        /* T-1436 · R-20.3：失速项目排名——观察最近 30 天，事实经 model 单一实现枚举。 */
+        const today = dateKey(new Date());
+        const stalledFacts: Array<{itemId: string; name: string; dueOpportunities: number; missedCount: number; lastMissedDate?: string}> = [];
+        for (const item of this.store.items) {
+            if (item.archived || item.direction === "atMost") continue;
+            if (getItemRevisionForDate(item, new Date()).schedule.type === "quota") continue;
+            let due = 0;
+            let missed = 0;
+            let lastMissedDate: string | undefined;
+            for (let offset = 0; offset < 30; offset += 1) {
+                const day = addDays(today, -offset);
+                if (!day || day < item.createdDate) break;
+                const asOfDay = new Date(day + "T12:00:00");
+                if (!isItemAvailableOnDate(item, asOfDay) || !isScheduledToday(item, asOfDay)) continue;
+                if (getSkipDatesForItem(this.store, item.id).has(day)) continue;
+                due += 1;
+                if (!isComplete(this.store, item, asOfDay)) {
+                    missed += 1;
+                    if (lastMissedDate === undefined) lastMissedDate = day;
+                }
+            }
+            if (missed > 0) stalledFacts.push({itemId: item.id, name: item.name, dueOpportunities: due, missedCount: missed, lastMissedDate});
+        }
+        const stalledItems = rankStalledItems(stalledFacts, 5);
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation, stalledItems});
     }
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */

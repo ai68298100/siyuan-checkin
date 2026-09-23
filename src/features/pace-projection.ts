@@ -142,6 +142,52 @@ export function projectAtMostPace(facts: AtMostPaceFacts): AtMostPaceProjection 
     };
 }
 
+/* —— 跨项目失速排名（R-20.3 第一张行动卡）：调用方枚举每项目的事实切片，本模块只排序截断 —— */
+
+export interface StalledItemFacts {
+    itemId: string;
+    name: string;
+    /** 观察窗口内的已到期有效排期机会数。 */
+    dueOpportunities: number;
+    /** 其中漏掉的机会数（0 = 未失速，不进入排名）。 */
+    missedCount: number;
+    /** 最近一次漏掉的日期（YYYY-MM-DD，可缺省）。 */
+    lastMissedDate?: string;
+}
+
+export interface StalledItemRank {
+    itemId: string;
+    name: string;
+    dueOpportunities: number;
+    missedCount: number;
+    backlogRate: number;
+    lastMissedDate?: string;
+}
+
+/** 失速排名：只收漏掉 ≥1 次的项目，按漏掉次数降序、名称 zh-CN → itemId 稳定平局，
+    截断前 limit 个。 */
+export function rankStalledItems(items: readonly StalledItemFacts[], limit = 5): readonly StalledItemRank[] {
+    const cappedLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+    return items
+        .filter((item) => item.missedCount > 0)
+        .map((item) => {
+            const due = Math.max(0, item.dueOpportunities);
+            const backlogRate = due ? Math.round((item.missedCount / due) * 100) : 0;
+            return {
+                itemId: item.itemId,
+                name: item.name,
+                dueOpportunities: due,
+                missedCount: item.missedCount,
+                backlogRate,
+                ...(item.lastMissedDate ? {lastMissedDate: item.lastMissedDate} : {}),
+            };
+        })
+        .sort((left, right) => right.missedCount - left.missedCount
+            || left.name.localeCompare(right.name, "zh-CN")
+            || left.itemId.localeCompare(right.itemId))
+        .slice(0, cappedLimit);
+}
+
 /* —— 判别入口：调用方按项目口径选择，三套投影互不污染 —— */
 
 export type PaceProjection = AtLeastPaceProjection | QuotaPaceProjection | AtMostPaceProjection;
