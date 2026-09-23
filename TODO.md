@@ -72,6 +72,7 @@
   - 内容：v18.2.0 之后 7 个提交——思播采样毫秒累计修复、健康收件箱按项目身份修复 + 启动 ingest、设置页五组外部来源折叠面板 + 今日分钟预览（T-1386）、回顾报告来源筛选扩展思阅/思播、思阅/思播/健康真实内核 E2E、T-1395 上游 API 提案（纯文档）。
   - 状态：done（2026-09-23。版本四方升级 18.2.0→18.2.1（package.json/plugin.json/src/version.ts/README）；新增 docs/v18.2.1-change-log.md 与 docs/releases/release-notes-18.2.1.md（SHA-256 经 sync:digest 回填 450a481f…）；README 顶部当前版本、18.2.1 要点节、18.2.0 降级与链接更新。完整 test:quality 链全绿后升版，构建 + release:manifest + rollback rehearsal + release-assets v18.2.1 复跑全过（css 607269 字节），README 相关文档守门复跑全过。本地提交，未 push。）
   - 发布执行（等用户确认）：`git push origin main` + `git tag v18.2.1 && git push origin v18.2.1` → 按惯例建 GitHub Release「小驴打卡 v18.2.1」附 package.zip（SHA-256 与发布说明/资产清单核对一致）并标记 Latest。
+  - 完成（2026-09-23 用户确认「发版」后执行）：main 推送 b982aa5..369902b；v18.2.1 tag 已推送；**GitHub Release「小驴打卡 v18.2.1」已创建并附 package.zip 资产**（696006 字节，回源下载复验 SHA-256 `450a481f…` 与发布说明/本地包三方一致），标记 Latest；CI 在发布提交上自动运行通过（58s）。集市将随 Release 自动同步 18.2.1。
 
 ## Task Horizon 日历可见性与打卡内容联动规划（2026-09-22；研究完成，功能未开工）
 

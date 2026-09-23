@@ -1699,3 +1699,6 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-23 v18.2.1 发版准备（本地完成，待用户 push）:外部来源体验收口——思播采样毫秒累计修复（15 秒采样此前永远到不了 1 分钟）、健康收件箱按项目身份防串档 + 启动 ingest、设置页五组外部来源折叠面板 + 思阅/思播今日分钟预览（T-1386）、回顾报告来源筛选扩展思阅/思播、三套真实内核 E2E、T-1395 上游 API 提案（纯文档）。版本四方升级 18.2.1（package/plugin/version.ts/README）；新增 v18.2.1-change-log 与 release-notes-18.2.1（digest 450a481f…经 sync:digest 回填）；README 新增 18.2.1 要点、18.2.0 降级。
 验证:升版前完整 test:quality 全绿；升版后构建、release:manifest（10 资产 v18.2.1）、rollback rehearsal、release-assets、stability-9_8c、tsc、i18n-parity 1597 对、ui-docs/export-identity-docs/ecosystem-docs/preferences-docs 全过。
 状态:awaiting user push confirmation。发布执行:push origin main + tag v18.2.1 → GitHub Release 附 package.zip 标记 Latest（先向用户核对）。
+
+2026-09-23 v18.2.1 发布完成（用户确认「发版」）:main 推送 b982aa5..369902b、v18.2.1 tag 推送、GitHub Release「小驴打卡 v18.2.1」创建并附 package.zip（696006 字节）标记 Latest;发布资产回源下载复验 SHA-256 450a481f… 与发布说明/本地构建三方一致;CI 在发布提交上自动通过（58s）。集市将随 Release 自动同步 18.2.1。
+状态:released。下一步:按 T-1400 第三轮触发条件（本地可执行任务清零+质量链全绿）启动生态调研第三轮（OpenHabitTracker 参考点补评 + easy-tracker 二轮）;真机验收窗口归集 T-1406/T-1408/T-1388。
