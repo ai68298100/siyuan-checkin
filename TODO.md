@@ -79,6 +79,11 @@
   - 接入：偏好字段 `firstSuccess`（缺省 not-started/skipped=false）；宿主四处推进钩子（新建项目保存/首次记录 setRecentRecord/反馈展示/打开回顾），幂等事件零写入（next === current 直接返回）；今日空态三步引导新增「跳过引导」按钮（skipped 粘性后空态回落到归档/新建变体，不再显示引导）。
   - 测试：`tests/first-success.test.cjs`——完整旅程/单调性/skip 粘性与幂等/reset/归一化兼容/确定性/接线守门（偏好字段、四处钩子、跳过按钮、绑定、双语 i18n）/纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（97 模块全绿）；14 个转译 view-preferences 的加载器同步 first-success。
   - 状态：done（2026-09-24。真实首次使用反馈保持 host-pending；渐进式展开的进阶 UI 待截图门解除后接状态机消费）。
+- [x] T-1425 可保存视图 ViewScope v1 归一化层（R-A8 第一切片，2026-09-24 开工并完成）
+  - 内容：新增纯模块 `src/features/view-scope.ts`（日期运算复用 date-keys 单一实现）——版本化 ViewScope v1（range 相对天数/全部 + itemIds/groups/sources/status 过滤器）；normalizeViewScope fail-closed（version≠1 整体回落默认、非法天数钳制到 730 上限、过滤器 trim/去重/上限截断并置 truncated）；resolveViewScope 显式 today 解析出闭区间 [startDate, endDate] 并把失效项目/分组/来源回显为缺失条件（不静默丢弃、不静默扩大范围）；describeViewScope 输出报告/导出头部的范围声明词元。
+  - 接入：`buildWeeklyReportMarkdown` options 增加可选 viewScope 描述——报告头部新增「统计范围」行（范围/过滤器数/缺失条件/截断标记），随既有来源筛选行一起显式声明口径；index 调用点构建 ViewScope 并以当前 store 解析（knownItemIds/knownGroups/knownSources 注入）。i18n 6 键中英双语（parity 1619/1619）。
+  - 测试：`tests/view-scope.test.cjs`——归一化 fail-closed/钳制截断/相对日期跨年解析/缺失条件/描述词元/消费守门/纯度（运行时依赖仅 date-keys），入 `pnpm test` 主链；模块入架构守门无时钟清单（98 模块全绿）；diary-report 导出路径守门同步含 viewScope。
+  - 状态：done（2026-09-24 第一切片）。A8 后续切片：命名保存视图（多视图存储+选择器 UI）与范围导出，等真实使用反馈或用户点单后排批。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

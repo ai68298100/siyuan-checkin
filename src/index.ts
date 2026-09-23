@@ -33,6 +33,7 @@ import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferen
 import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
+import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -469,6 +470,15 @@ export default class CheckinPlugin extends Plugin {
     /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
     private buildCurrentReportMarkdown(): string {
         const sourceOptions = this.reportSource ? {source: this.reportSource as "manual" | "tomato" | "api" | "import"} : undefined;
+        /* T-1425 · R-A8：报告显式回显统计范围——来源/过滤器/缺失条件/截断，不静默改变口径。 */
+        const scopeNormalization = normalizeViewScope({version: 1, range: {kind: "all"}, itemIds: [], groups: [], sources: this.reportSource ? [this.reportSource] : [], status: "all"});
+        const scopeResolution = resolveViewScope(scopeNormalization.scope, {
+            today: dateKey(new Date()),
+            knownItemIds: this.store.items.map((item) => item.id),
+            knownGroups: [...new Set(this.store.items.map((item) => item.group || "").filter(Boolean))],
+            knownSources: ["manual", "tomato", "api", "import"],
+        });
+        const viewScope = describeViewScope(scopeNormalization.scope, scopeResolution);
         const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(this.store, this.summaryRange, undefined, sourceOptions);
         const titleKey = this.summaryCustomRange ? "report.titleCustom" : this.summaryRange === "day" ? "report.titleDay" : this.summaryRange === "month" ? "report.titleMonth" : this.summaryRange === "week" ? "report.titleWeek" : "report.titleCustom";
         const title = t("report.titleWithRange", {label: t(titleKey), start: summary.startDate, end: summary.endDate});
@@ -477,7 +487,7 @@ export default class CheckinPlugin extends Plugin {
             const previous = getPreviousReviewRange({startDate: summary.startDate, endDate: summary.endDate});
             comparison = previous ? buildReviewComparison(summary, sourceOptions ? buildCustomSummaryContext(this.store, previous, undefined, sourceOptions) : buildCustomSummaryContext(this.store, previous)) : undefined;
         }
-        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, sourceOptions);
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope});
     }
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */

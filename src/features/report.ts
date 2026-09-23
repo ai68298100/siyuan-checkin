@@ -7,6 +7,7 @@ import type {SummaryContext} from "../analytics";
 import type {ReviewComparison} from "./review-comparison";
 import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
+import type {ViewScopeDescription} from "./view-scope";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -39,7 +40,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string},
+    options?: {source?: string; viewScope?: ViewScopeDescription},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -48,6 +49,16 @@ export function buildWeeklyReportMarkdown(
     /* T-1343：报告可按事件来源筛选；筛选口径在标题下显式声明。 */
     if (options?.source && REPORT_SOURCES.has(options.source)) {
         lines.push(`- ${t("report.sourceLine", {source: t(`source.${options.source}`)})}`);
+    }
+    /* T-1425 · R-A8：显式回显统计范围（相对天数/全部、过滤器数、缺失条件、截断标记）
+       ——用户能看懂报告覆盖了什么，不静默扩大或缩小范围。 */
+    if (options?.viewScope) {
+        const scope = options.viewScope;
+        const parts = [t("report.scopeLabel"), scope.rangeToken === "relative-days" ? t("report.scopeRelativeDays", {n: scope.days ?? 0}) : t("report.scopeAll")];
+        if (scope.filterCount) parts.push(t("report.scopeFilters", {n: scope.filterCount}));
+        if (scope.missingCount) parts.push(t("report.scopeMissing", {n: scope.missingCount}));
+        if (scope.truncated) parts.push(t("report.scopeTruncated"));
+        lines.push(`- ${parts.join(" · ")}`);
     }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);
