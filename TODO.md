@@ -69,6 +69,15 @@
   - 修复（盘点发现，每修必补断言）：① 统一禁用基线——新增 `:where(button,…):disabled` + `[aria-disabled]` 零权重规则进 interaction-states.scss，收敛此前散落的逐组件禁用呈现，组件特化（record-button .66）仍优先；② 回顾助手错误行收编基座类 `lc-checkin__error`（原散落 is-error 仅色值，现带 danger 边框/底色/防溢出），删除 review-workspace 死规则。
   - 决策登记：saving 刻意静默——checkin-toast 守门已有「异步保存期不得插入布局块」决策，本批一度误改为可见分支后回退，台账显式登记静默依据；`__loading`/`__success`/`is-saving`/`msg.saving` 为保留词表（零消费但刻意保留），静默增减视为违规，A11 后续清理批统一处理收编或退役。
   - 状态：done（2026-09-24。台账入 `pnpm test` 主链；真机长尾维持 host-pending 不以结构断言关闭）。
+- [x] T-1423 快捷入口能力矩阵（R-A12 第一切片，映射 R-10.4 本地可验证部分，2026-09-24 开工并完成）
+  - 内容：新增零依赖纯模块 `src/features/quick-entry-capabilities.ts`——入口建模为描述符（commandId/langKey/icon/hotkey/surfaces/mobility/executor/globalCallback/capabilities）；四者分离纯函数：图标解析+fallback（未知图标回落 more 并标记未解析）、能力与 surface 评估（evaluateQuickEntry 输出 executable/displayable/registrable 三层资格）、展示过滤（filterQuickEntriesForDisplay 三段分区+稳定排序）、恢复配置（restoreQuickEntryVisibility）；`isMobileExecutable` 对 unverified 绝不默认移动安全。
+  - 接入：index.ts onload 命令注册改为描述符驱动——执行器键与宿主回调映射分离，surface 交集判定 registrable（mobile 前端自然不注册页签入口），行为等价（openCheckin 全端+热键+全局回调；openCheckinTab 仅桌面）；langKey 不变（dist i18n 契约键 release-assets 守门）；孤儿热键常量 QUICK_DIALOG_HOTKEY 随重构移除（值入描述符）。隐藏集管理 UI（surface 级展示开关/恢复路径）待截图门解除后接入，纯函数已备。
+  - 测试：`tests/quick-entry-capabilities.test.cjs`——显示/执行/图标/能力四者独立、未知第三方 unverified、图标 fallback、surface 过滤、恢复配置、分区确定性、本插件描述符契约（移动端只注册 openCheckin）、接线守门，入 `pnpm test` 主链；模块入架构守门无时钟清单（96 模块全绿）；entry-capabilities 守门同步描述符驱动断言。
+  - 状态：done（2026-09-24。截图视觉改动与实际隐藏管理 UI 仍受「截图齐全 + 明确开始」门控）。
+- [ ] T-1424 新手首次成功路径状态机（R-A12 第二切片，映射 R-10.5 本地可验证部分）
+  - 语义：纯状态机 idle → 项目已建（模板/空白）→ 首次记录完成 → 反馈已展示 → 回顾已访问；skip-guidance/reset 事件；状态入现有偏好存储（可选字段+归一化，默认不激活），旧偏好零迁移。
+  - 验收：状态机纯函数+事件回放确定性、偏好归一化兼容、消费接线（今日空态引导/摘要条次级提示）结构守门、双语 i18n；不自动创建示例数据（重置示例数据为用户显式动作）。
+  - 归类 `local-auto`；真实首次使用反馈保持 host-pending。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

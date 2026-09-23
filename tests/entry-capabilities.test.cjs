@@ -14,7 +14,9 @@ assert.equal(manifest.minAppVersion >= "3.4.2", true);
 
 assert.match(source, /this\.isMobileFrontend = frontend === "mobile" \|\| frontend === "browser-mobile"/);
 assert.match(source, /this\.supportsCustomTab = !this\.isMobileFrontend/);
-assert.match(source, /if \(this\.supportsCustomTab\) this\.addCommand/);
+/* T-1423：命令注册改为描述符驱动——surface 交集判定注册资格（桌面才注册页签入口）。 */
+assert.match(source, /evaluateQuickEntry\(entry, quickEntryRuntime\)\.registrable/);
+assert.match(source, /availableSurfaces: this\.supportsCustomTab \? \["desktop", "tab", "dock"\] : \["mobile"\]/);
 const navigationSource = fs.readFileSync("src/navigation.ts", "utf8");
 assert.match(navigationSource, /if \(!host\.supportsCustomTab\) host\.openQuickDialog\(\)/);
 const fragmentsSource = fs.readFileSync("src/render/fragments.ts", "utf8");

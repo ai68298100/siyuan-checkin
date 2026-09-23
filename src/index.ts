@@ -31,6 +31,7 @@ import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSumm
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
+import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -98,7 +99,6 @@ const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 const AUDIT_COALESCE_MS = 1500;
 const DOCK_TYPE = "siyuan-checkin-dock";
 const TAB_TYPE = "checkin";
-const QUICK_DIALOG_HOTKEY = "⌥⇧C";
 const SUMMARY_TIMEOUT_MS = 30000;
 let fallbackStorageQueue: Promise<void> = Promise.resolve();
 
@@ -967,17 +967,28 @@ export default class CheckinPlugin extends Plugin {
             },
         });
 
-        this.addCommand({
-            langKey: "openCheckin",
-            hotkey: QUICK_DIALOG_HOTKEY,
-            callback: () => this.toggleQuickDialog(),
-            globalCallback: () => this.toggleQuickDialog(),
-        });
-        if (this.supportsCustomTab) this.addCommand({
-            langKey: "openCheckinTab",
-            callback: () => this.openTabPage(),
-            globalCallback: () => this.openTabPage(),
-        });
+        /* T-1423：快捷入口描述符驱动注册——执行器键与宿主回调分离，surface 交集决定
+           注册资格（mobile 前端无 desktop/tab/dock，openCheckinTab 自然不注册）；
+           langKey 不变（dist i18n 契约键，release-assets 守门）。 */
+        const quickEntryRuntime: QuickEntryRuntime = {
+            availableSurfaces: this.supportsCustomTab ? ["desktop", "tab", "dock"] : ["mobile"],
+            capabilities: [],
+            hidden: [],
+        };
+        const quickEntryExecutors: Record<string, () => void> = {
+            "quick-dialog": () => this.toggleQuickDialog(),
+            "open-tab": () => this.openTabPage(),
+        };
+        for (const entry of QUICK_ENTRY_DESCRIPTORS) {
+            if (!evaluateQuickEntry(entry, quickEntryRuntime).registrable) continue;
+            const executor = quickEntryExecutors[entry.executor];
+            this.addCommand({
+                langKey: entry.langKey,
+                ...(entry.hotkey ? {hotkey: entry.hotkey} : {}),
+                callback: executor,
+                ...(entry.globalCallback ? {globalCallback: executor} : {}),
+            });
+        }
 
         this.api = this.createApi();
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
