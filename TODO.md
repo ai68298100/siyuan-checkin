@@ -106,6 +106,10 @@
   - 接入：`deleteItemWithRecords` 删除确认经 collectLifecycleFacts+projectLifecycleImpact 注入影响补充说明（外部身份保留/锚点清理/联动解除/恢复点+墓碑保护），i18n 1 键中英双语（parity 1631/1631）。
   - 测试：`tests/lifecycle-projection.test.cjs`——三动作影响/身份保留/空项目边界/批量汇总/事实收集/确定性/接线守门/纯度，入 `pnpm test` 主链；模块入架构守门无时钟清单（102 模块全绿）。
   - 状态：done（2026-09-24 第一切片）。只做预览不执行写操作（写入走 deleteItemsCascade/setItemArchived 既有通道）；真实工作区恢复演练仍为用户验收。A9 后续：归档确认同口径接入与恢复点回放深化。
+- [x] T-1434 归档页批量删除接入批量影响汇总（R-A9 第二切片，A9 泳道收口，2026-09-24 开工并完成）
+  - 内容：归档页批量删除确认（archived.bulkDeleteConfirm）追加 `projectLifecycleBatch` 影响汇总——保留外部幂等身份数/清理锚点数/解除事项联动数，i18n 1 键中英双语（parity 1649/1649）；单个归档删除已走 deleteItemWithRecords 同口径（T-1429）。
+  - 测试：lifecycle-projection.test.cjs 接线守门扩展（单删+批删+双语断言）。
+  - 状态：done（2026-09-24 第二切片，A9 泳道收口）。恢复点回放深化等真实恢复演练反馈；真实工作区恢复演练仍为用户验收。
 - [x] T-1430 本地隐私与控制中心（R-A10 第一切片，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/privacy-scope.ts`——① 导出前敏感字段审计（备注/图片附件计数、幂等身份声明、头像照片由调用方显式传参）；② 来源断开保留规则（断开=停止采集，已落盘事件与幂等身份全部保留，重连经 externalRef 防重复累计；无幂等口径的来源如实声明 none）；③ 控制面汇总（文档写入 diary-report/summary-resident + 外部来源 sireader/siplayer/health 五通道开关与目标聚合，`telemetry: "none"` 零遥测常量声明）。
   - 接入：① JSON/CSV 导出经 downloadExportFor 审计敏感字段，有内容时 toast 披露（零值不打扰）；② 思阅/思播/健康三个集成开关关闭时 toast 披露保留事件数与幂等身份数（重连不重复累计）。i18n 2 键中英双语（parity 1633/1633）。

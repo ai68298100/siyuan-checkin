@@ -38,7 +38,7 @@ import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuc
 import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
 import {aggregateSkipContext} from "./features/context-normalization";
-import {collectLifecycleFacts, projectLifecycleImpact} from "./features/lifecycle-projection";
+import {collectLifecycleFacts, projectLifecycleBatch, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
@@ -3959,7 +3959,10 @@ export default class CheckinPlugin extends Plugin {
         const ids = new Set(items.map((item) => item.id));
         let recordCount = 0;
         for (const event of this.store.events) if (ids.has(event.itemId)) recordCount += 1;
-        if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.size, records: recordCount}))) return false;
+        /* T-1429 · R-A9：批量删除同样注入生命周期影响汇总（身份保留/锚点/联动/恢复点）。 */
+        const impactBatch = projectLifecycleBatch(items.map((item) => collectLifecycleFacts(item, this.store.events)), "delete");
+        const impactNote = t("archived.bulkDeleteImpact", {identities: impactBatch.totals.externalIdentitiesRetained, anchors: impactBatch.totals.anchorsCleared, occasions: impactBatch.totals.occasionLinksCleared});
+        if (!window.confirm(t("archived.bulkDeleteConfirm", {n: ids.size, records: recordCount}) + impactNote)) return false;
         return this.enqueueMutation(async () => {
             const currentItems = this.store.items.filter((item) => ids.has(item.id) && item.archived);
             let currentRecordCount = 0;

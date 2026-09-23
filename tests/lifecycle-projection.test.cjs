@@ -90,12 +90,16 @@ const moduleSource = fs.readFileSync(path.join(root, "src", "features", "lifecyc
 assert.doesNotMatch(moduleSource, /^import /m, "投影模块保持零依赖");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");
 
-/* —— 8. 接线守门：删除确认消费影响预览 + i18n 双语 —— */
+/* —— 8. 接线守门：删除确认消费影响预览 + 批量删除注入批量汇总 + i18n 双语 —— */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /projectLifecycleImpact\(collectLifecycleFacts\(item, this\.store\.events\), "delete"\)/, "删除确认必须消费生命周期影响预览");
 assert.match(indexSource, /editor\.deleteImpactExtra/, "确认文案必须包含影响补充说明");
+assert.match(indexSource, /projectLifecycleBatch\(items\.map\(\(item\) => collectLifecycleFacts\(item, this\.store\.events\)\), "delete"\)/, "归档页批量删除必须消费批量影响汇总");
+assert.match(indexSource, /archived\.bulkDeleteImpact/, "批量删除确认必须包含影响补充说明");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-const occurrences = i18nSource.split('"editor.deleteImpactExtra"').length - 1;
-assert.ok(occurrences >= 2, `editor.deleteImpactExtra 必须中英双语齐备（当前 ${occurrences} 处）`);
+for (const key of ["editor.deleteImpactExtra", "archived.bulkDeleteImpact"]) {
+    const occurrences = i18nSource.split(`"${key}"`).length - 1;
+    assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
 
 console.log("lifecycle-projection tests passed: delete/archive/restore 影响/身份保留/批量汇总/事实收集/确定性/接线守门/纯度 全部通过");
