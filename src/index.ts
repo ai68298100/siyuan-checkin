@@ -11,7 +11,7 @@ import "./ui/review-detail.scss";
 import "./ui/review-workspace.scss";
 import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
-import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
+import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
 import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
 import {formatLunar, solarToLunar} from "./lunar";
@@ -2697,7 +2697,15 @@ export default class CheckinPlugin extends Plugin {
             downloadSuggestionAuditFor(this.suggestionWorkflow.envelope, this.suggestionWorkflow.audits);
         });
         /* T-1361：会话诊断导出。 */
-        root.querySelector<HTMLElement>("[data-action='export-diagnostics']")?.addEventListener("click", () => downloadDiagnosticsFor(this.diagnostics));
+        root.querySelector<HTMLElement>("[data-action='export-diagnostics']")?.addEventListener("click", () => {
+            /* T-1435 · R-A10：诊断导出前预览构成——条数/时间范围，不含打卡内容与备注的披露。 */
+            const preview = summarizeDiagnosticsPreview(this.diagnostics);
+            const detail = preview.count
+                ? t("msg.diagnosticsPreview", {n: preview.count, latest: preview.latestAt || ""})
+                : t("msg.diagnosticsEmpty");
+            if (!window.confirm(detail)) return;
+            downloadDiagnosticsFor(this.diagnostics);
+        });
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];

@@ -55,6 +55,35 @@ export function normalizeDiagnostics(value: unknown, limit = CHECKIN_DIAGNOSTIC_
 
 const DIAGNOSTICS_EXPORT_VERSION = 1;
 
+/** T-1435 · R-A10 诊断导出预览：导出前披露包内构成——条数、原因码分布（数量降序+码序稳定）、时间范围。
+    只读纯函数，不读取时钟（时间来自条目自身）。 */
+export interface DiagnosticsCodeCount {
+    code: CheckinDiagnosticCode;
+    count: number;
+}
+
+export interface DiagnosticsPreview {
+    count: number;
+    codes: readonly DiagnosticsCodeCount[];
+    oldestAt?: string;
+    latestAt?: string;
+}
+
+export function summarizeDiagnosticsPreview(entries: readonly CheckinDiagnostic[]): DiagnosticsPreview {
+    const normalized = normalizeDiagnostics(entries);
+    const counts = new Map<CheckinDiagnosticCode, number>();
+    for (const entry of normalized) counts.set(entry.code, (counts.get(entry.code) || 0) + 1);
+    const codes = [...counts.entries()]
+        .map(([code, count]) => ({code, count}))
+        .sort((left, right) => right.count - left.count || left.code.localeCompare(right.code));
+    const ats = normalized.map((entry) => entry.at).sort((left, right) => left.localeCompare(right));
+    return {
+        count: normalized.length,
+        codes,
+        ...(ats.length ? {oldestAt: ats[0], latestAt: ats[ats.length - 1]} : {}),
+    };
+}
+
 export function serializeDiagnostics(entries: readonly CheckinDiagnostic[], exportedAt = new Date().toISOString()): string {
     return JSON.stringify({version: DIAGNOSTICS_EXPORT_VERSION, exportedAt, diagnostics: normalizeDiagnostics(entries)});
 }

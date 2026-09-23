@@ -16,7 +16,7 @@ const transpile = (relative) => {
 };
 transpile("src/features/diagnostics.ts");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const {appendDiagnostic, normalizeDiagnostics, serializeDiagnostics, parseDiagnostics, CHECKIN_DIAGNOSTIC_CODES, CHECKIN_DIAGNOSTIC_INFO} = require(path.join(featuresDir, "diagnostics.js"));
+const {appendDiagnostic, normalizeDiagnostics, serializeDiagnostics, parseDiagnostics, summarizeDiagnosticsPreview, CHECKIN_DIAGNOSTIC_CODES, CHECKIN_DIAGNOSTIC_INFO} = require(path.join(featuresDir, "diagnostics.js"));
 
 const at = "2026-09-21T10:00:00.000Z";
 /* 追加与容量：连续同码去重；环形上限 20。 */
@@ -85,6 +85,34 @@ for (const code of CHECKIN_DIAGNOSTIC_CODES) {
 for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.diagnosticsExport", "agent.diagnosticsIntro"]) {
     assert.ok(zhDict.includes(`"${key}"`), `zh dict missing ${key}`);
     assert.ok(enDict.includes(`"${key}"`), `en dict missing ${key}`);
+}
+
+/* T-1435 · R-A10 诊断导出预览：构成披露（条数/原因码分布降序/时间范围）。 */
+{
+    const preview = summarizeDiagnosticsPreview([
+        {code: "save-failed", at: "2026-09-24T10:00:00.000Z"},
+        {code: "lock-contended", at: "2026-09-24T09:00:00.000Z"},
+        {code: "save-failed", at: "2026-09-24T11:00:00.000Z"},
+        {code: "load-failed", at: "2026-09-20T08:00:00.000Z"},
+    ]);
+    assert.equal(preview.count, 4);
+    assert.equal(preview.codes[0].code, "save-failed", "数量降序（save-failed 2 次）");
+    assert.equal(preview.codes[0].count, 2);
+    assert.equal(preview.oldestAt, "2026-09-20T08:00:00.000Z", "时间范围最早");
+    assert.equal(preview.latestAt, "2026-09-24T11:00:00.000Z", "时间范围最新");
+    const emptyPreview = summarizeDiagnosticsPreview([]);
+    assert.equal(emptyPreview.count, 0);
+    assert.equal(emptyPreview.oldestAt, undefined);
+    assert.equal(emptyPreview.latestAt, undefined);
+}
+
+/* —— 接线守门：导出前预览确认 + i18n 双语 —— */
+const diagnosticsIndexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+assert.match(diagnosticsIndexSource, /summarizeDiagnosticsPreview\(this\.diagnostics\)/, "导出诊断前必须构建构成预览");
+const diagnosticsI18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
+for (const key of ["msg.diagnosticsPreview", "msg.diagnosticsEmpty"]) {
+    const occurrences = diagnosticsI18nSource.split(`"${key}"`).length - 1;
+    assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
 
 fs.rmSync(outputRoot, {recursive: true, force: true});
