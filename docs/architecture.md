@@ -14,7 +14,15 @@
        └─ 基础设施 shared / i18n / catalog / lunar / view-preferences / charts / types / ui/*
 ```
 
-铁律：依赖方向只能从上往下；领域层不 import render/ 与 index.ts；render/ 不直接 loadData/saveData（一律走宿主方法）。
+铁律：依赖方向只能从上往下；领域层不 import render/ 与 index.ts；render/ 不直接 loadData/saveData（一律走宿主方法）。以上边界由 `tests/architecture-boundaries.test.cjs`（T-1418）自动守门：render/ui 导入方向、宿主 API 准入清单、无时钟纯函数面、`store.events` 唯一写路径（model.ts）、外部事件唯一入口（recordExternalEvent，仅 api/index）与来源前缀登记（发现规则：新增 `*adapter.ts`/`*inbox.ts` 必须登记清单）。
+
+## 日期语义契约（localDate）
+
+- 日期一律以 `YYYY-MM-DD` localDate 字符串存储与流转；归属按用户本地日解释，不从 UTC 反推（消费方同此约定，见 [API v5 参考](api-v5.md)）。
+- 日期运算的单一实现是 `src/date-keys.ts`（T-1419/R-A7）：校验（`isValidDateKey`，含真实日历）、解析、格式化（`formatDateKey` 可带显式 IANA 时区）、下一本地日、半开区间日差（`daysBetweenHalfOpen`）与日期序列。全部纯函数：不读隐式时钟、非法输入 fail-closed 返回 undefined；经 UTC 日序号运算，不受夏令时影响。
+- 跨午夜与跨日来源（如思播在播区间）在接入层按 localDate 预切段，核心层不做时间窗口拆分（D-258）。
+- 时区切换、夏令时、闰日、跨午夜、补记与修订的可回放样例见 `tests/date-keys.test.cjs`；新增日期计算必须复用本模块，不得再引入毫秒差 `Math.round((a-b)/86400000)` 写法。
+- 统计的截止时间即投影入参里的当前 localDate；回顾、报告、API 与导出必须回显所用范围，避免把缓存或过期范围当事实。
 
 ## 模块清单
 

@@ -6,7 +6,7 @@ const ts = require("typescript");
 
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-reminder-tolerance-"));
-for (const filename of ["types.ts", "i18n.ts", "lunar.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "occasions.ts", "reminders.ts", "features/priority-reminder.ts"]) {
+for (const filename of ["date-keys.ts", "types.ts", "i18n.ts", "lunar.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "occasions.ts", "reminders.ts", "features/priority-reminder.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});

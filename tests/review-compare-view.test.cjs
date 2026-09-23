@@ -22,7 +22,7 @@ assert.doesNotMatch(reviewSource, /new Date\(\)/,
     "review must not capture independent current instants");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-review-compare-"));
-const plainFiles = ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "shared.ts"];
+const plainFiles = ["date-keys.ts", "types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "shared.ts"];
 for (const filename of plainFiles) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js")), ts.transpileModule(source, {

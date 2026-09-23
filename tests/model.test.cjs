@@ -9,7 +9,7 @@ process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-core-"));
 
-for (const filename of ["model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts", "record-step.ts", "i18n.ts", "lunar.ts", "occasions.ts", "reminders.ts"]) {
+for (const filename of ["date-keys.ts", "model.ts", "analytics.ts", "export.ts", "quota.ts", "rules.ts", "types.ts", "record-step.ts", "i18n.ts", "lunar.ts", "occasions.ts", "reminders.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {

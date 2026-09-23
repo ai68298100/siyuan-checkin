@@ -1,6 +1,7 @@
 /* 回顾页碎片渲染：近期事项 / 打卡日志。
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
+import {daysBetweenHalfOpen} from "../date-keys";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
@@ -202,7 +203,7 @@ export function renderUpcomingOccasionsView(occasionStore: OccasionStore): strin
     if (!items.length) return "";
     const rows = items.map(({item, next}) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
-        const days = Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(today).getTime()) / 86400000));
+        const days = Math.max(0, daysBetweenHalfOpen(today, next) ?? 0);
         return `<div class="lc-checkin__upcoming-row"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><span>${next}</span><em>${days === 0 ? t("review.today") : t("review.daysLater", {n: days})}</em></div>`;
     }).join("");
     return rows;

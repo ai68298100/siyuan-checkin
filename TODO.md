@@ -45,6 +45,15 @@
 - [ ] T-1417 Pinch 发布包深评（第四轮首位任务，竞品警报）
   - royc01/pinch（v2.7.1 @2026-09-18，30 个 release）：习惯+任务+番茄+心情+目标+奖励兑换+统计，功能覆盖面与小驴几乎重合。
   - 方法：参照第二轮修仙打卡深评——发布包静态分析（数据结构/统计口径/奖励系统边界/权限面）+ 用户迁移通道评估（能否成为导入来源）+ 结论评估卡（做/延后/不做）。
+- [x] T-1418 架构边界守门（R-A1，2026-09-24 开工并完成）
+  - 内容：新增 `tests/architecture-boundaries.test.cjs`——93 个 TS 模块的自动结构检查：render/ui 导入方向（仅渲染层+组合根/plugin-ops/shared）、宿主 API 准入清单（显式登记文件，新增须评审）、无时钟纯函数面（date-keys/source-framework/日历投影/强度分/quota/适配器结算层等 11 个模块禁 Date.now 与缺省 new Date）、`store.events` 唯一写路径（model.ts）、外部事件唯一入口（recordExternalEvent 仅 api/index）、来源前缀登记（EXTERNAL_REF_PREFIX_REGISTRY 五前缀）+ 发现规则（新增 `*adapter.ts`/`*inbox.ts` 必须登记清单或显式声明非前缀来源家族）。
+  - 状态：done（2026-09-24。守门入 `pnpm test` 主链；全绿证明既有代码零违规，此后边界回潮必须先显式登记才可通过）。
+- [x] T-1419 时间/日历语义契约 date-keys（R-A7，2026-09-24 开工并完成）
+  - 内容：新增纯模块 `src/date-keys.ts`——isValidDateKey（严格格式+真实日历）、splitDateKey、calendarDayNumber（与 model.ts localCalendarDayNumber 同公式）、formatDateKey（可带显式 IANA 时区，Intl 换算）、addDays/nextLocalDay、daysBetweenHalfOpen（半开区间日差）、dateRangeHalfOpen/dateRangeInclusive；全部不读隐式时钟、非法输入 fail-closed。
+  - 替换：reminders.ts 4 处毫秒差 + 逾期光标推进、features/review-comparison.ts getPreviousReviewRange 整体键化（移除本地 Date 依赖）、occasions.ts differenceInDays、render/occasions.ts 与 render/fragments.ts 各 1 处倒计时——等价回放六个既有测试全绿零漂移；同步 10 个固定模块集测试加载器（occasions/reminder-actions/model/reminder-tolerance/skip-tolerance/review-comparison/report-deviations/report-sections/review-compare-view/v8-platform）。
+  - 测试：`tests/date-keys.test.cjs`——校验 16 例、DST 双时区（Asia/Shanghai、America/New_York 含 EDT/EST 边界与同一时刻跨日）、闰日、跨午夜跨年、半开区间方向语义、等价回放（新旧公式逐点一致含 DST 月份）、序列连续性、纯度审计。挂 `pnpm test` 主链。
+  - 文档：architecture.md 新增「日期语义契约」节；api-v5.md 补 localDate 契约与统计截止时间条款。
+  - 状态：done（2026-09-24。model.ts 内部私有 localCalendarDayNumber 留待后续批次收敛至 date-keys，本批不动 model 核心；reminders.ts 的 snooze 7 天窗口为毫秒时长语义非日期差，明确不在替换范围）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 

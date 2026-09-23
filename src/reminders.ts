@@ -1,5 +1,6 @@
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
 import {dateKey, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
+import {daysBetweenHalfOpen, nextLocalDay} from "./date-keys";
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
@@ -74,7 +75,7 @@ export function projectOverdueOccasionReminders(store: OccasionStore, date: Date
             sourceId: occasion.id,
             title: occasion.name,
             dueDate: occasion.date,
-            daysUntil: Math.round((new Date(`${dueDate}T00:00:00`).getTime() - new Date(`${occasion.date}T00:00:00`).getTime()) / 86400000) * -1,
+            daysUntil: (daysBetweenHalfOpen(occasion.date, dueDate) ?? 0) * -1,
             status: "overdue",
             note: occasion.note,
         }));
@@ -102,12 +103,8 @@ export function projectCheckinReminders(store: CheckinStore, date: Date): Remind
 
 /** T-100 逾期历史：枚举每个启用事项在过去发生、且从未补记的发生日（纯投影，只读）。
     补记走 markOccasionCompleted；跳过今天与未来，按发生日倒序返回。
-    注意：本模块被 tests/occasions.test.cjs 以固定模块集转译加载，尽量不引入新依赖。 */
-function localDateFromKey(key: string): Date {
-    const [year, month, day] = key.split("-").map(Number);
-    return new Date(year, month - 1, day);
-}
-
+    注意：本模块被 tests/occasions.test.cjs、tests/reminder-actions.test.cjs 以固定模块集
+    转译加载；date-keys.ts 属于该固定集，新增共享依赖须同步两处加载清单。 */
 export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date): OverdueOccurrenceEntry[] {
     const today = dateKey(date);
     const entries: OverdueOccurrenceEntry[] = [];
@@ -120,7 +117,7 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
         while (cursor < today && guard < 1000) {
             guard += 1;
             if (!isOccasionCompleted(occasion, cursor)) {
-                const overdueDays = Math.round((localDateFromKey(today).getTime() - localDateFromKey(cursor).getTime()) / 86400000);
+                const overdueDays = daysBetweenHalfOpen(cursor, today) ?? 0;
                 entries.push({
                     id: `overdue:${occasion.id}:${cursor}`,
                     occasionId: occasion.id,
@@ -132,9 +129,9 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
                     note: occasion.note,
                 });
             }
-            const nextDay = localDateFromKey(cursor);
-            nextDay.setDate(nextDay.getDate() + 1);
-            const nextDate = getOccurrenceDate(occasion, dateKey(nextDay));
+            const nextDayKey = nextLocalDay(cursor);
+            if (!nextDayKey) break;
+            const nextDate = getOccurrenceDate(occasion, nextDayKey);
             if (!nextDate || nextDate <= cursor) break;
             cursor = nextDate;
         }
@@ -161,7 +158,7 @@ export function projectReminderCenter(store: CheckinStore, occasions: OccasionSt
         if (occasion.enabled === false) continue;
         if (occasion.recurrence === "once" && occasion.date < today) {
             if (!isOccasionCompleted(occasion, occasion.date)) {
-                const overdueDays = Math.round((new Date(`${today}T00:00:00`).getTime() - new Date(`${occasion.date}T00:00:00`).getTime()) / 86400000);
+                const overdueDays = daysBetweenHalfOpen(occasion.date, today) ?? 0;
                 occasionEntries.push({
                     id: `occasion:${occasion.id}:${occasion.date}`,
                     source: "occasion",
@@ -196,7 +193,7 @@ export function projectReminderCenter(store: CheckinStore, occasions: OccasionSt
 }
 
 function differenceInLocalDays(from: string, to: string): number {
-    return Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / 86400000);
+    return daysBetweenHalfOpen(from, to) ?? 0;
 }
 
 /* 11.0-C 延期与跳过：用户动作按稳定实例 ID 记录在独立存储里，投影只读地应用，

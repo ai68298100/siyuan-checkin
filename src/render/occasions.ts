@@ -1,6 +1,7 @@
 /* 事项页视图：从 index.ts 外置；依赖以 OccasionsViewContext 显式传入。 */
 import {t} from "../i18n";
 import {dateKey} from "../model";
+import {daysBetweenHalfOpen} from "../date-keys";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
 import {describeRecurrence, getOccurrenceDate, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
@@ -46,7 +47,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const rows = filteredOccasions.length ? filteredOccasions.map(({item, next}) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : uiIcon("calendar");
         const kind = item.kind === "birthday" ? t("occ.kindBirthday") : item.kind === "anniversary" ? t("occ.kindAnniversary") : t("occ.kindScheduled");
-        const days = next ? Math.max(0, Math.round((parseLocalDateKey(next).getTime() - parseLocalDateKey(todayKey).getTime()) / 86400000)) : undefined;
+        const days = next ? Math.max(0, daysBetweenHalfOpen(todayKey, next) ?? 0) : undefined;
         const countdown = next ? t("occ.daysAway", {n: days ?? 0}) : t("occ.ended");
         const recurrence = describeRecurrence(item);
         /* The next date is the scanning anchor; recurrence and lead time are

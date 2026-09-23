@@ -1,5 +1,6 @@
 import {lunarToSolar, solarToLunar} from "./lunar";
 import {t} from "./i18n";
+import {daysBetweenHalfOpen} from "./date-keys";
 
 export type OccasionKind = "birthday" | "anniversary" | "scheduled";
 export type OccasionRecurrence = "once" | "annual" | "monthly" | "weekly" | "quarterly" | "halfyearly" | "interval";
@@ -470,7 +471,7 @@ export function toLocalDateKey(date: Date): string {
 }
 
 function differenceInDays(from: string, to: string): number {
-    return Math.round((parseLocalDate(to).getTime() - parseLocalDate(from).getTime()) / 86400000);
+    return daysBetweenHalfOpen(from, to) ?? 0;
 }
 
 function parseLocalDate(value: string): Date {

@@ -1,4 +1,5 @@
 import type {ItemSummary, SummaryContext} from "../analytics";
+import {addDays, daysBetweenHalfOpen, isValidDateKey} from "../date-keys";
 
 export interface ReviewComparisonItem {
     itemId: string;
@@ -73,26 +74,16 @@ function snapshotContext(context: SummaryContext) {
     };
 }
 
-function parseDateKey(value: string): Date | undefined {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-    const [year, month, day] = value.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : undefined;
-}
-
-function formatDateKey(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-/** Return the immediately preceding inclusive range with the same local-day span. */
+/** Return the immediately preceding inclusive range with the same local-day span.
+    T-1419：跨度与前移全部经 date-keys 日序号运算，本地 Date 不再参与（等价回放见 tests/review-comparison.test.cjs）。 */
 export function getPreviousReviewRange(range: ReviewComparisonRange): ReviewComparisonRange | undefined {
-    const start = parseDateKey(range.startDate);
-    const end = parseDateKey(range.endDate);
-    if (!start || !end || start > end) return undefined;
-    const daySpan = Math.round((new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1).getTime() - start.getTime()) / 86400000);
-    const previousEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1);
-    const previousStart = new Date(previousEnd.getFullYear(), previousEnd.getMonth(), previousEnd.getDate() - daySpan + 1);
-    return {startDate: formatDateKey(previousStart), endDate: formatDateKey(previousEnd)};
+    if (!isValidDateKey(range.startDate) || !isValidDateKey(range.endDate) || range.startDate > range.endDate) return undefined;
+    const daySpan = (daysBetweenHalfOpen(range.startDate, range.endDate) ?? 0) + 1;
+    const previousEnd = addDays(range.startDate, -1);
+    if (!previousEnd) return undefined;
+    const previousStart = addDays(previousEnd, -(daySpan - 1));
+    if (!previousStart) return undefined;
+    return {startDate: previousStart, endDate: previousEnd};
 }
 
 /** Compare two already-projected ranges without reading or mutating the store. */

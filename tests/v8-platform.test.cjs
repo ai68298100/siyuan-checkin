@@ -28,6 +28,7 @@ fs.mkdirSync(path.dirname(reportJs), {recursive: true});
 fs.writeFileSync(reportJs, ts.transpileModule(reportSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const prefsSource = fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8");
 const comparisonJs = path.join(outputRoot, "features", "review-comparison.js");
+fs.writeFileSync(path.join(outputRoot, "date-keys.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "date-keys.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText); // T-1419 review-comparison 依赖 date-keys
 fs.writeFileSync(comparisonJs, ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "review-comparison.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 /* T-1352 起 view-preferences 运行时依赖 features/note-anchor 的 validateAnchorBlockId。 */
 const noteAnchorJs = path.join(outputRoot, "features", "note-anchor.js");
