@@ -113,6 +113,9 @@
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。
   - 状态：done（2026-09-24 第一切片）。真实 Task Horizon 联调、上游 issue/PR 与双向现场验证仍归 external/host-pending；不把 mock 结果写成真实联调完成。
+- [x] T-1431 A6 质量收口：全泳道自动化证据汇总（映射 R-50.1/R-50.2，2026-09-24 开工并完成）
+  - 内容：① e2e 真实内核证据——agent-capabilities spec 在用户已接入思源智能体的运行实例（内核 3.8.5 @ 127.0.0.1:6806）通过：宿主登记插件 11 项智能体能力、能力策略放行；新增 `playwright.e2e.running.config.mjs`「附着运行实例」模式（不启内核、不抢工作区锁，手写 target.json）。② 自动化证据汇总报告 `docs/automation-evidence-report-2026-09.md`——R-A0～R-A12 十三泳道交付/测试/提交对照表、最新全链性能预算实测（渲染块 1k/10k/100k=21/34/241ms、100k 回顾 596.9ms、10k 渲染 35ms、CSS 607,940 字节、rollback 4 步 9 资产）、未关闭 host-pending 清单七项。
+  - 状态：done（2026-09-24）。全泳道 A0～A12 自动化部分收口；真实宿主/Android/双插件联调、真实模型端到端对话走查、上游提交与发版保持 host-pending/external，需用户操作或授权。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 
