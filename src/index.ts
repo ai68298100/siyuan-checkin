@@ -36,6 +36,7 @@ import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/blo
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
+import {collectLifecycleFacts, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -3749,7 +3750,10 @@ export default class CheckinPlugin extends Plugin {
         const item = getItemById(this.store, itemId);
         if (!item || this.disposed || this.disposing) return false;
         const recordCount = this.store.events.filter((event) => event.itemId === itemId).length;
-        if (!window.confirm(t("editor.deleteItemConfirm", {name: item.name, n: recordCount}))) return false;
+        /* T-1429 · R-A9：删除前影响预览——外部幂等身份保留、锚点/联动清理、可恢复性显式声明。 */
+        const impact = projectLifecycleImpact(collectLifecycleFacts(item, this.store.events), "delete");
+        const impactNote = t("editor.deleteImpactExtra", {identities: impact.externalIdentitiesRetained, anchors: impact.anchorsCleared, occasions: impact.occasionLinksCleared});
+        if (!window.confirm(t("editor.deleteItemConfirm", {name: item.name, n: recordCount}) + impactNote)) return false;
         return this.enqueueMutation(async () => {
             const current = getItemById(this.store, itemId);
             if (!current) {
