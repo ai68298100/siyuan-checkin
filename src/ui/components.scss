@@ -4113,6 +4113,23 @@
 .lc-checkin__settings-row input[type="range"] { width: 150px; accent-color: var(--lc-checkin-accent-text); }
 .lc-checkin__settings-inline { display: flex; align-items: center; gap: 6px; color: var(--lc-checkin-muted); }
 .lc-checkin__settings-inline input { width: 76px; }
+/* T-1386：外部来源面板折叠摘要条。 */
+.lc-checkin__settings-group { border: 1px solid var(--lc-checkin-border); border-radius: 8px; overflow: hidden; }
+.lc-checkin__settings-group > summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 8px 10px; cursor: pointer; font-weight: 640; font-size: 12px;
+    color: var(--lc-checkin-text); background: color-mix(in srgb, var(--lc-checkin-accent) 6%, var(--lc-checkin-surface));
+    list-style: none;
+}
+.lc-checkin__settings-group > summary::-webkit-details-marker { display: none; }
+.lc-checkin__settings-group > summary::after { content: "▸"; font-size: 10px; color: var(--lc-checkin-muted); }
+.lc-checkin__settings-group[open] > summary::after { content: "▾"; }
+.lc-checkin__settings-group[open] > summary { border-bottom: 1px solid var(--lc-checkin-border); }
+.lc-checkin__settings-group > summary .lc-checkin__settings-group-badge {
+    flex: none; padding: 1px 7px; border-radius: 9px; font-size: 10px; font-weight: 540;
+    color: var(--lc-checkin-accent-text); background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--lc-checkin-surface));
+}
+.lc-checkin__settings-group > .lc-checkin__settings-row { padding-inline: 10px; }
 .lc-checkin__diary-doc-controls { flex-wrap: wrap; justify-content: flex-end; }
 .lc-checkin__diary-doc-controls select { min-width: 180px; max-width: 240px; }
 .lc-checkin__diary-doc-controls .lc-checkin__diary-doc { width: 220px; }
