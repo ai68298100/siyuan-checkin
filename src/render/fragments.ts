@@ -107,6 +107,8 @@ export function renderPriorityReminderView(store: CheckinStore, occasionStore: O
 }
 
 export function renderSaveStatusView(state: SaveState): string {
+    /* T-1422 台账登记：saving 刻意保持静默（checkin-toast 守门：异步保存期插入状态块
+       会引起布局跳动）；反馈由 recentRecord 成功 toast 与 error alert+重试承担。 */
     return state === "error"
             ? `<div class="lc-checkin__save-status is-error" role="alert"><span>${t("msg.saveFailedShort")}</span><button type="button" data-action="retry-save">${t("msg.retrySave")}</button></div>`
             : "";

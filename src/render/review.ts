@@ -435,7 +435,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             <p class="review-scope-note">${t("review.assistantHow")}</p>
             <details class="review-assistant-prompt"><summary>${t("review.assistantPromptPreview")}</summary><textarea readonly rows="7" data-review-assistant-prompt aria-label="${t("review.assistantPromptLabel")}">${escapeHtml(prompt)}</textarea></details>
             ${ctx.summaryCacheState === "stale" ? `<p class="review-scope-note" data-summary-cache-state="stale">${t("review.assistantStale")}</p>` : ""}
-            ${ctx.summaryError ? `<p class="is-error" role="alert">${escapeHtml(ctx.summaryError)}</p>` : ""}
+            ${ctx.summaryError ? `<p class="lc-checkin__error" role="alert">${escapeHtml(ctx.summaryError)}</p>` : ""}
         </section>`;
         const hasGenerated = Boolean(ctx.summaryText) && ctx.summaryCacheState !== "stale";
         const generatedDate = ctx.analysisLastGeneratedAt ? new Date(ctx.analysisLastGeneratedAt) : undefined;

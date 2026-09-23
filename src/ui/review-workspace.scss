@@ -463,7 +463,7 @@
         min-width: 0;
     }
     .review-assistant-status strong { color: var(--lc-checkin-text); font-size: 12px; }
-    .review-assistant .is-error { color: var(--lc-checkin-danger-text); }
+    /* T-1422：助手错误行收编到基座类 lc-checkin__error（danger 边框/底色/色值一体）。 */
 
     .review-assistant > label {
         display: flex;

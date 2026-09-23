@@ -1,5 +1,14 @@
 /* Expanded Today states share the compact card grid without inheriting its
    small quick-action controls or the header's floating add-button geometry. */
+/* T-1422 状态台账：统一禁用态基线——此前禁用呈现散落在逐组件规则里
+   （record-button .66、pagination、assistant 各自为政）；:where 零权重确保
+   组件级特化规则仍可覆盖，仅收敛「未特化的禁用控件」的最低可辨识呈现。 */
+.lc-checkin :where(button, input, select, textarea, summary):disabled,
+.lc-checkin :where(button)[aria-disabled="true"] {
+    opacity: .58;
+    cursor: not-allowed;
+}
+
 .lc-checkin.lc-checkin--today {
     .lc-checkin__exact-entry:not([hidden]) {
         grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center;

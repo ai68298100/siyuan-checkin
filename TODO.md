@@ -64,6 +64,11 @@
   - 防抖：`ReminderUserAction` 增量扩展可选 `expiresAt`——提醒中心新增「延后2小时」按钮（defer），宿主写 `{action:"snooze", at, expiresAt: now+2h}`，applyReminderActions 带 expiresAt 时以到期时间为准（同日内亦可到期），无 expiresAt 的历史 snooze 沿用当日语义零迁移；normalize 对非法 expiresAt（早于 at / 超 7 天）丢弃回落。复用既有独立存储与保存队列，无新存储键。
   - 测试：`tests/reminder-quiet.test.cjs`——解析/归一化/跨午夜逐半小时回放/半开边界/空窗口/防抖到期与历史兼容/非法 expiresAt 丢弃/接线与 i18n 守门，入 `pnpm test` 主链；模块入架构守门无时钟清单（95 模块全绿）；提醒中心签名守门（reminder-actions.test.cjs）同步升级含 defer。
   - 状态：done（2026-09-24。真实宿主通知观感归 host-pending；不新增后台常驻、不直接发送系统通知的边界不变）。
+- [x] T-1422 UI 维护台账（R-A11，2026-09-24 开工并完成）
+  - 内容：新增 `tests/ui-state-ledger.test.cjs`——八状态族活清单（保存中·失败·重试/空态/加载/禁用/依赖缺失/成功错误提示），每族断言 SCSS 呈现、渲染消费方、双语 i18n、无障碍语义（role=status/alert、aria-disabled）四维在位；窄宽度/长文本/双主题/焦点交叉引用既有门禁（responsive-layout/ui-theme/i18n-parity/css-hygiene/mobile-release-quality），不重复断言。
+  - 修复（盘点发现，每修必补断言）：① 统一禁用基线——新增 `:where(button,…):disabled` + `[aria-disabled]` 零权重规则进 interaction-states.scss，收敛此前散落的逐组件禁用呈现，组件特化（record-button .66）仍优先；② 回顾助手错误行收编基座类 `lc-checkin__error`（原散落 is-error 仅色值，现带 danger 边框/底色/防溢出），删除 review-workspace 死规则。
+  - 决策登记：saving 刻意静默——checkin-toast 守门已有「异步保存期不得插入布局块」决策，本批一度误改为可见分支后回退，台账显式登记静默依据；`__loading`/`__success`/`is-saving`/`msg.saving` 为保留词表（零消费但刻意保留），静默增减视为违规，A11 后续清理批统一处理收编或退役。
+  - 状态：done（2026-09-24。台账入 `pnpm test` 主链；真机长尾维持 host-pending 不以结构断言关闭）。
 
 ## 待办补登记（2026-09-22；状态盘点轮）
 
