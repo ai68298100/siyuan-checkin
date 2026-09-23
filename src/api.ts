@@ -5,6 +5,7 @@ import {getEventsInCustomRange, getEventRangeSummary, buildCustomSummaryContext,
 import {computeEventStreaks, computeLongestStreaks, getEventsInDateRange, getItemRevisionForDate, dateKey} from "./model";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./features/habit-score";
 import {filterEventsInRange, isValidEventSource, planBatchRecord, projectItems, type BatchEntryResult} from "./features/api-v5";
+import {abstinenceMilestones} from "./features/pace-projection";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinKind, CheckinStore} from "./types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, isValidLocalDateInput, withTimeout} from "./shared";
 import {serializeCsv, serializeJson} from "./export";
@@ -38,7 +39,7 @@ export interface CheckinApi {
     /** v5:统一项目投影(归档语义二选一 + 类型过滤 + 限量)。 */
     queryItems: (options?: {includeArchived?: boolean; archivedOnly?: boolean; kinds?: CheckinKind[]; limit?: number}) => CheckinItem[];
     /** v5:派生指标门面——当前连续(与成就/洞察同一模型实现)。 */
-    getStreaks: (itemIds?: string[]) => readonly {itemId: string; current: number; longest: number}[];
+    getStreaks: (itemIds?: string[]) => readonly {itemId: string; current: number; longest: number; milestones?: {achieved: number; next?: number; progressPct: number}}[];
     /** T-1361:会话诊断原因码(环形容量 20,防御性副本)。 */
     getDiagnostics: () => readonly {code: string; at: string; detail?: string}[];
     getOccasions: () => Occasion[];
@@ -176,7 +177,13 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
                 const wanted = new Set(itemIds.slice(0, 200).filter((id) => typeof id === "string" && id.length <= 160));
                 ids = ids.filter((id) => wanted.has(id));
             }
-            return Object.freeze(ids.slice(0, 200).map((itemId) => Object.freeze({itemId, current: current.get(itemId) || 0, longest: longest.get(itemId) || 0})));
+            /* T-1415：at-most 项目附戒断里程碑（阶梯 1/3/7/14/30/60/90/180/365），与今日卡片/渲染块同口径。 */
+            const directionById = new Map(host.store.items.map((item) => [item.id, item.direction]));
+            return Object.freeze(ids.slice(0, 200).map((itemId) => {
+                const base = {itemId, current: current.get(itemId) || 0, longest: longest.get(itemId) || 0};
+                const milestones = directionById.get(itemId) === "atMost" ? abstinenceMilestones(base.current) : undefined;
+                return Object.freeze(milestones ? {...base, milestones} : base);
+            }));
         },
         /* T-1361：会话诊断原因码（环形容量 20；智能体只解释原因，不代为执行）。 */
         getDiagnostics: () => Object.freeze(host.getDiagnostics().map((entry) => ({...entry}))),

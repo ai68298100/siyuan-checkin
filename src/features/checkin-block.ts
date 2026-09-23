@@ -12,6 +12,7 @@
 
 import {escapeHtml, formatNumber} from "../shared";
 import {t} from "../i18n";
+import {abstinenceMilestones} from "./pace-projection";
 import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
@@ -235,6 +236,12 @@ export function buildSummaryViewHtml(store: CheckinStore, config: CheckinBlockCo
         const streakParts: string[] = [];
         if (streak > 0) streakParts.push(escapeHtml(t("anchor.streakSuffix", {n: streak})));
         if (longest > 1) streakParts.push(escapeHtml(t("block.longestSuffix", {n: longest})));
+        /* T-1415：at-most 项目附戒断里程碑（与今日卡片/API getStreaks 同口径）。 */
+        if (item.direction === "atMost" && streak > 0) {
+            const milestones = abstinenceMilestones(streak);
+            streakParts.push(escapeHtml(t("today.abstinenceDay", {n: streak})));
+            if (milestones.next) streakParts.push(escapeHtml(t("today.abstinenceNext", {n: milestones.next})));
+        }
         const streakHtml = streakParts.length ? `<em>${streakParts.join(" · ")}</em>` : "";
         /* T-1351：有已解析锚点的项目行额外携带 data-jump-anchor-block，点击打开锚点所在文档。 */
         const anchorBlockId = item.noteAnchor?.blockId;

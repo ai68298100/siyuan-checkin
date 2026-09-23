@@ -90,7 +90,7 @@
   - 内容：新增零依赖纯模块 `src/features/pace-projection.ts`——三套口径独立（R-20.1 v1 冻结）：① 普通 at-least `backlogRate`（未完成已到期有效排期/已到期有效排期，SKIP 日不算机会不算失败，证据日期=漏掉的排期日升序回放，≥50% 判积压）；② quota 独立输出贡献/目标/进度（封顶 100，零目标无除零）；③ at-most 恢复状态（in-recovery/lapsed）+ 破戒日历史（升序去重可回放）+ **戒断里程碑阶梯**（1/3/7/14/30/60/90/180/365，输出最近达成级/下一级/进度）。
   - 接入：今日 at-most 卡片新增里程碑标签（is-milestone，戒断第 N 天 · 下一关 M 天，title 展示已达成级）——cleanDays 复用现有连续无破戒口径（currentStreaks 单一实现）；i18n 3 键中英双语（parity 1622/1622）。
   - 测试：`tests/pace-projection.test.cjs`——backlog 口径（SKIP 排除/证据日期/阈值 50%）、quota 独立与封顶、里程碑阶梯边界（0/1/14/45/400）、破戒历史去重、判别入口分发、确定性、消费守门、纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（99 模块全绿）。
-  - 状态：done（2026-09-24 第一切片：事实切片由调用方经 model 算好传入的投影层模式；洞察/渲染块/API getStreaks 同口径接入归 A4/A5 批次）。
+  - 状态：done（2026-09-24 第一切片：事实切片由调用方经 model 算好传入的投影层模式；**同口径接入已在本批完成**——summary 渲染块 at-most 行附「戒断第 N 天 · 下一关 M 天」（abstinenceMilestones 同口径）+ API v5 `getStreaks` at-most 项目可选 `milestones: {achieved, next?, progressPct}`（additive 兼容）+ docs/api-v5.md metrics.read 节文档同步 + pace-projection 消费守门扩展三面。洞察页无 at-most 专属呈现位，不硬造，留待洞察改版窗口）。
 - [x] T-1416 渲染块一键插入预设（R-A4 第一切片，第三轮调研采纳②，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/block-presets.ts`——4 个上下文自洽预设（summary 全部项目汇总/month 月历/heatmap 年度热力图/groups 分组概览，缺省即当前项目集/当前月/当前年，无需用户先填 itemIds）；`blockPresetMarkdown` 生成围栏；`validateBlockPresetRoundtrip` 注入真实解析器做插入前守门（从围栏提取内容镜像真实摄入路径，view 被篡改或解析失败即拒绝插入）。today 视图强制 itemIds 不提供通用预设（避免插入即错误块）。
   - 接入：命令面板注册 4 个预设命令（langKey：blockPresetSummary/Month/Heatmap/Groups，dist i18n 契约键同步）；宿主 `insertCheckinBlockPreset` 经内核公开 `/api/block/insertBlock` 把预设追加到当前编辑器文档末尾（getCurrentEditor 防御式解析 rootID，拿不到编辑器降级提示；插入成功/失败 toast）。i18n 6 键中英双语（parity 1628/1628）。

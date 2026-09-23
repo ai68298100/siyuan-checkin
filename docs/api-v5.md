@@ -115,10 +115,12 @@ recordEventsBatch(inputs: Array<{
 ### metrics.read → `getStreaks(itemIds?)`
 
 ```ts
-getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest: number}>;
+getStreaks(itemIds?: string[]): Array<{itemId: string; current: number; longest: number; milestones?: {achieved: number; next?: number; progressPct: number}}>;
 ```
 
 连续计算走插件单一实现（`computeEventStreaks`/`computeLongestStreaks`）；**禁止消费端自算 streak**，避免口径漂移。跳过日中性、AUTO 桥接等语义与回顾页展示完全一致。
+
+**T-1415 戒断里程碑（v5 增量，可选字段）**：at-most（戒除类）项目额外携带 `milestones`——`achieved`（已达成最高阶梯，1/3/7/14/30/60/90/180/365）、`next`（下一阶梯，登顶后缺省）、`progressPct`（通往下一级进度 0–100）。与今日卡片、summary 渲染块同一口径；非 at-most 项目无该字段。
 
 ### diagnostics.read → `getDiagnostics()`
 

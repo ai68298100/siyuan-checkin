@@ -101,11 +101,18 @@ const moduleSource = fs.readFileSync(path.join(root, "src", "features", "pace-pr
 assert.doesNotMatch(moduleSource, /^import /m, "投影模块保持零依赖");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");
 
-/* —— 8. 消费守门：今日卡片里程碑标签 + i18n 双语 + 无时钟清单 —— */
+/* —— 8. 消费守门：今日卡片里程碑标签 + summary 渲染块 + API getStreaks 同口径 + i18n 双语 —— */
 const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
 assert.match(fragmentsSource, /abstinenceMilestones/, "今日卡片必须消费戒断里程碑投影");
 assert.match(fragmentsSource, /is-milestone/, "里程碑标签类必须在位");
 assert.match(fragmentsSource, /today\.abstinenceDay/, "卡片必须展示戒断天数");
+const blockSource = fs.readFileSync(path.join(root, "src", "features", "checkin-block.ts"), "utf8");
+assert.match(blockSource, /abstinenceMilestones/, "summary 渲染块必须消费戒断里程碑（同口径）");
+assert.match(blockSource, /today\.abstinenceDay/, "渲染块必须展示戒断天数");
+const apiSource = fs.readFileSync(path.join(root, "src", "api.ts"), "utf8");
+assert.match(apiSource, /milestones = directionById\.get\(itemId\) === "atMost" \? abstinenceMilestones\(base\.current\) : undefined/, "API getStreaks 必须为 at-most 附里程碑（同口径）");
+const docsSource = fs.readFileSync(path.join(root, "docs", "api-v5.md"), "utf8");
+assert.match(docsSource, /milestones\?: \{achieved: number; next\?: number; progressPct: number\}/, "API 文档必须同步 milestones 字段");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["today.abstinenceDay", "today.abstinenceNext", "item.milestoneTitle"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
