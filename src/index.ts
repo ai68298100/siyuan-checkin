@@ -3785,8 +3785,8 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    private downloadExport(format: "json" | "csv") {
-        downloadExportFor(this as unknown as PluginOpsHost, format);
+    private downloadExport(format: "json" | "csv", scopeDays?: number) {
+        downloadExportFor(this as unknown as PluginOpsHost, format, scopeDays);
     }
 
     /* T-1217：报告 Markdown 走与 JSON/CSV 相同的下载边界。 */

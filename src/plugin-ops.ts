@@ -3,6 +3,8 @@
 import {t} from "./i18n";
 import {saveGeneratedFile} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
+import {addDays} from "./date-keys";
+import {getEventsInDateRange} from "./model";
 import {serializeSuggestionAuditExport} from "./agent-suggestions";
 import {serializeDiagnostics} from "./features/diagnostics";
 import {serializeCsv, serializeJson, serializeJsonMigrationReport, type JsonMigrationReport} from "./export";
@@ -120,10 +122,20 @@ export async function restoreItemFor(host: PluginOpsHost, itemId: string): Promi
 }
 
 /* T-1430 · R-A10：导出前敏感字段审计——备注/图片/头像照片如实披露给用户。 */
-export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv"): void {
+export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", scopeDays?: number): void {
     host.lastExportAt = new Date().toISOString();
     void host.persistViewPreferences();
     const cloned = host.cloneStore();
+    /* T-1436 · R-A8：范围导出——CSV 可选相对天数窗口；JSON 恒为全量备份语义。 */
+    if (format === "csv" && Number.isFinite(scopeDays) && (scopeDays as number) >= 1) {
+        const days = Math.min(730, Math.floor(scopeDays as number));
+        const today = dateKey(new Date());
+        const startDate = addDays(today, -(days - 1));
+        if (startDate) {
+            const keep = new Set(getEventsInDateRange(cloned, startDate, today).map((event) => event.id));
+            cloned.events = cloned.events.filter((event) => keep.has(event.id));
+        }
+    }
     const content = format === "json" ? serializeJson(cloned) : serializeCsv(cloned);
     const audit = auditExportSensitiveFields(cloned);
     if (hasSensitiveContent(audit)) {

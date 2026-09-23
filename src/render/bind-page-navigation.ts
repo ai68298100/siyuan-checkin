@@ -73,7 +73,7 @@ export interface BindPageNavigationHost {
     deleteArchivedItem(itemId: string): Promise<boolean> | void;
     deleteArchivedItems(itemIds: string[]): Promise<boolean> | void;
     generateSummary(): Promise<void> | void;
-    downloadExport(format: "json" | "csv"): void;
+    downloadExport(format: "json" | "csv", scopeDays?: number): void;
     downloadReportMarkdown(markdown: string): void;
     reportSections: ReportSectionToggles;
     /** T-1360 报告来源筛选："" = 全部来源。 */
@@ -939,6 +939,6 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         await Promise.resolve(host.downloadExport("csv"));
         host.downloadReportMarkdown(buildCurrentReport());
     }));
-    root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("csv")));
+    root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => { const days = Number(root.querySelector<HTMLSelectElement>("[data-export-days]")?.value); host.downloadExport("csv", Number.isFinite(days) && days >= 1 ? days : undefined); }));
     root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("json")));
 }

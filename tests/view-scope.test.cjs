@@ -127,4 +127,20 @@ assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[
 const imports = moduleSource.match(/^import[^;]+;/gm) || [];
 assert.deepEqual(imports.filter((line) => !line.startsWith("import type")), ['import {addDays} from "../date-keys";'], "运行时依赖仅限 date-keys（单一日期实现）");
 
-console.log("view-scope tests passed: 归一化/版本 fail-closed/相对日期解析/缺失条件/描述词元/消费守门/纯度 全部通过");
+/* —— 8. 范围导出接线（R-A8 第三切片）：CSV 相对天数窗口，JSON 保持全量备份 —— */
+const pluginOpsSource = fs.readFileSync(path.join(root, "src", "plugin-ops.ts"), "utf8");
+assert.match(pluginOpsSource, /downloadExportFor\(host: PluginOpsHost, format: "json" \| "csv", scopeDays\?: number\)/, "导出必须支持可选范围天数");
+assert.match(pluginOpsSource, /if \(format === "csv" && Number\.isFinite\(scopeDays\)/, "范围只作用于 CSV（JSON 恒为全量备份）");
+assert.match(pluginOpsSource, /getEventsInDateRange\(cloned, startDate, today\)/, "范围过滤必须走 model 单一实现");
+assert.match(pluginOpsSource, /Math\.min\(730, Math\.floor\(scopeDays as number\)\)/, "范围天数钳制 730 上限");
+const reviewExportSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+assert.match(reviewExportSource, /data-export-days/, "回顾页必须提供导出范围选择器");
+const navSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
+assert.match(navSource, /data-export-days/, "CSV 导出必须读取范围选择器");
+const i18nExportSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+for (const key of ["review.exportScopeLabel", "review.exportScopeAll", "review.exportScope7", "review.exportScope30", "review.exportScope90", "review.exportScope365"]) {
+    const occurrences = i18nExportSource.split(`"${key}"`).length - 1;
+    assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+
+console.log("view-scope tests passed: 归一化/版本 fail-closed/相对日期解析/缺失条件/描述词元/消费守门/范围导出/纯度 全部通过");

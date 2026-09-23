@@ -120,6 +120,10 @@
   - 接入：回顾页报告设置菜单新增选择器（默认+已存视图）、「保存当前为视图」（prompt 命名）与「删除视图」按钮，绑改动即持久化。
   - 测试：view-scope.test.cjs 消费守门扩展（偏好字段/三方法/上限/选择器与按钮/7 键双语）。
   - 状态：done（2026-09-24 第二切片，A8 泳道收口）。命名视图只存查询偏好不复制事件；真实 surface 交互保持 host-pending。
+- [x] T-1436 范围导出（R-A8 第三切片，2026-09-24 开工并完成）
+  - 内容：CSV 数据导出支持可选相对天数范围——回顾页报告设置菜单新增「CSV 导出范围」选择器（全部/最近 7/30/90/365 天），plugin-ops `downloadExportFor` 增加可选 scopeDays：经 model `getEventsInDateRange` 单一实现过滤事件（今天闭区间回溯 N 天，上限钳制 730）。**JSON 恒为全量备份语义不参与范围**；范围外事件不删除、仅不进入导出文件。
+  - 测试：view-scope.test.cjs 消费守门扩展（签名/CSV-only 分支/model 单一实现/730 钳制/选择器/6 键双语）。
+  - 状态：done（2026-09-24 第三切片，A8 深化切片全部消化）。
 - [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
