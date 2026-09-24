@@ -131,6 +131,10 @@
   - 内容：CSV 数据导出支持可选相对天数范围——回顾页报告设置菜单新增「CSV 导出范围」选择器（全部/最近 7/30/90/365 天），plugin-ops `downloadExportFor` 增加可选 scopeDays：经 model `getEventsInDateRange` 单一实现过滤事件（今天闭区间回溯 N 天，上限钳制 730）。**JSON 恒为全量备份语义不参与范围**；范围外事件不删除、仅不进入导出文件。
   - 测试：view-scope.test.cjs 消费守门扩展（签名/CSV-only 分支/model 单一实现/730 钳制/选择器/6 键双语）。
   - 状态：done（2026-09-24 第三切片，A8 深化切片全部消化）。
+- [x] T-1439 容易漏卡的时间段（R-20.3 第二张行动卡，2026-09-24 开工并完成）
+  - 内容：pace-projection 新增 `aggregateMissedWeekdays`（漏卡按星期聚合，0=周日…6=周六，数量降序+星期升序稳定）与 `aggregateMissedTimeSlots`（按 morning/afternoon/evening/any 固定顺序，非法归 any）；index 报告构建时枚举 30 天窗口漏卡明细并聚合；报告新增「容易漏卡的时间段（共 N 次漏卡）」节——星期用 occasions 既有 weekdayName 本地化，时段用 TIME_SLOT_LABELS（label 在组合根本地化后传入，保持报告纯模块不触 ui）。
+  - 测试：pace-projection.test.cjs 扩展（星期推导/时段顺序/非法归 any/报告与 index 接线守门/双语）。
+  - 状态：done（2026-09-24）。R-20.3 剩余第三张卡「最近调整是否有效」（复用 buildReviewComparison 基础）等回顾改版窗口。
 - [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。

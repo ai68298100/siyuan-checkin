@@ -188,6 +188,48 @@ export function rankStalledItems(items: readonly StalledItemFacts[], limit = 5):
         .slice(0, cappedLimit);
 }
 
+/* —— 容易漏卡的时间段（R-20.3 第二张行动卡）：漏卡按星期/时段聚合，纯日期推导无时钟 —— */
+
+export interface MissedWeekdayCount {
+    /** 0=周日 … 6=周六（与 Date#getUTCDay 一致）。 */
+    weekday: number;
+    count: number;
+}
+
+export interface MissedTimeSlotCount {
+    /** morning/afternoon/evening/any。 */
+    timeSlot: string;
+    count: number;
+}
+
+const WEEKDAY_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
+const TIME_SLOT_ORDER = ["morning", "afternoon", "evening", "any"] as const;
+
+/** 漏卡日按星期聚合（0=周日…6=周六），数量降序、星期升序稳定平局；非法日期跳过。 */
+export function aggregateMissedWeekdays(missedDates: readonly string[]): readonly MissedWeekdayCount[] {
+    const counts = new Map<number, number>();
+    for (const date of missedDates) {
+        if (typeof date !== "string" || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)) continue;
+        const weekday = new Date(date + "T00:00:00Z").getUTCDay();
+        counts.set(weekday, (counts.get(weekday) || 0) + 1);
+    }
+    return [...counts.entries()]
+        .map(([weekday, count]) => ({weekday, count}))
+        .sort((left, right) => right.count - left.count || left.weekday - right.weekday);
+}
+
+/** 漏卡按事项时段聚合，固定顺序 morning→afternoon→evening→any，仅保留非零桶。 */
+export function aggregateMissedTimeSlots(slices: readonly {localDate?: string; timeSlot?: string}[]): readonly MissedTimeSlotCount[] {
+    const counts = new Map<string, number>();
+    for (const slice of slices) {
+        const slot = slice.timeSlot && (TIME_SLOT_ORDER as readonly string[]).includes(slice.timeSlot) ? slice.timeSlot as MissedTimeSlotCount["timeSlot"] : "any";
+        counts.set(slot, (counts.get(slot) || 0) + 1);
+    }
+    return TIME_SLOT_ORDER
+        .map((timeSlot) => ({timeSlot, count: counts.get(timeSlot) || 0}))
+        .filter((entry) => entry.count > 0);
+}
+
 /* —— 判别入口：调用方按项目口径选择，三套投影互不污染 —— */
 
 export type PaceProjection = AtLeastPaceProjection | QuotaPaceProjection | AtMostPaceProjection;

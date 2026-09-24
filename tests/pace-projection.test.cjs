@@ -140,4 +140,24 @@ for (const key of ["today.abstinenceDay", "today.abstinenceNext", "item.mileston
     assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
 
+/* —— 10b. 漏卡时间段聚合：星期推导（2026-09-24=周四）/时段固定顺序/排序稳定性 + 接线守门 —— */
+{
+    const byWeekday = pp.aggregateMissedWeekdays(["2026-09-24", "2026-09-24", "2026-09-20", "bad"]);
+    assert.deepEqual(byWeekday, [{weekday: 4, count: 2}, {weekday: 0, count: 1}], "周四×2 + 周日×1，降序稳定");
+    const bySlot = pp.aggregateMissedTimeSlots([{localDate: "2026-09-24", timeSlot: "evening"}, {localDate: "2026-09-23", timeSlot: "evening"}, {localDate: "2026-09-22"}, {localDate: "2026-09-21", timeSlot: "weird"}]);
+    assert.deepEqual(bySlot.map((e) => e.timeSlot), ["evening", "any"], "时段聚合：非法归 any");
+    assert.deepEqual(pp.aggregateMissedWeekdays([]), []);
+}
+const reportSource2 = fs.readFileSync(path.join(root, "src", "features", "report.ts"), "utf8");
+assert.match(reportSource2, /report.missedTimeTitle/, "报告必须渲染漏卡时间段节");
+assert.match(reportSource2, /aggregateMissedWeekdays|missedByWeekday/, "报告必须消费星期聚合");
+const indexSource2 = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+assert.match(indexSource2, /aggregateMissedWeekdays\(missedWeekdaySlices\)/, "index 必须聚合漏卡星期");
+assert.match(indexSource2, /aggregateMissedTimeSlots\(missedSlotSlices\)/, "index 必须聚合漏卡时段");
+const i18nSource2 = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+{
+    const occurrences = i18nSource2.split('"report.missedTimeTitle"').length - 1;
+    assert.ok(occurrences >= 2, `report.missedTimeTitle 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+
 console.log("pace-projection tests passed: backlog 口径/SKIP 排除/证据日期/quota 独立/at-most 恢复与里程碑阶梯/判别入口/确定性/消费守门/纯度 全部通过");

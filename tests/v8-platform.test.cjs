@@ -32,6 +32,8 @@ fs.writeFileSync(path.join(outputRoot, "features", "first-success.js"), ts.trans
 fs.writeFileSync(path.join(outputRoot, "features", "view-scope.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "view-scope.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText); // T-1425 view-preferences 依赖
 const comparisonJs = path.join(outputRoot, "features", "review-comparison.js");
 fs.writeFileSync(path.join(outputRoot, "date-keys.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "date-keys.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText); // T-1419 review-comparison 依赖 date-keys
+fs.writeFileSync(path.join(outputRoot, "lunar.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "lunar.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+fs.writeFileSync(path.join(outputRoot, "occasions.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "occasions.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText); // T-1436 report 失速节依赖 weekdayName
 fs.writeFileSync(comparisonJs, ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "review-comparison.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 /* T-1352 起 view-preferences 运行时依赖 features/note-anchor 的 validateAnchorBlockId。 */
 const noteAnchorJs = path.join(outputRoot, "features", "note-anchor.js");

@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/diary-search.ts"].forEach(transpile);
+["src/i18n.ts", "src/lunar.ts", "src/occasions.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/diary-search.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {runDiarySearchRequest} = require(path.join(outputRoot, "src/features/diary-search.js"));
@@ -111,7 +111,7 @@ assert.match(indexSource, /appendAnchorNote\(\(url, payload\) => this\.kernelPos
 assert.match(indexSource, /withBoundedRetry\(\s*\(\) => appendAnchorNote/, "write must be wrapped in the bounded retry");
 assert.match(indexSource, /type: "anchor", at: new Date\(\)\.toISOString\(\), details: \{channel: "diary-report"/, "write outcome must land in the audit ledger");
 assert.match(indexSource, /if \(!docId\) \{\s*showMessage\(t\("msg\.diaryNotBound"\)\)/, "write must refuse when not bound/enabled");
-assert.match(indexSource, /buildWeeklyReportMarkdown\(summary, title, this\.reportSections, comparison, \{\.\.\.sourceOptions, viewScope, contextAggregation, stalledItems\}\)/, "diary report must reuse the exact review export path (incl. T-1425 scope + T-1433 context + T-1436 stalled declaration)");
+assert.match(indexSource, /buildWeeklyReportMarkdown\(summary, title, this\.reportSections, comparison, \{\.\.\.sourceOptions, viewScope, contextAggregation, missedByWeekday, missedByTimeSlot\}\)/, "diary report must reuse the exact review export path (incl. T-1425 scope + T-1433 context + T-1436 miss-time declaration)");
 assert.match(indexSource, /data-diary-toggle/, "toggle binding must exist");
 assert.match(indexSource, /data-action='save-diary-doc'/, "doc save binding must exist");
 assert.match(indexSource, /validateAnchorBlockId\(input\?\.value\)/, "doc ids must be validated with the shared validator");

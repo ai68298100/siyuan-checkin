@@ -3,13 +3,15 @@
    数据不足时明确说明而不是给空结论；全部本地生成，不发网络请求。 */
 
 import {t} from "../i18n";
+import {weekdayName} from "../occasions";
+
 import type {SummaryContext} from "../analytics";
 import type {ReviewComparison} from "./review-comparison";
 import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 import type {ViewScopeDescription} from "./view-scope";
 import type {ContextAggregation} from "./context-normalization";
-import type {StalledItemRank} from "./pace-projection";
+import type {MissedTimeSlotCount, MissedWeekdayCount, StalledItemRank} from "./pace-projection";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -42,7 +44,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -77,6 +79,14 @@ export function buildWeeklyReportMarkdown(
         for (const item of options.stalledItems) {
             lines.push(`  - ${t("report.stalledLine", {name: item.name, missed: item.missedCount, due: item.dueOpportunities, rate: item.backlogRate, last: item.lastMissedDate ?? ""})}`);
         }
+    }
+    /* T-1435 · R-20.3 第二卡：容易漏卡的时间段——按星期与事项时段聚合漏卡分布。 */
+    if (options?.missedByWeekday?.length) {
+        lines.push(`- ${t("report.missedTimeTitle", {n: options.missedByWeekday.reduce((total, entry) => total + entry.count, 0)})}`);
+        for (const entry of options.missedByWeekday) lines.push(`  - ${weekdayName(entry.weekday)}：${entry.count} 次`);
+    }
+    if (options?.missedByTimeSlot?.length) {
+        for (const entry of options.missedByTimeSlot) lines.push(`  - ${entry.label}：${entry.count} 次`);
     }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);
