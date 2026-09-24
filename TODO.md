@@ -169,6 +169,12 @@
   - 根因候选：① 手机端 tap 未命中按钮（命中区/覆盖层/事件透传到卡片级 handler）；② 手机渲染时序导致监听器绑定在旧节点上（重渲染后按钮重建而绑定未重挂）；③ 移动 bundle 的 bindTodayHandlers 路径差异。
   - 修复方向：playwright **mobile bundle** e2e 先复现（打开今日页→点已完成节头→断言 items hidden），再按复现差异修绑定/命中区；真机确认归 host-pending。
   - 归类：手机端缺陷；e2e mobile bundle 可自动化复现（local-auto 可复现）+ 真机确认（host-pending）。
+- [ ] T-1447 手机端缺陷：回顾页下滑整页抖动如弹簧（用户真机报告 2026-09-24）
+  - 现象：手机端进入回顾页，往下滑动时整页来回振荡（"跟一个大弹簧一样"）。
+  - 调查事实：① 回顾页二级导航有 transform 钉住机制（pinReviewSubnavRail，D-159 桌面缩放缺陷的 workaround）——**代码注释原样描述了本症状**："per-scroll transform 会让 WebView 合成器与触摸手势打架（滚动位置可见振荡、页面无法前进）"，因此移动端设计了守卫直接跳过（返回空 sync）；守卫=宿主根元素带 `lc-checkin-host--mobile` / `lc-checkin-dialog-host--mobile` class（renderInto 按 isMobileFrontend toggle）。② 其余滚动写入方：T-112 每表面滚动位置记忆、节奏条初始化 scrollLeft、折叠跳转 scrollTop 直写。③ D-159 记录的 CSS zoom+sticky 是桌面已知 Chromium 缺陷类，移动端 WebView 可能同族。
+  - 根因候选：① **守卫 class 不匹配**——实际滚动宿主元素未带 mobile class（renderInto 的 root 与 bindPageNavigationHandlers 收到的 root 不是同一元素，或移动端挂载路径绕过 toggle）→ transform 同步在移动端照跑，与触摸动量滚动互搏=弹簧振荡（症状完全吻合，首查此项）；② T-112 滚动记忆在动量滚动期间回写 scrollTop；③ WebView 滚动锚定与固定/变换元素冲突。
+  - 复现/修复计划：playwright **mobile bundle** 打开回顾页→模拟触摸滚动→埋点断言 transform 写入次数（>0 即守卫失效）；真机 console 一行可验证（`document.querySelector('.lc-checkin__review-subnav').style.transform` 随滚动变化即为守卫失效）。修复：修守卫判定（或按 isMobileFrontend 显式传参），移动端彻底停用 transform 同步；桌面保持不变。
+  - 归类：手机端缺陷；mobile bundle e2e 可自动化复现（local-auto 可复现）+ 真机确认（host-pending）。
 - [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
