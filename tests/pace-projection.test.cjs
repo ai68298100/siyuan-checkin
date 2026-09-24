@@ -151,13 +151,50 @@ for (const key of ["today.abstinenceDay", "today.abstinenceNext", "item.mileston
 const reportSource2 = fs.readFileSync(path.join(root, "src", "features", "report.ts"), "utf8");
 assert.match(reportSource2, /report.missedTimeTitle/, "报告必须渲染漏卡时间段节");
 assert.match(reportSource2, /aggregateMissedWeekdays|missedByWeekday/, "报告必须消费星期聚合");
+assert.match(reportSource2, /report.targetLoadTitle/, "报告必须渲染目标负荷节");
+assert.match(reportSource2, /targetLoad\?:/, "报告 options 必须声明 targetLoad");
+
+/* —— 目标负荷解读（T-1450 · R-20.3 第三卡：目标是否过高） —— */
+{
+    /* 样本门槛：到期机会 < 8 不参与推断。 */
+    const small = pp.interpretTargetLoad([{itemId: "a", name: "小样本", dueOpportunities: 7, missedCount: 5, windowStartDate: "2026-08-26"}]);
+    assert.deepEqual(small, [], "样本不足的项目不进入目标负荷");
+    /* 阈值边界：≥15% 偏紧、≥40% 疑似过高。 */
+    const tight = pp.interpretTargetLoad([{itemId: "b", name: "偏紧项", dueOpportunities: 20, missedCount: 3}]);
+    assert.equal(tight.length, 1, "15% 边界进入偏紧");
+    assert.equal(tight[0].verdict, "tight");
+    const boundary = pp.interpretTargetLoad([{itemId: "c", name: "边界项", dueOpportunities: 10, missedCount: 4}]);
+    assert.equal(boundary[0].verdict, "overloaded", "40% 边界进入疑似过高");
+    assert.equal(boundary[0].backlogRate, 40);
+    const safe = pp.interpretTargetLoad([{itemId: "d", name: "健康项", dueOpportunities: 20, missedCount: 2}]);
+    assert.deepEqual(safe, [], "低于 15% 视为可持续，不进卡");
+    /* 排序确定性：积压率降序 → 名称 zh-CN → itemId；limit 截断；证据字段透传。 */
+    const ranked = pp.interpretTargetLoad([
+        {itemId: "x1", name: "跑步", dueOpportunities: 20, missedCount: 9},
+        {itemId: "x2", name: "阅读", dueOpportunities: 20, missedCount: 9},
+        {itemId: "x3", name: "冥想", dueOpportunities: 10, missedCount: 2},
+        {itemId: "x4", name: "饮水", dueOpportunities: 30, missedCount: 12, windowStartDate: "2026-08-26"},
+    ], 3);
+    assert.deepEqual(ranked.map((e) => e.itemId), ["x1", "x2", "x4"], "45% > 45% > 40%（同率按名称 zh-CN 稳定平局，积压率降序）");
+    assert.equal(ranked.find((e) => e.itemId === "x4")?.windowStartDate, "2026-08-26", "窗口首日透传为证据");
+    assert.equal(pp.interpretTargetLoad([{itemId: "y", name: "A", dueOpportunities: 10, missedCount: 10}], 0).length, 1, "limit 钳制下限 1");
+    /* 纯度：冻结输入不被改写。 */
+    const frozen = Object.freeze([{itemId: "z", name: "冻结", dueOpportunities: 10, missedCount: 5}]);
+    assert.equal(pp.interpretTargetLoad(frozen).length, 1);
+}
 const indexSource2 = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource2, /aggregateMissedWeekdays\(missedWeekdaySlices\)/, "index 必须聚合漏卡星期");
 assert.match(indexSource2, /aggregateMissedTimeSlots\(missedSlotSlices\)/, "index 必须聚合漏卡时段");
+assert.match(indexSource2, /interpretTargetLoad\(stalledFacts/, "index 必须从同一份事实生成目标负荷卡");
+assert.match(indexSource2, /windowStartDate = day/, "index 必须记录观察窗首日");
 const i18nSource2 = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 {
     const occurrences = i18nSource2.split('"report.missedTimeTitle"').length - 1;
     assert.ok(occurrences >= 2, `report.missedTimeTitle 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+for (const key of ["report.targetLoadTitle", "report.targetLoadTight", "report.targetLoadOverloaded"]) {
+    const occurrences = i18nSource2.split(`"${key}"`).length - 1;
+    assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
 
 console.log("pace-projection tests passed: backlog 口径/SKIP 排除/证据日期/quota 独立/at-most 恢复与里程碑阶梯/判别入口/确定性/消费守门/纯度 全部通过");

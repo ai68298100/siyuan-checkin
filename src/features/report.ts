@@ -11,7 +11,7 @@ import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 import type {ViewScopeDescription} from "./view-scope";
 import type {ContextAggregation} from "./context-normalization";
-import type {MissedTimeSlotCount, MissedWeekdayCount, StalledItemRank} from "./pace-projection";
+import type {MissedTimeSlotCount, MissedWeekdayCount, StalledItemRank, TargetLoadAdvice} from "./pace-projection";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -44,7 +44,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]; targetLoad?: readonly TargetLoadAdvice[]},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -87,6 +87,13 @@ export function buildWeeklyReportMarkdown(
     }
     if (options?.missedByTimeSlot?.length) {
         for (const entry of options.missedByTimeSlot) lines.push(`  - ${entry.label}：${entry.count} 次`);
+    }
+    /* T-1450 · R-20.3 第三卡：目标负荷解读——「目标是否过高」，样本门槛下的推断与可选建议。 */
+    if (options?.targetLoad?.length) {
+        lines.push(`- ${t("report.targetLoadTitle")}`);
+        for (const entry of options.targetLoad) {
+            lines.push(`  - ${t(entry.verdict === "overloaded" ? "report.targetLoadOverloaded" : "report.targetLoadTight", {name: entry.name, missed: entry.missedCount, due: entry.dueOpportunities, rate: entry.backlogRate})}`);
+        }
     }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);

@@ -230,6 +230,64 @@ export function aggregateMissedTimeSlots(slices: readonly {localDate?: string; t
         .filter((entry) => entry.count > 0);
 }
 
+/* —— 目标负荷解读（R-20.3 第三张行动卡：目标是否过高）——
+   事实与推断分离：只对样本量足够（到期机会 ≥ TARGET_LOAD_MIN_SAMPLE）的项目给出
+   推断；阈值固定（积压率 ≥15% 偏紧、≥40% 疑似过高）；输出按严重度降序、名称
+   zh-CN → itemId 稳定平局；零依赖、无时钟、确定性。 */
+
+export const TARGET_LOAD_MIN_SAMPLE = 8;
+export const TARGET_LOAD_TIGHT_RATIO = 0.15;
+export const TARGET_LOAD_OVERLOADED_RATIO = 0.4;
+
+export type TargetLoadVerdict = "tight" | "overloaded";
+
+export interface TargetLoadFacts {
+    itemId: string;
+    name: string;
+    /** 观察窗内已到期有效排期机会数（样本量）。 */
+    dueOpportunities: number;
+    missedCount: number;
+    /** 观察窗首日（YYYY-MM-DD，可缺省 = 样本期不明）。 */
+    windowStartDate?: string;
+}
+
+export interface TargetLoadAdvice {
+    itemId: string;
+    name: string;
+    verdict: TargetLoadVerdict;
+    backlogRate: number;
+    dueOpportunities: number;
+    missedCount: number;
+    windowStartDate?: string;
+}
+
+export function interpretTargetLoad(items: readonly TargetLoadFacts[], limit = 5): readonly TargetLoadAdvice[] {
+    const cappedLimit = Math.max(1, Math.min(50, Math.floor(limit)));
+    return items
+        .filter((item) => item.dueOpportunities >= TARGET_LOAD_MIN_SAMPLE)
+        .map((item) => {
+            const due = Math.max(0, item.dueOpportunities);
+            const missed = Math.max(0, Math.min(item.missedCount, due));
+            return {item, missed, rate: due ? Math.round((missed / due) * 100) : 0};
+        })
+        /* 只保留达到「偏紧」线的项目（低于视为可持续，不进卡）。 */
+        .filter(({rate}) => rate >= TARGET_LOAD_TIGHT_RATIO * 100)
+        .map(({item, missed, rate}) => ({
+            itemId: item.itemId,
+            name: item.name,
+            verdict: (rate >= TARGET_LOAD_OVERLOADED_RATIO * 100 ? "overloaded" : "tight") as TargetLoadVerdict,
+            backlogRate: rate,
+            dueOpportunities: Math.max(0, item.dueOpportunities),
+            missedCount: missed,
+            ...(item.windowStartDate ? {windowStartDate: item.windowStartDate} : {}),
+        }))
+        .sort((left, right) => right.backlogRate - left.backlogRate
+            || right.missedCount - left.missedCount
+            || left.name.localeCompare(right.name, "zh-CN")
+            || left.itemId.localeCompare(right.itemId))
+        .slice(0, cappedLimit);
+}
+
 /* —— 判别入口：调用方按项目口径选择，三套投影互不污染 —— */
 
 export type PaceProjection = AtLeastPaceProjection | QuotaPaceProjection | AtMostPaceProjection;
