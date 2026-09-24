@@ -8,9 +8,9 @@
 
 记录每一次行动，再用同一份可追溯数据完成统计、提醒、复盘和跨插件协作。
 
-**当前版本：18.2.1**
+**当前版本：18.3.0**
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.2.1.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [完整变更记录](docs/releases/release-notes-18.3.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -54,9 +54,23 @@
 
 核心功能不依赖网络或 AI：即使没有智能体、番茄钟或其他插件，手动打卡、统计、导出、恢复和提醒仍然可以独立运行。插件不包含 `kernel.js`，不声明 `kernels`，也不启用 `publish.data`；打卡记录、恢复点、审计信息和显示偏好属于插件自己的本地数据。
 
-## 18.2.1 要点
+## 18.3.0 要点
 
-外部来源体验收口：修复思播采样累计与健康收件箱身份两处缺陷，设置页外部来源入口聚合为折叠面板，回顾报告来源筛选覆盖思阅/思播。主存储 v3、最低思源版本 3.8.4 不变，可直接从 18.2.0 升级。
+本版把生态调研第三轮采纳项与产品战略落地路线（R-A0～A12 泳道）的本地可交付部分一次收口：习惯算法、今日页、提醒、隐私披露与生态契约全面增强。主存储 v3、最低思源版本 3.8.4、契约 storeVersion 2 不变，可直接从 18.2.1 升级。
+
+- **戒断里程碑**：戒除类项目显示「戒断第 N 天」并对照 1/3/7/14/30/60/90/180/365 阶梯给出最近达成级与下一关；今日卡片、summary 渲染块与公开 API `getStreaks` 同口径。
+- **今日行动台摘要条**：今日页顶部一眼看清完成进度、跳过数、推荐的下一步与专注可用性；记录路径与撤销不变。
+- **提醒注意力**：新增「安静时段」窗口（支持跨午夜），窗口内提醒降级为页内安静呈现；提醒中心新增「延后2小时」防抖。
+- **命名保存视图 + 范围导出**：回顾页可把「最近 30 天 + 来源」存为命名视图一键应用；CSV 导出支持相对天数范围（JSON 恒为全量备份）。
+- **隐私披露**：导出前审计并披露备注/图片数量；来源断开时明示已落盘事件与幂等身份全部保留；诊断导出前预览包内构成；删除/批量删除确认含影响清单。全程零遥测。
+- **渲染块一键插入**：命令面板提供 4 个预设（汇总/月历/热力图/分组概览），插入即可正确渲染。
+- **导入预览**：Loop CSV 与 Obsidian Habits 21 导入前统一披露重名合并与语义损耗。
+- **报告增强**：报告头显式声明统计范围；新增「跳过原因分布」节（词表归一化 + 样本不足守卫）与「失速项目」节（30 天漏卡排名）。
+- **质量基建**：日期运算单一实现（date-keys）、架构边界自动守门、UI 状态台账、Task Horizon 消费侧契约（单飞/超时/Abort/降级）、来源生命周期矩阵。
+
+### 18.2.1 功能基础
+
+外部来源体验收口：修复思播采样累计与健康收件箱身份两处缺陷，设置页外部来源入口聚合为折叠面板，回顾报告来源筛选覆盖思阅/思播。
 
 - **修复·思播观看联动**：此前按单段采样取整，15 秒采样无法累计到 1 分钟；现按原始毫秒累计、按分钟晋升，时长项目可正常达标。
 - **修复·健康收件箱**：幂等身份补入项目维度，多个健康项目绑定同一指标不再互相覆盖；启动时立即同步一次收件箱。
@@ -77,7 +91,7 @@
 
 外部数据来源正式接入：思阅阅读联动、健康数据收件箱（iOS 快捷指令）、每日摘要驻留（均 opt-in 默认关）；来源统筹框架统一五段管道；Task Horizon 日历可见性 + 公开 API 新增 `calendar.read`；锚点跳转跟随块移动。
 
-完整条目见 [18.2.1 变更记录](docs/v18.2.1-change-log.md)、[发布说明](docs/releases/release-notes-18.2.1.md)、[18.2.0 变更记录](docs/v18.2.0-change-log.md) 和 [18.2.0 发布说明](docs/releases/release-notes-18.2.0.md)。
+完整条目见 [18.3.0 变更记录](docs/v18.3.0-change-log.md)、[发布说明](docs/releases/release-notes-18.3.0.md)、[18.2.1 变更记录](docs/v18.2.1-change-log.md) 和 [18.2.1 发布说明](docs/releases/release-notes-18.2.1.md)。
 
 - **回顾适配**：修正统计周期与内容对齐、记录数值垂直居中、图表随容器宽度展开及窄屏字号；调整移动端回顾滚动。
 - **中文输入**：今日搜索在拼音组合期间保留输入节点，防止旧搜索计时器中断输入。
@@ -383,7 +397,7 @@ corepack pnpm run test:e2e:readonly   # 另起 --readonly 实例，验证只读�
 
 ## 文档索引
 
-- [18.2.1 变更记录](docs/v18.2.1-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md)
+- [18.3.0 变更记录](docs/v18.3.0-change-log.md) · [发布说明归档](docs/releases/) · [发布与回滚](docs/release-rollback.md) · [自动化证据报告](docs/automation-evidence-report-2026-09.md)
 - [当前状态与开发路线](docs/development-roadmap-current.md) · [产品战略与生态调研](docs/roadmap-product-strategy-2026-09.md) · [战略落地执行路线](docs/implementation-roadmap-product-strategy-2026-09.md) · [v18~v22 已交付基线](docs/development-roadmap-v18-v22.md) · [集成冒烟清单](docs/integration-smoke-checklist.md)
 - [API v5 参考](docs/api-v5.md) · [生态集成与 API](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [模块地图与使用指南](docs/architecture.md) · [仓库布局与整理规则](docs/repository-layout.md) · [4.0 UI 变更记录](docs/v4.0-ui-change-log.md)

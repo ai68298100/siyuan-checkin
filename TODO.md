@@ -129,6 +129,15 @@
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
   - 测试：`tests/context-normalization.test.cjs`——关键词归一化（中英/大小写/空文本）、聚合排序与 other 兜底、日期范围、样本不足守卫、报告接线守门、纯度审计，入 `pnpm test` 主链；模块入架构守门无时钟清单（104 模块全绿）；diary-report 导出路径守门同步含 contextAggregation。
   - 状态：done（2026-09-24 第二切片，A3 泳道收口）。真实用户是否写备注属使用反馈，保持开放。
+- [ ] T-1437 微信读书阅读时长来源（官方 WeRead Skills 通道，评估通过后转开发批次）
+  - 背景（2026-09-24 用户提供）：腾讯官方组织开源 `Tencent/WeChatReading`（Apache-2.0，AI Agent Skills 形态），提供 wrk- 前缀官方 API Key（weread.qq.com/r/weread-skills 获取）；用户已取得 Key 并授权评估。**Key 属用户凭据：仅在用户本地插件设置中录入，绝不写入仓库、文档或导出文件；建议用户定期轮换。**
+  - 数据面：书架/阅读时长与天数/笔记划线/阅读进度/点评——「阅读时长→每日打卡」与思阅适配器同型，可走五段框架（descriptor: api-push、identity `weread:<bookId>:<date>`、每日一次结算、opt-in 默认关、断开保留规则沿用 T-1430）。
+  - 评估项：① 从 skill 包提取 API endpoint/鉴权/限流契约（Apache-2.0 允许适配，注意附许可声明）；② ToS/数据范围核对（仅读用户自身数据）；③ 适配器设计走 T-1427 预览模型（导入/接入前披露）；④ 备选路径：经思源智能体 + skill 间接读取（非确定性，仅作补充不作主通道）。
+  - 归类：评估阶段 `local-auto`；真实账号数据联调 `host-pending`（需用户 Key 与授权）；不改 Store v3，不自动写入打卡（结算入 T-1427 式预览确认流）。
+- [ ] T-1438 思阅/思播上游提案提交（R-40.2，等用户明确授权后执行）
+  - 现状核查（2026-09-24）：**上游 issue/PR 尚未提交**——T-1395 三份提案（思阅/思播/Task Horizon）仅存在于 `docs/contracts/upstream-proposals/` 本地草案 + 守门测试，符合 D-255「无授权不提交外部仓库」纪律。
+  - 匹配度答复：思阅=本地生命周期计时适配器已交付（opt-in）；思播=实验采样适配器已交付（默认关）；两者均能在隔离内核 E2E 自动化通过，但**上游 API 未合并、真实双插件联调（T-1388）未做**——「完全匹配」尚不成立，差上游合并与现场证据两步。
+  - 提交内容（授权后）：三份提案按各自仓库转 issue/PR；附 contract fixture 与降级说明；提交后更新 T-1395 状态与 BLOCKERS。
 - [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。
