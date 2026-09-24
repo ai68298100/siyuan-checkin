@@ -204,6 +204,7 @@
   - 现状核查（2026-09-24）：**上游 issue/PR 尚未提交**——T-1395 三份提案（思阅/思播/Task Horizon）仅存在于 `docs/contracts/upstream-proposals/` 本地草案 + 守门测试，符合 D-255「无授权不提交外部仓库」纪律。
   - 匹配度答复：思阅=本地生命周期计时适配器已交付（opt-in）；思播=实验采样适配器已交付（默认关）；两者均能在隔离内核 E2E 自动化通过，但**上游 API 未合并、真实双插件联调（T-1388）未做**——「完全匹配」尚不成立，差上游合并与现场证据两步。
   - 提交内容（授权后）：三份提案按各自仓库转 issue/PR；附 contract fixture 与降级说明；提交后更新 T-1395 状态与 BLOCKERS。
+  - 进展（2026-09-24）：思阅/思播两份 issue **成稿已备好**（docs/contracts/upstream-proposals/sireader-issue-draft.md、siplayer-issue-draft.md，标题+正文可直接粘贴），上游仓库入口已核实存在（mm-o/siyuan-sireader、mm-o/siyuan-media-player）；用户询问进度时未给出授权决定，按 D-255 维持待授权，回复「提交」即发出。Task Horizon 反向提案维持本地草案。
 - [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。
