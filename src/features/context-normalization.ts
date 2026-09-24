@@ -91,3 +91,48 @@ export function aggregateSkipContext(slices: readonly ContextAggregationInput[])
         sufficient: totalNotes >= CONTEXT_MIN_SAMPLE,
     };
 }
+
+/* —— T-1452 · R-20.2 情境标签×星期交叉（第五轮生态调研采纳，源：Daylio/Pinch 情境统计；
+   第三轮延后项触发条件「R-A3 context normalization 交付」已满足）——
+   回答「这个原因常发生在哪天」：只对总命中 ≥ CONTEXT_MIN_SAMPLE 且存在过半集中
+   （最高星期次数 > 总数一半且 ≥2）的词元给出模式；平局取较小星期，确定性输出。 */
+
+export interface ContextWeekdayPattern {
+    token: Exclude<ContextToken, "other">;
+    /** 最集中的星期（0=周日…6=周六）。 */
+    weekday: number;
+    /** 该星期上的命中次数。 */
+    count: number;
+    /** 该词元总命中次数。 */
+    total: number;
+}
+
+/** 情境词元×星期交叉统计：从既有切片读出词元与星期，零依赖、无时钟、确定性。
+    与 aggregateSkipContext 同源输入；星期推导与 pace-projection 同公式（UTC 口径）。 */
+export function crossTabulateContextWeekdays(slices: readonly ContextAggregationInput[]): readonly ContextWeekdayPattern[] {
+    const perToken = new Map<Exclude<ContextToken, "other">, Map<number, number>>();
+    for (const slice of slices) {
+        const note = typeof slice.note === "string" ? slice.note.trim() : "";
+        if (!note || typeof slice.localDate !== "string" || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(slice.localDate)) continue;
+        const hits = classifyContextTokens(note);
+        if (!hits.length) continue;
+        const weekday = new Date(slice.localDate + "T00:00:00Z").getUTCDay();
+        for (const token of hits) {
+            const bucket = perToken.get(token) || new Map<number, number>();
+            bucket.set(weekday, (bucket.get(weekday) || 0) + 1);
+            perToken.set(token, bucket);
+        }
+    }
+    const patterns: ContextWeekdayPattern[] = [];
+    for (const [token, bucket] of perToken) {
+        const total = [...bucket.values()].reduce((sum, count) => sum + count, 0);
+        if (total < CONTEXT_MIN_SAMPLE) continue;
+        const entries = [...bucket.entries()].sort((left, right) => right[1] - left[1] || left[0] - right[0]);
+        const [weekday, count] = entries[0];
+        /* 过半集中才构成「模式」，否则只是均匀分布的噪声。 */
+        if (count > total / 2 && count >= 2) patterns.push({token, weekday, count, total});
+    }
+    return patterns.sort((left, right) => right.total - left.total
+        || left.token.localeCompare(right.token)
+        || left.weekday - right.weekday);
+}

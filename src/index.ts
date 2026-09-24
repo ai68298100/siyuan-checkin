@@ -37,7 +37,7 @@ import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/blo
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
 import {buildLoopImportPreview, buildObsidianImportPreview, summarizeImportPreview} from "./features/import-preview";
-import {aggregateSkipContext} from "./features/context-normalization";
+import {aggregateSkipContext, crossTabulateContextWeekdays} from "./features/context-normalization";
 import {abstinenceMilestones, aggregateMissedWeekdays, aggregateMissedTimeSlots, interpretTargetLoad, rankStalledItems} from "./features/pace-projection";
 import {collectLifecycleFacts, projectLifecycleBatch, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
@@ -510,6 +510,8 @@ export default class CheckinPlugin extends Plugin {
             .filter((event) => isSkipEvent(event) && typeof event.note === "string" && event.note.trim())
             .map((event) => ({note: event.note, localDate: event.localDate}));
         const contextAggregation = aggregateSkipContext(skipSlices);
+        /* T-1452 · R-20.2：情境词元×星期交叉——同一份切片的第二种读法。 */
+        const contextWeekdayPatterns = crossTabulateContextWeekdays(skipSlices);
         /* T-1436 · R-20.3：失速项目排名——观察最近 30 天，事实经 model 单一实现枚举。 */
         const today = dateKey(new Date());
         const stalledFacts: Array<{itemId: string; name: string; dueOpportunities: number; missedCount: number; lastMissedDate?: string; windowStartDate?: string}> = [];
@@ -544,7 +546,7 @@ export default class CheckinPlugin extends Plugin {
         const missedByTimeSlot = aggregateMissedTimeSlots(missedSlotSlices).map((entry) => ({label: t(TIME_SLOT_LABELS[entry.timeSlot as keyof typeof TIME_SLOT_LABELS] || entry.timeSlot), count: entry.count}));
         /* T-1450 · R-20.3 第三卡：目标负荷解读——「目标是否过高」（样本门槛下的推断）。 */
         const targetLoad = interpretTargetLoad(stalledFacts, 5);
-        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad});
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad});
     }
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */

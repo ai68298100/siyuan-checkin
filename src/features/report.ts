@@ -10,7 +10,7 @@ import type {ReviewComparison} from "./review-comparison";
 import {buildReviewDeviationNotes} from "./review-comparison";
 import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-preferences";
 import type {ViewScopeDescription} from "./view-scope";
-import type {ContextAggregation} from "./context-normalization";
+import type {ContextAggregation, ContextWeekdayPattern} from "./context-normalization";
 import type {MissedTimeSlotCount, MissedWeekdayCount, StalledItemRank, TargetLoadAdvice} from "./pace-projection";
 
 export {DEFAULT_REPORT_SECTIONS};
@@ -44,7 +44,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]; targetLoad?: readonly TargetLoadAdvice[]},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; contextWeekdayPatterns?: readonly ContextWeekdayPattern[]; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]; targetLoad?: readonly TargetLoadAdvice[]},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -58,6 +58,12 @@ export function buildWeeklyReportMarkdown(
             lines.push(`  - ${t(`report.contextToken.${entry.token}`, {n: entry.count})}`);
         }
         if (!aggregation.sufficient) lines.push(`  - ${t("report.contextInsufficient")}`);
+        /* T-1452 · R-20.2：情境×星期交叉——仅展示过半集中（样本达标）的模式，宁缺毋滥。 */
+        if (aggregation.sufficient && options.contextWeekdayPatterns?.length) {
+            for (const pattern of options.contextWeekdayPatterns.slice(0, 3)) {
+                lines.push(`  - ${t("report.contextWeekday", {token: t(`report.contextToken.${pattern.token}`), count: pattern.count, total: pattern.total, weekday: weekdayName(pattern.weekday)})}`);
+            }
+        }
     }
     /* T-1343：报告可按事件来源筛选；筛选口径在标题下显式声明。 */
     if (options?.source && REPORT_SOURCES.has(options.source)) {
