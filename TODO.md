@@ -158,6 +158,17 @@
   - 根因（已定位）：`.lc-checkin__reminder-action` 只有 inline-flex + min-height 28px，**无 white-space: nowrap 与最小宽度**，在提醒行 `auto minmax(0,1fr) auto` 网格被压缩时按钮内文字逐字换行。
   - 修复方向：① 按钮加 `white-space: nowrap` + 最小内边距（保留胶囊形）；② 操作组 `lc-checkin__reminder-actions` 允许整组换行而非按钮内部换行；③ 必要时给行网格的 actions 列设最小宽度。回归守门：提醒行按钮断言（nowrap + 最小宽/不逐字折行）入既有提醒中心测试。
   - 归类：UI 缺陷修复 `local-auto`（纯 CSS/结构断言），随下批开发或用户点名即修。
+- [ ] T-1445 手机端缺陷：填写数字时输入法跳出又弹回，难以输入（用户真机报告 2026-09-24）
+  - 现象：手机端今日页「填写」精确数值输入框聚焦后，输入法弹出又被收回，反复如此基本无法输入。
+  - 根因候选（代码层面已定位可疑路径）：今日页存在多个**后台全量重渲染触发源**——健康收件箱 5 分钟轮询、思播采样器、Dock Tomato/.analytics-updated 事件、sireader 监听——均调用 `renderBackgroundUpdate()`→今日页整树重建，正在聚焦的 `input.lc-checkin__amount` 被替换→焦点丢失→输入法收回。T-1246 的保守局部渲染（renderTodayItemLocally）只覆盖记录更新，不覆盖上述后台事件。另外 exact-entry 的 input 事件链是否有同步渲染待查。
+  - 修复方向：① 输入聚焦期间挂起全量重渲染（focus 标记，blur 后补一次）；或 ② 局部渲染路径保留输入节点/恢复焦点与光标（复用 T-114 焦点归位机制）；③ 回归守门：playwright **mobile bundle** e2e——聚焦填写框→触发后台事件→断言焦点与输入法状态保持、已输入值不丢。
+  - 归类：手机端缺陷，复现与修复验证用 mobile bundle e2e（local-auto 可复现）+ 真机确认（host-pending）。
+- [ ] T-1446 手机端缺陷：已完成打卡项无法折叠（用户真机报告 2026-09-24）
+  - 现象：今日页「已完成打卡项」节头（chevron 显示展开态）点击无反应，无法折叠。
+  - 现状事实：桌面/通用路径的 handler 存在且逻辑正确（bind-today.ts `data-action='toggle-completed'`→翻转 completedCollapsed→就地更新 aria/hidden/chevron→持久化）；偏好持久化与设置页开关联动正常。
+  - 根因候选：① 手机端 tap 未命中按钮（命中区/覆盖层/事件透传到卡片级 handler）；② 手机渲染时序导致监听器绑定在旧节点上（重渲染后按钮重建而绑定未重挂）；③ 移动 bundle 的 bindTodayHandlers 路径差异。
+  - 修复方向：playwright **mobile bundle** e2e 先复现（打开今日页→点已完成节头→断言 items hidden），再按复现差异修绑定/命中区；真机确认归 host-pending。
+  - 归类：手机端缺陷；e2e mobile bundle 可自动化复现（local-auto 可复现）+ 真机确认（host-pending）。
 - [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
