@@ -856,6 +856,8 @@ export default class CheckinPlugin extends Plugin {
     }
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
+    /** T-1443：每日统一提醒——同一 localDate 只推送一次。 */
+    private lastDailyReminderDate = "";
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -1158,6 +1160,8 @@ export default class CheckinPlugin extends Plugin {
         this.registerSiYuanAgentCapability();
         this.render();
         this.scheduleMidnightRefresh();
+        /* T-1443：启动后统一发一条每日提醒通知（pushMsg 原生弹窗）。 */
+        void this.maybeSendDailyReminder();
         /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新；
            protyle 可能晚于 onLayoutReady 创建，用延迟补扫兜底（含观察器补挂）。 */
         this.refreshAllRenderBlocks();
@@ -4875,6 +4879,27 @@ export default class CheckinPlugin extends Plugin {
             this.renderBackgroundUpdate();
         }
         this.scheduleMidnightRefresh();
+    }
+
+    /** T-1443：每日统一提醒——汇总当日逾期/待完成/事项为一条思源原生通知，
+        每天（localDate 粒度）至多推送一次；零事项不推送。 */
+    private async maybeSendDailyReminder() {
+        if (this.disposed || this.disposing || !this.storageReady) return;
+        const today = dateKey(new Date());
+        if (this.lastDailyReminderDate === today) return;
+        const entries = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions);
+        const actionable = entries.filter((entry) => entry.status === "overdue" || entry.status === "today");
+        if (!actionable.length) return;
+        this.lastDailyReminderDate = today;
+        const msg = t("msg.dailyReminder", {
+            overdue: actionable.filter((entry) => entry.status === "overdue").length,
+            today: actionable.filter((entry) => entry.status === "today").length,
+        });
+        try {
+            await fetchSyncPost("/api/notification/pushMsg", {msg, timeout: 6000});
+        } catch {
+            /* 通知失败不影响功能——下次打开思源会重试。 */
+        }
     }
 
     private scheduleMidnightRefresh() {
