@@ -263,6 +263,29 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
 /** T-1357 精选推荐位：无最近使用时展示这些跨类别模板（zh 名为锚点）。 */
 export const RECOMMENDED_TEMPLATES: readonly string[] = ["喝水", "运动", "阅读", "深度工作", "记账", "冥想", "戒烟", "拍照记录"];
 
+/** T-1454 · 方向 11 场景组合包（habit stacks v1）：可预览的生活场景模板组。
+    纯内容资产：按模板名引用 CHECKIN_TEMPLATES，名字随语言由 i18n 解析；
+    组合包不做批量创建（应用仍逐条走既有表单确认），预览承担「包含哪些项目、
+    排期、默认值」的展示。 */
+export interface CheckinTemplatePack {
+    id: string;
+    icon: string;
+    nameKey: string;
+    templates: readonly string[];
+}
+
+export const TEMPLATE_PACKS: readonly CheckinTemplatePack[] = Object.freeze([
+    Object.freeze({id: "morning", icon: "☀", nameKey: "pack.morning", templates: ["晨间补水", "早餐", "拉伸", "深呼吸", "每日计划"]}),
+    Object.freeze({id: "study", icon: "📖", nameKey: "pack.study", templates: ["阅读", "背单词", "朗读", "听播客", "写日记"]}),
+    Object.freeze({id: "sport", icon: "🏃", nameKey: "pack.sport", templates: ["运动", "力量训练", "跑步", "步数", "八段锦"]}),
+    Object.freeze({id: "winddown", icon: "🌙", nameKey: "pack.winddown", templates: ["早睡", "泡脚", "不刷手机", "情绪记录", "感恩记录"]}),
+    Object.freeze({id: "creative", icon: "✒", nameKey: "pack.creative", templates: ["写作", "绘画练习", "拍照记录", "练习乐器"]}),
+]);
+
+export function templatePackName(pack: CheckinTemplatePack): string {
+    return t(pack.nameKey);
+}
+
 /* 模板显示名/备注的字典键映射：zh 名作为数据锚点，渲染与套用时经 t() 翻译。 */
 const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "喝水": "tpl.water",

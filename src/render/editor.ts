@@ -3,7 +3,7 @@ import {t} from "../i18n";
 import {countCompletedDays, dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup} from "../shared";
 import {getRecordStepInputStep} from "../record-step";
-import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, RECOMMENDED_TEMPLATES, templateGroupLabel, templateName, templateNote} from "../catalog";
+import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, RECOMMENDED_TEMPLATES, TEMPLATE_PACKS, templateGroupLabel, templateName, templateNote, templatePackName} from "../catalog";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinItem, CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "../types";
@@ -125,6 +125,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
         .map((name) => CHECKIN_TEMPLATES.findIndex((template) => template.name === name))
         .filter((index) => index >= 0);
     const recommendedMarkup = recommendedIndexes.length ? `<div class="lc-checkin__field-heading" data-template-recommended-heading><span>${t("editor.recommendedTemplates")}</span></div><div class="lc-checkin__templates" data-template-recommended>${recommendedIndexes.map((index) => templateChip(CHECKIN_TEMPLATES[index], index, {})).join("")}</div>` : "";
+    /* T-1454：场景组合包——可预览的成组模板（应用仍逐条走表单确认）。 */
+    const packsMarkup = `<div class="lc-checkin__field-heading" data-pack-heading><span>${t("editor.packs")}</span><small>${t("editor.packsHint")}</small></div><div class="lc-checkin__templates" data-template-packs>${TEMPLATE_PACKS.map((pack) => `<button class="lc-checkin__template" type="button" data-pack-chip="${escapeHtml(pack.id)}" aria-pressed="false"><span>${escapeHtml(pack.icon)}</span><strong>${escapeHtml(templatePackName(pack))}</strong><small>${t("editor.packCount", {n: pack.templates.length})}</small></button>`).join("")}</div><div data-pack-preview hidden></div>`;
     const userTemplateMarkup = ctx.userTemplates.length ? `<div class="lc-checkin__field-heading"><span>${t("item.myTemplates")}</span><small>${t("item.templateCount", {n: ctx.userTemplates.length})}</small></div><div class="lc-checkin__templates" data-user-template-list>${ctx.userTemplates.map((template) => `<div class="lc-checkin__template-wrap"><button class="lc-checkin__template" type="button" data-user-template-id="${escapeHtml(template.id)}" data-template-group-value="${escapeHtml(template.group)}" data-template-search-text="${escapeHtml([template.name, template.group, template.note, template.unit, t(KIND_LABELS[template.kind]), t(SCHEDULE_LABELS[template.schedule.type])].join(" "))}" title="${escapeHtml(template.note)}" aria-label="${t("item.useMyTemplate", {name: template.name})}"><span>${renderIconMarkup(template.icon)}</span><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(template.kind === "binary" ? t(SCHEDULE_LABELS[template.schedule.type]) : `${template.target} ${template.unit} · ${t(SCHEDULE_LABELS[template.schedule.type])}`)}</small></button><button class="lc-checkin__template-delete" type="button" data-user-template-delete="${escapeHtml(template.id)}" aria-label="${t("item.deleteTemplate", {name: template.name})}">${t("item.delete")}</button></div>`).join("")}</div>` : "";
     const initialPriority = item?.priority || "medium";
     const initialTimeSlot = item?.timeSlot || "any";
@@ -152,6 +154,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
             <div class="lc-checkin__template-browser">
             ${recentMarkup}
             ${recommendedMarkup}
+            ${packsMarkup}
             <div class="lc-checkin__field-heading"><span>${t("editor.templateHeading")}</span><small>${t("editor.templateHint")}</small></div>
             <label class="lc-checkin__search-field">
                 <span class="lc-checkin__visually-hidden">${t("editor.templateSearchAria")}</span>

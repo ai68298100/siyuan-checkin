@@ -5,7 +5,8 @@ import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
 import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
-import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, templateName} from "../catalog";
+import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, TEMPLATE_PACKS, templateName} from "../catalog";
+import {buildTemplatePackPreview} from "../features/template-packs";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {validateEditorInput} from "../editor-validation";
 import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
@@ -558,6 +559,32 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     }));
     /* T-1349/T-1357：委托绑定——应用钩子 data-template-apply 同时命中主列表与最近使用/精选行。 */
     root.addEventListener("click", (event) => {
+        /* T-1454：场景组合包芯片——展开预览面板（解析引用+新旧标记），条目复用
+           data-template-apply 逐条填表；再次点击同一芯片收起。 */
+        const packChip = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-pack-chip]") : null;
+        if (packChip) {
+            const panel = root.querySelector<HTMLElement>("[data-pack-preview]");
+            const pack = TEMPLATE_PACKS.find((candidate) => candidate.id === packChip.dataset.packChip);
+            if (!panel || !pack) return;
+            if (packChip.getAttribute("aria-pressed") === "true") {
+                packChip.setAttribute("aria-pressed", "false");
+                panel.hidden = true;
+                panel.innerHTML = "";
+                return;
+            }
+            root.querySelectorAll<HTMLElement>("[data-pack-chip]").forEach((candidate) => candidate.setAttribute("aria-pressed", "false"));
+            packChip.setAttribute("aria-pressed", "true");
+            const existingNames = host.store.items.filter((entry) => !entry.archived).map((entry) => entry.name);
+            const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
+            const rows = preview.entries.map((entry) => {
+                const index = CHECKIN_TEMPLATES.indexOf(entry.template);
+                const badge = entry.status === "duplicate" ? t("editor.packDuplicate") : t("editor.packNew");
+                return `<button class="lc-checkin__template" type="button" data-template-apply="${index}"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></button>`;
+            }).join("");
+            panel.hidden = false;
+            panel.innerHTML = `<div class="lc-checkin__templates">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            return;
+        }
         const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-apply]") : null;
         if (!button) return;
         const template = CHECKIN_TEMPLATES[Number(button.dataset.templateApply)];
