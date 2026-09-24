@@ -135,6 +135,18 @@
   - 内容：pace-projection 新增 `aggregateMissedWeekdays`（漏卡按星期聚合，0=周日…6=周六，数量降序+星期升序稳定）与 `aggregateMissedTimeSlots`（按 morning/afternoon/evening/any 固定顺序，非法归 any）；index 报告构建时枚举 30 天窗口漏卡明细并聚合；报告新增「容易漏卡的时间段（共 N 次漏卡）」节——星期用 occasions 既有 weekdayName 本地化，时段用 TIME_SLOT_LABELS（label 在组合根本地化后传入，保持报告纯模块不触 ui）。
   - 测试：pace-projection.test.cjs 扩展（星期推导/时段顺序/非法归 any/报告与 index 接线守门/双语）。
   - 状态：done（2026-09-24）。R-20.3 剩余第三张卡「最近调整是否有效」（复用 buildReviewComparison 基础）等回顾改版窗口。
+- [ ] T-1440 来源专用打卡模板（番茄钟/思阅/思播，用户需求 2026-09-24）
+  - 分析：模板体系（templates.ts/template-manager，66+ 模板八类分组）目前只承载内容形状（kind/target/unit/schedule/group/icon），不含完成来源绑定；而番茄/思阅/思播项目在今日页与编辑器已有专属语义（completionSource、dock-tomato 适配器、思阅/思播治理映射）。
+  - 设计要点：模板数据增可选 `sourcePreset`（tomato/sireader/siplayer），应用时预填完成来源、时长单位（分钟）与建议排期；**不自动启用外部来源联动**——应用后引导用户到设置开启对应联动，未启用时项目保持手动记录可用（opt-in 纪律不破）。分组新增「联动」类或来源角标。模板为内容资产，增可选字段无迁移。
+  - 验收：模板纯函数与 gallery 测试、应用→编辑器→保存→来源行为链路、双语、模板数量守门同步。归类 `local-auto`。
+- [ ] T-1441 叶归 LifeLog 识别与自动完成研究（用户需求 2026-09-24）
+  - 分析：诉求=识别叶归插件的 LifeLog（任务时间记录）条目并自动完成对应打卡。场景=「读取另一插件产生的用户可见数据→映射为打卡事实」，与健康收件箱同型。纪律红线：**不得逆向叶归私有存储**；仅当 lifelog 落在用户文档/块属性等用户可见内容时可解析。
+  - 研究步骤：① 定位仓库并做发布包静态分析（数据落点=私有 storage vs 文档/块属性；条目 schema=时间/标题/标签/时长）；② 判定公开可解析面与稳定性；③ 若可解析→设计映射：用户绑定 lifelog 范围（笔记本/文档）+ 条目规则（标签→项目映射，用户显式配置）+ externalRef `yeguif:<blockId>` 幂等 + 预览确认流（T-1427 模式）；④ 智能体通道评估：经思源智能体读 lifelog 仅作非确定性补充，不作自动完成主通道。
+  - 「自动完成」边界：缺省只做识别与预览；自动写打卡必须 opt-in + 每项目映射显式配置 + 幂等防重 + 可撤销。归类：研究 `local-auto`，实现含真实宿主验收。
+- [ ] T-1442 设置页「外部连接与能力」分区重组（用户需求 2026-09-24）
+  - 分析：现状=外部来源折叠面板（v18.2.1）+ Dock Tomato/日记/摘要等联动设置散落数据区；诉求=独立「外部连接与能力」设置区，共性集中、每来源独立子面板。
+  - 设计要点：① 共性区——幂等身份与前缀说明（六前缀登记表）、断开保留规则（T-1430）、导出/隐私披露说明、今日累计口径；② 每来源子面板——Dock Tomato（适配器/完成收件箱/诊断）、思阅（启用/项目/阈值/今日分钟）、思播（实验开关/项目）、健康（收件箱文档/指标映射），各面板自带关闭与保留提示。**纯设置 IA 重组：不改偏好 schema，只动分组与渲染。**
+  - 验收：settings-navigation/preferences-docs 守门同步、ARIA/双语、全链。归类 `local-auto`。
 - [x] T-1433 情境化记录：备注词表归一化与跳过原因分布（R-A3 第二切片，映射 R-20.2，2026-09-24 开工并完成）
   - 内容：新增零依赖纯模块 `src/features/context-normalization.ts`——classifyContextTokens 把跳过/打卡备注的自由文本按中英关键词归一化为有限词表（v1 六类：阻力/时间不足/环境变化/身体状态/情绪波动/其他，未命中归 other）；aggregateSkipContext 聚合计数（降序+词表序稳定）、日期范围、样本不足守卫（< CONTEXT_MIN_SAMPLE=3 标记 insufficient）。**不新增事件字段、不修改 Store v3、不影响完成判定与连击**（只读投影，词表可扩展）。
   - 接入：`buildWeeklyReportMarkdown` options 增加可选 contextAggregation——报告头部新增「跳过原因分布（共 N 条备注）」节，逐词元计数+样本不足提示；index 调用点从区间内跳过事件的既有备注聚合（isSkipEvent 单一口径）。i18n 8 键中英双语（parity 1648/1648）。
