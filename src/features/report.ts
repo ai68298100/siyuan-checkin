@@ -100,6 +100,12 @@ export function buildWeeklyReportMarkdown(
                 completed: signed(comparison.delta.completedItems),
                 scheduled: signed(comparison.delta.scheduledItems),
             })}`);
+            /* T-1448 · R-20.3：调整有效性解读——基于完成数变化方向给出简明结论。 */
+            const dc = comparison.delta.completedItems;
+            const verdict = dc > 0 ? t("report.effectivenessImproving")
+                : dc < 0 ? t("report.effectivenessDeclining")
+                : t("report.effectivenessStable");
+            lines.push(`- ${verdict}`);
         } else {
             lines.push(`- ${t("report.baselineMissingNote")}`);
         }
