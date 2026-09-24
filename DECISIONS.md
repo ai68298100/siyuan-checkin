@@ -1282,5 +1282,6 @@
 - 出站通道固定为思源内核公开转发接口 /api/network/forwardProxy（kernel/api/network.go 官方契约：headers 为键值映射数组、payload 直接给 JSON 对象、timeout 毫秒、响应 data.body 为字符串），不走渲染进程直接 fetch——免跨域不确定性，桌面/移动同一架构；插件只对该端点发 official-pull 请求。
 - 微信读书 Key 纪律：用户自助申请的 wrk- Key 只存插件本地偏好（wereadIntegration.apiKey），不入库、不入导出、不进日志/消息/渲染上下文（设置层只暴露 wereadKeySet 布尔）；公开 API 输入伪造 source weread 一律回落 api（与 sireader/siplayer 同一防伪门）。
 - 载体归属互斥（与思阅）落地为「专用项目绑定」：weread 时长只写用户绑定的专用项目，思源内文档阅读归思阅项目——不同项目天然不重叠，不引入时间窗互斥或书目匹配（书目级归属待完读/划线批次再定）。
+- 官方 skill 包契约已逐条核对（2026-09-24，Tencent/WeChatReading main：skills/SKILL.md + skills/readdata.md）：skill_version 钉 1.0.4（取 SKILL.md 顶部 version）；请求体 {api_name, skill_version, mode:"monthly"} 扁平同层；按日明细官方口径=readTimes（月/周模式按天分桶，key=分桶起始 unix 秒，value=秒）+ dailyReadTimes（年度模式日明细），两字段合并去重取最大；key 兼容 YYYY-MM-DD 字符串；单桶超 86400 秒（24h）视为月/年大桶误读丢弃。初版解析器按「数组行 + YYYY-MM-DD 键」猜测的形状与官方不符，已按 readdata.md 收紧——印证 skill「能力文档预检、字段解释以说明文件为准」纪律的必要性。
 - 网关解析 fail-closed：/readdata/detail 响应按容错解析（data 解包、数组行/对象映射、unix 秒经注入换算器、未来日丢弃、封顶 62 天），未知形状返回 ok:false 并把 errcode/upgrade_info 原样带给用户；skill_version 固定常量，官方升级提示见到即转达不自动重试。
 - 轮询节奏：30 分钟有界间隔 + 就绪 5 秒首拉，失败静默（结果记内存态供设置页状态行）；「立即拉取」走同一摄取通道，唯一差别是结果以消息反馈。

@@ -21,9 +21,10 @@ const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-prefe
 const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
 const {summarizePrivacyControlPlane} = require(path.join(outputRoot, "src/features/privacy-scope.js"));
 
-/* 网关请求信封：扁平 api_name + skill_version 同层，无 params 包裹。 */
-assert.deepEqual(adapter.buildWereadReadDetailRequest(), {api_name: "/readdata/detail", skill_version: adapter.WEREAD_SKILL_VERSION}, "default request is the flat gateway envelope");
-assert.deepEqual(adapter.buildWereadReadDetailRequest(" 1.0.6 "), {api_name: "/readdata/detail", skill_version: "1.0.6"}, "skill version trimmed");
+/* 网关请求信封：扁平 api_name + skill_version + mode 同层，无 params 包裹。 */
+assert.equal(adapter.WEREAD_SKILL_VERSION, "1.0.4", "skill_version pinned to official SKILL.md version");
+assert.deepEqual(adapter.buildWereadReadDetailRequest(), {api_name: "/readdata/detail", skill_version: "1.0.4", mode: "monthly"}, "default request is the flat gateway envelope with monthly mode");
+assert.deepEqual(adapter.buildWereadReadDetailRequest(" 1.0.6 "), {api_name: "/readdata/detail", skill_version: "1.0.6", mode: "monthly"}, "skill version trimmed");
 assert.equal(adapter.WEREAD_GATEWAY_URL, "https://i.weread.qq.com/api/agent/gateway", "official gateway endpoint");
 
 /* 响应解析：非对象/错误码/升级提示。 */
@@ -52,8 +53,35 @@ assert.deepEqual(readDetail.days, [
     {localDate: "2026-09-24", minutes: 25},
 ], "seconds floored to minutes, aliases accepted, dates sorted");
 
-/* unix 秒日期：换算器注入才可用；缺失换算器时该行丢弃（fail-closed）。 */
+/* 官方契约主用例（readdata.md）：readTimes 月度日桶，key=分桶起始 unix 秒字符串。
+   unix 秒日期：换算器注入才可用；缺失换算器时该行丢弃（fail-closed）。 */
 const unixParser = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 10);
+const officialMonthly = adapter.ingestWereadReadDetail({
+    errcode: 0,
+    baseTime: 1789000000,
+    totalReadTime: 5100,
+    readDays: 2,
+    readTimes: {"1790179200": 3600, "1790265600": 1500},
+}, {toLocalDateFromUnix: unixParser, today: "2026-09-24"});
+assert.ok(officialMonthly.ok, "official monthly payload parses");
+assert.deepEqual(officialMonthly.days, [
+    {localDate: "2026-09-23", minutes: 60},
+    {localDate: "2026-09-24", minutes: 25},
+], "readTimes day buckets resolved via unix keys");
+const withoutConverter = adapter.ingestWereadReadDetail({readTimes: {"1790179200": 3600}}, {});
+assert.deepEqual(withoutConverter.days, [], "unix keys without converter dropped");
+/* 年度模式日明细 dailyReadTimes（key 同为 unix 秒）与 readTimes 合并去重取最大。 */
+const annual = adapter.ingestWereadReadDetail({
+    readTimes: {"1790179200": 3600},
+    dailyReadTimes: {"1790179200": 4200, "1790265600": 60},
+}, {toLocalDateFromUnix: unixParser, today: "2026-09-24"});
+assert.deepEqual(annual.days, [
+    {localDate: "2026-09-23", minutes: 70},
+    {localDate: "2026-09-24", minutes: 1},
+], "day detail from both fields merges with max");
+/* 月/年大桶防误读：单桶超过 24h 直接丢弃。 */
+const oversized = adapter.ingestWereadReadDetail({readTimes: {"1790179200": 90000}}, {toLocalDateFromUnix: unixParser});
+assert.deepEqual(oversized.days, [], "bucket exceeding one day is dropped, never misread as daily minutes");
 const unixOutcome = adapter.ingestWereadReadDetail({dailyReadTimes: [{readDate: 1790179200, readTime: 120}, {readDate: 1790265600, readTime: 60}]}, {toLocalDateFromUnix: unixParser, today: "2026-09-24"});
 assert.deepEqual(unixOutcome.days, [{localDate: "2026-09-23", minutes: 2}, {localDate: "2026-09-24", minutes: 1}], "unix-second dates converted via injected converter");
 assert.deepEqual(adapter.ingestWereadReadDetail({dailyReadTimes: [{readDate: 1790179200, readTime: 120}]}, {}).days, [], "unix dates without converter dropped");

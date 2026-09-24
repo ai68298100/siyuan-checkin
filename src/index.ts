@@ -798,7 +798,11 @@ export default class CheckinPlugin extends Plugin {
         if (typeof data?.body === "string") {
             try { payload = JSON.parse(data.body); } catch { payload = undefined; }
         }
-        const outcome = ingestWereadReadDetail(payload, {today: dateKey(currentCalendarDate())});
+        const outcome = ingestWereadReadDetail(payload, {
+            today: dateKey(currentCalendarDate()),
+            /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
+            toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
+        });
         if (!outcome.ok) {
             const status = typeof data?.status === "number" && data.status !== 200 ? ` (HTTP ${data.status})` : "";
             this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
