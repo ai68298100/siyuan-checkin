@@ -135,7 +135,10 @@
   - 内容：pace-projection 新增 `aggregateMissedWeekdays`（漏卡按星期聚合，0=周日…6=周六，数量降序+星期升序稳定）与 `aggregateMissedTimeSlots`（按 morning/afternoon/evening/any 固定顺序，非法归 any）；index 报告构建时枚举 30 天窗口漏卡明细并聚合；报告新增「容易漏卡的时间段（共 N 次漏卡）」节——星期用 occasions 既有 weekdayName 本地化，时段用 TIME_SLOT_LABELS（label 在组合根本地化后传入，保持报告纯模块不触 ui）。
   - 测试：pace-projection.test.cjs 扩展（星期推导/时段顺序/非法归 any/报告与 index 接线守门/双语）。
   - 状态：done（2026-09-24）。R-20.3 剩余第三张卡「最近调整是否有效」（复用 buildReviewComparison 基础）等回顾改版窗口。
-- [ ] T-1440 来源专用打卡模板（番茄钟/思阅/思播，用户需求 2026-09-24）
+- [x] T-1440 来源专用打卡模板（番茄钟/思阅/思播，用户需求 2026-09-24 开工并完成）
+  - 内容：番茄钟模板补入 `completionSource: "tomato"` + `tomatoMode: "sessions"`（此前未绑定来源）；新增「联动」分组——思阅阅读/思播观看/健康步数 3 个模板（正确 kind/unit/schedule 形状，note 引导用户到设置页开启对应联动），不自动启用外部来源。模板目录 64 个、9 分组。
+  - 测试：template-gallery 守门通过（64 模板 9 分组、tpl.* 映射完整）；templates 守门通过；i18n parity 1667/1667。
+  - 状态：done（2026-09-24 第一切片）。外部联动启用在 T-1442 设置页分区重组中完成。
   - 分析：模板体系（templates.ts/template-manager，66+ 模板八类分组）目前只承载内容形状（kind/target/unit/schedule/group/icon），不含完成来源绑定；而番茄/思阅/思播项目在今日页与编辑器已有专属语义（completionSource、dock-tomato 适配器、思阅/思播治理映射）。
   - 设计要点：模板数据增可选 `sourcePreset`（tomato/sireader/siplayer），应用时预填完成来源、时长单位（分钟）与建议排期；**不自动启用外部来源联动**——应用后引导用户到设置开启对应联动，未启用时项目保持手动记录可用（opt-in 纪律不破）。分组新增「联动」类或来源角标。模板为内容资产，增可选字段无迁移。
   - 验收：模板纯函数与 gallery 测试、应用→编辑器→保存→来源行为链路、双语、模板数量守门同步。归类 `local-auto`。

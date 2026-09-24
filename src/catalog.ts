@@ -206,7 +206,7 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "整理收件箱", icon: "📋", kind: "binary", target: 1, unit: "次", schedule: workdays, group: "工作", priority: "low", timeSlot: "afternoon", note: "将待处理邮件归档或转成任务。"},
     {name: "每日计划", icon: "📌", kind: "binary", target: 1, unit: "次", schedule: workdays, group: "工作", priority: "medium", timeSlot: "morning", note: "开始工作前明确三件最重要的事。"},
     {name: "任务打卡", icon: "✅", kind: "count", target: 3, unit: "个", schedule: daily, group: "工作", priority: "high", timeSlot: "any", note: "由任务管理器按当天完成任务数写入，目标数量可按需调整。"},
-    {name: "番茄钟", icon: "🍅", kind: "count", target: 4, unit: "个", schedule: workdays, group: "工作", priority: "medium", timeSlot: "any", note: "每完成一个专注周期记录一次。"},
+    {name: "番茄钟", icon: "🍅", kind: "count", target: 4, unit: "个", schedule: workdays, group: "工作", priority: "medium", timeSlot: "any", completionSource: "tomato", tomatoMode: "sessions", note: "每完成一个专注周期记录一次；可在设置中绑定 Dock Tomato 或使用内置计时器。"},
     {name: "整理房间", icon: "🧹", kind: "duration", target: 10, unit: "分钟", schedule: daily, group: "生活", priority: "low", timeSlot: "evening", note: "只整理一个小区域也算完成。"},
     {name: "做饭", icon: "🍳", kind: "count", target: 1, unit: "餐", schedule: daily, group: "生活", priority: "low", timeSlot: "any", note: "记录自己准备的早餐、午餐或晚餐。"},
     {name: "记账", icon: "📊", kind: "binary", target: 1, unit: "次", schedule: daily, group: "生活", priority: "medium", timeSlot: "evening", note: "当天消费当天记录，保持账目清晰。"},
@@ -254,6 +254,10 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "深呼吸", icon: "🍃", kind: "duration", target: 5, unit: "分钟", schedule: daily, group: "专注", priority: "low", timeSlot: "any", note: "紧张时来一组深呼吸，五分钟就够。"},
     {name: "情绪自评", icon: "🌤", kind: "custom", target: 5, unit: "分", recordStep: 1, schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "睡前给今天的心情打个分（1~5 分），连续记录更有参考价值。"},
     {name: "写作", icon: "✒", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "创作", priority: "medium", timeSlot: "any", note: "散文、小说或笔记，持续写下去就算数。"},
+    /* T-1440 · R-A12 来源联动模板——创建正确形状的项目后，在设置页开启对应联动即可自动记录。 */
+    {name: "思阅阅读", icon: "📕", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "medium", timeSlot: "any", note: "配合思阅插件使用：在设置 → 连接与能力中开启思阅联动后自动累计有效阅读时长。"},
+    {name: "思播观看", icon: "▶", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合思播插件使用（实验）：在设置 → 连接与能力中开启思播联动后自动累计有效观看时长。"},
+    {name: "健康步数", icon: "👟", kind: "quantity", target: 6000, unit: "步", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合健康收件箱使用：在设置 → 连接与能力中绑定步数项目和收件箱文档。"},
 ] as const;
 
 /** T-1357 精选推荐位：无最近使用时展示这些跨类别模板（zh 名为锚点）。 */
@@ -322,6 +326,9 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "深呼吸": "tpl.deepBreaths",
     "情绪自评": "tpl.emotionScale",
     "写作": "tpl.writing",
+    "思阅阅读": "tpl.sireader",
+    "思播观看": "tpl.siplayer",
+    "健康步数": "tpl.healthSteps",
 };
 
 const TEMPLATE_GROUP_KEYS: Record<string, string> = {
@@ -333,6 +340,7 @@ const TEMPLATE_GROUP_KEYS: Record<string, string> = {
     "创作": "tplGroup.creative",
     "专注": "tplGroup.mindfulness",
     "戒除": "tplGroup.quitting",
+    "联动": "tplGroup.integration",
 };
 
 export function templateName(template: {name: string}): string {
