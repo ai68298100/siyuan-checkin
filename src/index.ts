@@ -4882,9 +4882,10 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /** T-1443：每日统一提醒——汇总当日逾期/待完成/事项为一条思源原生通知，
-        每天（localDate 粒度）至多推送一次；零事项不推送。 */
+        每天（localDate 粒度）至多推送一次；零事项不推送；安静时段内静默跳过。 */
     private async maybeSendDailyReminder() {
         if (this.disposed || this.disposing || !this.storageReady) return;
+        if (this.isReminderQuietNow()) return;
         const today = dateKey(new Date());
         if (this.lastDailyReminderDate === today) return;
         const entries = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions);
