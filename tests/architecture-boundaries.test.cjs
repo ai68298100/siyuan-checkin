@@ -85,6 +85,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/habit-score.ts",
     "src/features/sireader-adapter.ts", // 身份/结算纯函数面
     "src/features/siplayer-adapter.ts",
+    "src/features/weread-adapter.ts",
     "src/features/docktomato-inbox.ts",
     "src/features/health-inbox.ts",
     "src/quota.ts",
@@ -131,6 +132,7 @@ const SOURCE_MANIFEST = [
     {prefix: "sireader", modules: ["src/features/sireader-adapter.ts"], tests: ["tests/sireader-adapter.test.cjs"]},
     {prefix: "siplayer", modules: ["src/features/siplayer-adapter.ts"], tests: ["tests/siplayer-adapter.test.cjs"]},
     {prefix: "health", modules: ["src/features/health-inbox.ts"], tests: ["tests/health-inbox.test.cjs"]},
+    {prefix: "weread", modules: ["src/features/weread-adapter.ts"], tests: ["tests/weread-adapter.test.cjs"]},
 ];
 const registry = read("src/ecosystem.ts");
 for (const source of SOURCE_MANIFEST) {

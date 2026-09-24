@@ -57,6 +57,7 @@ const healthInboxModule = loadTypeScript("src/features/health-inbox.ts", {}, {
         validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
     },
 });
+const wereadModule = loadTypeScript("src/features/weread-adapter.ts", {}, {});
 const reminderPreferencesModule = loadTypeScript("src/features/reminder-preferences.ts", {}, {});
 const firstSuccessModule = loadTypeScript("src/features/first-success.ts", {}, {});
 const viewScopeModule = loadTypeScript("src/features/view-scope.ts", {}, {"../date-keys": {addDays: (key) => key}});
@@ -67,6 +68,7 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     },
     "./features/summary-resident": summaryResidentModule,
     "./features/health-inbox": healthInboxModule,
+    "./features/weread-adapter": wereadModule,
     "./features/reminder-preferences": reminderPreferencesModule,
     "./features/first-success": firstSuccessModule,
     "./features/view-scope": viewScopeModule,

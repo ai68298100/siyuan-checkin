@@ -88,6 +88,7 @@ export const EXTERNAL_REF_PREFIX_REGISTRY: readonly ExternalRefPrefixSpec[] = Ob
     Object.freeze({prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"}),
     Object.freeze({prefix: "siplayer", label: "SiPlayer", format: "siplayer:<itemId>:<localDate>"}),
     Object.freeze({prefix: "health", label: "Health inbox", format: "health:<metric>:<localDate>"}),
+    Object.freeze({prefix: "weread", label: "WeRead", format: "weread:<itemId>:<localDate>"}),
 ]);
 
 export function isRegisteredExternalRefPrefix(prefix: unknown): boolean {

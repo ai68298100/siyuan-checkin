@@ -15,6 +15,7 @@ const sourceLabels: Record<CheckinEvent["source"], string> = {
     api: "外部记录",
     sireader: "思阅阅读",
     siplayer: "思播观看",
+    weread: "微信读书",
 };
 
 /** Expects normalized events; the caller selects the item and date range first. */

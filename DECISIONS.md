@@ -1276,3 +1276,11 @@
 - model.ts 内部私有 `localCalendarDayNumber` 与 date-keys 的 `calendarDayNumber` 公式一致，model 核心留待后续批次收敛，避免在守门批次触碰最关键文件。
 - 架构守门（tests/architecture-boundaries.test.cjs）采用「显式准入清单」模式：宿主 API、无时钟面、来源登记均以清单管理现状，新增文件触碰边界前必须显式登记并注明理由；守门不阻止合法扩展，只阻止静默回潮。
 - docktomato-inbox 的 `docktomato:<identity>` 身份无日期后缀，不属于 EXTERNAL_REF_PREFIX_REGISTRY 的日期前缀体系，在守门清单中显式登记为非前缀来源家族，不强行假登记。
+
+## D-267：微信读书适配器为 official-pull 渠道定型（T-1402，2026-09-24）
+
+- 出站通道固定为思源内核公开转发接口 /api/network/forwardProxy（kernel/api/network.go 官方契约：headers 为键值映射数组、payload 直接给 JSON 对象、timeout 毫秒、响应 data.body 为字符串），不走渲染进程直接 fetch——免跨域不确定性，桌面/移动同一架构；插件只对该端点发 official-pull 请求。
+- 微信读书 Key 纪律：用户自助申请的 wrk- Key 只存插件本地偏好（wereadIntegration.apiKey），不入库、不入导出、不进日志/消息/渲染上下文（设置层只暴露 wereadKeySet 布尔）；公开 API 输入伪造 source weread 一律回落 api（与 sireader/siplayer 同一防伪门）。
+- 载体归属互斥（与思阅）落地为「专用项目绑定」：weread 时长只写用户绑定的专用项目，思源内文档阅读归思阅项目——不同项目天然不重叠，不引入时间窗互斥或书目匹配（书目级归属待完读/划线批次再定）。
+- 网关解析 fail-closed：/readdata/detail 响应按容错解析（data 解包、数组行/对象映射、unix 秒经注入换算器、未来日丢弃、封顶 62 天），未知形状返回 ok:false 并把 errcode/upgrade_info 原样带给用户；skill_version 固定常量，官方升级提示见到即转达不自动重试。
+- 轮询节奏：30 分钟有界间隔 + 就绪 5 秒首拉，失败静默（结果记内存态供设置页状态行）；「立即拉取」走同一摄取通道，唯一差别是结果以消息反馈。

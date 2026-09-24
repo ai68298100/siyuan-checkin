@@ -460,7 +460,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const labels = {events: "report.optEvents", completion: "report.optCompletion", items: "report.optItems", baseline: "report.optBaseline", deviations: "report.optDeviations", highlights: "report.optHighlights"} as const;
         return `<label class="lc-checkin__report-option"><input type="checkbox" data-report-option="${key}" ${ctx.reportSections[key] ? "checked" : ""} /> ${escapeHtml(t(labels[key]))}</label>`;
     }).join("");
-    const reportSourceOptions = [["", "report.sourceAll"], ["manual", "source.manual"], ["tomato", "source.tomato"], ["api", "source.api"], ["import", "source.import"], ["sireader", "source.sireader"], ["siplayer", "source.siplayer"]] as const;
+    const reportSourceOptions = [["", "report.sourceAll"], ["manual", "source.manual"], ["tomato", "source.tomato"], ["api", "source.api"], ["import", "source.import"], ["sireader", "source.sireader"], ["siplayer", "source.siplayer"], ["weread", "source.weread"]] as const;
     const reportSourceSelect = `<label class="lc-checkin__report-option"><span>${t("report.sourceLabel")}</span><select data-report-source aria-label="${t("report.sourceLabel")}">${reportSourceOptions.map(([value, key]) => `<option value="${value}"${ctx.reportSource === value ? " selected" : ""}>${escapeHtml(t(key))}</option>`).join("")}</select></label>`;
     /* T-1432 · R-A8：命名保存视图——应用/保存/删除，查询偏好存偏好存储不复制事件。 */
     const savedViewOptions = [{id: "", name: t("review.savedViewDefault")}, ...(ctx.savedViews || [])];

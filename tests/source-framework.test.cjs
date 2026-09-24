@@ -25,6 +25,7 @@ assert.equal(framework.normalizeSourceDescriptor({key: "sireader", name: "x", ch
 const descriptor = framework.normalizeSourceDescriptor({key: "sireader", name: " 思阅 ", channel: "plugin-event", status: "experimental", capabilities: ["reading-lifecycle", "reading-lifecycle", 42], privacy: "local-only"});
 assert.deepEqual(descriptor, {key: "sireader", name: "思阅", channel: "plugin-event", status: "experimental", privacy: "local-only", capabilities: ["reading-lifecycle"]}, "descriptor normalizes name, dedupes capabilities, defaults status");
 assert.deepEqual(framework.normalizeSourceDescriptor({key: "health-push", name: "健康中心", channel: "api-push"}).status, "planned", "status defaults to planned");
+assert.equal(framework.normalizeSourceDescriptor({key: "weread", name: "微信读书", channel: "official-pull"})?.channel, "official-pull", "T-1402 official-pull channel accepted (outbound pull of official API)");
 
 /* 治理配置：opt-in 默认关、非负有限、映射去重封顶 16。 */
 assert.deepEqual(framework.normalizeSourceGovernance(undefined), {enabled: false, thresholdValue: 0, dailyCapValue: 0, itemIds: []}, "governance defaults to off");

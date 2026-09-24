@@ -14,7 +14,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/siplayer-adapter.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/siplayer-adapter.ts"].forEach(transpile);
 const adapter = require(path.join(outputRoot, "src/features/siplayer-adapter.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
@@ -95,7 +95,7 @@ const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), 
 assert.match(indexSource, /source: "siplayer", externalRef/, "write path stamps the siplayer source");
 assert.match(indexSource, /event\.source === "siplayer" && event\.externalRef === ref/, "daily write guarded by identity");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /"siplayer" \? \{source: "api"/, "facade must strip siplayer from external input");
+assert.match(apiSource, /input\.source === "siplayer" \|\| input\.source === "weread" \? \{source: "api"/, "facade must strip siplayer (and weread) from external input");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "siplayer", label: "SiPlayer"/, "siplayer prefix registered");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");

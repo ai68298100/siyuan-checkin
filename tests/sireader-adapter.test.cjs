@@ -14,7 +14,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts"].forEach(transpile);
 const {SireaderFocusTracker, buildSireaderExternalRef} = require(path.join(outputRoot, "src/features/sireader-adapter.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
@@ -144,9 +144,9 @@ assert.ok(indexSource.includes("this.bindSireaderListeners();") && indexSource.i
 assert.ok(indexSource.includes('source: "sireader", externalRef'), "write path must stamp the sireader source and externalRef");
 assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === ref'), "daily write must be guarded by the existing identity");
 assert.ok(indexSource.includes("this.store.eventTombstones.some"), "deleted (tombstoned) sireader days must be pre-checked before writing");
-assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer"]'), "summary resident source counts must include sireader and siplayer");
+assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer", "weread"]'), "summary resident source counts must include sireader and siplayer");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \? \{source: "api"/, "public API input must not be able to mint sireader or siplayer events");
+assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \|\| input\.source === "weread" \? \{source: "api"/, "public API input must not be able to mint sireader/siplayer/weread events");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"/, "sireader prefix must be registered in the identity registry");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");

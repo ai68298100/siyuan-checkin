@@ -2,6 +2,7 @@ import type {CheckinItemSortMode} from "./types";
 import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 import {normalizeHealthInboxPreference} from "./features/health-inbox";
+import {normalizeWereadIntegration} from "./features/weread-adapter";
 import {normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
@@ -80,6 +81,9 @@ export interface CheckinViewPreferences {
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
+    /** T-1402 微信读书联动（official-pull，opt-in 默认关）：官方 Agent API 拉取每日阅读分钟。
+        apiKey 仅存本地偏好，不入库不入导出（导出/快照路径只暴露 wereadKeySet 布尔）。 */
+    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; apiKey: string};
     /** T-1421 提醒安静时段（默认关）：窗口内优先提醒降级为页内安静呈现，不改变事实。 */
     reminderQuietHours: ReminderQuietHours;
     /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
@@ -128,6 +132,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
+    wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: ""},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
     firstSuccess: {stage: "not-started", skipped: false},
     savedViews: [],
@@ -236,6 +241,8 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const siplayerItemId = typeof siplayerSource.itemId === "string" ? siplayerSource.itemId.trim().slice(0, 160) : "";
     const siplayerThreshold = clampNumber(siplayerSource.thresholdMinutes, 1, 1440, DEFAULT_VIEW_PREFERENCES.siplayerIntegration.thresholdMinutes);
     const siplayerIntegration = {enabled: siplayerSource.enabled === true && Boolean(siplayerItemId), itemId: siplayerItemId, thresholdMinutes: siplayerThreshold};
+    /* T-1402：微信读书联动——同 sireader 口径，另要求 apiKey（拉取通道缺 Key 不物化）。 */
+    const wereadIntegration = normalizeWereadIntegration(source.wereadIntegration);
     return {
         groupMode,
         sortMode,
@@ -272,6 +279,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         sireaderIntegration,
         siplayerIntegration,
         healthInbox,
+        wereadIntegration,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),
         firstSuccess: normalizeFirstSuccessState(source.firstSuccess),
         /* T-1432 · R-A8：命名保存视图——上限 10，非法条目丢弃，scope 经 normalizeViewScope fail-closed。 */

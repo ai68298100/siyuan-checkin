@@ -1,0 +1,129 @@
+/* T-1402 微信读书适配器守门：网关请求信封（扁平 api_name/skill_version）、
+   响应解析容错与 fail-closed（errcode/upgrade_info/data 解包/数组行/别名/unix 日期/
+   对象映射/未来日丢弃/封顶 62）、写入身份、偏好归一（Key 门控）、结算组合幂等、
+   privacy 控制面、source 枚举全套触点、防伪造、注册表、设置结构、i18n 双语。 */
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+
+const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lc-weread-"));
+const transpile = (relative) => {
+    const source = fs.readFileSync(path.join(__dirname, "..", relative), "utf8");
+    const target = path.join(outputRoot, relative.replace(/\.ts$/, ".js"));
+    fs.mkdirSync(path.dirname(target), {recursive: true});
+    fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
+};
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/siplayer-adapter.ts", "src/features/weread-adapter.ts", "src/features/privacy-scope.ts"].forEach(transpile);
+const adapter = require(path.join(outputRoot, "src/features/weread-adapter.js"));
+const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
+const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
+const {summarizePrivacyControlPlane} = require(path.join(outputRoot, "src/features/privacy-scope.js"));
+
+/* 网关请求信封：扁平 api_name + skill_version 同层，无 params 包裹。 */
+assert.deepEqual(adapter.buildWereadReadDetailRequest(), {api_name: "/readdata/detail", skill_version: adapter.WEREAD_SKILL_VERSION}, "default request is the flat gateway envelope");
+assert.deepEqual(adapter.buildWereadReadDetailRequest(" 1.0.6 "), {api_name: "/readdata/detail", skill_version: "1.0.6"}, "skill version trimmed");
+assert.equal(adapter.WEREAD_GATEWAY_URL, "https://i.weread.qq.com/api/agent/gateway", "official gateway endpoint");
+
+/* 响应解析：非对象/错误码/升级提示。 */
+assert.equal(adapter.ingestWereadReadDetail(null).ok, false, "non-object payload fails closed");
+assert.equal(adapter.ingestWereadReadDetail([1, 2]).ok, false, "array payload fails closed");
+const errOutcome = adapter.ingestWereadReadDetail({errcode: -2010, errmsg: "auth"});
+assert.equal(errOutcome.ok, false, "non-zero errcode fails");
+assert.match(errOutcome.message, /-2010/, "errcode surfaced for user-visible failure");
+assert.match(errOutcome.message, /auth/, "errmsg surfaced");
+const upgradeOutcome = adapter.ingestWereadReadDetail({errcode: 0, upgrade_info: {message: "please upgrade skill"}, data: {dailyReadTimes: []}});
+assert.equal(upgradeOutcome.upgrade, "please upgrade skill", "official upgrade hint relayed verbatim");
+
+/* 每日明细：数组行 + 秒 → 分钟向下取整 + 别名 + data 解包。 */
+const readDetail = adapter.ingestWereadReadDetail({
+    errcode: 0,
+    data: {totalReadTime: 7200, readDays: 2, dailyReadTimes: [
+        {readDate: "2026-09-23", readTime: 3600},
+        {date: "2026-09-24", time: 1500},
+        {day: "2026-09-22", duration: 61},
+    ]},
+}, {today: "2026-09-24"});
+assert.ok(readDetail.ok, "documented shape parses");
+assert.deepEqual(readDetail.days, [
+    {localDate: "2026-09-22", minutes: 1},
+    {localDate: "2026-09-23", minutes: 60},
+    {localDate: "2026-09-24", minutes: 25},
+], "seconds floored to minutes, aliases accepted, dates sorted");
+
+/* unix 秒日期：换算器注入才可用；缺失换算器时该行丢弃（fail-closed）。 */
+const unixParser = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 10);
+const unixOutcome = adapter.ingestWereadReadDetail({dailyReadTimes: [{readDate: 1790179200, readTime: 120}, {readDate: 1790265600, readTime: 60}]}, {toLocalDateFromUnix: unixParser, today: "2026-09-24"});
+assert.deepEqual(unixOutcome.days, [{localDate: "2026-09-23", minutes: 2}, {localDate: "2026-09-24", minutes: 1}], "unix-second dates converted via injected converter");
+assert.deepEqual(adapter.ingestWereadReadDetail({dailyReadTimes: [{readDate: 1790179200, readTime: 120}]}, {}).days, [], "unix dates without converter dropped");
+
+/* 对象映射；非法行（坏日期/非正秒数）丢弃；未来日相对注入的 today 丢弃；同日取最大；封顶 62。 */
+const mapOutcome = adapter.ingestWereadReadDetail({dailyReadTimes: {"2026-09-23": 600, "bad": 60, "2026-09-24": 0, "2026-09-25": 3600, "2026-09-22": -5}}, {today: "2026-09-24"});
+assert.deepEqual(mapOutcome.days, [{localDate: "2026-09-23", minutes: 10}], "object map accepted, invalid and future rows dropped");
+const dedupeOutcome = adapter.ingestWereadReadDetail({dailyReadTimes: [{readDate: "2026-09-23", readTime: 60}, {readDate: "2026-09-23", readTime: 600}]}, {today: "2026-09-24"});
+assert.deepEqual(dedupeOutcome.days, [{localDate: "2026-09-23", minutes: 10}], "same-day duplicates keep the max");
+const capped = adapter.ingestWereadReadDetail({dailyReadTimes: Array.from({length: 100}, (_, i) => ({readDate: new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10), readTime: 60 + i}))}, {});
+assert.equal(capped.days.length, 62, "daily rows capped at 62");
+assert.deepEqual(adapter.ingestWereadReadDetail({totalReadTime: 0}).days, [], "summary-only payload parses as empty");
+
+/* 写入身份与偏好归一（Key 缺失不物化；阈值钳制；Key 去空白）。 */
+assert.equal(adapter.buildWereadExternalRef("read", "2026-09-24"), "weread:read:2026-09-24");
+assert.equal(adapter.buildWereadExternalRef("", "2026-09-24"), "");
+assert.equal(adapter.buildWereadExternalRef("read", "09-24"), "");
+assert.deepEqual(normalizeViewPreferences({}).wereadIntegration, {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: ""});
+assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read"}}).wereadIntegration.enabled, false, "enabled without key stays off");
+assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: " wrk-x "}}).wereadIntegration.enabled, true, "enabled with item and trimmed key");
+assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 9999}}).wereadIntegration.thresholdMinutes, 1440);
+assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 0.4}}).wereadIntegration.thresholdMinutes, 1);
+
+/* 结算组合：当日累计分钟过阈值才算资格日 + 幂等门槛（与宿主 ingestWeread 同逻辑）。 */
+const governance = normalizeSourceGovernance({enabled: true, thresholdValue: 30, itemIds: ["read"]});
+const refFor = (localDate) => adapter.buildWereadExternalRef("read", localDate);
+const written = new Set([refFor("2026-09-23")]);
+const settlement = settleSegmentsToDays(
+    [{localDate: "2026-09-23", value: 45}, {localDate: "2026-09-24", value: 12}].map((day) => ({externalRef: refFor(day.localDate), ...day})),
+    governance,
+    [...written],
+);
+const writable = settlement.days.filter((day) => day.qualifies && !written.has(refFor(day.localDate)));
+assert.deepEqual(writable.map((day) => day.localDate), [], "below-threshold and already-written days are not writable");
+
+/* privacy 控制面：weread 通道可见，遥测常量不变。 */
+const controlPlane = summarizePrivacyControlPlane({wereadIntegration: {enabled: true}});
+assert.deepEqual(controlPlane.entries.filter((entry) => entry.channel === "weread"), [{channel: "weread", kind: "external-source", enabled: true}], "weread listed in the privacy control plane");
+assert.equal(controlPlane.telemetry, "none");
+
+/* 全套触点断言。 */
+const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
+assert.match(indexSource, /source: "weread", externalRef/, "write path stamps the weread source");
+assert.match(indexSource, /event\.source === "weread" && event\.externalRef === ref/, "daily write guarded by identity");
+assert.match(indexSource, /tombstone\.source === "weread"/, "tombstoned days never rewritten");
+assert.match(indexSource, /\/api\/network\/forwardProxy/, "outbound pull goes through the kernel forward proxy");
+assert.match(indexSource, /WEREAD_GATEWAY_URL/, "gateway URL from the adapter module");
+assert.match(indexSource, /"sireader", "siplayer", "weread"/, "report scope validation covers weread");
+const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
+assert.match(apiSource, /input\.source === "weread" \? \{source: "api"/, "facade must strip weread from external input");
+const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
+assert.match(ecosystemSource, /prefix: "weread", label: "WeRead"/, "weread prefix registered");
+const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");
+assert.match(modelSource, /value\.source === "weread"/, "normalization accepts weread");
+const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
+for (const hook of ["data-weread-integration", "data-weread-toggle", "data-weread-item", "data-weread-key", "data-weread-threshold", "save-weread", "weread-pull"]) {
+    assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
+}
+assert.ok(!settingsSource.includes("apiKey"), "settings render must never embed the raw key");
+const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src/render/review.ts"), "utf8");
+assert.match(reviewSource, /\["weread", "source\.weread"\]/, "review report source filter offers weread");
+const typesSource = fs.readFileSync(path.join(__dirname, "..", "src/types.ts"), "utf8");
+assert.match(typesSource, /"siplayer" \| "weread"/, "event source union includes weread");
+const frameworkSource = fs.readFileSync(path.join(__dirname, "..", "src/features/source-framework.ts"), "utf8");
+assert.match(frameworkSource, /"official-pull"/, "source channel enum extended with official-pull");
+const privacySource = fs.readFileSync(path.join(__dirname, "..", "src/features/privacy-scope.ts"), "utf8");
+assert.match(privacySource, /external\("weread", source\.wereadIntegration\)/, "privacy control plane wired");
+const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
+for (const key of ["source.weread", "set.wereadIntegration", "set.wereadTitle", "set.wereadHint", "set.wereadToday", "set.wereadToggle", "set.wereadItem", "set.wereadItemHint", "set.wereadItemChoose", "set.wereadKey", "set.wereadKeyHint", "set.wereadKeySaved", "set.wereadThreshold", "set.wereadThresholdHint", "set.wereadSave", "set.wereadPull", "set.wereadPullIdle", "set.wereadPullOk", "set.wereadPullFail", "msg.wereadNeedConfig", "msg.wereadSaved", "msg.wereadPullDone", "msg.wereadPullFail"]) {
+    assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+}
+
+console.log("weread adapter gates passed: gateway envelope, tolerant parsing, identity, key governance, settlement composition, privacy plane, full touchpoints, anti-spoof, registry, settings structure, i18n parity");

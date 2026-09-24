@@ -57,6 +57,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadExternalRef, buildWereadReadDetailRequest, ingestWereadReadDetail} from "./features/weread-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -391,6 +392,11 @@ export default class CheckinPlugin extends Plugin {
     healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
     private healthInboxTimer?: number;
     private healthInboxStartupTimers: number[] = [];
+    /* T-1402 微信读书联动（official-pull，opt-in 默认关）。 */
+    wereadIntegration = {...DEFAULT_VIEW_PREFERENCES.wereadIntegration};
+    private wereadTimer?: number;
+    /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
+    private wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
     /** T-1445：今日页输入聚焦期间被挂起的后台渲染标记。 */
     private pendingRenderAfterTyping = false;
     private sireaderTracker?: SireaderFocusTracker;
@@ -480,14 +486,15 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
     private buildCurrentReportMarkdown(): string {
-        const sourceOptions = this.reportSource ? {source: this.reportSource as "manual" | "tomato" | "api" | "import"} : undefined;
+        const sourceOptions = this.reportSource ? {source: this.reportSource as "manual" | "tomato" | "api" | "import" | "sireader" | "siplayer" | "weread"} : undefined;
         /* T-1425 · R-A8：报告显式回显统计范围——来源/过滤器/缺失条件/截断，不静默改变口径。 */
         const scopeNormalization = normalizeViewScope({version: 1, range: {kind: "all"}, itemIds: [], groups: [], sources: this.reportSource ? [this.reportSource] : [], status: "all"});
         const scopeResolution = resolveViewScope(scopeNormalization.scope, {
             today: dateKey(new Date()),
             knownItemIds: this.store.items.map((item) => item.id),
             knownGroups: [...new Set(this.store.items.map((item) => item.group || "").filter(Boolean))],
-            knownSources: ["manual", "tomato", "api", "import"],
+            /* 来源校验表与回顾页过滤器同口径（T-1402 补齐 sireader/siplayer/weread）。 */
+            knownSources: ["manual", "tomato", "api", "import", "sireader", "siplayer", "weread"],
         });
         const viewScope = describeViewScope(scopeNormalization.scope, scopeResolution);
         const summary = this.summaryCustomRange ? buildCustomSummaryContext(this.store, this.summaryCustomRange, undefined, sourceOptions) : buildSummaryContext(this.store, this.summaryRange, undefined, sourceOptions);
@@ -574,7 +581,7 @@ export default class CheckinPlugin extends Plugin {
             for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
                 sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
             }
-            const sources = (["manual", "tomato", "api", "import", "sireader", "siplayer"] as const)
+            const sources = (["manual", "tomato", "api", "import", "sireader", "siplayer", "weread"] as const)
                 .filter((key) => (sourceCounts.get(key) || 0) > 0)
                 .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
             const markdown = `${buildDailySummaryLine({
@@ -767,6 +774,74 @@ export default class CheckinPlugin extends Plugin {
                 this.renderBackgroundUpdate();
             }
         }
+    }
+
+    /* T-1402 微信读书：官方 Agent API 拉取每日阅读分钟 → 阈值结算 → 每日一次幂等写入（opt-in 默认关）。
+       出站走内核公开转发接口 /api/network/forwardProxy（headers 为键值映射数组、payload 直接给 JSON
+       对象、timeout 毫秒——kernel/api/network.go 官方契约）；断网/失败静默降级（结果记内存态供设置
+       页显示），Key 只进本次转发的鉴权头，不落日志、不入导出、不进任何文档。 */
+    private async ingestWeread(): Promise<number> {
+        const governance = this.wereadIntegration;
+        if (!governance.enabled || !governance.itemId || !governance.apiKey || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
+        const item = getActiveItemById(this.store, governance.itemId);
+        if (!item) return 0;
+        const response = await fetchSyncPost("/api/network/forwardProxy", {
+            url: WEREAD_GATEWAY_URL,
+            method: "POST",
+            headers: [{"Content-Type": "application/json"}, {Authorization: `Bearer ${governance.apiKey}`}],
+            payload: buildWereadReadDetailRequest(),
+            timeout: 15000,
+            redirect: true,
+        }).catch(() => undefined);
+        const data = (response as {data?: {status?: number; body?: unknown}} | undefined)?.data;
+        let payload: unknown;
+        if (typeof data?.body === "string") {
+            try { payload = JSON.parse(data.body); } catch { payload = undefined; }
+        }
+        const outcome = ingestWereadReadDetail(payload, {today: dateKey(currentCalendarDate())});
+        if (!outcome.ok) {
+            const status = typeof data?.status === "number" && data.status !== 200 ? ` (HTTP ${data.status})` : "";
+            this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
+            return 0;
+        }
+        const refFor = (localDate: string) => buildWereadExternalRef(governance.itemId, localDate);
+        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "weread" && event.externalRef === ref);
+        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "weread" && tombstone.externalRef === ref);
+        /* 结算按「当日累计分钟」过阈值才算资格日（与思阅/思播同一结算层，D-261 口径）。 */
+        const settlement = settleSegmentsToDays(
+            outcome.days.map((day) => ({externalRef: refFor(day.localDate), localDate: day.localDate, value: day.minutes})),
+            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
+            outcome.days.map((day) => refFor(day.localDate)).filter((ref) => alreadyWritten(ref)),
+        );
+        let written = 0;
+        for (const day of settlement.days) {
+            if (!day.qualifies) continue;
+            const externalRef = refFor(day.localDate);
+            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint));
+            if (recorded) {
+                written += 1;
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            }
+        }
+        this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        return written;
+    }
+
+    /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */
+    private async pullWereadNow(): Promise<void> {
+        if (!this.wereadIntegration.itemId || !this.wereadIntegration.apiKey) {
+            showMessage(t("msg.wereadNeedConfig"));
+            return;
+        }
+        const written = await this.ingestWeread();
+        const last = this.wereadLastPull;
+        if (last && !last.ok) showMessage(t("msg.wereadPullFail", {message: `${last.error || ""}${last.upgrade ? ` · ${last.upgrade}` : ""}`}), 4200);
+        else showMessage(t("msg.wereadPullDone", {n: written}));
+        this.render();
     }
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
@@ -1073,6 +1148,9 @@ export default class CheckinPlugin extends Plugin {
         for (const delay of [2_000, 10_000, 30_000]) {
             this.healthInboxStartupTimers.push(window.setTimeout(() => void this.ingestHealthInbox(), delay));
         }
+        /* T-1402 微信读书：就绪后 5s 首拉 + 30 分钟有界轮询；失败静默（官方统计按日粒度，无需密集重试）。 */
+        this.wereadTimer = window.setInterval(() => void this.ingestWeread(), WEREAD_INGEST_INTERVAL_MS);
+        window.setTimeout(() => void this.ingestWeread(), 5_000);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -1251,6 +1329,10 @@ export default class CheckinPlugin extends Plugin {
         for (const timer of this.healthInboxStartupTimers.splice(0)) {
             window.clearTimeout(timer);
         }
+        if (this.wereadTimer !== undefined) {
+            window.clearInterval(this.wereadTimer);
+            this.wereadTimer = undefined;
+        }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
         if (this.mobileTopBarRetryTimer !== undefined) {
@@ -1348,7 +1430,7 @@ export default class CheckinPlugin extends Plugin {
         if (!Number.isFinite(value) || value < 0) {
             return undefined;
         }
-        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" || input.source === "siplayer" ? input.source : "api";
+        const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" || input.source === "siplayer" || input.source === "weread" ? input.source : "api";
         const externalRef = typeof input.externalRef === "string" && input.externalRef ? input.externalRef : undefined;
         const taskHorizonRef = externalRef?.trim();
         if (taskHorizonRef?.startsWith("taskhorizon:") && (source !== "api" || !isTaskHorizonExternalRef(taskHorizonRef))) {
@@ -2320,6 +2402,11 @@ export default class CheckinPlugin extends Plugin {
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
+            /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
+            wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes},
+            wereadKeySet: Boolean(this.wereadIntegration.apiKey),
+            wereadLastPull: this.wereadLastPull ? {...this.wereadLastPull} : undefined,
+            wereadTodayMinutes: sourceDayMinutes(this.store, "weread", this.wereadIntegration.itemId, dateKey(currentCalendarDate())),
             /* T-1386 治理可观测性：来源当日已写入分钟（来源行的「今日累计」预览）。 */
             sireaderTodayMinutes: sourceDayMinutes(this.store, "sireader", this.sireaderIntegration.itemId, dateKey(currentCalendarDate())),
             siplayerTodayMinutes: sourceDayMinutes(this.store, "siplayer", this.siplayerIntegration.itemId, dateKey(currentCalendarDate())),
@@ -2544,6 +2631,41 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             });
         }
+        root.querySelector<HTMLInputElement>("[data-weread-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            if (checked && (!this.wereadIntegration.itemId || !this.wereadIntegration.apiKey)) {
+                showMessage(t("msg.wereadNeedConfig"));
+                this.render();
+                return;
+            }
+            this.wereadIntegration = {...this.wereadIntegration, enabled: checked};
+            if (!checked) {
+                /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
+                const disconnectPlan = planSourceDisconnect("weread", this.store.events);
+                if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "微信读书", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+            }
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLSelectElement>("[data-weread-item]")?.addEventListener("change", (event) => {
+            const itemId = (event.currentTarget as HTMLSelectElement).value;
+            this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && this.wereadIntegration.apiKey ? this.wereadIntegration.enabled : false};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", () => {
+            const thresholdInput = root.querySelector<HTMLInputElement>("[data-weread-threshold]");
+            const keyInput = root.querySelector<HTMLInputElement>("[data-weread-key]");
+            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(thresholdInput?.value) || 30)));
+            const apiKey = (keyInput?.value || "").trim();
+            /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
+            this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.wereadSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='weread-pull']")?.addEventListener("click", () => {
+            void this.pullWereadNow();
+        });
         root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
@@ -4652,6 +4774,7 @@ export default class CheckinPlugin extends Plugin {
         this.sireaderIntegration = {...preferences.sireaderIntegration};
         this.siplayerIntegration = {...preferences.siplayerIntegration};
         this.healthInbox = {...preferences.healthInbox};
+        this.wereadIntegration = {...preferences.wereadIntegration};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();
@@ -4722,6 +4845,7 @@ export default class CheckinPlugin extends Plugin {
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
+            wereadIntegration: {...this.wereadIntegration},
             reminderQuietHours: this.reminderQuietHours,
             firstSuccess: this.firstSuccessState,
             savedViews: this.savedViews,

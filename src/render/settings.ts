@@ -55,6 +55,11 @@ export interface SettingsViewContext {
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1403 健康收件箱（opt-in 默认关）。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
+    /** T-1402 微信读书联动（opt-in 默认关）；Key 不进渲染上下文，只暴露 wereadKeySet。 */
+    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    wereadKeySet: boolean;
+    wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
+    wereadTodayMinutes: number;
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
     suggestionWorkflowAudits: number;
     /** T-1361 会话诊断：条数与最新一条的本地化标签（空串 = 无诊断）。 */
@@ -123,8 +128,19 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === siplayer.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     /* T-1403：健康收件箱缺省值，同上。 */
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
+    /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
+    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
+    const wereadKeySet = ctx.wereadKeySet ?? false;
+    const wereadTodayMinutes = ctx.wereadTodayMinutes ?? 0;
+    const wereadItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
+        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === weread.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    const wereadPullStatus = ctx.wereadLastPull
+        ? (ctx.wereadLastPull.ok
+            ? t("set.wereadPullOk", {days: ctx.wereadLastPull.days, written: ctx.wereadLastPull.written})
+            : t("set.wereadPullFail", {message: `${ctx.wereadLastPull.error || ""}${ctx.wereadLastPull.upgrade ? ` · ${ctx.wereadLastPull.upgrade}` : ""}`}))
+        : t("set.wereadPullIdle");
     /* T-1386：外部来源面板摘要——启用中的联动数量。 */
-    const extSourcesEnabled = [diary.enabled, summaryResident.enabled, sireader.enabled, siplayer.enabled, healthInbox.enabled].filter(Boolean).length;
+    const extSourcesEnabled = [diary.enabled, summaryResident.enabled, sireader.enabled, siplayer.enabled, healthInbox.enabled, weread.enabled].filter(Boolean).length;
     const healthItemOptions = (selectedId: string) => ctx.store.items.filter((item) => !item.archived).slice(0, 200)
         .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     const diaryChoices = collectAnchorChoices(ctx.store.items);
@@ -287,6 +303,12 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-siplayer-integration><span class="lc-checkin__settings-label"><span>${t("set.siplayerTitle")}</span><small>${t("set.siplayerHint")}${siplayer.enabled ? ` · ${t("set.siplayerToday", {n: formatNumber(siplayerTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-siplayer-toggle ${siplayer.enabled ? "checked" : ""} aria-label="${t("set.siplayerToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerItem")}</span><small>${t("set.siplayerItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-siplayer-item aria-label="${t("set.siplayerItem")}"><option value="">${t("set.siplayerItemChoose")}</option>${siplayerItemOptions}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerThreshold")}</span><small>${t("set.siplayerThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-siplayer-threshold value="${siplayer.thresholdMinutes}" aria-label="${t("set.siplayerThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-siplayer">${t("set.siplayerSave")}</button></span></div>
+                    <div class="lc-checkin__settings-subheader">${t("set.wereadIntegration")}</div>
+                    <div class="lc-checkin__settings-row" data-weread-integration><span class="lc-checkin__settings-label"><span>${t("set.wereadTitle")}</span><small>${t("set.wereadHint")}${weread.enabled ? ` · ${t("set.wereadToday", {n: formatNumber(wereadTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-weread-toggle ${weread.enabled ? "checked" : ""} aria-label="${t("set.wereadToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadKey")}</span><small>${t("set.wereadKeyHint")}${wereadKeySet ? ` · ${t("set.wereadKeySaved")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="password" data-weread-key autocomplete="off" placeholder="${wereadKeySet ? "••••••••" : "wrk-…"}" aria-label="${t("set.wereadKey")}" /></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${wereadPullStatus}</small></span><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></div>
                     </details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
         },

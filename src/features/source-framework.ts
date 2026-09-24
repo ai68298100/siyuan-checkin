@@ -9,8 +9,8 @@
    - 非法输入 fail-closed 计数，不抛异常、不静默丢弃计数为零的批次；
    - 每日一次封顶与阈值只作用于「资格判定与计数」，永不改写历史事件。 */
 
-/** 来源接入渠道（四类，与框架文档 §二一致）。 */
-export type SourceChannel = "plugin-event" | "import-file" | "api-push" | "manual";
+/** 来源接入渠道（五类，与框架文档 §二一致；T-1402 落地新增 official-pull=出站拉取官方 API）。 */
+export type SourceChannel = "plugin-event" | "import-file" | "api-push" | "manual" | "official-pull";
 
 /** 来源生命周期：planned=仅登记；experimental=实验/仅观察（fallback 纪律，D-255）；stable=上游契约+真机验收齐备；disabled=停用。 */
 export type SourceStatus = "planned" | "experimental" | "stable" | "disabled";
@@ -86,7 +86,7 @@ export function sourceDayMinutes(store: Pick<import("../types").CheckinStore, "e
 
 const SOURCE_KEY_PATTERN = /^[a-z][a-z0-9-]{1,31}$/;
 const DATE_PATTERN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
-const SOURCE_CHANNELS = new Set<SourceChannel>(["plugin-event", "import-file", "api-push", "manual"]);
+const SOURCE_CHANNELS = new Set<SourceChannel>(["plugin-event", "import-file", "api-push", "manual", "official-pull"]);
 const SOURCE_STATUSES = new Set<SourceStatus>(["planned", "experimental", "stable", "disabled"]);
 
 /** 描述符归一：key 即未来 externalRef 前缀，必须通过前缀级校验。非法返回 undefined。 */

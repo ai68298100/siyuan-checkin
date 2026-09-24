@@ -41,6 +41,7 @@ fs.writeFileSync(noteAnchorJs, ts.transpileModule(fs.readFileSync(path.join(root
 /* T-1353 起 view-preferences 运行时依赖 features/summary-resident；T-1403 起依赖 features/health-inbox。 */
 fs.writeFileSync(path.join(outputRoot, "features", "summary-resident.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "summary-resident.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 fs.writeFileSync(path.join(outputRoot, "features", "health-inbox.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "health-inbox.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+fs.writeFileSync(path.join(outputRoot, "features", "weread-adapter.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "weread-adapter.ts"), "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 fs.writeFileSync(path.join(outputRoot, "i18n.js"), ts.transpileModule(i18nSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 fs.writeFileSync(path.join(outputRoot, "view-preferences.js"), ts.transpileModule(prefsSource, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
 const {buildWeeklyReportMarkdown} = require(reportJs);
