@@ -51,3 +51,37 @@ export function isWithinQuietHours(minutesOfDay: number, quietWindow: ReminderQu
     if (start < end) return minutesOfDay >= start && minutesOfDay < end;
     return minutesOfDay >= start || minutesOfDay < end;
 }
+
+/* —— T-1451 · R-A2 每日提醒调度——启用开关 + 每日多次时刻槽（用户需求 2026-09-24）。
+   语义：slots 为空 = 保持「启动后一天一条」的原行为；配置槽位后按时刻触发，
+   每槽每日至多一条（宿主按 localDate 幂等），安静时段闸门与零事项跳过不变。
+   纪律：零依赖、无时钟、确定性；非法时刻丢弃、去重升序、封顶 4。 */
+
+export const DAILY_REMINDER_MAX_SLOTS = 4;
+
+export interface DailyReminderPreference {
+    enabled: boolean;
+    /** "HH:MM" 升序去重后的提醒时刻；空数组 = 启动后一条的原行为。 */
+    slots: string[];
+}
+
+export const DEFAULT_DAILY_REMINDER: DailyReminderPreference = {enabled: true, slots: []};
+
+/** 归一化每日提醒偏好：缺失整体回落默认（启用 + 启动一条）；非法时刻逐项丢弃。 */
+export function normalizeDailyReminderPreference(value: unknown): DailyReminderPreference {
+    if (!value || typeof value !== "object") return {...DEFAULT_DAILY_REMINDER, slots: []};
+    const source = value as Record<string, unknown>;
+    return {enabled: source.enabled !== false, slots: normalizeDailyReminderSlots(source.slots)};
+}
+
+/** 时刻数组归一：严格 HH:MM 校验、去重、升序、封顶 4；非数组/非法项全部丢弃。 */
+export function normalizeDailyReminderSlots(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    for (const entry of value) {
+        if (typeof entry !== "string") continue;
+        if (reminderMinutesOfDay(entry.trim()) === undefined) continue;
+        seen.add(entry.trim());
+    }
+    return [...seen].sort((left, right) => (reminderMinutesOfDay(left) ?? 0) - (reminderMinutesOfDay(right) ?? 0)).slice(0, DAILY_REMINDER_MAX_SLOTS);
+}

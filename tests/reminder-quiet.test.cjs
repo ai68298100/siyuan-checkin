@@ -113,4 +113,33 @@ const moduleSource = fs.readFileSync(path.join(root, "src", "features", "reminde
 assert.doesNotMatch(moduleSource, /^import /m, "偏好模块保持零依赖");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");
 
-console.log("reminder-quiet tests passed: 安静时段解析/归一化/跨午夜逐半小时回放/半开边界 + 防抖到期与历史兼容 + 接线守门 全部通过");
+/* —— 8. T-1451 每日提醒调度：槽位归一 + 宿主接线守门 —— */
+{
+    const {normalizeDailyReminderSlots, normalizeDailyReminderPreference, DAILY_REMINDER_MAX_SLOTS} = rp;
+    /* 严格校验：非法时刻丢弃、去重、升序。 */
+    assert.deepEqual(normalizeDailyReminderSlots(["21:00", "09:00", "9:00", "25:00", "bad", "09:00"]), ["09:00", "21:00"], "去重升序，非法丢弃");
+    assert.deepEqual(normalizeDailyReminderSlots([]), [], "空数组合法（=启动一条原行为）");
+    assert.deepEqual(normalizeDailyReminderSlots("09:00"), [], "非数组 fail-closed");
+    const capped = normalizeDailyReminderSlots(["23:00", "07:00", "12:00", "18:00", "21:30"]);
+    assert.equal(capped.length, DAILY_REMINDER_MAX_SLOTS, "封顶 4 个时刻");
+    /* 偏好归一：缺失回落「启用 + 启动一条」（保留既有推送行为）；显式关闭被尊重。 */
+    assert.deepEqual(normalizeDailyReminderPreference(undefined), {enabled: true, slots: []});
+    assert.deepEqual(normalizeDailyReminderPreference({enabled: false, slots: ["08:00", "20:00"]}), {enabled: false, slots: ["08:00", "20:00"]});
+    /* 宿主接线：minute 级槽位轮询 + 每槽 localDate 台账 + 启动补发合并至多一条。 */
+    const indexSource3 = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+    assert.match(indexSource3, /maybeSendDailyReminder\("slot"\), 60_000/, "槽位检查必须是分钟级有界轮询");
+    assert.match(indexSource3, /reminderFireLog\[`slot:\$\{slot\}`\] !== today/, "每槽按 localDate 幂等");
+    assert.match(indexSource3, /trigger === "launch" && this\.reminderFireLog\.launch !== today/, "无槽位时保留启动一条的原行为");
+    assert.match(indexSource3, /reminderSlotTimer/, "槽位计时器必须登记并随卸载清理");
+    /* 设置结构与双语。 */
+    const settingsSource3 = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
+    for (const hook of ["data-setting-reminder-toggle", "data-setting-reminder-slots", "save-reminder-slots"]) {
+        assert.ok(settingsSource3.includes(hook), `设置页必须包含 ${hook}`);
+    }
+    for (const key of ["set.reminderSchedule", "set.reminderScheduleHint", "set.reminderScheduleSlots", "set.reminderScheduleSlotsHint", "set.reminderScheduleSave", "msg.reminderSlotsSaved"]) {
+        const occurrences = i18nSource.split(`"${key}"`).length - 1;
+        assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+    }
+}
+
+console.log("reminder-quiet tests passed: 安静时段解析/归一化/跨午夜逐半小时回放/半开边界 + 防抖到期与历史兼容 + 提醒调度归一与接线守门 全部通过");

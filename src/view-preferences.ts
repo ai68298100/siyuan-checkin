@@ -3,7 +3,7 @@ import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 import {normalizeHealthInboxPreference} from "./features/health-inbox";
 import {normalizeWereadIntegration} from "./features/weread-adapter";
-import {normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
+import {normalizeReminderQuietHours, type ReminderQuietHours, normalizeDailyReminderPreference, type DailyReminderPreference} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
 
@@ -87,6 +87,8 @@ export interface CheckinViewPreferences {
     wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; apiKey: string; finishItemId: string; notesItemId: string};
     /** T-1421 提醒安静时段（默认关）：窗口内优先提醒降级为页内安静呈现，不改变事实。 */
     reminderQuietHours: ReminderQuietHours;
+    /** T-1451 每日提醒调度（默认启用 + 启动一条）：slots 非空时按时刻触发、每槽每日一条。 */
+    dailyReminder: DailyReminderPreference;
     /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
     firstSuccess: FirstSuccessState;
     /** T-1432 · R-A8 命名保存视图：只存查询偏好（相对天数范围+来源），上限 10。 */
@@ -135,6 +137,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
+    dailyReminder: {enabled: true, slots: []},
     firstSuccess: {stage: "not-started", skipped: false},
     savedViews: [],
     recentTemplates: [],
@@ -282,6 +285,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         healthInbox,
         wereadIntegration,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),
+        dailyReminder: normalizeDailyReminderPreference(source.dailyReminder),
         firstSuccess: normalizeFirstSuccessState(source.firstSuccess),
         /* T-1432 · R-A8：命名保存视图——上限 10，非法条目丢弃，scope 经 normalizeViewScope fail-closed。 */
         savedViews: (Array.isArray(source.savedViews) ? source.savedViews : []).slice(0, 10).flatMap((entry) => {

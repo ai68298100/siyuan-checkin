@@ -30,7 +30,7 @@ import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevi
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
-import {isWithinQuietHours, normalizeReminderQuietHours, type ReminderQuietHours} from "./features/reminder-preferences";
+import {isWithinQuietHours, normalizeReminderQuietHours, normalizeDailyReminderSlots, reminderMinutesOfDay, type ReminderQuietHours} from "./features/reminder-preferences";
 import {addDays, daysBetweenHalfOpen} from "./date-keys";
 import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
 import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/block-presets";
@@ -1038,6 +1038,10 @@ export default class CheckinPlugin extends Plugin {
     private reminderUserActions: ReminderUserAction[] = [];
     /** T-1443：每日统一提醒——同一 localDate 只推送一次。 */
     private lastDailyReminderDate = "";
+    /* T-1451：每日提醒调度偏好与槽位触发台账（key → 最近触发的 localDate）。 */
+    private dailyReminder = {...DEFAULT_VIEW_PREFERENCES.dailyReminder};
+    private reminderFireLog: Record<string, string> = {};
+    private reminderSlotTimer?: number;
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -1256,6 +1260,8 @@ export default class CheckinPlugin extends Plugin {
         /* T-1402 微信读书：就绪后 5s 首拉 + 30 分钟有界轮询；失败静默（官方统计按日粒度，无需密集重试）。 */
         this.wereadTimer = window.setInterval(() => void this.ingestWeread(), WEREAD_INGEST_INTERVAL_MS);
         window.setTimeout(() => void this.ingestWeread(), 5_000);
+        /* T-1451：提醒槽位分钟级有界轮询——到点的未发槽位触发统一提醒（含安静时段/零事项闸门）。 */
+        this.reminderSlotTimer = window.setInterval(() => void this.maybeSendDailyReminder("slot"), 60_000);
         if (this.isMobileFrontend) this.ensureMobileTopBarButton();
     }
 
@@ -1437,6 +1443,10 @@ export default class CheckinPlugin extends Plugin {
         if (this.wereadTimer !== undefined) {
             window.clearInterval(this.wereadTimer);
             this.wereadTimer = undefined;
+        }
+        if (this.reminderSlotTimer !== undefined) {
+            window.clearInterval(this.reminderSlotTimer);
+            this.reminderSlotTimer = undefined;
         }
         this.mobileTopBarButton?.remove();
         this.mobileTopBarButton = undefined;
@@ -2582,6 +2592,19 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
             });
         }
+        /* T-1451 每日提醒调度：启用开关 + 时刻槽（逗号/空格分隔，归一化去重升序封顶 4）。 */
+        root.querySelector<HTMLInputElement>("[data-setting-reminder-toggle]")?.addEventListener("change", (event) => {
+            this.dailyReminder = {...this.dailyReminder, enabled: (event.currentTarget as HTMLInputElement).checked};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-reminder-slots']")?.addEventListener("click", () => {
+            const input = root.querySelector<HTMLInputElement>("[data-setting-reminder-slots]");
+            const slots = normalizeDailyReminderSlots((input?.value || "").split(/[,，、;；\s]+/).filter(Boolean));
+            this.dailyReminder = {...this.dailyReminder, slots};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.reminderSlotsSaved", {n: slots.length}))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "builtin" || value === "docktomato") {
@@ -4875,6 +4898,7 @@ export default class CheckinPlugin extends Plugin {
         this.hapticFeedback = preferences.hapticFeedback;
         this.focusTimerProvider = preferences.focusTimerProvider;
         this.reminderQuietHours = normalizeReminderQuietHours(preferences.reminderQuietHours);
+        this.dailyReminder = {...preferences.dailyReminder};
         this.firstSuccessState = normalizeFirstSuccessState(preferences.firstSuccess);
         this.savedViews = preferences.savedViews;
         this.activeSavedViewId = undefined;
@@ -4959,6 +4983,7 @@ export default class CheckinPlugin extends Plugin {
             dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined,
             reportSections: {...this.reportSections},
             reportSource: this.reportSource,
+            dailyReminder: {...this.dailyReminder},
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
@@ -5124,16 +5149,26 @@ export default class CheckinPlugin extends Plugin {
         this.scheduleMidnightRefresh();
     }
 
-    /** T-1443：每日统一提醒——汇总当日逾期/待完成/事项为一条思源原生通知，
-        每天（localDate 粒度）至多推送一次；零事项不推送；安静时段内静默跳过。 */
-    private async maybeSendDailyReminder() {
+    /** T-1443/T-1451：每日统一提醒——汇总当日逾期/待完成/事项为一条思源原生通知。
+        未配置槽位：启动后一天一条（原行为）；配置槽位后：每时刻一条、每槽每日至多
+        一次（minute 级有界轮询检查到点即发，启动时补发当日已到点未发的槽，合并为
+        至多一条）。零事项不消费槽位；安静时段内静默跳过。 */
+    private async maybeSendDailyReminder(trigger: "launch" | "slot" = "launch") {
         if (this.disposed || this.disposing || !this.storageReady) return;
+        if (!this.dailyReminder.enabled) return;
         if (this.isReminderQuietNow()) return;
-        const today = dateKey(new Date());
-        if (this.lastDailyReminderDate === today) return;
-        const entries = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions);
+        const now = new Date();
+        const today = dateKey(now);
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const slots = this.dailyReminder.slots;
+        const dueKeys = slots.length
+            ? slots.filter((slot) => nowMinutes >= (reminderMinutesOfDay(slot) ?? 1441) && this.reminderFireLog[`slot:${slot}`] !== today).map((slot) => `slot:${slot}`)
+            : trigger === "launch" && this.reminderFireLog.launch !== today ? ["launch"] : [];
+        if (!dueKeys.length) return;
+        const entries = projectReminderCenter(this.store, this.occasionStore, now, this.reminderUserActions);
         const actionable = entries.filter((entry) => entry.status === "overdue" || entry.status === "today");
         if (!actionable.length) return;
+        for (const key of dueKeys) this.reminderFireLog[key] = today;
         this.lastDailyReminderDate = today;
         const msg = t("msg.dailyReminder", {
             overdue: actionable.filter((entry) => entry.status === "overdue").length,
@@ -5142,7 +5177,7 @@ export default class CheckinPlugin extends Plugin {
         try {
             await fetchSyncPost("/api/notification/pushMsg", {msg, timeout: 6000});
         } catch {
-            /* 通知失败不影响功能——下次打开思源会重试。 */
+            /* 通知失败不影响功能——下一个到点槽位或下次启动会重试。 */
         }
     }
 
