@@ -29,17 +29,20 @@ export interface WereadIntegrationPreference {
     itemId: string;
     thresholdMinutes: number;
     apiKey: string;
+    /** T-1402 第二批次：完读书目绑定项目（空 = 不启用完读事件；时长联动不受影响）。 */
+    finishItemId: string;
 }
 
 export function normalizeWereadIntegration(source: unknown): WereadIntegrationPreference {
     const raw = (source && typeof source === "object" ? source : {}) as Record<string, unknown>;
     const itemId = typeof raw.itemId === "string" ? raw.itemId.trim().slice(0, 160) : "";
     const apiKey = typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, 200) : "";
+    const finishItemId = typeof raw.finishItemId === "string" ? raw.finishItemId.trim().slice(0, 160) : "";
     const thresholdRaw = typeof raw.thresholdMinutes === "number" && Number.isFinite(raw.thresholdMinutes) ? raw.thresholdMinutes : 30;
     const thresholdMinutes = Math.min(1440, Math.max(1, Math.round(thresholdRaw)));
     /* enabled 要求三项齐备：拉取通道缺 Key 或缺绑定项目时治理面呈现为关闭。 */
     const enabled = raw.enabled === true && Boolean(itemId) && Boolean(apiKey);
-    return {enabled, itemId, thresholdMinutes, apiKey};
+    return {enabled, itemId, thresholdMinutes, apiKey, finishItemId};
 }
 
 /** 网关请求体：扁平信封（api_name + skill_version + 业务参数同层，官方 SKILL.md §请求格式）。
@@ -140,4 +143,83 @@ export function ingestWereadReadDetail(
 export function buildWereadExternalRef(itemId: string, localDate: string): string {
     const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
     return safeItem && DATE_PATTERN.test(localDate) ? `weread:${safeItem}:${localDate}` : "";
+}
+
+/* —— T-1402 第二批次：完读事件（评估卡 1 前半；划线/笔记计数另批）—— */
+
+export interface WereadFinishedBook {
+    bookId: string;
+    title: string;
+}
+
+/** 书架回包 → 已读完的电子书清单（albums 的 finish 是「系列完结」非个人读完，不纳入；
+    secret 条目照常纳入——用户确实读过）。fail-closed：非法条目丢弃，封顶 200。 */
+export function parseWereadFinishedBooks(payload: unknown): WereadFinishedBook[] {
+    const body = payload && typeof payload === "object" && !Array.isArray(payload) ? payload as Record<string, unknown> : {};
+    const books = Array.isArray(body.books) ? body.books : [];
+    const out: WereadFinishedBook[] = [];
+    for (const row of books) {
+        if (!row || typeof row !== "object" || out.length >= 200) break;
+        const entry = row as Record<string, unknown>;
+        if (entry.finishReading !== 1) continue;
+        const bookId = typeof entry.bookId === "string" ? entry.bookId.trim().slice(0, 120) : "";
+        const title = typeof entry.title === "string" ? entry.title.trim().slice(0, 200) : "";
+        if (bookId && title) out.push({bookId, title});
+    }
+    return out;
+}
+
+export interface WereadBookFinishOutcome {
+    /** progress=100 且带 finishTime 才视为读完；其余（部分阅读/字段缺失）一律 false。 */
+    finished: boolean;
+    /** 读完时间的本地日（经注入换算）；未来日（相对注入 today）视为异常 → false。 */
+    localDate?: string;
+}
+
+/** /book/getprogress 回包 → 是否读完与读完本地日。只有 progress=100 才代表读完
+    （官方 book.md：1-99 均为部分阅读）；finishTime 缺失/非法/未来 → fail-closed。 */
+export function parseWereadBookProgress(
+    payload: unknown,
+    options: {toLocalDateFromUnix: (seconds: number) => string; today?: string},
+): WereadBookFinishOutcome {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {finished: false};
+    const root = payload as Record<string, unknown>;
+    const errcode = typeof root.errcode === "number" ? root.errcode : undefined;
+    if (errcode !== undefined && errcode !== 0) return {finished: false};
+    const body = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as Record<string, unknown> : root;
+    const book = body.book && typeof body.book === "object" ? body.book as Record<string, unknown> : undefined;
+    if (!book || book.progress !== 100) return {finished: false};
+    const finishTime = book.finishTime;
+    if (typeof finishTime !== "number" || !Number.isFinite(finishTime) || finishTime <= 0) return {finished: false};
+    const localDate = options.toLocalDateFromUnix(finishTime);
+    if (!DATE_PATTERN.test(localDate)) return {finished: false};
+    if (options.today && DATE_PATTERN.test(options.today) && localDate > options.today) return {finished: false};
+    return {finished: true, localDate};
+}
+
+/** 完读事件请求体（官方 shelf.md/book.md：两接口参数均只有 bookId，扁平同层）。 */
+export function buildWereadShelfRequest(skillVersion: string = WEREAD_SKILL_VERSION): Record<string, unknown> {
+    const version = typeof skillVersion === "string" && skillVersion.trim() ? skillVersion.trim().slice(0, 40) : WEREAD_SKILL_VERSION;
+    return {api_name: "/shelf/sync", skill_version: version};
+}
+
+export function buildWereadBookProgressRequest(bookId: string, skillVersion: string = WEREAD_SKILL_VERSION): Record<string, unknown> {
+    const version = typeof skillVersion === "string" && skillVersion.trim() ? skillVersion.trim().slice(0, 40) : WEREAD_SKILL_VERSION;
+    const safeBookId = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
+    return safeBookId ? {api_name: "/book/getprogress", skill_version: version, bookId: safeBookId} : {};
+}
+
+/** 完读事件写入身份：`weread:<itemId>:finish:<bookId>:<localDate>`（identity 含冒号，
+    parseExternalRef 以首尾冒号切分 prefix/date，兼容注册表格式）。 */
+export function buildWereadFinishRef(itemId: string, bookId: string, localDate: string): string {
+    const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
+    const safeBook = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
+    return safeItem && safeBook && DATE_PATTERN.test(localDate) ? `weread:${safeItem}:finish:${safeBook}:${localDate}` : "";
+}
+
+/** 同书存在性检查前缀（不论读到哪一天，同一本书只记一次完读）。 */
+export function wereadFinishRefPrefix(itemId: string, bookId: string): string {
+    const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
+    const safeBook = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
+    return safeItem && safeBook ? `weread:${safeItem}:finish:${safeBook}:` : "";
 }

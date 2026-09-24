@@ -57,7 +57,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
-import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadExternalRef, buildWereadReadDetailRequest, ingestWereadReadDetail} from "./features/weread-adapter";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadReadDetailRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -780,31 +780,39 @@ export default class CheckinPlugin extends Plugin {
        出站走内核公开转发接口 /api/network/forwardProxy（headers 为键值映射数组、payload 直接给 JSON
        对象、timeout 毫秒——kernel/api/network.go 官方契约）；断网/失败静默降级（结果记内存态供设置
        页显示），Key 只进本次转发的鉴权头，不落日志、不入导出、不进任何文档。 */
+    /* 微信读书网关出站（经内核转发代理 /api/network/forwardProxy，官方契约 network.go）：
+       统一鉴权头与超时；返回解析后的网关信封与 HTTP 状态（Key 只进本次鉴权头）。 */
+    private async wereadGateway(body: Record<string, unknown>): Promise<{payload?: unknown; status?: number}> {
+        const response = await fetchSyncPost("/api/network/forwardProxy", {
+            url: WEREAD_GATEWAY_URL,
+            method: "POST",
+            headers: [{"Content-Type": "application/json"}, {Authorization: `Bearer ${this.wereadIntegration.apiKey}`}],
+            payload: body,
+            timeout: 15000,
+            redirect: true,
+        }).catch(() => undefined);
+        const data = (response as {data?: {status?: number; body?: unknown}} | undefined)?.data;
+        if (typeof data?.body !== "string") return {status: data?.status};
+        try {
+            return {payload: JSON.parse(data.body), status: data?.status};
+        } catch {
+            return {status: data?.status};
+        }
+    }
+
     private async ingestWeread(): Promise<number> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.itemId || !governance.apiKey || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return 0;
-        const response = await fetchSyncPost("/api/network/forwardProxy", {
-            url: WEREAD_GATEWAY_URL,
-            method: "POST",
-            headers: [{"Content-Type": "application/json"}, {Authorization: `Bearer ${governance.apiKey}`}],
-            payload: buildWereadReadDetailRequest(),
-            timeout: 15000,
-            redirect: true,
-        }).catch(() => undefined);
-        const data = (response as {data?: {status?: number; body?: unknown}} | undefined)?.data;
-        let payload: unknown;
-        if (typeof data?.body === "string") {
-            try { payload = JSON.parse(data.body); } catch { payload = undefined; }
-        }
-        const outcome = ingestWereadReadDetail(payload, {
+        const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
+        const outcome = ingestWereadReadDetail(gateway.payload, {
             today: dateKey(currentCalendarDate()),
             /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
             toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
         });
         if (!outcome.ok) {
-            const status = typeof data?.status === "number" && data.status !== 200 ? ` (HTTP ${data.status})` : "";
+            const status = typeof gateway.status === "number" && gateway.status !== 200 ? ` (HTTP ${gateway.status})` : "";
             this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
             return 0;
         }
@@ -832,7 +840,42 @@ export default class CheckinPlugin extends Plugin {
             }
         }
         this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        if (governance.finishItemId) await this.ingestWereadFinished();
         return written;
+    }
+
+    /* T-1402 第二批次：完读事件——书架 finishReading 旗标 → /book/getprogress 核实
+       progress=100 + finishTime → 每本书幂等记一次（value=1，书名只进本地事件备注，
+       不进 externalRef）。有界：每轮至多核实 10 本新书；albums 的 finish 是「系列完结」
+       非个人读完，不纳入；已写入或已墓碑（前缀匹配）的书跳过；失败静默下轮重试。 */
+    private async ingestWereadFinished(): Promise<void> {
+        const governance = this.wereadIntegration;
+        if (!governance.enabled || !governance.finishItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        const item = getActiveItemById(this.store, governance.finishItemId);
+        if (!item) return;
+        const toLocalDateFromUnix = (seconds: number) => dateKey(new Date(seconds * 1000));
+        const shelf = await this.wereadGateway(buildWereadShelfRequest());
+        const finishedBooks = parseWereadFinishedBooks(shelf.payload).filter((book) => {
+            const prefix = wereadFinishRefPrefix(governance.finishItemId, book.bookId);
+            if (!prefix) return false;
+            if (this.store.events.some((event) => typeof event.externalRef === "string" && event.externalRef.startsWith(prefix))) return false;
+            if (this.store.eventTombstones.some((tombstone) => tombstone.source === "weread" && typeof tombstone.externalRef === "string" && tombstone.externalRef.startsWith(prefix))) return false;
+            return true;
+        });
+        for (const book of finishedBooks.slice(0, 10)) {
+            const progress = await this.wereadGateway(buildWereadBookProgressRequest(book.bookId));
+            const outcome = parseWereadBookProgress(progress.payload, {toLocalDateFromUnix, today: dateKey(currentCalendarDate())});
+            if (!outcome.finished || !outcome.localDate) continue;
+            const externalRef = buildWereadFinishRef(governance.finishItemId, book.bookId, outcome.localDate);
+            if (!externalRef) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(outcome.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: outcome.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.finishItemId, value: 1, source: "weread", externalRef, note: book.title}, moment, fingerprint));
+            if (recorded) {
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            }
+        }
     }
 
     /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */
@@ -2407,7 +2450,7 @@ export default class CheckinPlugin extends Plugin {
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
-            wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes},
+            wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes, finishItemId: this.wereadIntegration.finishItemId},
             wereadKeySet: Boolean(this.wereadIntegration.apiKey),
             wereadLastPull: this.wereadLastPull ? {...this.wereadLastPull} : undefined,
             wereadTodayMinutes: sourceDayMinutes(this.store, "weread", this.wereadIntegration.itemId, dateKey(currentCalendarDate())),
@@ -2654,6 +2697,13 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-weread-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
             this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && this.wereadIntegration.apiKey ? this.wereadIntegration.enabled : false};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLSelectElement>("[data-weread-finish-item]")?.addEventListener("change", (event) => {
+            const finishItemId = (event.currentTarget as HTMLSelectElement).value;
+            /* 完读绑定可选（空 = 关闭完读事件）；不影响时长联动与开关状态。 */
+            this.wereadIntegration = {...this.wereadIntegration, finishItemId};
             void this.persistViewPreferences();
             this.render();
         });

@@ -56,7 +56,7 @@ export interface SettingsViewContext {
     /** T-1403 健康收件箱（opt-in 默认关）。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1402 微信读书联动（opt-in 默认关）；Key 不进渲染上下文，只暴露 wereadKeySet。 */
-    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; finishItemId: string};
     wereadKeySet: boolean;
     wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
     wereadTodayMinutes: number;
@@ -129,7 +129,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     /* T-1403：健康收件箱缺省值，同上。 */
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
     /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
-    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
+    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, finishItemId: ""};
     const wereadKeySet = ctx.wereadKeySet ?? false;
     const wereadTodayMinutes = ctx.wereadTodayMinutes ?? 0;
     const wereadItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
@@ -306,6 +306,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-subheader">${t("set.wereadIntegration")}</div>
                     <div class="lc-checkin__settings-row" data-weread-integration><span class="lc-checkin__settings-label"><span>${t("set.wereadTitle")}</span><small>${t("set.wereadHint")}${weread.enabled ? ` · ${t("set.wereadToday", {n: formatNumber(wereadTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-weread-toggle ${weread.enabled ? "checked" : ""} aria-label="${t("set.wereadToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadFinishItem")}</span><small>${t("set.wereadFinishItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-finish-item aria-label="${t("set.wereadFinishItem")}"><option value="">${t("set.wereadFinishItemChoose")}</option>${wereadItemOptions}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadKey")}</span><small>${t("set.wereadKeyHint")}${wereadKeySet ? ` · ${t("set.wereadKeySaved")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="password" data-weread-key autocomplete="off" placeholder="${wereadKeySet ? "••••••••" : "wrk-…"}" aria-label="${t("set.wereadKey")}" /></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${wereadPullStatus}</small></span><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></div>
