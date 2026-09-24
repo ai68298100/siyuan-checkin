@@ -31,6 +31,8 @@ export interface WereadIntegrationPreference {
     apiKey: string;
     /** T-1402 第二批次：完读书目绑定项目（空 = 不启用完读事件；时长联动不受影响）。 */
     finishItemId: string;
+    /** T-1402 第三批次：划线计数绑定项目（空 = 不启用；每日一条，value=当日划线条数）。 */
+    notesItemId: string;
 }
 
 export function normalizeWereadIntegration(source: unknown): WereadIntegrationPreference {
@@ -38,11 +40,12 @@ export function normalizeWereadIntegration(source: unknown): WereadIntegrationPr
     const itemId = typeof raw.itemId === "string" ? raw.itemId.trim().slice(0, 160) : "";
     const apiKey = typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, 200) : "";
     const finishItemId = typeof raw.finishItemId === "string" ? raw.finishItemId.trim().slice(0, 160) : "";
+    const notesItemId = typeof raw.notesItemId === "string" ? raw.notesItemId.trim().slice(0, 160) : "";
     const thresholdRaw = typeof raw.thresholdMinutes === "number" && Number.isFinite(raw.thresholdMinutes) ? raw.thresholdMinutes : 30;
     const thresholdMinutes = Math.min(1440, Math.max(1, Math.round(thresholdRaw)));
     /* enabled 要求三项齐备：拉取通道缺 Key 或缺绑定项目时治理面呈现为关闭。 */
     const enabled = raw.enabled === true && Boolean(itemId) && Boolean(apiKey);
-    return {enabled, itemId, thresholdMinutes, apiKey, finishItemId};
+    return {enabled, itemId, thresholdMinutes, apiKey, finishItemId, notesItemId};
 }
 
 /** 网关请求体：扁平信封（api_name + skill_version + 业务参数同层，官方 SKILL.md §请求格式）。
@@ -222,4 +225,91 @@ export function wereadFinishRefPrefix(itemId: string, bookId: string): string {
     const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
     const safeBook = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
     return safeItem && safeBook ? `weread:${safeItem}:finish:${safeBook}:` : "";
+}
+
+/* —— T-1402 第三批次：划线计数（评估卡 1 后半的第一半；想法/点评经 /review/list/mine 另批）—— */
+
+export interface WereadNotebookEntry {
+    bookId: string;
+    /** 官方 notes.md：sort = 该书最近笔记时间（unix 秒），亦为分页游标。 */
+    recentSort: number;
+}
+
+export function buildWereadNotebooksRequest(count: number, lastSort?: number, skillVersion: string = WEREAD_SKILL_VERSION): Record<string, unknown> {
+    const version = typeof skillVersion === "string" && skillVersion.trim() ? skillVersion.trim().slice(0, 40) : WEREAD_SKILL_VERSION;
+    const safeCount = Number.isFinite(count) ? Math.min(100, Math.max(1, Math.round(count))) : 100;
+    const body: Record<string, unknown> = {api_name: "/user/notebooks", skill_version: version, count: safeCount};
+    /* 分页游标 = 上一页最后一条的 sort（官方明令禁止 offset/limit/params 包裹）。 */
+    if (typeof lastSort === "number" && Number.isFinite(lastSort) && lastSort > 0) body.lastSort = lastSort;
+    return body;
+}
+
+export interface WereadNotebookPage {
+    books: WereadNotebookEntry[];
+    hasMore: boolean;
+}
+
+/** /user/notebooks 回包 → 笔记本条目（bookId + sort）。fail-closed：非法条目丢弃，封顶 500。 */
+export function parseWereadNotebookPage(payload: unknown): WereadNotebookPage {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {books: [], hasMore: false};
+    const root = payload as Record<string, unknown>;
+    const errcode = typeof root.errcode === "number" ? root.errcode : undefined;
+    if (errcode !== undefined && errcode !== 0) return {books: [], hasMore: false};
+    const body = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as Record<string, unknown> : root;
+    const rows = Array.isArray(body.books) ? body.books : [];
+    const books: WereadNotebookEntry[] = [];
+    for (const row of rows) {
+        if (!row || typeof row !== "object" || books.length >= 500) break;
+        const entry = row as Record<string, unknown>;
+        const bookId = typeof entry.bookId === "string" ? entry.bookId.trim().slice(0, 120) : "";
+        const recentSort = typeof entry.sort === "number" && Number.isFinite(entry.sort) && entry.sort > 0 ? entry.sort : 0;
+        if (bookId && recentSort > 0) books.push({bookId, recentSort});
+    }
+    return {books, hasMore: body.hasMore === 1};
+}
+
+export function buildWereadBookmarkListRequest(bookId: string, skillVersion: string = WEREAD_SKILL_VERSION): Record<string, unknown> {
+    const version = typeof skillVersion === "string" && skillVersion.trim() ? skillVersion.trim().slice(0, 40) : WEREAD_SKILL_VERSION;
+    const safeBookId = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
+    return safeBookId ? {api_name: "/book/bookmarklist", skill_version: version, bookId: safeBookId} : {};
+}
+
+export interface WereadHighlightTally {
+    /** localDate → 当日新增划线条数（createTime 经注入换算；未来日丢弃；封顶 1000 条）。 */
+    byDate: Map<string, number>;
+}
+
+/** /book/bookmarklist 回包 → 按本地日统计划线条数（自动过滤书签后 type=1 划线，
+    updated[].createTime 为 unix 秒）。fail-closed：非法行丢弃。 */
+export function parseWereadHighlightTally(
+    payload: unknown,
+    options: {toLocalDateFromUnix: (seconds: number) => string; today?: string},
+): WereadHighlightTally {
+    const byDate = new Map<string, number>();
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {byDate};
+    const root = payload as Record<string, unknown>;
+    const errcode = typeof root.errcode === "number" ? root.errcode : undefined;
+    if (errcode !== undefined && errcode !== 0) return {byDate};
+    const body = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as Record<string, unknown> : root;
+    const rows = Array.isArray(body.updated) ? body.updated : [];
+    let scanned = 0;
+    for (const row of rows) {
+        if (scanned >= 1000) break;
+        if (!row || typeof row !== "object") continue;
+        const entry = row as Record<string, unknown>;
+        const createTime = entry.createTime;
+        if (typeof createTime !== "number" || !Number.isFinite(createTime) || createTime <= 0) continue;
+        const localDate = options.toLocalDateFromUnix(createTime);
+        scanned += 1;
+        if (!DATE_PATTERN.test(localDate)) continue;
+        if (options.today && DATE_PATTERN.test(options.today) && localDate > options.today) continue;
+        byDate.set(localDate, (byDate.get(localDate) || 0) + 1);
+    }
+    return {byDate};
+}
+
+/** 划线计数写入身份：`weread:<itemId>:notes:<localDate>`（每日一条，value=当日划线条数）。 */
+export function buildWereadNotesRef(itemId: string, localDate: string): string {
+    const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
+    return safeItem && DATE_PATTERN.test(localDate) ? `weread:${safeItem}:notes:${localDate}` : "";
 }

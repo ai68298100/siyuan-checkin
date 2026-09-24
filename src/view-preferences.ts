@@ -84,7 +84,7 @@ export interface CheckinViewPreferences {
     /** T-1402 微信读书联动（official-pull，opt-in 默认关）：官方 Agent API 拉取每日阅读分钟。
         apiKey 仅存本地偏好，不入库不入导出（导出/快照路径只暴露 wereadKeySet 布尔）。
         finishItemId=完读书目绑定项目（可选，空 = 不启用完读事件）。 */
-    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; apiKey: string; finishItemId: string};
+    wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; apiKey: string; finishItemId: string; notesItemId: string};
     /** T-1421 提醒安静时段（默认关）：窗口内优先提醒降级为页内安静呈现，不改变事实。 */
     reminderQuietHours: ReminderQuietHours;
     /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
@@ -133,7 +133,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
-    wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: ""},
+    wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
     firstSuccess: {stage: "not-started", skipped: false},
     savedViews: [],

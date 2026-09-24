@@ -1285,4 +1285,5 @@
 - 官方 skill 包契约已逐条核对（2026-09-24，Tencent/WeChatReading main：skills/SKILL.md + skills/readdata.md）：skill_version 钉 1.0.4（取 SKILL.md 顶部 version）；请求体 {api_name, skill_version, mode:"monthly"} 扁平同层；按日明细官方口径=readTimes（月/周模式按天分桶，key=分桶起始 unix 秒，value=秒）+ dailyReadTimes（年度模式日明细），两字段合并去重取最大；key 兼容 YYYY-MM-DD 字符串；单桶超 86400 秒（24h）视为月/年大桶误读丢弃。初版解析器按「数组行 + YYYY-MM-DD 键」猜测的形状与官方不符，已按 readdata.md 收紧——印证 skill「能力文档预检、字段解释以说明文件为准」纪律的必要性。
 - 网关解析 fail-closed：/readdata/detail 响应按容错解析（data 解包、数组行/对象映射、unix 秒经注入换算器、未来日丢弃、封顶 62 天），未知形状返回 ok:false 并把 errcode/upgrade_info 原样带给用户；skill_version 固定常量，官方升级提示见到即转达不自动重试。
 - 完读事件的口径（第二批次，2026-09-24）：albums（有声书）的 finish/finishStatus 是「系列完结」而非个人读完，一律不纳入完读事件；只有 /book/getprogress 的 progress=100 且带 finishTime 才算读完（官方 book.md 明确 1-99 为部分阅读）；书名只进本地事件备注，不进 externalRef（身份保持匿名 bookId）；同书一次、前缀幂等、墓碑前缀匹配；每轮拉取至多核实 10 本新书（有界 N+1，未核实书下轮继续）。
+- 划线计数的口径（第三批次，2026-09-24）：只统计划线（bookmarklist 自动过滤书签后的 type=1），想法/点评后续批次另行版本化；只结算「昨天」完整日——当天进行中的计数不写入（写入即 first-wins 不可改，避免锁定半日计数造成系统性少记）；活动书筛选用 notebooks 概览的 sort（最近笔记时间），更早的书不可能有目标日划线；>10 本活动书的极端日可能少记（有界优先，说明写入设置行提示与文档）。
 - 轮询节奏：30 分钟有界间隔 + 就绪 5 秒首拉，失败静默（结果记内存态供设置页状态行）；「立即拉取」走同一摄取通道，唯一差别是结果以消息反馈。

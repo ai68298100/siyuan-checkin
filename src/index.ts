@@ -57,7 +57,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
-import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadReadDetailRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, wereadFinishRefPrefix} from "./features/weread-adapter";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -840,7 +840,10 @@ export default class CheckinPlugin extends Plugin {
             }
         }
         this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        const todayKey = dateKey(currentCalendarDate());
         if (governance.finishItemId) await this.ingestWereadFinished();
+        const yesterday = addDays(todayKey, -1);
+        if (governance.notesItemId && yesterday) await this.ingestWereadNotes(yesterday);
         return written;
     }
 
@@ -876,6 +879,47 @@ export default class CheckinPlugin extends Plugin {
                 this.renderBackgroundUpdate();
             }
         }
+    }
+
+    /* T-1402 第三批次：划线计数——notebooks 概览筛出最近有笔记活动的书（sort 落在昨天
+       及之后；sort=最近笔记时间，更早的书不可能有昨日划线）→ /book/bookmarklist 按
+       createTime 逐日统计 → 只结算「昨天」这个完整日（今天未满不写，宁少记不多记）。
+       有界：概览至多 5 页（官方 lastSort 游标），每轮至多核实 10 本书；已写入或已
+       墓碑的当日身份直接跳过。 */
+    private async ingestWereadNotes(yesterdayLocalDate: string): Promise<void> {
+        const governance = this.wereadIntegration;
+        if (!governance.enabled || !governance.notesItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        const item = getActiveItemById(this.store, governance.notesItemId);
+        if (!item) return;
+        const notesRef = buildWereadNotesRef(governance.notesItemId, yesterdayLocalDate);
+        if (!notesRef) return;
+        if (this.store.events.some((event) => event.source === "weread" && event.externalRef === notesRef)) return;
+        if (this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.notesItemId && tombstone.source === "weread" && tombstone.externalRef === notesRef)) return;
+        const toLocalDateFromUnix = (seconds: number) => dateKey(new Date(seconds * 1000));
+        const todayKey = dateKey(currentCalendarDate());
+        let lastSort: number | undefined;
+        const activeBooks: string[] = [];
+        for (let page = 0; page < 5; page += 1) {
+            const pageResult = await this.wereadGateway(buildWereadNotebooksRequest(100, lastSort));
+            const parsed = parseWereadNotebookPage(pageResult.payload);
+            for (const entry of parsed.books) {
+                if (toLocalDateFromUnix(entry.recentSort) >= yesterdayLocalDate && !activeBooks.includes(entry.bookId)) activeBooks.push(entry.bookId);
+            }
+            if (!parsed.hasMore || !parsed.books.length) break;
+            lastSort = parsed.books[parsed.books.length - 1].recentSort;
+        }
+        let tally = 0;
+        for (const bookId of activeBooks.slice(0, 10)) {
+            const bookmarkList = await this.wereadGateway(buildWereadBookmarkListRequest(bookId));
+            const counts = parseWereadHighlightTally(bookmarkList.payload, {toLocalDateFromUnix, today: todayKey});
+            tally += counts.byDate.get(yesterdayLocalDate) || 0;
+        }
+        if (tally <= 0) return;
+        const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(yesterdayLocalDate));
+        const moment = {occurredAt: new Date().toISOString(), localDate: yesterdayLocalDate};
+        await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.notesItemId, value: tally, source: "weread", externalRef: notesRef}, moment, fingerprint));
+        this.invalidateSummary();
+        this.renderBackgroundUpdate();
     }
 
     /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */
@@ -2450,7 +2494,7 @@ export default class CheckinPlugin extends Plugin {
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
-            wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes, finishItemId: this.wereadIntegration.finishItemId},
+            wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes, finishItemId: this.wereadIntegration.finishItemId, notesItemId: this.wereadIntegration.notesItemId},
             wereadKeySet: Boolean(this.wereadIntegration.apiKey),
             wereadLastPull: this.wereadLastPull ? {...this.wereadLastPull} : undefined,
             wereadTodayMinutes: sourceDayMinutes(this.store, "weread", this.wereadIntegration.itemId, dateKey(currentCalendarDate())),
@@ -2704,6 +2748,13 @@ export default class CheckinPlugin extends Plugin {
             const finishItemId = (event.currentTarget as HTMLSelectElement).value;
             /* 完读绑定可选（空 = 关闭完读事件）；不影响时长联动与开关状态。 */
             this.wereadIntegration = {...this.wereadIntegration, finishItemId};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLSelectElement>("[data-weread-notes-item]")?.addEventListener("change", (event) => {
+            const notesItemId = (event.currentTarget as HTMLSelectElement).value;
+            /* 划线计数绑定可选（空 = 关闭）；每日结算昨日完整数据，宁少记不多记。 */
+            this.wereadIntegration = {...this.wereadIntegration, notesItemId};
             void this.persistViewPreferences();
             this.render();
         });

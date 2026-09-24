@@ -19,6 +19,7 @@ const transpile = (relative) => {
 const adapter = require(path.join(outputRoot, "src/features/weread-adapter.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
+const {parseExternalRef} = require(path.join(outputRoot, "src/ecosystem.js"));
 const {summarizePrivacyControlPlane} = require(path.join(outputRoot, "src/features/privacy-scope.js"));
 
 /* 网关请求信封：扁平 api_name + skill_version + mode 同层，无 params 包裹。 */
@@ -99,12 +100,56 @@ assert.deepEqual(adapter.ingestWereadReadDetail({totalReadTime: 0}).days, [], "s
 assert.equal(adapter.buildWereadExternalRef("read", "2026-09-24"), "weread:read:2026-09-24");
 assert.equal(adapter.buildWereadExternalRef("", "2026-09-24"), "");
 assert.equal(adapter.buildWereadExternalRef("read", "09-24"), "");
-assert.deepEqual(normalizeViewPreferences({}).wereadIntegration, {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: ""});
+assert.deepEqual(normalizeViewPreferences({}).wereadIntegration, {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""});
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read"}}).wereadIntegration.enabled, false, "enabled without key stays off");
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: " wrk-x "}}).wereadIntegration.enabled, true, "enabled with item and trimmed key");
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 9999}}).wereadIntegration.thresholdMinutes, 1440);
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 0.4}}).wereadIntegration.thresholdMinutes, 1);
 assert.equal(normalizeViewPreferences({wereadIntegration: {itemId: "read", apiKey: "wrk-x", finishItemId: " books "}}).wereadIntegration.finishItemId, "books", "finish binding trimmed; empty stays off");
+assert.equal(normalizeViewPreferences({wereadIntegration: {itemId: "read", apiKey: "wrk-x", notesItemId: " lines "}}).wereadIntegration.notesItemId, "lines", "notes binding trimmed; empty stays off");
+
+/* —— T-1402 第三批次：划线计数 —— */
+/* 请求体：notebooks 游标分页（官方明令禁止 offset/limit），bookmarklist 按 bookId。 */
+assert.deepEqual(adapter.buildWereadNotebooksRequest(100), {api_name: "/user/notebooks", skill_version: "1.0.4", count: 100}, "notebooks first page is flat");
+assert.deepEqual(adapter.buildWereadNotebooksRequest(100, 1778312777), {api_name: "/user/notebooks", skill_version: "1.0.4", count: 100, lastSort: 1778312777}, "cursor pagination uses lastSort");
+assert.deepEqual(adapter.buildWereadNotebooksRequest(999), {api_name: "/user/notebooks", skill_version: "1.0.4", count: 100}, "count clamped to official page bounds");
+assert.deepEqual(adapter.buildWereadBookmarkListRequest(" bk9 "), {api_name: "/book/bookmarklist", skill_version: "1.0.4", bookId: "bk9"}, "bookmarklist request carries trimmed bookId");
+
+/* 概览解析：bookId+sort 双校验；hasMore=1 才翻页；errcode 失败 closed。 */
+const notebookPage = adapter.parseWereadNotebookPage({
+    totalBookCount: 3, totalNoteCount: 9, hasMore: 1,
+    books: [
+        {bookId: "bk1", sort: 1790179200, reviewCount: 1, noteCount: 2, bookmarkCount: 0},
+        {bookId: "bk2", sort: 0},
+        {sort: 1790179200},
+        "garbage",
+    ],
+});
+assert.deepEqual(notebookPage.books, [{bookId: "bk1", recentSort: 1790179200}], "only valid entries kept");
+assert.equal(notebookPage.hasMore, true, "hasMore=1 signals more pages");
+assert.deepEqual(adapter.parseWereadNotebookPage({errcode: -1}), {books: [], hasMore: false}, "gateway error fails closed");
+assert.deepEqual(adapter.parseWereadNotebookPage(null).books, [], "null payload fails closed");
+
+/* 划线按日统计：createTime（unix 秒）落到本地日；未来日丢弃；errcode closed。 */
+const unixParser3 = (seconds) => new Date(seconds * 1000).toISOString().slice(0, 10);
+const tally = adapter.parseWereadHighlightTally({
+    updated: [
+        {bookmarkId: "m1", createTime: 1790179200},
+        {bookmarkId: "m2", createTime: 1790179200},
+        {bookmarkId: "m3", createTime: 1790092800},
+        {bookmarkId: "m4", createTime: 1790352000},
+        {createTime: 1790179200},
+        "garbage",
+    ],
+}, {toLocalDateFromUnix: unixParser3, today: "2026-09-24"});
+assert.equal(tally.byDate.get("2026-09-23"), 3, "same-day highlights accumulate");
+assert.equal(tally.byDate.get("2026-09-22"), 1, "previous day counted separately");
+assert.equal(tally.byDate.get("2026-09-25"), undefined, "future day dropped");
+assert.deepEqual(adapter.parseWereadHighlightTally({errcode: -1}, {toLocalDateFromUnix: unixParser3}).byDate.size, 0, "gateway error fails closed");
+
+/* 划线计数身份。 */
+assert.equal(adapter.buildWereadNotesRef("lines", "2026-09-23"), "weread:lines:notes:2026-09-23");
+assert.deepEqual(parseExternalRef(adapter.buildWereadNotesRef("lines", "2026-09-23")), {prefix: "weread", identity: "lines:notes", date: "2026-09-23"}, "notes ref parses against the registry");
 
 /* —— T-1402 第二批次：完读事件 —— */
 /* 请求体：书架与进度接口均为扁平信封。 */
@@ -139,7 +184,6 @@ assert.equal(adapter.parseWereadBookProgress({book: {progress: 100, finishTime: 
 assert.equal(adapter.parseWereadBookProgress({errcode: -1}, {toLocalDateFromUnix: unixParser2}).finished, false, "gateway error fails closed");
 
 /* 完读身份：identity 含冒号，与 parseExternalRef 首尾切分兼容。 */
-const {parseExternalRef} = require(path.join(outputRoot, "src/ecosystem.js"));
 assert.equal(adapter.buildWereadFinishRef("books", "bk1", "2026-09-23"), "weread:books:finish:bk1:2026-09-23");
 assert.deepEqual(parseExternalRef(adapter.buildWereadFinishRef("books", "bk1", "2026-09-23")), {prefix: "weread", identity: "books:finish:bk1", date: "2026-09-23"}, "finish ref parses against the registry");
 assert.equal(adapter.wereadFinishRefPrefix("books", "bk1"), "weread:books:finish:bk1:", "existence-check prefix per book");
@@ -173,6 +217,9 @@ assert.match(indexSource, /buildWereadShelfRequest\(\)/, "finished-book ingest p
 assert.match(indexSource, /buildWereadBookProgressRequest\(/, "finish verified via getprogress");
 assert.match(indexSource, /wereadFinishRefPrefix\(/, "per-book existence check before writing");
 assert.match(indexSource, /tombstone\.externalRef\.startsWith\(prefix\)/, "tombstoned books never rewritten");
+assert.match(indexSource, /buildWereadNotebooksRequest\(/, "notes ingest pages the notebook overview");
+assert.match(indexSource, /buildWereadBookmarkListRequest\(/, "highlight tally pulls per-book bookmarklist");
+assert.match(indexSource, /buildWereadNotesRef\(/, "daily notes identity");
 assert.match(indexSource, /"sireader", "siplayer", "weread"/, "report scope validation covers weread");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
 assert.match(apiSource, /input\.source === "weread" \? \{source: "api"/, "facade must strip weread from external input");
@@ -181,7 +228,7 @@ assert.match(ecosystemSource, /prefix: "weread", label: "WeRead"/, "weread prefi
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");
 assert.match(modelSource, /value\.source === "weread"/, "normalization accepts weread");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
-for (const hook of ["data-weread-integration", "data-weread-toggle", "data-weread-item", "data-weread-finish-item", "data-weread-key", "data-weread-threshold", "save-weread", "weread-pull"]) {
+for (const hook of ["data-weread-integration", "data-weread-toggle", "data-weread-item", "data-weread-finish-item", "data-weread-notes-item", "data-weread-key", "data-weread-threshold", "save-weread", "weread-pull"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }
 assert.ok(!settingsSource.includes("apiKey"), "settings render must never embed the raw key");
@@ -194,7 +241,7 @@ assert.match(frameworkSource, /"official-pull"/, "source channel enum extended w
 const privacySource = fs.readFileSync(path.join(__dirname, "..", "src/features/privacy-scope.ts"), "utf8");
 assert.match(privacySource, /external\("weread", source\.wereadIntegration\)/, "privacy control plane wired");
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
-for (const key of ["source.weread", "set.wereadIntegration", "set.wereadTitle", "set.wereadHint", "set.wereadToday", "set.wereadToggle", "set.wereadItem", "set.wereadItemHint", "set.wereadItemChoose", "set.wereadFinishItem", "set.wereadFinishItemHint", "set.wereadFinishItemChoose", "set.wereadKey", "set.wereadKeyHint", "set.wereadKeySaved", "set.wereadThreshold", "set.wereadThresholdHint", "set.wereadSave", "set.wereadPull", "set.wereadPullIdle", "set.wereadPullOk", "set.wereadPullFail", "msg.wereadNeedConfig", "msg.wereadSaved", "msg.wereadPullDone", "msg.wereadPullFail"]) {
+for (const key of ["source.weread", "set.wereadIntegration", "set.wereadTitle", "set.wereadHint", "set.wereadToday", "set.wereadToggle", "set.wereadItem", "set.wereadItemHint", "set.wereadItemChoose", "set.wereadFinishItem", "set.wereadFinishItemHint", "set.wereadFinishItemChoose", "set.wereadNotesItem", "set.wereadNotesItemHint", "set.wereadNotesItemChoose", "set.wereadKey", "set.wereadKeyHint", "set.wereadKeySaved", "set.wereadThreshold", "set.wereadThresholdHint", "set.wereadSave", "set.wereadPull", "set.wereadPullIdle", "set.wereadPullOk", "set.wereadPullFail", "msg.wereadNeedConfig", "msg.wereadSaved", "msg.wereadPullDone", "msg.wereadPullFail"]) {
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 
