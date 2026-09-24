@@ -391,6 +391,8 @@ export default class CheckinPlugin extends Plugin {
     healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
     private healthInboxTimer?: number;
     private healthInboxStartupTimers: number[] = [];
+    /** T-1445：今日页输入聚焦期间被挂起的后台渲染标记。 */
+    private pendingRenderAfterTyping = false;
     private sireaderTracker?: SireaderFocusTracker;
     /* T-1385 思播联动（实验，opt-in 默认关）。 */
     siplayerIntegration = {...DEFAULT_VIEW_PREFERENCES.siplayerIntegration};
@@ -2087,8 +2089,25 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /* T-1445：今日页输入聚焦检测——填写数值/备注输入框聚焦即视为输入中。 */
+    private isTypingInTodayInput(): boolean {
+        const active = document.activeElement as HTMLElement | null;
+        return Boolean(active && (active.classList.contains("lc-checkin__amount") || active.classList.contains("lc-checkin__record-note")
+            || active.dataset?.todaySearch !== undefined) && active.closest(".lc-checkin--today"));
+    }
+
     private render() {
         if (this.disposed || this.disposing) {
+            return;
+        }
+        /* T-1445：输入聚焦期间挂起后台重渲染，失焦后补一次，防止输入法反复弹出。 */
+        if (this.pendingRenderAfterTyping && !this.isTypingInTodayInput()) {
+            this.pendingRenderAfterTyping = false;
+            this.render();
+            return;
+        }
+        if (this.currentPage === "today" && this.isTypingInTodayInput()) {
+            this.pendingRenderAfterTyping = true;
             return;
         }
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);

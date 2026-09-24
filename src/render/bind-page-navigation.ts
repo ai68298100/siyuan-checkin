@@ -78,6 +78,8 @@ export interface BindPageNavigationHost {
     reportSections: ReportSectionToggles;
     /** T-1360 报告来源筛选："" = 全部来源。 */
     reportSource: string;
+    /** T-1447：移动前端标记——回顾页滚动钉住（transform 同步）在移动端彻底停用。 */
+    readonly isMobileFrontend: boolean;
     /** T-1432 · R-A8 命名保存视图。 */
     savedViews: Array<{id: string; name: string}>;
     activeSavedViewId?: string;
@@ -105,7 +107,12 @@ function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): (
        transform to the review subnav there makes WebView compositing fight
        the touch gesture (the scroll position visibly oscillates and the page
        can no longer advance).  The transform workaround is only needed for
-       zoomed desktop surfaces where sticky positioning is broken. */
+       zoomed desktop surfaces where sticky positioning is broken.
+       T-1447：守卫改为「宿主显式标记优先」——不再依赖 class 是否恰好挂在
+       当前 root 上（挂载路径差异会导致守卫失效、移动端照跑 transform 同步）。 */
+    if (host.isMobileFrontend) {
+        return () => undefined;
+    }
     if (root.classList?.contains("lc-checkin-host--mobile") || root.classList?.contains("lc-checkin-dialog-host--mobile")) {
         return () => undefined;
     }

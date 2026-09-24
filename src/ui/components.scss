@@ -2954,8 +2954,12 @@
 @container lc5 (max-width: 560px) {
     .lc-checkin__reminder-row { grid-template-columns: auto minmax(0, 1fr); min-height: 36px; padding: 7px 8px; }
     .lc-checkin__reminder-timing { grid-column: 2; }
+    /* T-1444：窄容器下操作组独占整行，按钮保持胶囊不逐字竖排。 */
+    .lc-checkin__reminder-actions { grid-column: 1 / -1; grid-row: auto; justify-content: flex-start; }
 }
-.lc-checkin__reminder-actions { display: inline-flex; gap: 4px; justify-content: flex-end; min-width: 0; grid-column: 3; grid-row: 1 / span 2; }
+.lc-checkin__reminder-actions { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; min-width: 0; grid-column: 3; grid-row: 1 / span 2; }
+/* T-1444：操作胶囊禁止文字内部换行——被挤压时整组换行，CJK 不逐字竖排。 */
+.lc-checkin__reminder-action { white-space: nowrap; }
 .lc-checkin__reminder-row.is-completed,
 .lc-checkin__reminder-row.is-snoozed,
 .lc-checkin__reminder-row.is-skipped { opacity: .68; }

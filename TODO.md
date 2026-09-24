@@ -163,7 +163,11 @@
   - 根因候选（代码层面已定位可疑路径）：今日页存在多个**后台全量重渲染触发源**——健康收件箱 5 分钟轮询、思播采样器、Dock Tomato/.analytics-updated 事件、sireader 监听——均调用 `renderBackgroundUpdate()`→今日页整树重建，正在聚焦的 `input.lc-checkin__amount` 被替换→焦点丢失→输入法收回。T-1246 的保守局部渲染（renderTodayItemLocally）只覆盖记录更新，不覆盖上述后台事件。另外 exact-entry 的 input 事件链是否有同步渲染待查。
   - 修复方向：① 输入聚焦期间挂起全量重渲染（focus 标记，blur 后补一次）；或 ② 局部渲染路径保留输入节点/恢复焦点与光标（复用 T-114 焦点归位机制）；③ 回归守门：playwright **mobile bundle** e2e——聚焦填写框→触发后台事件→断言焦点与输入法状态保持、已输入值不丢。
   - 归类：手机端缺陷，复现与修复验证用 mobile bundle e2e（local-auto 可复现）+ 真机确认（host-pending）。
-- [ ] T-1446 手机端缺陷：已完成打卡项无法折叠（用户真机报告 2026-09-24）
+- [ ] T-1446 手机端缺陷：已完成打卡项无法折叠（用户真机报告 2026-09-24，**需真机调试**）
+  - 现象：手机端今日页「已完成打卡项」节头（chevron 显示展开态）点击无反应，无法折叠。
+  - 代码路径已确认正确：bind-today.ts 绑定 `[data-action='toggle-completed']` → 翻转 completedCollapsed → 就地更新 aria/hidden/chevron → 持久化。桌面正常。
+  - 手机端候选：触摸事件被父层吞掉 / 重渲染后监听器丢失 / WebView click 合成差异。需真机 DevTools 断点确认。
+  - 修复方向：确认后修绑定或补 touchend 兜底；检查 CSS 是否覆盖 hidden 属性的 display。**真机确认（host-pending）**。
   - 现象：今日页「已完成打卡项」节头（chevron 显示展开态）点击无反应，无法折叠。
   - 现状事实：桌面/通用路径的 handler 存在且逻辑正确（bind-today.ts `data-action='toggle-completed'`→翻转 completedCollapsed→就地更新 aria/hidden/chevron→持久化）；偏好持久化与设置页开关联动正常。
   - 根因候选：① 手机端 tap 未命中按钮（命中区/覆盖层/事件透传到卡片级 handler）；② 手机渲染时序导致监听器绑定在旧节点上（重渲染后按钮重建而绑定未重挂）；③ 移动 bundle 的 bindTodayHandlers 路径差异。

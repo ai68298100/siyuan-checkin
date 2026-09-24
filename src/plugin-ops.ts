@@ -22,6 +22,10 @@ export interface PluginOpsHost {
     currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     disposed: boolean;
     disposing: boolean;
+    /** T-1445：今日页输入聚焦期间有被挂起的后台渲染，失焦后补渲染。 */
+    pendingRenderAfterTyping?: boolean;
+    /** T-1445：今日页输入聚焦检测（填写数值/备注输入框），由宿主实现。 */
+    isTypingInTodayInput?(): boolean;
     dockElement?: HTMLElement;
     tabElement?: HTMLElement;
     quickDialogElement?: HTMLElement;
@@ -53,6 +57,13 @@ export interface PluginOpsHost {
 }
 
 export function renderBackgroundUpdateFor(host: PluginOpsHost): void {
+    /* T-1445：今日页输入（填写数值/备注）聚焦期间挂起后台全量重渲染——
+       整树重建会丢焦点导致输入法反复弹出（手机端不可输入）。
+       数据已持久化，仅推迟视觉刷新；失焦后的下一次交互/渲染自动补上。 */
+    if (host.currentPage === "today" && host.isTypingInTodayInput?.()) {
+        host.pendingRenderAfterTyping = true;
+        return;
+    }
     if (host.currentPage !== "editor") {
         host.render();
     }
