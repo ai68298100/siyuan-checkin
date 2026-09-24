@@ -10,6 +10,7 @@
 - 测试套件 172 个守门文件，0 个显式退役（test-suite-coverage 守门）；主链新增 date-keys / architecture-boundaries / ui-state-ledger / today-dashboard / reminder-quiet / quick-entry-capabilities / first-success / view-scope / pace-projection / block-presets / import-preview / task-horizon-mock-consumer 十二个守门套件。
 - 架构边界守门：105 个 TS 模块依赖方向/宿主准入/时钟纪律/事件写路径/来源登记全绿（T-1402 weread-adapter 进入 CLOCK_FREE 与 SOURCE_MANIFEST 双清单）。
 - e2e 真实内核自动化：agent-capabilities spec 在用户运行中的 e2e 实例（内核 3.8.5 @ 127.0.0.1:6806，已接入思源智能体）通过——宿主登记插件 11 项智能体能力、能力策略放行（附着运行实例模式：playwright.e2e.running.config.mjs + 手写 target.json）。
+- e2e 全量回归（2026-09-24 深夜补跑）：仓库自建临时工作区 + 本机自启内核（SiYuan 3.8.5 @ 127.0.0.1:6827，全局 setup 自动启停）——test:e2e:readonly 1/1 通过、test:e2e **20/20 通过（8.1 分钟）**，覆盖持久化/插件生命周期/渲染块真实写回/移动端 bundle/思阅与思播真实内核累计幂等/健康收件箱真实落盘/Obsidian 迁出/回顾建议确认撤销。此为**隔离真实内核自动化证据**（D-264 口径），不等于用户设备或外部插件现场验收。
 
 ## 二、性能与预算证据（最新全链实测）
 
