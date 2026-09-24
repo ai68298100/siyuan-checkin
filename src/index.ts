@@ -57,7 +57,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
-import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, wereadFinishRefPrefix} from "./features/weread-adapter";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -881,11 +881,11 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    /* T-1402 第三批次：划线计数——notebooks 概览筛出最近有笔记活动的书（sort 落在昨天
-       及之后；sort=最近笔记时间，更早的书不可能有昨日划线）→ /book/bookmarklist 按
-       createTime 逐日统计 → 只结算「昨天」这个完整日（今天未满不写，宁少记不多记）。
-       有界：概览至多 5 页（官方 lastSort 游标），每轮至多核实 10 本书；已写入或已
-       墓碑的当日身份直接跳过。 */
+    /* T-1402 第三批次：笔记计数（划线 + 想法/点评）——notebooks 概览筛出最近有笔记
+       活动的书（sort 落在昨天及之后；sort=最近笔记时间，更早的书不可能有昨日笔记）→
+       bookmarklist/review-list 按 createTime 逐日统计 → 只结算「昨天」这个完整日
+       （今天未满不写，宁少记不多记）。有界：概览至多 5 页（官方 lastSort 游标），
+       每轮至多核实 10 本书；已写入或已墓碑的当日身份直接跳过。 */
     private async ingestWereadNotes(yesterdayLocalDate: string): Promise<void> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.notesItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
@@ -910,9 +910,19 @@ export default class CheckinPlugin extends Plugin {
         }
         let tally = 0;
         for (const bookId of activeBooks.slice(0, 10)) {
+            /* 划线（bookmarklist 服务端已滤书签）+ 想法/点评（review/list/mine，官方
+               synckey 游标，至多 3 页），同书同日合并计入。 */
             const bookmarkList = await this.wereadGateway(buildWereadBookmarkListRequest(bookId));
             const counts = parseWereadHighlightTally(bookmarkList.payload, {toLocalDateFromUnix, today: todayKey});
             tally += counts.byDate.get(yesterdayLocalDate) || 0;
+            let reviewSynckey: number | undefined;
+            for (let page = 0; page < 3; page += 1) {
+                const reviewPage = await this.wereadGateway(buildWereadReviewListRequest(bookId, reviewSynckey, 50));
+                const reviews = parseWereadReviewTally(reviewPage.payload, {toLocalDateFromUnix, today: todayKey});
+                tally += reviews.byDate.get(yesterdayLocalDate) || 0;
+                if (!reviews.hasMore || reviews.nextSynckey === undefined) break;
+                reviewSynckey = reviews.nextSynckey;
+            }
         }
         if (tally <= 0) return;
         const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(yesterdayLocalDate));

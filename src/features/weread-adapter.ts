@@ -313,3 +313,55 @@ export function buildWereadNotesRef(itemId: string, localDate: string): string {
     const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
     return safeItem && DATE_PATTERN.test(localDate) ? `weread:${safeItem}:notes:${localDate}` : "";
 }
+
+/* —— T-1402 收尾：想法/点评计数（/review/list/mine；官方字段名 bookid 全小写）。 —— */
+
+export function buildWereadReviewListRequest(bookId: string, synckey?: number, count?: number, skillVersion: string = WEREAD_SKILL_VERSION): Record<string, unknown> {
+    const version = typeof skillVersion === "string" && skillVersion.trim() ? skillVersion.trim().slice(0, 40) : WEREAD_SKILL_VERSION;
+    const safeBookId = typeof bookId === "string" ? bookId.trim().slice(0, 120) : "";
+    if (!safeBookId) return {};
+    const body: Record<string, unknown> = {api_name: "/review/list/mine", skill_version: version, bookid: safeBookId};
+    const safeCount = Number.isFinite(count) ? Math.min(100, Math.max(1, Math.round(count as number))) : 0;
+    if (safeCount) body.count = safeCount;
+    if (typeof synckey === "number" && Number.isFinite(synckey) && synckey > 0) body.synckey = synckey;
+    return body;
+}
+
+export interface WereadReviewTally {
+    byDate: Map<string, number>;
+    /** 官方：hasMore=1 时用回包 synckey 继续翻页。 */
+    hasMore: boolean;
+    nextSynckey?: number;
+}
+
+/** /review/list/mine 回包 → 想法/点评按本地日统计（reviews[].review.createTime，
+    unix 秒；非法行丢弃；封顶 1000 条）。 */
+export function parseWereadReviewTally(
+    payload: unknown,
+    options: {toLocalDateFromUnix: (seconds: number) => string; today?: string},
+): WereadReviewTally {
+    const byDate = new Map<string, number>();
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return {byDate, hasMore: false};
+    const root = payload as Record<string, unknown>;
+    const errcode = typeof root.errcode === "number" ? root.errcode : undefined;
+    if (errcode !== undefined && errcode !== 0) return {byDate, hasMore: false};
+    const body = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as Record<string, unknown> : root;
+    const rows = Array.isArray(body.reviews) ? body.reviews : [];
+    let scanned = 0;
+    for (const row of rows) {
+        if (scanned >= 1000) break;
+        if (!row || typeof row !== "object") continue;
+        const review = (row as Record<string, unknown>).review;
+        if (!review || typeof review !== "object") continue;
+        const createTime = (review as Record<string, unknown>).createTime;
+        if (typeof createTime !== "number" || !Number.isFinite(createTime) || createTime <= 0) continue;
+        const localDate = options.toLocalDateFromUnix(createTime);
+        scanned += 1;
+        if (!DATE_PATTERN.test(localDate)) continue;
+        if (options.today && DATE_PATTERN.test(options.today) && localDate > options.today) continue;
+        byDate.set(localDate, (byDate.get(localDate) || 0) + 1);
+    }
+    const hasMore = body.hasMore === 1;
+    const nextSynckey = typeof body.synckey === "number" && Number.isFinite(body.synckey) && body.synckey > 0 ? body.synckey : undefined;
+    return {byDate, hasMore, ...(nextSynckey !== undefined ? {nextSynckey} : {})};
+}

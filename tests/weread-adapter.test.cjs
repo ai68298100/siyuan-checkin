@@ -151,6 +151,27 @@ assert.deepEqual(adapter.parseWereadHighlightTally({errcode: -1}, {toLocalDateFr
 assert.equal(adapter.buildWereadNotesRef("lines", "2026-09-23"), "weread:lines:notes:2026-09-23");
 assert.deepEqual(parseExternalRef(adapter.buildWereadNotesRef("lines", "2026-09-23")), {prefix: "weread", identity: "lines:notes", date: "2026-09-23"}, "notes ref parses against the registry");
 
+/* —— T-1402 收尾：想法/点评计数（/review/list/mine，官方字段 bookid 全小写）。 —— */
+assert.deepEqual(adapter.buildWereadReviewListRequest(" bk7 ", undefined, 50), {api_name: "/review/list/mine", skill_version: "1.0.4", bookid: "bk7", count: 50}, "review list request uses official bookid field");
+assert.deepEqual(adapter.buildWereadReviewListRequest("bk7", 88, 50), {api_name: "/review/list/mine", skill_version: "1.0.4", bookid: "bk7", count: 50, synckey: 88}, "cursor pagination via synckey");
+assert.deepEqual(adapter.buildWereadReviewListRequest(""), {}, "empty bookId produces no request");
+const reviewTally = adapter.parseWereadReviewTally({
+    totalCount: 3, hasMore: 1, synckey: 42,
+    reviews: [
+        {review: {reviewId: "r1", createTime: 1790179200}},
+        {review: {reviewId: "r2", createTime: 1790092800}},
+        {review: {reviewId: "r3", createTime: 1790352000}},
+        {review: {}},
+        "garbage",
+    ],
+}, {toLocalDateFromUnix: unixParser3, today: "2026-09-24"});
+assert.equal(reviewTally.byDate.get("2026-09-23"), 1, "same-day review counted");
+assert.equal(reviewTally.byDate.get("2026-09-22"), 1, "previous day counted separately");
+assert.equal(reviewTally.byDate.get("2026-09-25"), undefined, "future day dropped");
+assert.equal(reviewTally.hasMore, true, "hasMore relayed for cursor pagination");
+assert.equal(reviewTally.nextSynckey, 42, "next cursor relayed");
+assert.deepEqual(adapter.parseWereadReviewTally({errcode: -1}, {toLocalDateFromUnix: unixParser3}).byDate.size, 0, "gateway error fails closed");
+
 /* —— T-1402 第二批次：完读事件 —— */
 /* 请求体：书架与进度接口均为扁平信封。 */
 assert.deepEqual(adapter.buildWereadShelfRequest(), {api_name: "/shelf/sync", skill_version: "1.0.4"}, "shelf request is flat");
@@ -220,6 +241,8 @@ assert.match(indexSource, /tombstone\.externalRef\.startsWith\(prefix\)/, "tombs
 assert.match(indexSource, /buildWereadNotebooksRequest\(/, "notes ingest pages the notebook overview");
 assert.match(indexSource, /buildWereadBookmarkListRequest\(/, "highlight tally pulls per-book bookmarklist");
 assert.match(indexSource, /buildWereadNotesRef\(/, "daily notes identity");
+assert.match(indexSource, /buildWereadReviewListRequest\(/, "ideas/reviews tallied via review list");
+assert.match(indexSource, /parseWereadReviewTally\(/, "review tally parser wired");
 assert.match(indexSource, /"sireader", "siplayer", "weread"/, "report scope validation covers weread");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
 assert.match(apiSource, /input\.source === "weread" \? \{source: "api"/, "facade must strip weread from external input");
