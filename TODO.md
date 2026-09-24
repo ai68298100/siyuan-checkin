@@ -151,6 +151,10 @@
   - 用户反馈（2026-09-24 截图）：连接与能力区内「摘要驻留 / 思阅阅读联动 / 健康数据收件箱 / 思播观看联动」各来源的行穿插混排，分不清哪行属于哪个插件；要求按插件分类并写清每个联动的具体设置步骤。
   - 已完成：integrations 组内加来源子标题（日记集成/摘要驻留/思阅/思播/健康），i18n 6 键双语（parity 1673/1673）。
   - 待深化：完全按插件独立子面板拆分（每面板带编号步骤指引）属较大 UI 重构，等用户确认视觉方案后排批。
+- [ ] T-1455 宽度走查 warm-streak 场景失效排查（tests/width-walkthrough.cjs:1133）
+  - 现象：.lc-checkin__overview-streak > strong 等待 30s 超时——warm 概览未渲染「最佳连击」块（fragments.ts 473 行需 bestStreakValue > 1）。worktree 二分证实 c7be048（今日功能批之前）已同径失败 → 非本日回归，先于 T-1450/1451/1454 等存在。
+  - 候选根因：场景夹具按 daysAgo 相对日期造 3 天事件，与 computeLongestStreaks/computeEventStreaks 的「含今日才连续」口径不匹配（恰逢日期边界或语义变更后场景未同步）；或 showToday 后概览 ctx 装载时序。
+  - 修复方向：walkthrough 场景改用绝对锚定日期或按 streak 口径补今日事件；同时核对 overview-streak 渲染条件是否被 T-1415 里程碑标签改动牵连。复跑 visual-qa（已通过，与本失败无关）。
 - [x] T-1454 场景组合包 habit stacks v1（方向 11 主交付，P0-5 新手路径协同）
   - 状态：done（2026-09-24）。catalog 新增 TEMPLATE_PACKS 5 个场景组合（晨间例程/学习成长/运动健身/睡前放松/创作入门，按模板名引用 CHECKIN_TEMPLATES 纯内容资产）；features/template-packs.ts 纯投影（引用解析+未知名 fail-closed 降级+本地化名新旧分类+计数）；编辑器模板区新增组合包芯片行+预览面板，条目复用 data-template-apply 既有通道逐条填表确认（无新创建路径，用户掌控逐项）；i18n 11 键双语。Routinery 序列化执行器延后条件「模板组合交付」现已满足（下轮调研评估）。tests/template-packs.test.cjs 新增入 test:ui。
 - [x] T-1453 渲染块组合卡片（方向 9「可组合卡片」收口件）
