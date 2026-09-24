@@ -7,7 +7,7 @@ const ts = require("typescript");
 process.env.TZ = "Asia/Shanghai";
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-review-presentation-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "charts.ts", "features/review-presentation.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "charts.ts", "features/review-presentation.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(sourceRoot, filename), "utf8"), {

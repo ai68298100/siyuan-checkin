@@ -29,7 +29,7 @@ assert.match(apiSource, /Math\.min\(366, Math\.max\(7, Math\.floor\(requested\)\
 assert.match(apiSource, /\.slice\(0, 200\)/, "strength summary caps at 200 active items");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-strength-view-"));
-for (const filename of ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/habit-score.ts", "features/insights.ts", "features/coaching.ts"]) {
+for (const filename of ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "features/habit-score.ts", "features/insights.ts", "features/coaching.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

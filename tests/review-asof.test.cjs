@@ -22,7 +22,7 @@ assert.match(reviewSource, /projectOverdueOccurrenceHistory\(ctx\.occasionStore,
     "overdue history must use the shared cutoff");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-review-asof-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "features/achievements.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "features/achievements.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});

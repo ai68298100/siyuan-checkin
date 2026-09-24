@@ -17,7 +17,7 @@ assert.match(achievementSource, /for \(const event of store\.events\)/,
     "event-derived metrics must use one explicit traversal");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-achievement-pass-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/achievements.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "features/achievements.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});

@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts"].forEach(transpile);
+["src/types.ts", "src/rules.ts", "src/date-keys.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts"].forEach(transpile);
 const model = require(path.join(outputRoot, "src/model.js"));
 
 const AS_OF = new Date(2026, 8, 23, 12); /* 2026-09-23 周三，固定参考日。 */

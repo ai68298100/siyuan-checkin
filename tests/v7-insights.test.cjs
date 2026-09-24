@@ -8,7 +8,7 @@ const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-v7-"));
 process.env.TZ = "Asia/Shanghai";
 
-for (const filename of ["model.ts", "record-step.ts", "quota.ts", "rules.ts", "charts.ts", "features/achievements.ts"]) {
+for (const filename of ["date-keys.ts", "model.ts", "record-step.ts", "quota.ts", "rules.ts", "charts.ts", "features/achievements.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const output = ts.transpileModule(source, {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},

@@ -15,7 +15,7 @@ assert.match(achievementSource, /if \(completed >= scheduled\)/,
     "perfect-day completion must retain the all-scheduled-items threshold");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-perfect-stream-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/achievements.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "features/achievements.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});

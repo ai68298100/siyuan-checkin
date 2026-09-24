@@ -42,7 +42,7 @@ for (const endpoint of endpoints) assert.ok(allowed.has(endpoint), `unverified k
 assert.ok(endpoints.length >= 3, "expected the verified endpoints to be present");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-note-anchor-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "i18n.ts", "features/note-anchor.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "i18n.ts", "features/note-anchor.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

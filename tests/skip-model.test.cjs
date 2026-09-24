@@ -19,7 +19,7 @@ assert.match(modelSource, /export function isSkipEvent/, "skip judgement has a s
 assert.match(apiSource, /recordEvent: \(input: \{itemId: string; value\?: number; unit\?: string; source\?: CheckinEvent\["source"\]; note\?: string; externalRef\?: string\}/, "ecosystem write payload stays five fields — skips are user-only actions");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-skip-model-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts"]) {
     fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js")), ts.transpileModule(read(filename), {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
     }).outputText);

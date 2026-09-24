@@ -6,7 +6,7 @@ const ts = require("typescript");
 
 const sourceRoot = path.join(__dirname, "..", "src");
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-insight-records-"));
-for (const filename of ["export.ts", "types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/insight-records.ts"]) {
+for (const filename of ["export.ts", "types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "features/insight-records.ts"]) {
     const output = ts.transpileModule(fs.readFileSync(path.join(sourceRoot, filename), "utf8"), {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
     }).outputText;

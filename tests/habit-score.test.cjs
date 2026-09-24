@@ -8,7 +8,7 @@ const sourceRoot = path.join(__dirname, "..", "src");
 const read = (...parts) => fs.readFileSync(path.join(sourceRoot, ...parts), "utf8");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-habit-score-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/habit-score.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "features/habit-score.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

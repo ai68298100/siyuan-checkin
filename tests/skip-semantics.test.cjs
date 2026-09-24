@@ -16,7 +16,7 @@ const chartsSource = read("charts.ts");
 assert.match(chartsSource, /skip\?: boolean/, "heatmap day carries the optional skip marker");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-skip-semantics-"));
-for (const filename of ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "analytics.ts", "charts.ts"]) {
+for (const filename of ["types.ts", "i18n.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "analytics.ts", "charts.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

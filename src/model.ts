@@ -1,6 +1,7 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
+import {calendarDayNumber} from "./date-keys";
 import {deriveQuotaAutoDays, evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
 
 export {getItemRevisionForDate} from "./rules";
@@ -375,7 +376,7 @@ export function isScheduledToday(item: CheckinItem, date = new Date()): boolean 
     }
     if (schedule.type === "interval") {
         const anchorDate = schedule.anchorDate || revision.effectiveDate || item.createdDate;
-        const difference = localCalendarDayNumber(dateKey(date)) - localCalendarDayNumber(anchorDate);
+        const difference = (calendarDayNumber(dateKey(date)) ?? 0) - (calendarDayNumber(anchorDate) ?? 0);
         return difference >= 0 && difference % (schedule.intervalDays || 1) === 0;
     }
     if (schedule.type === "quota") {
@@ -1113,11 +1114,6 @@ export function deleteItemCascade(store: CheckinStore, itemId: string, deletedAt
 
 function cloneSchedule(schedule: CheckinSchedule): CheckinSchedule {
     return {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined, ...(schedule.quota ? {quota: {...schedule.quota}} : {})};
-}
-
-function localCalendarDayNumber(key: string): number {
-    const [year, month, day] = key.split("-").map(Number);
-    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
 function cloneRevision(revision: CheckinItemRevision): CheckinItemRevision {

@@ -20,7 +20,7 @@ assert.match(catalogSource, /direction: "atMost"/, "catalog ships avoidance temp
 assert.ok((catalogSource.match(/direction: "atMost"/g) || []).length >= 5, "at least five avoidance templates");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-at-most-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(filename), {

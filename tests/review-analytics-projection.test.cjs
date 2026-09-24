@@ -23,7 +23,7 @@ assert.match(indexSource, /const reviewAnalyticsSnapshot =[\s\S]*?buildAnalytics
     "one render cycle must share one analytics snapshot across every active surface");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-review-analytics-"));
-for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "charts.ts"]) {
+for (const filename of ["types.ts", "record-step.ts", "quota.ts", "rules.ts", "date-keys.ts", "model.ts", "charts.ts"]) {
     const source = fs.readFileSync(path.join(sourceRoot, filename), "utf8");
     fs.writeFileSync(path.join(outputRoot, filename.replace(/\.ts$/, ".js")), ts.transpileModule(source, {
         compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
