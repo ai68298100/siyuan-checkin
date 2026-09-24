@@ -7,8 +7,8 @@
 
 - 六条泳道全部开工并有自动化证据：R-A0（路线真值）、R-A1（架构边界守门）、R-A7（日期契约）、R-A2（今日行动台+提醒注意力）、R-A11（UI 台账）、R-A12（快捷入口+新手路径）、R-A8（可保存视图）、R-A3（节奏/恢复投影）、R-A4（渲染块/导入预览）、R-A5（mock consumer）、R-A9（生命周期治理）、R-A10（隐私控制面）、R-A6（本报告+证据复跑）。
 - 完整质量链 `pnpm run test:quality`（check:environment → check → build → sync:digest → test → test:ui → test:legacy-style → test:mobile → test:ecosystem → test:extended → test:review-comparison → test:perf → check:release）多轮全绿，最新一轮 EXIT=0。
-- 测试套件 170 个守门文件，0 个显式退役（test-suite-coverage 守门）；主链新增 date-keys / architecture-boundaries / ui-state-ledger / today-dashboard / reminder-quiet / quick-entry-capabilities / first-success / view-scope / pace-projection / block-presets / import-preview / task-horizon-mock-consumer 十二个守门套件。
-- 架构边界守门：103 个 TS 模块依赖方向/宿主准入/时钟纪律/事件写路径/来源登记全绿。
+- 测试套件 172 个守门文件，0 个显式退役（test-suite-coverage 守门）；主链新增 date-keys / architecture-boundaries / ui-state-ledger / today-dashboard / reminder-quiet / quick-entry-capabilities / first-success / view-scope / pace-projection / block-presets / import-preview / task-horizon-mock-consumer 十二个守门套件。
+- 架构边界守门：105 个 TS 模块依赖方向/宿主准入/时钟纪律/事件写路径/来源登记全绿（T-1402 weread-adapter 进入 CLOCK_FREE 与 SOURCE_MANIFEST 双清单）。
 - e2e 真实内核自动化：agent-capabilities spec 在用户运行中的 e2e 实例（内核 3.8.5 @ 127.0.0.1:6806，已接入思源智能体）通过——宿主登记插件 11 项智能体能力、能力策略放行（附着运行实例模式：playwright.e2e.running.config.mjs + 手写 target.json）。
 
 ## 二、性能与预算证据（最新全链实测）
@@ -38,6 +38,9 @@
 | R-A4 渲染块/导入 | features/block-presets.ts 4 预设+插入通道；features/import-preview.ts 统一预览 | 往返一致经真实解析器 | 3ea3292, 2f00f6d |
 | R-A5 来源契约 | 桥消费者升级（calendar.read 发现/单飞/缓存失效/超时/Abort/降级） | tests/task-horizon-mock-consumer.test.cjs | 91ded34 |
 | R-A9 数据治理 | features/lifecycle-projection.ts 三动作影响预览 | 删除确认接线 | 921917f |
+| R-A3+（9-24 追加）| 目标负荷解读卡（T-1450，回顾 2.0「目标是否过高」）：interpretTargetLoad 样本门槛+固定阈值+确定性排序 | pace-projection 守门扩充 | 576b496 |
+| R-A5+（9-24 追加）| 微信读书适配器全套（T-1402 official-pull 渠道首租户）：时长/完读/划线+笔记计数三链路，官方 skill 五文档逐条核对 | tests/weread-adapter.test.cjs + SOURCE_MANIFEST/CLOCK_FREE 登记 | 08b1158, c434ffc, 96d536a, 5351801, 47e3075 |
+| R-A2+（9-24 追加）| 每日提醒调度（T-1451）：多时刻槽+每槽每日幂等+启动补发合并 | reminder-quiet 守门扩充 | 1b4831a |
 | R-A10 隐私控制面 | features/privacy-scope.ts 导出审计/断开保留/控制面汇总 | 导出+三开关接线 | 2ce5675 |
 | R-A6 质量收口 | 本报告 + e2e 真实内核证据复跑 | agent-capabilities 通过 | 本批 |
 
@@ -49,9 +52,10 @@
 2. 思阅/思播/健康/Task Horizon/Dock Tomato 真实双插件联调与时序证据（T-1388/T-1392/T-1394 等）。
 3. 新手引导的首次真实使用反馈（T-1424 消费侧已备）。
 4. 快捷入口截图 backlog 的视觉实现（等截图齐全+明确开始信号）。
-5. 微信读书 Key/ToS、积分兑换（T-1413）、自建同步等产品决策项。
+5. 微信读书真机首拉验证（T-1402 本地完成，等用户在设置页填 Key 后首拉并回传状态行结果）；积分兑换（T-1413）、自建同步等产品决策项。
 6. 真实模型端到端对话走查：智能体能力登记+策略已在本环境验证，宿主 AI 面板发起的完整对话属宿主 UI 驱动，建议在已接入智能体的 e2e 实例上手动走查一次「回顾助手复制提问 → 智能体调用插件能力」并留证。
 7. 上游 issue/PR 提交与 push/发版（T-1395/T-1417 Pinch 深评等，需用户授权或排期）。
+8. 每日提醒推送的真机弹窗形态与多时刻槽体验（T-1443/T-1451：pushMsg 走公开 API 已实现并守门，真实弹窗与到点节奏留真机确认）；思阅/思播提案成稿已备（docs/contracts/upstream-proposals/*-issue-draft.md），提交动作等用户授权。
 
 ## 五、证据口径
 
