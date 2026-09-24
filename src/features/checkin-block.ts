@@ -3,8 +3,11 @@
      {"view":"month","itemIds":["id"],"group":"健康","thresholds":[.25,.5,.75,1]}
      {"view":"heatmap","year":2026}
      {"view":"summary","group":"健康"}
+     {"view":"combo","parts":[{"view":"summary","group":"健康"},{"view":"month"}]}
    作用域（v17.2 落地范围）：项目 itemIds / 分组 group / 全部活跃项目；
    笔记本/文档维度经由笔记锚点间接可查（内核异步解析），本期不做。
+   T-1453 组合卡片：view=combo 编排 1~3 个既有视图（子配置走同一白名单校验、
+   禁止嵌套 combo），纯拼装不引入新渲染语义。
    渲染层规则（T-1236 安全边界）：
    - 纯数据驱动：只输出本模块构造的 HTML；用户内容（项目名）一律 escapeHtml；
    - 配置解析失败返回固定可读错误文案，不回显用户原文（防注入）；
@@ -17,10 +20,12 @@ import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isCom
 import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
-export type CheckinBlockView = "month" | "heatmap" | "summary" | "groups" | "today";
+export type CheckinBlockView = "month" | "heatmap" | "summary" | "groups" | "today" | "combo";
 
 export interface CheckinBlockConfig {
     view: CheckinBlockView;
+    /** T-1453 组合卡片：1~3 个子视图配置（子视图不可再嵌套 combo）。 */
+    parts?: CheckinBlockConfig[];
     itemIds?: string[];
     group?: string;
     /** T-1351：多分组并集作用域（与 group 互斥时 groups 优先级更低）。 */
@@ -46,17 +51,11 @@ export type CheckinBlockParseResult = {ok: true; config: CheckinBlockConfig} | {
 
 const MAX_BLOCK_ITEMS = 50;
 const MAX_BLOCK_GROUPS = 16;
+const MAX_BLOCK_PARTS = 3;
 const DEFAULT_THRESHOLDS: [number, number, number, number] = [0.25, 0.5, 0.75, 1];
 
-export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(text);
-    } catch {
-        return {ok: false, error: t("block.errorConfig")};
-    }
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {ok: false, error: t("block.errorConfig")};
-    const source = parsed as Record<string, unknown>;
+/** 字段级校验（view 已判定）；顶层与组合子配置共用同一白名单语义。 */
+function parseBlockConfigFields(source: Record<string, unknown>): CheckinBlockParseResult {
     const view = source.view;
     if (view !== "month" && view !== "heatmap" && view !== "summary" && view !== "groups" && view !== "today") return {ok: false, error: t("block.errorView")};
     const config: CheckinBlockConfig = {view};
@@ -97,6 +96,30 @@ export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
         config.notebook = notebook;
     }
     return {ok: true, config};
+}
+
+export function parseCheckinBlockConfig(text: string): CheckinBlockParseResult {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return {ok: false, error: t("block.errorConfig")};
+    }
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {ok: false, error: t("block.errorConfig")};
+    const source = parsed as Record<string, unknown>;
+    /* T-1453 组合卡片：view=combo 编排 1~3 个既有视图；子配置走同一字段校验、禁止嵌套。 */
+    if (source.view === "combo") {
+        if (!Array.isArray(source.parts) || source.parts.length < 1 || source.parts.length > MAX_BLOCK_PARTS) return {ok: false, error: t("block.errorParts")};
+        const parts: CheckinBlockConfig[] = [];
+        for (const entry of source.parts) {
+            if (!entry || typeof entry !== "object" || Array.isArray(entry) || (entry as Record<string, unknown>).view === "combo") return {ok: false, error: t("block.errorParts")};
+            const part = parseBlockConfigFields(entry as Record<string, unknown>);
+            if (!part.ok) return part;
+            parts.push(part.config);
+        }
+        return {ok: true, config: {view: "combo", parts}};
+    }
+    return parseBlockConfigFields(source);
 }
 
 /* 作用域解析优先级：itemIds > group > groups（多分组并集） > docId/notebook（锚点索引） > 全部活跃项目。 */
@@ -185,6 +208,21 @@ function levelFor(fraction: number, thresholds: [number, number, number, number]
 }
 
 const weekdayOrder = [1, 2, 3, 4, 5, 6, 0];
+
+/** T-1453 组合卡片：把既有视图按白名单子配置纵向编排——纯拼装，不引入新渲染语义；
+    子视图各自的交互（日期跳转/锚点行/打卡按钮）由块渲染器的统一点击通道承接。 */
+export function buildComboViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
+    const parts = config.parts || [];
+    const sections = parts.map((part) => {
+        const html = part.view === "month" ? buildMonthViewHtml(store, part, asOf, anchorIndex)
+            : part.view === "heatmap" ? buildHeatmapViewHtml(store, part, asOf, anchorIndex)
+            : part.view === "summary" ? buildSummaryViewHtml(store, part, asOf, anchorIndex)
+            : part.view === "groups" ? buildGroupsViewHtml(store, part, asOf, anchorIndex)
+            : buildTodayViewHtml(store, part, asOf);
+        return `<section class="lc-checkin__renderblock-part" data-part-view="${part.view}">${html}</section>`;
+    });
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-combo">${sections.join("")}</div>`;
+}
 
 export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date, anchorIndex?: AnchorDocIndex): string {
     const items = resolveBlockItems(store, config, anchorIndex);

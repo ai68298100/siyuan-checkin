@@ -7,6 +7,7 @@ import {t} from "../i18n";
 import {
     buildGroupsViewHtml,
     buildHeatmapViewHtml,
+    buildComboViewHtml,
     buildMonthViewHtml,
     buildSummaryViewHtml,
     buildTodayViewHtml,
@@ -76,6 +77,7 @@ function findCodeBlocks(root: HTMLElement): HTMLElement[] {
 function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, anchorIndex?: AnchorDocIndex): string {
     const asOf = deps.getNow();
     const store = deps.getStore();
+    if (config.view === "combo") return buildComboViewHtml(store, config, asOf, anchorIndex);
     if (config.view === "month") return buildMonthViewHtml(store, config, asOf, anchorIndex);
     if (config.view === "heatmap") return buildHeatmapViewHtml(store, config, asOf, anchorIndex);
     if (config.view === "groups") return buildGroupsViewHtml(store, config, asOf, anchorIndex);

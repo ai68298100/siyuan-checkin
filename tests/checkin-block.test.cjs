@@ -265,4 +265,44 @@ assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string\) => void th
 assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: doc\}\}\)/, "anchor jump opens the freshly re-resolved root doc (v18.1.x: moves are followed)");
 assert.match(read("index.ts"), /const fresh = await resolveAnchorBlock\(/, "anchor jump must re-resolve the block before opening");
 
-console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, minRate, anchor jumps, neutrality, security and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);
+/* —— T-1453 组合卡片：白名单编排 1~3 个子视图，禁嵌套，逐段校验 —— */
+{
+    /* 合法：summary + month 两段编排，子配置各自携带作用域。 */
+    const combo = block.parseCheckinBlockConfig(JSON.stringify({
+        view: "combo",
+        parts: [{view: "summary", group: "健康", minRate: 50}, {view: "month"}],
+    }));
+    assert.equal(combo.ok, true, "合法组合可解析");
+    if (combo.ok) {
+        assert.equal(combo.config.view, "combo");
+        assert.equal(combo.config.parts?.length, 2);
+        assert.equal(combo.config.parts?.[0]?.view, "summary");
+        assert.equal(combo.config.parts?.[0]?.minRate, 50);
+    }
+    /* 渲染：按配置顺序输出各段子视图，段外包 combo 容器。 */
+    if (combo.ok) {
+        const html = block.buildComboViewHtml(store, combo.config, asOf);
+        assert.ok(html.includes("lc-checkin__renderblock-combo"), "combo 容器在位");
+        assert.ok(html.includes("lc-checkin__renderblock-part"), "分段包裹在位");
+        assert.ok(html.indexOf("data-part-view=\"summary\"") < html.indexOf("data-part-view=\"month\""), "按配置顺序渲染");
+    }
+    /* 拒绝：嵌套 combo / 超量 / parts 非数组 / 子段坏视图（错误回子段文案）。 */
+    const nested = block.parseCheckinBlockConfig(JSON.stringify({view: "combo", parts: [{view: "combo", parts: []}]}));
+    assert.equal(nested.ok ? "" : nested.error, t("block.errorParts"), "嵌套 combo 拒绝");
+    const over = block.parseCheckinBlockConfig(JSON.stringify({view: "combo", parts: [{view: "month"}, {view: "summary"}, {view: "groups"}, {view: "heatmap"}]}));
+    assert.equal(over.ok ? "" : over.error, t("block.errorParts"), "超过 3 段拒绝");
+    const notArray = block.parseCheckinBlockConfig('{"view":"combo","parts":"month"}');
+    assert.equal(notArray.ok ? "" : notArray.error, t("block.errorParts"), "parts 非数组拒绝");
+    const badPart = block.parseCheckinBlockConfig(JSON.stringify({view: "combo", parts: [{view: "summary"}, {view: "today"}]}));
+    assert.equal(badPart.ok ? "" : badPart.error, t("block.errorItems"), "子段沿用同一字段校验（today 缺 itemIds）");
+    /* 空数据段正常降级为空态而不影响其他段。 */
+    const withToday = block.parseCheckinBlockConfig(JSON.stringify({view: "combo", parts: [{view: "today", itemIds: ["a"]}, {view: "summary", group: "健康"}]}));
+    if (withToday.ok) {
+        const html = block.buildComboViewHtml(store, withToday.config, asOf);
+        assert.ok(html.includes("data-part-view=\"today\"") && html.includes("data-part-view=\"summary\""), "today+summary 两段并存");
+    }
+    /* 纯度：同输入两次渲染同输出。 */
+    if (combo.ok) assert.equal(block.buildComboViewHtml(store, combo.config, asOf), block.buildComboViewHtml(store, combo.config, asOf));
+}
+
+console.log(`Checkin block checks passed: config parsing, scopes, month/heatmap/summary/groups views, combo cards, minRate, anchor jumps, neutrality, security and perf tiers 1k=${Math.round(tierResults[0].ms)}ms / 10k=${Math.round(tierResults[1].ms)}ms / 100k=${Math.round(tierResults[2].ms)}ms (+base ${Math.round(perfMs)}ms).`);
