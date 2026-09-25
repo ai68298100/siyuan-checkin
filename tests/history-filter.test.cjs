@@ -72,7 +72,7 @@ try {
         ];
 
         assert.deepEqual(HISTORY_SOURCE_LABELS, {
-            manual: "手动记录", tomato: "专注记录", import: "导入记录", api: "外部记录", sireader: "思阅阅读", siplayer: "思播观看", weread: "微信读书",
+            manual: "手动记录", tomato: "专注记录", import: "导入记录", api: "外部记录", sireader: "思阅阅读", siplayer: "思播观看", weread: "微信读书", yeguif: "叶归 LifeLog",
         });
         assert.deepEqual(ids(filterHistoryRecords(records, {source: "tomato"})), ["focus"]);
         assert.deepEqual(ids(filterHistoryRecords(records, {query: "手动", source: "manual"})), ["manual"]);

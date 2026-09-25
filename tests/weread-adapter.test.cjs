@@ -245,7 +245,7 @@ assert.match(indexSource, /buildWereadReviewListRequest\(/, "ideas/reviews talli
 assert.match(indexSource, /parseWereadReviewTally\(/, "review tally parser wired");
 assert.match(indexSource, /"sireader", "siplayer", "weread"/, "report scope validation covers weread");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /input\.source === "weread" \? \{source: "api"/, "facade must strip weread from external input");
+assert.match(apiSource, /input\.source === "weread" \|\| input\.source === "yeguif" \? \{source: "api"/, "facade must strip weread (and yeguif) from external input");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "weread", label: "WeRead"/, "weread prefix registered");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");

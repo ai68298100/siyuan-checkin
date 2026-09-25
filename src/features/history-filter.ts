@@ -22,6 +22,7 @@ export const HISTORY_SOURCE_LABELS: Readonly<Record<CheckinEvent["source"], stri
     sireader: "思阅阅读",
     siplayer: "思播观看",
     weread: "微信读书",
+    yeguif: "叶归 LifeLog",
 };
 
 /** Filters normalized history records without mutating the supplied records or events. */

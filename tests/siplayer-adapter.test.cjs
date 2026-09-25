@@ -95,7 +95,7 @@ const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), 
 assert.match(indexSource, /source: "siplayer", externalRef/, "write path stamps the siplayer source");
 assert.match(indexSource, /event\.source === "siplayer" && event\.externalRef === ref/, "daily write guarded by identity");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /input\.source === "siplayer" \|\| input\.source === "weread" \? \{source: "api"/, "facade must strip siplayer (and weread) from external input");
+assert.match(apiSource, /input\.source === "siplayer" \|\| input\.source === "weread" \|\| input\.source === "yeguif" \? \{source: "api"/, "facade must strip siplayer/weread/yeguif from external input");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "siplayer", label: "SiPlayer"/, "siplayer prefix registered");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");

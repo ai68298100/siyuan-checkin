@@ -235,8 +235,8 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         recordEvent: (input) => {
             if (!host.acceptingOperations) return Promise.resolve(undefined);
             const moment = captureActionMoment();
-            /* T-1384/T-1385/T-1402：sireader/siplayer/weread 是内部适配器保留来源，公开 API 输入一律回落 api，防止伪造。 */
-            const snapshot = input && typeof input === "object" ? {...input, ...(input.source === "sireader" || input.source === "siplayer" || input.source === "weread" ? {source: "api" as const} : {})} : input;
+            /* T-1384/T-1385/T-1402/T-1457：sireader/siplayer/weread/yeguif 是内部适配器保留来源，公开 API 输入一律回落 api，防止伪造。 */
+            const snapshot = input && typeof input === "object" ? {...input, ...(input.source === "sireader" || input.source === "siplayer" || input.source === "weread" || input.source === "yeguif" ? {source: "api" as const} : {})} : input;
             const expectedItem = snapshot && typeof snapshot === "object" && typeof snapshot.itemId === "string"
                 ? host.store.items.find((item) => item.id === snapshot.itemId)
                 : undefined;

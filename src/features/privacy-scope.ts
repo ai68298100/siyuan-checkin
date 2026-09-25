@@ -94,6 +94,7 @@ export function summarizePrivacyControlPlane(preferences: {
     siplayerIntegration?: {enabled?: boolean};
     healthInbox?: {enabled?: boolean};
     wereadIntegration?: {enabled?: boolean};
+    yeguifIntegration?: {enabled?: boolean};
 }): PrivacyControlPlaneSummary {
     const source = preferences || {};
     const docWrite = (channel: string, state?: {enabled?: boolean; docId?: string}): PrivacyControlPlaneEntry => ({
@@ -115,6 +116,7 @@ export function summarizePrivacyControlPlane(preferences: {
             external("siplayer", source.siplayerIntegration),
             external("health", source.healthInbox),
             external("weread", source.wereadIntegration),
+            external("yeguif", source.yeguifIntegration),
         ],
         telemetry: "none",
     };

@@ -456,8 +456,8 @@ const settingsSourceT1442 = read("src", "render", "settings.ts");
 for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread"]) {
     assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
 }
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 6, "六个面板头部");
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 6, "六个编号步骤列表");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 7, "七个面板头部");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 7, "七个编号步骤列表");
 const panelI18n = read("src", "i18n.ts");
 const stepKeys = [];
 for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread"]) {

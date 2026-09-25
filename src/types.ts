@@ -97,8 +97,8 @@ export interface CheckinEvent {
     localDate: string;
     value: number;
     unit: string;
-    /** D-216 之外：sireader=思阅适配器（T-1384）、siplayer=思播适配器（T-1385）、weread=微信读书适配器（T-1402），均为内部写入，外部 API 不可伪造。 */
-    source: "manual" | "tomato" | "import" | "api" | "sireader" | "siplayer" | "weread";
+    /** D-216 之外：sireader=思阅适配器（T-1384）、siplayer=思播适配器（T-1385）、weread=微信读书适配器（T-1402）、yeguif=叶归 LifeLog 适配器（T-1457），均为内部写入，外部 API 不可伪造。 */
+    source: "manual" | "tomato" | "import" | "api" | "sireader" | "siplayer" | "weread" | "yeguif";
     note?: string;
     /** Optional photo attachment as a data URL (\u2264 ~500KB binary). */
     attachment?: string;

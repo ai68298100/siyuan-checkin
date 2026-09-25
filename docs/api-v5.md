@@ -200,7 +200,7 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 ## 6. externalRef 幂等身份
 
 - 同一外部事件**永远**使用相同 `source + externalRef`；重复写入返回已有事件副本，不产生重复记录。
-- 前缀登记处：`docktomato:<sessionId>`、`taskhorizon:<blockId>:<localDate>`、`obsidian21:<filename>:<localDate>`、`sireader:<itemId>:<localDate>`、`siplayer:<itemId>:<localDate>`、`health:<itemId>:<metric>:<localDate>`、`weread:<itemId>:<localDate>`（时长；完读 `weread:<itemId>:finish:<bookId>:<localDate>`、笔记计数 `weread:<itemId>:notes:<localDate>`，与来源框架治理注册表一致）；新生态来源按 [identity-and-merge.md](identity-and-merge.md) 规则登记前缀，禁止使用已登记前缀伪装他方事件，禁止伪装 `source: "manual"`。
+- 前缀登记处：`docktomato:<sessionId>`、`taskhorizon:<blockId>:<localDate>`、`obsidian21:<filename>:<localDate>`、`sireader:<itemId>:<localDate>`、`siplayer:<itemId>:<localDate>`、`health:<itemId>:<metric>:<localDate>`、`weread:<itemId>:<localDate>`（时长；完读 `weread:<itemId>:finish:<bookId>:<localDate>`、笔记计数 `weread:<itemId>:notes:<localDate>`）、`yeguif:<blockId>:<localDate>`（叶归 LifeLog，与来源框架治理注册表一致）；新生态来源按 [identity-and-merge.md](identity-and-merge.md) 规则登记前缀，禁止使用已登记前缀伪装他方事件，禁止伪装 `source: "manual"`。
 - 同步失败时保留原始引用重试，不要生成新的随机引用。
 
 ## 7. 集成事件

@@ -16,6 +16,7 @@ const sourceLabels: Record<CheckinEvent["source"], string> = {
     sireader: "思阅阅读",
     siplayer: "思播观看",
     weread: "微信读书",
+    yeguif: "叶归 LifeLog",
 };
 
 /** Expects normalized events; the caller selects the item and date range first. */

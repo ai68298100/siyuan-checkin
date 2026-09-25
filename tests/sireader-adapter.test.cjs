@@ -144,9 +144,9 @@ assert.ok(indexSource.includes("this.bindSireaderListeners();") && indexSource.i
 assert.ok(indexSource.includes('source: "sireader", externalRef'), "write path must stamp the sireader source and externalRef");
 assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === ref'), "daily write must be guarded by the existing identity");
 assert.ok(indexSource.includes("this.store.eventTombstones.some"), "deleted (tombstoned) sireader days must be pre-checked before writing");
-assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer", "weread"]'), "summary resident source counts must include sireader and siplayer");
+assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer", "weread", "yeguif"]'), "summary resident source counts must include sireader/siplayer/weread/yeguif");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
-assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \|\| input\.source === "weread" \? \{source: "api"/, "public API input must not be able to mint sireader/siplayer/weread events");
+assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \|\| input\.source === "weread" \|\| input\.source === "yeguif" \? \{source: "api"/, "public API input must not be able to mint adapter sources");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
 assert.match(ecosystemSource, /prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"/, "sireader prefix must be registered in the identity registry");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");

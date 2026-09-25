@@ -62,6 +62,8 @@ export interface SettingsViewContext {
     wereadKeySet: boolean;
     wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
     wereadTodayMinutes: number;
+    /** T-1457 叶归 LifeLog 联动（opt-in 默认关）。 */
+    yeguifIntegration?: {enabled: boolean; itemId: string; notebookId: string};
     /** T-1442 效果徽标：各来源当日已写入事件数（sireader/siplayer/weread）。 */
     sourceTodayCounts?: Record<string, number>;
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
@@ -144,7 +146,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             : t("set.wereadPullFail", {message: `${ctx.wereadLastPull.error || ""}${ctx.wereadLastPull.upgrade ? ` · ${ctx.wereadLastPull.upgrade}` : ""}`}))
         : t("set.wereadPullIdle");
     /* T-1386：外部来源面板摘要——启用中的联动数量。 */
-    const extSourcesEnabled = [diary.enabled, summaryResident.enabled, sireader.enabled, siplayer.enabled, healthInbox.enabled, weread.enabled].filter(Boolean).length;
+    const extSourcesEnabled = [diary.enabled, summaryResident.enabled, sireader.enabled, siplayer.enabled, healthInbox.enabled, weread.enabled, (ctx.yeguifIntegration?.enabled ?? false)].filter(Boolean).length;
+    /* T-1457：叶归 LifeLog 缺省值，同上。 */
+    const yeguif = ctx.yeguifIntegration || {enabled: false, itemId: "", notebookId: ""};
     const healthItemOptions = (selectedId: string) => ctx.store.items.filter((item) => !item.archived).slice(0, 200)
         .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
     const diaryChoices = collectAnchorChoices(ctx.store.items);
@@ -334,6 +338,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadKey")}</span><small>${t("set.wereadKeyHint")}${wereadKeySet ? ` · ${t("set.wereadKeySaved")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="password" data-weread-key autocomplete="off" placeholder="${wereadKeySet ? "••••••••" : "wrk-…"}" aria-label="${t("set.wereadKey")}" /></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadPull")}</span><small>${wereadPullStatus}</small></span><button class="lc-checkin__text-button" type="button" data-action="weread-pull">${t("set.wereadPull")}</button></div>
+                    </section>
+                    <section class="lc-checkin__source-panel" data-source-panel="yeguif">
+                    <div class="lc-checkin__source-panel-head"><strong>${t("set.yeguifIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.yeguif ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.yeguif})}</span>` : ""}<span class="lc-checkin__source-badge${yeguif.enabled ? " is-on" : ""}">${yeguif.enabled ? t("set.sourceBadgeOn") : t("set.sourceBadgeOff")}</span></span></div>
+                    <ol class="lc-checkin__source-steps"><li>${t("set.stepsYeguif1")}</li><li>${t("set.stepsYeguif2")}</li><li>${t("set.stepsYeguif3")}</li><li>${t("set.stepsYeguif4")}</li></ol>
+                    <div class="lc-checkin__settings-row" data-yeguif-integration><span class="lc-checkin__settings-label"><span>${t("set.yeguifTitle")}</span><small>${t("set.yeguifHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-yeguif-toggle ${yeguif.enabled ? "checked" : ""} aria-label="${t("set.yeguifToggle")}" /></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifItem")}</span><small>${t("set.yeguifItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-item aria-label="${t("set.yeguifItem")}"><option value="">${t("set.yeguifItemChoose")}</option>${wereadItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifNotebook")}</span><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-notebook aria-label="${t("set.yeguifNotebook")}" disabled><option value="">${t("set.yeguifNotebookLoading")}</option></select><button class="lc-checkin__text-button" type="button" data-action="load-yeguif-notebooks">${t("set.yeguifNotebookLoad")}</button></span></div>
                     </section>
                     </details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.customIcons")}</span><small>${t("set.customIconsHint")}</small></span><span class="lc-checkin__settings-value">${t("set.countSuffix", {n: ctx.customIconLibrary.length})}</span></div>`,
