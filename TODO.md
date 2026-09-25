@@ -75,6 +75,11 @@
   - 验收：导入预览测试扩充+跨午夜边界用例+文档同源守门+test:quality。
 - [ ] T-1464 宿主 3.8.6 渲染块兼容回归（触发条件批次，local-auto）
   - 触发：思源 3.8.6 正式版发布（当前 3.8.6-alpha 四连发，数据库日历/列表视图 API 变动期）。执行：`pnpm run test:e2e` 全量+渲染块真实内核用例（combo/today/日期跳转），确认无宿主回归；结果记 PROGRESS 与证据报告。
+- [ ] T-1465 问卷式日记打卡（journal-prompt check-in，用户想法 2026-09-26，调研完成待开工指令）
+  - 想法：点击【感恩日记】类打卡项目 → 弹出问卷式表单（按模板问题列表）→ 完成后完整内容写入每日日记或指定文档（目标可选、模板可自设+预设），同时完成打卡。调研与可行性全案见 [benchmark 第十六节](docs/benchmark-habit-apps-2026-09.md)（结论：高可行，五块拼图全部在位；生态内无「打卡×问卷×写入日记」闭环先例）。
+  - 设计要点：①项目编辑器新增「问卷模板」绑定行，绑定后该项目打卡动作=填问卷（今日页/today 渲染块同通道）；②内置 5 预设只读模板（感恩三问/五分钟日记早晚版/九宫格晨间日记/KPT 每日复盘/深度复盘周记）+用户自建问题集（text/textarea 起步，slider 可选）；③流程=recordEvent 先落盘（note 截断摘要）→ 模板渲染 markdown（逐题分节/九宫格表格）→ appendBlock 到目标（显式文档 > SQL custom-dailynote-yyyymmdd > renderSprig+createDocWithMd 定位栈，不硬编码 /diary/）；④写入失败不阻断打卡（审计+toast 重试，summary-resident 旁路纪律）；⑤幂等=插件自写块带结构化标记，同日同模板已写入提示「查看/重新填写」，重填走 updateBlock+lockType+事件修订，绝不改写用户已有内容。
+  - 新增纯模块建议 `src/features/journal-templates.ts`（问题集归一化/答案渲染/定位纯函数）+ 渲染层 dialog + 设置面板。验收：纯函数测试+结构守门（dialog/绑定行/i18n 双语/双主题/44-48px 按 T-1461 基线）+隔离内核 e2e（建今日日记→填问卷→落盘→重复填写幂等→事件已打卡）；真机触控归 host-pending。归类 local-auto。
+  - 排期建议：第 2 批（R-A16）之后、第 3 批前；用户点名即启。
 - [x] T-1418 架构边界守门（R-A1，2026-09-24 开工并完成）
   - 内容：新增 `tests/architecture-boundaries.test.cjs`——93 个 TS 模块的自动结构检查：render/ui 导入方向（仅渲染层+组合根/plugin-ops/shared）、宿主 API 准入清单（显式登记文件，新增须评审）、无时钟纯函数面（date-keys/source-framework/日历投影/强度分/quota/适配器结算层等 11 个模块禁 Date.now 与缺省 new Date）、`store.events` 唯一写路径（model.ts）、外部事件唯一入口（recordExternalEvent 仅 api/index）、来源前缀登记（EXTERNAL_REF_PREFIX_REGISTRY 五前缀）+ 发现规则（新增 `*adapter.ts`/`*inbox.ts` 必须登记清单或显式声明非前缀来源家族）。
   - 状态：done（2026-09-24。守门入 `pnpm test` 主链；全绿证明既有代码零违规，此后边界回潮必须先显式登记才可通过）。
