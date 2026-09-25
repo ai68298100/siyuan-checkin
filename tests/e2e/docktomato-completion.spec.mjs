@@ -174,7 +174,10 @@ test('跳过日解析旅程:设置页撤销跳过并计入,同单元落库', asy
     const residualSkips = (storeAfter?.events || []).filter((event) => event.itemId === item.id && event.kind === 'skip');
     expect(residualSkips, `撤销后不得残留 skip 事件（item=${item.id}）`).toEqual([]);
     expect((storeAfter?.eventTombstones || []).length).toBeGreaterThanOrEqual(1);
-    const inboxAfter = await client.getFile('checkin-docktomato-inbox');
-    expect((inboxAfter?.items || []).some((entry) => entry.identity === sessionId)).toBe(false);
+    /* 收件箱移除发生在记录落盘后的异步链上——有界轮询而非单次读（读后写竞态曾致偶发失败）。 */
+    await expect.poll(async () => {
+        const inboxAfter = await client.getFile('checkin-docktomato-inbox');
+        return (inboxAfter?.items || []).some((entry) => entry.identity === sessionId);
+    }, {timeout: 20000}).toBe(false);
     await context.close();
 });
