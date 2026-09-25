@@ -1,9 +1,12 @@
 # TODO
 
 
-## v18.6.0 候选冻结（2026-09-26，待用户确认发版）
+## v18.6.0 已发布（2026-09-26）
 
-- [x] v18.6.0 发版准备（版本四方 18.5.0→18.6.0、changelog、发布说明含 SHA 回填、README 要点块、R-REL-CHECK）——本地 test:quality EXIT=0（182 文件），Release assets v18.6.0 检查通过。**等用户明确「发版」指令后运行 `node scripts/release.cjs 18.6.0`**（脚本将 push main + tag + GitHub Release，属外发动作，按 D-272/AGENTS 禁止自动 push 纪律需显式授权）。
+- [x] v18.6.0 发版（用户「继续」确认执行；GitHub Latest，tag v18.6.0）：问卷式日记打卡（5 预设+自建+写入日记/指定文档+重填幂等）、数值快捷增量、今日完成度环+回顾 sparkline、相关性洞察、超额日着色、时段分组、年度分享图导出、里程碑分级庆祝、低压力呈现基线（双日规则/calm 禁则/色阶冗余编码/44px 触控）、迁移健壮性（未知列点名/跨午夜边界/向前兼容）、诊断导出结构化预览、66 天成熟度刻度、保留词表退役。主存储 v3、最低思源 3.8.4 不变。
+- 发布事实：main `bf78409..1147e86` 推送；package.zip SHA-256 `57bef6018cebfc8641d734138796bb281b36e82a31f2fffcda11201a02f5790e`；R-REL-CHECK 本窗口已完成（sireader#55/siplayer#180 无动态无需更新）。真机现场验收项（Android 触控/弹窗/分享图保存桥/问卷日记真实文档）保持开放等用户反馈。
+
+- [x] v18.6.0 发版准备（版本四方 18.5.0→18.6.0、changelog、发布说明含 SHA 回填、README 要点块、R-REL-CHECK）——本地 test:quality EXIT=0（182 文件），Release assets v18.6.0 检查通过。
 - [x] R-REL-CHECK（2026-09-26，v18.6.0 候选窗口）：sireader#55、siplayer#180 均 open、0 回应、最后更新 2026-09-25——无上游动态，提案所述消费侧 fallback 口径未变，无需在原帖追加更新；Task Horizon 反向提案与 Dock Tomato PR 草案仍未提交（无外部动作可核查）。下一发布窗口复查。
 
 ## v18.5.0 已发布（2026-09-25；设置页与移动端验收已完成）
