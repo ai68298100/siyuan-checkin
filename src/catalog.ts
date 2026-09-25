@@ -216,6 +216,7 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "拍照记录", icon: "📷", kind: "count", target: 3, unit: "张", schedule: daily, group: "创作", priority: "low", timeSlot: "any", note: "记录三张当天值得留意的照片。"},
     {name: "冥想", icon: "🕯", kind: "duration", target: 10, unit: "分钟", schedule: daily, group: "专注", priority: "medium", timeSlot: "morning", note: "安静坐下，关注呼吸和身体感受。"},
     {name: "情绪记录", icon: "😌", kind: "binary", target: 1, unit: "次", schedule: daily, group: "专注", priority: "low", timeSlot: "evening", note: "写下一句当下感受和一个触发因素。"},
+    {name: "每日反思", icon: "📔", kind: "binary", target: 1, unit: "次", schedule: daily, group: "专注", priority: "medium", timeSlot: "evening", note: "三问：今天最触动的一件事？当时的感受与道理？今后怎么用？只记一件，不写流水账。"},
     {name: "周复盘", icon: "🧭", kind: "duration", target: 30, unit: "分钟", schedule: monday, group: "专注", priority: "low", timeSlot: "morning", note: "回顾上周进展并确定本周重点。"},
     {name: "晨间补水", icon: "🥛", kind: "quantity", target: 300, unit: "毫升", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "起床后先喝一杯温水。"},
     {name: "维生素", icon: "💊", kind: "count", target: 1, unit: "次", schedule: daily, group: "健康", priority: "medium", timeSlot: "morning", note: "随餐或早餐后服用。"},
@@ -279,6 +280,7 @@ export const TEMPLATE_PACKS: readonly CheckinTemplatePack[] = Object.freeze([
     Object.freeze({id: "study", icon: "📖", nameKey: "pack.study", templates: ["阅读", "背单词", "朗读", "听播客", "写日记"]}),
     Object.freeze({id: "sport", icon: "🏃", nameKey: "pack.sport", templates: ["运动", "力量训练", "跑步", "步数", "八段锦"]}),
     Object.freeze({id: "winddown", icon: "🌙", nameKey: "pack.winddown", templates: ["早睡", "泡脚", "不刷手机", "情绪记录", "感恩记录"]}),
+    Object.freeze({id: "awakening", icon: "🌅", nameKey: "pack.awakening", templates: ["早睡早起", "冥想", "阅读", "每日反思", "跑步"]}),
     Object.freeze({id: "creative", icon: "✒", nameKey: "pack.creative", templates: ["写作", "绘画练习", "拍照记录", "练习乐器"]}),
 ]);
 
@@ -312,6 +314,7 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "拍照记录": "tpl.photoLog",
     "冥想": "tpl.meditate",
     "情绪记录": "tpl.moodLog",
+    "每日反思": "tpl.dailyReflection",
     "周复盘": "tpl.weeklyReview",
     "晨间补水": "tpl.morningWater",
     "维生素": "tpl.vitamins",

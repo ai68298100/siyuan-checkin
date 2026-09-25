@@ -48,7 +48,7 @@ assert.equal(Object.isFrozen(frozenCatalog), true);
 /* —— 目录数据完整性：每个包的引用都必须能解析到 CHECKIN_TEMPLATES。 —— */
 const catalogSource = fs.readFileSync(path.join(root, "src", "catalog.ts"), "utf8");
 assert.match(catalogSource, /TEMPLATE_PACKS/, "目录必须导出 TEMPLATE_PACKS");
-for (const packId of ["morning", "study", "sport", "winddown", "creative"]) {
+for (const packId of ["morning", "study", "sport", "winddown", "creative", "awakening"]) {
     assert.ok(catalogSource.includes(`id: "${packId}"`), `组合包 ${packId} 必须登记`);
 }
 /* 引用完整性在 i18n 与 catalog 同源下以源码级交叉检查：抽取每个包的模板名清单，
@@ -70,7 +70,7 @@ const bindSource = fs.readFileSync(path.join(root, "src", "render", "bind-editor
 assert.match(bindSource, /buildTemplatePackPreview\(/, "绑定层必须经纯函数构建预览");
 assert.match(bindSource, /data-template-apply="\$\{index\}"/, "预览条目必须复用既有应用通道");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-for (const key of ["editor.packs", "editor.packsHint", "editor.packCount", "editor.packNew", "editor.packDuplicate", "editor.packEmpty", "pack.morning", "pack.study", "pack.sport", "pack.winddown", "pack.creative"]) {
+for (const key of ["editor.packs", "editor.packsHint", "editor.packCount", "editor.packNew", "editor.packDuplicate", "editor.packEmpty", "pack.morning", "pack.study", "pack.sport", "pack.winddown", "pack.creative", "pack.awakening"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
