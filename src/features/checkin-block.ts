@@ -300,6 +300,9 @@ export interface TodayViewRow {
     progressText: string;
     streak: number;
     lastMissedDate?: string;
+    /** T-1462：数值项目的附加快捷步长（与 unit 成对出现；缺省=单按钮行为不变）。 */
+    quickSteps?: number[];
+    unit?: string;
 }
 
 /** 单项目回溯找「最近漏卡日」：从昨天向前扫，命中第一个完成日即停（更早的缺口不再算漏卡）。 */
@@ -338,6 +341,8 @@ export function buildTodayRows(store: CheckinStore, items: CheckinItem[], asOf: 
             progressText,
             streak: streaks.get(item.id) || 0,
             lastMissedDate: items.length === 1 ? findLastMissedDate(store, item, asOf) : undefined,
+            /* T-1462：仅数值项目物化 chips 行；complete 行不渲染按钮组（祝贺态优先）。 */
+            ...(item.quickSteps?.length && !complete ? {quickSteps: item.quickSteps, unit: revision.unit} : {}),
         });
     }
     return rows;
@@ -348,9 +353,13 @@ export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConf
     const rows = buildTodayRows(store, items, asOf);
     if (!rows.length) return `<div class="lc-checkin__renderblock-empty">${escapeHtml(t("block.empty"))}</div>`;
     const body = rows.map((row) => {
-        const action = row.complete
-            ? `<span class="lc-checkin__renderblock-today-done">${escapeHtml(t("block.todayCongrats"))}</span>`
-            : `<button class="lc-checkin__text-button lc-checkin__renderblock-today-record" type="button" data-block-record="${escapeHtml(row.itemId)}">${escapeHtml(t("block.todayRecord"))}</button>`;
+        let action = `<button class="lc-checkin__text-button lc-checkin__renderblock-today-record" type="button" data-block-record="${escapeHtml(row.itemId)}">${escapeHtml(t("block.todayRecord"))}</button>`;
+        if (row.complete) {
+            action = `<span class="lc-checkin__renderblock-today-done">${escapeHtml(t("block.todayCongrats"))}</span>`;
+        } else if (row.quickSteps?.length) {
+            /* T-1462：chips 组一次点击=一条增量事件；写回仍走既有 recordEvent 通道（宿主读 amount）。 */
+            action = `<span class="lc-checkin__renderblock-today-steps">${row.quickSteps.map((value) => `<button class="lc-checkin__text-button lc-checkin__renderblock-today-record" type="button" data-block-record="${escapeHtml(row.itemId)}" data-block-record-amount="${formatNumber(value)}" aria-label="${escapeHtml(t("item.recordStep", {value: formatNumber(value), unit: row.unit || ""}))}" title="${escapeHtml(t("item.recordStep", {value: formatNumber(value), unit: row.unit || ""}))}">+${escapeHtml(formatNumber(value))}</button>`).join("")}</span>`;
+        }
         const missed = row.lastMissedDate ? `<small class="lc-checkin__renderblock-today-missed">${escapeHtml(t("block.todayLastMissed", {date: row.lastMissedDate}))}</small>` : "";
         return `<div class="lc-checkin__renderblock-today-row" data-item-id="${escapeHtml(row.itemId)}"><span class="lc-checkin__renderblock-today-icon" aria-hidden="true">${escapeHtml(row.icon)}</span><span class="lc-checkin__renderblock-today-name">${escapeHtml(row.name)}</span><span class="lc-checkin__renderblock-today-status">${escapeHtml(row.progressText)}</span><span class="lc-checkin__renderblock-today-streak">${escapeHtml(t("block.todayStreak", {n: row.streak}))}</span>${missed}${action}</div>`;
     }).join("");

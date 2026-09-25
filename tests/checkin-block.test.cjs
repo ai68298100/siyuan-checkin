@@ -112,7 +112,7 @@ assert.equal(pendingSingle.lastMissedDate, "2026-09-18", "scan starts from yeste
 assert.match(glueSource, /data-block-record/, "glue routes today record buttons");
 assert.match(glueSource, /data-record-pending/, "record button throttles double clicks");
 assert.match(glueSource, /onBlockTodayRecord/, "record buttons delegate to the host write path");
-assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string\) => void this\.recordBlockToday\(itemId\)/, "host must wire the block record callback");
+assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string, amount\?: number\) => void this\.recordBlockToday\(itemId, amount\)/, "host must wire the block record callback (T-1462: optional chip amount)");
 assert.match(read("index.ts"), /private async recordBlockToday/, "host implements the block record path via recordEvent");
 for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord"]) {
     assert.equal(read("i18n.ts").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);

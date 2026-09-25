@@ -68,12 +68,14 @@ function parseLines(text: string): string[] {
     return stripBom(text).split(/\r?\n/).filter((line) => line.trim().length > 0);
 }
 
-export function parseLoopHabitsCsv(text: string): {habits: LoopHabitMeta[]; invalidRows: number} {
+export function parseLoopHabitsCsv(text: string): {habits: LoopHabitMeta[]; invalidRows: number; unknownHeaders: string[]} {
     const lines = parseLines(text);
-    if (!lines.length) return {habits: [], invalidRows: 0};
+    if (!lines.length) return {habits: [], invalidRows: 0, unknownHeaders: []};
     const header = splitCsvLine(lines[0]).map((cell) => cell.trim());
     const indexOf = (name: string) => header.indexOf(name);
-    if (indexOf("Name") < 0 || indexOf("Type") < 0) return {habits: [], invalidRows: lines.length - 1};
+    if (indexOf("Name") < 0 || indexOf("Type") < 0) return {habits: [], invalidRows: lines.length - 1, unknownHeaders: []};
+    /* T-1463 · R-A15：未识别列名如实上报（进预览与确认），不静默丢弃。 */
+    const unknownHeaders = [...new Set(header.filter((name) => name && !LOOP_KNOWN_HEADERS.has(name)))];
     const habits: LoopHabitMeta[] = [];
     let invalidRows = 0;
     for (const line of lines.slice(1)) {
@@ -97,8 +99,11 @@ export function parseLoopHabitsCsv(text: string): {habits: LoopHabitMeta[]; inva
             archived: (cells[indexOf("Archived?")] || "").trim().toLowerCase() === "true",
         });
     }
-    return {habits, invalidRows};
+    return {habits, invalidRows, unknownHeaders};
 }
+
+/** Habits.csv 已识别的列名集合（T-1463：清单外的列名进预览，不静默忽略）。 */
+const LOOP_KNOWN_HEADERS = new Set(["Position", "Name", "Type", "Question", "Description", "FrequencyNumerator", "FrequencyDenominator", "Unit", "Target Type", "Target Value", "Archived?"]);
 
 export function parseLoopCheckmarksCsv(text: string): {marks: LoopCheckmarks; invalidRows: number} {
     const lines = parseLines(text);
@@ -145,14 +150,17 @@ export interface LoopImportPlan {
     skipDays: number;
     unknownCells: number;
     unmappableFrequency: string[];
+    /** T-1463：Habits.csv 中未识别的列名（预览/确认可见；内容不参与导入）。 */
+    unknownColumns: string[];
 }
 
 /** 组合 Loop 两份 CSV 为导入计划；checkmarksCsv 必填（含习惯名列表），habitsCsv 可选（元数据）。 */
 export function buildLoopImportPlan(habitsCsv: string | undefined, checkmarksCsv: string): LoopImportPlan {
-    const {habits: metaRows} = habitsCsv ? parseLoopHabitsCsv(habitsCsv) : {habits: [] as LoopHabitMeta[]};
+    const parsedHabits = habitsCsv ? parseLoopHabitsCsv(habitsCsv) : {habits: [] as LoopHabitMeta[], unknownHeaders: [] as string[]};
+    const metaRows = parsedHabits.habits;
     const metaByName = new Map(metaRows.map((meta) => [meta.name, meta]));
     const {marks} = parseLoopCheckmarksCsv(checkmarksCsv);
-    const plan: LoopImportPlan = {habits: [], rows: [], measurableNames: [], skipDays: 0, unknownCells: 0, unmappableFrequency: []};
+    const plan: LoopImportPlan = {habits: [], rows: [], measurableNames: [], skipDays: 0, unknownCells: 0, unmappableFrequency: [], unknownColumns: parsedHabits.unknownHeaders};
     for (const name of marks.names) {
         const meta = metaByName.get(name);
         const measurable = meta ? meta.type === "MEASURABLE" : false;

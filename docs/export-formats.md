@@ -59,3 +59,12 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 - 思源 Android / iOS / 鸿蒙客户端（检测到 `JSAndroid.saveExportFile`、`webkit.messageHandlers.saveExportFile` 或 `JSHarmony.saveExportFile`）：先用 `/api/file/putFile` 写入工作区 `assets/siyuan-checkin-<类型>-<日期>-<时间戳>.<扩展名>`，再把该绝对 URL 交给宿主的 `saveExportFile`；宿主按前端能力拒绝（返回 `status:"error"`）时退回容器原生桥。**这些容器下绝不使用 `blob:` + `<a download>`**——WebView 没有下载处理，会把 blob 当成一次导航。
 - 桌面端与普通浏览器：仍走临时 `Blob` + `<a download>`，不写入工作区。
 - 文件名主干只保留 ASCII 安全字符（非 ASCII 收敛为 `-`，为空则用 `export`），扩展名按原名保留，并附时间戳避免同名覆盖。
+
+## 向前兼容承诺（T-1463 · R-A15，2026-09-26）
+
+小驴打卡的导出格式对**读取方**与**未来版本**做如下承诺（对应导入侧「未知字段保留」原则）：
+
+1. **只增不改**：JSON 快照与 CSV 的既有字段名、语义和取值范围保持稳定；新能力以新增字段表达，不重命名、不复用旧字段。
+2. **宽容读取**：导入/恢复遇到未识别字段或未识别列时，保留原文进预览与审计（Loop Habits.csv 的未知列名经 `unknown-columns` 损耗词表在确认弹窗点名），**不静默丢弃、不静默改值、不拒绝整个文件**。
+3. **版本可辨**：快照带 `version` 与 `STORE_VERSION`，旧版本字段由归一化层升级（Store v2→v3 先例），未知的高版本字段原样透传给未来版本处理。
+4. **来源文件不动**：导入是读取操作，用户的 Loop/Obsidian 源文件永不改写。

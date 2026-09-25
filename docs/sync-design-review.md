@@ -45,3 +45,15 @@
 - 决策记录：D-243（DECISIONS.md）
 - 上游边界：「全版本明确不做——自建同步服务」（development-roadmap-v18-v22.md §八、roadmap-habit-evolution §一）
 - 既有依赖：`reconcileNormalizedStoreSnapshots`（合并）、`getDiagnostics`（T-1361）、恢复点（T-072~T-090）
+
+## T-1463 合并语义参考（PixelHabits 三段式，2026-09-26）
+
+> 设计参考记录，不实现同步（D-243 维持不立项）。来源：enjo2/PixelHabits README（2026-09-25 访问）——单 JSON 文件 + AES-256-GCM 导出包经任意共享文件夹同步，是本轮调研中唯一给出完整冲突解决规则的开源实现。
+
+若未来多仓/多端合并成为需求（例如思源同步分叉后的工作区合并），参考其三段式语义映射到本插件事件模型：
+
+1. **每日打卡取并集**（done anywhere = done）：同项目同 localDate 的完成事实在任一端存在即成立——与本插件「事件不可变、合并按身份去重」口径天然一致，且与 SKIP 容错（maxGap）不冲突（SKIP 是显式事件，两侧都有时按修订时间取新）。
+2. **元数据按 `updated_at` 后写胜出（LWW）**：项目名称/图标/排期等修订元数据以较新 `updatedAt` 为准——对应本插件 revisions 的 `effectiveDate` + `updatedAt` 双字段，LWW 需同时比较两者避免旧排期覆盖新排期。
+3. **事件按 id 幂等去重**：事件以稳定 id 为唯一身份，重放/重导入不产生第二条——本插件已有 `source + externalRef` 幂等与墓碑机制，是同语义的更强形态。
+
+配套护栏（与本插件既有纪律对齐）：合并前自动快照（既有恢复点）、合并报告可见（冲突不静默）、墓碑优先于并集（已删除事件不复活）。

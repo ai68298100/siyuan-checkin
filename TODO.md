@@ -64,15 +64,12 @@
   - 第四轮状态：首位任务完成，轮次继续滚动（剩余扫描面按 D-256 触发条件）；无新增代码任务。
 - [x] T-1400 生态调研循环·第六轮（2026-09-25，用户点名触发，纯文档轮）
   - 状态：done（2026-09-25）。四路并行扫描（①独立应用与行为科学 ②GitHub 开源增量 ③笔记生态与思源集市 ④UI/交互设计专项），100+ 次检索取证；全案见 [benchmark 第十五节](docs/benchmark-habit-apps-2026-09.md)。竞品警报 1——**Workbench**（sy-tomato 作者新插件，「不用打卡——计划即账本」叙事，应对=「低压力记录≠零记录」文案区隔，D-271）；采纳 3 → T-1461/T-1462/T-1463；延后 13（带触发条件）；不做 8；佐证 9；宿主 3.8.6 正式版渲染块回归登记 T-1464；幽灵目标清理（vegvisir/habit-charts/simple-habit-tracker 经官方注册表核实不存在）。战略文档同步：方向扩至 25 项（新增 24 低压力呈现基线、25 数据互操作）、状态矩阵刷新至 v18.5.0、执行路线新增 R-A13/A14/A15 泳道与开工顺序（implementation roadmap 第十三节）。
-- [ ] T-1461 低压力呈现与包容性设计基线（R-A13，第六轮采纳①，local-auto）
-  - 内容：① 热力图/成就/失速/情境统计用色复核——紫罗兰单色亮度阶梯（色盲安全）+日期数字/tooltip 冗余编码，禁红绿对举，低完成度日不上警示红，双主题只调端点（T-1410 百分位色阶保留，本项管色相与冗余编码）；② 「双日规则」失速卡文案改写（断一天是数据，连断两天才是信号）+全局 calm 文案禁则（禁「你落后了/归零」式措辞）入 ui-docs，i18n 双语；③ 完成态颜色+图标+文字三通道静态可辨入 ui-state-ledger 守门（里程碑分级庆祝归 D-263 收尾不在本批）；④ 44/48px 触控目标全量审查（底部操作栏/渲染块按钮/周条格子/设置行）入视觉 harness 与 mobile-release-quality 断言；⑤ 快捷记录删除/修改路径 undo 优先于确认弹窗审查。来源与依据见 benchmark 第十五节（NN/g、WCAG 2.2/HIG/48dp、viridis 共识、PMC 红绿临床证据、双日规则）。
-  - 验收：test:ui+宽度走查+双主题对比度门禁+visual-qa+i18n parity；零 schema 变更。
-- [ ] T-1462 数值快捷记录预设增量（R-A14，第六轮采纳②，local-auto）
-  - 内容：编辑器 per-item 可选「预设步长」配置（如 +1/+250/+500，归一化钳制，无配置行为不变）；记录对话框与今日快捷记录区按配置渲染增量 chips，一次点击=一条追加式增量事件（走既有 recordEvent value 通道与审计/撤销，事件不可变语义不变）；today 渲染块对配置项目把 record 按钮扩展为 chips 组（走既有 data-block-record 通道+节流）；来源联动结算口径不受影响。源：WaterMinder「Log Cup」范式（benchmark 第十五节）。
-  - 验收：编辑器/对话框/渲染块三面守门+i18n parity+事件追加语义测试+隔离内核 e2e（chips→落盘→幂等）。
-- [ ] T-1463 迁移健壮性与边界用例（R-A15，第六轮采纳③，local-auto）
-  - 内容：① 跨午夜来源/会话按 localDate 预切分与双日归账补纯函数+e2e 边界断言（streak v2.0「跨午夜会话两天都计数」参照场景；T-1385 已预切分，本项证据补强无行为变更）；② Loop/Obsidian 导入预览把未识别列/字段原文计入损耗词表与审计、不静默丢弃，导出文档注明向前兼容承诺（mhabit WebDAV 先例）；③ PixelHabits 三段式合并语义（每日取并集/元数据 LWW/事件按 id 幂等去重）写入 docs/sync-design-review.md 参考节（只记录设计参考，不实现同步）。
-  - 验收：导入预览测试扩充+跨午夜边界用例+文档同源守门+test:quality。
+- [x] T-1461 低压力呈现与包容性设计基线（R-A13，第六轮采纳①，local-auto）——已开发完成（2026-09-26）
+  - 落地：① 新规范文档 `docs/low-pressure-baseline.md`（色彩单色亮度阶梯+冗余编码／calm 文案禁则与双日规则／三通道冗余／44px 触控基线+dock 密度例外／undo 优先于确认弹窗+17 处高危确认清单审计）；② 双日规则——i18n 新键 report.stalledNote（中英），失速卡节固定收尾渲染；③ calm 禁则扫描守门（禁「你落后了/归零/前功尽弃」式措辞入用户文案）；④ 色阶守门——年热力图 is-level-N 仅允许 accent 派生色、每格 title 冗余编码断言；⑤ 移动触控基线——components.scss 新增 host--mobile 44px 规则块（记录/步长/chips/渲染块按钮/底部导航，dock 30px 密度为指针环境例外）；⑥ 新守门 `tests/low-pressure-baseline.test.cjs` 入主链。里程碑分级庆祝按 D-263 留收尾批。真机触控/显示保持 host-pending。
+- [x] T-1462 数值快捷记录预设增量（R-A14，第六轮采纳②，local-auto）——已开发完成（2026-09-26）
+  - 落地：① `record-step.ts` 新增 normalizeQuickSteps 纯函数（逗号/空白解析、升序去重、2 位小数、上限 4 个、>1e6 拒绝、binary 恒空）；② types.CheckinItem + model.normalizeItem + save-form 三侧同构物化 quickSteps（写后指纹逐键一致）；③ 编辑器「快捷增量按钮」文本字段（data-value-fields 内，binary 整组隐藏），i18n 三键中英；④ 今日页——renderItemView 渲染 lc-checkin__chip-button（跳过与主步长重复值），bind-today quick-record handler 改读 data-amount（缺失/非法回落重算默认步长），零新写路径；⑤ today 渲染块——TodayViewRow 增 quickSteps/unit，buildTodayViewHtml 渲染 data-block-record-amount chips 组（complete 行不渲染），block-renderer 透传 amount，宿主 recordBlockToday(itemId, amount?) 优先 chips 值；⑥ SCSS chips 样式+移动 44px 基线覆盖；⑦ 新守门 `tests/quick-steps.test.cjs`（归一化 12 组+三侧同构+接线+i18n+样式）入主链。真实触控归 host-pending。
+- [x] T-1463 迁移健壮性与边界用例（R-A15，第六轮采纳③，local-auto）——已开发完成（2026-09-26）
+  - 落地：① 新守门 `tests/midnight-boundary.test.cjs`——思播恰好零点结束归第一日、双日各自累计、settleSegmentsToDays 双日幂等（已写日跳过/未写日结算/零拒绝）、yeguif 末条开放不记+块身份日期隔离（streak v2.0 参照场景，证据补强零行为变更）；② 导入未知列——loop-csv parseLoopHabitsCsv 返回 unknownHeaders（LOOP_KNOWN_HEADERS 清单外如实上报），LoopImportPlan.unknownColumns 进预览损耗词表 unknown-columns（import-preview 防御读取兼容旧形状），确认弹窗 msg.importUnknownColumns 点名列名（中英）；③ docs/export-formats.md 追加「向前兼容承诺」四条（只增不改/宽容读取/版本可辨/源文件不动）；④ docs/sync-design-review.md 追加 PixelHabits 三段式合并语义参考（并集/LWW/id 幂等+护栏），不实现同步；⑤ tests/loop-csv.test.cjs、tests/import-preview.test.cjs 扩充未知列用例。
 - [ ] T-1464 宿主 3.8.6 渲染块兼容回归（触发条件批次，local-auto）
   - 触发：思源 3.8.6 正式版发布（当前 3.8.6-alpha 四连发，数据库日历/列表视图 API 变动期）。执行：`pnpm run test:e2e` 全量+渲染块真实内核用例（combo/today/日期跳转），确认无宿主回归；结果记 PROGRESS 与证据报告。
 - [ ] T-1465 问卷式日记打卡（journal-prompt check-in，用户想法 2026-09-26，调研完成待开工指令）

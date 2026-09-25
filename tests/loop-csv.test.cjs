@@ -53,6 +53,8 @@ assert.equal(parsedHabits.invalidRows, 0);
 assert.equal(parsedHabits.habits.length, 6);
 assert.equal(parsedHabits.habits[5].name, quotedName, "quoted names round-trip");
 assert.equal(parsedHabits.habits[2].targetValue, 8);
+/* T-1463 · R-A15：清单外的列名如实上报（不静默忽略）。 */
+assert.deepEqual(parsedHabits.unknownHeaders, ["Color"], "unknown headers are surfaced verbatim");
 
 const parsedMarks = loop.parseLoopCheckmarksCsv(checkmarksCsv);
 assert.deepEqual(parsedMarks.marks.names, ["晨读", "健身", "喝水", "换床单", "拉伸", quotedName]);
@@ -73,6 +75,7 @@ const plan = loop.buildLoopImportPlan(habitsCsv, checkmarksCsv);
 assert.equal(plan.habits.length, 6);
 assert.deepEqual(plan.measurableNames, ["喝水"], "measurable habits are only catalogued");
 assert.deepEqual(plan.unmappableFrequency, ["拉伸"], "unmappable frequencies are reported");
+assert.deepEqual(plan.unknownColumns, ["Color"], "plan carries unknown columns into the preview stage");
 const byName = new Map(plan.habits.map((habit) => [habit.name, habit]));
 assert.deepEqual(byName.get("健身").schedule, {type: "quota", quota: {period: "week", amount: 3, countMode: "dates"}});
 assert.deepEqual(byName.get("换床单").schedule, {type: "interval", intervalDays: 14});

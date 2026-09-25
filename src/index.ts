@@ -479,7 +479,7 @@ export default class CheckinPlugin extends Plugin {
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string) => void this.jumpToItemAnchorDoc(blockId),
-            onBlockTodayRecord: (itemId: string) => void this.recordBlockToday(itemId),
+            onBlockTodayRecord: (itemId: string, amount?: number) => void this.recordBlockToday(itemId, amount),
             getAnchorIndex: () => new Map(this.anchorDocCache),
             resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),
         };
@@ -1042,13 +1042,15 @@ export default class CheckinPlugin extends Plugin {
     /* v18.1.x（T-1375 §八）：打开锚点文档前按 blockId 重新解析——块被移动后跟随新根文档，
        不信任会话缓存；重解析失败时回落缓存，再回落项目洞察并给出可读提示。 */
     /* T-1412：today 渲染块打卡按钮 → 既有手动打卡通道（修订指纹冲突检查/审计/撤销不变）。 */
-    private async recordBlockToday(itemId: string): Promise<void> {
+    private async recordBlockToday(itemId: string, amount?: number): Promise<void> {
         if (this.disposed || this.disposing || !this.acceptingOperations) return;
         const item = getActiveItemById(this.store, itemId);
         if (!item) return;
         const actionDate = currentCalendarDate();
         const revision = getItemRevisionForDate(item, actionDate);
-        const value = revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep);
+        /* T-1462：chips 携带的增量优先；缺省（单按钮）沿用默认步长。 */
+        const step = amount && amount > 0 ? amount : getRecordStep(revision.kind, revision.unit, revision.recordStep);
+        const value = revision.kind === "binary" ? 1 : step;
         const fingerprint = this.revisionFingerprint(item, actionDate);
         await this.recordEvent(item, value, captureActionMoment(), fingerprint);
     }
@@ -3374,7 +3376,9 @@ export default class CheckinPlugin extends Plugin {
                 if (!plan.habits.length) { showMessage(t("msg.loopNoItems")); return; }
                 /* T-1427 · R-30.4：应用前统一预览——重名合并与语义损耗先行声明。 */
                 const loopPreview = summarizeImportPreview(buildLoopImportPreview(plan, this.store.items.filter((item) => !item.archived).map((item) => item.name)));
-                const loopWarn = (loopPreview.conflictCount ? t("msg.importConflictsWarn", {n: loopPreview.conflictCount}) : "") + (loopPreview.lossyCount ? t("msg.importLossyNote", {n: loopPreview.lossyCount}) : "");
+                /* T-1463 · R-A15：未识别列名在确认时点名（源文件不动，仅不参与导入）。 */
+                const unknownColumnsNote = plan.unknownColumns.length ? t("msg.importUnknownColumns", {names: plan.unknownColumns.join("、")}) : "";
+                const loopWarn = (loopPreview.conflictCount ? t("msg.importConflictsWarn", {n: loopPreview.conflictCount}) : "") + (loopPreview.lossyCount ? t("msg.importLossyNote", {n: loopPreview.lossyCount}) : "") + unknownColumnsNote;
                 if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}) + loopWarn)) { input.value = ""; return; }
                 const report = this.importLoopPlan(plan);
                 await this.persist();

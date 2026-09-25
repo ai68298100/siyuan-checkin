@@ -27,8 +27,9 @@ export interface BlockRendererDeps {
     onJumpItemAnchor?(blockId: string): void;
     /** T-1292：锚点→文档归属索引的同步缓存读；未命中条目不在返回值中。 */
     getAnchorIndex?(): AnchorDocIndex;
-    /** T-1412：today 视图打卡按钮 → 宿主经既有 recordEvent 通道写入（幂等/审计不变）。 */
-    onBlockTodayRecord?(itemId: string): void;
+    /** T-1412：today 视图打卡按钮 → 宿主经既有 recordEvent 通道写入（幂等/审计不变）。
+        T-1462：amount 为 chips 的增量值；缺省=宿主取项目默认步长（单按钮行为不变）。 */
+    onBlockTodayRecord?(itemId: string, amount?: number): void;
     /** T-1292：索引未命中的锚点异步解析（内核 /api/block/getBlockInfo，宿主缓存）；
         完成后由本函数的实现方触发一次强制重渲染。 */
     resolveAnchorDocs?(blockIds: string[]): Promise<void>;
@@ -146,7 +147,10 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             if (recordTarget) {
                 if (recordTarget.getAttribute("data-record-pending")) return;
                 recordTarget.setAttribute("data-record-pending", "true");
-                deps.onBlockTodayRecord?.(recordTarget.getAttribute("data-block-record") || "");
+                /* T-1462：chips 携带 data-block-record-amount，缺省（单按钮）仍由宿主取默认步长。 */
+                const amountValue = Number(recordTarget.getAttribute("data-block-record-amount"));
+                const amount = Number.isFinite(amountValue) && amountValue > 0 ? amountValue : undefined;
+                deps.onBlockTodayRecord?.(recordTarget.getAttribute("data-block-record") || "", amount);
                 return;
             }
             /* T-1351：锚点行优先打开所在文档（依赖已解析的缓存索引），否则回落项目洞察。 */

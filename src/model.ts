@@ -1,5 +1,5 @@
 import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
-import {normalizeRecordStep} from "./record-step";
+import {normalizeQuickSteps, normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
 import {calendarDayNumber} from "./date-keys";
 import {deriveQuotaAutoDays, evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
@@ -875,6 +875,8 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
     const completionSource = value.completionSource === "tomato" ? "tomato" as const : "manual" as const;
     const tomatoMode = value.tomatoMode === "sessions" ? "sessions" as const : "minutes" as const;
     const recordStep = normalizeRecordStep(kind, value.recordStep);
+    /* T-1462 数值快捷增量：仅数值/时长项目物化（≤4 个正数升序）；缺省不写字段。 */
+    const quickSteps = normalizeQuickSteps(kind, value.quickSteps);
     const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, ...(recordStep ? {recordStep} : {}), schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
@@ -910,6 +912,8 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
         ...(Number.isFinite(Number(value.streakTolerance)) && Math.floor(Number(value.streakTolerance)) >= 1
             ? {streakTolerance: Math.min(30, Math.floor(Number(value.streakTolerance)))}
             : {}),
+        /* T-1462 数值快捷增量：与 save-form 构造的条目保持同一字段集合（写后校验按 JSON 指纹比较）。 */
+        ...(quickSteps.length ? {quickSteps} : {}),
     };
 }
 

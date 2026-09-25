@@ -43,9 +43,32 @@
 
 .lc-checkin__record-button,
 .lc-checkin__quick-button,
-.lc-checkin__more-button {
+.lc-checkin__more-button,
+.lc-checkin__chip-button {
     border-radius: var(--lc-checkin-radius-sm);
 }
+
+/* T-1462 数值快捷增量 chips：与主步长按钮并排的一键增量（走同一 quick-record 通道）。 */
+.lc-checkin__chip-button {
+    border: 1px solid var(--lc-checkin-border);
+    background: var(--lc-checkin-muted-surface);
+    color: var(--lc-checkin-accent-text);
+    font-weight: 600;
+    font-size: 12px;
+    min-height: 30px;
+    padding: 0 8px;
+    white-space: nowrap;
+}
+.lc-checkin__chip-button:hover { border-color: var(--lc-checkin-accent-text); }
+.lc-checkin__chip-button[disabled] { opacity: .66; }
+
+/* T-1461 低压力触控基线：移动宿主下主要打卡目标 ≥44px（Apple HIG 44pt / Material 48dp /
+   WCAG 2.2 2.5.8 参考）。dock 密度布局（30px 预算）是桌面指针环境例外，不在此列。 */
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__record-button,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__quick-button,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__chip-button,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__renderblock-today-record { min-height: 44px; }
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__mobile-nav button { min-height: 44px; }
 
 /* Semantic state tokens: keep the calm pastel language readable in both
    appearance modes and at desktop viewing distances. */
@@ -10446,6 +10469,8 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__renderblock-today-missed { flex: none; color: var(--lc-checkin-muted); font-size: 10px; }
 .lc-checkin__renderblock-today-done { flex: none; color: var(--lc-checkin-success); font-weight: 600; }
 .lc-checkin__renderblock-today-record { flex: none; min-height: 24px; padding: 2px 8px; }
+/* T-1462：数值项目 chips 组——块内紧凑增量按钮（移动宿主 44px 由触控基线统一抬升）。 */
+.lc-checkin__renderblock-today-steps { flex: none; display: inline-flex; gap: 4px; }
 .lc-checkin__renderblock-today-summary {
     color: var(--lc-checkin-muted);
     font-size: 9.5px;

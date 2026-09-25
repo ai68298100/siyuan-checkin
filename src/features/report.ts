@@ -85,6 +85,8 @@ export function buildWeeklyReportMarkdown(
         for (const item of options.stalledItems) {
             lines.push(`  - ${t("report.stalledLine", {name: item.name, missed: item.missedCount, due: item.dueOpportunities, rate: item.backlogRate, last: item.lastMissedDate ?? ""})}`);
         }
+        /* T-1461 · R-A13：双日规则——失速卡收尾固定为无罪化口径，断签不渲染惩罚语义。 */
+        lines.push(`  - ${t("report.stalledNote")}`);
     }
     /* T-1435 · R-20.3 第二卡：容易漏卡的时间段——按星期与事项时段聚合漏卡分布。 */
     if (options?.missedByWeekday?.length) {

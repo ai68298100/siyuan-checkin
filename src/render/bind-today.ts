@@ -277,7 +277,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             host.focusTimerRoot = element.closest(".lc-checkin")?.parentElement ?? undefined;
             host.openFocusTimer(itemId);
         });
-        element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", () => {
+        element.querySelector<HTMLElement>("[data-action='quick-record']")?.addEventListener("click", (event) => {
             const item = getItemById(host.store, itemId);
             if (!item) return;
             const moment = captureActionMoment();
@@ -286,7 +286,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
             host.pendingFocusItemId = item.id;
             host.pulseHaptic();
-            host.enqueueMutation(() => host.recordEvent(item, getRecordStep(revision.kind, revision.unit, revision.recordStep), moment, expectedRevisionFingerprint));
+            /* T-1462：chips 各自携带 data-amount；主步长按钮的 data-amount 与重算值等价，缺失/非法时回落重算。 */
+            const amountValue = Number((event.currentTarget as HTMLElement).dataset.amount);
+            const amount = Number.isFinite(amountValue) && amountValue > 0
+                ? amountValue
+                : getRecordStep(revision.kind, revision.unit, revision.recordStep);
+            host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint));
         });
         element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
             const button = event.currentTarget as HTMLElement;

@@ -88,6 +88,10 @@ export interface CheckinItem {
     /** T-1409 容错连续（maxGap）：排期日漏打 ≤N 天不断签（缺口不计数）；缺省/0=严格断链。
         仅物化 1~30；at-most 与 quota 排期不叠加。 */
     streakTolerance?: number;
+    /** T-1462 数值快捷增量（R-A14）：数值/时长项目的附加快捷步长（今日页与 today 渲染块
+        渲染为 chips，一次点击=一条追加式增量事件）。仅物化 1~4 个正数（升序去重，≤1e6）；
+        binary 项目不物化；缺省=仅有默认步长按钮（历史行为零变化）。 */
+    quickSteps?: number[];
 }
 
 export interface CheckinEvent {

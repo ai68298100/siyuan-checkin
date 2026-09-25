@@ -6,21 +6,23 @@
    - 身份口径随格式如实声明：Obsidian 走 obsidian21:<file>:<date> externalRef
      幂等；Loop 无 externalRef，身份为「项目+日期+值+单位」内容匹配；
    - lossy 词表冻结（消费方按词元本地化）：schedule-degraded / unmappable-
-     frequency / unknown-cells / archived-flag / color / max-gap；
+     frequency / unknown-cells / archived-flag / color / max-gap；T-1463 追加
+     unknown-columns（源文件中未识别的列名，进预览与审计，不静默丢弃）；
    - 零依赖、无时钟、确定性（同名去重、升序不承诺——输入顺序即呈现顺序）。 */
 
 import type {LoopImportPlan} from "./loop-csv";
 import type {ObsidianImportPlan} from "./obsidian-habits";
 
 export type ImportFormat = "loop-csv" | "obsidian-habits";
-/** 语义损耗词表（v1 冻结；消费方按词元本地化）。 */
+/** 语义损耗词表（v1 冻结 + T-1463 增量；消费方按词元本地化）。 */
 export type ImportLossyNote =
     | "schedule-degraded"
     | "unmappable-frequency"
     | "unknown-cells"
     | "archived-flag"
     | "color"
-    | "max-gap";
+    | "max-gap"
+    | "unknown-columns";
 
 export interface ImportPreviewItem {
     name: string;
@@ -78,6 +80,9 @@ export function buildLoopImportPreview(plan: LoopImportPlan, existingItemNames: 
         lossy: [
             ...(plan.unmappableFrequency.length ? (["unmappable-frequency", "schedule-degraded"] as const) : []),
             ...(plan.unknownCells ? (["unknown-cells"] as const) : []),
+            /* T-1463：未识别列名如实声明（向前兼容承诺，见 docs/export-formats.md）；
+               防御读取——旧形状的 plan 无此字段时视为没有未知列。 */
+            ...(plan.unknownColumns?.length ? (["unknown-columns"] as const) : []),
         ],
         conflicts,
         identityNote: "content-item-date",

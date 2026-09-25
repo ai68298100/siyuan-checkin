@@ -83,13 +83,29 @@ const ip = require(path.join(dir, "features", "import-preview.js"));
     assert.deepEqual(ip.buildLoopImportPreview(plan, []), ip.buildLoopImportPreview(plan, []), "同一输入两次构建深度相等");
 }
 
+/* —— 3b. T-1463 未知列：未识别列名计入损耗词表（不静默丢弃） —— */
+{
+    const plan = {
+        habits: [{name: "晨跑", unit: "次", measurable: false, target: 1, archived: false, schedule: {type: "daily"}, scheduleDegraded: false}],
+        rows: [{name: "晨跑", date: "2026-09-22", value: 1, unit: "次", binary: true}],
+        measurableNames: [], skipDays: 0, unknownCells: 0, unmappableFrequency: [],
+        unknownColumns: ["Reminder Time", "Custom Note"],
+    };
+    const preview = ip.buildLoopImportPreview(plan, []);
+    assert.ok(preview.lossy.includes("unknown-columns"), "format-level lossy carries the unknown-columns token");
+    assert.deepEqual(ip.buildLoopImportPreview(plan, []), ip.buildLoopImportPreview(plan, []), "unknown-column preview stays deterministic");
+    const without = ip.buildLoopImportPreview({...plan, unknownColumns: []}, []);
+    assert.ok(!without.lossy.includes("unknown-columns"), "no unknown columns → no token");
+}
+
 /* —— 4. 接线守门：两个导入处理器必须先构建预览再确认；i18n 双语 —— */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /buildLoopImportPreview\(plan, this\.store\.items/, "Loop 导入必须构建应用前预览（含现有项目冲突面）");
 assert.match(indexSource, /buildObsidianImportPreview\(plan, this\.store\.items/, "Obsidian 导入必须构建应用前预览");
 assert.match(indexSource, /summarizeImportPreview/, "预览必须汇总进确认文案");
+assert.match(indexSource, /msg\.importUnknownColumns/, "T-1463：未知列名必须在确认弹窗点名");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-for (const key of ["msg.importConflictsWarn", "msg.importLossyNote"]) {
+for (const key of ["msg.importConflictsWarn", "msg.importLossyNote", "msg.importUnknownColumns"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
     assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
