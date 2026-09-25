@@ -24,6 +24,8 @@ export interface TodayItemContext {
     bulkSelected: Set<string>;
     todaySortMode: CheckinItemSortMode;
     focusTimerItemId?: string;
+    /** T-1455：展开中的精确录入面板（itemId 列表；会话态，随重渲染保持）。 */
+    expandedExactEntries?: readonly string[];
 }
 
 export interface TodayViewContext extends TodayItemContext {
@@ -121,6 +123,8 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
     const revision = getItemRevisionForDate(item, date);
     const progress = getProgress(ctx.store, item, date);
     const complete = isComplete(ctx.store, item, date);
+    /* T-1455：精确录入面板的展开状态跟插件会话态走，重渲染不再收起。 */
+    const exactExpanded = ctx.expandedExactEntries?.includes(item.id) ?? false;
     const displayTarget = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
     const percent = Math.min(100, Math.round((progress / displayTarget) * 100));
     const isBinary = revision.kind === "binary" && revision.schedule.type !== "quota";
@@ -185,11 +189,11 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     : isBinary
                     ? `<button class="lc-checkin__record-button" type="button" data-action="record">${atMost ? recordLabel : complete ? t("item.cancel") : t("item.checkin")}</button>`
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${stepText}" aria-label="${t("item.recordStep", {value: stepText, unit})}" title="${escapeHtml(t("item.recordStep", {value: stepText, unit}))}">${longStep ? t("item.record") : `+${stepText} <span>${escapeHtml(unit)}</span>`}</button>`}
-                ${canRecordDetails ? `<button class="lc-checkin__more-button lc-checkin__entry-trigger" type="button" data-action="toggle-exact" aria-label="${exactLabel}" title="${exactLabel}" aria-expanded="false">${t(canFocus ? "item.manualShort" : isBinary ? "item.noteShort" : "item.exactShort")}</button>` : ""}
+                ${canRecordDetails ? `<button class="lc-checkin__more-button lc-checkin__entry-trigger" type="button" data-action="toggle-exact" aria-label="${exactLabel}" title="${exactLabel}" aria-expanded="${exactExpanded}">${t(canFocus ? "item.manualShort" : isBinary ? "item.noteShort" : "item.exactShort")}</button>` : ""}
                 ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
                 `}
             </div>
-            ${ctx.bulkMode || !canRecordDetails ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry hidden>
+            ${ctx.bulkMode || !canRecordDetails ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry${exactExpanded ? "" : " hidden"}>
                 ${isBinary ? "" : `<label><span>${t(canFocus ? manualLabelKey : "item.thisRecord")}</span><input class="lc-checkin__amount" type="number" inputmode="decimal" min="${inputStep}" step="${inputStep}" value="${formatNumber(recordStep)}" aria-label="${t("item.exactThis", {unit})}" /></label>
                 <span>${escapeHtml(unit)}</span>`}
                 <input class="lc-checkin__record-note" type="text" maxlength="2000" placeholder="${t("item.notePlaceholder")}" aria-label="${t("item.noteAria")}" />

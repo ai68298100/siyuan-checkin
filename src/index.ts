@@ -397,8 +397,10 @@ export default class CheckinPlugin extends Plugin {
     private wereadTimer?: number;
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
     private wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
-    /** T-1445：今日页输入聚焦期间被挂起的后台渲染标记。 */
+    /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
     private pendingRenderAfterTyping = false;
+    /** T-1455：展开中的精确录入面板（itemId 列表；会话态，重渲染保持展开）。 */
+    expandedExactEntries: string[] = [];
     private sireaderTracker?: SireaderFocusTracker;
     /* T-1385 思播联动（实验，opt-in 默认关）。 */
     siplayerIntegration = {...DEFAULT_VIEW_PREFERENCES.siplayerIntegration};
@@ -3414,6 +3416,7 @@ export default class CheckinPlugin extends Plugin {
             bulkMode: this.bulkMode,
             bulkSelected: this.bulkSelected,
             todaySortMode: this.todaySortMode,
+            expandedExactEntries: this.expandedExactEntries,
             todayGroupMode: this.todayGroupMode,
             collapsedTodayGroups: this.collapsedTodayGroups,
             completedCollapsed: this.completedCollapsed,
@@ -3593,6 +3596,7 @@ export default class CheckinPlugin extends Plugin {
             bulkMode: this.bulkMode,
             bulkSelected: this.bulkSelected,
             todaySortMode: this.todaySortMode,
+            expandedExactEntries: this.expandedExactEntries,
         });
     }
 

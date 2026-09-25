@@ -384,7 +384,8 @@ const cases = [
             for (const theme of ["light", "dark"]) {
                 await page.locator(".lc-checkin--editor").evaluate((element, value) => { element.dataset.appearance = value; }, theme);
                 const fields = page.locator(".lc-checkin__field-check");
-                assert.equal(await fields.count(), 2);
+                /* T-1233 起为三行：戒除方向 + 锚点追加备注 + Task Horizon 日历可见性。 */
+                assert.equal(await fields.count(), 3);
                 for (const field of await fields.all()) {
                     const input = field.locator('input[type="checkbox"]');
                     const box = await input.boundingBox();
@@ -542,6 +543,7 @@ const cases = [
             plugin[key] = undefined;
         }
         plugin.pendingFocusItemId = undefined;
+        plugin.expandedExactEntries = [];
         plugin.todayQuery = '';
         plugin.pendingOnly = false;
         plugin.completedCollapsed = true;
@@ -1130,6 +1132,10 @@ const cases = [
         plugin.store = structuredClone(plugin.store);
         plugin.showToday();
     });
+    console.log('DEBUG V5a:', await page.evaluate(() => JSON.stringify({n: window.__plugin.store.events.length, best: window.__plugin.bestStreakValue})));
+    await page.evaluate(() => { window.__plugin.store = structuredClone(window.__plugin.store); });
+    await page.evaluate(() => window.__plugin.showToday());
+    console.log('DEBUG V5b after fresh clone + showToday:', await page.evaluate(() => JSON.stringify({n: window.__plugin.store.events.length, best: window.__plugin.bestStreakValue, item: window.__plugin.bestStreakItem?.name})));
     assert.match(await page.locator('.lc-checkin__overview-streak > strong').textContent(), /^3/, 'warm overview uses three actual completed days');
     await screenshot({path: path.join(outputRoot, 'today-workbench.png')}, page.locator('#dock'));
     if (qaHost === "tab" || qaHost === "dialog") {

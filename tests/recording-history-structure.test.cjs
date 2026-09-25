@@ -67,7 +67,7 @@ const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem"]
 const hostClassOutput = ts.transpileModule(`class RecordingHost { ${methods} }`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
-const environment = {...model, ...shared, t: key => key, showMessage: value => messages.push(value)};
+const environment = {...model, ...shared, t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
 const RecordingHost = new Function(...Object.keys(environment), `${hostClassOutput}\nreturn RecordingHost;`)(...Object.values(environment));
 
 function fixture(kind = "binary", direction) {
@@ -91,6 +91,7 @@ function fixture(kind = "binary", direction) {
     host.pendingAttachments = new Map([["habit", "data:image/png;base64,proof"]]);
     host.occasionStore = {occasions: []};
     host.revisionFingerprint = () => "revision";
+    host.expandedExactEntries = [];
     const queue = [];
     host.enqueueMutation = operation => { queue.push(operation); return Promise.resolve(); };
     let persists = 0, ids = 0;

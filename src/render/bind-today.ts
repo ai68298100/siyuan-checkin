@@ -29,6 +29,8 @@ export interface BindTodayHost {
     focusTimerProvider: FocusTimerProvider;
     heatmapYearOffset: number;
     collapsedTodayGroups: Set<string>;
+    /** T-1455：展开中的精确录入面板（itemId 列表；会话态，重渲染保持）。 */
+    expandedExactEntries: string[];
     reviewFoldSections: Set<string>;
     reviewFoldTouched: boolean;
     focusTimerRoot?: HTMLElement;
@@ -293,6 +295,11 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const expanded = !entry.hidden;
             entry.hidden = expanded;
             button.setAttribute("aria-expanded", String(!expanded));
+            /* T-1455：展开状态同步进会话态——后台/完整重渲染按同一状态重建，不再收起。 */
+            const idSet = new Set(host.expandedExactEntries);
+            if (expanded) idSet.delete(element.dataset.itemId || "");
+            else if (element.dataset.itemId) idSet.add(element.dataset.itemId);
+            host.expandedExactEntries = [...idSet];
             if (!expanded) entry.querySelector<HTMLInputElement>("input")?.focus();
         });
         element.querySelector<HTMLInputElement>(".lc-checkin__amount")?.addEventListener("keydown", (event) => {
@@ -332,6 +339,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                     host.enqueueMutation(() => host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment));
                     const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
                     if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
+                    /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
+                       的界面刷新（Enter 保存场景），条目看起来没变。 */
+                    host.expandedExactEntries = host.expandedExactEntries.filter((id) => id !== item.id);
+                    const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
+                    if (exactEntry) exactEntry.hidden = true;
+                    const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
+                    if (trigger) trigger.setAttribute("aria-expanded", "false");
+                    const active = (element.ownerDocument?.activeElement ?? null) as HTMLElement | null;
+                    active?.blur?.();
                 };
                 if (revision.kind === "binary") {
                     /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
