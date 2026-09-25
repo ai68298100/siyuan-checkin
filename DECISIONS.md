@@ -1307,3 +1307,9 @@
 - 思阅/思播/微信读书时长联动的事实单位是「分钟」。项目不是分钟单位时，启用与摄取均 fail-closed；E2E fixture 也必须使用分钟时长项目，不能用二值「次」项目掩盖单位错误。
 - `package.zip` 保留真实构建时间以满足宿主同步的新鲜度要求，摘要每次构建可能变化。因此 `test:quality` 的 `sync:digest` 固定放在完整测试与性能链之后、`check:release` 之前；不得用固定时间戳绕开资产摘要变化。
 - 已完成项折叠采用就地更新 `aria-expanded`、`hidden` 与箭头并持久化，浏览器移动矩阵可关闭/恢复；真实 Android/WebView 触摸命中、安全区与第三方账号仍是 host-pending，不能由浏览器 QA 代替。
+
+## D-270：v18.5.0 发布收口（2026-09-25）
+
+- 用户明确授权发版后，先同步 README 当前版本声明，再运行 `node scripts/release.cjs 18.5.0`；脚本完成构建、全量门禁、提交、push、tag 和 GitHub Release。
+- v18.5.0 发布资产 SHA-256 为 `8287289257c1e84be3a20c96daca90fee16eb211a688ec79cae68766ce84a62a`，发布提交为 `5741d8a`，tag `v18.5.0` 指向该提交。
+- 真实 Android/WebView 触摸命中、安全区、微信读书实际 Key、叶归实际笔记本和第三方宿主联动继续按现场证据验收，不因自动化发布成功而关闭。
