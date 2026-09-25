@@ -145,10 +145,10 @@
 @container lc5 (max-width: 959px) {
     .lc-checkin.lc-checkin--settings {
         .lc-checkin__settings-layout { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-        .lc-checkin__settings-nav { position: sticky; top: 0; z-index: var(--lc-checkin-z-header); display: flex; flex-flow: row nowrap; gap: 4px; margin: 0; padding: 4px; max-width: 100%; overflow-x: auto; overflow-y: hidden; background: var(--lc-checkin-bg); box-shadow: none; }
+        .lc-checkin__settings-nav { position: sticky; top: 0; z-index: var(--lc-checkin-z-header); display: flex; flex-flow: row wrap; align-content: flex-start; gap: 4px; margin: 0; padding: 4px; max-width: 100%; max-height: 144px; overflow-x: auto; overflow-y: auto; overscroll-behavior: contain; background: var(--lc-checkin-bg); box-shadow: none; }
         .lc-checkin__settings-nav button { flex: 0 0 auto; width: auto; min-width: max-content; max-width: none; min-height: 44px; padding-inline: 12px; white-space: nowrap; }
         .lc-checkin__settings-nav button.is-active { box-shadow: inset 0 -2px var(--lc-checkin-accent-text); }
-        .lc-checkin__settings-card { scroll-margin-top: 60px; }
+        .lc-checkin__settings-card { scroll-margin-top: 152px; }
     }
     .lc-checkin.lc-checkin--occasions {
         .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr); gap: 12px; }

@@ -4134,12 +4134,26 @@
     color: var(--lc-checkin-accent-text); background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--lc-checkin-surface));
 }
 .lc-checkin__settings-group > .lc-checkin__settings-row { padding-inline: 10px; }
+/* 外部联动总览把数量、隐私边界和断开语义放在逐项配置之前。 */
+.lc-checkin__external-overview {
+    display: grid; gap: 3px; margin: 10px 0 8px; padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 25%, var(--lc-checkin-border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--lc-checkin-accent) 5%, var(--lc-checkin-surface));
+}
+.lc-checkin__external-overview strong { color: var(--lc-checkin-text); font-size: 12px; font-weight: 700; }
+.lc-checkin__external-overview span { color: var(--lc-checkin-accent-text); font-size: 11.5px; font-weight: 650; }
+.lc-checkin__external-overview small { color: var(--lc-checkin-muted); font-size: 10.5px; line-height: 1.45; }
 /* T-1442 · R-A10 来源子面板：每个外部来源一块，含头部（名称+状态徽标）与编号步骤。 */
 .lc-checkin__source-panel {
     margin: 8px 10px; padding: 8px 10px 10px;
     border: 1px solid var(--lc-checkin-border); border-radius: 10px;
     background: color-mix(in srgb, var(--lc-checkin-accent) 3%, var(--lc-checkin-surface));
 }
+.lc-checkin__source-panel > summary { position: relative; padding-right: 16px; cursor: pointer; list-style: none; }
+.lc-checkin__source-panel > summary::-webkit-details-marker { display: none; }
+.lc-checkin__source-panel > summary::after { content: "▸"; position: absolute; top: 50%; right: 0; transform: translateY(-50%); color: var(--lc-checkin-muted); font-size: 10px; }
+.lc-checkin__source-panel[open] > summary::after { content: "▾"; }
 .lc-checkin__source-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .lc-checkin__source-panel-head > strong { font-size: 12px; font-weight: 660; color: var(--lc-checkin-text); }
 .lc-checkin__source-badge {
@@ -4151,6 +4165,11 @@
     color: var(--lc-checkin-accent-text);
     background: color-mix(in srgb, var(--lc-checkin-accent) 12%, var(--lc-checkin-surface));
     border-color: transparent;
+}
+.lc-checkin__source-badge.is-ready {
+    color: var(--lc-checkin-accent-text);
+    background: color-mix(in srgb, var(--lc-checkin-accent) 6%, var(--lc-checkin-surface));
+    border-color: color-mix(in srgb, var(--lc-checkin-accent) 34%, var(--lc-checkin-border));
 }
 .lc-checkin__source-steps { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 2px; }
 .lc-checkin__source-steps li { font-size: 11.5px; line-height: 1.5; color: var(--lc-checkin-muted); }
@@ -8352,25 +8371,25 @@
     background: var(--lc-checkin-bg);
 }
 
-/* 手机设置页分类栏：保持在内容流内吸顶，同时给横向标签一个独立的
-   不透明表面。窄屏不压缩/省略标签，手势在栏内横向滚动，避免 sticky
-   时下方卡片透出造成“浮在空中”的错觉。 */
+/* 手机设置页分类栏：保持在内容流内吸顶，同时给标签一个独立的不透明
+   表面。窄屏不压缩/省略标签，标签按行排列并可在栏内滚动，避免新增分组
+   被藏在首屏之外，也避免 sticky 时下方卡片透出造成“浮在空中”的错觉。 */
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-nav {
     position: sticky;
     top: 0;
     z-index: var(--lc-checkin-z-header);
     display: flex;
-    flex-flow: row nowrap;
-    align-items: center;
+    flex-flow: row wrap;
+    align-content: flex-start;
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    max-height: none;
+    max-height: 144px;
     margin: 0 0 8px;
     padding: 4px;
     box-sizing: border-box;
     overflow-x: auto;
-    overflow-y: hidden;
+    overflow-y: auto;
     overscroll-behavior-x: contain;
     overscroll-behavior-y: auto;
     touch-action: pan-x pan-y;
@@ -8384,7 +8403,7 @@
 }
 
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-card {
-    scroll-margin-top: 52px;
+    scroll-margin-top: 152px;
 }
 
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
@@ -8875,6 +8894,36 @@
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-inline > * {
     min-width: 0;
     max-width: 100%;
+}
+/* 外部来源卡片的配置是连续步骤；窄屏让控件独占一行，避免目标选择、
+   阈值和保存按钮被挤在第二列后裁掉。 */
+@container lc5 (max-width: 719px) {
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-row > .lc-checkin__settings-inline {
+        grid-column: 1;
+        justify-self: stretch;
+        justify-content: flex-start;
+        width: 100%;
+    }
+    :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-inline > :is(select, input, button) {
+        min-height: 44px;
+    }
+}
+@container lc-dock (max-width: 719px) {
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-row > .lc-checkin__settings-inline {
+        grid-column: 1;
+        justify-self: stretch;
+        justify-content: flex-start;
+        width: 100%;
+    }
+    .lc-checkin-dock-host .lc-checkin--settings .lc-checkin__source-panel .lc-checkin__settings-inline > :is(select, input, button) {
+        min-height: 44px;
+    }
 }
 @container lc5 (max-width: 360px) {
     :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--settings .lc-checkin__settings-row {

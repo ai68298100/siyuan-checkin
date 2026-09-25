@@ -71,6 +71,7 @@ class FakeElement {
         this.clientWidth = 100;
         this.clientHeight = 100;
         this.flexDirection = "column";
+        this.flexWrap = "nowrap";
         this.rectFactory = () => ({top: 0, left: 0, width: 100, height: 40});
         this.parent = undefined;
     }
@@ -203,7 +204,7 @@ function observerHarness() {
     return {FakeIntersectionObserver, FakeResizeObserver};
 }
 
-function createNavigationFixture({horizontal = false, nativeScrollTo = true} = {}) {
+function createNavigationFixture({horizontal = false, wrapped = false, nativeScrollTo = true} = {}) {
     const root = new FakeElement("root");
     const scroller = new FakeElement("settings-scroller");
     const nav = new FakeElement("settings-nav");
@@ -238,6 +239,7 @@ function createNavigationFixture({horizontal = false, nativeScrollTo = true} = {
     nav.scrollHeight = horizontal ? 44 : 120;
     nav.scrollWidth = horizontal ? 246 : 120;
     nav.flexDirection = horizontal ? "row" : "column";
+    nav.flexWrap = wrapped ? "wrap" : "nowrap";
     nav.rectFactory = () => ({top: 0, left: 0, width: nav.clientWidth, height: nav.clientHeight});
     if (!nativeScrollTo) {
         scroller.scrollTo = undefined;
@@ -269,7 +271,7 @@ function assertActive(fixture, expectedId) {
         ResizeObserver: FakeResizeObserver,
         requestAnimationFrame: scheduler.requestAnimationFrame,
         cancelAnimationFrame: scheduler.cancelAnimationFrame,
-        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection})},
+        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection, flexWrap: element.flexWrap})},
     });
     const fixture = createNavigationFixture();
     const cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root);
@@ -329,7 +331,7 @@ function assertActive(fixture, expectedId) {
         ResizeObserver: undefined,
         requestAnimationFrame: scheduler.requestAnimationFrame,
         cancelAnimationFrame: scheduler.cancelAnimationFrame,
-        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection})},
+        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection, flexWrap: element.flexWrap})},
     });
     const fixture = createNavigationFixture({horizontal: true, nativeScrollTo: false});
     const cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root, {reducedMotion: true});
@@ -345,6 +347,29 @@ function assertActive(fixture, expectedId) {
     assertActive(fixture, "dialog");
     assert.equal(fixture.scroller.scrollTop, 288,
         "the property-assignment fallback must account for the horizontal mobile rail and clamp to the scroll range");
+    cleanup();
+}
+
+// Rendered settings markup: every category button controls one section, and every section is named by its own heading.
+// Wrapped mobile rail: active group can be on a lower row, so reveal it vertically.
+{
+    const scheduler = createFrameScheduler();
+    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {}, {
+        Element: FakeElement,
+        IntersectionObserver: undefined,
+        ResizeObserver: undefined,
+        requestAnimationFrame: scheduler.requestAnimationFrame,
+        cancelAnimationFrame: scheduler.cancelAnimationFrame,
+        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection, flexWrap: element.flexWrap})},
+    });
+    const fixture = createNavigationFixture({horizontal: true, wrapped: true});
+    fixture.nav.clientHeight = 44;
+    fixture.nav.scrollHeight = 140;
+    fixture.buttons[2].rectFactory = () => ({top: 100, left: 8, width: 76, height: 36});
+    const cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root, {reducedMotion: true});
+    scheduler.flush();
+    fixture.nav.emit("click", {target: fixture.buttons[2]});
+    assert.ok(fixture.nav.scrollTop > 0, "wrapped rail should scroll vertically to reveal its active lower-row button");
     cleanup();
 }
 
@@ -437,6 +462,9 @@ function assertActive(fixture, expectedId) {
     assert.match(pending, /小时阅读 · 2026-09-20 · 0\.5 小时<\/small>/, "pending hours use the same converted value as the eventual record");
     assert.match(pending, /分钟阅读 · 2026-09-20 · 30 分钟<\/small>/, "minute mapping remains in minutes");
     assert.match(pending, /番茄数量 · 2026-09-20 · 1 个番茄<\/small>/, "session mapping preserves its custom unit");
+    const configuredYeguif = exports.renderSettingsView({...context, store: {items: [{id: "y", name: "Yeguif target", archived: false}], events: []}, yeguifIntegration: {enabled: false, itemId: "y", notebookId: "notebook-1"}});
+    assert.match(configuredYeguif, /data-source-panel="yeguif" data-source-state="ready"/, "叶归绑定完整但未启用时应显示待启用状态");
+    assert.match(configuredYeguif, /<select data-yeguif-item[\s\S]*?<option value="y" selected>Yeguif target<\/option>/, "叶归目标项目应保留已选值");
 }
 
 // Integration lifecycle: the plugin owns one cleanup per surface and releases it before replacement and unload.
@@ -453,17 +481,20 @@ function assertActive(fixture, expectedId) {
 
 /* —— T-1442 · R-A10 来源子面板：每个外部来源独立面板（头部徽标 + 编号步骤） —— */
 const settingsSourceT1442 = read("src", "render", "settings.ts");
-for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread"]) {
+for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread", "yeguif"]) {
     assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
 }
+assert.equal((settingsSourceT1442.match(/<details class="lc-checkin__source-panel"/g) || []).length, 7, "来源面板必须使用可折叠 details");
+assert.match(settingsSourceT1442, /sourcePanelOpen\("weread"\)/, "保存联动设置时应能恢复当前展开卡片");
+assert.match(settingsSourceT1442, /data-action="clear-weread-key"/, "微信读书应提供本地 Key 清除入口");
 assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 7, "七个面板头部");
 assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 7, "七个编号步骤列表");
 const panelI18n = read("src", "i18n.ts");
 const stepKeys = [];
-for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread"]) {
+for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread", "Yeguif"]) {
     for (let step = 1; step <= 4; step += 1) stepKeys.push(`set.steps${source}${step}`);
 }
-stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff");
+stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff", "set.groupHost", "set.groupExternal", "set.extSourcesListTitle", "set.extPrivacyHint", "set.wereadClearKey", "msg.wereadClearKeyConfirm", "msg.wereadClearKeyDone", "msg.healthNeedMapping");
 for (const key of stepKeys) {
     const occurrences = panelI18n.split(`"${key}"`).length - 1;
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);

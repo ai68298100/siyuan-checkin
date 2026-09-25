@@ -215,6 +215,9 @@ export default class CheckinPlugin extends Plugin {
     /* 设置页分类导航监听随宿主表面生命周期清理，避免重渲染后旧滚动回调
        继续引用已替换的 DOM。 */
     private settingsNavigationCleanups = new WeakMap<HTMLElement, () => void>();
+    /* 设置页来源卡片是原生 details；按表面记住用户当前展开的卡片，保存或
+       切换开关重绘后仍停留在同一个联动配置上下文。 */
+    private settingsOpenSourcePanels = new WeakMap<HTMLElement, Set<string>>();
     private quickDialogFullscreen = false;
     private tabOpenPromise?: Promise<void>;
     private tabInstance?: {close: () => void};
@@ -2396,6 +2399,13 @@ export default class CheckinPlugin extends Plugin {
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
            同页重渲染（打卡/筛选）不跳动，切页回到上次离开的位置。WeakMap 随表面销毁自动释放。 */
         const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
+        if (this.currentPage === "settings" || this.renderedPages.get(root) === "settings") {
+            const openSourcePanels = new Set<string>();
+            root.querySelectorAll<HTMLElement>("[data-source-panel][open]").forEach((panel) => {
+                if (panel.dataset.sourcePanel) openSourcePanels.add(panel.dataset.sourcePanel);
+            });
+            this.settingsOpenSourcePanels.set(root, openSourcePanels);
+        }
         if (previousScroller) {
             const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
             tops.set(this.renderedPages.get(root) ?? "today", previousScroller.scrollTop);
@@ -2406,7 +2416,7 @@ export default class CheckinPlugin extends Plugin {
                 : this.currentPage === "insights" ? this.renderInsights()
             : this.currentPage === "archived" ? this.renderArchived()
                     : this.currentPage === "occasions" ? this.renderOccasions()
-                    : this.currentPage === "settings" ? this.renderSettings() : this.renderToday();
+                    : this.currentPage === "settings" ? this.renderSettings(this.settingsOpenSourcePanels.get(root)) : this.renderToday();
         this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
@@ -2540,7 +2550,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 方法体外置于 render/settings.ts（T-022）。 */
-    private renderSettings(): string {
+    private renderSettings(openSourcePanels?: ReadonlySet<string>): string {
         return renderSettingsView({
             store: this.store,
             auditEntries: this.auditEntries,
@@ -2574,6 +2584,7 @@ export default class CheckinPlugin extends Plugin {
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
             yeguifIntegration: {enabled: this.yeguifIntegration.enabled, itemId: this.yeguifIntegration.itemId, notebookId: this.yeguifIntegration.notebookId},
+            openSourcePanels: openSourcePanels ? [...openSourcePanels] : [],
             /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
             wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes, finishItemId: this.wereadIntegration.finishItemId, notesItemId: this.wereadIntegration.notesItemId},
             wereadKeySet: Boolean(this.wereadIntegration.apiKey),
@@ -2789,6 +2800,11 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
                 return;
             }
+            if (checked && !this.healthInbox.stepsItemId && !this.healthInbox.weightItemId) {
+                showMessage(t("msg.healthNeedMapping"));
+                this.render();
+                return;
+            }
             this.healthInbox = {...this.healthInbox, enabled: checked};
             if (!checked) {
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
@@ -2862,6 +2878,12 @@ export default class CheckinPlugin extends Plugin {
             /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
             this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
             void this.persistViewPreferences().then(() => showMessage(t("msg.wereadSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.render();
+        });
+        root.querySelector<HTMLElement>("[data-action='clear-weread-key']")?.addEventListener("click", () => {
+            if (!this.wereadIntegration.apiKey || !window.confirm(t("msg.wereadClearKeyConfirm"))) return;
+            this.wereadIntegration = {...this.wereadIntegration, apiKey: "", enabled: false};
+            void this.persistViewPreferences().then(() => showMessage(t("msg.wereadClearKeyDone"))).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='weread-pull']")?.addEventListener("click", () => {

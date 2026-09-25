@@ -1304,6 +1304,17 @@ const cases = [
                 }
                 await page.locator('[data-settings-nav="data"]').click();
                 assert.equal(await page.locator('[data-settings-nav="data"]').getAttribute('aria-current'), 'true', 'settings category navigation works with long content');
+                await page.locator('[data-settings-nav="external"]').click();
+                assert.equal(await page.locator('[data-settings-nav="external"]').getAttribute('aria-current'), 'true', 'external integrations category remains reachable on narrow settings surfaces');
+                const sourcePanel = page.locator('[data-source-panel="diary"]').first();
+                if (await sourcePanel.getAttribute('open') === null) await sourcePanel.locator(':scope > summary').click();
+                assert.equal(await sourcePanel.getAttribute('open'), '', 'a source card can be opened from the external integrations group');
+                const sourceControls = await sourcePanel.locator('select, input, button').evaluateAll((controls) => controls.filter((control) => control.checkVisibility()).map((control) => {
+                    const box = control.getBoundingClientRect();
+                    const host = control.closest('.lc-checkin--settings')?.getBoundingClientRect();
+                    return {left: box.left, right: box.right, hostLeft: host?.left ?? 0, hostRight: host?.right ?? 0, width: box.width, height: box.height};
+                }));
+                assert.ok(sourceControls.length > 0 && sourceControls.every((control) => control.left >= control.hostLeft - 1 && control.right <= control.hostRight + 1 && control.width > 0 && control.height > 0), `external source controls must remain reachable at ${width}px ${JSON.stringify(sourceControls)}`);
             }
             if (surface === 'occasions') {
                 assert.equal(await page.locator('.lc-checkin__occasion-manager-row').count(), 30);

@@ -62,12 +62,20 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         return style ? style.flexDirection === "row" : nav.scrollWidth > nav.clientWidth + 1;
     };
 
+    const isWrappedRail = (): boolean => {
+        const style = typeof window !== "undefined" && typeof window.getComputedStyle === "function"
+            ? window.getComputedStyle(nav)
+            : undefined;
+        return style?.flexWrap === "wrap";
+    };
+
     const keepButtonVisible = (button: HTMLElement, behavior: ScrollBehavior = "auto") => {
         const navRect = nav.getBoundingClientRect();
         const buttonRect = button.getBoundingClientRect();
         const horizontal = isHorizontalRail();
+        const wrapped = isWrappedRail();
         const inset = 4;
-        if (horizontal) {
+        if (horizontal && !wrapped) {
             if (buttonRect.left < navRect.left + inset) {
                 scrollElement(nav, Math.max(0, nav.scrollLeft + buttonRect.left - navRect.left - inset), nav.scrollTop, behavior);
             } else if (buttonRect.right > navRect.right - inset) {

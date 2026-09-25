@@ -61,9 +61,10 @@ for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc"
 
 /* i18n 双语。 */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
-for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthStepsItem", "set.healthWeightItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthDocSaved", "msg.healthDocInvalid"]) {
+for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthStepsItem", "set.healthWeightItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthNeedMapping", "msg.healthDocSaved", "msg.healthDocInvalid"]) {
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
+assert.match(indexSource, /msg\.healthNeedMapping/, "health inbox must require at least one metric mapping before enabling");
 
 /* 接入文档与评估卡修正注记存在。 */
 const integrationDoc = fs.readFileSync(path.join(__dirname, "..", "docs/health-shortcuts-integration.md"), "utf8");

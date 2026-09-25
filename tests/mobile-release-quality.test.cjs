@@ -49,8 +49,8 @@ assert.match(mobileSettingsNavLayer, /background:\s*var\(--lc-checkin-bg\)/,
     "mobile settings navigation must use an opaque canvas background while sticky");
 assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-nav button[\s\S]*?min-width:\s*max-content;/,
     "mobile settings navigation labels must not be ellipsized into unavailable sections");
-assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-card[\s\S]*?scroll-margin-top:\s*52px;/,
-    "mobile settings category targets must remain visible below the sticky rail");
+assert.match(mobileSettingsNavLayer, /\.lc-checkin--settings \.lc-checkin__settings-card[\s\S]*?scroll-margin-top:\s*152px;/,
+    "mobile settings category targets must remain visible below the multi-row sticky rail");
 assert.match(plugin, /root\.dataset\.appearance\s*=\s*appearance/,
     "window host must carry the resolved independent appearance");
 assert.match(plugin, /this\.syncHostThemeTokens\(root, surface\)/,
