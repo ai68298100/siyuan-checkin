@@ -763,6 +763,8 @@ export default class CheckinPlugin extends Plugin {
     private async ingestHealthInbox(): Promise<void> {
         const governance = this.healthInbox;
         if (!governance.enabled || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        /* 文档不可见时跳过本轮，回前台由焦点补拉（与 T-1402 微信读书同一省电策略）。 */
+        if (typeof document !== "undefined" && document.hidden) return;
         const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' LIMIT 500`});
         const entries = parseHealthInboxRows((response as {data?: Array<{content?: string}>}).data || []);
         if (!entries.length) return;
@@ -811,6 +813,8 @@ export default class CheckinPlugin extends Plugin {
     private async ingestWeread(): Promise<number> {
         const governance = this.wereadIntegration;
         if (!governance.enabled || !governance.itemId || !governance.apiKey || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
+        /* 文档不可见（后台页签/锁屏）时跳过本轮，回前台由焦点补拉——省移动端电量与流量。 */
+        if (typeof document !== "undefined" && document.hidden) return 0;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return 0;
         const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
@@ -1142,6 +1146,9 @@ export default class CheckinPlugin extends Plugin {
         void this.reconcileStore();
         this.ensureMobileTopBarButton();
         this.ensureSpeedSwitchQuickActions();
+        /* 外部来源轮询在文档不可见期间被跳过——回前台立即补拉一次（摄取全部幂等，不会重复记账）。 */
+        void this.ingestHealthInbox();
+        void this.ingestWeread();
     };
 
     onload() {
@@ -2519,6 +2526,8 @@ export default class CheckinPlugin extends Plugin {
             wereadKeySet: Boolean(this.wereadIntegration.apiKey),
             wereadLastPull: this.wereadLastPull ? {...this.wereadLastPull} : undefined,
             wereadTodayMinutes: sourceDayMinutes(this.store, "weread", this.wereadIntegration.itemId, dateKey(currentCalendarDate())),
+            /* T-1442 效果徽标：各来源当日已写入事件数（面板头部「今日 N 条」）。 */
+            sourceTodayCounts: this.sourceTodayCounts(),
             /* T-1386 治理可观测性：来源当日已写入分钟（来源行的「今日累计」预览）。 */
             sireaderTodayMinutes: sourceDayMinutes(this.store, "sireader", this.sireaderIntegration.itemId, dateKey(currentCalendarDate())),
             siplayerTodayMinutes: sourceDayMinutes(this.store, "siplayer", this.siplayerIntegration.itemId, dateKey(currentCalendarDate())),
@@ -3394,6 +3403,17 @@ export default class CheckinPlugin extends Plugin {
     private isReminderQuietNow(): boolean {
         const now = new Date();
         return isWithinQuietHours(now.getHours() * 60 + now.getMinutes(), this.reminderQuietHours);
+    }
+
+    /* T-1442：各来源当日已写入事件数——外部协作效果在设置面板头部一屏可见。 */
+    private sourceTodayCounts(): Record<string, number> {
+        const today = dateKey(currentCalendarDate());
+        const tomorrow = dateKey(new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() + 1));
+        const counts: Record<string, number> = {};
+        for (const event of getEventsInDateRange(this.store, today, tomorrow)) {
+            counts[event.source] = (counts[event.source] || 0) + 1;
+        }
+        return counts;
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）；壳内仅保留连续记录状态赋值。 */
