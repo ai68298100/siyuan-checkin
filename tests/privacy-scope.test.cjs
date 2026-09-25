@@ -52,6 +52,13 @@ const event = (overrides = {}) => ({itemId: "i1", source: "manual", ...overrides
     const manual = ps.planSourceDisconnect("manual", events);
     assert.equal(manual.retainedEvents, 1);
     assert.equal(manual.reconnectIdempotency, "none", "无幂等身份的来源如实声明");
+    const health = ps.planSourceDisconnect("health", [
+        event({source: "api", externalRef: "health:i1:steps:2026-09-20"}),
+        event({source: "api", externalRef: "taskhorizon:block:2026-09-20"}),
+        event({source: "api"}),
+    ]);
+    assert.equal(health.retainedEvents, 1, "health disconnect only counts health identities on the shared api source");
+    assert.equal(health.retainedIdentities, 1);
 }
 
 /* —— 4. 控制面汇总：文档写入/外部来源/零遥测 —— */

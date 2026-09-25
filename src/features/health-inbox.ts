@@ -10,6 +10,7 @@
    - 行保留在收件箱文档中，插件不改写用户文档；解析无状态、确定性，可回放。 */
 
 import {validateAnchorBlockId} from "./note-anchor";
+import {isValidDateKey} from "../date-keys";
 
 export type HealthInboxMetric = "steps" | "weight";
 
@@ -44,7 +45,7 @@ export function parseHealthInboxLine(content: unknown): Omit<HealthInboxEntry, "
     const metric = match[1] as HealthInboxMetric;
     const localDate = match[2];
     const value = Number(match[3]);
-    if (!Number.isFinite(value) || value < 0) return undefined;
+    if (!isValidDateKey(localDate) || !Number.isFinite(value) || value < 0) return undefined;
     return {metric, localDate, value};
 }
 
@@ -71,10 +72,12 @@ export function normalizeHealthInboxPreference(source: unknown): {enabled: boole
     const entry = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
     const docId = validateAnchorBlockId(entry.docId) || "";
     const itemId = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 160) : "";
+    const stepsItemId = itemId(entry.stepsItemId);
+    const weightItemId = itemId(entry.weightItemId);
     return {
-        enabled: entry.enabled === true && Boolean(docId),
+        enabled: entry.enabled === true && Boolean(docId) && Boolean(stepsItemId || weightItemId),
         docId,
-        stepsItemId: itemId(entry.stepsItemId),
-        weightItemId: itemId(entry.weightItemId),
+        stepsItemId,
+        weightItemId,
     };
 }

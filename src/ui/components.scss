@@ -4171,8 +4171,16 @@
     background: color-mix(in srgb, var(--lc-checkin-accent) 6%, var(--lc-checkin-surface));
     border-color: color-mix(in srgb, var(--lc-checkin-accent) 34%, var(--lc-checkin-border));
 }
+.lc-checkin__source-badge.is-warning {
+    color: var(--lc-checkin-warning-text);
+    background: color-mix(in srgb, var(--lc-checkin-warning) 12%, var(--lc-checkin-surface));
+    border-color: color-mix(in srgb, var(--lc-checkin-warning) 34%, var(--lc-checkin-border));
+}
 .lc-checkin__source-steps { margin: 4px 0 8px; padding-left: 20px; display: grid; gap: 2px; }
 .lc-checkin__source-steps li { font-size: 11.5px; line-height: 1.5; color: var(--lc-checkin-muted); }
+.lc-checkin__source-boundary { display: block; margin: 2px 0 7px; color: var(--lc-checkin-muted); font-size: 10.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.lc-checkin__source-boundary[data-siplayer-host-state="available"] { color: var(--lc-checkin-success-text); }
+.lc-checkin__source-boundary[data-siplayer-host-state="missing"] { color: var(--lc-checkin-warning-text); }
 .lc-checkin__source-panel-meta { display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .lc-checkin__source-today {
     padding: 1px 8px; border-radius: 9px; font-size: 10px; font-weight: 620;
@@ -5472,6 +5480,7 @@
     
     /* 布局底部留少一些 */
     .lc-checkin__layout { padding-bottom: calc(calc(48px + env(safe-area-inset-bottom)) + 8px); }
+
 }
 
 /* 8.8 连续徽章可点击 + 热力图年份导航 */
@@ -10662,4 +10671,15 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
         gap: 8px;
         button { min-height: 40px; }
     }
+}
+
+/* Final dense-list spacing override. This sits after the legacy mobile
+   layers so the compact first-screen guarantee is deterministic. */
+@container lc5 (max-width: 719px) {
+    .lc-checkin--today[data-density="compact"] .lc-checkin__priority-reminder { margin-bottom: 6px !important; }
+    .lc-checkin--today[data-density="compact"] .lc-checkin__organize { padding-block: 0 !important; }
+    .lc-checkin--today[data-density="compact"] .lc-checkin__list { margin-top: 0 !important; }
+    .lc-checkin--today[data-density="compact"] .lc-checkin__group { gap: 0 !important; }
+    .lc-checkin--today[data-density="compact"] .lc-checkin__group-header { margin-bottom: 0 !important; }
+    .lc-checkin--today[data-density="compact"] .lc-checkin__group-items:not([hidden]) { margin-top: 0 !important; }
 }

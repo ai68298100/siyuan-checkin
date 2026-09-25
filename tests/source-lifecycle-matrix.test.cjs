@@ -13,14 +13,17 @@ const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.C
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-source-matrix-"));
 const load = (relative, outName) => {
     const target = path.join(dir, outName);
+    fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(fs.readFileSync(path.join(root, "src", relative), "utf8"), {compilerOptions}).outputText);
     return require(target);
 };
 const framework = load("features/source-framework.ts", "source-framework.js");
 const sireader = load("features/sireader-adapter.ts", "sireader-adapter.js");
 const siplayer = load("features/siplayer-adapter.ts", "siplayer-adapter.js");
-fs.writeFileSync(path.join(dir, "note-anchor.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "note-anchor.ts"), "utf8"), {compilerOptions}).outputText);
-const health = load("features/health-inbox.ts", "health-inbox.js");
+fs.mkdirSync(path.join(dir, "features"), {recursive: true});
+fs.writeFileSync(path.join(dir, "features", "note-anchor.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "note-anchor.ts"), "utf8"), {compilerOptions}).outputText);
+fs.writeFileSync(path.join(dir, "date-keys.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "date-keys.ts"), "utf8"), {compilerOptions}).outputText);
+const health = load("features/health-inbox.ts", "features/health-inbox.js");
 
 const governance = framework.normalizeSourceGovernance({enabled: true, thresholdValue: 0, dailyCapValue: 0, itemIds: ["item-1"]});
 assert.equal(governance.enabled, true);

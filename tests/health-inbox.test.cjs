@@ -23,6 +23,7 @@ assert.deepEqual(inbox.parseHealthInboxLine("  health:weight:2026-09-23 72.5  ")
 assert.equal(inbox.parseHealthInboxLine("- 2026-09-23 随手记"), undefined, "user prose must not parse");
 assert.equal(inbox.parseHealthInboxLine("health:sleep:2026-09-23 8"), undefined, "unknown metric rejected");
 assert.equal(inbox.parseHealthInboxLine("health:steps:2026/09/23 100"), undefined, "bad date rejected");
+assert.equal(inbox.parseHealthInboxLine("health:steps:2026-02-30 100"), undefined, "impossible calendar date rejected");
 assert.equal(inbox.parseHealthInboxLine("health:steps:2026-09-23 -5"), undefined, "negative value rejected");
 assert.equal(inbox.parseHealthInboxLine("health:steps:2026-09-23"), undefined, "missing value rejected");
 assert.equal(inbox.parseHealthInboxLine(undefined), undefined, "non-string rejected");
@@ -42,6 +43,7 @@ assert.equal(pending[0].metric, "weight");
 /* 偏好归一：默认关；enabled 无合法 docId 不物化。 */
 assert.deepEqual(normalizeViewPreferences({}).healthInbox, {enabled: false, docId: "", stepsItemId: "", weightItemId: ""});
 assert.equal(normalizeViewPreferences({healthInbox: {enabled: true, docId: "short"}}).healthInbox.enabled, false);
+assert.equal(normalizeViewPreferences({healthInbox: {enabled: true, docId: "20260101120000-abcdef1234"}}).healthInbox.enabled, false, "a health inbox without any metric mapping stays disabled");
 assert.deepEqual(normalizeViewPreferences({healthInbox: {enabled: true, docId: "20260101120000-abcdef1234", stepsItemId: "walk"}}).healthInbox, {enabled: true, docId: "20260101120000-abcdef1234", stepsItemId: "walk", weightItemId: ""});
 
 /* 注册表：health 前缀登记（运行时解析由 external-ref 套件覆盖）；行身份为严格三段式。 */
@@ -53,7 +55,10 @@ assert.equal(inbox.parseHealthInboxRows([{content: "health:steps:2026-09-23 100"
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
 assert.ok(indexSource.includes("HEALTH_INGEST_INTERVAL_MS"), "polling interval must come from the feature module");
 assert.ok(indexSource.includes("content LIKE 'health:%'"), "inbox query must scope to the bound document and health lines");
+assert.match(indexSource, /content LIKE 'health:%'.*ORDER BY id ASC LIMIT 500/, "health rows must have deterministic oldest-first order before first-row dedupe");
 assert.ok(indexSource.includes('source: "api", externalRef'), "health writes must use the public api source with the composed identity");
+assert.match(indexSource, /eventTombstones\.some\(\(tombstone\) => tombstone\.source === "api"[\s\S]*externalRef === externalRef\)/, "health ingest must honor deleted-identity tombstones");
+assert.match(indexSource, /save-health-doc[\s\S]*persistViewPreferences\(\)\.then\(\(\) => \{[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
 for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc", "save-health-doc", "data-health-steps-item", "data-health-weight-item"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
@@ -61,7 +66,7 @@ for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc"
 
 /* i18n 双语。 */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
-for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthStepsItem", "set.healthWeightItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthNeedMapping", "msg.healthDocSaved", "msg.healthDocInvalid"]) {
+for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthStepsItem", "set.healthWeightItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthNeedMapping", "msg.healthMappingUnavailable", "msg.healthDocSaved", "msg.healthDocInvalid"]) {
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 assert.match(indexSource, /msg\.healthNeedMapping/, "health inbox must require at least one metric mapping before enabling");

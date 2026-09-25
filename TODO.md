@@ -4,7 +4,7 @@
 ## v18.4.0 已发布 / v18.5.0 候选待用户发版指令（2026-09-25；设置页改造已完成本地验收）
 
 - [x] v18.4.0 发版（2026-09-25，GitHub Latest，tag v18.4.0）：微信读书全套（T-1402 三链路+接入指南）、每日提醒调度（T-1451）、回顾行动卡补齐（T-1450 目标负荷/T-1448 调整有效性）、情境×星期交叉（T-1452）、渲染块组合卡片（T-1453）、设置来源子标题（T-1442 部分）、手机端三缺陷修复（T-1444/45/47）、后台渲染死锁与回车保存修复（T-1455）。SHA-256 de389341…45da2。
-- [ ] **v18.5.0 发版（候选已完成本地验收，暂不执行）**：当前 checkout 领先 origin/main 14 个提交，含设置页外部联动改造（T-1460）。`pnpm run test:quality` 已通过；移动前端宽度走查中的今日页 30 项首卡阈值仍有既有失败，设置页长内容与外部来源卡场景通过。发版前动作：按用户明确「发版」指令同步 README「当前版本」声明并运行 release.cjs。
+- [ ] **v18.5.0 发版（候选已完成本地验收，暂不执行）**：当前 checkout 领先 origin/main 15 个提交，含设置页外部联动改造（T-1460）。`pnpm run test:quality` 已通过；移动视觉 QA 已覆盖已完成项展开→折叠与 320/360/390/430px 无横向溢出，真实内核 E2E 全部 21 个场景已通过（首次 19/21 后修正两个不合法的二值 fixture 为分钟时长项目并针对性复验 2/2）。真实 Android/WebView 与实际第三方账号仍属现场验收。发版前动作：按用户明确「发版」指令同步 README「当前版本」声明并运行 release.cjs。
 - [ ] **交接**：下一个 agent 从 [docs/HANDOFF-2026-09-25.md](docs/HANDOFF-2026-09-25.md) 进入（环境/铁律/开放队列/决策索引）。
 
 - [x] T-1460 设置页与外部联动重新分组（2026-09-25）：宿主与插件独立于外部来源；七个来源改为独立可展开卡片，显示三态配置状态、数据流/隐私边界和停用保留语义；按「绑定目标→保存→启用→验证」重排；健康启用要求至少一个指标映射；微信读书支持确认清除本地 Key；移动设置导航改为可发现的多行触控栏。详细逐项审查见 [settings-external-linkage-review-2026-09.md](docs/settings-external-linkage-review-2026-09.md)。
@@ -215,16 +215,9 @@
   - 根因候选（代码层面已定位可疑路径）：今日页存在多个**后台全量重渲染触发源**——健康收件箱 5 分钟轮询、思播采样器、Dock Tomato/.analytics-updated 事件、sireader 监听——均调用 `renderBackgroundUpdate()`→今日页整树重建，正在聚焦的 `input.lc-checkin__amount` 被替换→焦点丢失→输入法收回。T-1246 的保守局部渲染（renderTodayItemLocally）只覆盖记录更新，不覆盖上述后台事件。另外 exact-entry 的 input 事件链是否有同步渲染待查。
   - 修复方向：① 输入聚焦期间挂起全量重渲染（focus 标记，blur 后补一次）；或 ② 局部渲染路径保留输入节点/恢复焦点与光标（复用 T-114 焦点归位机制）；③ 回归守门：playwright **mobile bundle** e2e——聚焦填写框→触发后台事件→断言焦点与输入法状态保持、已输入值不丢。
   - 归类：手机端缺陷，复现与修复验证用 mobile bundle e2e（local-auto 可复现）+ 真机确认（host-pending）。
-- [ ] T-1446 手机端缺陷：已完成打卡项无法折叠（用户真机报告 2026-09-24，**需真机调试**）
-  - 现象：手机端今日页「已完成打卡项」节头（chevron 显示展开态）点击无反应，无法折叠。
-  - 代码路径已确认正确：bind-today.ts 绑定 `[data-action='toggle-completed']` → 翻转 completedCollapsed → 就地更新 aria/hidden/chevron → 持久化。桌面正常。
-  - 手机端候选：触摸事件被父层吞掉 / 重渲染后监听器丢失 / WebView click 合成差异。需真机 DevTools 断点确认。
-  - 修复方向：确认后修绑定或补 touchend 兜底；检查 CSS 是否覆盖 hidden 属性的 display。**真机确认（host-pending）**。
-  - 现象：今日页「已完成打卡项」节头（chevron 显示展开态）点击无反应，无法折叠。
-  - 现状事实：桌面/通用路径的 handler 存在且逻辑正确（bind-today.ts `data-action='toggle-completed'`→翻转 completedCollapsed→就地更新 aria/hidden/chevron→持久化）；偏好持久化与设置页开关联动正常。
-  - 根因候选：① 手机端 tap 未命中按钮（命中区/覆盖层/事件透传到卡片级 handler）；② 手机渲染时序导致监听器绑定在旧节点上（重渲染后按钮重建而绑定未重挂）；③ 移动 bundle 的 bindTodayHandlers 路径差异。
-  - 修复方向：playwright **mobile bundle** e2e 先复现（打开今日页→点已完成节头→断言 items hidden），再按复现差异修绑定/命中区；真机确认归 host-pending。
-  - 归类：手机端缺陷；e2e mobile bundle 可自动化复现（local-auto 可复现）+ 真机确认（host-pending）。
+- [x] T-1446 手机端缺陷：已完成打卡项无法折叠（2026-09-25 本地修复）
+  - 状态：done（`bind-today.ts` 点击后就地同步 section/button 的 `aria-expanded`、列表 `hidden` 与箭头，并持久化；`fragments.ts` 输出初始折叠语义；移动浏览器视觉 QA 已验证展开→折叠复现链）。真实 Android/WebView 触摸命中与安全区仍归 T-1388 现场窗口，不以浏览器结果替代真机验收。
+  - 验证：`CHECKIN_QA_FRONTEND=mobile node tests/visual-qa.cjs` 通过；320/360/390/430px 均无横向溢出，`completedExpanded=1`、`completedCollapsedAgain=0`、ARIA 状态同步。
 - [x] T-1447 手机端缺陷：回顾页下滑整页抖动如弹簧（用户真机报告 2026-09-24）
   - 状态：done（2026-09-24，7dbafda：pinReviewSubnavRail 守卫改宿主显式 isMobileFrontend 标记优先，移动端彻底停用 transform 滚动同步；真机复验归 T-1388 窗口）。
   - 现象：手机端进入回顾页，往下滑动时整页来回振荡（"跟一个大弹簧一样"）。

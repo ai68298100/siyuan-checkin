@@ -87,8 +87,8 @@ export const EXTERNAL_REF_PREFIX_REGISTRY: readonly ExternalRefPrefixSpec[] = Ob
     Object.freeze({prefix: "obsidian21", label: "Obsidian Habit Tracker 21", format: "obsidian21:<filename>:<localDate>"}),
     Object.freeze({prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"}),
     Object.freeze({prefix: "siplayer", label: "SiPlayer", format: "siplayer:<itemId>:<localDate>"}),
-    Object.freeze({prefix: "health", label: "Health inbox", format: "health:<metric>:<localDate>"}),
-    Object.freeze({prefix: "weread", label: "WeRead", format: "weread:<itemId>:<localDate>"}),
+    Object.freeze({prefix: "health", label: "Health inbox", format: "health:<itemId>:<metric>:<localDate>"}),
+    Object.freeze({prefix: "weread", label: "WeRead", format: "weread:<itemId>:<localDate> (duration), weread:<itemId>:finish:<bookId>:<localDate> (finish), weread:<itemId>:notes:<localDate> (notes)"}),
     Object.freeze({prefix: "yeguif", label: "Yegui LifeLog", format: "yeguif:<blockId>:<localDate>"}),
 ]);
 

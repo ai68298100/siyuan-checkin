@@ -66,7 +66,7 @@ assert.match(indexSource, /event\.source === "yeguif" && event\.externalRef === 
 assert.match(indexSource, /tombstone\.source === "yeguif" && tombstone\.externalRef === externalRef/, "墓碑永不重写");
 assert.ok((indexSource.match(/typeof document !== "undefined" && document\.hidden\) return/g) || []).length >= 3, "三大后台摄取均有不可见省电门");
 assert.match(indexSource, /YEGUIF_INGEST_INTERVAL_MS/, "5 分钟有界轮询");
-assert.match(indexSource, /content GLOB '\[0-9\]\[0-9\]:\[0-9\]\[0-9\]\*'/, "SQL 以行首时间过滤");
+assert.match(indexSource, /content GLOB '\[0-9\]:\[0-9\]\[0-9\]\*' OR content GLOB '\[0-9\]\[0-9\]:\[0-9\]\[0-9\]\*'/, "SQL 以一位或两位小时的行首时间过滤");
 assert.match(indexSource, /created >= '\$\{createdFloor\}'/, "只摄取当日新建块");
 assert.match(indexSource, /void this\.ingestYeguif\(\);/, "回前台焦点补拉");
 assert.match(indexSource, /box = '\$\{governance\.notebookId\}'/, "绑定笔记本范围");

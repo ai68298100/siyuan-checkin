@@ -419,6 +419,8 @@ function assertActive(fixture, expectedId) {
         .filter((match) => /\bdata-settings-group=/.test(match[1]));
     assert.ok(buttonTags.length >= 5, "settings should expose its category navigation");
     assert.equal(sectionMatches.length, buttonTags.length, "each settings category must have exactly one section");
+    assert.match(html, /data-settings-nav="documents"/, "settings navigation must expose a dedicated SiYuan document-write group");
+    assert.match(html, /data-settings-nav="external"/, "settings navigation must expose a dedicated third-party-source group");
 
     const buttonsByGroup = new Map(buttonTags.map((tag) => [attribute(tag, "data-settings-nav"), tag]));
     const controlledIds = new Set();
@@ -481,6 +483,14 @@ function assertActive(fixture, expectedId) {
 
 /* —— T-1442 · R-A10 来源子面板：每个外部来源独立面板（头部徽标 + 编号步骤） —— */
 const settingsSourceT1442 = read("src", "render", "settings.ts");
+const documentsGroupIndex = settingsSourceT1442.indexOf('id: "documents"');
+const externalGroupIndex = settingsSourceT1442.indexOf('id: "external"');
+assert.ok(documentsGroupIndex >= 0 && externalGroupIndex > documentsGroupIndex, "document writes must be a separate group before third-party sources");
+assert.match(settingsSourceT1442, /data-document-writes open/, "document writes must have their own disclosure");
+assert.match(settingsSourceT1442, /data-external-sources open/, "third-party sources must retain their disclosure");
+assert.ok(settingsSourceT1442.indexOf('data-source-panel="diary"') > documentsGroupIndex && settingsSourceT1442.indexOf('data-source-panel="diary"') < externalGroupIndex, "diary writes must stay in the document-write group");
+assert.ok(settingsSourceT1442.indexOf('data-source-panel="summary"') > documentsGroupIndex && settingsSourceT1442.indexOf('data-source-panel="summary"') < externalGroupIndex, "summary writes must stay in the document-write group");
+assert.ok(settingsSourceT1442.indexOf('data-source-panel="sireader"') > externalGroupIndex, "third-party source panels must stay after the document-write group");
 for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread", "yeguif"]) {
     assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
 }
@@ -494,7 +504,7 @@ const stepKeys = [];
 for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread", "Yeguif"]) {
     for (let step = 1; step <= 4; step += 1) stepKeys.push(`set.steps${source}${step}`);
 }
-stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff", "set.groupHost", "set.groupExternal", "set.extSourcesListTitle", "set.extPrivacyHint", "set.wereadClearKey", "msg.wereadClearKeyConfirm", "msg.wereadClearKeyDone", "msg.healthNeedMapping");
+stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff", "set.groupHost", "set.groupDocuments", "set.groupExternal", "set.extSourcesListTitle", "set.extPrivacyHint", "set.docWritesTitle", "set.docWritesSetupHint", "set.docWritesListTitle", "set.docWritesSummary", "set.thirdPartySourcesTitle", "set.thirdPartySourcesSetupHint", "set.thirdPartySourcesListTitle", "set.thirdPartySourcesSummary", "set.wereadClearKey", "msg.wereadClearKeyConfirm", "msg.wereadClearKeyDone", "msg.healthNeedMapping");
 for (const key of stepKeys) {
     const occurrences = panelI18n.split(`"${key}"`).length - 1;
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);

@@ -10,7 +10,8 @@ test("思播适配器:controller 采样在真实内核累计并幂等写入", as
     const client = createClient();
     await openCheckin(page);
 
-    const item = makeTestItem("siplay");
+    /* 思播结算输出分钟；测试项目必须声明分钟单位，不能把二值「次」项目当成时长载体。 */
+    const item = {...makeTestItem("siplay"), kind: "duration", target: 60, unit: "分钟"};
     await seedStore(client, await snapshotStore(page), [item]);
 
     const prefs = (await client.getFile("checkin-view-preferences")) || {};

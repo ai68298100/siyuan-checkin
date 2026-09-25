@@ -55,6 +55,8 @@ export interface SettingsViewContext {
     siplayerTodayMinutes: number;
     /** T-1385 思播联动（实验，opt-in 默认关）。 */
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
+    /** T-1385 宿主能力探测：仅说明公开 controller 当前是否可调用，不代表已经产生观看事件。 */
+    siplayerControllerAvailable?: boolean;
     /** T-1403 健康收件箱（opt-in 默认关）。 */
     healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
     /** T-1402 微信读书联动（opt-in 默认关）；Key 不进渲染上下文，只暴露 wereadKeySet。 */
@@ -126,22 +128,43 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const summaryResident = ctx.summaryResident || {enabled: false, docId: ""};
     /* T-1384：思阅联动缺省值，同上。 */
     const sireader = ctx.sireaderIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
-    const sireaderItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
-        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === sireader.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    /* 项目列表有展示上限，但当前绑定项永远保留，避免归档或排到 200 名之外后
+       设置页丢失真实绑定；保留项会明确标记，用户可以直接重新绑定。 */
+    const projectOptions = (selectedId: string): string => {
+        const activeItems = ctx.store.items.filter((item) => !item.archived);
+        const visibleItems = activeItems.slice(0, 200);
+        const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
+        const retained = Boolean(selectedItem && !visibleItems.some((item) => item.id === selectedItem.id));
+        const items = retained && selectedItem ? [selectedItem, ...visibleItems] : visibleItems;
+        const missing = selectedId && !selectedItem
+            ? `<option value="${escapeHtml(selectedId)}" selected>${escapeHtml(selectedId)} · ${t("set.itemMissing")}</option>`
+            : "";
+        return missing + items.map((item) => {
+            const marker = item.archived
+                ? ` · ${t("set.itemArchived")}`
+                : retained && item.id === selectedId ? ` · ${t("set.itemRetained")}` : "";
+            return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}${marker}</option>`;
+        }).join("");
+    };
+    const sireaderItemOptions = projectOptions(sireader.itemId);
     /* T-1385：思播联动缺省值，同上。 */
     const siplayer = ctx.siplayerIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
     const siplayerTodayMinutes = ctx.siplayerTodayMinutes ?? 0;
     const sireaderTodayMinutes = ctx.sireaderTodayMinutes ?? 0;
-    const siplayerItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
-        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === siplayer.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    const siplayerItemOptions = projectOptions(siplayer.itemId);
+    const siplayerHostState = ctx.siplayerControllerAvailable === true
+        ? "available"
+        : ctx.siplayerControllerAvailable === false ? "missing" : "unknown";
+    const siplayerHostStatus = t(siplayerHostState === "available"
+        ? "set.siplayerHostAvailable"
+        : siplayerHostState === "missing" ? "set.siplayerHostMissing" : "set.siplayerHostUnknown");
     /* T-1403：健康收件箱缺省值，同上。 */
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
     /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
     const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, finishItemId: "", notesItemId: ""};
     const wereadKeySet = ctx.wereadKeySet ?? false;
     const wereadTodayMinutes = ctx.wereadTodayMinutes ?? 0;
-    const wereadItemOptions = ctx.store.items.filter((item) => !item.archived).slice(0, 200)
-        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === weread.itemId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    const wereadItemOptions = (selectedId: string): string => projectOptions(selectedId);
     const wereadPullStatus = ctx.wereadLastPull
         ? (ctx.wereadLastPull.ok
             ? t("set.wereadPullOk", {days: ctx.wereadLastPull.days, written: ctx.wereadLastPull.written})
@@ -151,24 +174,37 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const yeguif = ctx.yeguifIntegration || {enabled: false, itemId: "", notebookId: ""};
     /* 外部联动统一三态：已启用 / 已配置待启用 / 待配置。配置完成不等于上游已连通，
        因此只在卡片上表达本地配置状态，运行结果由各来源自己的最近结果行表达。 */
-    const sourceState = (enabled: boolean, ready: boolean): "enabled" | "ready" | "setup" => enabled && ready ? "enabled" : ready ? "ready" : "setup";
-    const sourceStateLabel = (state: "enabled" | "ready" | "setup"): string => t(state === "enabled" ? "set.sourceStateEnabled" : state === "ready" ? "set.sourceStateReady" : "set.sourceStateSetup");
-    const sourceStateClass = (state: "enabled" | "ready" | "setup"): string => state === "enabled" ? "is-on" : state === "ready" ? "is-ready" : "";
+    type SourceState = "enabled" | "ready" | "setup" | "rebind";
+    const sourceState = (enabled: boolean, ready: boolean, targetReady = true): SourceState => !ready ? "setup" : !targetReady ? "rebind" : enabled ? "enabled" : "ready";
+    const sourceStateLabel = (state: SourceState): string => t(state === "enabled" ? "set.sourceStateEnabled" : state === "ready" ? "set.sourceStateReady" : state === "rebind" ? "set.sourceStateRebind" : "set.sourceStateSetup");
+    const sourceStateClass = (state: SourceState): string => state === "enabled" ? "is-on" : state === "ready" ? "is-ready" : state === "rebind" ? "is-warning" : "";
+    const projectAvailable = (itemId: string): boolean => Boolean(itemId && ctx.store.items.some((item) => item.id === itemId && !item.archived));
     const diaryState = sourceState(diary.enabled, Boolean(diary.docId));
     const summaryState = sourceState(summaryResident.enabled, Boolean(summaryResident.docId));
-    const sireaderState = sourceState(sireader.enabled, Boolean(sireader.itemId));
-    const healthState = sourceState(healthInbox.enabled, Boolean(healthInbox.docId && (healthInbox.stepsItemId || healthInbox.weightItemId)));
-    const siplayerState = sourceState(siplayer.enabled, Boolean(siplayer.itemId));
-    const wereadState = sourceState(weread.enabled, Boolean(weread.itemId && wereadKeySet));
-    const yeguifState = sourceState(yeguif.enabled, Boolean(yeguif.itemId && yeguif.notebookId));
-    const externalSourceStates = [diaryState, summaryState, sireaderState, healthState, siplayerState, wereadState, yeguifState];
-    const extSourcesEnabled = externalSourceStates.filter((state) => state === "enabled").length;
-    const extSourcesReady = externalSourceStates.filter((state) => state !== "setup").length;
-    const extSourcesPending = externalSourceStates.length - extSourcesReady;
-    const sourceBadge = (state: "enabled" | "ready" | "setup") => `<span class="lc-checkin__source-badge ${sourceStateClass(state)}" data-source-state="${state}">${sourceStateLabel(state)}</span>`;
+    const sireaderState = sourceState(sireader.enabled, Boolean(sireader.itemId), projectAvailable(sireader.itemId));
+    const healthReady = Boolean(healthInbox.docId && (healthInbox.stepsItemId || healthInbox.weightItemId));
+    const healthTargetsReady = [healthInbox.stepsItemId, healthInbox.weightItemId].filter(Boolean).every(projectAvailable);
+    const healthState = sourceState(healthInbox.enabled, healthReady, healthTargetsReady);
+    const siplayerState = sourceState(siplayer.enabled, Boolean(siplayer.itemId), projectAvailable(siplayer.itemId));
+    const wereadTargetsReady = projectAvailable(weread.itemId)
+        && (!weread.finishItemId || projectAvailable(weread.finishItemId))
+        && (!weread.notesItemId || projectAvailable(weread.notesItemId));
+    const wereadState = sourceState(weread.enabled, Boolean(weread.itemId && wereadKeySet), wereadTargetsReady);
+    const yeguifState = sourceState(yeguif.enabled, Boolean(yeguif.itemId && yeguif.notebookId), projectAvailable(yeguif.itemId));
+    const sourceStateCounts = (states: readonly SourceState[]) => {
+        const enabled = states.filter((state) => state === "enabled").length;
+        const ready = states.filter((state) => state !== "setup" && state !== "rebind").length;
+        return {enabled, ready, pending: states.length - ready};
+    };
+    const documentSourceCounts = sourceStateCounts([diaryState, summaryState]);
+    const thirdPartySourceCounts = sourceStateCounts([sireaderState, healthState, siplayerState, wereadState, yeguifState]);
+    const sourceBadge = (state: SourceState) => `<span class="lc-checkin__source-badge ${sourceStateClass(state)}" data-source-state="${state}">${sourceStateLabel(state)}</span>`;
     const sourcePanelOpen = (source: string) => ctx.openSourcePanels?.includes(source) ? " open" : "";
-    const healthItemOptions = (selectedId: string) => ctx.store.items.filter((item) => !item.archived).slice(0, 200)
-        .map((item) => `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
+    const healthItemOptions = (selectedId: string) => projectOptions(selectedId);
+    const yeguifNotebookOption = yeguif.notebookId
+        ? `<option value="${escapeHtml(yeguif.notebookId)}" selected>${escapeHtml(yeguif.notebookId)} · ${t("set.yeguifNotebookSaved")}</option>`
+        : `<option value="">${t("set.yeguifNotebookLoading")}</option>`;
+    const yeguifNotebookDisabled = yeguif.notebookId ? "" : " disabled";
     const diaryChoices = collectAnchorChoices(ctx.store.items);
     const diaryChoiceOptions = diaryChoices.map((choice) => `<option value="${escapeHtml(choice.blockId)}">${escapeHtml(choice.labels.join("、") || choice.blockId)}</option>`).join("");
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
@@ -310,13 +346,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-dependency="taskhorizon" data-dependency-state="healthy" data-dependency-kind="provider-contract"><span class="lc-checkin__settings-label"><span>${t("set.thTitle")}</span><small>${t("set.thHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.thRecovery")}</small></span><span class="lc-checkin__settings-value is-muted" role="status">${t("set.thStatus")}</span></div>`,
         },
         {
-            id: "external",
-            label: t("set.groupExternal"),
+            id: "documents",
+            label: t("set.groupDocuments"),
             body: `
-                    <div class="lc-checkin__external-overview" data-external-overview><strong>${t("set.extSourcesTitle")}</strong><span>${t("set.extSourcesSummary", {enabled: extSourcesEnabled, ready: extSourcesReady, pending: extSourcesPending})}</span><small>${t("set.extSourcesSetupHint")}</small><small>${t("set.extPrivacyHint")}</small><small>${t("set.sourceRetentionHint")}</small></div>
-                    <details class="lc-checkin__settings-group" data-external-sources open>
-                    <summary><span>${t("set.extSourcesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: extSourcesEnabled})}</span></summary>
-                    <div class="lc-checkin__settings-row"><small class="lc-checkin__dependency-recovery">${t("set.extSourcesSetupHint")}</small><span class="lc-checkin__settings-value" data-external-summary>${t("set.extSourcesSummary", {enabled: extSourcesEnabled, ready: extSourcesReady, pending: extSourcesPending})}</span></div>
+                    <div class="lc-checkin__external-overview" data-document-overview><strong>${t("set.docWritesTitle")}</strong><span>${t("set.docWritesSummary", documentSourceCounts)}</span><small>${t("set.docWritesSetupHint")}</small><small>${t("set.extPrivacyHint")}</small><small>${t("set.sourceRetentionHint")}</small></div>
+                    <details class="lc-checkin__settings-group" data-document-writes open>
+                    <summary><span>${t("set.docWritesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: documentSourceCounts.enabled})}</span></summary>
+                    <div class="lc-checkin__settings-row"><small class="lc-checkin__dependency-recovery">${t("set.docWritesSetupHint")}</small><span class="lc-checkin__settings-value" data-document-summary>${t("set.docWritesSummary", documentSourceCounts)}</span></div>
                     <details class="lc-checkin__source-panel" data-source-panel="diary" data-source-state="${diaryState}"${sourcePanelOpen("diary")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.diaryIntegration")}</strong>${sourceBadge(diaryState)}</summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsDiary1")}</li><li>${t("set.stepsDiary2")}</li><li>${t("set.stepsDiary3")}</li><li>${t("set.stepsDiary4")}</li></ol>
@@ -333,6 +369,16 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-summary-resident><span class="lc-checkin__settings-label"><span>${t("set.summaryTitle")}</span><small>${t("set.summaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-summary-toggle ${summaryResident.enabled ? "checked" : ""} aria-label="${t("set.summaryToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryWriteNow")}</span><small>${t("set.summaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-summary-now" ${summaryResident.enabled && summaryResident.docId ? "" : "disabled"}>${t("set.summaryWriteNow")}</button></div>
                     </details>
+                    </details>`,
+        },
+        {
+            id: "external",
+            label: t("set.groupExternal"),
+            body: `
+                    <div class="lc-checkin__external-overview" data-external-overview><strong>${t("set.thirdPartySourcesTitle")}</strong><span>${t("set.thirdPartySourcesSummary", thirdPartySourceCounts)}</span><small>${t("set.thirdPartySourcesSetupHint")}</small><small>${t("set.extPrivacyHint")}</small><small>${t("set.sourceRetentionHint")}</small></div>
+                    <details class="lc-checkin__settings-group" data-external-sources open>
+                    <summary><span>${t("set.thirdPartySourcesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: thirdPartySourceCounts.enabled})}</span></summary>
+                    <div class="lc-checkin__settings-row"><small class="lc-checkin__dependency-recovery">${t("set.thirdPartySourcesSetupHint")}</small><span class="lc-checkin__settings-value" data-external-summary>${t("set.thirdPartySourcesSummary", thirdPartySourceCounts)}</span></div>
                     <details class="lc-checkin__source-panel" data-source-panel="sireader" data-source-state="${sireaderState}"${sourcePanelOpen("sireader")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.sireaderIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.sireader ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.sireader})}</span>` : ""}${sourceBadge(sireaderState)}</span></summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsSireader1")}</li><li>${t("set.stepsSireader2")}</li><li>${t("set.stepsSireader3")}</li><li>${t("set.stepsSireader4")}</li></ol>
@@ -342,7 +388,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-sireader-integration><span class="lc-checkin__settings-label"><span>${t("set.sireaderTitle")}</span><small>${t("set.sireaderHint")}${sireader.enabled ? ` · ${t("set.sireaderToday", {n: formatNumber(sireaderTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-sireader-toggle ${sireader.enabled ? "checked" : ""} aria-label="${t("set.sireaderToggle")}" /></div>
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="health" data-source-state="${healthState}"${sourcePanelOpen("health")}>
-                    <summary class="lc-checkin__source-panel-head"><strong>${t("set.healthIntegration")}</strong>${sourceBadge(healthState)}</summary>
+                    <summary class="lc-checkin__source-panel-head"><strong>${t("set.healthIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.health ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.health})}</span>` : ""}${sourceBadge(healthState)}</span></summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsHealth1")}</li><li>${t("set.stepsHealth2")}</li><li>${t("set.stepsHealth3")}</li><li>${t("set.stepsHealth4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.healthBoundary")}</small>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthDoc")}</span><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></span></div>
@@ -353,7 +399,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="siplayer" data-source-state="${siplayerState}"${sourcePanelOpen("siplayer")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.siplayerIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.siplayer ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.siplayer})}</span>` : ""}${sourceBadge(siplayerState)}</span></summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsSiplayer1")}</li><li>${t("set.stepsSiplayer2")}</li><li>${t("set.stepsSiplayer3")}</li><li>${t("set.stepsSiplayer4")}</li></ol>
-                    <small class="lc-checkin__source-boundary">${t("set.siplayerBoundary")}</small>
+                    <small class="lc-checkin__source-boundary">${t("set.siplayerBoundary")}</small><small class="lc-checkin__source-boundary" data-siplayer-host-state="${siplayerHostState}">${siplayerHostStatus}</small>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerItem")}</span><small>${t("set.siplayerItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-siplayer-item aria-label="${t("set.siplayerItem")}"><option value="">${t("set.siplayerItemChoose")}</option>${siplayerItemOptions}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerThreshold")}</span><small>${t("set.siplayerThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-siplayer-threshold value="${siplayer.thresholdMinutes}" aria-label="${t("set.siplayerThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-siplayer">${t("set.siplayerSave")}</button></span></div>
                     <div class="lc-checkin__settings-row" data-siplayer-integration><span class="lc-checkin__settings-label"><span>${t("set.siplayerTitle")}</span><small>${t("set.siplayerHint")}${siplayer.enabled ? ` · ${t("set.siplayerToday", {n: formatNumber(siplayerTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-siplayer-toggle ${siplayer.enabled ? "checked" : ""} aria-label="${t("set.siplayerToggle")}" /></div>
@@ -362,9 +408,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.wereadIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.weread ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.weread})}</span>` : ""}${sourceBadge(wereadState)}</span></summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsWeread1")}</li><li>${t("set.stepsWeread2")}</li><li>${t("set.stepsWeread3")}</li><li>${t("set.stepsWeread4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.wereadBoundary")}</small>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadFinishItem")}</span><small>${t("set.wereadFinishItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-finish-item aria-label="${t("set.wereadFinishItem")}"><option value="">${t("set.wereadFinishItemChoose")}</option>${wereadItemOptions}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadNotesItem")}</span><small>${t("set.wereadNotesItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-notes-item aria-label="${t("set.wereadNotesItem")}"><option value="">${t("set.wereadNotesItemChoose")}</option>${wereadItemOptions}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions(weread.itemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadFinishItem")}</span><small>${t("set.wereadFinishItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-finish-item aria-label="${t("set.wereadFinishItem")}"><option value="">${t("set.wereadFinishItemChoose")}</option>${wereadItemOptions(weread.finishItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadNotesItem")}</span><small>${t("set.wereadNotesItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-notes-item aria-label="${t("set.wereadNotesItem")}"><option value="">${t("set.wereadNotesItemChoose")}</option>${wereadItemOptions(weread.notesItemId)}</select></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadKey")}</span><small>${t("set.wereadKeyHint")}${wereadKeySet ? ` · ${t("set.wereadKeySaved")}` : ""}</small></span><span class="lc-checkin__settings-inline"><input type="password" data-weread-key autocomplete="off" placeholder="${wereadKeySet ? "••••••••" : "wrk-…"}" aria-label="${t("set.wereadKey")}" /><button class="lc-checkin__text-button" type="button" data-action="clear-weread-key" ${wereadKeySet ? "" : "disabled"}>${t("set.wereadClearKey")}</button></span></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadThreshold")}</span><small>${t("set.wereadThresholdHint")}</small></span><span class="lc-checkin__settings-inline"><input type="number" min="1" max="1440" step="1" data-weread-threshold value="${weread.thresholdMinutes}" aria-label="${t("set.wereadThreshold")}" /><button class="lc-checkin__text-button" type="button" data-action="save-weread">${t("set.wereadSave")}</button></span></div>
                     <div class="lc-checkin__settings-row" data-weread-integration><span class="lc-checkin__settings-label"><span>${t("set.wereadTitle")}</span><small>${t("set.wereadHint")}${weread.enabled ? ` · ${t("set.wereadToday", {n: formatNumber(wereadTodayMinutes)})}` : ""}</small></span><input type="checkbox" class="lc-checkin__switch" data-weread-toggle ${weread.enabled ? "checked" : ""} aria-label="${t("set.wereadToggle")}" /></div>
@@ -375,7 +421,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsYeguif1")}</li><li>${t("set.stepsYeguif2")}</li><li>${t("set.stepsYeguif3")}</li><li>${t("set.stepsYeguif4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.yeguifBoundary")}</small>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifItem")}</span><small>${t("set.yeguifItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-item aria-label="${t("set.yeguifItem")}"><option value="">${t("set.yeguifItemChoose")}</option>${healthItemOptions(yeguif.itemId)}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifNotebook")}</span><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-notebook aria-label="${t("set.yeguifNotebook")}" disabled><option value="">${t("set.yeguifNotebookLoading")}</option></select><button class="lc-checkin__text-button" type="button" data-action="load-yeguif-notebooks">${t("set.yeguifNotebookLoad")}</button></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifNotebook")}</span><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-notebook aria-label="${t("set.yeguifNotebook")}"${yeguifNotebookDisabled}>${yeguifNotebookOption}</select><button class="lc-checkin__text-button" type="button" data-action="load-yeguif-notebooks">${t("set.yeguifNotebookLoad")}</button></span></div>
                     <div class="lc-checkin__settings-row" data-yeguif-integration><span class="lc-checkin__settings-label"><span>${t("set.yeguifTitle")}</span><small>${t("set.yeguifHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-yeguif-toggle ${yeguif.enabled ? "checked" : ""} aria-label="${t("set.yeguifToggle")}" /></div>
                     </details>
                     </details>`,

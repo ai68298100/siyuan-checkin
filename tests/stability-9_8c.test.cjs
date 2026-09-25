@@ -52,6 +52,10 @@ check("environment has a dedicated probe", () => assert.equal(pkg.scripts["check
 check("quality chain starts with environment probing", () => assert(pkg.scripts["test:quality"].startsWith("pnpm run check:environment")));
 check("quality chain covers ecosystem contracts", () => assert.match(pkg.scripts["test:quality"], /pnpm run test:ecosystem/));
 check("quality chain covers performance", () => assert.match(pkg.scripts["test:quality"], /pnpm run test:perf/));
+check("quality chain syncs the final build digest immediately before release assets", () => {
+    const quality = pkg.scripts["test:quality"];
+    assert.match(quality, /pnpm run test:perf && pnpm run sync:digest && pnpm run check:release$/);
+});
 check("quality chain covers release assets", () => assert.match(pkg.scripts["test:quality"], /pnpm run check:release/));
 check("quality chain builds before checking release assets", () => {
     const quality = pkg.scripts["test:quality"];
@@ -93,5 +97,5 @@ check("recovery acceptance covers failure rollback", () => assert.match(recovery
 check("recovery acceptance covers concurrent writes", () => assert.match(recovery, /\| Concurrent writes \|/));
 check("9.8 roadmap orders field validation before later majors", () => assert.match(roadmap, /9\.8 现场验收 → 10\.0 恢复兼容维护/));
 
-assert.equal(passed, 53, `expected 53 release-readiness checks, got ${passed}`);
+assert.equal(passed, 54, `expected 54 release-readiness checks, got ${passed}`);
 console.log(`9.8 stability batch C checks passed (${passed} checks).`);

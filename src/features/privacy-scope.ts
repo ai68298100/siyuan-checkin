@@ -54,12 +54,15 @@ export interface SourceDisconnectPlan {
 }
 
 /** 来源断开保留规则：断开 = 停止采集，事实事件与幂等身份全部保留。
-    source 按事件上的 source 字段匹配（sireader/siplayer/health/import…）。 */
+    健康收件箱落盘为 api 来源，须再按 health: 身份前缀区分其他 API 写入。 */
 export function planSourceDisconnect(source: string, events: readonly {source?: string; externalRef?: string}[]): SourceDisconnectPlan {
     let retainedEvents = 0;
     let retainedIdentities = 0;
     for (const event of events) {
-        if (event.source !== source) continue;
+        const belongsToSource = source === "health"
+            ? event.source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("health:")
+            : event.source === source;
+        if (!belongsToSource) continue;
         retainedEvents += 1;
         if (typeof event.externalRef === "string" && event.externalRef) retainedIdentities += 1;
     }

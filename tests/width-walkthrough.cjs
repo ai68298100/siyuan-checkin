@@ -1304,11 +1304,16 @@ const cases = [
                 }
                 await page.locator('[data-settings-nav="data"]').click();
                 assert.equal(await page.locator('[data-settings-nav="data"]').getAttribute('aria-current'), 'true', 'settings category navigation works with long content');
+                await page.locator('[data-settings-nav="documents"]').click();
+                assert.equal(await page.locator('[data-settings-nav="documents"]').getAttribute('aria-current'), 'true', 'SiYuan document-write category remains reachable on narrow settings surfaces');
+                const documentPanel = page.locator('[data-source-panel="diary"]').first();
+                if (await documentPanel.getAttribute('open') === null) await documentPanel.locator(':scope > summary').click();
+                assert.equal(await documentPanel.getAttribute('open'), '', 'a document-write card can be opened from its dedicated group');
                 await page.locator('[data-settings-nav="external"]').click();
-                assert.equal(await page.locator('[data-settings-nav="external"]').getAttribute('aria-current'), 'true', 'external integrations category remains reachable on narrow settings surfaces');
-                const sourcePanel = page.locator('[data-source-panel="diary"]').first();
+                assert.equal(await page.locator('[data-settings-nav="external"]').getAttribute('aria-current'), 'true', 'third-party integrations category remains reachable on narrow settings surfaces');
+                const sourcePanel = page.locator('[data-source-panel="sireader"]').first();
                 if (await sourcePanel.getAttribute('open') === null) await sourcePanel.locator(':scope > summary').click();
-                assert.equal(await sourcePanel.getAttribute('open'), '', 'a source card can be opened from the external integrations group');
+                assert.equal(await sourcePanel.getAttribute('open'), '', 'a third-party source card can be opened from its dedicated group');
                 const sourceControls = await sourcePanel.locator('select, input, button').evaluateAll((controls) => controls.filter((control) => control.checkVisibility()).map((control) => {
                     const box = control.getBoundingClientRect();
                     const host = control.closest('.lc-checkin--settings')?.getBoundingClientRect();

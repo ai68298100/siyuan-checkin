@@ -35,10 +35,16 @@ export interface WereadIntegrationPreference {
     notesItemId: string;
 }
 
+/** 微信读书网关 Key 的公开格式；只做形状校验，不回显或记录 Key 内容。 */
+export function isWereadApiKey(value: unknown): value is string {
+    return typeof value === "string" && /^wrk-\S+$/.test(value.trim());
+}
+
 export function normalizeWereadIntegration(source: unknown): WereadIntegrationPreference {
     const raw = (source && typeof source === "object" ? source : {}) as Record<string, unknown>;
     const itemId = typeof raw.itemId === "string" ? raw.itemId.trim().slice(0, 160) : "";
-    const apiKey = typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, 200) : "";
+    const candidateKey = typeof raw.apiKey === "string" ? raw.apiKey.trim().slice(0, 200) : "";
+    const apiKey = isWereadApiKey(candidateKey) ? candidateKey : "";
     const finishItemId = typeof raw.finishItemId === "string" ? raw.finishItemId.trim().slice(0, 160) : "";
     const notesItemId = typeof raw.notesItemId === "string" ? raw.notesItemId.trim().slice(0, 160) : "";
     const thresholdRaw = typeof raw.thresholdMinutes === "number" && Number.isFinite(raw.thresholdMinutes) ? raw.thresholdMinutes : 30;

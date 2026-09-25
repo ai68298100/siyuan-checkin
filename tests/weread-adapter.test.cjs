@@ -22,6 +22,9 @@ const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outp
 const {parseExternalRef} = require(path.join(outputRoot, "src/ecosystem.js"));
 const {summarizePrivacyControlPlane} = require(path.join(outputRoot, "src/features/privacy-scope.js"));
 
+assert.equal(adapter.isWereadApiKey("wrk-x"), true, "official WeRead key prefix accepted");
+assert.equal(adapter.isWereadApiKey(" x "), false, "arbitrary non-empty values are not keys");
+
 /* 网关请求信封：扁平 api_name + skill_version + mode 同层，无 params 包裹。 */
 assert.equal(adapter.WEREAD_SKILL_VERSION, "1.0.4", "skill_version pinned to official SKILL.md version");
 assert.deepEqual(adapter.buildWereadReadDetailRequest(), {api_name: "/readdata/detail", skill_version: "1.0.4", mode: "monthly"}, "default request is the flat gateway envelope with monthly mode");
@@ -103,6 +106,7 @@ assert.equal(adapter.buildWereadExternalRef("read", "09-24"), "");
 assert.deepEqual(normalizeViewPreferences({}).wereadIntegration, {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""});
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read"}}).wereadIntegration.enabled, false, "enabled without key stays off");
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: " wrk-x "}}).wereadIntegration.enabled, true, "enabled with item and trimmed key");
+assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "invalid"}}).wereadIntegration.enabled, false, "invalid key cannot materialize enabled");
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 9999}}).wereadIntegration.thresholdMinutes, 1440);
 assert.equal(normalizeViewPreferences({wereadIntegration: {enabled: true, itemId: "read", apiKey: "wrk-x", thresholdMinutes: 0.4}}).wereadIntegration.thresholdMinutes, 1);
 assert.equal(normalizeViewPreferences({wereadIntegration: {itemId: "read", apiKey: "wrk-x", finishItemId: " books "}}).wereadIntegration.finishItemId, "books", "finish binding trimmed; empty stays off");
@@ -268,5 +272,7 @@ for (const key of ["source.weread", "set.wereadIntegration", "set.wereadTitle", 
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 assert.match(indexSource, /data-action='clear-weread-key'|data-action="clear-weread-key"/, "WeRead settings must wire the local Key clear action");
+assert.match(indexSource, /isWereadApiKey\(apiKey\)/, "save handler must reject malformed keys immediately");
+assert.match(indexSource, /msg\.wereadPullNeedEnable/, "pull now must explain that the local integration must be enabled");
 
 console.log("weread adapter gates passed: gateway envelope, tolerant parsing, identity, key governance, settlement composition, privacy plane, full touchpoints, anti-spoof, registry, settings structure, i18n parity");

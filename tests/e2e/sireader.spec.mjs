@@ -10,7 +10,8 @@ test("思阅适配器:生命周期事件在真实内核累计并幂等写入", a
     const client = createClient();
     await openCheckin(page);
 
-    const item = makeTestItem("siread");
+    /* 思阅结算输出分钟；测试项目必须声明分钟单位，不能把二值「次」项目当成时长载体。 */
+    const item = {...makeTestItem("siread"), kind: "duration", target: 60, unit: "分钟"};
     await seedStore(client, await snapshotStore(page), [item]);
 
     /* 种入偏好：思阅联动启用、绑定该项目、阈值 1 分钟。 */

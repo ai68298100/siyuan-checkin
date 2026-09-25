@@ -32,12 +32,12 @@
 
 无自助导出（隐私政策页为 JS-SPA 无法核验可携带条款原文）、开放平台为占位页（API 仅面向约 20 家硬件厂商）、唯一官方途径是客服/邮件人工申请 xlsx（每次更新数据重走全流程）；第三方工具全部依赖手机号+密码模拟登录私有接口，违反「不逆向私有格式」硬约束。相对内置手动记录的增量价值仅剩跑步距离精确化，操作成本压倒收益。**保留项**：若未来建成通用 CSV/xlsx 导入框架，Keep 客服 xlsx 可作为顺带兼容格式（延后，不专门投入）。触发重评信号：Keep 向个人开发者开放 API 或上线自助导出。
 
-### 卡 4｜手机健康中心·iOS 步数 + 体重 —— 做（文档级交付，C 类零代码）
+### 卡 4｜手机健康中心·iOS 步数 + 体重 —— 做（快捷指令 + 插件收件箱轮询）
 
-> **修正（2026-09-23，实施时发现）**：「插件零代码」假设不成立——快捷指令只能 HTTP 到思源内核，无法触达渲染进程内的 `recordEvent`。实际交付形态改为「**收件箱文档中转**」：快捷指令经内核公开 `appendBlock` 追加行到绑定文档，插件按 5 分钟有界周期轮询、严格解析、幂等入库（source api + `health:<metric>:<date>`，registry 已登记）。插件侧新增解析/计划纯核心与轮询接线（`src/features/health-inbox.ts`），模板与接入指南见 [health-shortcuts-integration](health-shortcuts-integration.md)。幂等结论不变：同 metric+日期 只入一条，同日重复 push 收敛。
+> **修正（2026-09-23，实施时发现）**：「插件零代码」假设不成立——快捷指令只能 HTTP 到思源内核，无法触达渲染进程内的 `recordEvent`。实际交付形态改为「**收件箱文档中转**」：快捷指令经内核公开 `appendBlock` 追加行到绑定文档，插件按 5 分钟有界周期轮询、严格解析、幂等入库（source api + `health:<itemId>:<metric>:<date>`，registry 已登记）。插件侧新增解析/计划纯核心与轮询接线（`src/features/health-inbox.ts`），模板与接入指南见 [health-shortcuts-integration](health-shortcuts-integration.md)。幂等结论不变：同一项目、指标和日期只入一条，同日重复 push 收敛。
 
 - **通路**：iOS 定时自动化（免确认全自动）→ Find Health Samples（步数样本求和即日总量；体重为低频样本）→ 拼 JSON → Get Contents of URL POST 到思源内核 + token。全程无 App、无审核。
-- **交付形态**：不是插件内集成，而是**官方快捷指令模板 + 接入文档**——公开 API `recordEvent` 已天然支持（source=api + externalRef 幂等），插件侧零代码；配套做同日重复 push 的幂等说明（upsert 语义：同 externalRef 重放返回已有事件）。
+- **交付形态**：快捷指令只负责调用内核 `appendBlock`，插件侧负责收件箱轮询、严格解析、项目映射和 `recordEvent` 写入；配套文档说明同日重复 push 的幂等行为。不是直接让快捷指令调用插件渲染进程。
 - **摩擦点（写入文档）**：手机须与内核同网或内网穿透；失败静默无重试；iOS「本地网络」权限首访弹窗、系统更新可能重置；token 填入快捷指令后勿分享。
 - **验证方法**：用户真机 iOS 快捷指令模板实测（步数/体重各一条 + 同日重放）。
 

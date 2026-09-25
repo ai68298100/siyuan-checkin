@@ -233,6 +233,14 @@
     {
       "prefix": "health:",
       "format": "health:<metric>:<localDate> or health:<itemId>:<metric>:<localDate>"
+    },
+    {
+      "prefix": "weread:",
+      "format": "weread:<itemId>:<localDate> (duration), weread:<itemId>:finish:<bookId>:<localDate> (finish), weread:<itemId>:notes:<localDate> (notes)"
+    },
+    {
+      "prefix": "yeguif:",
+      "format": "yeguif:<blockId>:<localDate>"
     }
   ],
   "identityRulesDoc": "docs/identity-and-merge.md",

@@ -55,9 +55,9 @@ import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
-import {SiplayerPlaybackTracker, buildSiplayerExternalRef} from "./features/siplayer-adapter";
+import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
-import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, settleYeguifEntries} from "./features/yeguif-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
@@ -581,12 +581,13 @@ export default class CheckinPlugin extends Plugin {
     private async writeSummaryResidentForDate(localDate: string): Promise<{ok: boolean; duplicate: boolean; reason?: string}> {
         const docId = this.summaryResident.enabled ? this.summaryResident.docId : "";
         if (!docId || this.disposed || this.disposing || !this.acceptingOperations) return {ok: false, duplicate: false};
-        if (this.summaryResidentInFlight || this.summaryResidentWritten.has(localDate)) return {ok: false, duplicate: false, reason: "busy"};
+        const writeKey = `${docId}:${localDate}`;
+        if (this.summaryResidentInFlight || this.summaryResidentWritten.has(writeKey)) return {ok: false, duplicate: false, reason: "busy"};
         this.summaryResidentInFlight = true;
         try {
             const existing = await this.kernelPost("/api/query/sql", {stmt: buildSummaryDuplicateQuery(docId, localDate)});
             if (extractSummaryRows(existing).length > 0) {
-                this.summaryResidentWritten.add(localDate);
+                this.summaryResidentWritten.add(writeKey);
                 return {ok: true, duplicate: true};
             }
             const dayStart = calendarDateFromKey(localDate);
@@ -612,7 +613,7 @@ export default class CheckinPlugin extends Plugin {
             );
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "summary-resident", docId, date: localDate, ok: result.ok, reason: result.reason || ""}});
             this.scheduleAuditPersist();
-            if (result.ok) this.summaryResidentWritten.add(localDate);
+            if (result.ok) this.summaryResidentWritten.add(writeKey);
             return {ok: result.ok, duplicate: false, reason: result.ok ? undefined : result.reason};
         } finally {
             this.summaryResidentInFlight = false;
@@ -641,10 +642,17 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private stopSiplayerSampler(): void {
-        if (this.siplayerTimer === undefined) return;
-        window.clearInterval(this.siplayerTimer);
-        this.siplayerTimer = undefined;
+        if (this.siplayerTimer !== undefined) {
+            window.clearInterval(this.siplayerTimer);
+            this.siplayerTimer = undefined;
+        }
+        this.resetSiplayerTracker();
+    }
+
+    /** 设置页停用或换绑时丢弃未结算片段，避免断开间隔路由到新项目。 */
+    private resetSiplayerTracker(): void {
         this.siplayerTracker?.discardInFlight();
+        this.siplayerTracker = undefined;
     }
 
     private tickSiplayerSampler(): void {
@@ -667,14 +675,16 @@ export default class CheckinPlugin extends Plugin {
                 sampleIntervalMs: 15_000,
             });
         }
-        const segments = this.siplayerTracker.sample(playing, Date.now());
-        if (segments.length) void this.writeSiplayerSegments(segments);
+        const tracker = this.siplayerTracker;
+        const segments = tracker.sample(playing, Date.now());
+        if (segments.length) void this.writeSiplayerSegments(segments, governance.itemId, tracker);
     }
 
     /* 累计结算 + 每日一次幂等写入：与思阅同构（见 writeSireaderSegments 注释）。 */
-    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>): Promise<void> {
+    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, tracker: SiplayerPlaybackTracker): Promise<void> {
         const governance = this.siplayerIntegration;
-        if (!governance.enabled || !governance.itemId) return;
+        if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
+        if (!this.hasMinuteTarget(governance.itemId)) return;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return;
         const refFor = (localDate: string) => buildSiplayerExternalRef(governance.itemId, localDate);
@@ -682,12 +692,13 @@ export default class CheckinPlugin extends Plugin {
         const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === ref);
         const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
         const settlement = settleSegmentsToDays(
-            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: this.siplayerTracker?.dayTotal(localDate) ?? 0})),
+            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker.dayTotal(localDate)})),
             normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
             touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
         );
         for (const day of settlement.days) {
             if (!day.qualifies) continue;
+            if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
             const externalRef = refFor(day.localDate);
             if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
@@ -713,6 +724,11 @@ export default class CheckinPlugin extends Plugin {
             window.removeEventListener(type, this.handleSireaderLifecycle);
         }
         /* 重载/卸载：在飞焦点区间直接丢弃（fail-closed 少记）；已写入当日由 externalRef 幂等兜底。 */
+        this.resetSireaderTracker();
+    }
+
+    /** 设置页停用或换绑时丢弃未结算片段，避免断开间隔路由到新项目。 */
+    private resetSireaderTracker(): void {
         this.sireaderTracker?.discardInFlight();
         this.sireaderTracker = undefined;
     }
@@ -729,17 +745,19 @@ export default class CheckinPlugin extends Plugin {
                 },
             });
         }
-        const segments = this.sireaderTracker.handle(type, atMs);
-        if (segments.length) void this.writeSireaderSegments(segments);
+        const tracker = this.sireaderTracker;
+        const segments = tracker.handle(type, atMs);
+        if (segments.length) void this.writeSireaderSegments(segments, governance.itemId, tracker);
     }
 
     /* 片段 → 按日累计结算 → 资格日写入。语义（D-261）：
        - 结算按「当日累计分钟」而非单批片段——跨多段达标也能触发（如 20+20 过 30 阈值）；
        - 每日一次：同 source+externalRef 已存在即跳过；被用户删除（墓碑）的当日身份永不重写（可撤销）；
        - 失败自愈：写入失败不重试，下次生命周期事件以新的累计值重新结算。 */
-    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>): Promise<void> {
+    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, tracker: SireaderFocusTracker): Promise<void> {
         const governance = this.sireaderIntegration;
-        if (!governance.enabled || !governance.itemId) return;
+        if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
+        if (!this.hasMinuteTarget(governance.itemId)) return;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return;
         const refFor = (localDate: string) => buildSireaderExternalRef(governance.itemId, localDate);
@@ -747,12 +765,13 @@ export default class CheckinPlugin extends Plugin {
         const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === ref);
         const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
         const settlement = settleSegmentsToDays(
-            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: this.sireaderTracker?.dayTotal(localDate) ?? 0})),
+            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker.dayTotal(localDate)})),
             normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
             touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
         );
         for (const day of settlement.days) {
             if (!day.qualifies) continue;
+            if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
             const externalRef = refFor(day.localDate);
             if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
@@ -772,17 +791,24 @@ export default class CheckinPlugin extends Plugin {
         if (!governance.enabled || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         /* 文档不可见时跳过本轮，回前台由焦点补拉（与 T-1402 微信读书同一省电策略）。 */
         if (typeof document !== "undefined" && document.hidden) return;
-        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' LIMIT 500`});
+        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' ORDER BY id ASC LIMIT 500`});
         const entries = parseHealthInboxRows((response as {data?: Array<{content?: string}>}).data || []);
         if (!entries.length) return;
+        const todayKey = dateKey(currentCalendarDate());
         for (const entry of entries) {
+            /* Health lines may backfill history, but a future date is never a
+               valid completed day and must not be written into the store. */
+            if (entry.localDate > todayKey) continue;
             const itemId = entry.metric === "steps" ? governance.stepsItemId : governance.weightItemId;
             if (!itemId) continue;
+            if (!this.hasHealthTarget(itemId, entry.metric)) continue;
+            if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) continue;
             const item = getActiveItemById(this.store, itemId);
             if (!item) continue;
             /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
             const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
             if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) continue;
+            if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
             const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
@@ -819,46 +845,48 @@ export default class CheckinPlugin extends Plugin {
 
     private async ingestWeread(): Promise<number> {
         const governance = this.wereadIntegration;
-        if (!governance.enabled || !governance.itemId || !governance.apiKey || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
+        if (!governance.enabled || !governance.itemId || !isWereadApiKey(governance.apiKey) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return 0;
         /* 文档不可见（后台页签/锁屏）时跳过本轮，回前台由焦点补拉——省移动端电量与流量。 */
         if (typeof document !== "undefined" && document.hidden) return 0;
+        /* 时长目标失效时仍继续拉取完读/笔记目标；三条链路绑定相互独立。 */
         const item = getActiveItemById(this.store, governance.itemId);
-        if (!item) return 0;
+        const durationItem = item && this.hasMinuteTarget(governance.itemId) ? item : undefined;
         const gateway = await this.wereadGateway(buildWereadReadDetailRequest());
         const outcome = ingestWereadReadDetail(gateway.payload, {
             today: dateKey(currentCalendarDate()),
             /* 官方 readdata.md：readTimes/dailyReadTimes 的 key 均为分桶起始 unix 秒。 */
             toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
         });
+        let written = 0;
         if (!outcome.ok) {
             const status = typeof gateway.status === "number" && gateway.status !== 200 ? ` (HTTP ${gateway.status})` : "";
             this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
-            return 0;
-        }
-        const refFor = (localDate: string) => buildWereadExternalRef(governance.itemId, localDate);
-        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "weread" && event.externalRef === ref);
-        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "weread" && tombstone.externalRef === ref);
-        /* 结算按「当日累计分钟」过阈值才算资格日（与思阅/思播同一结算层，D-261 口径）。 */
-        const settlement = settleSegmentsToDays(
-            outcome.days.map((day) => ({externalRef: refFor(day.localDate), localDate: day.localDate, value: day.minutes})),
-            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
-            outcome.days.map((day) => refFor(day.localDate)).filter((ref) => alreadyWritten(ref)),
-        );
-        let written = 0;
-        for (const day of settlement.days) {
-            if (!day.qualifies) continue;
-            const externalRef = refFor(day.localDate);
-            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
-            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
-            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint));
-            if (recorded) {
-                written += 1;
-                this.invalidateSummary();
-                this.renderBackgroundUpdate();
+        } else if (durationItem) {
+            const refFor = (localDate: string) => buildWereadExternalRef(governance.itemId, localDate);
+            const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "weread" && event.externalRef === ref);
+            const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "weread" && tombstone.externalRef === ref);
+            /* 结算按「当日累计分钟」过阈值才算资格日（与思阅/思播同一结算层，D-261 口径）。 */
+            const settlement = settleSegmentsToDays(
+                outcome.days.map((day) => ({externalRef: refFor(day.localDate), localDate: day.localDate, value: day.minutes})),
+                normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
+                outcome.days.map((day) => refFor(day.localDate)).filter((ref) => alreadyWritten(ref)),
+            );
+            for (const day of settlement.days) {
+                if (!day.qualifies) continue;
+                if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
+                const externalRef = refFor(day.localDate);
+                if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
+                const fingerprint = this.revisionFingerprint(durationItem, calendarDateFromKey(day.localDate));
+                const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint));
+                if (recorded) {
+                    written += 1;
+                    this.invalidateSummary();
+                    this.renderBackgroundUpdate();
+                }
             }
         }
-        this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
         const todayKey = dateKey(currentCalendarDate());
         if (governance.finishItemId) await this.ingestWereadFinished();
         const yesterday = addDays(todayKey, -1);
@@ -953,8 +981,12 @@ export default class CheckinPlugin extends Plugin {
 
     /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */
     private async pullWereadNow(): Promise<void> {
-        if (!this.wereadIntegration.itemId || !this.wereadIntegration.apiKey) {
+        if (!this.wereadIntegration.itemId || !isWereadApiKey(this.wereadIntegration.apiKey)) {
             showMessage(t("msg.wereadNeedConfig"));
+            return;
+        }
+        if (!this.wereadIntegration.enabled) {
+            showMessage(t("msg.wereadPullNeedEnable"));
             return;
         }
         const written = await this.ingestWeread();
@@ -975,7 +1007,7 @@ export default class CheckinPlugin extends Plugin {
         if (!item) return;
         const today = dateKey(currentCalendarDate());
         const createdFloor = `${today.replace(/-/g, "")}000000`;
-        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND content GLOB '[0-9][0-9]:[0-9][0-9]*' LIMIT ${YEGUIF_MAX_BLOCKS}`}).catch(() => undefined);
+        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND (content GLOB '[0-9]:[0-9][0-9]*' OR content GLOB '[0-9][0-9]:[0-9][0-9]*') ORDER BY id ASC LIMIT ${YEGUIF_MAX_BLOCKS}`}).catch(() => undefined);
         const rows = ((response as {data?: Array<{id?: string; content?: string; root_id?: string}>} | undefined)?.data || []) as Array<{id?: string; content?: string; root_id?: string}>;
         /* 按文档分组解析 → 结算时长（组内相邻起始差）→ 过滤已写/墓碑 → 写入。 */
         const grouped = new Map<string, Array<NonNullable<ReturnType<typeof parseYeguifMarker>>>>();
@@ -1652,6 +1684,37 @@ export default class CheckinPlugin extends Plugin {
         this.renderBackgroundUpdate();
         this.maybeAutoArchiveAfterRecord(item);
         return {...event};
+    }
+
+    /** External duration adapters emit minutes. Resolve the active revision at
+        setup time and at ingest time so a unit edit cannot silently turn
+        minutes into hours. */
+    private currentItemUnit(itemId: string): string | undefined {
+        const item = getActiveItemById(this.store, itemId);
+        return item ? getItemRevisionForDate(item, currentCalendarDate()).unit : undefined;
+    }
+
+    private itemUnitOnDate(itemId: string, localDate: string): string | undefined {
+        const item = getActiveItemById(this.store, itemId);
+        return item ? getItemRevisionForDate(item, calendarDateFromKey(localDate)).unit : undefined;
+    }
+
+    private hasMinuteTarget(itemId: string): boolean {
+        return this.currentItemUnit(itemId) === "分钟";
+    }
+
+    private hasMinuteTargetOnDate(itemId: string, localDate: string): boolean {
+        return this.itemUnitOnDate(itemId, localDate) === "分钟";
+    }
+
+    private hasHealthTarget(itemId: string, metric: "steps" | "weight"): boolean {
+        const unit = this.currentItemUnit(itemId);
+        return metric === "steps" ? unit === "步" || unit === "步数" : unit === "公斤" || unit === "千克" || unit === "kg";
+    }
+
+    private hasHealthTargetOnDate(itemId: string, metric: "steps" | "weight", localDate: string): boolean {
+        const unit = this.itemUnitOnDate(itemId, localDate);
+        return metric === "steps" ? unit === "步" || unit === "步数" : unit === "公斤" || unit === "千克" || unit === "kg";
     }
 
     /** 自动归档检查（D-165/T-1161）：单条与批量记录共享同一批处理入口。 */
@@ -2582,6 +2645,8 @@ export default class CheckinPlugin extends Plugin {
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
+            /* 只报告公开 controller 是否当前可调用；“已启用（本地）”不等于宿主已连通。 */
+            siplayerControllerAvailable: typeof window !== "undefined" && detectSiplayerController(window),
             healthInbox: {...this.healthInbox},
             yeguifIntegration: {enabled: this.yeguifIntegration.enabled, itemId: this.yeguifIntegration.itemId, notebookId: this.yeguifIntegration.notebookId},
             openSourcePanels: openSourcePanels ? [...openSourcePanels] : [],
@@ -2737,13 +2802,19 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLInputElement>("[data-sireader-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && !this.sireaderIntegration.itemId) {
+            if (checked && (!this.sireaderIntegration.itemId || !getActiveItemById(this.store, this.sireaderIntegration.itemId))) {
                 showMessage(t("msg.sireaderNeedItem"));
+                this.render();
+                return;
+            }
+            if (checked && !this.hasMinuteTarget(this.sireaderIntegration.itemId)) {
+                showMessage(t("msg.sireaderNeedMinuteItem"));
                 this.render();
                 return;
             }
             this.sireaderIntegration = {...this.sireaderIntegration, enabled: checked};
             if (!checked) {
+                this.resetSireaderTracker();
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("sireader", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思阅", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
@@ -2753,7 +2824,8 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-sireader-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.sireaderIntegration = {...this.sireaderIntegration, itemId, enabled: itemId ? this.sireaderIntegration.enabled : false};
+            if (itemId !== this.sireaderIntegration.itemId) this.resetSireaderTracker();
+            this.sireaderIntegration = {...this.sireaderIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.sireaderIntegration.enabled : false};
             void this.persistViewPreferences();
             this.render();
         });
@@ -2766,13 +2838,19 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLInputElement>("[data-siplayer-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && !this.siplayerIntegration.itemId) {
+            if (checked && (!this.siplayerIntegration.itemId || !getActiveItemById(this.store, this.siplayerIntegration.itemId))) {
                 showMessage(t("msg.siplayerNeedItem"));
+                this.render();
+                return;
+            }
+            if (checked && !this.hasMinuteTarget(this.siplayerIntegration.itemId)) {
+                showMessage(t("msg.siplayerNeedMinuteItem"));
                 this.render();
                 return;
             }
             this.siplayerIntegration = {...this.siplayerIntegration, enabled: checked};
             if (!checked) {
+                this.resetSiplayerTracker();
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("siplayer", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思播", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
@@ -2782,7 +2860,8 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-siplayer-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId ? this.siplayerIntegration.enabled : false};
+            if (itemId !== this.siplayerIntegration.itemId) this.resetSiplayerTracker();
+            this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.siplayerIntegration.enabled : false};
             void this.persistViewPreferences();
             this.render();
         });
@@ -2805,6 +2884,17 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
                 return;
             }
+            const mappedItemIds = [this.healthInbox.stepsItemId, this.healthInbox.weightItemId].filter(Boolean);
+            if (checked && mappedItemIds.some((itemId) => !getActiveItemById(this.store, itemId))) {
+                showMessage(t("msg.healthMappingUnavailable"));
+                this.render();
+                return;
+            }
+            if (checked && ((this.healthInbox.stepsItemId && !this.hasHealthTarget(this.healthInbox.stepsItemId, "steps")) || (this.healthInbox.weightItemId && !this.hasHealthTarget(this.healthInbox.weightItemId, "weight")))) {
+                showMessage(t("msg.healthItemUnitInvalid"));
+                this.render();
+                return;
+            }
             this.healthInbox = {...this.healthInbox, enabled: checked};
             if (!checked) {
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
@@ -2822,13 +2912,24 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             this.healthInbox = {...this.healthInbox, docId};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.healthDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            void this.persistViewPreferences().then(() => {
+                if (this.healthInbox.enabled) void this.ingestHealthInbox();
+                showMessage(t("msg.healthDocSaved"));
+            }).catch(() => showMessage(t("msg.prefSaveFail")));
             this.render();
         });
         for (const [selector, key] of [["[data-health-steps-item]", "stepsItemId"], ["[data-health-weight-item]", "weightItemId"]] as const) {
             root.querySelector<HTMLSelectElement>(selector)?.addEventListener("change", (event) => {
                 const value = (event.currentTarget as HTMLSelectElement).value;
-                this.healthInbox = {...this.healthInbox, [key]: value};
+                const wasEnabled = this.healthInbox.enabled;
+                const nextHealthInbox = {...this.healthInbox, [key]: value};
+                const hasMapping = Boolean(nextHealthInbox.stepsItemId || nextHealthInbox.weightItemId);
+                const nextMappingIds = [nextHealthInbox.stepsItemId, nextHealthInbox.weightItemId].filter(Boolean);
+                const mappingsAvailable = nextMappingIds.every((itemId) => Boolean(getActiveItemById(this.store, itemId)));
+                const metric = key === "stepsItemId" ? "steps" : "weight";
+                const unitAvailable = !value || this.hasHealthTarget(value, metric);
+                this.healthInbox = {...nextHealthInbox, enabled: hasMapping && mappingsAvailable && unitAvailable ? nextHealthInbox.enabled : false};
+                if (wasEnabled && value && !unitAvailable) showMessage(t("msg.healthItemUnitInvalid"));
                 void this.persistViewPreferences();
                 if (this.healthInbox.enabled) void this.ingestHealthInbox();
                 this.render();
@@ -2836,8 +2937,13 @@ export default class CheckinPlugin extends Plugin {
         }
         root.querySelector<HTMLInputElement>("[data-weread-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && (!this.wereadIntegration.itemId || !this.wereadIntegration.apiKey)) {
+            if (checked && (!this.wereadIntegration.itemId || !getActiveItemById(this.store, this.wereadIntegration.itemId) || !isWereadApiKey(this.wereadIntegration.apiKey))) {
                 showMessage(t("msg.wereadNeedConfig"));
+                this.render();
+                return;
+            }
+            if (checked && !this.hasMinuteTarget(this.wereadIntegration.itemId)) {
+                showMessage(t("msg.wereadNeedMinuteItem"));
                 this.render();
                 return;
             }
@@ -2852,7 +2958,7 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-weread-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && this.wereadIntegration.apiKey ? this.wereadIntegration.enabled : false};
+            this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) && isWereadApiKey(this.wereadIntegration.apiKey) ? this.wereadIntegration.enabled : false};
             void this.persistViewPreferences();
             this.render();
         });
@@ -2875,6 +2981,10 @@ export default class CheckinPlugin extends Plugin {
             const keyInput = root.querySelector<HTMLInputElement>("[data-weread-key]");
             const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(thresholdInput?.value) || 30)));
             const apiKey = (keyInput?.value || "").trim();
+            if (apiKey && !isWereadApiKey(apiKey)) {
+                showMessage(t("msg.wereadKeyInvalid"));
+                return;
+            }
             /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
             this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
             void this.persistViewPreferences().then(() => showMessage(t("msg.wereadSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
@@ -2891,8 +3001,13 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLInputElement>("[data-yeguif-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && (!this.yeguifIntegration.itemId || !this.yeguifIntegration.notebookId)) {
+            if (checked && (!this.yeguifIntegration.itemId || !getActiveItemById(this.store, this.yeguifIntegration.itemId) || !this.yeguifIntegration.notebookId)) {
                 showMessage(t("msg.yeguifNeedConfig"));
+                this.render();
+                return;
+            }
+            if (checked && !this.hasMinuteTarget(this.yeguifIntegration.itemId)) {
+                showMessage(t("msg.yeguifNeedMinuteItem"));
                 this.render();
                 return;
             }
@@ -2907,7 +3022,7 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-yeguif-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.yeguifIntegration = {...this.yeguifIntegration, itemId, enabled: itemId && this.yeguifIntegration.notebookId ? this.yeguifIntegration.enabled : false};
+            this.yeguifIntegration = {...this.yeguifIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) && this.yeguifIntegration.notebookId ? this.yeguifIntegration.enabled : false};
             void this.persistViewPreferences();
             this.render();
         });
@@ -2919,14 +3034,33 @@ export default class CheckinPlugin extends Plugin {
             try {
                 const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
                 const notebooks = response.code === 0 ? (response.data?.notebooks || []).filter((entry) => entry.id && !entry.closed) : [];
-                select.replaceChildren(...(notebooks.length
-                    ? [new Option(t("set.yeguifNotebookChoose"), ""), ...notebooks.map((notebook) => new Option(notebook.name || notebook.id || "", notebook.id || ""))]
-                    : [new Option(t("set.yeguifNotebookFailed"), "")]));
-                if (this.yeguifIntegration.notebookId) select.value = this.yeguifIntegration.notebookId;
-                select.disabled = !notebooks.length;
-                select.dataset.loaded = notebooks.length ? "true" : "error";
+                const savedId = this.yeguifIntegration.notebookId;
+                if (notebooks.length) {
+                    const options = [new Option(t("set.yeguifNotebookChoose"), ""), ...notebooks.map((notebook) => new Option(notebook.name || notebook.id || "", notebook.id || ""))];
+                    if (savedId && !notebooks.some((notebook) => notebook.id === savedId)) {
+                        options.push(new Option(`${savedId} · ${t("set.yeguifNotebookMissing")}`, savedId));
+                        if (this.yeguifIntegration.enabled) {
+                            this.yeguifIntegration = {...this.yeguifIntegration, enabled: false};
+                            void this.persistViewPreferences();
+                            showMessage(t("msg.yeguifNotebookMissing"));
+                            const toggle = root.querySelector<HTMLInputElement>("[data-yeguif-toggle]");
+                            if (toggle) toggle.checked = false;
+                        }
+                    }
+                    select.replaceChildren(...options);
+                    if (savedId) select.value = savedId;
+                    select.disabled = false;
+                    select.dataset.loaded = "true";
+                } else {
+                    select.replaceChildren(new Option(t("set.yeguifNotebookFailed"), ""), ...(savedId ? [new Option(`${savedId} · ${t("set.yeguifNotebookSaved")}`, savedId)] : []));
+                    if (savedId) select.value = savedId;
+                    select.disabled = !savedId;
+                    select.dataset.loaded = "error";
+                }
             } catch {
-                select.replaceChildren(new Option(t("set.yeguifNotebookFailed"), ""));
+                const savedId = this.yeguifIntegration.notebookId;
+                select.replaceChildren(new Option(t("set.yeguifNotebookFailed"), ""), ...(savedId ? [new Option(`${savedId} · ${t("set.yeguifNotebookSaved")}`, savedId)] : []));
+                if (savedId) select.value = savedId;
             } finally {
                 button.removeAttribute("disabled");
             }
@@ -3534,7 +3668,10 @@ export default class CheckinPlugin extends Plugin {
         const tomorrow = dateKey(new Date(currentCalendarDate().getFullYear(), currentCalendarDate().getMonth(), currentCalendarDate().getDate() + 1));
         const counts: Record<string, number> = {};
         for (const event of getEventsInDateRange(this.store, today, tomorrow)) {
-            counts[event.source] = (counts[event.source] || 0) + 1;
+            /* 健康收件箱复用公开 api 来源，按 canonical health: 身份单独投影，
+               避免健康卡片漏计，也避免把 Task Horizon 等 API 写入算进健康。 */
+            const source = event.source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("health:") ? "health" : event.source;
+            counts[source] = (counts[source] || 0) + 1;
         }
         return counts;
     }
@@ -5056,11 +5193,14 @@ export default class CheckinPlugin extends Plugin {
         this.reportSource = preferences.reportSource;
         this.diaryReport = {...preferences.diaryReport};
         this.summaryResident = {...preferences.summaryResident};
-        this.sireaderIntegration = {...preferences.sireaderIntegration};
-        this.siplayerIntegration = {...preferences.siplayerIntegration};
-        this.healthInbox = {...preferences.healthInbox};
-        this.wereadIntegration = {...preferences.wereadIntegration};
-        this.yeguifIntegration = {...preferences.yeguifIntegration};
+        this.sireaderIntegration = {...preferences.sireaderIntegration, enabled: preferences.sireaderIntegration.enabled && this.hasMinuteTarget(preferences.sireaderIntegration.itemId)};
+        this.siplayerIntegration = {...preferences.siplayerIntegration, enabled: preferences.siplayerIntegration.enabled && this.hasMinuteTarget(preferences.siplayerIntegration.itemId)};
+        const healthPreference = preferences.healthInbox;
+        const healthUnitsReady = (!healthPreference.stepsItemId || this.hasHealthTarget(healthPreference.stepsItemId, "steps"))
+            && (!healthPreference.weightItemId || this.hasHealthTarget(healthPreference.weightItemId, "weight"));
+        this.healthInbox = {...healthPreference, enabled: healthPreference.enabled && healthUnitsReady};
+        this.wereadIntegration = {...preferences.wereadIntegration, enabled: preferences.wereadIntegration.enabled && this.hasMinuteTarget(preferences.wereadIntegration.itemId)};
+        this.yeguifIntegration = {...preferences.yeguifIntegration, enabled: preferences.yeguifIntegration.enabled && this.hasMinuteTarget(preferences.yeguifIntegration.itemId)};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();

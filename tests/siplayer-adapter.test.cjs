@@ -104,8 +104,11 @@ const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/se
 for (const hook of ["data-siplayer-integration", "data-siplayer-toggle", "data-siplayer-item", "data-siplayer-threshold", "save-siplayer"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }
+assert.match(settingsSource, /siplayerControllerAvailable/, "settings context must expose the host capability state");
+assert.match(settingsSource, /data-siplayer-host-state/, "settings markup must show the host capability state separately from local enablement");
+assert.match(indexSource, /detectSiplayerController\(window\)/, "settings render must probe the public SiPlayer controller");
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
-for (const key of ["set.siplayerTitle", "set.siplayerHint", "set.siplayerToggle", "set.siplayerItem", "set.siplayerItemHint", "set.siplayerItemChoose", "set.siplayerThreshold", "set.siplayerThresholdHint", "set.siplayerSave", "msg.siplayerNeedItem", "msg.siplayerSaved", "source.siplayer"]) {
+for (const key of ["set.siplayerTitle", "set.siplayerHint", "set.siplayerToggle", "set.siplayerItem", "set.siplayerItemHint", "set.siplayerItemChoose", "set.siplayerThreshold", "set.siplayerThresholdHint", "set.siplayerSave", "set.siplayerHostAvailable", "set.siplayerHostMissing", "set.siplayerHostUnknown", "msg.siplayerNeedItem", "msg.siplayerSaved", "source.siplayer"]) {
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 
