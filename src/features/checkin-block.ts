@@ -16,7 +16,7 @@
 import {escapeHtml, formatNumber} from "../shared";
 import {t} from "../i18n";
 import {abstinenceMilestones} from "./pace-projection";
-import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {computeEventStreaks, computeLongestStreaks} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
@@ -162,6 +162,8 @@ export interface CheckinBlockDayCell {
     incompleteNames: string[];
     isToday: boolean;
     future: boolean;
+    /** R-17.2：当日存在至少一个数值项目完成量超过目标（超额日，正向表达）。 */
+    overage: boolean;
 }
 
 /** month 视图：按选中项目聚合的逐日状态（跳过日中性、完成比例驱动色阶）。 */
@@ -175,11 +177,22 @@ export function buildMonthCells(store: CheckinStore, items: CheckinItem[], year:
         let scheduledCount = 0;
         let completedCount = 0;
         let skipCount = 0;
+        let overage = false;
         for (const item of items) {
             if (!isItemAvailableOnDate(item, date) || !isScheduledToday(item, date)) continue;
             scheduledCount += 1;
             if (isComplete(store, item, date)) completedCount += 1;
             else if (getSkipDatesForItem(store, item.id).has(key)) skipCount += 1;
+            /* R-17.2：超额日——数值项目当日总量超过目标（正向表达，不改色阶口径）。 */
+            if (!overage && item.direction !== "atMost" && revisionKindNumeric(item, date)) {
+                const revision = getItemRevisionForDate(item, date);
+                let dayTotal = 0;
+                for (const event of getEventsForDay(store, item.id, date)) {
+                    if (isSkipEvent(event)) continue;
+                    dayTotal += event.value;
+                }
+                if (revision.target > 0 && dayTotal > revision.target) overage = true;
+            }
         }
         const incompleteNames = items
             .filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date) && !isComplete(store, item, date))
@@ -194,9 +207,16 @@ export function buildMonthCells(store: CheckinStore, items: CheckinItem[], year:
             incompleteNames,
             isToday: key === today,
             future: key > today,
+            overage,
         });
     }
     return cells;
+}
+
+/** R-17.2：数值/时长项目才有「超额」概念（二值 0/1、quota 天数模式不适用）。 */
+function revisionKindNumeric(item: CheckinItem, date: Date): boolean {
+    const kind = getItemRevisionForDate(item, date).kind;
+    return kind === "count" || kind === "duration";
 }
 
 function levelFor(fraction: number, thresholds: [number, number, number, number]): number {
@@ -238,8 +258,12 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
     const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty"><i></i></span>`);
     for (const cell of cells) {
         const level = levelFor(cell.fraction, thresholds);
-        const classes = ["lc-checkin__renderblock-cell", cell.skipOnly ? "is-skip" : `is-level-${level}`, cell.isToday ? "is-today" : "", cell.future ? "is-future" : ""].filter(Boolean).join(" ");
-        const stateText = cell.skipOnly ? ` · ${t("anchor.stateSkip")}` : cell.scheduledCount ? ` · ${cell.completedCount}/${cell.scheduledCount}${cell.incompleteNames.length ? `（缺：${cell.incompleteNames.join("、")}）` : ""}` : "";
+        const classes = ["lc-checkin__renderblock-cell", cell.skipOnly ? "is-skip" : `is-level-${level}`, cell.isToday ? "is-today" : "", cell.future ? "is-future" : "", cell.overage ? "is-overage" : ""].filter(Boolean).join(" ");
+        const stateText = cell.skipOnly
+            ? ` · ${t("anchor.stateSkip")}`
+            : cell.scheduledCount
+                ? ` · ${cell.completedCount}/${cell.scheduledCount}${cell.overage ? ` · ${t("block.overageTag")}` : ""}${cell.incompleteNames.length ? `（缺：${cell.incompleteNames.join("、")}）` : ""}`
+                : "";
         body.push(`<span class="${classes}" role="button" tabindex="0" data-jump-date="${cell.date}" aria-label="${escapeHtml(`${cell.date}${stateText}`)}" title="${escapeHtml(`${cell.date}${stateText}`)}"><i>${cell.dayOfMonth}</i></span>`);
     }
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid" role="list">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)}))}</small></div>`;
@@ -303,6 +327,8 @@ export interface TodayViewRow {
     /** T-1462：数值项目的附加快捷步长（与 unit 成对出现；缺省=单按钮行为不变）。 */
     quickSteps?: number[];
     unit?: string;
+    /** R-17.3：当日 ≥2 条记录时按早/午/晚分组计数（高频记录一览）。 */
+    slots?: {morning: number; afternoon: number; evening: number};
 }
 
 /** 单项目回溯找「最近漏卡日」：从昨天向前扫，命中第一个完成日即停（更早的缺口不再算漏卡）。 */
@@ -333,6 +359,8 @@ export function buildTodayRows(store: CheckinStore, items: CheckinItem[], asOf: 
             : revision.schedule.type === "quota"
                 ? `${Math.round(progress * 100)}%`
                 : `${formatNumber(progress)}/${formatNumber(revision.target)} ${revision.unit}`;
+        /* R-17.3：当日 ≥2 条有效记录 → 早/午/晚分组计数（<12 早、12-18 午、≥18 晚）。 */
+        const slots = buildTodaySlotCounts(store, item.id, asOf);
         rows.push({
             itemId: item.id,
             name: item.name,
@@ -343,9 +371,24 @@ export function buildTodayRows(store: CheckinStore, items: CheckinItem[], asOf: 
             lastMissedDate: items.length === 1 ? findLastMissedDate(store, item, asOf) : undefined,
             /* T-1462：仅数值项目物化 chips 行；complete 行不渲染按钮组（祝贺态优先）。 */
             ...(item.quickSteps?.length && !complete ? {quickSteps: item.quickSteps, unit: revision.unit} : {}),
+            ...(slots ? {slots} : {}),
         });
     }
     return rows;
+}
+
+/** R-17.3：当日 ≥2 条有效（非跳过）记录时返回早/午/晚计数，否则 undefined（不做单条噪音）。 */
+export function buildTodaySlotCounts(store: CheckinStore, itemId: string, asOf: Date): {morning: number; afternoon: number; evening: number} | undefined {
+    const events = getEventsForDay(store, itemId, asOf).filter((event) => !isSkipEvent(event));
+    if (events.length < 2) return undefined;
+    const slots = {morning: 0, afternoon: 0, evening: 0};
+    for (const event of events) {
+        const hour = new Date(event.occurredAt).getHours();
+        if (hour < 12) slots.morning += 1;
+        else if (hour < 18) slots.afternoon += 1;
+        else slots.evening += 1;
+    }
+    return slots;
 }
 
 export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConfig, asOf: Date): string {
@@ -361,7 +404,9 @@ export function buildTodayViewHtml(store: CheckinStore, config: CheckinBlockConf
             action = `<span class="lc-checkin__renderblock-today-steps">${row.quickSteps.map((value) => `<button class="lc-checkin__text-button lc-checkin__renderblock-today-record" type="button" data-block-record="${escapeHtml(row.itemId)}" data-block-record-amount="${formatNumber(value)}" aria-label="${escapeHtml(t("item.recordStep", {value: formatNumber(value), unit: row.unit || ""}))}" title="${escapeHtml(t("item.recordStep", {value: formatNumber(value), unit: row.unit || ""}))}">+${escapeHtml(formatNumber(value))}</button>`).join("")}</span>`;
         }
         const missed = row.lastMissedDate ? `<small class="lc-checkin__renderblock-today-missed">${escapeHtml(t("block.todayLastMissed", {date: row.lastMissedDate}))}</small>` : "";
-        return `<div class="lc-checkin__renderblock-today-row" data-item-id="${escapeHtml(row.itemId)}"><span class="lc-checkin__renderblock-today-icon" aria-hidden="true">${escapeHtml(row.icon)}</span><span class="lc-checkin__renderblock-today-name">${escapeHtml(row.name)}</span><span class="lc-checkin__renderblock-today-status">${escapeHtml(row.progressText)}</span><span class="lc-checkin__renderblock-today-streak">${escapeHtml(t("block.todayStreak", {n: row.streak}))}</span>${missed}${action}</div>`;
+        /* R-17.3：时段分组计数（早/午/晚），仅当日 ≥2 条记录时出现。 */
+        const slots = row.slots ? `<span class="lc-checkin__renderblock-today-slots" aria-label="${escapeHtml(t("block.todaySlotsAria"))}">${t("block.slotMorning")} ${row.slots.morning} · ${t("block.slotAfternoon")} ${row.slots.afternoon} · ${t("block.slotEvening")} ${row.slots.evening}</span>` : "";
+        return `<div class="lc-checkin__renderblock-today-row" data-item-id="${escapeHtml(row.itemId)}"><span class="lc-checkin__renderblock-today-icon" aria-hidden="true">${escapeHtml(row.icon)}</span><span class="lc-checkin__renderblock-today-name">${escapeHtml(row.name)}</span><span class="lc-checkin__renderblock-today-status">${escapeHtml(row.progressText)}</span><span class="lc-checkin__renderblock-today-streak">${escapeHtml(t("block.todayStreak", {n: row.streak}))}</span>${missed}${slots}${action}</div>`;
     }).join("");
     return `<div class="lc-checkin__renderblock lc-checkin__renderblock-today">${body}</div>`;
 }

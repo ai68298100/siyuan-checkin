@@ -12,6 +12,7 @@ import {DEFAULT_REPORT_SECTIONS, type ReportSectionToggles} from "../view-prefer
 import type {ViewScopeDescription} from "./view-scope";
 import type {ContextAggregation, ContextWeekdayPattern} from "./context-normalization";
 import type {MissedTimeSlotCount, MissedWeekdayCount, StalledItemRank, TargetLoadAdvice} from "./pace-projection";
+import type {CorrelationInsight} from "./correlation-insights";
 
 export {DEFAULT_REPORT_SECTIONS};
 
@@ -44,7 +45,7 @@ export function buildWeeklyReportMarkdown(
     title: string,
     sections: ReportSectionToggles = DEFAULT_REPORT_SECTIONS,
     comparison?: ReviewComparison,
-    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; contextWeekdayPatterns?: readonly ContextWeekdayPattern[]; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]; targetLoad?: readonly TargetLoadAdvice[]},
+    options?: {source?: string; viewScope?: ViewScopeDescription; contextAggregation?: ContextAggregation; contextWeekdayPatterns?: readonly ContextWeekdayPattern[]; stalledItems?: readonly StalledItemRank[]; missedByWeekday?: readonly MissedWeekdayCount[]; missedByTimeSlot?: readonly {label: string; count: number}[]; targetLoad?: readonly TargetLoadAdvice[]; correlationInsights?: readonly CorrelationInsight[]},
 ): string {
     const lines: string[] = [];
     const rate = summary.scheduledItems ? Math.round((summary.completedItems / summary.scheduledItems) * 100) : 0;
@@ -102,6 +103,17 @@ export function buildWeeklyReportMarkdown(
         for (const entry of options.targetLoad) {
             lines.push(`  - ${t(entry.verdict === "overloaded" ? "report.targetLoadOverloaded" : "report.targetLoadTight", {name: entry.name, missed: entry.missedCount, due: entry.dueOpportunities, rate: entry.backlogRate})}`);
         }
+    }
+    /* R-17.1 · R-A17：确定性相关性洞察——最小样本纪律（重叠 ≥4 天且 |r|≥0.4），相关不是因果。 */
+    if (options?.correlationInsights?.length) {
+        lines.push(`- ${t("report.correlationTitle")}`);
+        for (const insight of options.correlationInsights.slice(0, 3)) {
+            const text = insight.lag === 1
+                ? t("report.correlationLag", {a: insight.itemA, b: insight.itemB, r: insight.r.toFixed(2), n: insight.sampleDays})
+                : t("report.correlationSame", {a: insight.itemA, b: insight.itemB, r: insight.r.toFixed(2), n: insight.sampleDays});
+            lines.push(`  - ${text}`);
+        }
+        lines.push(`  - ${t("report.correlationNote")}`);
     }
     if (sections.events) lines.push(`- ${t("report.lineEvents", {n: summary.totalEvents})}`);
     if (sections.completion) lines.push(`- ${t("report.lineCompleted", {done: summary.completedItems, scheduled: summary.scheduledItems, rate})}`);

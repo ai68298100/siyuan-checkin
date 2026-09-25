@@ -111,7 +111,7 @@ assert.match(indexSource, /appendAnchorNote\(\(url, payload\) => this\.kernelPos
 assert.match(indexSource, /withBoundedRetry\(\s*\(\) => appendAnchorNote/, "write must be wrapped in the bounded retry");
 assert.match(indexSource, /type: "anchor", at: new Date\(\)\.toISOString\(\), details: \{channel: "diary-report"/, "write outcome must land in the audit ledger");
 assert.match(indexSource, /if \(!docId\) \{\s*showMessage\(t\("msg\.diaryNotBound"\)\)/, "write must refuse when not bound/enabled");
-assert.match(indexSource, /buildWeeklyReportMarkdown\(summary, title, this\.reportSections, comparison, \{\.\.\.sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad\}\)/, "diary report must reuse the exact review export path (incl. T-1425 scope + T-1433 context + T-1452 weekday cross + T-1436 miss-time + stalled + T-1450 target-load)");
+assert.match(indexSource, /buildWeeklyReportMarkdown\(summary, title, this\.reportSections, comparison, \{\.\.\.sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad, correlationInsights\}\)/, "diary report must reuse the exact review export path (incl. T-1425 scope + T-1433 context + T-1452 weekday cross + T-1436 miss-time + stalled + T-1450 target-load + R-17.1 correlation)");
 assert.match(indexSource, /data-diary-toggle/, "toggle binding must exist");
 assert.match(indexSource, /data-action='save-diary-doc'/, "doc save binding must exist");
 assert.match(indexSource, /validateAnchorBlockId\(input\?\.value\)/, "doc ids must be validated with the shared validator");

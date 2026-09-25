@@ -54,6 +54,7 @@ import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDia
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
+import {buildCorrelationInsights as computeCorrelationInsights, type CorrelationInsight, type CorrelationItemSeries} from "./features/correlation-insights";
 import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
 import {openJournalDialogFor} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
@@ -561,7 +562,36 @@ export default class CheckinPlugin extends Plugin {
         const missedByTimeSlot = aggregateMissedTimeSlots(missedSlotSlices).map((entry) => ({label: t(TIME_SLOT_LABELS[entry.timeSlot as keyof typeof TIME_SLOT_LABELS] || entry.timeSlot), count: entry.count}));
         /* T-1450 · R-20.3 第三卡：目标负荷解读——「目标是否过高」（样本门槛下的推断）。 */
         const targetLoad = interpretTargetLoad(stalledFacts, 5);
-        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad});
+        /* R-17.1 · R-A17：相关性洞察事实——最近 30 天逐日完成率序列，纪律在纯模块内。 */
+        const correlationInsights = this.buildCorrelationInsightsForReport();
+        return buildWeeklyReportMarkdown(summary, title, this.reportSections, comparison, {...sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad, correlationInsights});
+    }
+
+    /** R-17.1 · R-A17：最近 30 天逐日完成率序列（value/target 0..1，仅排期日），配对纪律在纯模块。 */
+    private buildCorrelationInsightsForReport(): CorrelationInsight[] {
+        const today = dateKey(new Date());
+        const dates: string[] = [];
+        for (let offset = 29; offset >= 0; offset -= 1) {
+            const day = addDays(today, -offset);
+            if (day) dates.push(day);
+        }
+        const seriesList: CorrelationItemSeries[] = [];
+        for (const item of this.store.items) {
+            if (item.archived || item.direction === "atMost") continue;
+            const revision = getItemRevisionForDate(item, new Date());
+            if (revision.schedule.type === "quota") continue;
+            const target = revision.target > 0 ? revision.target : 1;
+            const skipDates = getSkipDatesForItem(this.store, item.id);
+            const days: Array<{date: string; scheduled: boolean; ratio: number}> = [];
+            for (const day of dates) {
+                if (day < item.createdDate) continue;
+                const asOfDay = new Date(day + "T12:00:00");
+                if (!isItemAvailableOnDate(item, asOfDay) || !isScheduledToday(item, asOfDay) || skipDates.has(day)) continue;
+                days.push({date: day, scheduled: true, ratio: Math.max(0, Math.min(1, getProgress(this.store, item, asOfDay) / target))});
+            }
+            if (days.length) seriesList.push({id: item.id, name: item.name, days});
+        }
+        return computeCorrelationInsights(seriesList, {limit: 3});
     }
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */
