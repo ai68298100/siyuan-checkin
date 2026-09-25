@@ -494,11 +494,13 @@ assert.ok(settingsSourceT1442.indexOf('data-source-panel="sireader"') > external
 for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread", "yeguif"]) {
     assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
 }
-assert.equal((settingsSourceT1442.match(/<details class="lc-checkin__source-panel"/g) || []).length, 7, "来源面板必须使用可折叠 details");
+assert.equal((settingsSourceT1442.match(/<details class="lc-checkin__source-panel"/g) || []).length, 8, "来源面板必须使用可折叠 details（T-1465 新增问卷日记面板 = 7 来源 + 1 能力面板）");
 assert.match(settingsSourceT1442, /sourcePanelOpen\("weread"\)/, "保存联动设置时应能恢复当前展开卡片");
 assert.match(settingsSourceT1442, /data-action="clear-weread-key"/, "微信读书应提供本地 Key 清除入口");
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 7, "七个面板头部");
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 7, "七个编号步骤列表");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 8, "八个面板头部（7 来源 + 问卷日记）");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 7, "七个编号步骤列表（问卷日记面板无来源步骤，属能力配置）");
+assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
+assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 const panelI18n = read("src", "i18n.ts");
 const stepKeys = [];
 for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread", "Yeguif"]) {

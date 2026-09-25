@@ -914,7 +914,17 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
             : {}),
         /* T-1462 数值快捷增量：与 save-form 构造的条目保持同一字段集合（写后校验按 JSON 指纹比较）。 */
         ...(quickSteps.length ? {quickSteps} : {}),
+        /* T-1465（D-273）问卷日记绑定：只校验 slug 格式；模板存在性在运行时解析（可后删回退）。 */
+        ...(normalizeJournalBinding(value.journal) ? {journal: normalizeJournalBinding(value.journal)} : {}),
     };
+}
+
+/** T-1465：问卷日记绑定规范化——templateId 仅接受 [a-z0-9-] slug（与 journal-templates 同口径，
+    此处内联避免 model 反向依赖 features）。 */
+function normalizeJournalBinding(value: unknown): {templateId: string} | undefined {
+    if (!isRecord(value)) return undefined;
+    const templateId = typeof value.templateId === "string" ? value.templateId.trim().toLowerCase().slice(0, 40) : "";
+    return /^[a-z0-9][a-z0-9-]{0,39}$/.test(templateId) ? {templateId} : undefined;
 }
 
 /** 自动归档口径（D-165）：仅 when afterDays ≥ 1 视为启用，其余一律视为关闭；

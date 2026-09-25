@@ -85,6 +85,8 @@ export async function saveEditorForm(
     const streakTolerance = Math.max(0, Math.min(30, Math.round(Number(data.get("streakToleranceDays")) || 0)));
     /* T-1462 数值快捷增量：逗号/空白分隔文本归一为 ≤4 个正数；留空/非法不物化（仅默认步长）。 */
     const quickSteps = normalizeQuickSteps(kind, data.get("quickSteps"));
+    /* T-1465（D-273）问卷日记绑定：slug 校验与 normalizeItem 同口径；空=不物化。 */
+    const journalTemplateId = String(data.get("journalTemplateId") || "").trim().toLowerCase();
     const sortOrder = existing?.sortOrder ?? host.store.items.reduce((maximum, candidate) => candidate.group === group ? Math.max(maximum, candidate.sortOrder || 0) : maximum, 0) + 1;
     const revision: CheckinItemRevision = {
         effectiveDate: submittedAt.localDate,
@@ -135,6 +137,7 @@ export async function saveEditorForm(
         ...(streakTolerance >= 1 ? {streakTolerance} : {}),
         /* 与 normalizeItem 的规范字段集合保持逐键一致（写后校验按 JSON 指纹比较）。 */
         ...(quickSteps.length ? {quickSteps} : {}),
+        ...(/^[a-z0-9][a-z0-9-]{0,39}$/.test(journalTemplateId) ? {journal: {templateId: journalTemplateId}} : {}),
     };
     const previous = host.store;
     host.store = {

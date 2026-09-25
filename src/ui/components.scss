@@ -67,8 +67,26 @@
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__record-button,
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__quick-button,
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__chip-button,
-:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__renderblock-today-record { min-height: 44px; }
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__renderblock-today-record,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__journal-answer,
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__journal-actions button { min-height: 44px; }
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin__mobile-nav button { min-height: 44px; }
+
+/* T-1465 问卷日记弹窗：问题表单 + 写入目标配置（复用主题 token，双主题自动生效）。 */
+.lc-checkin__journal-form { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
+.lc-checkin__journal-hint { margin: 0; color: var(--lc-checkin-warm-text); font-size: 12px; }
+.lc-checkin__journal-config { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.lc-checkin__journal-config legend { font-size: 11px; color: var(--lc-checkin-muted); padding: 0 4px; }
+.lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.lc-checkin__journal-notebook, .lc-checkin__journal-docid { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.lc-checkin__journal-notebook select, .lc-checkin__journal-docid input { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; padding: 5px 8px; }
+.lc-checkin__journal-question { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.lc-checkin__journal-question em { color: var(--lc-checkin-accent-text); font-style: normal; }
+.lc-checkin__journal-answer { width: 100%; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; font-weight: 400; padding: 6px 8px; min-height: 32px; box-sizing: border-box; }
+textarea.lc-checkin__journal-answer { resize: vertical; }
+.lc-checkin__journal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.lc-checkin__journal-body { max-height: 72vh; overflow: auto; }
+.lc-checkin__journal-custom { width: 100%; min-height: 120px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; font-size: 12px; padding: 6px 8px; box-sizing: border-box; resize: vertical; }
 
 /* Semantic state tokens: keep the calm pastel language readable in both
    appearance modes and at desktop viewing distances. */

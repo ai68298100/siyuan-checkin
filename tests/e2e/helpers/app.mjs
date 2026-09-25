@@ -37,6 +37,18 @@ export async function openCheckin(page, options = {}) {
     return page;
 }
 
+/** 打开插件的「今日」页签（走与命令面板相同的 openTabPage 真实路径；今日页 DOM 断言的前置）。 */
+export async function openTodayPage(page) {
+    await page.evaluate(() => {
+        const app = window.siyuan?.ws?.app;
+        const plugin = app?.plugins?.find((entry) => entry.name === "siyuan-checkin");
+        if (!plugin) throw new Error("plugin instance not found");
+        plugin.openTabPage();
+    });
+    await page.waitForSelector(".lc-checkin--today", {timeout: 20000});
+    return page;
+}
+
 export async function apiDescriptor(page) {
     return page.evaluate(() => {
         const described = window.siyuanCheckin.describe();

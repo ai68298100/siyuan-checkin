@@ -72,6 +72,8 @@ export interface EditorViewContext {
     recentTemplates?: string[];
     /** T-1233：当前编辑项的锚点块回写被挂起（内核不可达/块不存在）。 */
     anchorSuspended?: boolean;
+    /** T-1465（D-273）：可绑定的问卷模板（内置 + 自建，已解析本地化）。 */
+    journalTemplates?: ReadonlyArray<{id: string; icon: string; name: string}>;
 }
 
 export function renderEditorView(ctx: EditorViewContext): string {
@@ -221,6 +223,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <label class="lc-checkin__field" data-record-step-field><span>${t("editor.recordStepLabel")}</span><input name="recordStep" type="number" min="${getRecordStepInputStep(selectedKind, selectedUnit)}" step="${getRecordStepInputStep(selectedKind, selectedUnit)}" required value="${formatNumber(selectedRecordStep)}" /><small>${t("editor.recordStepHint")}</small></label>
                         <label class="lc-checkin__field" data-quick-steps-field><span>${t("editor.quickStepsLabel")}</span><input name="quickSteps" type="text" inputmode="decimal" value="${escapeHtml((item?.quickSteps ?? []).map((value) => formatNumber(value)).join(", "))}" placeholder="${t("editor.quickStepsPlaceholder")}" /><small>${t("editor.quickStepsHint")}</small></label>
                     </div>
+                    <label class="lc-checkin__field" data-journal-field><span>${t("journal.editorBindingLabel")}</span><select name="journalTemplateId"><option value="">${t("journal.bindingNone")}</option>${(ctx.journalTemplates ?? []).map((template) => `<option value="${escapeHtml(template.id)}"${item?.journal?.templateId === template.id ? " selected" : ""}>${escapeHtml(template.icon)} ${escapeHtml(template.name)}</option>`).join("")}</select><small>${t("journal.editorBindingHint")}</small></label>
                 </div>
                 <aside class="lc-checkin__editor-side">
                     <section class="lc-checkin__editor-preview" aria-label="${t("editor.previewLabel")}">

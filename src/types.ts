@@ -92,6 +92,9 @@ export interface CheckinItem {
         渲染为 chips，一次点击=一条追加式增量事件）。仅物化 1~4 个正数（升序去重，≤1e6）；
         binary 项目不物化；缺省=仅有默认步长按钮（历史行为零变化）。 */
     quickSteps?: number[];
+    /** T-1465（D-273）问卷日记绑定：打卡动作变为填写绑定模板的问卷。
+        仅校验 slug 格式（[a-z0-9-]）；模板可后删——运行时找不到模板时回退普通打卡。 */
+    journal?: {templateId: string};
 }
 
 export interface CheckinEvent {

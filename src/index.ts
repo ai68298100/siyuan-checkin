@@ -54,6 +54,8 @@ import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDia
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
+import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
+import {openJournalDialogFor} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
@@ -421,6 +423,10 @@ export default class CheckinPlugin extends Plugin {
         this.ingestSireaderLifecycle(type.replace("reader:", "") as SireaderLifecycleType, Date.now());
     };
     private summaryResidentInFlight = false;
+    /* T-1465（D-273）问卷日记：自建模板与写入目标存独立 journal.json（不进 view-preferences，避免加载器级联）。 */
+    private journalCustomTemplates: JournalTemplateDef[] = [];
+    private journalIntegrationPref: JournalIntegration = normalizeJournalIntegration(undefined);
+    private journalNotebooks: ReadonlyArray<{id: string; name: string}> = [];
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -618,6 +624,157 @@ export default class CheckinPlugin extends Plugin {
         } finally {
             this.summaryResidentInFlight = false;
         }
+    }
+
+    /* ===== T-1465（D-273）问卷式日记打卡 =====
+       事实层先行：recordEvent 落盘（note 只带截断摘要）；文档写入为尽力而为旁路，
+       失败不回滚打卡（审计 + toast 提示），同 summary-resident 纪律。
+       幂等：目标文档内按结构化标记定位插件自写块，命中即更新（绝不改写用户内容）。 */
+
+    private resolveJournalTemplateById(templateId: string): ResolvedJournalTemplate | undefined {
+        const def = JOURNAL_BUILTIN_TEMPLATES.find((entry) => entry.id === templateId)
+            || this.journalCustomTemplates.find((entry) => entry.id === templateId);
+        return def ? resolveJournalTemplate(def, t) : undefined;
+    }
+
+    /** 编辑器绑定下拉的可选项：内置 5 预设 + 自建（均已解析本地化）。 */
+    private resolvedJournalTemplateList(): ResolvedJournalTemplate[] {
+        return [...JOURNAL_BUILTIN_TEMPLATES, ...this.journalCustomTemplates]
+            .map((def) => resolveJournalTemplate(def, t))
+            .filter((entry): entry is ResolvedJournalTemplate => Boolean(entry));
+    }
+
+    private async saveJournalData(): Promise<void> {
+        await this.saveData(JOURNAL_DATA_NAME, {templates: this.journalCustomTemplates, integration: this.journalIntegrationPref});
+    }
+
+    private async listNotebooksForJournal(): Promise<ReadonlyArray<{id: string; name: string}>> {
+        if (this.journalNotebooks.length) return this.journalNotebooks;
+        try {
+            const response = await this.kernelPost("/api/notebook/lsNotebooks", {}) as {data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
+            this.journalNotebooks = (response?.data?.notebooks || [])
+                .filter((notebook) => Boolean(notebook.id && notebook.name) && notebook.closed !== true)
+                .map((notebook) => ({id: String(notebook.id), name: String(notebook.name)}));
+        } catch {
+            this.journalNotebooks = [];
+        }
+        return this.journalNotebooks;
+    }
+
+    /** 目标定位栈（D-273）：显式文档 > 当日日记（dailyNoteSavePath 经 sprig 渲染 + hpath 定位 +
+        createDocWithMd 同路径幂等创建）；不硬编码 /diary/。 */
+    private async resolveJournalTarget(): Promise<{docId: string; docName: string; reason?: string}> {
+        if (this.journalIntegrationPref.mode === "doc") {
+            const docId = this.journalIntegrationPref.docId;
+            if (!docId) return {docId: "", docName: "", reason: "missing-doc-id"};
+            const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE id = '${docId.replace(/'/g, "''")}' LIMIT 1`}).catch(() => undefined);
+            const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: unknown[]}).data : [];
+            if (!rows.length) return {docId: "", docName: "", reason: "doc-not-found"};
+            return {docId, docName: t("journal.targetDoc")};
+        }
+        const notebooks = await this.listNotebooksForJournal();
+        if (!notebooks.length) return {docId: "", docName: "", reason: "no-notebook"};
+        const notebook = notebooks.find((entry) => entry.id === this.journalIntegrationPref.notebookId)?.id || notebooks[0].id;
+        const conf = await this.kernelPost("/api/notebook/getNotebookConf", {notebook}).catch(() => undefined);
+        const confPayload = (((conf ?? {}) as {data?: unknown}).data ?? {}) as {conf?: {dailyNoteSavePath?: string}; dailyNoteSavePath?: string};
+        const pathTemplate = confPayload.conf?.dailyNoteSavePath || confPayload.dailyNoteSavePath || "";
+        if (!pathTemplate) return {docId: "", docName: "", reason: "no-daily-path"};
+        const rendered = await this.kernelPost("/api/template/renderSprig", {template: pathTemplate}).catch(() => undefined);
+        const hpath = typeof (rendered as {data?: unknown})?.data === "string" ? String((rendered as {data: string}).data).trim() : "";
+        if (!hpath.startsWith("/")) return {docId: "", docName: "", reason: "render-failed"};
+        const escaped = hpath.replace(/'/g, "''");
+        const bare = escaped.replace(/^\//, "");
+        const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, hpath FROM blocks WHERE type = 'd' AND (hpath = '${escaped}' OR hpath = '${bare}') ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: Array<{id?: string; hpath?: string}>}).data : [];
+        if (rows.length && rows[0].id) {
+            return {docId: String(rows[0].id), docName: String(rows[0].hpath || hpath).split("/").filter(Boolean).pop() || hpath};
+        }
+        const created = await this.kernelPost("/api/filetree/createDocWithMd", {notebook, path: hpath, markdown: ""}).catch(() => undefined);
+        const docId = typeof (created as {data?: unknown})?.data === "string" ? String((created as {data: string}).data) : "";
+        if (!docId) return {docId: "", docName: "", reason: "create-failed"};
+        return {docId, docName: hpath.split("/").filter(Boolean).pop() || hpath};
+    }
+
+    /** 幂等写入：标记命中 → updateBlock 更新插件自写块；否则 appendBlock 追加。 */
+    private async writeJournalEntry(template: ResolvedJournalTemplate, localDate: string, markdown: string): Promise<{ok: boolean; updated: boolean; docId: string; docName: string; reason?: string}> {
+        try {
+            const target = await this.resolveJournalTarget();
+            if (!target.docId) return {ok: false, updated: false, docId: "", docName: "", reason: target.reason || "target"};
+            const lookup = await this.kernelPost("/api/query/sql", {stmt: buildJournalLookupQuery(target.docId, template.id, localDate)});
+            const rows = Array.isArray((lookup as {data?: Array<{id?: string}>})?.data) ? (lookup as {data: Array<{id?: string}>}).data : [];
+            if (rows.length && rows[0].id) {
+                await this.kernelPost("/api/block/updateBlock", {id: rows[0].id, data: markdown, dataType: "markdown"});
+                return {ok: true, updated: true, docId: target.docId, docName: target.docName};
+            }
+            await this.kernelPost("/api/block/appendBlock", {data: markdown, dataType: "markdown", parentID: target.docId});
+            return {ok: true, updated: false, docId: target.docId, docName: target.docName};
+        } catch (error) {
+            return {ok: false, updated: false, docId: "", docName: "", reason: String(error instanceof Error ? error.message : error)};
+        }
+    }
+
+    private async openJournalEntry(itemId: string): Promise<void> {
+        if (this.disposed || this.disposing || !this.acceptingOperations) return;
+        const item = getActiveItemById(this.store, itemId);
+        if (!item) return;
+        const templateId = item.journal?.templateId;
+        const template = templateId ? this.resolveJournalTemplateById(templateId) : undefined;
+        if (!template) {
+            /* 模板可后删：运行时缺失时按普通打卡回退（不阻塞记录链）。 */
+            showMessage(t("journal.templateMissing"));
+            await this.recordEvent(item, 1, captureActionMoment(), this.revisionFingerprint(item, currentCalendarDate()));
+            return;
+        }
+        const notebooks = await this.listNotebooksForJournal();
+        const localDate = dateKey(currentCalendarDate());
+        let alreadyWritten = false;
+        try {
+            const target = await this.resolveJournalTarget();
+            if (target.docId) {
+                const lookup = await this.kernelPost("/api/query/sql", {stmt: buildJournalLookupQuery(target.docId, template.id, localDate)});
+                alreadyWritten = (Array.isArray((lookup as {data?: unknown[]})?.data) ? (lookup as {data: unknown[]}).data : []).length > 0;
+            }
+        } catch { /* 预检尽力而为，失败按未填写处理 */ }
+        openJournalDialogFor({
+            template,
+            integration: this.journalIntegrationPref,
+            notebooks,
+            alreadyWritten,
+            isMobileFrontend: this.isMobileFrontend,
+            onPersistIntegration: (integration) => {
+                this.journalIntegrationPref = integration;
+                void this.saveJournalData().catch(() => undefined);
+            },
+            onSubmit: async (answers) => {
+                const moment = captureActionMoment();
+                const fingerprint = this.revisionFingerprint(item, currentCalendarDate());
+                /* 重填分流：当日已完成 → 事实已落盘，只更新文档；未完成 → 先记事实再旁路写入。 */
+                if (!isComplete(this.store, item, currentCalendarDate())) {
+                    const event = await this.recordEvent(item, 1, moment, fingerprint, buildJournalEventNote(template, answers));
+                    if (!event) return; /* 事实层失败：recordEvent 已提示，不旁路写入。 */
+                }
+                const markdown = buildJournalEntryMarkdown({template, localDate, answers});
+                const result = await this.writeJournalEntry(template, localDate, markdown);
+                this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "journal", template: template.id, docId: result.docId, updated: result.updated, ok: result.ok, reason: result.reason || ""}});
+                this.scheduleAuditPersist();
+                showMessage(result.ok ? t("journal.written", {name: result.docName || template.name}) : t("journal.writeFailed", {reason: result.reason || ""}));
+                if (this.currentPage === "today") this.renderBackgroundUpdate();
+            },
+        });
+    }
+
+    /* 设置页：保存自建模板文本（解析 fail-closed，非法块计数提示）。 */
+    private async saveJournalCustomTemplates(rawText: string): Promise<void> {
+        const existingIds = this.journalCustomTemplates.map((template) => template.id);
+        const parsed = parseCustomJournalTemplatesText(rawText, existingIds);
+        if (!parsed.templates.length && parsed.invalidBlocks > 0) {
+            showMessage(t("journal.customInvalid", {n: parsed.invalidBlocks}));
+            return;
+        }
+        this.journalCustomTemplates = parsed.templates;
+        await this.saveJournalData();
+        if (parsed.invalidBlocks > 0) showMessage(`${t("journal.customSaved", {n: parsed.templates.length})} ${t("journal.customInvalid", {n: parsed.invalidBlocks})}`);
+        else showMessage(t("journal.customSaved", {n: parsed.templates.length}));
     }
 
     /* 设置页手动补写今日摘要：与自动路径同一幂等门槛，重复点击不会重复追加。 */
@@ -1046,6 +1203,11 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.disposing || !this.acceptingOperations) return;
         const item = getActiveItemById(this.store, itemId);
         if (!item) return;
+        /* T-1465：绑定问卷的项目在渲染块同样走问卷弹窗（语义与今日页一致）。 */
+        if (item.journal?.templateId) {
+            await this.openJournalEntry(itemId);
+            return;
+        }
         const actionDate = currentCalendarDate();
         const revision = getItemRevisionForDate(item, actionDate);
         /* T-1462：chips 携带的增量优先；缺省（单按钮）沿用默认步长。 */
@@ -1396,6 +1558,11 @@ export default class CheckinPlugin extends Plugin {
                 const storedIconLibrary = await this.loadData(CUSTOM_ICON_LIBRARY_NAME);
                 const storedReminderActions = await this.loadData(REMINDER_ACTIONS_NAME);
                 this.reminderUserActions = deserializeReminderUserActions(typeof storedReminderActions === "string" ? storedReminderActions : "");
+                /* T-1465 问卷日记：独立数据文件（自建模板 + 写入目标）。 */
+                const storedJournal = await this.loadData(JOURNAL_DATA_NAME);
+                const journalPayload = (storedJournal && typeof storedJournal === "object" ? storedJournal : {}) as {templates?: unknown; integration?: unknown};
+                this.journalCustomTemplates = normalizeCustomJournalTemplates(journalPayload.templates);
+                this.journalIntegrationPref = normalizeJournalIntegration(journalPayload.integration);
                 const storedSuggestionWorkflow = await this.loadData(SUGGESTION_WORKFLOW_STORAGE_NAME);
                 this.rememberSuggestionWorkflowBaseline(storedSuggestionWorkflow);
                 const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
@@ -2619,6 +2786,8 @@ export default class CheckinPlugin extends Plugin {
         return renderSettingsView({
             store: this.store,
             auditEntries: this.auditEntries,
+            journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
+            journalCustomCount: this.journalCustomTemplates.length,
             snapshots: this.snapshotHistory.map((snapshot, index) => ({index, capturedAt: snapshot.capturedAt, legacy: snapshot.legacy,
                 itemCount: normalizeStore(snapshot.store).items.length, eventCount: normalizeStore(snapshot.store).events.length})),
             customIconLibrary: this.customIconLibrary,
@@ -2801,6 +2970,11 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
             void this.writeSummaryResidentNow();
+        });
+        root.querySelector<HTMLElement>("[data-action='save-journal-custom']")?.addEventListener("click", () => {
+            /* T-1465：自建问卷模板文本——解析 fail-closed，保存后编辑器绑定下拉立即可见。 */
+            const input = root.querySelector<HTMLTextAreaElement>("[data-journal-custom]");
+            void this.saveJournalCustomTemplates(input?.value ?? "");
         });
         root.querySelector<HTMLInputElement>("[data-sireader-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -3896,6 +4070,7 @@ export default class CheckinPlugin extends Plugin {
             saveState: this.saveState,
             syncNoticeActive: this.syncNoticeTimer !== undefined,
             recentTemplates: this.recentTemplates,
+            journalTemplates: this.resolvedJournalTemplateList(),
             anchorSuspended: (() => {
                 const anchor = this.store.items.find((candidate) => candidate.id === this.editingId)?.noteAnchor;
                 return Boolean(anchor && this.suspendedAnchors.has(`${this.editingId}:${anchor.blockId}`));

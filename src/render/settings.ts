@@ -41,6 +41,9 @@ export interface SettingsViewContext {
     dockTomatoDiagnostics?: DockTomatoProviderDiagnostics;
     dockTomatoCompletionIssues?: readonly DockTomatoCompletionIssue[];
     dockTomatoInbox?: {capacity: number; entries: readonly DockTomatoInboxEntryView[]};
+    /** T-1465（D-273）问卷日记：自建模板文本（设置页编辑区，空行分块）。 */
+    journalCustomText?: string;
+    journalCustomCount?: number;
     palette: CheckinPalette;
     avatar: string;
     avatarImage?: string;
@@ -124,6 +127,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         : "";
     /* T-1352：日记集成缺省值——旧调用方/测试未传该字段时按「未启用」渲染。 */
     const diary = ctx.diaryReport || {enabled: false, docId: ""};
+    /* T-1465（D-273）：问卷日记自建模板缺省值。 */
+    const journalCustomText = typeof ctx.journalCustomText === "string" ? ctx.journalCustomText : "";
+    const journalCustomCount = ctx.journalCustomCount ?? 0;
     /* T-1353：摘要驻留缺省值，同上。 */
     const summaryResident = ctx.summaryResident || {enabled: false, docId: ""};
     /* T-1384：思阅联动缺省值，同上。 */
@@ -360,6 +366,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryDoc")}</span><small>${t("set.diaryDocHint")}${diary.docId && !diary.enabled ? ` · ${t("set.diaryDocPending")}` : ""}</small></span><span class="lc-checkin__settings-inline lc-checkin__diary-doc-controls"><input type="search" data-diary-search placeholder="${t("set.diaryDocChoose")}" aria-label="${t("set.diaryDocChoose")}" /><select data-diary-choice aria-label="${t("set.diaryDocChoose")}"><option value="">${t("set.diaryDocChoose")}</option>${diaryChoiceOptions}</select><input type="text" class="lc-checkin__diary-doc" data-diary-doc value="${escapeHtml(diary.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.diaryDoc")}" /><button class="lc-checkin__text-button" type="button" data-action="save-diary-doc">${t("set.diarySave")}</button><button class="lc-checkin__text-button" type="button" data-action="toggle-create-diary-doc">${t("set.diaryCreate")}</button></span><div class="lc-checkin__diary-create" data-diary-create hidden><label><span>${t("set.diaryNotebook")}</span><select data-diary-notebook aria-label="${t("set.diaryNotebook")}" disabled><option value="">${t("set.diaryNotebookLoading")}</option></select></label><label><span>${t("set.diaryCreateTitle")}</span><input type="text" data-diary-create-title placeholder="${t("set.diaryCreateTitle")}" aria-label="${t("set.diaryCreateTitle")}" /></label><button class="lc-checkin__text-button" type="button" data-action="create-diary-doc">${t("common.confirm")}</button></div></div>
                     <div class="lc-checkin__settings-row" data-diary-integration><span class="lc-checkin__settings-label"><span>${t("set.diaryTitle")}</span><small>${t("set.diaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-diary-toggle ${diary.enabled ? "checked" : ""} aria-label="${t("set.diaryToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.enabled && diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></div>
+                    </details>
+                    <details class="lc-checkin__source-panel" data-source-panel="journal"${sourcePanelOpen("journal")}>
+                    <summary class="lc-checkin__source-panel-head"><strong>${t("journal.settingsTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("journal.customCount", {n: journalCustomCount})}</small></span></summary>
+                    <small class="lc-checkin__source-boundary">${t("journal.settingsHint")}</small>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span><small>${t("journal.customHint")}</small></span></div>
+                    <div class="lc-checkin__settings-row"><textarea class="lc-checkin__journal-custom" data-journal-custom rows="6" aria-label="${t("journal.customLabel")}">${escapeHtml(journalCustomText)}</textarea></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span></span><button class="lc-checkin__text-button" type="button" data-action="save-journal-custom">${t("common.confirm")}</button></div>
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="summary" data-source-state="${summaryState}"${sourcePanelOpen("summary")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.summaryIntegration")}</strong>${sourceBadge(summaryState)}</summary>

@@ -57,6 +57,8 @@ export interface BindTodayHost {
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
     firstSuccessSkipGuidance(): void;
+    /** T-1465（D-273）问卷日记：打开绑定模板的问卷弹窗（宿主负责事实层与旁路写入）。 */
+    openJournalEntry?(itemId: string): void;
     /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
     pulseHaptic(): void;
     /** 打卡后焦点归位（T-114）：记录刚操作的打卡项，重渲染后焦点还原到该卡主按钮。 */
@@ -293,6 +295,10 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 : getRecordStep(revision.kind, revision.unit, revision.recordStep);
             host.enqueueMutation(() => host.recordEvent(item, amount, moment, expectedRevisionFingerprint));
         });
+        element.querySelectorAll<HTMLElement>("[data-action='journal']").forEach((button) => button.addEventListener("click", () => {
+            /* T-1465：问卷绑定项目（主按钮 + 次级重填入口）——宿主负责弹窗、事实层与旁路写入。 */
+            void host.openJournalEntry?.(itemId);
+        }));
         element.querySelector<HTMLElement>("[data-action='toggle-exact']")?.addEventListener("click", (event) => {
             const button = event.currentTarget as HTMLElement;
             const entry = element.querySelector<HTMLElement>("[data-exact-entry]");
