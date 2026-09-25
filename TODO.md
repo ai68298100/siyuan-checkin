@@ -168,9 +168,12 @@
   - 状态：done（2026-09-24）。偏好 dailyReminder {enabled, slots[]}（默认 {true, []}=完整保留启动一条的原行为）；slots 严格 HH:MM 归一（去重升序封顶 4，非法丢弃）；配置槽位后 minute 级有界轮询到点触发，每槽按 localDate 幂等，启动时当日已到点未发的槽合并为至多一条补发；安静时段/零事项/开关关闭闸门全部保留。设置页新增提醒开关+时刻编辑行（双语）。normalizeDailyReminderSlots/Preference 归入 reminder-preferences.ts（无新模块零 loader 级联）。tests/reminder-quiet.test.cjs 扩充归一/接线/结构用例。
 - [x] T-1450 目标负荷解读卡（R-20.3 第三张行动卡，回顾 2.0「目标是否过高」）
   - 状态：done（2026-09-24）。纯函数 interpretTargetLoad（pace-projection.ts）：样本门槛=到期机会 ≥8、阈值固定=积压率 ≥15% 偏紧 / ≥40% 疑似过高、输出只列偏紧与疑似过高项（积压率降序、名称 zh-CN 稳定平局、limit 5），证据含观察窗首日与漏卡次数；index 复用失速卡同一份事实（不重复枚举）并补记录观察窗首日；报告渲染「目标负荷（近 30 天）」节，建议表述为可选项（低压力纪律）。顺带修复 index 漏传 stalledItems 的缺口（失速卡此前只算未渲染进报告）。tests/pace-projection.test.cjs 补门槛/边界/排序/纯度/触点用例。
-- [ ] T-1441 叶归 LifeLog 识别研究（用户需求 2026-09-24，**需用户提供仓库/集市链接**）
+- [x] T-1441 叶归 LifeLog 识别研究·第一步（2026-09-25 仓库自检索，阻塞解除）
   - 分析：识别叶归插件 LifeLog 条目并自动完成对应打卡。红线=不逆向私有存储；仅解析用户可见内容。研究步骤=定位仓库→发布包静态分析→判定可解析面→设计映射→预览确认流。智能体通道仅作补充。
-  - 状态：**阻塞**——需用户提供叶归插件仓库链接或集市名称。
+  - 研究结论（2026-09-25）：① 仓库=**Wetoria/sy-plugin-enhance**（叶归/Leaf Nest，集市版 v1.12.6，源码闭源仅发布工件）；② v1.12.6 发布包静态分析：LifeLog 记录带 **BlockId**（CSV 导出字段 Date/Type/Content/Duration/StartTime/EndTime/DurationSeconds/TotalDuration/BlockId）→ 条目本体=**思源块（用户可见内容，公开可解析面，红线不触）**；渲染层 DOM 属性 data-en_lifelog_{type,content,date,start/end_time_format}；输入为 Marker 语法（EnableMarker 设置+FormatWarning 校验，疑似限日记文档）；无 custom-en-lifelog-* 块属性；付费边界=叶归有 4 项专业版功能（CSV 复制有鉴权键），解析用户文档块不涉绕过付费。
+  - **实时获取路线可行**（用户主诉求 2026-09-25）：与健康收件箱同型——绑定日记范围 → 有界 SQL 轮询解析 Marker 行 → 时长分桶 → externalRef `yeguif:<blockId>` 幂等（BlockId 天然防重）。
+  - 前置缺口：**Marker 语法确切格式**（bundle 混淆字符串表 3508 项未解码；公开资料无文档）。获取路径：a) 下会话解码字符串表 b) 用户提供叶归设置页 LifeLog 截图（最快）c) 询问作者 Wetoria。
+  - 设计草案（语法确认后单批次实现）：yeguif 来源登记 + marker 解析纯模块 + 范围治理 + 5 分钟轮询摄取 + 墓碑撤销，工程形状与 health-inbox 同型。
 - [x] T-1443 主动提醒通道：事项置顶 + 每日统一提醒（用户需求 2026-09-24）
   - 状态：done（2026-09-24，c750d29 统一每日提醒经思源公开 API /api/notification/pushMsg——事项提醒置顶高于打卡、按 localDate 每日幂等一次、内容只含标题与计数；c7be048 提醒推送尊重安静时段。真机推送形态与多次时刻配置归 host-pending/后续深化）。
   - 用户反馈：设置里有提醒相关项，但实际从未在任何地方收到提醒；要求梳理提醒机制、控制提醒的时间/次数/内容，默认一天最多统一提醒一次（用户可设多次）；**事项提醒置于最高优先级、高于打卡**；并确保走思源本身的提醒能力。
