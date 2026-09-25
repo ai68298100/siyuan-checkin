@@ -2303,16 +2303,9 @@ export default class CheckinPlugin extends Plugin {
         if (this.disposed || this.disposing) {
             return;
         }
-        /* T-1445：输入聚焦期间挂起后台重渲染，失焦后补一次，防止输入法反复弹出。 */
-        if (this.pendingRenderAfterTyping && !this.isTypingInTodayInput()) {
-            this.pendingRenderAfterTyping = false;
-            this.render();
-            return;
-        }
-        if (this.currentPage === "today" && this.isTypingInTodayInput()) {
-            this.pendingRenderAfterTyping = true;
-            return;
-        }
+        /* T-1445 的输入挂起只在 renderBackgroundUpdateFor（后台源）层做——本函数承载
+           导航与用户动作等显式渲染，挂起会造成「焦点在旧输入框 → 渲染被吞 → 焦点
+           永不释放」的死锁（T-1455 宽度走查发现的回归）。 */
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
         const reviewAnalyticsSnapshot = roots.length && this.currentPage === "review" && this.initializationState === "ready"
             ? buildAnalyticsSnapshot(this.store, currentCalendarDate())

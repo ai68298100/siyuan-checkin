@@ -155,6 +155,7 @@
   - 现象：.lc-checkin__overview-streak > strong 等待 30s 超时——warm 概览未渲染「最佳连击」块（fragments.ts 473 行需 bestStreakValue > 1）。worktree 二分证实 c7be048（今日功能批之前）已同径失败 → 非本日回归，先于 T-1450/1451/1454 等存在。
   - 候选根因：场景夹具按 daysAgo 相对日期造 3 天事件，与 computeLongestStreaks/computeEventStreaks 的「含今日才连续」口径不匹配（恰逢日期边界或语义变更后场景未同步）；或 showToday 后概览 ctx 装载时序。
   - 修复方向：walkthrough 场景改用绝对锚定日期或按 streak 口径补今日事件；同时核对 overview-streak 渲染条件是否被 T-1415 里程碑标签改动牵连。复跑 visual-qa（已通过，与本失败无关）。
+  - 排查进展（2026-09-24 深夜）：已修复第一层——T-1445 在 render() 层的无条件挂起造成死锁（焦点在旧输入框 → 显式渲染被吞 → 焦点永不释放），已把挂起收敛回 renderBackgroundUpdateFor 后台层并在挂起时登记一次性 focusout 补渲染。插桩证实仍有第二层：渲染时 currentStreaks.stretch=1，秒后 computeStreaks()=3——渲染后存在异步 store 替换/重算分歧（候选：持久化管线 reconcile 或索引时序），宽度走查该断言继续失败。两层事实与复现方法已记录，供下一会话续查（建议：在 reconcileStore/save 完成回调处断点比对 store 对象身份与事件数）。
 - [x] T-1454 场景组合包 habit stacks v1（方向 11 主交付，P0-5 新手路径协同）
   - 状态：done（2026-09-24）。catalog 新增 TEMPLATE_PACKS 5 个场景组合（晨间例程/学习成长/运动健身/睡前放松/创作入门，按模板名引用 CHECKIN_TEMPLATES 纯内容资产）；features/template-packs.ts 纯投影（引用解析+未知名 fail-closed 降级+本地化名新旧分类+计数）；编辑器模板区新增组合包芯片行+预览面板，条目复用 data-template-apply 既有通道逐条填表确认（无新创建路径，用户掌控逐项）；i18n 11 键双语。Routinery 序列化执行器延后条件「模板组合交付」现已满足（下轮调研评估）。tests/template-packs.test.cjs 新增入 test:ui。
 - [x] T-1453 渲染块组合卡片（方向 9「可组合卡片」收口件）
