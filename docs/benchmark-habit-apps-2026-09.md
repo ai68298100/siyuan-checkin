@@ -467,3 +467,76 @@ royc01/pinch（思源集市，v2.7.1 @2026-09-18，30 个 release，repo 2026-01
 ### 第五轮小结
 
 延后项触发核查 6 项：采纳 1（当场落地）、延后维持 2、未触发 3；外部取证无新增采纳。M2 收口后的技术面结论不变：差异化继续压在习惯算法内核与统计口径，可视化层跟随宿主数据库视图演进保持克制。第六轮触发条件：M3（笔记与迁移）或 M4（生态契约）任一收口，或用户点名竞品/工具深评。
+
+## 十五、T-1400 生态调研循环·第六轮（2026-09-25，用户点名触发）
+
+触发：用户 2026-09-25 要求「再次生态调研，尽量多扩充参考内容，并完善插件定位、UI、交互、功能与总规划」。此时 v18.5.0 已发布（设置页与外部联动重构），R-A0～A12 泳道本地部分收口。本轮是六轮中扫描面最宽的一次：四路并行（①独立应用与行为科学 ②GitHub 开源增量 ③笔记生态与思源集市 ④UI/交互设计专项），合计 100+ 次检索与抓取，取证日 2026-09-25。部分时段搜索服务限流，相关取证降级为 GitHub API / raw 清单 / 官方注册表直读；证据等级与弱信号在各条目内标注。
+
+### 扫描覆盖
+
+- 独立应用：Finch、Tiimo、goblin.tools、Rise、HabitNow、Fabulous、Structured、Couch、Bloom、Acta、WaterMinder、Medisafe 类药盒、HabitKit（2026-08/09 更新）、Habitify（mood 弱信号）、Grow 2026、Tangerine、Summer Arc 趋势；已评应用近三月 release 复核（Loop 止于 v2.3.1 无新信号）。
+- 行为科学：Duolingo streak freeze/repair 机制及其 dark pattern 批判研究、66 天习惯自动性研究口径更新（中位数 59-66 天、个体 18-254 天）、实施意图 if-then（Divine 2025 / JMIR 2024 DBTI）、诱惑捆绑（Milkman→Acta 产品化）、 calm/反焦虑 UX、ADHD 友好设计。
+- GitHub 开源（全程 GitHub API 通道）：InlitX/streak v1.4→v2.0.0（2026-08～09 八周 7 版）、mhabit v1.27.9（2026-09-20）、ximing/vital、Vsein/Neohabit、enjo2/PixelHabits、FrequeNCy144/Frequent-Habits、Lethe044/hermes-life-os、chongjie-6/OpenHabits、MCP for habits 生态（56 结果群体观察）、kb019/sprout 等 CLI 面；topic:habit-tracker 2026 年新建 1056 仓、quantified-self 新建 342 仓的增量扫描。
+- 笔记生态：思源集市 520 插件全量 diff（2026-09-19 后 47 条更新逐一核对）、Obsidian 官方注册表 8038 条解析（habit 相关 112 款）、TaskNotes（2165★）、Bases Heatmap View、Logseq DB 版后生态、Tana/Capacities/Heptabase/AppFlowy、Notion Life OS 模板趋势、思源宿主 v3.8.5/3.8.6-alpha releases、pinch 确认无 v2.8。
+- UI/交互专项：streak freeze 交互解剖、双日规则文案、Streaks 大按钮+长按、NN/g undo 与渐进式披露、热力图色盲安全色阶（viridis/cividis 共识）、环/链/网格分工、Apple 活动圆环、大数字+sparkline、Daylio 色彩心理临床反例、内嵌 tracker 触控约束、Apple HIG 44pt / Material 48dp / WCAG 2.2 触控规范、reduced-motion 三通道冗余、里程碑分级庆祝、bento grid、周开始日。
+
+### 竞品警报（1 项）
+
+**Workbench 工作台**（IAliceBobI/sy-workbench-plugin，sy-tomato 作者，集市 2026-09-25 上架 v1.0.2）：每晚 3 分钟「晚备弹」AI 对账、白天时间轴自动留痕，主打「**不用打卡、不用补记——计划即账本**」；四池任务库（含带上下限配额+最低频率的「维持炉火」池——习惯邻接机制）、不想做清单、块属性唯一事实源、内核侧 MCP 外脑、飞书日历推送。评估：**叙事层威胁**——以「反打卡」切入自我管理心智，且作者为思源插件圈最高产者、宣发势能强；**机制层不构成威胁**——其最低频率配额恰证明频次约束是刚需（连最反追踪的作者也做配额），而小驴在习惯算法内核（SKIP/maxGap/quota/at-most/里程碑）、不可变事件、统计口径、渲染块与 API v5 上全面领先。应对：①文案层明确区隔「**低压力记录 ≠ 零记录**」——不记录就没有可回看、可解释、可调整的长期数据，小驴的答案是把记录成本压到两次点击以内而非取消记录（归 T-1461 落地）；②不跟进其项目管理/全家桶形态；③持续观察其迭代与用户反馈。
+
+### 采纳（3 项，登记 T-1461/T-1462/T-1463，拆批次开发）
+
+| 候选 | 来源（证据等级） | 吸收点 | 用户收益 / 代价 | 批次 |
+| --- | --- | --- | --- | --- |
+| **低压力呈现与包容性设计规范** | NN/g undo 与渐进式披露（权威共识）；viridis/cividis 色盲安全色阶（科学可视化共识）；PMC 红绿配色负面情绪临床证据；双日规则（goalsandprogress，行为科学背景）；Apple HIG 44pt/Material 48dp/WCAG 2.2（平台权威）；reduced-motion 三通道冗余（设计社区共识）；Duolingo streak freeze 学术批判（反例红线） | ①热力图/状态色复核为紫罗兰单色亮度阶梯+数字/tooltip 冗余编码，禁红绿对举、低完成度不上警示红；②「断一天是数据，连断两天才是信号」双日规则文案与失速卡无罪化改写，全局 calm 文案禁则（禁「你落后了」式措辞）；③完成态颜色+图标+文字三通道静态可辨（动效只是增量）入 ui-state-ledger 守门；④44/48px 触控目标全量审查（底栏/渲染块按钮/周条格子）入视觉 harness；⑤低风险操作 undo 优先于确认弹窗审查 | 高（把「低压力」从口号落成可验收规范；无障碍与移动触控直接受益）/ 低-中（零 schema 变更，纯呈现/文案/守门） | **T-1461** |
+| **数值快捷记录预设增量** | WaterMinder「Log Cup」范式（商店文案+2026 横评：预设量一键 +1 杯/+250ml 是饮水类标配） | 数值型项目 per-item 可配预设步长集合（如 +1/+250/+500），记录对话框与 today 渲染块按钮组呈现 chips，一次点击=一条追加式增量事件；事件不可变语义不变，无配置时行为不变 | 中-高（数值/计数类记录从「点开输入」降到「一键」，含饮水/页数/次数场景）/ 低（纯 UI 增强，走既有 recordEvent value 通道） | **T-1462** |
+| **迁移健壮性与边界用例** | streak v2.0「跨午夜专注会话两天都计数」（release 页）；mhabit WebDAV「同步保留未知字段」（release 页）；PixelHabits 三段式合并语义（README：每日打卡取并集、元数据 updated_at LWW、事件按 id 幂等去重） | ①跨午夜来源/会话按 localDate 预切分与双日归账的边界断言（本模型 T-1385 已预切分，本项是证据补强非行为变更）；②导入预览「未识别列/字段原文保留到审计与预览、不静默丢弃」原则化+测试，导出文档注明向前兼容承诺；③PixelHabits 合并语义写入导出/同步设计文档作未来多端参考（不实现同步） | 中（防止未来格式升级破坏旧数据；跨午夜口径有可复跑证据）/ 低（文档+测试为主） | **T-1463** |
+
+### 延后（13 项，触发条件）
+
+- **if-then 情境提示字段**（Divine 2025/JMIR DBTI，学术证据）：项目元数据可选「触发情境+行动句子」，记录页展示。触发：项目 schema 演进窗口。
+- **今日完成度环**（Apple 活动圆环 wrap-around，trophy.so 分析+swdevnotes 实现）：行动台摘要条升级 SVG 环+dock 常驻小环。触发：今日行动台下一轮视觉迭代。
+- **大数字+sparkline 报告卡**（oviond/graphed 共识）：报告统计值配 7/30 日 sparkline 压缩移动端卡高。触发：回顾/洞察改版窗口。
+- **时段分组多次记录视图**（Medisafe 药盒范式+Tangerine，第三方评测）：一日多次项目按早/午/晚分组渲染。触发：一日多次项目用户反馈。
+- **超额日着色**（streak v1.9，release 页）：quota 超额的正向渲染。触发：渲染块 quota 表达迭代。
+- **fractured/sparse 热图**（Neohabit，README；维持第三轮延后）：fractured 触发=高频次数据规模；sparse（月/45 天低频投影）与 maxGap 组合评估触发=热力图改版窗口。
+- **确定性相关性洞察**（hermes-life-os，README+源码结构）：最小样本纪律（重叠≥4 天且 |r|≥0.4 才输出）+滞后相关，不依赖 LLM。触发：洞察改版窗口。
+- **Story Mode 渐进解锁**（Frequent-Habits v2.3.4，README/F-Droid）：初始 1 个习惯、30 天且成功率≥85% 解锁下一槽位。触发：用户明确提出「帮我控制只养少数习惯」类需求。
+- **分享图片导出**（OpenHabits，README）：整年格子渲染成含 streak/完成率的可分享 canvas 图。触发：渲染块导出窗口。
+- **MCP descriptor 层**（habitica-mcp/anneal-mcp 等 56 结果群体观察）：API v5 之上加 MCP 描述符让本地 LLM 代理读写。触发：API v5 真实消费方≥2；写操作确认门控与「提案不静默改数据」（vital）为前提护栏。
+- **CalDAV 外部来源**（bonebearHsu/siyuan-plugin-caldav-sync v0.2.12，README）：日历周期事项作为打卡信号源。触发：用户呼声；登记外部来源候选池第 8 位。
+- **streak freeze/护盾**（Duolingo 范式+学术批判）：若未来做「漏卡宽限」必须是自动宽限窗口而非付费修复（dark pattern 红线）；与已有 maxGap 容错重叠，默认不做。
+- **周开始日开关／quiz 式建档引导／bento 网格重排／66 天成熟度进度条／90 天弧**：低优先观察；前两者等数据聚合与新手反馈确认，bento 等内容层稳定，成熟度进度条（66 天参考刻度，数据已齐）与 90 天弧（趋势性）等投影模型低成本扩展窗口。
+
+### 不做（8 项，边界依据）
+
+- **社区挑战/Live Challenge**（Fabulous v23.0/HabitNow）：账号与社区体系边界，local-first 不兼容。
+- **宠物养成主体**（Finch Adventures）：与笔记工具定位和极简设计语言冲突；「照护式无罪化」叙事可借鉴进文案，不做宠物系统。
+- **定位/运动情境触发提醒**（Grow 2026 三重情境提醒）：桌面宿主形态+传感器后台禁区。
+- **诱惑捆绑奖赏**（Acta/Milkman 产品化）：与低压力、无诱导设计语言冲突。
+- **付费 streak repair**（Duolingo 式）：dark pattern；连击修复走已有 maxGap 容错与补记能力。
+- **情绪日志独立模块**（Habitify mood/Zapier 触发器，弱信号）：T-1433 情境备注归一化已覆盖轻量需求，独立情绪追踪超出打卡边界。
+- **Workbench 式项目管理/四池任务库/MCP 外脑/飞书推送**：不跟进全家桶形态；以「低压力记录」文案区隔其「零记录」叙事（见警报）。
+- **MeiDay 式云端三端 OSS 存储**（CongSec/siyuan-plugin-meiday v1.1.0）：数据全走作者 OSS 与本地优先相悖；「Web 只读报表端」等其有用户声量再评。
+
+### 佐证与信号（不产生任务）
+
+- **「低压力」机制化成为 2026 社区显学**：streak 的 streak-optional/track-only 习惯（v2.0）、vital「Calm Productivity——无红点徽章无焦虑指标」、Bloom「Habit Tracking That Doesn't Punish You」、Couch「温和连击——漏卡不指责」自称 ADHD-friendly、Finch 无罪化照护、Duolingo streak freeze 被学术列为潜在 exit dark pattern——本插件「零惩罚低压力」定位获多源外部印证，且社区给出了可落地的具体机制（T-1461 吸收）。
+- **66 天是中位数不是规则**（59-66 天中位、18-254 天个体区间、单日中断影响有限）：反内疚文案与「成熟度刻度」候选的学术依据；「连击归零」式呈现缺乏依据。
+- **AI 护栏三件套收敛**（vital：提案永不静默修改数据+每功能模型路由+每日调用预算；habitica-mcp：写操作确认门控；hermes：确定性洞察优先、LLM 可选本地）：ai-integration-plan 未来扩展的现成护栏模板。
+- **合并语义取代同步协议**（PixelHabits 三段式、mhabit 未知字段保留、BeaverHabits snapshot 导出端点）：通用习惯数据格式三轮定向搜索 0 结果——社区正用「导出端点+宽容读取」替代正式标准；导入导出的向前兼容是正确投资。
+- **通用视图被宿主收编的三方证据**：思源 3.8.5 把数据库日历/列表视图收为原生（3.8.6-alpha 继续加码 ISO 周/无日期排期）、Obsidian Bases 生态出现热力图渲染插件、思源列表视图插件 itayvak/siyuan-database-list-view 上架即被原生覆盖——插件生存位在垂直场景（习惯算法内核、不可变事件账本、统计口径），通用视图渲染不值得再投入。架构判断再证。
+- **频次约束刚需再证**：Workbench「维持炉火」池带上下限配额+最低频率、streak v1.9 周目标超额着色、Frequent-Habits Story Mode 成功率门槛——quota/at-most 内核是各家趋同方向，小驴已有口径优势。
+- **竞品节奏稳定**：pinch 停在 v2.7.1（9 月曾 2-3 天一版）、Loop 止于 v2.3.1、HabitKit 2.0 放弃全量重写转功能路线图——窗口在叙事与真机体验，不在功能军备。
+- **TaskNotes（Obsidian，2165★，2026-09-23 活跃）**：任务+时间追踪+日历一体的事实标准插件，跨生态校准视图矩阵完备性的参照系；Bases Heatmap View 佐证「官方数据库+插件渲染垂直场景」收敛模式。
+- **Notion/模板生态**：Life OS 全家桶仪表盘与「AI 辅助习惯追踪」主题词流行；Ultimate Brain 未见 2026 具体更新公告（如实注明）。多视图聚合首页方向佐证。
+
+### 工程注意项与清单修正
+
+- **宿主 3.8.6 正式版回归**：alpha 四连发期间数据库视图 API 变动，正式发版后跑渲染块真实内核回归——登记 **T-1464**（local-auto，e2e 隔离内核）。
+- **幽灵目标清理**：第三轮来源提及的 vegvisir、habit-charts、simple-habit-tracker 经 Obsidian 官方注册表 8038 条核实**不存在**，移出后续扫描名单；后续扫描以官方 registry 为准。
+- 集市 520 插件中 2026-09-19 后与打卡/时间/习惯相关的实质增量仅四个：Workbench（警报）、CalDAV 同步（延后候选）、MeiDay（观察）、QingTrail（叶归系可视化，佐证）；正面战场无新打卡插件。
+
+### 第六轮小结
+
+四路扫描 100+ 次取证 → 竞品警报 1（Workbench，叙事层）、采纳 3（T-1461 低压力呈现规范/T-1462 数值快捷增量/T-1463 迁移健壮性）、延后 13、不做 8、佐证 9、工程注意项 2。本轮最重要的战略结论：**竞争压力从功能转向叙事**——「反打卡/零记录」营销正在兴起，小驴的应对不是跟随去记录化，而是把「低压力记录」做成可验收的呈现规范（T-1461）并讲清「不记录就没有可回看的数据」；差异化锚点继续压在习惯算法内核、不可变事件账本与统计口径，呈现层与宿主通用视图保持克制分工。
