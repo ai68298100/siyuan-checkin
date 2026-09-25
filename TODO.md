@@ -85,6 +85,11 @@
   - R-18.1 分享图片导出：新纯模块 `src/features/share-card.ts`——buildShareCardModel（周一对齐格子、level 钳制、留白剔除）+ drawShareCard（最小 canvas 接口：fillStyle/font/globalAlpha/fillRect/fillText，accent 透明度阶梯 0.18/0.38/0.65/1 对应 1-4 级，track 色无记录日）；回顾页工具「分享图」按钮（data-action=export-share-card）→ index downloadShareCard（buildYearHeatmap + computeLongestStreaks + 主题 token 调色板 + canvas.toDataURL → base64 二进制串 → saveGeneratedFile PNG，原生容器走既有 putFile+宿主保存桥）；零网络零遥测。
   - 守门：tests/share-card.test.cjs 入主链（布局模型/绘制桩/保存通道接线/里程碑阶梯与降级/退役词表不复流；i18n 6 键双语）。验证：test:quality EXIT=0（181 文件套件覆盖）；宽度走查 49+32 全绿。R-18.2 诊断预览深化、R-18.3 小项（66 天成熟度条/周开始日/bento）待排。
   - 真机观感（庆祝动效/分享图保存桥）归 host-pending。
+- [x] T-1469 治理互操作与收尾第二批（R-A18 补充：R-18.2 诊断预览深化 + R-18.3a 成熟度刻度条，2026-09-26 开工并完成）
+  - R-18.2 诊断导出预览深化：裸 window.confirm 升级为结构化预览对话框——按原因码计数表（diag.* 本地化标签）+ 时间范围（最早→最新）+ 内容边界披露（「仅包含原因码、时间与有限上下文，不含打卡备注或项目正文」固定显示），显式确认后才走 versioned 导出通道；移动端 92vw 弹窗；i18n 5 键双语。
+  - R-18.3a 66 天成熟度刻度条：洞察页新增「习惯成熟度」节——首条记录至今天数对照自动性研究中位数（66 天参考刻度，aria progressbar + 单色进度条 + 「已坚持 N 天」文字冗余；「是参考不是标准」写进提示文案）；daysBetweenHalfOpen 单一实现计算；零 schema 变更。
+  - 守门：share-card.test.cjs 扩充两节断言（诊断预览接线+边界披露+双语；成熟度条 aria/日期单一实现/双语/样式）。验证：test:quality EXIT=0（182 文件）；宽度走查全绿。真机观感归 host-pending。
+  - 遗留：R-18.3b 周开始日开关（需 analytics/周条/月历三处聚合联动设计，单独排批）；R-18.3c bento 宽屏重排（内容层稳定后）；R-17.4 fractured/sparse 热图（渲染块改版窗口）。
 - [x] T-1466 今日完成度环 + sparkline 趋势线（R-A16，第 2 批，2026-09-26 开工并完成）
   - R-16.1 完成度环：charts.ts 新增 renderCompletionRing 纯 SVG 渲染器（wrap-around 圆环、dash 周长按百分比裁剪、越界钳制 fail-closed、100% 切 success 色、role=img+aria 文字通道）；接入今日行动台摘要条首位（数据=既有 totals.completionRate 投影，零新口径）；i18n today.consoleRingAria 中英；CSS 负边距方案（margin-block:-6px 抵消条内边距）保证摘要条高度零增长——30 项密度场景首卡位置预算不受影响（宽度走查实测复绿）。dock 常驻小环留待 dock 表面迭代。
   - R-16.2 sparkline：charts.ts 新增 renderSparkline（纯 polyline、max≥1 防除零、空序列占位、确定性输出）；接入回顾页范围统计区（近 30 日记录趋势，数据=渲染时已在内存的 analytics daily 快照，零新聚合零图表库）；i18n review.statsSparkAria/statsSparkLabel 中英。

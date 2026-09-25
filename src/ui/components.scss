@@ -10485,6 +10485,17 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__renderblock-today-slots { flex: none; color: var(--lc-checkin-muted); font-size: 10px; white-space: nowrap; }
 /* R-17.2：超额日正向表达——accent 描边环（不改色阶，克制呈现）。 */
 .lc-checkin__renderblock-cell.is-overage { box-shadow: inset 0 0 0 1.5px var(--lc-checkin-accent-text); }
+/* R-18.3a：66 天成熟度刻度条（自动性研究中位数参考，T-1461 单色+文字冗余）。 */
+.lc-checkin__maturity-bar { height: 8px; border-radius: 999px; background: var(--lc-checkin-muted-surface); overflow: hidden; }
+.lc-checkin__maturity-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--lc-checkin-accent); }
+.lc-checkin__maturity-days { color: var(--lc-checkin-muted); font-size: 11px; }
+/* R-18.2：诊断导出结构化预览（原因码计数表 + 时间范围 + 边界披露）。 */
+.lc-checkin__diag-preview { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
+.lc-checkin__diag-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.lc-checkin__diag-table th, .lc-checkin__diag-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--lc-checkin-border); }
+.lc-checkin__diag-table th { color: var(--lc-checkin-muted); font-weight: 600; }
+.lc-checkin__diag-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.lc-checkin__diag-range { margin: 0; color: var(--lc-checkin-muted); font-size: 11px; overflow-wrap: anywhere; }
 
 /* R-A16（2026-09-26）：轻量 SVG 视觉件。单色 accent 阶梯 + 文字冗余编码（T-1461），
    静态呈现零动效零过渡（D-263）；完成 100% 切 success 色。 */

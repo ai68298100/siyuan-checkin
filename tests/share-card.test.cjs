@@ -109,4 +109,27 @@ for (const retired of ["lc-checkin__loading", "msg.saving"]) {
     assert.ok(!read("src/ui/components.scss").includes(retired), `retired token must not re-enter SCSS: ${retired}`);
 }
 
+/* —— 6. R-18.2 诊断导出结构化预览：confirm 升级为对话框（原因码计数/范围/边界披露）。 —— */
+const diagIndexSource = read("src/index.ts");
+assert.match(diagIndexSource, /data-diagnostics-preview/, "diagnostics export opens the structured preview");
+assert.match(diagIndexSource, /data-diag-confirm/, "preview requires explicit confirmation before download");
+assert.match(diagIndexSource, /set\.diagnosticsBoundary/, "the content-boundary disclosure is always shown");
+assert.match(diagIndexSource, /downloadDiagnosticsFor\(this\.diagnostics\)/, "confirmation still exports through the versioned channel");
+for (const key of ["set.diagnosticsPreviewTitle", "set.diagPreviewCode", "set.diagPreviewCount", "set.diagnosticsRange", "set.diagnosticsBoundary"]) {
+    const count = i18nSourceFor(root).split(`"${key}"`).length - 1;
+    assert.equal(count, 2, `${key} must exist in both locales (${count})`);
+}
+const diagScss = read("src/ui/components.scss");
+assert.match(diagScss, /\.lc-checkin__diag-preview \{/, "diagnostics preview styles exist");
+
+/* —— 7. R-18.3a 66 天成熟度刻度：洞察页成熟度条（研究中位数参考，非标准）。 —— */
+assert.match(indexSource, /insights\.maturityBarTitle/, "insights page renders the maturity bar section");
+assert.match(indexSource, /aria-valuemax="66"/, "the maturity scale anchors on the 66-day research median");
+assert.match(indexSource, /daysBetweenHalfOpen\(firstRecordDay/, "maturity days computed via the date-keys single implementation");
+for (const key of ["insights.maturityBarTitle", "insights.maturityBarHint", "insights.maturityDays"]) {
+    const count = i18nSourceFor(root).split(`"${key}"`).length - 1;
+    assert.equal(count, 2, `${key} must exist in both locales (${count})`);
+}
+assert.match(diagScss, /\.lc-checkin__maturity-bar \{/, "maturity bar styles exist");
+
 console.log("share/milestone guard tests passed.");
