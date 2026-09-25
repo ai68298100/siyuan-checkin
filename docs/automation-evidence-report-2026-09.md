@@ -1,7 +1,20 @@
 # A6 自动化证据汇总报告（R-50 质量收口）
 
-更新时间：2026-09-24  
+更新时间：2026-09-26（v18.6.0 发布证据补录）  
 范围：v18.2.1 发布后自主开发主线（D-264 泳道 R-A0～R-A12）的全部自动化证据汇总，及未关闭 host-pending 项清单。本报告是 A6 质量收口的交付物之一：所有泳道的自动化证据集中可查，并明确哪些项没有被自动化关闭。
+
+## 〇、v18.6.0 发布证据（2026-09-26 补录）
+
+v18.6.0（问卷日记/快捷增量/完成度环与 sparkline/相关性洞察/分享图/里程碑庆祝/低压力基线/迁移健壮性/诊断预览/成熟度刻度/词表退役）发布窗口证据：
+
+- 完整质量链 `pnpm run test:quality` 多轮 EXIT=0；**测试套件 182 个守门文件**（本窗口新增 quick-steps / midnight-boundary / low-pressure-baseline / stats-visuals / journal-templates / insights-visuals / share-card 七个守门套件），0 显式退役。
+- 架构边界守门：108 模块口径全绿（journal-templates、share-card、correlation-insights 进入时钟纪律与纯度清单）。
+- e2e 真实内核自动化（隔离工作区 + 自启内核 3.8.5）：**22/22 通过**，含新增 journal spec（建笔记本 → 问卷弹窗 → 事件落盘 → 目标文档块写入 → 重填幂等更新不重复记账）。已查明并留档：e2e 复用工作区的数据累积会使 dual-window 审计合并断言间歇超限（干净工作区 + HEAD 构建复测通过，非代码回归）——工作区已清理。
+- 视觉证据：width-walkthrough 49 表面 + 32 交互 + 双主题 30 项密度全绿（320px 首卡预算 392>380 一度超限，完成度环负边距方案修复后复绿）；visual-qa 双主题（light/dark）全矩阵通过、pageErrors 0。
+- 性能预算：渲染块 100k=405~416ms、回顾 100k range 488ms、CSS 613,985~616,911 字节（620KB 告警线内），无回退。
+- 发布：GitHub Release v18.6.0（2026-09-26），package.zip SHA-256 `57bef6018cebfc8641d734138796bb281b36e82a31f2fffcda11201a02f5790e`。
+- R-REL-CHECK（D-272）：sireader#55、siplayer#180 open/无回应/无契约变化，无需更新原帖。
+- 未关闭 host-pending（新增）：问卷日记弹窗触控与真实日记文档读写、分享图原生容器保存桥、里程碑庆祝动效真机观感、完成度环与时段分组真机显示。
 
 ## 一、总体结论
 
