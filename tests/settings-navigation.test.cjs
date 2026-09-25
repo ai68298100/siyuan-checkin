@@ -451,4 +451,22 @@ function assertActive(fixture, expectedId) {
         "settings binding must receive the current motion preference");
 }
 
+/* —— T-1442 · R-A10 来源子面板：每个外部来源独立面板（头部徽标 + 编号步骤） —— */
+const settingsSourceT1442 = read("src", "render", "settings.ts");
+for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread"]) {
+    assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
+}
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 6, "六个面板头部");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 6, "六个编号步骤列表");
+const panelI18n = read("src", "i18n.ts");
+const stepKeys = [];
+for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread"]) {
+    for (let step = 1; step <= 4; step += 1) stepKeys.push(`set.steps${source}${step}`);
+}
+stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff");
+for (const key of stepKeys) {
+    const occurrences = panelI18n.split(`"${key}"`).length - 1;
+    assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+
 console.log("Settings navigation behavior and accessibility checks passed.");
