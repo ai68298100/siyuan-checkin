@@ -4,8 +4,8 @@
    无障碍语义（role/aria-live）；新增状态或改口径时在此登记并同步断言。
    窄宽度/长文本/双主题/焦点可见由 responsive-layout、ui-theme、i18n-parity、
    css-hygiene 等既有门禁覆盖，此处只交叉引用不重复断言。
-   保留词表：lc-checkin__loading / lc-checkin__success 目前零消费方（10.0 基座
-   预留），按 D-051 显式登记为「保留待收编或退役」，不允许静默增减。 */
+   R-18.4（R-A18）：原保留词表 lc-checkin__loading / lc-checkin__success /
+   is-saving / msg.saving 经核查零消费方，已统一退役（见文末退役断言）。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -51,9 +51,9 @@ for (const marker of ["emptyActiveTitle", "emptyOnboardTitle", "emptyScheduledTi
 }
 assert.match(interactionStates, /\.lc-checkin__empty-actions \{ flex-wrap: wrap;/, "空态动作按钮窄宽换行");
 
-/* —— 族 5：加载 —— */
-assert.match(components, /\.lc-checkin__loading \{/, "加载基座类存在");
-assert.match(components, /data-reduced-motion="true"\] \.lc-checkin__loading::before \{ animation:none; \}/, "加载动效尊重 reduced motion");
+/* —— 族 5：加载（R-18.4 退役 lc-checkin__loading 后，骨架屏 skeleton 家族为加载呈现） —— */
+assert.match(components, /\.lc-checkin__skeleton \{/, "加载骨架基座类存在");
+assert.match(components, /\.lc-checkin\[data-reduced-motion="true"\] \.lc-checkin__skeleton \{ animation:none; \}/, "加载动效尊重 reduced motion");
 
 /* —— 族 6：禁用 —— */
 assert.match(
@@ -78,13 +78,17 @@ assert.match(components, /\.lc-checkin__error \{ padding:10px; border:1px solid 
 assert.match(components, /\.lc-checkin\[data-appearance="light"\] \.lc-checkin__error \{/, "错误样式具备亮色变体");
 assert.ok(!review.includes('class="is-error"'), "回顾助手不得再使用散落的 is-error 类（已收编到基座）");
 
-/* —— 保留词表（D-051）：零消费但刻意保留，静默增减视为违规 ——
-   loading/success：10.0 基座预留，待收编或退役；is-saving/msg.saving：saving
-   静默决策后余留的呈现词汇，与布局防跳守门共存。统一在 A11 后续清理批处理。 */
-assert.match(components, /\.lc-checkin__loading \{/, "保留词表：loading");
-assert.match(components, /\.lc-checkin__success \{/, "保留词表：success");
-assert.match(components, /&\.is-saving/, "保留词表：is-saving");
-bilingual("msg.saving", "保留词表：saving 文案");
+/* —— 保留词表已退役（R-18.4 · R-A18，D-051 可证明性口径）——
+   lc-checkin__loading / lc-checkin__success / is-saving / msg.saving 经全库核查
+   零消费方（2026-09-26），统一退役：CSS 规则与 i18n 键删除；加载/成功反馈由
+   toast、recent-record 与 save-status(error) 通道承担。断言翻转为「不得复活」：
+   静默重新引入视为违规，如需加载骨架请登记新族后再引入。 */
+for (const retired of ["lc-checkin__loading", "lc-checkin__success", "is-saving", "msg.saving", "lc-checkin-spin"]) {
+    assert.ok(!components.includes(retired), `已退役词表不得回流 SCSS：${retired}`);
+    assert.ok(!i18n.includes(`"${retired}"`), `已退役词表不得回流 i18n：${retired}`);
+}
+assert.ok(!fragments.includes("__loading") && !fragments.includes("__success"), "渲染层不得引用已退役类");
+assert.match(components, /\.lc-checkin__skeleton \{/, "skeleton 家族仍有消费方，保留（与已退役 loading 无关）");
 
 /* —— 交叉引用：矩阵维度由既有门禁承担 —— */
 for (const gate of ["tests/responsive-layout.test.cjs", "tests/ui-theme.test.cjs", "tests/i18n-parity.test.cjs", "tests/css-hygiene.test.cjs", "tests/mobile-release-quality.test.cjs"]) {

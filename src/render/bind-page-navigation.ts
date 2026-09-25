@@ -74,6 +74,8 @@ export interface BindPageNavigationHost {
     deleteArchivedItems(itemIds: string[]): Promise<boolean> | void;
     generateSummary(): Promise<void> | void;
     downloadExport(format: "json" | "csv", scopeDays?: number): void;
+    /** R-18.1（R-A18）：导出年度分享图（本地 canvas 生成 PNG，走既有保存通道）。 */
+    downloadShareCard?(): void | Promise<void>;
     downloadReportMarkdown(markdown: string): void;
     reportSections: ReportSectionToggles;
     /** T-1360 报告来源筛选："" = 全部来源。 */
@@ -948,4 +950,5 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => { const days = Number(root.querySelector<HTMLSelectElement>("[data-export-days]")?.value); host.downloadExport("csv", Number.isFinite(days) && days >= 1 ? days : undefined); }));
     root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("json")));
+    root.querySelector<HTMLElement>("[data-action='export-share-card']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadShareCard?.()));
 }

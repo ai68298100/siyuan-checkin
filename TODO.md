@@ -79,6 +79,12 @@
   - R-17.2 超额日着色：month 渲染块 cell 新增 overage 判定（数值/时长非 at-most 项目当日总量 > 目标）；呈现=accent 描边环（box-shadow inset）+tooltip「超额」角标，色阶口径不动（T-1410 百分位色阶保留）。
   - R-17.3 时段分组：today 渲染块行新增当日 ≥2 条有效记录的早/午/晚计数（<12 早、12-18 午、≥18 晚；事件时刻戳投影零 schema 变更；跳过事件不计）；与 T-1462 chips 组合覆盖高频记录。
   - 守门：tests/insights-visuals.test.cjs 入主链（Pearson 已知相关夹具/样本门槛/零相关剔除/滞后检测/确定性排序/报告接线/超额判定/时段分组/样式断言）；i18n 9 键双语。验证：test:quality EXIT=0（180 文件套件覆盖）；宽度走查 49+32 全绿。R-17.4 fractured/sparse 热图维持延后（随渲染块迭代排批）。
+- [x] T-1468 治理互操作与收尾第一批（R-A18 第 4 批：R-18.1/R-18.4/R-18.5，2026-09-26 开工并完成；R-18.2/R-18.3 部分小项待排）
+  - R-18.4 保留词表退役：lc-checkin__loading / lc-checkin__success / is-saving / msg.saving 全库核查零消费方（2026-09-26），统一退役——CSS 规则（含 loading::before、spin keyframes、dock-host 与 lc5 容器分组选择器中的引用）与 i18n 键删除；加载呈现由 skeleton 家族承担（有消费方，保留）；ui-state-ledger 断言翻转为「已退役词表不得回流」（SCSS/i18n/渲染层三面），退役理由与去向记入注释。
+  - R-18.5 里程碑分级庆祝（D-263 收尾）：STREAK_MILESTONES 阶梯（7/14/30/60/100/180/365/500/1000）；recordEvent 成功路径计算当日连击，命中阶梯 → recentRecord 携带 milestone；toast 呈现升级——is-milestone 类 + 金标 🎉 里程碑文案（today.streakMilestone 双语）+ 520ms 加重弹跳（纯 transform 零布局位移）；reducedMotion 双闸降级为静态金标文字（三通道冗余，T-1461 基线）。
+  - R-18.1 分享图片导出：新纯模块 `src/features/share-card.ts`——buildShareCardModel（周一对齐格子、level 钳制、留白剔除）+ drawShareCard（最小 canvas 接口：fillStyle/font/globalAlpha/fillRect/fillText，accent 透明度阶梯 0.18/0.38/0.65/1 对应 1-4 级，track 色无记录日）；回顾页工具「分享图」按钮（data-action=export-share-card）→ index downloadShareCard（buildYearHeatmap + computeLongestStreaks + 主题 token 调色板 + canvas.toDataURL → base64 二进制串 → saveGeneratedFile PNG，原生容器走既有 putFile+宿主保存桥）；零网络零遥测。
+  - 守门：tests/share-card.test.cjs 入主链（布局模型/绘制桩/保存通道接线/里程碑阶梯与降级/退役词表不复流；i18n 6 键双语）。验证：test:quality EXIT=0（181 文件套件覆盖）；宽度走查 49+32 全绿。R-18.2 诊断预览深化、R-18.3 小项（66 天成熟度条/周开始日/bento）待排。
+  - 真机观感（庆祝动效/分享图保存桥）归 host-pending。
 - [x] T-1466 今日完成度环 + sparkline 趋势线（R-A16，第 2 批，2026-09-26 开工并完成）
   - R-16.1 完成度环：charts.ts 新增 renderCompletionRing 纯 SVG 渲染器（wrap-around 圆环、dash 周长按百分比裁剪、越界钳制 fail-closed、100% 切 success 色、role=img+aria 文字通道）；接入今日行动台摘要条首位（数据=既有 totals.completionRate 投影，零新口径）；i18n today.consoleRingAria 中英；CSS 负边距方案（margin-block:-6px 抵消条内边距）保证摘要条高度零增长——30 项密度场景首卡位置预算不受影响（宽度走查实测复绿）。dock 常驻小环留待 dock 表面迭代。
   - R-16.2 sparkline：charts.ts 新增 renderSparkline（纯 polyline、max≥1 防除零、空序列占位、确定性输出）；接入回顾页范围统计区（近 30 日记录趋势，数据=渲染时已在内存的 analytics daily 快照，零新聚合零图表库）；i18n review.statsSparkAria/statsSparkLabel 中英。

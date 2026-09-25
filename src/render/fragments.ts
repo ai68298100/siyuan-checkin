@@ -65,10 +65,19 @@ export interface RecentRecordView {
     unit: string;
 }
 
+export interface RecentRecordView {
+    message: string;
+    progress: number;
+    target: number;
+    unit: string;
+    /** R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级（金标 + 加重弹跳，静态降级仍可辨）。 */
+    milestone?: number;
+}
+
 export function renderRecentRecordView(record: RecentRecordView | undefined, reducedMotion: boolean): string {
     if (!record) return "";
-    return `<div class="lc-checkin__recent-record" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong><small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
+    return `<div class="lc-checkin__recent-record${record.milestone ? " is-milestone" : ""}" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
+            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong>${record.milestone ? `<em class="lc-checkin__milestone-tag">🎉 ${t("today.streakMilestone", {n: record.milestone})}</em>` : ""}<small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
             <button type="button" data-action="undo-record">${t("today.undoRecord")}</button>
         </div>`;
 }

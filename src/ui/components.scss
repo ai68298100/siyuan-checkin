@@ -637,8 +637,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__empty { min-width:0; overflow-wrap:anywhere; }
 .lc-checkin__empty-title { overflow-wrap:anywhere; }
 .lc-checkin__empty-description { overflow-wrap:anywhere; }
-.lc-checkin__loading { display:flex; align-items:center; justify-content:center; min-height:80px; color:var(--lc-checkin-muted); }
-.lc-checkin[data-reduced-motion="true"] .lc-checkin__loading::before { animation:none; }
 .lc-checkin__skeleton { min-height:14px; border-radius:5px; background:linear-gradient(90deg,var(--lc-checkin-muted-surface),var(--lc-checkin-surface),var(--lc-checkin-muted-surface)); background-size:200% 100%; animation:lc-checkin-skeleton 1.2s ease-in-out infinite; }
 @keyframes lc-checkin-skeleton { from { background-position:200% 0; } to { background-position:-200% 0; } }
 .lc-checkin[data-reduced-motion="true"] .lc-checkin__skeleton { animation:none; }
@@ -648,17 +646,14 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__error { padding:10px; border:1px solid var(--lc-checkin-danger); border-radius:8px; color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 8%,transparent); overflow-wrap:anywhere; }
 .lc-checkin__error button { margin-top:7px; }
 .lc-checkin__warning { padding:8px 10px; border:1px solid var(--lc-checkin-warning); border-radius:8px; color:var(--lc-checkin-warning-text); background:color-mix(in srgb,var(--lc-checkin-warning) 8%,transparent); overflow-wrap:anywhere; }
-.lc-checkin__success { padding:8px 10px; border:1px solid var(--lc-checkin-success); border-radius:8px; color:var(--lc-checkin-success-text); background:color-mix(in srgb,var(--lc-checkin-success) 8%,transparent); overflow-wrap:anywhere; }
-.lc-checkin[data-appearance="dark"] .lc-checkin__loading { color:var(--lc-checkin-muted); }
 .lc-checkin[data-appearance="dark"] .lc-checkin__skeleton { background:linear-gradient(90deg,var(--lc-checkin-muted-surface),var(--lc-checkin-surface-raised),var(--lc-checkin-muted-surface)); background-size:200% 100%; }
 .lc-checkin[data-appearance="light"] .lc-checkin__error { background:color-mix(in srgb,var(--lc-checkin-danger) 6%,transparent); }
 .lc-checkin[data-appearance="light"] .lc-checkin__warning { background:color-mix(in srgb,var(--lc-checkin-warning) 6%,transparent); }
-.lc-checkin[data-appearance="light"] .lc-checkin__success { background:color-mix(in srgb,var(--lc-checkin-success) 6%,transparent); }
 .lc-checkin__badge { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); font-size:10px; font-weight:650; }
 .lc-checkin__badge.is-success { color:var(--lc-checkin-success-text); background:color-mix(in srgb,var(--lc-checkin-success) 12%,transparent); }
 .lc-checkin__badge.is-warning { color:var(--lc-checkin-warning-text); background:color-mix(in srgb,var(--lc-checkin-warning) 12%,transparent); }
 .lc-checkin__badge.is-danger { color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 12%,transparent); }
-@media (prefers-reduced-motion: reduce) { .lc-checkin__loading::before,.lc-checkin__skeleton { animation:none !important; } }
+@media (prefers-reduced-motion: reduce) { .lc-checkin__skeleton { animation:none !important; } }
 /* 10.0 foundation pass 9: keyboard, screen-reader and focus continuity. */
 .lc-checkin [tabindex="0"]:focus-visible { outline:2px solid var(--lc-checkin-accent); outline-offset:2px; }
 .lc-checkin [aria-disabled="true"] { cursor:not-allowed; }
@@ -681,7 +676,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__item.is-overdue .lc-checkin__item-meta { color: var(--lc-checkin-danger-text); }
 .lc-checkin__item.is-due { border-color: color-mix(in srgb, var(--lc-checkin-warning) 32%, var(--lc-checkin-border)); }
 .lc-checkin__item.is-due .lc-checkin__item-meta { color: var(--lc-checkin-warning-text); }
-.lc-checkin__item-action .is-saving { pointer-events: none; opacity: .7; }
 .lc-checkin__record-button[aria-busy="true"] { cursor: wait; }
 .lc-checkin__record-button[disabled] { opacity: .66; }
 .lc-checkin__quick-button[disabled] { opacity: .66; }
@@ -717,7 +711,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-form-panel form :where(input,select,textarea):user-invalid { border-color: var(--lc-checkin-danger); }
 .lc-checkin__occasion-form-panel form :where(input,select,textarea):user-valid { border-color: var(--lc-checkin-success); }
 .lc-checkin__settings-card[aria-busy="true"] { opacity: .72; }
-.lc-checkin__settings-card .is-saving { color: var(--lc-checkin-muted); }
 .lc-checkin__settings-card .is-error { color: var(--lc-checkin-danger-text); }
 .lc-checkin__settings-card .is-success { color: var(--lc-checkin-success-text); }
 .lc-checkin__snapshot-list li.is-latest { border-color: var(--lc-checkin-accent); }
@@ -1149,7 +1142,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     color: var(--lc-checkin-muted);
     font-size: 10px;
     text-align: right;
-    &.is-saving { color: var(--lc-checkin-accent-text); }
     &.is-error { color: var(--lc-checkin-danger-text); }
     button { border: 0; padding: 0; color: inherit; background: transparent; font: inherit; text-decoration: underline; cursor: pointer; }
 }
@@ -1238,7 +1230,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-template-form > div { display: flex; justify-content: flex-end; gap: 6px; }
 .lc-checkin [aria-invalid="true"],
 .lc-template-manager [aria-invalid="true"] { border-color: var(--lc-checkin-danger) !important; }
-.lc-checkin .is-saving,
 .lc-checkin .is-success,
 .lc-template-manager .is-success { color: var(--lc-checkin-success-text); }
 .lc-checkin .is-error,
@@ -3370,6 +3361,14 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 @media (prefers-reduced-motion: no-preference) {
     .lc-checkin__recent-record:not([data-reduced-motion="true"]) i { animation: lc-checkin-check-pop 360ms ease-out both; }
 }
+/* R-18.5 里程碑分级庆祝：连击命中阶梯时升级——加重弹跳+金标（纯 transform 零布局位移，
+   双闸 reducedMotion 降级为静态金标文字，三通道可辨）。 */
+@media (prefers-reduced-motion: no-preference) {
+    .lc-checkin__recent-record.is-milestone:not([data-reduced-motion="true"]) i { animation: lc-checkin-check-pop-milestone 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+}
+.lc-checkin__recent-record.is-milestone i,
+.lc-checkin__recent-record.is-milestone[data-reduced-motion="true"] i { color: var(--lc-checkin-gold-text); }
+.lc-checkin__milestone-tag { font-style: normal; font-weight: 700; color: var(--lc-checkin-gold-text); font-size: 12px; }
 .lc-checkin__recent-record small { color: var(--lc-checkin-muted); }
 .lc-checkin__recent-record button { flex: none; }
 
@@ -3382,6 +3381,12 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     0% { transform: scale(0.4); }
     60% { transform: scale(1.18); }
     100% { transform: scale(1); }
+}
+
+@keyframes lc-checkin-check-pop-milestone {
+    0% { transform: scale(0.4) rotate(-6deg); }
+    55% { transform: scale(1.5) rotate(8deg); }
+    100% { transform: scale(1) rotate(0deg); }
 }
 
 /* 手机/窄面板给底部导航让出空间，toast 仍保持在窗口内而非顶部。 */
@@ -5817,7 +5822,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__item:focus-within,
     .lc-checkin-dock-host .lc-checkin__group-header:focus-within { scroll-margin-block: 8px; }
     .lc-checkin-dock-host .lc-checkin__empty,
-    .lc-checkin-dock-host .lc-checkin__loading,
     .lc-checkin-dock-host .lc-checkin__error { margin: 10px 0; padding: 12px 10px; border-radius: 10px; font-size: 12px; line-height: 1.45; text-align: center; }
     .lc-checkin-dock-host .lc-checkin__empty p,
     .lc-checkin-dock-host .lc-checkin__error p { overflow-wrap: anywhere; }
@@ -7300,7 +7304,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
    之前 section 自身 max-height + overflow:auto 会吞掉触摸手势，展开模板后
    页面停在模板区；卡片改为图标/名称/摘要两行，降低首屏占用。 */
 /* Shared loading and failure feedback belongs to the component layer. */
-.lc-checkin__loading,
 .lc-checkin__empty,
 .lc-checkin__error,
 .lc-checkin__sync-notice {
@@ -7323,25 +7326,14 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     background: color-mix(in srgb, var(--lc-checkin-danger) 8%, var(--lc-checkin-bg));
 }
 
-.lc-checkin__loading::before {
-    width: 14px;
-    height: 14px;
-    margin-right: var(--lc-checkin-space-2);
-    border: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, transparent);
-    border-top-color: var(--lc-checkin-accent-text);
-    border-radius: 50%;
-    animation: lc-checkin-spin .8s linear infinite;
-    content: "";
-}
-
-@keyframes lc-checkin-spin { to { transform: rotate(360deg); } }
+/* R-18.4：原保留词表（加载/成功/saving 家族）已退役（零消费方，D-051 可证明性口径）；
+   加载/成功反馈由 toast、recent-record 与 save-status(error) 通道承担。 */
 
 @media (prefers-reduced-motion: reduce) {
-    .lc-checkin__loading::before { animation: none; }
+    .lc-checkin__skeleton { animation: none; }
 }
 
 @container lc5 (max-width: 600px) {
-    .lc-checkin__loading,
     .lc-checkin__error {
         width: 100%;
         max-width: 100%;

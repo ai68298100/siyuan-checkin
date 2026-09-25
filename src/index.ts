@@ -13,7 +13,9 @@ import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
 import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
-import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, type AnalyticsSnapshot} from "./charts";
+import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
+import {buildShareCardModel, drawShareCard, shareCardSize, type ShareCardCanvas} from "./features/share-card";
+import {saveGeneratedFile} from "./download";
 import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
@@ -104,6 +106,8 @@ const VIEW_PREFERENCES_NAME = "checkin-view-preferences";
 const USER_TEMPLATES_NAME = "checkin-user-templates";
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
 const REMINDER_ACTIONS_NAME = "checkin-reminder-actions";
+/* R-18.5（D-263 收尾）：连击里程碑阶梯——命中即触发里程碑级庆祝（其余完成保持日常轻反馈）。 */
+const STREAK_MILESTONES = [7, 14, 30, 60, 100, 180, 365, 500, 1000];
 const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
 const DOCKTOMATO_INBOX_STORAGE_NAME = "checkin-docktomato-inbox";
@@ -183,6 +187,8 @@ interface RecentRecord {
     progress: number;
     target: number;
     unit: string;
+    /** R-18.5（D-263 收尾）：本次记录使连击命中里程碑阶梯（如 7/30/100/365）时的分级庆祝。 */
+    milestone?: number;
 }
 
 interface LockManagerLike {
@@ -2252,6 +2258,45 @@ export default class CheckinPlugin extends Plugin {
 
     private showToday() {
         showTodayFor(this as unknown as NavigationHost);
+    }
+
+    /* R-18.1 · R-A18：年度分享图——本地 canvas 生成 PNG（网格+统计），经既有保存通道落地。
+       调色板取自当前主题 token（双主题自动适配）；图片仅本地生成，零网络零遥测。 */
+    async downloadShareCard(): Promise<void> {
+        const year = new Date().getFullYear();
+        const asOf = new Date();
+        const heatmap = buildYearHeatmap(this.store, year);
+        let maxStreak = 0;
+        for (const value of computeLongestStreaks(this.store, asOf).values()) maxStreak = Math.max(maxStreak, value);
+        let activeDays = 0;
+        for (const day of heatmap.days) if (day.count > 0) activeDays += 1;
+        const model = buildShareCardModel({year, days: heatmap.days, total: heatmap.total, maxStreak, activeDays});
+        const canvas = document.createElement("canvas");
+        const size = shareCardSize(model);
+        canvas.width = size.width;
+        canvas.height = size.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+            showMessage(t("msg.saveFail"));
+            return;
+        }
+        const styles = getComputedStyle(document.querySelector(".lc-checkin") || document.body);
+        const token = (name: string, fallback: string) => styles.getPropertyValue(name).trim() || fallback;
+        const palette = {
+            bg: token("--lc-checkin-bg", "#f6f5fb"),
+            text: token("--lc-checkin-text", "#2f2a45"),
+            muted: token("--lc-checkin-muted", "#8b87a0"),
+            accent: token("--lc-checkin-accent", "#8b7fd6"),
+            track: token("--lc-checkin-muted-surface", "#ece9f6"),
+        };
+        drawShareCard(ctx as unknown as ShareCardCanvas, model, palette, {
+            title: t("share.cardTitle", {year}),
+            stats: t("share.cardStats", {total: model.total, days: model.activeDays, streak: model.maxStreak}),
+            footer: t("share.cardFooter"),
+        });
+        const dataUrl = canvas.toDataURL("image/png");
+        const binary = atob(dataUrl.slice(dataUrl.indexOf(",") + 1));
+        await saveGeneratedFile({fileName: `siyuan-checkin-share-${year}.png`, content: binary, mime: "image/png"});
     }
 
     private showReview() {
@@ -4900,6 +4945,7 @@ export default class CheckinPlugin extends Plugin {
         if (current.linkedOccasionId && isComplete(this.store, current, actionDate)) {
             void this.setOccasionCompleted(current.linkedOccasionId, moment.localDate, true);
         }
+        const currentStreak = computeStreaksValue(this.store).get(current.id) || 0;
         this.setRecentRecord({
             eventId: event.id,
             itemId: current.id,
@@ -4907,6 +4953,8 @@ export default class CheckinPlugin extends Plugin {
             progress: getProgress(this.store, current, actionDate),
             target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
             unit: revision.unit || "次",
+            /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
+            ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });
         this.pendingLocalItemId = current.id;
         this.pendingLocalItemDate = moment.localDate;

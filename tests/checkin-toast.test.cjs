@@ -44,6 +44,11 @@ assert.match(components, /@media \(prefers-reduced-motion: no-preference\) \{\s*
 assert.match(components, /@keyframes lc-checkin-check-pop \{\s*0% \{ transform: scale\(0\.4\); \}\s*60% \{ transform: scale\(1\.18\); \}\s*100% \{ transform: scale\(1\); \}\s*\}/, "pop keyframes must stay transform-only");
 const popBlock = components.match(/@keyframes lc-checkin-check-pop \{[\s\S]*?\n\}/)?.[0] || "";
 assert.ok(!/(width|height|top|left|margin|padding)\s*[:;]/.test(popBlock), "pop keyframes must not shift layout");
-assert.equal((components.match(/lc-checkin-check-pop/g) || []).length, 2, "restraint: exactly one declaration and one keyframes definition");
+/* R-18.5/D-263 收尾：庆祝分两级——日常轻弹跳 + 连击里程碑加重弹跳，各自恰好
+   一处声明 + 一处 keyframes（总数 2+2），任何第三级动画都算违规。 */
+assert.equal((components.match(/lc-checkin-check-pop(?!-)/g) || []).length, 2, "restraint: exactly one declaration and one keyframes definition for the base pop");
+assert.equal((components.match(/lc-checkin-check-pop-milestone/g) || []).length, 2, "restraint: exactly one declaration and one keyframes definition for the milestone pop");
+const milestonePopBlock = components.match(/@keyframes lc-checkin-check-pop-milestone \{[\s\S]*?\n\}/)?.[0] || "";
+assert.ok(!/(width|height|top|left|margin|padding)\s*[:;]/.test(milestonePopBlock), "milestone pop keyframes must not shift layout");
 
 console.log("Check-in toast checks passed.");

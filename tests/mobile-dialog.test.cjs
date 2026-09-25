@@ -70,8 +70,8 @@ assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)
     "mobile navigation must fit four destinations around the central add action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,
     "save state must be explicit for low-network feedback");
-assert.match(i18nSource, /"msg\.saving":\s*"[^"]+"/,
-    "saving state must be visible to users");
+/* R-18.4：msg.saving 已退役——saving 呈现按 T-1422 决策刻意静默（checkin-toast 布局防跳守门），
+   失败路径由 save-status(error)+retry-save 承担，不复活 saving 文案。 */
 assert.match(fragmentsSource, /data-action=\"retry-save\"/,
     "save failure must expose a retry action");
 assert.match(source, /private renderSaveStatus\(\): string/,

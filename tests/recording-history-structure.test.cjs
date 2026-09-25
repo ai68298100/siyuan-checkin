@@ -67,7 +67,9 @@ const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem"]
 const hostClassOutput = ts.transpileModule(`class RecordingHost { ${methods} }`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
-const environment = {...model, ...shared, t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
+/* R-18.5：recordEvent 现引用 computeStreaksValue（model-helpers）与 STREAK_MILESTONES
+   （index 模块常量）——本桩以常量提供，结构测试不断言连击/里程碑值。 */
+const environment = {...model, ...shared, computeStreaksValue: () => new Map(), STREAK_MILESTONES: [], t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
 const RecordingHost = new Function(...Object.keys(environment), `${hostClassOutput}\nreturn RecordingHost;`)(...Object.values(environment));
 
 function fixture(kind = "binary", direction) {
