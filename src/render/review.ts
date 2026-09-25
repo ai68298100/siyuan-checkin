@@ -7,7 +7,7 @@ import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type 
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
-import {buildYearHeatmap, renderBarChart, renderLineChart, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
+import {buildYearHeatmap, renderBarChart, renderLineChart, renderSparkline, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
@@ -481,7 +481,13 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${fold("reminders", t("review.foldReminders"), renderReminders)}
             ${fold("upcoming", t("review.foldUpcoming"), () => renderUpcomingOccasionsView(ctx.occasionStore))}
           </div>`
-        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
+        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${(() => {
+            /* R-16.2 sparkline：近 30 日记录趋势迷你线（数据来自既有 analytics daily 序列，零新口径）。 */
+            const sparkValues = ctx.analyticsSnapshot.daily.points.slice(-30).map((point) => point.value);
+            if (!sparkValues.length) return "";
+            const days = sparkValues.length;
+            return `<div class="lc-checkin__stat-spark" data-stat-spark-days="${days}">${renderSparkline(sparkValues, {ariaLabel: t("review.statsSparkAria", {days})})}<span>${t("review.statsSparkLabel", {days})}</span></div>`;
+        })()}${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
             ${renderRhythm()}<div class="lc-checkin__review-sections">
             ${fold("projects", `${t("review.foldProjects")} · ${summary.items.length}`, renderProjects)}
             ${assistantEntry}

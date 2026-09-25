@@ -77,6 +77,11 @@
   - 设计要点：①项目编辑器新增「问卷模板」绑定行，绑定后该项目打卡动作=填问卷（今日页/today 渲染块同通道）；②内置 5 预设只读模板（感恩三问/五分钟日记早晚版/九宫格晨间日记/KPT 每日复盘/深度复盘周记）+用户自建问题集（text/textarea 起步，slider 可选）；③流程=recordEvent 先落盘（note 截断摘要）→ 模板渲染 markdown（逐题分节/九宫格表格）→ appendBlock 到目标（显式文档 > SQL custom-dailynote-yyyymmdd > renderSprig+createDocWithMd 定位栈，不硬编码 /diary/）；④写入失败不阻断打卡（审计+toast 重试，summary-resident 旁路纪律）；⑤幂等=插件自写块带结构化标记，同日同模板已写入提示「查看/重新填写」，重填走 updateBlock+lockType+事件修订，绝不改写用户已有内容。
   - 新增纯模块建议 `src/features/journal-templates.ts`（问题集归一化/答案渲染/定位纯函数）+ 渲染层 dialog + 设置面板。验收：纯函数测试+结构守门（dialog/绑定行/i18n 双语/双主题/44-48px 按 T-1461 基线）+隔离内核 e2e（建今日日记→填问卷→落盘→重复填写幂等→事件已打卡）；真机触控归 host-pending。归类 local-auto。
   - 排期建议：第 2 批（R-A16）之后、第 3 批前；用户点名即启。
+- [x] T-1466 今日完成度环 + sparkline 趋势线（R-A16，第 2 批，2026-09-26 开工并完成）
+  - R-16.1 完成度环：charts.ts 新增 renderCompletionRing 纯 SVG 渲染器（wrap-around 圆环、dash 周长按百分比裁剪、越界钳制 fail-closed、100% 切 success 色、role=img+aria 文字通道）；接入今日行动台摘要条首位（数据=既有 totals.completionRate 投影，零新口径）；i18n today.consoleRingAria 中英；CSS 负边距方案（margin-block:-6px 抵消条内边距）保证摘要条高度零增长——30 项密度场景首卡位置预算不受影响（宽度走查实测复绿）。dock 常驻小环留待 dock 表面迭代。
+  - R-16.2 sparkline：charts.ts 新增 renderSparkline（纯 polyline、max≥1 防除零、空序列占位、确定性输出）；接入回顾页范围统计区（近 30 日记录趋势，数据=渲染时已在内存的 analytics daily 快照，零新聚合零图表库）；i18n review.statsSparkAria/statsSparkLabel 中英。
+  - 守门：tests/stats-visuals.test.cjs 入主链（环 dash 数学/钳制/完成态/aria、sparkline 坐标映射/空序列/确定性、接线与双语、单色 accent 与 D-263 零动效断言）；review-workspace.test.cjs「概览零图表 DOM」性能不变量按纪律收窄为「无重量级图表 DOM」——唯一豁免 data-stat-spark（纯字符串拼装自已在内存的快照，无昂贵计算），折线/柱状/热力图与折叠懒加载契约逐条保留并在测试注释与 PROGRESS 记录理由。
+  - 验证：pnpm run test:quality EXIT=0（214 组 passed）；宽度走查 49 表面 + 32 交互 + 双主题 30 项密度全绿。真机观感归 host-pending。
 - [x] T-1418 架构边界守门（R-A1，2026-09-24 开工并完成）
   - 内容：新增 `tests/architecture-boundaries.test.cjs`——93 个 TS 模块的自动结构检查：render/ui 导入方向（仅渲染层+组合根/plugin-ops/shared）、宿主 API 准入清单（显式登记文件，新增须评审）、无时钟纯函数面（date-keys/source-framework/日历投影/强度分/quota/适配器结算层等 11 个模块禁 Date.now 与缺省 new Date）、`store.events` 唯一写路径（model.ts）、外部事件唯一入口（recordExternalEvent 仅 api/index）、来源前缀登记（EXTERNAL_REF_PREFIX_REGISTRY 五前缀）+ 发现规则（新增 `*adapter.ts`/`*inbox.ts` 必须登记清单或显式声明非前缀来源家族）。
   - 状态：done（2026-09-24。守门入 `pnpm test` 主链；全绿证明既有代码零违规，此后边界回潮必须先显式登记才可通过）。

@@ -10471,6 +10471,18 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__renderblock-today-record { flex: none; min-height: 24px; padding: 2px 8px; }
 /* T-1462：数值项目 chips 组——块内紧凑增量按钮（移动宿主 44px 由触控基线统一抬升）。 */
 .lc-checkin__renderblock-today-steps { flex: none; display: inline-flex; gap: 4px; }
+
+/* R-A16（2026-09-26）：轻量 SVG 视觉件。单色 accent 阶梯 + 文字冗余编码（T-1461），
+   静态呈现零动效零过渡（D-263）；完成 100% 切 success 色。 */
+.lc-checkin__completion-ring { flex: none; display: block; }
+.lc-checkin__ring-track { stroke: var(--lc-checkin-border); }
+.lc-checkin__ring-value { stroke: var(--lc-checkin-accent); }
+.lc-checkin__completion-ring.is-complete .lc-checkin__ring-value { stroke: var(--lc-checkin-success); }
+/* 摘要条内的环：负边距抵消条内边距，不增加条高（30 项密度场景首卡位置预算不受影响）。 */
+.lc-checkin__console .lc-checkin__completion-ring { height: 30px; width: 30px; margin-block: -6px; }
+.lc-checkin__spark { display: block; }
+.lc-checkin__spark-line { stroke: var(--lc-checkin-accent); }
+.lc-checkin__stat-spark { display: inline-flex; align-items: center; gap: 6px; color: var(--lc-checkin-muted); font-size: 10px; white-space: nowrap; }
 .lc-checkin__renderblock-today-summary {
     color: var(--lc-checkin-muted);
     font-size: 9.5px;

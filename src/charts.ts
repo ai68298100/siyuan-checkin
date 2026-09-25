@@ -406,3 +406,37 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
     const weekdayLabels = [[0, "一"], [2, "三"], [4, "五"], [6, "日"]].map(([index, label]) => `<text class="lc-yearheatmap__label" x="2" y="${labelTop + gap + Number(index) * (cell + gap) + cell - 1}">${label}</text>`).join("");
     return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录">${monthLabels}${weekdayLabels}${cells}</svg>`;
 }
+
+/* R-A16（2026-09-26）：轻量 SVG 视觉件。单色阶梯 + 文字冗余编码（T-1461 基线），
+   静态呈现零动效（D-263），零依赖纯函数、确定性输出。 */
+
+/** R-16.1 今日完成度环：wrap-around 圆环，12 点起顺时针；完成 100% 切 success 色。
+    百分比来自 today-dashboard 既有 totals.completionRate 投影，本层只做形状。 */
+export function renderCompletionRing(percent: number, options: {size?: number; ariaLabel?: string} = {}): string {
+    const size = options.size ?? 34;
+    const stroke = 4;
+    const radius = (size - stroke) / 2;
+    const center = size / 2;
+    const circumference = 2 * Math.PI * radius;
+    const clamped = Math.max(0, Math.min(100, Math.round(Number.isFinite(percent) ? percent : 0)));
+    const dash = (circumference * clamped) / 100;
+    const label = options.ariaLabel ?? `${clamped}%`;
+    return `<svg class="lc-checkin__completion-ring${clamped >= 100 ? " is-complete" : ""}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${escapeChartText(label)}"><circle class="lc-checkin__ring-track" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}"/><circle class="lc-checkin__ring-value" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${center} ${center})"/></svg>`;
+}
+
+/** R-16.2 sparkline：内联迷你趋势线（近 N 日记录数等序列）。
+    零基线归一（max≥1 防除零）；空序列输出空占位；只读呈现不承载唯一信息（旁边保留数字）。 */
+export function renderSparkline(values: readonly number[], options: {width?: number; height?: number; ariaLabel?: string} = {}): string {
+    const width = options.width ?? 96;
+    const height = options.height ?? 24;
+    const stroke = 2;
+    const series = values.map((value) => (Number.isFinite(value) ? Math.max(0, value) : 0));
+    if (!series.length) return `<span class="lc-checkin__spark is-empty" aria-hidden="true"></span>`;
+    const maximum = Math.max(...series, 1);
+    const step = series.length > 1 ? (width - stroke * 2) / (series.length - 1) : 0;
+    const points = series
+        .map((value, index) => `${(stroke + index * step).toFixed(1)},${(height - stroke - ((height - stroke * 2) * value) / maximum).toFixed(1)}`)
+        .join(" ");
+    const label = options.ariaLabel ?? "";
+    return `<svg class="lc-checkin__spark" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img"${label ? ` aria-label="${escapeChartText(label)}"` : ` aria-hidden="true"`}><polyline class="lc-checkin__spark-line" points="${points}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}

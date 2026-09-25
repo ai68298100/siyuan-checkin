@@ -2,6 +2,7 @@
    从 index.ts 类方法外置；依赖以显式参数传入，无插件实例状态。 */
 import {t, getPluginLocale} from "../i18n";
 import {daysBetweenHalfOpen} from "../date-keys";
+import {renderCompletionRing} from "../charts";
 import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
 import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
@@ -344,7 +345,9 @@ export function renderTodayGroupsView(items: CheckinItem[], date: Date, ctx: Tod
     记录仍走原卡片路径（撤销/失败回滚不变），条目呈现不复制优先提醒卡（只计数）。 */
 function renderTodayDashboardStrip(dashboard: TodayDashboard, nextItemName: string | undefined): string {
     if (!dashboard.totals.scheduled) return "";
-    const parts = [`<span class="lc-checkin__console-totals">${t("today.consoleTotals", {done: dashboard.totals.done, scheduled: dashboard.totals.scheduled})}</span>`];
+    /* R-16.1 完成度环：百分比与旁边的数字文案互为冗余编码（T-1461），静态零动效（D-263）。 */
+    const ring = renderCompletionRing(dashboard.totals.completionRate, {ariaLabel: t("today.consoleRingAria", {rate: dashboard.totals.completionRate})});
+    const parts = [ring, `<span class="lc-checkin__console-totals">${t("today.consoleTotals", {done: dashboard.totals.done, scheduled: dashboard.totals.scheduled})}</span>`];
     if (dashboard.totals.skipped) parts.push(`<span class="lc-checkin__console-skipped">${t("today.consoleSkipped", {count: dashboard.totals.skipped})}</span>`);
     if (dashboard.nextAction?.type === "record" && nextItemName) {
         parts.push(`<span class="lc-checkin__console-next">${t("today.consoleNext", {name: escapeHtml(nextItemName)})}</span>`);

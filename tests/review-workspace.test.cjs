@@ -90,7 +90,12 @@ assert.match(overview, /data-review-workspace="overview" aria-pressed="true"/);
 assert.match(overview, /data-review-workspace-panel="overview"/);
 assert.match(overview, /data-review-fold="projects" open/);
 assert.equal(projectIds(overview).length, 8, "overview bounds its initial project list to eight");
-assert.equal(svgCount(overview), 0, "default overview must not produce chart DOM");
+/* R-A16（2026-09-26）：不变量收窄为「无重量级图表 DOM」。唯一豁免是统计区的
+   data-stat-spark——30 点 polyline 纯字符串拼装，数据来自渲染时已在内存的
+   analytics 快照，无新增聚合、无图表库调用（决策记录见 PROGRESS 2026-09-26）。 */
+assert.ok(svgCount(overview) <= 1, "default overview must not produce chart DOM beyond the stats sparkline");
+assert.match(overview, /data-stat-spark-days=/, "the single allowed svg is the stats sparkline");
+assert.doesNotMatch(overview, /lc-checkin__trend|lc-checkin__calendar-day|lc-checkin__yearheatmap/, "overview still excludes line/bar/heatmap structures");
 const rhythmDates = (html) => [...html.matchAll(/data-review-rhythm-date="([^"]+)"/g)].map(match => match[1]);
 assert.deepEqual(rhythmDates(overview), ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-19", "2026-09-20"]);
 assert.equal(rhythmDates(render({summaryCustomRange: {startDate: "2026-08-01", endDate: "2026-09-30"}})).length, 14,
@@ -210,7 +215,9 @@ assert.equal(calls.buildYearHeatmap, 1, "explicitly opening heatmap builds only 
 assert.equal(calls.collectHabitScoreDays, 0);
 const reopenedProjects = render({reviewFoldTouched: true, reviewFoldSections: new Set(["projects", "strength"])});
 assert.equal(projectIds(reopenedProjects).length, 8);
-assert.equal(svgCount(reopenedProjects), 0, "stored folds belonging to another workspace cannot generate hidden charts");
+/* R-A16：与上方概览豁免同口径——统计区 sparkline 是允许的唯一 svg（折叠图表仍为零）。 */
+assert.equal(svgCount(reopenedProjects), 1, "stored folds belonging to another workspace cannot generate hidden charts");
+assert.match(reopenedProjects, /data-stat-spark-days=/, "the single svg is the always-on stats sparkline, not a fold chart");
 
 resetCalls();
 const strength = render({reviewWorkspace: "analysis", reviewFoldTouched: true, reviewFoldSections: new Set(["strength"])});
@@ -407,7 +414,9 @@ const largeStarted = performance.now();
 const largeOverview = render({store: largeStore, analyticsSnapshot: largeSnapshot});
 const largeElapsed = performance.now() - largeStarted;
 assert.equal(projectIds(largeOverview).length, 8);
-assert.equal(svgCount(largeOverview), 0);
+/* R-A16：唯一豁免的 stats sparkline 照常出现（30 点，来自已在内存的快照），重图表仍为零。 */
+assert.equal(svgCount(largeOverview), 1);
+assert.match(largeOverview, /data-stat-spark-days="30"/, "large overview keeps the bounded 30-point sparkline");
 assert.ok(rhythmDates(largeOverview).length <= 14);
 assert.ok(Buffer.byteLength(largeOverview) < 25000, "100k histories cannot inflate the bounded overview markup beyond 25 KB");
 assert.ok(Object.values(calls).every(value => value === 0), "100k default rendering must not activate any secondary analyses");
