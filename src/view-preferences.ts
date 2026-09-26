@@ -32,6 +32,8 @@ export interface ReportSectionToggles {
 export interface CheckinViewPreferences {
     groupMode: TodayGroupMode;
     sortMode: CheckinItemSortMode;
+    /** T-1502 默认打开方式：openCheckin 命令/热键的落点（快捷弹窗或缺省；页签仅桌面可用）。 */
+    defaultOpenMode: "quick" | "tab";
     completedCollapsed: boolean;
     collapsedGroups: string[];
     /** Expanded review sections, shared across review workspaces. */
@@ -112,6 +114,7 @@ export const DEFAULT_REPORT_SECTIONS: ReportSectionToggles = {
 export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     groupMode: "none",
     sortMode: "manual",
+    defaultOpenMode: "quick",
     completedCollapsed: true,
     collapsedGroups: [],
     reviewFold: [],
@@ -176,6 +179,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const GROUP_MODES_ALL = new Set<TodayGroupMode>(["none", "group", "time", "priority"]);
     const groupMode = GROUP_MODES_ALL.has(source.groupMode as TodayGroupMode) ? source.groupMode as TodayGroupMode : DEFAULT_VIEW_PREFERENCES.groupMode;
     const sortMode = SORT_MODES.has(source.sortMode as CheckinItemSortMode) ? source.sortMode as CheckinItemSortMode : DEFAULT_VIEW_PREFERENCES.sortMode;
+    const defaultOpenMode = source.defaultOpenMode === "tab" ? "tab" as const : "quick" as const;
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
         : [];
@@ -264,6 +268,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     return {
         groupMode,
         sortMode,
+        defaultOpenMode,
         completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true,
         collapsedGroups,
         reviewFold,

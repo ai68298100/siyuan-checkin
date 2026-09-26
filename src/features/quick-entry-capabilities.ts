@@ -112,6 +112,14 @@ export function restoreQuickEntryVisibility(hidden: readonly string[], commandId
     return hidden.filter((id) => id !== commandId);
 }
 
+export type QuickEntryTarget = "quick-dialog" | "tab";
+
+/** T-1502 默认打开方式路由：仅桌面（自定义页签可用）且偏好为 tab 时走页签，
+    其余（移动端/未知值）一律快捷弹窗——纯函数、fail-closed。 */
+export function resolveQuickEntryTarget(mode: unknown, supportsCustomTab: boolean): QuickEntryTarget {
+    return supportsCustomTab && mode === "tab" ? "tab" : "quick-dialog";
+}
+
 /** 本插件自有入口描述符（单一事实源；langKey 与 dist i18n 契约键一致，
     由 release-assets 守门）。新入口在此登记，executor 由宿主映射到回调。 */
 export const QUICK_ENTRY_DESCRIPTORS: readonly QuickEntryDescriptor[] = [

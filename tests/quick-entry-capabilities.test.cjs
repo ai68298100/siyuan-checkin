@@ -116,4 +116,21 @@ assert.doesNotMatch(indexSource, /QUICK_DIALOG_HOTKEY/, "孤儿热键常量必�
 const releaseAssets = fs.readFileSync(path.join(root, "tests", "release-assets.test.cjs"), "utf8");
 assert.match(releaseAssets, /openCheckin/, "dist i18n 契约键守门必须保持（langKey 不得漂移）");
 
-console.log("quick-entry-capabilities tests passed: 四者独立/未知第三方/fallback/surface 过滤/恢复配置/确定性/接线守门 全部通过");
+/* —— 10. T-1502 默认打开方式路由：纯函数 fail-closed + 偏好/设置接线。 —— */
+assert.equal(qe.resolveQuickEntryTarget("tab", true), "tab", "desktop + tab preference routes to the tab");
+assert.equal(qe.resolveQuickEntryTarget("tab", false), "quick-dialog", "non-desktop hosts always fall back to the quick dialog");
+assert.equal(qe.resolveQuickEntryTarget("quick", true), "quick-dialog");
+assert.equal(qe.resolveQuickEntryTarget(undefined, true), "quick-dialog", "unknown values fail closed to the dialog");
+assert.equal(qe.resolveQuickEntryTarget("evil", true), "quick-dialog");
+assert.match(indexSource, /resolveQuickEntryTarget\(this\.defaultOpenMode, this\.supportsCustomTab\)/, "默认入口经纯函数路由");
+assert.match(indexSource, /private openDefaultEntry\(\): void/, "命令/热键/顶栏共用同一默认入口");
+const prefsSource = fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8");
+assert.match(prefsSource, /source\.defaultOpenMode === "tab" \? "tab" as const : "quick" as const/, "偏好归一 fail-closed 回落快捷弹窗");
+const settingsSource2 = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
+assert.match(settingsSource2, /data-setting-open-mode/, "设置页提供默认打开方式选择行");
+const i18nSource2 = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
+for (const key of ["set.openMode", "set.openModeHint", "set.openModeQuick", "set.openModeTab"]) {
+    assert.equal(i18nSource2.split(`"${key}"`).length - 1, 2, `${key} 必须中英双语齐备`);
+}
+
+console.log("quick-entry-capabilities tests passed: 四者独立/未知第三方/fallback/surface 过滤/恢复配置/确定性/接线守门/默认打开方式路由 全部通过");

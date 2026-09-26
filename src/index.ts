@@ -34,7 +34,7 @@ import type {HistorySortOrder, HistorySourceFilter} from "./features/history-fil
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, normalizeDailyReminderSlots, reminderMinutesOfDay, type ReminderQuietHours} from "./features/reminder-preferences";
 import {addDays, daysBetweenHalfOpen} from "./date-keys";
-import {evaluateQuickEntry, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
+import {evaluateQuickEntry, resolveQuickEntryTarget, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
 import {BLOCK_PRESETS, blockPresetMarkdown, getBlockPreset} from "./features/block-presets";
 import {isFirstSuccessSuppressed, normalizeFirstSuccessState, transitionFirstSuccess, type FirstSuccessState} from "./features/first-success";
 import {describeViewScope, normalizeViewScope, resolveViewScope, type ViewScopeV1} from "./features/view-scope";
@@ -237,6 +237,8 @@ export default class CheckinPlugin extends Plugin {
     private isMobileFrontend = false;
     private supportsCustomTab = true;
     private todayGroupMode: TodayGroupMode = DEFAULT_VIEW_PREFERENCES.groupMode;
+    /** T-1502 默认打开方式：openCheckin 命令/热键的落点。 */
+    private defaultOpenMode: "quick" | "tab" = DEFAULT_VIEW_PREFERENCES.defaultOpenMode;
     private todaySortMode: CheckinItemSortMode = DEFAULT_VIEW_PREFERENCES.sortMode;
     private todayQuery = "";
     private pendingOnly = false;
@@ -1637,7 +1639,8 @@ export default class CheckinPlugin extends Plugin {
             hidden: [],
         };
         const quickEntryExecutors: Record<string, () => void> = {
-            "quick-dialog": () => this.toggleQuickDialog(),
+            /* T-1502：默认入口按偏好路由（页签仅桌面可用，路由纯函数 fail-closed 回落弹窗）。 */
+            "quick-dialog": () => this.openDefaultEntry(),
             "open-tab": () => this.openTabPage(),
         };
         for (const entry of QUICK_ENTRY_DESCRIPTORS) {
@@ -1690,7 +1693,7 @@ export default class CheckinPlugin extends Plugin {
             icon: "iconLvCheckin",
             position: "right",
             title: t("entry.topBar"),
-            callback: () => this.toggleQuickDialog(),
+            callback: () => this.openDefaultEntry(),
         });
         /* T-1234/T-1235/T-1236 渲染块：protyle 装载事件驱动 + 打卡数据事件刷新。
            app.protyles 是运行时成员（ typings 未声明），防御式访问。 */
@@ -2478,6 +2481,13 @@ export default class CheckinPlugin extends Plugin {
         toggleQuickDialogFor(this as unknown as QuickDialogHost);
     }
 
+    /* T-1502：默认打开入口——openCheckin 命令、全局热键与顶栏按钮共用；
+        偏好 tab 且桌面时开页签（固定 id 复用聚焦），否则快捷弹窗。 */
+    private openDefaultEntry(): void {
+        if (resolveQuickEntryTarget(this.defaultOpenMode, this.supportsCustomTab) === "tab") this.openTabPage();
+        else this.toggleQuickDialog();
+    }
+
     /* Desktop quick dialog sizing follows the user preference: a percentage of
        the host window (default 90%), fullscreen, or a fixed pixel size. */
     private quickDialogSize(): {width: string; height: string} {
@@ -3048,6 +3058,7 @@ export default class CheckinPlugin extends Plugin {
             latestDiagnosticText: this.latestDiagnosticText(),
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
+            defaultOpenMode: this.defaultOpenMode,
             completedCollapsed: this.completedCollapsed,
             weekStripVisible: this.weekStripVisible,
             dialogSizeMode: this.dialogSizeMode,
@@ -3155,6 +3166,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.pluginLanguageSetting = value; this.syncPluginLanguage(); void this.persistViewPreferences(); this.render(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-open-mode]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "quick" || value === "tab") { this.defaultOpenMode = value; void this.persistViewPreferences(); } });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         /* T-1421 提醒安静时段：开关与起止时间；非法时间输入由归一化回落默认值。 */
@@ -5903,6 +5915,7 @@ export default class CheckinPlugin extends Plugin {
     private applyViewPreferences(preferences: CheckinViewPreferences) {
         this.todayGroupMode = preferences.groupMode;
         this.todaySortMode = preferences.sortMode;
+        this.defaultOpenMode = preferences.defaultOpenMode;
         this.completedCollapsed = preferences.completedCollapsed;
         this.appearance = preferences.appearance;
         this.dialogSizeMode = preferences.dialogSizeMode;
@@ -6017,6 +6030,7 @@ export default class CheckinPlugin extends Plugin {
             firstSuccess: this.firstSuccessState,
             savedViews: this.savedViews,
             pluginLanguage: this.pluginLanguageSetting,
+            defaultOpenMode: this.defaultOpenMode,
             recentTemplates: [...this.recentTemplates],
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
