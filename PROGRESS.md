@@ -1,3 +1,5 @@
+2026-09-26 T-1400 增量核查：T-1477～T-1483 与 T-1386 本地部分收口后，GitHub 核查思源最新正式 release v2.4.1（该仓库非当前思源内核主线，未据此触发任何任务）；sireader#55、siplayer#180 均 open、0 评论、更新仍为 09-25。无新公开 API 契约或本地开发触发。已更新 HANDOFF 当前队列，剩余未完成项均为外部消费端协作或用户产品决策；未 push。
+
 2026-09-26 T-1386 本地部分最终验收：统一来源卡片的健康/微信读书/叶归“立即刷新”入口及失败反馈通过完整质量链；`pnpm run test:quality` EXIT=0，183 个测试文件、性能、CSS hygiene（659 类、0 死类、621392 bytes）、发布资产和回滚演练全部通过。TODO 重复历史条目已改为本地完成、外部消费端依赖保留。
 
 2026-09-26 T-1386 本地来源刷新 UX：设置来源卡片新增统一“立即刷新”入口，健康、微信读书、叶归分别复用 ingestHealthInbox、ingestWeread、ingestYeguif；不删除事件、不重算 externalRef，失败仍走现有反馈/诊断路径。验证：health-inbox、weread-adapter、yeguif-adapter、i18n-parity、ui-docs、accessibility、build:check 全部通过。
