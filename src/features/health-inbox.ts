@@ -67,17 +67,68 @@ export function parseHealthInboxRows(rows: readonly HealthInboxRow[]): Array<Omi
     return entries;
 }
 
-/** 偏好归一：docId 走块 ID 校验；enabled 无合法 docId 不物化；项目映射可选。 */
-export function normalizeHealthInboxPreference(source: unknown): {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string} {
+export interface HealthMetricBinding {
+    metric: HealthInboxMetric;
+    itemId: string;
+}
+
+export interface HealthInboxPreference {
+    enabled: boolean;
+    docId: string;
+    /** T-1486 按项目映射：同一指标可投递多个项目（每个项目独立 externalRef 身份，非双重累计——用户显式挂载）。 */
+    metricBindings: Array<HealthMetricBinding>;
+    /** 旧字段镜像（每指标首条映射的只读投影）：降级到旧版本时仍可读到主映射；新代码一律消费 metricBindings。 */
+    stepsItemId: string;
+    weightItemId: string;
+}
+
+/** 映射容量上限（跨指标合计，有界）。 */
+export const HEALTH_MAX_METRIC_BINDINGS = 16;
+
+const METRIC_VALUES: readonly HealthInboxMetric[] = ["steps", "weight"];
+const normalizeMetric = (value: unknown): HealthInboxMetric | undefined => METRIC_VALUES.find((metric) => metric === value);
+const normalizeBindingItemId = (value: unknown): string => typeof value === "string" ? value.trim().slice(0, 160) : "";
+
+/** 偏好归一：docId 走块 ID 校验；enabled 无合法 docId 或无映射不物化；
+    旧数据 stepsItemId/weightItemId 作为每指标首条映射并入（迁移兼容），镜像字段回写首条。 */
+export function normalizeHealthInboxPreference(source: unknown): HealthInboxPreference {
     const entry = source && typeof source === "object" ? (source as Record<string, unknown>) : {};
     const docId = validateAnchorBlockId(entry.docId) || "";
-    const itemId = (value: unknown) => typeof value === "string" ? value.trim().slice(0, 160) : "";
-    const stepsItemId = itemId(entry.stepsItemId);
-    const weightItemId = itemId(entry.weightItemId);
-    return {
-        enabled: entry.enabled === true && Boolean(docId) && Boolean(stepsItemId || weightItemId),
-        docId,
-        stepsItemId,
-        weightItemId,
+    const bindings: Array<HealthMetricBinding> = [];
+    const seen = new Set<string>();
+    const push = (metric: unknown, rawItemId: unknown): void => {
+        const knownMetric = normalizeMetric(metric);
+        const itemId = normalizeBindingItemId(rawItemId);
+        if (!knownMetric || !itemId) return;
+        const identity = `${knownMetric}:${itemId}`;
+        if (seen.has(identity) || bindings.length >= HEALTH_MAX_METRIC_BINDINGS) return;
+        seen.add(identity);
+        bindings.push({metric: knownMetric, itemId});
     };
+    if (Array.isArray(entry.metricBindings)) {
+        for (const candidate of entry.metricBindings.slice(0, HEALTH_MAX_METRIC_BINDINGS)) {
+            const record = candidate && typeof candidate === "object" && !Array.isArray(candidate) ? (candidate as Record<string, unknown>) : {};
+            push(record.metric, record.itemId);
+        }
+    }
+    push("steps", entry.stepsItemId);
+    push("weight", entry.weightItemId);
+    return {
+        enabled: entry.enabled === true && Boolean(docId) && bindings.length > 0,
+        docId,
+        metricBindings: bindings,
+        stepsItemId: bindings.find((binding) => binding.metric === "steps")?.itemId || "",
+        weightItemId: bindings.find((binding) => binding.metric === "weight")?.itemId || "",
+    };
+}
+
+/** 为项目新增指标映射（模板预接线与设置页共用）：重复/超容量/非法输入返回 undefined（无变化）。 */
+export function addHealthMetricBinding(source: unknown, metric: HealthInboxMetric, itemId: string): HealthInboxPreference | undefined {
+    const knownMetric = normalizeMetric(metric);
+    const normalizedId = normalizeBindingItemId(itemId);
+    if (!knownMetric || !normalizedId) return undefined;
+    const normalized = normalizeHealthInboxPreference(source);
+    if (normalized.metricBindings.some((binding) => binding.metric === knownMetric && binding.itemId === normalizedId)) return undefined;
+    if (normalized.metricBindings.length >= HEALTH_MAX_METRIC_BINDINGS) return undefined;
+    return normalizeHealthInboxPreference({...normalized, metricBindings: [...normalized.metricBindings, {metric: knownMetric, itemId: normalizedId}]});
 }

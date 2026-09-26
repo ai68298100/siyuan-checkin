@@ -27,7 +27,7 @@ export async function saveEditorForm(
     editingId: string | undefined,
     submittedAt: {occurredAt: string; localDate: string},
     expectedFingerprint?: string,
-): Promise<void> {
+): Promise<string | undefined> {
     const name = String(data.get("name") || "").trim();
     const requestedKind = String(data.get("kind") || "binary");
     const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
@@ -45,7 +45,7 @@ export async function saveEditorForm(
     const validation = validateEditorInput({name, kind, target: kind === "binary" ? 1 : Number(data.get("target")), unit: kind === "binary" ? "次" : String(data.get("unit") || "").trim(), schedule: scheduleType, weekdays: checkedWeekdays, quotaAmount: requestedQuotaAmount});
     if (!validation.valid) {
         showMessage(`[小驴打卡] ${validation.errors.name || validation.errors.target || validation.errors.unit || validation.errors.schedule || t("msg.formInvalid")}`);
-        return;
+        return undefined;
     }
     const schedule: CheckinSchedule = scheduleType === "interval"
         ? {type: scheduleType, intervalDays: intervalDaysValue, anchorDate: anchorDateValue}
@@ -56,7 +56,7 @@ export async function saveEditorForm(
     if (editingId && (!existing || !expectedFingerprint || host.itemFingerprint(existing) !== expectedFingerprint)) {
         showMessage(t("msg.conflictEdit"));
         host.showToday();
-        return;
+        return undefined;
     }
     const createdDate = existing?.createdDate || submittedAt.localDate;
     const target = kind === "binary" ? 1 : Math.max(0.1, Number(data.get("target")) || 1);
@@ -74,7 +74,7 @@ export async function saveEditorForm(
     const anchorBlockId = requestedAnchorBlock ? validateAnchorBlockId(requestedAnchorBlock) : undefined;
     if (requestedAnchorBlock && !anchorBlockId) {
         showMessage(`[小驴打卡] ${t("editor.anchorInvalid")}`);
-        return;
+        return undefined;
     }
     const anchorAppendNotes = Boolean(anchorBlockId) && data.get("anchorAppendNotes") === "on";
     /* T-1239（D-219）：戒除类方向仅支持每日排期，其他排期静默回落 at-least。 */
@@ -150,9 +150,11 @@ export async function saveEditorForm(
         host.store = previous;
         showMessage(t("msg.saveFail"));
         host.renderBackgroundUpdate();
-        return;
+        return undefined;
     }
     host.invalidateSummary();
     host.broadcast({type: existing ? "item-updated" : "item-created", item});
     host.showToday();
+    /* T-1486：返回保存条目 id，供宿主消费联动预接线计划（失败路径均返回 undefined，零副作用）。 */
+    return item.id;
 }

@@ -76,6 +76,14 @@
 .lc-checkin__journal-form { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
 .lc-checkin__journal-hint { margin: 0; color: var(--lc-checkin-warm-text); font-size: 12px; }
 .lc-checkin__journal-config { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; margin: 0; }
+/* T-1486 联动预接线建议卡片：非阻断提示（role=note），确认后才产生保存后生效的计划。 */
+.lc-checkin__linkage-card { border: 1px solid var(--lc-checkin-border); border-left: 3px solid var(--lc-checkin-accent); border-radius: var(--lc-checkin-radius-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; font-size: 12px; background: var(--lc-checkin-surface); }
+.lc-checkin__linkage-card[hidden] { display: none !important; }
+.lc-checkin__linkage-card strong { font-size: 12px; }
+.lc-checkin__linkage-hint { margin: 0; color: var(--lc-checkin-muted); font-size: 12px; overflow-wrap: anywhere; }
+.lc-checkin__linkage-warning { margin: 0; color: var(--lc-checkin-warm-text); font-size: 12px; overflow-wrap: anywhere; }
+.lc-checkin__linkage-planned-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lc-checkin__linkage-planned { color: var(--lc-checkin-accent-text); font-size: 12px; }
 .lc-checkin__journal-config legend { font-size: 11px; color: var(--lc-checkin-muted); padding: 0 4px; }
 .lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .lc-checkin__journal-form [hidden] { display: none !important; }

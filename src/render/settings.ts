@@ -7,6 +7,7 @@ import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvid
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
+import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
 
 const AVATAR_PRESETS = [
@@ -63,8 +64,8 @@ export interface SettingsViewContext {
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1385 宿主能力探测：仅说明公开 controller 当前是否可调用，不代表已经产生观看事件。 */
     siplayerControllerAvailable?: boolean;
-    /** T-1403 健康收件箱（opt-in 默认关）。 */
-    healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
+    /** T-1403 健康收件箱（opt-in 默认关）；T-1486 按项目映射（metricBindings）。 */
+    healthInbox: HealthInboxPreference;
     /** T-1402 微信读书联动（opt-in 默认关）；Key 不进渲染上下文，只暴露 wereadKeySet。 */
     wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; finishItemId: string; notesItemId: string};
     wereadKeySet: boolean;
@@ -176,8 +177,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const siplayerHostStatus = t(siplayerHostState === "available"
         ? "set.siplayerHostAvailable"
         : siplayerHostState === "missing" ? "set.siplayerHostMissing" : "set.siplayerHostUnknown");
-    /* T-1403：健康收件箱缺省值，同上。 */
-    const healthInbox = ctx.healthInbox || {enabled: false, docId: "", stepsItemId: "", weightItemId: ""};
+    /* T-1403：健康收件箱缺省值，同上；T-1486 按项目映射。 */
+    const healthInbox = ctx.healthInbox || {enabled: false, docId: "", metricBindings: [], stepsItemId: "", weightItemId: ""};
     /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
     const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, finishItemId: "", notesItemId: ""};
     const wereadKeySet = ctx.wereadKeySet ?? false;
@@ -200,8 +201,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const diaryState = sourceState(diary.enabled, Boolean(diary.docId));
     const summaryState = sourceState(summaryResident.enabled, Boolean(summaryResident.docId));
     const sireaderState = sourceState(sireader.enabled, Boolean(sireader.itemId), projectAvailable(sireader.itemId));
-    const healthReady = Boolean(healthInbox.docId && (healthInbox.stepsItemId || healthInbox.weightItemId));
-    const healthTargetsReady = [healthInbox.stepsItemId, healthInbox.weightItemId].filter(Boolean).every(projectAvailable);
+    const healthReady = Boolean(healthInbox.docId && healthInbox.metricBindings.length > 0);
+    const healthTargetsReady = healthInbox.metricBindings.every((binding) => projectAvailable(binding.itemId));
     const healthState = sourceState(healthInbox.enabled, healthReady, healthTargetsReady);
     const siplayerState = sourceState(siplayer.enabled, Boolean(siplayer.itemId), projectAvailable(siplayer.itemId));
     const wereadTargetsReady = projectAvailable(weread.itemId)
@@ -444,8 +445,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.healthDoc")}</strong><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></div>${sourceBadge(healthState)}</div>
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.healthDoc")}</span><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></div></div>
                     </div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthStepsItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-steps-item aria-label="${t("set.healthStepsItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.stepsItemId)}</select></span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthWeightItem")}</span><small>${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-health-weight-item aria-label="${t("set.healthWeightItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(healthInbox.weightItemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthBindings")}</span><small>${t("set.healthBindingsHint")} ${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="add-health-binding">${t("set.healthAddBinding")}</button></span></div>
+                    <div data-health-bindings>${healthInbox.metricBindings.map((binding) => `<div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps"${binding.metric === "steps" ? " selected" : ""}>${t("set.healthMetricSteps")}</option><option value="weight"${binding.metric === "weight" ? " selected" : ""}>${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(binding.itemId)}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div>`).join("")}</div>
+                    <template data-health-binding-template><div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps" selected>${t("set.healthMetricSteps")}</option><option value="weight">${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions("")}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div></template>
                     <div class="lc-checkin__settings-row" data-health-inbox><span class="lc-checkin__settings-label"><span>${t("set.healthTitle")}</span><small>${t("set.healthHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="refresh-source" data-source="health">${t("set.sourceRetry")}</button><input type="checkbox" class="lc-checkin__switch" data-health-toggle ${healthInbox.enabled ? "checked" : ""} aria-label="${t("set.healthToggle")}" /></span></div>
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="siplayer" data-source-state="${siplayerState}"${sourcePanelOpen("siplayer")}>

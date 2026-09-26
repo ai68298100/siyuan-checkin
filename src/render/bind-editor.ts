@@ -12,6 +12,7 @@ import {validateEditorInput} from "../editor-validation";
 import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
 import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
+import {buildTemplateLinkageCard, templateLinkageForName, templateLinkageI18nKey, isTemplateLinkagePlan, EMPTY_LINKAGE_BINDING_STATE, type LinkageBindingState, type TemplateLinkageKind} from "../features/template-linkage";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
@@ -50,7 +51,59 @@ export interface BindEditorHost {
     clearPendingProjectDraft(): void;
     /** T-1349：模板套用后更新「最近使用」偏好并持久化（宿主内去重置顶、容量 6）。 */
     recordRecentTemplateUse(name: string): void;
+    /** T-1486：联动建议卡片的当前绑定状态投影（显示名，渲染前调用）。 */
+    linkageState?(): LinkageBindingState;
     [key: string]: unknown;
+}
+
+/* T-1486：联动建议卡片——模板套用后按亲和渲染；确认只写入「保存后生效」的隐藏计划，
+   取消/换模板即清除；问卷日记仅聚焦既有绑定控件，绝不自动挑选预设。 */
+function renderLinkageCard(root: HTMLElement, host: BindEditorHost, kind: TemplateLinkageKind | undefined): void {
+    const card = root.querySelector<HTMLElement>("[data-linkage-card]");
+    const planInput = root.querySelector<HTMLInputElement>("[data-linkage-plan]");
+    if (!card || !planInput) return;
+    planInput.value = "";
+    if (!kind) {
+        card.hidden = true;
+        card.innerHTML = "";
+        delete card.dataset.linkageKind;
+        return;
+    }
+    const state = host.linkageState ? host.linkageState() : EMPTY_LINKAGE_BINDING_STATE;
+    const info = buildTemplateLinkageCard(kind, state);
+    card.dataset.linkageKind = kind;
+    card.hidden = false;
+    const related = info.relatedNames.length ? t("linkage.relatedNames", {names: info.relatedNames.join("、")}) : "";
+    let body = "";
+    if (info.unavailableReason === "empty") {
+        body = `<p class="lc-checkin__linkage-hint">${escapeHtml(t("linkage.journal.empty"))}</p>`;
+    } else if (!info.actionable) {
+        body = `<p class="lc-checkin__linkage-hint">${escapeHtml(t(templateLinkageI18nKey(kind, "hint")))}</p><button type="button" class="lc-checkin__text-button" data-linkage-focus-journal>${escapeHtml(t(templateLinkageI18nKey(kind, "action")))}</button>`;
+    } else {
+        const conflict = info.conflictNames.length ? `<p class="lc-checkin__linkage-warning">${escapeHtml(t(templateLinkageI18nKey(kind, "conflict"), {name: info.conflictNames[0]}))}</p>` : "";
+        body = `${conflict}<p class="lc-checkin__linkage-hint">${escapeHtml(t(templateLinkageI18nKey(kind, "hint"), {related}))}</p><button type="button" class="lc-checkin__text-button" data-linkage-confirm="${kind}">${escapeHtml(t(templateLinkageI18nKey(kind, "action")))}</button>`;
+    }
+    card.innerHTML = `<strong>${escapeHtml(t("linkage.cardTitle"))} · ${escapeHtml(t(templateLinkageI18nKey(kind, "title")))}</strong>${body}`;
+}
+
+function setLinkagePlanPlanned(root: HTMLElement, planned: boolean): void {
+    const card = root.querySelector<HTMLElement>("[data-linkage-card]");
+    const planInput = root.querySelector<HTMLInputElement>("[data-linkage-plan]");
+    const confirm = card?.querySelector<HTMLButtonElement>("[data-linkage-confirm]");
+    if (!card || !planInput || !confirm) return;
+    const kind = card.dataset.linkageKind;
+    if (!kind || !isTemplateLinkagePlan(kind)) return;
+    planInput.value = planned ? kind : "";
+    if (planned) {
+        const plannedRow = document.createElement("span");
+        plannedRow.className = "lc-checkin__linkage-planned-row";
+        plannedRow.innerHTML = `<span class="lc-checkin__linkage-planned">${escapeHtml(t("linkage.planned"))}</span><button type="button" class="lc-checkin__text-button" data-linkage-cancel>${escapeHtml(t("common.cancel"))}</button>`;
+        confirm.after(plannedRow);
+        confirm.hidden = true;
+    } else {
+        card.querySelector("[data-linkage-planned-row]")?.remove();
+        confirm.hidden = false;
+    }
 }
 
 export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): void {
@@ -627,6 +680,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
         updateEditorPreview();
         updateAdvancedSummary();
+        /* T-1486：按模板亲和渲染联动建议（换模板即重置旧计划）；亲和锚点是 zh 原名，
+            不能用 templateName() 的译文（语言切换后译文无法命中亲和表）。 */
+        renderLinkageCard(root, host, templateLinkageForName(template.name));
         const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
         if (advanced) advanced.open = true;
         host.recordRecentTemplateUse(template.name);
@@ -731,6 +787,22 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     applyTemplateFilter();
     updateTomatoFields();
     updateAdvancedSummary();
+    /* T-1486：联动建议卡片的确认/取消/去配置动作（委托，卡片内容为动态渲染）。 */
+    root.addEventListener("click", (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        if (target.closest("[data-linkage-focus-journal]")) {
+            const select = root.querySelector<HTMLSelectElement>("select[name='journalTemplateId']");
+            if (select) {
+                select.scrollIntoView({block: "nearest"});
+                select.focus();
+            }
+            return;
+        }
+        const confirm = target.closest<HTMLButtonElement>("[data-linkage-confirm]");
+        if (confirm && !confirm.disabled) { setLinkagePlanPlanned(root, true); return; }
+        if (target.closest("[data-linkage-cancel]")) setLinkagePlanPlanned(root, false);
+    });
     root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
         event.preventDefault();
         const form = event.currentTarget as HTMLFormElement;

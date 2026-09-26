@@ -1,7 +1,7 @@
 import type {CheckinItemSortMode} from "./types";
 import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
-import {normalizeHealthInboxPreference} from "./features/health-inbox";
+import {normalizeHealthInboxPreference, type HealthInboxPreference} from "./features/health-inbox";
 import {normalizeWereadIntegration} from "./features/weread-adapter";
 import {normalizeReminderQuietHours, type ReminderQuietHours, normalizeDailyReminderPreference, type DailyReminderPreference} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
@@ -79,8 +79,9 @@ export interface CheckinViewPreferences {
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1385 思播联动（实验，opt-in 默认关）：有效播放分钟达阈值后每日一次幂等写入。 */
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
-    /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。 */
-    healthInbox: {enabled: boolean; docId: string; stepsItemId: string; weightItemId: string};
+    /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。
+        T-1486：metricBindings 按项目映射（同指标可挂多项目）；stepsItemId/weightItemId 为旧字段镜像。 */
+    healthInbox: HealthInboxPreference;
     /** T-1402 微信读书联动（official-pull，opt-in 默认关）：官方 Agent API 拉取每日阅读分钟。
         apiKey 仅存本地偏好，不入库不入导出（导出/快照路径只暴露 wereadKeySet 布尔）。
         finishItemId=完读书目绑定项目（可选，空 = 不启用完读事件）。 */
@@ -136,7 +137,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     summaryResident: {enabled: false, docId: ""},
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
-    healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
+    healthInbox: {enabled: false, docId: "", metricBindings: [], stepsItemId: "", weightItemId: ""},
     wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""},
     yeguifIntegration: {enabled: false, itemId: "", notebookId: "", mappings: []},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},

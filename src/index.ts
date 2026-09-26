@@ -62,7 +62,8 @@ import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBin
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
-import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
+import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
+import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
@@ -1107,22 +1108,25 @@ export default class CheckinPlugin extends Plugin {
             /* Health lines may backfill history, but a future date is never a
                valid completed day and must not be written into the store. */
             if (entry.localDate > todayKey) continue;
-            const itemId = entry.metric === "steps" ? governance.stepsItemId : governance.weightItemId;
-            if (!itemId) continue;
-            if (!this.hasHealthTarget(itemId, entry.metric)) continue;
-            if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) continue;
-            const item = getActiveItemById(this.store, itemId);
-            if (!item) continue;
-            /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
-            const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
-            if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) continue;
-            if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) continue;
-            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
-            const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
-            if (recorded) {
-                this.invalidateSummary();
-                this.renderBackgroundUpdate();
+            /* T-1486 按项目映射：同指标投递全部挂载项目（身份含 itemId，各自幂等互不顶账）。 */
+            for (const target of governance.metricBindings.filter((binding) => binding.metric === entry.metric)) {
+                const itemId = target.itemId;
+                if (!itemId) continue;
+                if (!this.hasHealthTarget(itemId, entry.metric)) continue;
+                if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) continue;
+                const item = getActiveItemById(this.store, itemId);
+                if (!item) continue;
+                /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
+                const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
+                if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) continue;
+                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) continue;
+                const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+                const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
+                if (recorded) {
+                    this.invalidateSummary();
+                    this.renderBackgroundUpdate();
+                }
             }
         }
     }
@@ -3451,18 +3455,17 @@ export default class CheckinPlugin extends Plugin {
                 this.render();
                 return;
             }
-            if (checked && !this.healthInbox.stepsItemId && !this.healthInbox.weightItemId) {
+            if (checked && !this.healthInbox.metricBindings.length) {
                 showMessage(t("msg.healthNeedMapping"));
                 this.render();
                 return;
             }
-            const mappedItemIds = [this.healthInbox.stepsItemId, this.healthInbox.weightItemId].filter(Boolean);
-            if (checked && mappedItemIds.some((itemId) => !getActiveItemById(this.store, itemId))) {
+            if (checked && this.healthInbox.metricBindings.some((binding) => !getActiveItemById(this.store, binding.itemId))) {
                 showMessage(t("msg.healthMappingUnavailable"));
                 this.render();
                 return;
             }
-            if (checked && ((this.healthInbox.stepsItemId && !this.hasHealthTarget(this.healthInbox.stepsItemId, "steps")) || (this.healthInbox.weightItemId && !this.hasHealthTarget(this.healthInbox.weightItemId, "weight")))) {
+            if (checked && this.healthInbox.metricBindings.some((binding) => !this.hasHealthTarget(binding.itemId, binding.metric))) {
                 showMessage(t("msg.healthItemUnitInvalid"));
                 this.render();
                 return;
@@ -3479,23 +3482,42 @@ export default class CheckinPlugin extends Plugin {
         bindVerifiedDocumentSave("save-health-doc", "data-health-doc", () => this.healthInbox.docId,
             docId => { this.healthInbox = {...this.healthInbox, docId}; }, "msg.healthDocSaved",
             () => { if (this.healthInbox.enabled) void this.ingestHealthInbox(); });
-        for (const [selector, key] of [["[data-health-steps-item]", "stepsItemId"], ["[data-health-weight-item]", "weightItemId"]] as const) {
-            root.querySelector<HTMLSelectElement>(selector)?.addEventListener("change", (event) => {
-                const value = (event.currentTarget as HTMLSelectElement).value;
-                const wasEnabled = this.healthInbox.enabled;
-                const nextHealthInbox = {...this.healthInbox, [key]: value};
-                const hasMapping = Boolean(nextHealthInbox.stepsItemId || nextHealthInbox.weightItemId);
-                const nextMappingIds = [nextHealthInbox.stepsItemId, nextHealthInbox.weightItemId].filter(Boolean);
-                const mappingsAvailable = nextMappingIds.every((itemId) => Boolean(getActiveItemById(this.store, itemId)));
-                const metric = key === "stepsItemId" ? "steps" : "weight";
-                const unitAvailable = !value || this.hasHealthTarget(value, metric);
-                this.healthInbox = {...nextHealthInbox, enabled: hasMapping && mappingsAvailable && unitAvailable ? nextHealthInbox.enabled : false};
-                if (wasEnabled && value && !unitAvailable) showMessage(t("msg.healthItemUnitInvalid"));
-                void this.persistViewPreferences();
-                if (this.healthInbox.enabled) void this.ingestHealthInbox();
-                this.render();
-            });
-        }
+        /* T-1486：指标→项目映射行（动态列表）。任何行变更后从 DOM 重读并归一化持久化；
+            空行/重复行由 normalize 静默丢弃，单元不匹配沿用既有纪律：强制停用并提示。 */
+        const applyHealthBindingsFromDom = (bindingsRoot: HTMLElement) => {
+            const rows = Array.from(bindingsRoot.querySelectorAll<HTMLElement>("[data-health-binding]")).map((row) => ({
+                metric: (row.querySelector<HTMLSelectElement>("[data-health-binding-metric]")?.value || "steps") as HealthInboxMetric,
+                itemId: row.querySelector<HTMLSelectElement>("[data-health-binding-item]")?.value || "",
+            }));
+            const wasEnabled = this.healthInbox.enabled;
+            const unitInvalid = rows.some((row) => Boolean(row.itemId) && !this.hasHealthTarget(row.itemId, row.metric));
+            const targetsMissing = rows.some((row) => Boolean(row.itemId) && !getActiveItemById(this.store, row.itemId));
+            const next = normalizeHealthInboxPreference({...this.healthInbox, metricBindings: rows});
+            this.healthInbox = unitInvalid || targetsMissing ? {...next, enabled: false} : next;
+            if (wasEnabled && unitInvalid) showMessage(t("msg.healthItemUnitInvalid"));
+            void this.persistViewPreferences();
+            if (this.healthInbox.enabled) void this.ingestHealthInbox();
+            this.render();
+        };
+        root.querySelector("[data-action='add-health-binding']")?.addEventListener("click", () => {
+            const bindingsRoot = root.querySelector<HTMLElement>("[data-health-bindings]");
+            const template = root.querySelector<HTMLTemplateElement>("template[data-health-binding-template]");
+            if (!bindingsRoot || !template) return;
+            bindingsRoot.appendChild(template.content.cloneNode(true));
+        });
+        root.querySelector("[data-health-bindings]")?.addEventListener("click", (event) => {
+            const remove = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-health-binding-remove]") : null;
+            const bindingsRoot = root.querySelector<HTMLElement>("[data-health-bindings]");
+            if (!remove || !bindingsRoot) return;
+            remove.closest<HTMLElement>("[data-health-binding]")?.remove();
+            applyHealthBindingsFromDom(bindingsRoot);
+        });
+        root.querySelector("[data-health-bindings]")?.addEventListener("change", (event) => {
+            const select = event.target instanceof HTMLSelectElement ? event.target : null;
+            const bindingsRoot = root.querySelector<HTMLElement>("[data-health-bindings]");
+            if (!select || !select.matches("[data-health-binding-metric], [data-health-binding-item]") || !bindingsRoot) return;
+            applyHealthBindingsFromDom(bindingsRoot);
+        });
         root.querySelector<HTMLInputElement>("[data-weread-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
             if (checked && (!this.wereadIntegration.itemId || !getActiveItemById(this.store, this.wereadIntegration.itemId) || !isWereadApiKey(this.wereadIntegration.apiKey))) {
@@ -5013,13 +5035,60 @@ export default class CheckinPlugin extends Plugin {
     private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string) {
         /* T-1231：解绑时清除旧锚点块上的本插件属性（尽力而为，不阻断保存）。 */
         const previousAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
-        await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
+        /* T-1486：联动预接线计划随表单提交；仅在条目真实落盘后消费（失败路径零副作用）。 */
+        const plan = String(data.get("linkagePlan") || "");
+        const savedItemId = await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
+        if (!savedItemId) return;
         if (!editingId) this.advanceFirstSuccess("item-created");
         const newAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         if (previousAnchor && (!newAnchor || newAnchor.blockId !== previousAnchor.blockId)) {
             this.suspendedAnchors.delete(`${editingId}:${previousAnchor.blockId}`);
             void this.clearAnchorAttrBestEffort(previousAnchor.blockId);
         }
+        if (isTemplateLinkagePlan(plan)) await this.applyTemplateLinkagePlan(plan, savedItemId);
+    }
+
+    /* T-1486：联动预接线计划消费——health 追加按项目映射（重复/超容量时 no-op），sireader 单项目改绑；
+        写入走既有偏好通道，持久化失败恢复旧偏好；已启用收件箱时立即摄取一次以拾取当日推送。 */
+    private async applyTemplateLinkagePlan(plan: "health-steps" | "health-weight" | "sireader", itemId: string): Promise<void> {
+        if (!itemId) return;
+        if (plan === "health-steps" || plan === "health-weight") {
+            const next = addHealthMetricBinding(this.healthInbox, plan === "health-steps" ? "steps" : "weight", itemId);
+            if (!next) return;
+            const previous = this.healthInbox;
+            this.healthInbox = next;
+            try {
+                await this.persistViewPreferences();
+            } catch {
+                this.healthInbox = previous;
+                showMessage(t("msg.prefSaveFail"));
+                return;
+            }
+            showMessage(t("msg.linkageApplied", {name: t(plan === "health-steps" ? "set.healthMetricSteps" : "set.healthMetricWeight")}));
+            if (next.enabled) void this.ingestHealthInbox();
+            return;
+        }
+        const previousSireader = this.sireaderIntegration;
+        this.sireaderIntegration = {...this.sireaderIntegration, enabled: true, itemId};
+        try {
+            await this.persistViewPreferences();
+        } catch {
+            this.sireaderIntegration = previousSireader;
+            showMessage(t("msg.prefSaveFail"));
+            return;
+        }
+        showMessage(t("msg.linkageApplied", {name: t("set.sireaderIntegration")}));
+    }
+
+    /* T-1486：编辑器联动建议卡片的绑定状态投影（显示名，只读）。 */
+    private linkageState(): LinkageBindingState {
+        const itemName = (itemId: string) => getActiveItemById(this.store, itemId)?.name || "";
+        return {
+            healthStepItemNames: this.healthInbox.metricBindings.filter((binding) => binding.metric === "steps").map((binding) => itemName(binding.itemId)).filter(Boolean),
+            healthWeightItemNames: this.healthInbox.metricBindings.filter((binding) => binding.metric === "weight").map((binding) => itemName(binding.itemId)).filter(Boolean),
+            sireaderItemName: this.sireaderIntegration.itemId ? itemName(this.sireaderIntegration.itemId) : "",
+            journalPresetCount: this.resolvedJournalTemplateList().length,
+        };
     }
 
     private async archiveEditingItem() {

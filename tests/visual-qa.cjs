@@ -316,7 +316,8 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
         iconCount: document.querySelectorAll("[data-icon]").length,
         iconGroupCount: document.querySelectorAll("[data-icon-group]").length,
     }));
-    const readingTemplate = page.locator("[data-template-index='6']");
+    /* 目录会随版本增删模板（T-1486 新增体重/问卷日记）：按名称锚定而非固定索引。 */
+    const readingTemplate = page.locator("[data-template-index]", {hasText: "阅读"}).first();
     await readingTemplate.evaluate((element) => element.scrollIntoView({block: "nearest", inline: "nearest"}));
     await readingTemplate.evaluate((element) => element.click());
     await page.locator("[data-icon-popup]").evaluate((el) => { el.open = true; });
