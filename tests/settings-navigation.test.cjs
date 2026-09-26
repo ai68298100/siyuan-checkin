@@ -505,6 +505,16 @@ assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记�
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
 assert.match(settingsSourceT1442, /data-action="check-note-bindings"/, "联动总览体检按钮在位");
+/* 文档/笔记本目标统一使用独立卡片，避免目标输入、保存和启用开关混成一行。 */
+for (const target of ["diary", "journal", "summary", "health", "yeguif"]) {
+    assert.match(settingsSourceT1442, new RegExp(`data-document-target-card="${target}"`), `${target} 目标卡片必须保留`);
+}
+for (const className of ["lc-checkin__document-target-heading", "lc-checkin__document-target-field", "lc-checkin__document-target-actions"]) {
+    assert.match(settingsSourceT1442, new RegExp(className), `目标卡片必须包含 ${className}`);
+}
+const targetStyle = read("src", "ui", "components.scss");
+assert.match(targetStyle, /\.lc-checkin__document-target-card[\s\S]*min-height: 44px/, "目标卡片控件必须保留 44px 触控高度");
+assert.match(targetStyle, /\.lc-checkin__document-target-copy small[\s\S]*overflow-wrap: anywhere/, "目标说明必须允许长文案换行");
 const panelI18n = read("src", "i18n.ts");
 const stepKeys = [];
 for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread", "Yeguif"]) {
