@@ -52,13 +52,13 @@ const writable = settlement.days.filter((day) => day.qualifies);
 assert.deepEqual(writable.map((day) => day.localDate), ["2026-09-25"], "already-written day is idempotent-skipped; the other day still settles");
 assert.equal(settlement.invalidSegmentCount, 0, "no segment is rejected at the midnight boundary");
 
-/* —— 3. yeguif：末条开放不记——23:00 后的时长属于次日文档，当日不预支。 —— */
+/* —— 3. yeguif：时长归当前记录——当前记录吸收上一条到当前的间隔。 —— */
 const day1Entries = yeguif.settleYeguifEntries([
     {blockId: "20260924220000", startMinutes: 22 * 60, type: "阅读", text: ""},
     {blockId: "20260924230000", startMinutes: 23 * 60, type: "工作", text: "写日报"},
 ], "2026-09-24");
-assert.deepEqual(day1Entries, [{blockId: "20260924220000", localDate: "2026-09-24", minutes: 60, type: "阅读", text: ""}], "only the marker with a successor settles; the open last marker is not credited");
-assert.equal(yeguif.settleYeguifEntries([{blockId: "20260924230000", startMinutes: 23 * 60, type: "工作", text: ""}], "2026-09-24").length, 0, "a lone open marker records nothing (宁少记)");
+assert.deepEqual(day1Entries, [{blockId: "20260924230000", localDate: "2026-09-24", minutes: 60, type: "工作", text: "写日报"}], "the current marker receives the interval since the previous marker");
+assert.equal(yeguif.settleYeguifEntries([{blockId: "20260924230000", startMinutes: 23 * 60, type: "工作", text: ""}], "2026-09-24").length, 0, "a lone marker without a previous record records nothing");
 assert.notEqual(yeguif.buildYeguifExternalRef("20260924230000", "2026-09-24"), yeguif.buildYeguifExternalRef("20260924230000", "2026-09-25"), "block identity is date-scoped: the same marker time on two days stays distinct");
 
 console.log("midnight boundary guard tests passed.");

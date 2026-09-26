@@ -84,6 +84,13 @@ const normalized = preferences.normalizeViewPreferences({reviewFold: [...foldIds
 assert.deepEqual(Array.from(normalized.reviewFold), foldIds, "all review section choices survive normalization without unknown or duplicate ids");
 assert.equal(normalized.reviewFoldTouched, true);
 assert.deepEqual(Array.from(preferences.normalizeViewPreferences({reviewFold: "projects"}).reviewFold), []);
+const lifelogPreference = preferences.normalizeViewPreferences({yeguifIntegration: {
+    enabled: true, itemId: "legacy", notebookId: "notebook-12345",
+    mappings: [{project: " 工作 ", itemId: "work"}, {project: "工作", itemId: "duplicate"}, {project: "阅读", itemId: "read"}, {project: "", itemId: "empty"}],
+}}).yeguifIntegration;
+assert.equal(lifelogPreference.enabled, true, "LifeLog may enable with mapping targets and notebook");
+assert.deepEqual(Array.from(lifelogPreference.mappings, (entry) => ({...entry})), [{project: "工作", itemId: "work"}, {project: "阅读", itemId: "read"}], "LifeLog mapping trims and deduplicates project names");
+assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {enabled: true, itemId: "", notebookId: "notebook-12345"}}).yeguifIntegration.enabled, false, "LifeLog does not enable without any project target");
 
 const timers = new Map();
 const animationFrames = [];

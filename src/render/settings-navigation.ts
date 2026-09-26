@@ -36,11 +36,21 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     const search = root.querySelector<HTMLInputElement>("[data-settings-search]");
     const searchStatus = root.querySelector<HTMLElement>("[data-settings-search-status]");
     const panelStates = new Map<HTMLDetailsElement, boolean>();
+    const rowStates = new Map<HTMLElement, boolean>();
     const onSearch = () => {
         const query = (search?.value || "").trim().toLocaleLowerCase();
         let matches = 0;
         groups.forEach(group => {
-            const match = !query || (group.textContent || "").toLocaleLowerCase().includes(query);
+            const rows = [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row")];
+            rows.forEach(row => {
+                if (!query) {
+                    if (rowStates.has(row)) row.hidden = rowStates.get(row)!;
+                    return;
+                }
+                if (!rowStates.has(row)) rowStates.set(row, row.hidden);
+                row.hidden = !(row.textContent || "").toLocaleLowerCase().includes(query);
+            });
+            const match = !query || rows.some(row => !row.hidden) || (!rows.length && (group.textContent || "").toLocaleLowerCase().includes(query));
             group.hidden = !match;
             if (match) matches++;
             group.querySelectorAll<HTMLDetailsElement>("details").forEach(panel => {
@@ -51,11 +61,23 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
             });
         });
         buttons.forEach(button => { button.hidden = Boolean(groupById.get(button.dataset.settingsNav || "")?.hidden); });
-        if (!query) panelStates.clear();
+        if (!query) {
+            panelStates.clear();
+            rowStates.clear();
+        }
         if (searchStatus) searchStatus.textContent = query ? `${matches} / ${groups.length}` : "";
         scheduleSync();
     };
     search?.addEventListener("input", onSearch);
+    search?.addEventListener("keydown", event => {
+        if (event.key !== "Enter" || !search.value.trim()) return;
+        const first = groups.flatMap(group => [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row")]).find(row => !row.hidden && !groupById.get(row.closest<HTMLElement>("[data-settings-group]")?.dataset.settingsGroup || "")?.hidden);
+        if (!first) return;
+        event.preventDefault();
+        first.scrollIntoView({block: "center", behavior: options.reducedMotion ? "auto" : "smooth"});
+        const focusable = first.querySelector<HTMLElement>("input, select, textarea, button, [tabindex]");
+        focusable?.focus({preventScroll: true});
+    });
 
     let disposed = false;
     let frame = 0;

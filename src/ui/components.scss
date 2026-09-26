@@ -80,7 +80,11 @@
 .lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .lc-checkin__journal-form [hidden] { display: none !important; }
 .lc-checkin__journal-notebook, .lc-checkin__journal-docid { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
-.lc-checkin__journal-notebook select, .lc-checkin__journal-docid input { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; padding: 5px 8px; }
+.lc-checkin__journal-notebook select, .lc-checkin__journal-docid input, .lc-checkin__document-picker select { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; padding: 5px 8px; }
+.lc-checkin__document-picker { display: grid; gap: 4px; min-width: 0; width: 100%; }
+.lc-checkin__document-picker input, .lc-checkin__document-picker select { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; }
+.lc-checkin__document-picker [role="status"] { font-size: 12px; font-weight: 400; overflow-wrap: anywhere; }
+.lc-checkin__document-picker [hidden] { display: none !important; }
 .lc-checkin__journal-question { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
 .lc-checkin__journal-question em { color: var(--lc-checkin-accent-text); font-style: normal; }
 .lc-checkin__journal-answer { width: 100%; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; font-weight: 400; padding: 6px 8px; min-height: 32px; box-sizing: border-box; }

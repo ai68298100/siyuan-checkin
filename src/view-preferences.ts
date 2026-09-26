@@ -86,7 +86,7 @@ export interface CheckinViewPreferences {
         finishItemId=完读书目绑定项目（可选，空 = 不启用完读事件）。 */
     wereadIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number; apiKey: string; finishItemId: string; notesItemId: string};
     /** T-1457 叶归 LifeLog 联动（本地读取用户日记文档，opt-in 默认关）：enabled 要求项目+笔记本绑定。 */
-    yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string};
+    yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string; mappings: Array<{project: string; itemId: string}>};
     /** T-1421 提醒安静时段（默认关）：窗口内优先提醒降级为页内安静呈现，不改变事实。 */
     reminderQuietHours: ReminderQuietHours;
     /** T-1451 每日提醒调度（默认启用 + 启动一条）：slots 非空时按时刻触发、每槽每日一条。 */
@@ -138,7 +138,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", stepsItemId: "", weightItemId: ""},
     wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""},
-    yeguifIntegration: {enabled: false, itemId: "", notebookId: ""},
+    yeguifIntegration: {enabled: false, itemId: "", notebookId: "", mappings: []},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
     dailyReminder: {enabled: true, slots: []},
     firstSuccess: {stage: "not-started", skipped: false},
@@ -254,7 +254,12 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const yeguifSource = (source.yeguifIntegration && typeof source.yeguifIntegration === "object" ? source.yeguifIntegration : {}) as Record<string, unknown>;
     const yeguifItemId = typeof yeguifSource.itemId === "string" ? yeguifSource.itemId.trim().slice(0, 160) : "";
     const yeguifNotebookId = typeof yeguifSource.notebookId === "string" && /^[0-9A-Za-z-]{8,64}$/.test(yeguifSource.notebookId.trim()) ? yeguifSource.notebookId.trim() : "";
-    const yeguifIntegration = {enabled: yeguifSource.enabled === true && Boolean(yeguifItemId) && Boolean(yeguifNotebookId), itemId: yeguifItemId, notebookId: yeguifNotebookId};
+    const yeguifMappings = Array.isArray(yeguifSource.mappings)
+        ? yeguifSource.mappings.filter((entry): entry is {project: string; itemId: string} => Boolean(entry && typeof entry === "object" && typeof (entry as Record<string, unknown>).project === "string" && typeof (entry as Record<string, unknown>).itemId === "string"))
+            .map((entry) => ({project: entry.project.trim().slice(0, 60), itemId: entry.itemId.trim().slice(0, 160)}))
+            .filter((entry, index, list) => entry.project && entry.itemId && list.findIndex((candidate) => candidate.project.toLocaleLowerCase() === entry.project.toLocaleLowerCase()) === index).slice(0, 50)
+        : [];
+    const yeguifIntegration = {enabled: yeguifSource.enabled === true && Boolean(yeguifNotebookId) && (Boolean(yeguifItemId) || yeguifMappings.length > 0), itemId: yeguifItemId, notebookId: yeguifNotebookId, mappings: yeguifMappings};
     return {
         groupMode,
         sortMode,

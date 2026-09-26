@@ -2,10 +2,10 @@
    数据面（2026-09-25 e2e 实装叶归 v1.12.6 静态探测判定）：
    - LifeLog 段落 = 日记（DailyNote）文档中行首为时间的段落：`12:00 工作` /
      `12:00 工作：写日报` / `12:00:00 工作：写日报`（行首时间带样式则不标记）；
-   - 时长 = 同文档内相邻记录起始时间差（SEP-EnParagraphBlockTimeDiff 模块口径）；
+   - 时长 = 同文档内「上条记录 → 当前记录」起始时间差，时长归当前记录的项目与事项；
    - 落点 = 用户可见的普通段落块 + 渲染期 data-en_lifelog_* DOM 标注（红线内）。
    摄取纪律：只读用户自己的文档（local-only）；只摄取当日新建块（宁少记不回补）；
-   最后一条开放记录（无后继时间）时长未知 → 不记；BlockId 天然幂等身份
+   当天第一条没有前置时间时长未知 → 不记；BlockId 天然幂等身份
    （yeguif:<blockId>:<localDate>），用户改写记录内容不产生重复记账。
    零依赖、无时钟（日期由调用方注入）、fail-closed。 */
 
@@ -55,17 +55,53 @@ export interface YeguifEntry {
     text: string;
 }
 
-/** 结算：同文档内按起始时间升序，时长 = 下一记录起始 − 本记录起始（分钟）；
-    最后一条开放记录（无后继）不产出（宁少记）；零时长/负时长（同分钟）跳过。
+export interface YeguifProjectMapping {
+    /** LifeLog 时间后的项目名（例如“工作”）。 */
+    project: string;
+    /** 小驴打卡项目 ID。 */
+    itemId: string;
+}
+
+/** 归属规则：项目名精确匹配（忽略首尾空白与大小写）；仅旧版空映射配置使用单目标回退。 */
+export function resolveYeguifItemId(project: string, mappings: readonly YeguifProjectMapping[], legacyItemId = ""): string {
+    const normalized = typeof project === "string" ? project.trim().toLocaleLowerCase() : "";
+    if (!normalized) return "";
+    const match = mappings.find((entry) => typeof entry?.project === "string" && typeof entry?.itemId === "string"
+        && entry.project.trim().toLocaleLowerCase() === normalized && entry.itemId.trim());
+    if (match) return match.itemId.trim();
+    return mappings.length === 0 && typeof legacyItemId === "string" ? legacyItemId.trim() : "";
+}
+
+/** 归一化设置输入；重复项目保留第一条，避免一条 LifeLog 同时写入多个项目。 */
+export function normalizeYeguifMappings(value: unknown, max = 50): YeguifProjectMapping[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    const result: YeguifProjectMapping[] = [];
+    for (const raw of value) {
+        if (!raw || typeof raw !== "object") continue;
+        const source = raw as Record<string, unknown>;
+        const project = typeof source.project === "string" ? source.project.trim().slice(0, MARKER_TYPE_LIMIT) : "";
+        const itemId = typeof source.itemId === "string" ? source.itemId.trim().slice(0, 160) : "";
+        const key = project.toLocaleLowerCase();
+        if (!project || !itemId || seen.has(key)) continue;
+        seen.add(key);
+        result.push({project, itemId});
+        if (result.length >= max) break;
+    }
+    return result;
+}
+
+/** 结算：同文档内按起始时间升序，时长 = 当前记录起始 − 上一记录起始（分钟），
+    并归属当前记录；首条没有前置记录不产出（宁少记）；零时长/负时长（同分钟）跳过。
     输入应为同一 root 文档的全部 Marker；确定性输出（时间升序、blockId 稳定平局）。 */
 export function settleYeguifEntries(markers: readonly YeguifMarker[], localDate: string): YeguifEntry[] {
     if (!DATE_PATTERN.test(localDate)) return [];
     const sorted = [...markers].sort((left, right) => left.startMinutes - right.startMinutes || left.blockId.localeCompare(right.blockId));
     const entries: YeguifEntry[] = [];
-    for (let index = 0; index < sorted.length - 1; index += 1) {
+    for (let index = 1; index < sorted.length; index += 1) {
+        const previous = sorted[index - 1];
         const current = sorted[index];
-        const next = sorted[index + 1];
-        const minutes = next.startMinutes - current.startMinutes;
+        const minutes = current.startMinutes - previous.startMinutes;
         if (minutes <= 0) continue;
         entries.push({blockId: current.blockId, localDate, minutes, type: current.type, text: current.text});
     }

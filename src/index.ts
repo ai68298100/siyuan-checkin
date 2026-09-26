@@ -58,13 +58,13 @@ import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNote
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {buildCorrelationInsights as computeCorrelationInsights, type CorrelationInsight, type CorrelationItemSeries} from "./features/correlation-insights";
 import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
-import {collectNoteBindings, groupBindingTargets, mergeBindingHealth} from "./features/note-bindings";
-import {openJournalDialogFor, bindJournalBuilder} from "./render/journal-dialog";
+import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
+import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
-import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, settleYeguifEntries} from "./features/yeguif-adapter";
+import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -688,6 +688,62 @@ export default class CheckinPlugin extends Plugin {
         await this.saveData(JOURNAL_DATA_NAME, {templates: this.journalCustomTemplates, integration: this.journalIntegrationPref});
     }
 
+
+    /** Read-only metadata lookup shared by save validation and the binding overview. */
+    private async readBindingBlocks(ids: readonly string[]): Promise<BindingBlockMetadata[]> {
+        const unique = [...new Set(ids.filter(Boolean))];
+        const blocks: BindingBlockMetadata[] = [];
+        for (let offset = 0; offset < unique.length; offset += 100) {
+            const list = unique.slice(offset, offset + 100).map(id => "'" + id.replace(/'/g, "''") + "'").join(",");
+            const response = await this.kernelPost("/api/query/sql", {stmt: "SELECT id, root_id, type, hpath, CASE WHEN type = 'd' THEN content ELSE '' END AS content FROM blocks WHERE id IN (" + list + ")"}) as {code?: number; data?: BindingBlockMetadata[]};
+            if (response.code !== 0 || !Array.isArray(response.data) || response.data.some(block => !block || typeof block.id !== "string")) throw new Error(t("bind.statusError"));
+            blocks.push(...response.data);
+        }
+        return blocks;
+    }
+
+    private async readBindingNotebooks(): Promise<Array<{id: string; name: string; closed?: boolean}>> {
+        const response = await this.kernelPost("/api/notebook/lsNotebooks", {}) as {code?: number; data?: {notebooks?: Array<{id: string; name: string; closed?: boolean}>}};
+        if (response.code !== 0 || !Array.isArray(response.data?.notebooks) || response.data.notebooks.some(book => !book || typeof book.id !== "string")) throw new Error(t("bind.statusError"));
+        return response.data.notebooks;
+    }
+
+    private async validateBindingTarget(kind: "doc" | "notebook", id: string): Promise<{id: string; name?: string; hpath?: string}> {
+        if (!validateAnchorBlockId(id)) throw new Error(t("journal.targetInvalid"));
+        if (kind === "notebook") {
+            const notebook = (await this.readBindingNotebooks()).find(book => book.id === id);
+            if (!notebook) throw new Error(t("bind.targetMissing"));
+            if (notebook.closed) throw new Error(t("bind.notebookClosed"));
+            return notebook;
+        }
+        const blocks = await this.readBindingBlocks([id]);
+        const target = blocks.find(block => block.id === id);
+        if (!target) throw new Error(t("bind.targetMissing"));
+        if (target.type !== "d" && target.root_id && target.root_id !== id) blocks.push(...await this.readBindingBlocks([target.root_id]));
+        const document = resolveBindingDocument(id, blocks);
+        if (!document) throw new Error(t("bind.targetInvalid"));
+        return {id: document.id, name: document.content, hpath: document.hpath};
+    }
+
+    private async searchBindingDocuments(query: string): Promise<readonly DocumentTargetChoice[]> {
+        if (!query.trim()) return [];
+        const response = await this.kernelPost("/api/filetree/searchDocs", {k: query.trim(), flashcard: false, excludeIDs: []}) as {code?: number; data?: DocumentTargetChoice[] | {blocks?: DocumentTargetChoice[]}};
+        const blocks = Array.isArray(response.data) ? response.data : response.data?.blocks;
+        if (response.code !== 0 || !Array.isArray(blocks)) throw new Error(t("msg.diarySearchFailed"));
+        return blocks.filter(block => block && typeof block.id === "string").slice(0, 50);
+    }
+
+    private async saveJournalIntegration(integration: JournalIntegration, isCurrent: () => boolean = () => true): Promise<JournalIntegration> {
+        const target = await this.validateBindingTarget(integration.mode === "doc" ? "doc" : "notebook", integration.mode === "doc" ? integration.docId : integration.notebookId);
+        if (!isCurrent() || this.disposed || this.disposing) throw new Error(t("bind.statusError"));
+        const next = {...integration, ...(integration.mode === "doc" ? {docId: target.id} : {notebookId: target.id})};
+        const previous = this.journalIntegrationPref;
+        this.journalIntegrationPref = next;
+        try { await this.saveJournalData(); }
+        catch { if (this.journalIntegrationPref === next) this.journalIntegrationPref = previous; throw new Error(t("msg.prefSaveFail")); }
+        return next;
+    }
+
     private async listNotebooksForJournal(): Promise<ReadonlyArray<{id: string; name: string}>> {
         if (this.journalNotebooks.length) return this.journalNotebooks;
         try {
@@ -804,12 +860,8 @@ export default class CheckinPlugin extends Plugin {
                 if (answers.length) this.journalDrafts.set(key, answers);
                 else if (!submitted || JSON.stringify(this.journalDrafts.get(key)) === JSON.stringify(submitted)) this.journalDrafts.delete(key);
             },
-            onPersistIntegration: async (integration) => {
-                const previous = this.journalIntegrationPref;
-                this.journalIntegrationPref = integration;
-                try { await this.saveJournalData(); }
-                catch (error) { this.journalIntegrationPref = previous; throw error; }
-            },
+            searchDocuments: query => this.searchBindingDocuments(query),
+            onPersistIntegration: integration => this.saveJournalIntegration(integration),
             onSubmit: async (answers, integration) => {
                 const pendingKey = `${itemId}:${template.id}:${localDate}`;
                 if (this.journalPending.has(pendingKey)) return false;
@@ -858,6 +910,12 @@ export default class CheckinPlugin extends Plugin {
         const parsed = parseCustomJournalTemplatesText(rawText, existingIds);
         if (parsed.invalidBlocks > 0) {
             showMessage(t("journal.customInvalid", {n: parsed.invalidBlocks}));
+            return false;
+        }
+        const removed = new Set(existingIds.filter(id => !parsed.templates.some(template => template.id === id)));
+        const bound = this.store.items.find(item => item.journal?.templateId && removed.has(item.journal.templateId));
+        if (bound) {
+            showMessage(t("journal.templateBoundDelete", {name: bound.name}));
             return false;
         }
         const previous = this.journalCustomTemplates;
@@ -1245,20 +1303,20 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
-    /* T-1457 叶归 LifeLog：轮询绑定笔记本内今日新建、行首为时间的段落块（叶归 Marker 语法），
-       时长 = 同文档相邻记录起始差，yeguif:<blockId>:<localDate> 幂等；最后一条开放记录不记（宁少记）；
+    /* T-1457 叶归 LifeLog：轮询绑定笔记本内今日 Marker 段落，
+       时长 = 上一条记录到当前记录的起始差，并归属当前记录；当天第一条无前置记录不记；
        只读用户自己的日记文档（local-only），失败静默。 */
     private async ingestYeguif(): Promise<void> {
         const governance = this.yeguifIntegration;
         if (!governance.enabled || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         if (typeof document !== "undefined" && document.hidden) return;
-        const item = getActiveItemById(this.store, governance.itemId);
-        if (!item) return;
+        const fallbackItem = getActiveItemById(this.store, governance.itemId);
+        if (!fallbackItem && !governance.mappings?.some((mapping) => getActiveItemById(this.store, mapping.itemId))) return;
         const today = dateKey(currentCalendarDate());
         const createdFloor = `${today.replace(/-/g, "")}000000`;
         const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND (content GLOB '[0-9]:[0-9][0-9]*' OR content GLOB '[0-9][0-9]:[0-9][0-9]*') ORDER BY id ASC LIMIT ${YEGUIF_MAX_BLOCKS}`}).catch(() => undefined);
         const rows = ((response as {data?: Array<{id?: string; content?: string; root_id?: string}>} | undefined)?.data || []) as Array<{id?: string; content?: string; root_id?: string}>;
-        /* 按文档分组解析 → 结算时长（组内相邻起始差）→ 过滤已写/墓碑 → 写入。 */
+        /* 按文档分组解析 → 当前记录吸收上一条到当前的时长 → 过滤已写/墓碑 → 写入。 */
         const grouped = new Map<string, Array<NonNullable<ReturnType<typeof parseYeguifMarker>>>>();
         for (const row of rows) {
             if (!row?.id || typeof row.content !== "string" || !row.root_id) continue;
@@ -1271,13 +1329,17 @@ export default class CheckinPlugin extends Plugin {
         for (const markers of grouped.values()) {
             const settled = settleYeguifEntries(markers, today);
             for (const entry of settled) {
+                const itemId = resolveYeguifItemId(entry.type, governance.mappings || [], governance.itemId);
+                const item = getActiveItemById(this.store, itemId);
+                /* 未配置映射的 LifeLog 项目只保留在叶归自身，不猜测归属。 */
+                if (!item || !this.hasMinuteTarget(itemId)) continue;
                 const externalRef = buildYeguifExternalRef(entry.blockId, today);
                 if (!externalRef) continue;
                 if (this.store.events.some((event) => event.source === "yeguif" && event.externalRef === externalRef)) continue;
                 if (this.store.eventTombstones.some((tombstone) => tombstone.source === "yeguif" && tombstone.externalRef === externalRef)) continue;
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(today));
                 const moment = {occurredAt: new Date().toISOString(), localDate: today};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint));
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint));
                 if (recorded) {
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
@@ -2962,7 +3024,7 @@ export default class CheckinPlugin extends Plugin {
             /* 只报告公开 controller 是否当前可调用；“已启用（本地）”不等于宿主已连通。 */
             siplayerControllerAvailable: typeof window !== "undefined" && detectSiplayerController(window),
             healthInbox: {...this.healthInbox},
-            yeguifIntegration: {enabled: this.yeguifIntegration.enabled, itemId: this.yeguifIntegration.itemId, notebookId: this.yeguifIntegration.notebookId},
+            yeguifIntegration: {...this.yeguifIntegration, mappings: this.yeguifIntegration.mappings.map(mapping => ({...mapping}))},
             openSourcePanels: openSourcePanels ? [...openSourcePanels] : [],
             /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
             wereadIntegration: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, thresholdMinutes: this.wereadIntegration.thresholdMinutes, finishItemId: this.wereadIntegration.finishItemId, notesItemId: this.wereadIntegration.notesItemId},
@@ -2990,7 +3052,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindSettings(root: HTMLElement) {
-        for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc"]) {
+        for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc", "data-setting-reminder-slots", "data-sireader-threshold", "data-siplayer-threshold", "data-weread-threshold", "data-weread-key"]) {
             const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[${attribute}]`);
             if (!field) continue;
             const saved = field.value;
@@ -3025,6 +3087,7 @@ export default class CheckinPlugin extends Plugin {
                 if (!notebookField.isConnected) return;
                 const current = this.settingsDrafts.get("data-journal-notebook-id") ?? notebookField.value;
                 notebookField.replaceChildren(new Option(t("journal.notebookLabel"), ""), ...notebooks.map(book => new Option(book.name, book.id)));
+                if (current && !notebooks.some(book => book.id === current)) notebookField.add(new Option(`${t("bind.notebookUnavailable")} · ${current}`, current));
                 notebookField.value = current;
             });
         }
@@ -3032,35 +3095,7 @@ export default class CheckinPlugin extends Plugin {
             const field = root.querySelector<HTMLInputElement>(`[${attribute}]`);
             if (!field) continue;
             if (attribute === "data-journal-target-doc") field.setAttribute("aria-label", t("journal.docIdLabel"));
-            const search = document.createElement("input");
-            search.type = "search";
-            search.placeholder = t("set.documentSearch");
-            search.setAttribute("aria-label", t("set.documentSearch"));
-            const choices = document.createElement("select");
-            choices.setAttribute("aria-label", t("set.documentResults"));
-            choices.add(new Option(t("set.documentResults"), ""));
-            field.before(search, choices);
-            let request = 0;
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            search.addEventListener("input", () => {
-                if (timer) clearTimeout(timer);
-                const current = ++request;
-                choices.replaceChildren(new Option(t("set.documentResults"), ""));
-                timer = setTimeout(() => {
-                    if (!search.isConnected) return;
-                    void runDiarySearchRequest({query: search.value.trim(), request: current,
-                        isCurrent: value => value === request, getSelect: () => choices,
-                        post: (url, payload) => fetchSyncPost(url, payload),
-                        render: (select, blocks) => select.replaceChildren(new Option(t("set.documentResults"), ""), ...blocks.filter(block => block.id).map(block => new Option(block.hPath || block.content || block.id, block.id))),
-                        onFailure: () => showMessage(t("msg.diarySearchFailed")),
-                    });
-                }, 180);
-            });
-            choices.addEventListener("change", () => {
-                if (!choices.value) return;
-                field.value = choices.value;
-                field.dispatchEvent(new Event("input", {bubbles: true}));
-            });
+            bindDocumentTargetPickerFor(field, query => this.searchBindingDocuments(query));
         }
         this.bindDialogClose(root);
         this.bindMobileNav(root);
@@ -3119,12 +3154,21 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-reminder-slots']")?.addEventListener("click", () => {
+        root.querySelector<HTMLElement>("[data-action='save-reminder-slots']")?.addEventListener("click", async () => {
             const input = root.querySelector<HTMLInputElement>("[data-setting-reminder-slots]");
+            const submitted = input?.value || "";
             const slots = normalizeDailyReminderSlots((input?.value || "").split(/[,，、;；\s]+/).filter(Boolean));
+            const previous = this.dailyReminder;
             this.dailyReminder = {...this.dailyReminder, slots};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.reminderSlotsSaved", {n: slots.length}))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
+            try {
+                await this.persistViewPreferences();
+                if (input?.value === submitted) this.settingsDrafts.delete("data-setting-reminder-slots");
+                showMessage(t("msg.reminderSlotsSaved", {n: slots.length}));
+                this.render();
+            } catch {
+                this.dailyReminder = previous;
+                showMessage(t("msg.prefSaveFail"));
+            }
         });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -3150,17 +3194,37 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-diary-doc']")?.addEventListener("click", () => {
-            const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
-            const docId = validateAnchorBlockId(input?.value);
-            if (!docId) {
-                showMessage(t("msg.diaryDocInvalid"));
-                return;
-            }
-            this.diaryReport = {...this.diaryReport, docId};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.diaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
-        });
+        const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void) => {
+            root.querySelector<HTMLButtonElement>(`[data-action='${action}']`)?.addEventListener("click", async event => {
+                const button = event.currentTarget as HTMLButtonElement;
+                const input = root.querySelector<HTMLInputElement>(`[${attribute}]`);
+                if (!input || button.disabled) return;
+                const submitted = input.value.trim();
+                button.disabled = true;
+                input.disabled = true;
+                button.setAttribute("aria-busy", "true");
+                settingsFeedback(t("bind.checking"));
+                try {
+                    const target = await this.validateBindingTarget("doc", submitted);
+                    if (!button.isConnected || this.disposed || this.disposing || input.value.trim() !== submitted) return;
+                    const previous = getId();
+                    setId(target.id);
+                    try { await this.persistViewPreferences(); }
+                    catch { if (getId() === target.id) setId(previous); throw new Error(t("msg.prefSaveFail")); }
+                    if (input.value.trim() === submitted) this.settingsDrafts.delete(attribute);
+                    afterSave?.();
+                    if (button.isConnected) { settingsFeedback(t(success)); showMessage(t(success)); this.render(); }
+                } catch (error) {
+                    if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                } finally {
+                    button.disabled = false;
+                    input.disabled = false;
+                    button.removeAttribute("aria-busy");
+                }
+            });
+        };
+        bindVerifiedDocumentSave("save-diary-doc", "data-diary-doc", () => this.diaryReport.docId,
+            docId => { this.diaryReport = {...this.diaryReport, docId}; }, "msg.diaryDocSaved");
         root.querySelector<HTMLInputElement>("[data-summary-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
             if (checked && !this.summaryResident.docId) {
@@ -3172,17 +3236,8 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-summary-doc']")?.addEventListener("click", () => {
-            const input = root.querySelector<HTMLInputElement>("[data-summary-doc]");
-            const docId = validateAnchorBlockId(input?.value);
-            if (!docId) {
-                showMessage(t("msg.summaryDocInvalid"));
-                return;
-            }
-            this.summaryResident = {...this.summaryResident, docId};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.summaryDocSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
-        });
+        bindVerifiedDocumentSave("save-summary-doc", "data-summary-doc", () => this.summaryResident.docId,
+            docId => { this.summaryResident = {...this.summaryResident, docId}; }, "msg.summaryDocSaved");
         root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
             void this.writeSummaryResidentNow();
         });
@@ -3203,16 +3258,26 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLButtonElement>("[data-action='save-journal-target']")?.addEventListener("click", async (event) => {
             const button = event.currentTarget as HTMLButtonElement;
             if (button.disabled) return;
-            const mode = root.querySelector<HTMLSelectElement>("[data-journal-mode]")?.value === "doc" ? "doc" : "daily";
-            const notebookId = root.querySelector<HTMLInputElement>("[data-journal-notebook-id]")?.value.trim() || "";
-            const docId = root.querySelector<HTMLInputElement>("[data-journal-target-doc]")?.value.trim() || "";
-            if (mode === "doc" && !validateAnchorBlockId(docId) || mode === "daily" && !notebookId) { showMessage(t("journal.targetInvalid")); return; }
+            const mode = root.querySelector<HTMLSelectElement>("[data-journal-mode]");
+            const notebook = root.querySelector<HTMLSelectElement>("[data-journal-notebook-id]");
+            const doc = root.querySelector<HTMLInputElement>("[data-journal-target-doc]");
+            if (!mode || !notebook || !doc) return;
+            const integration: JournalIntegration = {mode: mode.value === "doc" ? "doc" : "daily", notebookId: notebook.value.trim(), docId: doc.value.trim()};
             button.disabled = true;
-            const previous = this.journalIntegrationPref;
-            this.journalIntegrationPref = {mode, notebookId, docId};
-            try { await this.saveJournalData(); showMessage(t("msg.diaryDocSaved")); this.render(); }
-            catch { this.journalIntegrationPref = previous; showMessage(t("msg.prefSaveFail")); }
-            finally { button.disabled = false; }
+            button.setAttribute("aria-busy", "true");
+            [mode, notebook, doc].forEach(field => { field.disabled = true; });
+            settingsFeedback(t("bind.checking"));
+            try {
+                await this.saveJournalIntegration(integration, () => button.isConnected);
+                for (const attribute of ["data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc"]) this.settingsDrafts.delete(attribute);
+                if (button.isConnected) { showMessage(t("msg.diaryDocSaved")); this.render(); }
+            } catch (error) {
+                if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("msg.prefSaveFail"));
+            } finally {
+                button.disabled = false;
+                button.removeAttribute("aria-busy");
+                [mode, notebook, doc].forEach(field => { field.disabled = false; });
+            }
         });
         /* T-1470 笔记联动总览：批量体检（SQL IN 一次校验全部文档/块目标 + lsNotebooks 校验笔记本）。 */
         root.querySelector<HTMLButtonElement>("[data-action='check-note-bindings']")?.addEventListener("click", (event) => {
@@ -3232,24 +3297,30 @@ export default class CheckinPlugin extends Plugin {
             void (async () => {
                 let found: Set<string> | null = new Set();
                 let validNotebooks: Set<string> | null = new Set();
+                const metadata = new Map<string, {name?: string; hpath?: string}>();
                 if (docIds.length) {
                     try {
-                        const list = docIds.map((id) => "'" + id.replace(/'/g, "''") + "'").join(",");
-                        const response = await this.kernelPost("/api/query/sql", {stmt: "SELECT id FROM blocks WHERE id IN (" + list + ")"}) as {code?: number; data?: Array<{id?: string}>};
-                        if (response.code && response.code !== 0 || !Array.isArray(response.data)) throw new Error("invalid-response");
-                        found = new Set(response.data.map((row) => row.id).filter((id): id is string => typeof id === "string"));
+                        const blocks = await this.readBindingBlocks(docIds);
+                        found = new Set(blocks.map(block => block.id));
+                        for (const block of blocks) metadata.set(block.id, {name: block.type === "d" ? block.content : undefined, hpath: block.hpath});
                     } catch { found = null; }
                 }
                 if (notebookIds.length) {
                     try {
-                        const response = await this.kernelPost("/api/notebook/lsNotebooks", {}) as {code?: number; data?: {notebooks?: Array<{id: string; closed?: boolean}>}};
-                        if (response.code && response.code !== 0 || !Array.isArray(response.data?.notebooks)) throw new Error("invalid-response");
-                        validNotebooks = new Set(response.data.notebooks.filter((book) => !book.closed).map((book) => book.id));
+                        const notebooks = await this.readBindingNotebooks();
+                        validNotebooks = new Set(notebooks.filter(book => !book.closed).map(book => book.id));
+                        for (const book of notebooks) metadata.set(book.id, {name: book.name});
                     } catch { validNotebooks = null; }
                 }
                 if (!button.isConnected || this.disposed || this.disposing) return;
                 const health = mergeBindingHealth(rows, found, validNotebooks);
                 root.querySelectorAll<HTMLElement>("[data-binding-row]").forEach((rowNode) => {
+                    const binding = rows.find(row => row.key === rowNode.dataset.bindingRow);
+                    const targetNode = rowNode.querySelector<HTMLElement>("[data-binding-target-label]");
+                    if (binding && targetNode) {
+                        targetNode.textContent = bindingTargetLabel(binding.targetId, metadata.get(binding.targetId));
+                        targetNode.title = targetNode.textContent;
+                    }
                     const statusNode = rowNode.querySelector<HTMLElement>("[data-binding-status]");
                     if (!statusNode) return;
                     const status = health[rowNode.dataset.bindingRow || ""] || "unchecked";
@@ -3310,12 +3381,14 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-sireader']")?.addEventListener("click", () => {
+        root.querySelector<HTMLElement>("[data-action='save-sireader']")?.addEventListener("click", async () => {
             const input = root.querySelector<HTMLInputElement>("[data-sireader-threshold]");
+            const submitted = input?.value || "";
             const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
+            const previous = this.sireaderIntegration;
             this.sireaderIntegration = {...this.sireaderIntegration, thresholdMinutes};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.sireaderSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
+            try { await this.persistViewPreferences(); if (input?.value === submitted) this.settingsDrafts.delete("data-sireader-threshold"); showMessage(t("msg.sireaderSaved")); this.render(); }
+            catch { this.sireaderIntegration = previous; showMessage(t("msg.prefSaveFail")); }
         });
         root.querySelector<HTMLInputElement>("[data-siplayer-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -3346,12 +3419,14 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-siplayer']")?.addEventListener("click", () => {
+        root.querySelector<HTMLElement>("[data-action='save-siplayer']")?.addEventListener("click", async () => {
             const input = root.querySelector<HTMLInputElement>("[data-siplayer-threshold]");
+            const submitted = input?.value || "";
             const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
+            const previous = this.siplayerIntegration;
             this.siplayerIntegration = {...this.siplayerIntegration, thresholdMinutes};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.siplayerSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
+            try { await this.persistViewPreferences(); if (input?.value === submitted) this.settingsDrafts.delete("data-siplayer-threshold"); showMessage(t("msg.siplayerSaved")); this.render(); }
+            catch { this.siplayerIntegration = previous; showMessage(t("msg.prefSaveFail")); }
         });
         root.querySelector<HTMLInputElement>("[data-health-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -3385,20 +3460,9 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-health-doc']")?.addEventListener("click", () => {
-            const input = root.querySelector<HTMLInputElement>("[data-health-doc]");
-            const docId = validateAnchorBlockId(input?.value);
-            if (!docId) {
-                showMessage(t("msg.healthDocInvalid"));
-                return;
-            }
-            this.healthInbox = {...this.healthInbox, docId};
-            void this.persistViewPreferences().then(() => {
-                if (this.healthInbox.enabled) void this.ingestHealthInbox();
-                showMessage(t("msg.healthDocSaved"));
-            }).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
-        });
+        bindVerifiedDocumentSave("save-health-doc", "data-health-doc", () => this.healthInbox.docId,
+            docId => { this.healthInbox = {...this.healthInbox, docId}; }, "msg.healthDocSaved",
+            () => { if (this.healthInbox.enabled) void this.ingestHealthInbox(); });
         for (const [selector, key] of [["[data-health-steps-item]", "stepsItemId"], ["[data-health-weight-item]", "weightItemId"]] as const) {
             root.querySelector<HTMLSelectElement>(selector)?.addEventListener("change", (event) => {
                 const value = (event.currentTarget as HTMLSelectElement).value;
@@ -3457,9 +3521,11 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", () => {
+        root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", async () => {
             const thresholdInput = root.querySelector<HTMLInputElement>("[data-weread-threshold]");
             const keyInput = root.querySelector<HTMLInputElement>("[data-weread-key]");
+            const submittedThreshold = thresholdInput?.value || "";
+            const submittedKey = keyInput?.value || "";
             const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(thresholdInput?.value) || 30)));
             const apiKey = (keyInput?.value || "").trim();
             if (apiKey && !isWereadApiKey(apiKey)) {
@@ -3467,9 +3533,15 @@ export default class CheckinPlugin extends Plugin {
                 return;
             }
             /* Key 只在用户显式输入时更新（留空 = 保留已存 Key）；输入框永不回显 Key 本体。 */
+            const previous = this.wereadIntegration;
             this.wereadIntegration = {...this.wereadIntegration, thresholdMinutes, ...(apiKey ? {apiKey} : {})};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.wereadSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
-            this.render();
+            try {
+                await this.persistViewPreferences();
+                if (thresholdInput?.value === submittedThreshold) this.settingsDrafts.delete("data-weread-threshold");
+                if (keyInput?.value === submittedKey) this.settingsDrafts.delete("data-weread-key");
+                showMessage(t("msg.wereadSaved"));
+                this.render();
+            } catch { this.wereadIntegration = previous; showMessage(t("msg.prefSaveFail")); }
         });
         root.querySelector<HTMLElement>("[data-action='clear-weread-key']")?.addEventListener("click", () => {
             if (!this.wereadIntegration.apiKey || !window.confirm(t("msg.wereadClearKeyConfirm"))) return;
@@ -3482,12 +3554,14 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLInputElement>("[data-yeguif-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && (!this.yeguifIntegration.itemId || !getActiveItemById(this.store, this.yeguifIntegration.itemId) || !this.yeguifIntegration.notebookId)) {
+            const mappedItemIds = (this.yeguifIntegration.mappings || []).map((mapping) => mapping.itemId).filter((itemId) => getActiveItemById(this.store, itemId));
+            const hasConfiguredTarget = Boolean(this.yeguifIntegration.itemId && getActiveItemById(this.store, this.yeguifIntegration.itemId)) || mappedItemIds.length > 0;
+            if (checked && (!hasConfiguredTarget || !this.yeguifIntegration.notebookId)) {
                 showMessage(t("msg.yeguifNeedConfig"));
                 this.render();
                 return;
             }
-            if (checked && !this.hasMinuteTarget(this.yeguifIntegration.itemId)) {
+            if (checked && !((this.yeguifIntegration.itemId && this.hasMinuteTarget(this.yeguifIntegration.itemId)) || mappedItemIds.some((itemId) => this.hasMinuteTarget(itemId)))) {
                 showMessage(t("msg.yeguifNeedMinuteItem"));
                 this.render();
                 return;
@@ -3503,7 +3577,27 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-yeguif-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.yeguifIntegration = {...this.yeguifIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) && this.yeguifIntegration.notebookId ? this.yeguifIntegration.enabled : false};
+            const mappingTargetsReady = (this.yeguifIntegration.mappings || []).some((mapping) => getActiveItemById(this.store, mapping.itemId) && this.hasMinuteTarget(mapping.itemId));
+            const selectedTargetReady = Boolean(itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId));
+            this.yeguifIntegration = {...this.yeguifIntegration, itemId, enabled: (selectedTargetReady || mappingTargetsReady) && Boolean(this.yeguifIntegration.notebookId) ? this.yeguifIntegration.enabled : false};
+            void this.persistViewPreferences();
+            this.render();
+        });
+        root.querySelector<HTMLTextAreaElement>("[data-yeguif-mappings]")?.addEventListener("change", (event) => {
+            const mappings = (event.currentTarget as HTMLTextAreaElement).value.split(/\r?\n/).map((line) => {
+                const separator = line.indexOf("=");
+                if (separator < 0) return undefined;
+                const project = line.slice(0, separator).trim();
+                const itemId = line.slice(separator + 1).trim();
+                return project && itemId ? {project, itemId} : undefined;
+            }).filter((entry): entry is {project: string; itemId: string} => Boolean(entry)).slice(0, 50);
+            const seen = new Set<string>();
+            this.yeguifIntegration = {...this.yeguifIntegration, mappings: mappings.filter((entry) => {
+                const key = entry.project.toLocaleLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            })};
             void this.persistViewPreferences();
             this.render();
         });
@@ -5702,7 +5796,8 @@ export default class CheckinPlugin extends Plugin {
             && (!healthPreference.weightItemId || this.hasHealthTarget(healthPreference.weightItemId, "weight"));
         this.healthInbox = {...healthPreference, enabled: healthPreference.enabled && healthUnitsReady};
         this.wereadIntegration = {...preferences.wereadIntegration, enabled: preferences.wereadIntegration.enabled && this.hasMinuteTarget(preferences.wereadIntegration.itemId)};
-        this.yeguifIntegration = {...preferences.yeguifIntegration, enabled: preferences.yeguifIntegration.enabled && this.hasMinuteTarget(preferences.yeguifIntegration.itemId)};
+        const yeguifTargetsReady = (preferences.yeguifIntegration.itemId && this.hasMinuteTarget(preferences.yeguifIntegration.itemId)) || (preferences.yeguifIntegration.mappings || []).some((mapping) => this.hasMinuteTarget(mapping.itemId));
+        this.yeguifIntegration = {...preferences.yeguifIntegration, enabled: preferences.yeguifIntegration.enabled && Boolean(yeguifTargetsReady)};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
         this.syncPluginLanguage();

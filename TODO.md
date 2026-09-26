@@ -1,14 +1,18 @@
 # TODO
 
+## 本轮用户触发（2026-09-26）
+
+- [x] LifeLog 语义重整：确认记录形式为“时间 项目：具体事项”，相邻记录时间差归属当前记录；新增 LifeLog 项目到打卡项目映射、映射缺失不猜测、旧版单目标配置兼容。逻辑/偏好/设置/文档与定向验收完成；证据见 PROGRESS 与 docs/lifelog-integration.md。
+
 ## 当前开发队列（2026-09-26，D-275）
 
 用户要求移除所有等待宿主正式版或真机反馈的任务。已撤销 T-1464、T-1406、T-1408、T-1388、T-1344、T-1347、T-023、T-033、T-129、T-1256，以及 T-1346/T-1173 剩余现场等待部分；B-001/B-007 同步撤销。撤销不等于验收通过，既有完成记录和证据仍可追溯。下方已完成条目中的现场等待描述属于历史，不再产生任务。
 
 前三批 T-1472～T-1476 已交付。后续按以下顺序深化，具体边界与验收见执行路线第十五节；不因缺少外部发布或用户设备反馈停止。
 
-- [ ] T-1477 文档绑定配置闭环：保存前核验目标存在性与类型；总览显示名称/路径；问卷弹窗与设置共享目标选择行为；请求失败保留配置与重试入口。
-- [ ] T-1478 设置查找与保存体验深化：从分类匹配细化到具体设置定位，补结果导航/清空恢复；盘点手动保存字段，统一未保存提示与失败保留语义。
-- [ ] T-1479 问卷编辑效率：在既有增删/排序/预览基础上补题目复制、双向移动与键盘操作；明确删除模板对已绑定项目的影响和修复入口。
+- [x] T-1477 文档绑定配置闭环：保存前核验目标存在性与类型；总览显示名称/路径；问卷弹窗与设置共享目标选择行为；请求失败保留配置与重试入口。
+- [x] T-1478 设置查找与保存体验深化：从分类匹配细化到具体设置定位，补结果导航/清空恢复；盘点手动保存字段，统一未保存提示与失败保留语义。搜索已完成；手动保存字段继续收口。
+- [x] T-1479 问卷编辑效率：在既有增删/排序/预览基础上补题目复制、双向移动与键盘操作；明确删除模板对已绑定项目的影响和修复入口。
 - [ ] T-1480 UI 与交互一致性：今日/回顾/设置/弹窗复核按钮图标文字对齐、对比度、加载/空态/失败态、焦点回归和滚动连续性；动效辅助状态反馈并支持减弱动态。
 - [ ] T-1481 渲染与样式性能深化：先测设置搜索、大问卷编辑、后台刷新和大记录量回顾的耗时/DOM 规模，按实测瓶颈优化重复计算与重建；核查样式重复并维持现有预算。
 - [ ] T-1482 热图变体设计与实现（承接 R-17.4）：比较稀疏/分段热图的信息收益，先做可运行呈现与双主题验证，再接入既有统计；不改完成率和排期口径。
@@ -118,7 +122,7 @@ T-1386 多来源统一面板与断开/重试 UX 也属于本地可推进增量�
 - [x] T-1462 数值快捷记录预设增量（R-A14，第六轮采纳②，local-auto）——已开发完成（2026-09-26）
   - 落地：① `record-step.ts` 新增 normalizeQuickSteps 纯函数（逗号/空白解析、升序去重、2 位小数、上限 4 个、>1e6 拒绝、binary 恒空）；② types.CheckinItem + model.normalizeItem + save-form 三侧同构物化 quickSteps（写后指纹逐键一致）；③ 编辑器「快捷增量按钮」文本字段（data-value-fields 内，binary 整组隐藏），i18n 三键中英；④ 今日页——renderItemView 渲染 lc-checkin__chip-button（跳过与主步长重复值），bind-today quick-record handler 改读 data-amount（缺失/非法回落重算默认步长），零新写路径；⑤ today 渲染块——TodayViewRow 增 quickSteps/unit，buildTodayViewHtml 渲染 data-block-record-amount chips 组（complete 行不渲染），block-renderer 透传 amount，宿主 recordBlockToday(itemId, amount?) 优先 chips 值；⑥ SCSS chips 样式+移动 44px 基线覆盖；⑦ 新守门 `tests/quick-steps.test.cjs`（归一化 12 组+三侧同构+接线+i18n+样式）入主链。真实触控归 host-pending。
 - [x] T-1463 迁移健壮性与边界用例（R-A15，第六轮采纳③，local-auto）——已开发完成（2026-09-26）
-  - 落地：① 新守门 `tests/midnight-boundary.test.cjs`——思播恰好零点结束归第一日、双日各自累计、settleSegmentsToDays 双日幂等（已写日跳过/未写日结算/零拒绝）、yeguif 末条开放不记+块身份日期隔离（streak v2.0 参照场景，证据补强零行为变更）；② 导入未知列——loop-csv parseLoopHabitsCsv 返回 unknownHeaders（LOOP_KNOWN_HEADERS 清单外如实上报），LoopImportPlan.unknownColumns 进预览损耗词表 unknown-columns（import-preview 防御读取兼容旧形状），确认弹窗 msg.importUnknownColumns 点名列名（中英）；③ docs/export-formats.md 追加「向前兼容承诺」四条（只增不改/宽容读取/版本可辨/源文件不动）；④ docs/sync-design-review.md 追加 PixelHabits 三段式合并语义参考（并集/LWW/id 幂等+护栏），不实现同步；⑤ tests/loop-csv.test.cjs、tests/import-preview.test.cjs 扩充未知列用例。
+  - 落地：① 新守门 `tests/midnight-boundary.test.cjs`——思播恰好零点结束归第一日、双日各自累计、settleSegmentsToDays 双日幂等（已写日跳过/未写日结算/零拒绝）、yeguif 当前记录吸收上一条到当前的间隔+块身份日期隔离；② 导入未知列——loop-csv parseLoopHabitsCsv 返回 unknownHeaders（LOOP_KNOWN_HEADERS 清单外如实上报），LoopImportPlan.unknownColumns 进预览损耗词表 unknown-columns（import-preview 防御读取兼容旧形状），确认弹窗 msg.importUnknownColumns 点名列名（中英）；③ docs/export-formats.md 追加「向前兼容承诺」四条（只增不改/宽容读取/版本可辨/源文件不动）；④ docs/sync-design-review.md 追加 PixelHabits 三段式合并语义参考（并集/LWW/id 幂等+护栏），不实现同步；⑤ tests/loop-csv.test.cjs、tests/import-preview.test.cjs 扩充未知列用例。
 - [x] T-1465 问卷式日记打卡（journal-prompt check-in，用户想法 2026-09-26，已开发完成）
   - 状态：done（2026-09-26）。调研与可行性见 benchmark 第十六节；D-273 定型全项落地。① 纯模块 `src/features/journal-templates.ts`——内置 5 预设（感恩三问/五分钟日记/九宫格晨间日记/KPT 复盘/深度复盘周记，题干走 i18n 键 52 键双语）、自建模板归一化（≤10 模板×≤20 题，中文命名走 djb2 确定性 id）、设置文本解析往返、单段块 Markdown 渲染（首行带幂等标记）、事件 note 截断摘要、查询语句转义、写入目标归一化。② 项目绑定——CheckinItem.journal {templateId}（model/save-form 两侧同构 slug 校验），编辑器二值项目专属下拉（内置+自建），bind-today data-action=journal 全按钮绑定。③ 弹窗 `src/render/journal-dialog.ts`——表单+写入目标配置（今日日记/指定文档+笔记本下拉），必答题 fail-closed，提交防重，宿主类注入沿用 quick-dialog 模式。④ 写入通道（index）——目标定位栈（显式文档 > SQL custom-dailynote/渲染 sprig hpath > createDocWithMd 幂等建文档；不硬编码 /diary/）、标记命中 updateBlock 整块更新否则 appendBlock 追加、recordEvent 先落盘（重填当日已完成时跳过重复记账）、写入失败不阻断打卡（审计+toast）、auditEntries channel=journal。⑤ 设置页「问卷日记」面板（自建模板编辑区+计数徽标）。⑥ 真实内核 e2e `tests/e2e/journal.spec.mjs`——建笔记本→绑定点按钮→填三问→事件落盘+文档块（marker+问答一体）→重填更新同块不重复记账，**22/22 全绿**。⑦ 守门 `tests/journal-templates.test.cjs` 入主链。关键实现决策：单段落块口径（多块 Markdown 会被内核拆块破坏 update 幂等，probe 实测后定版）；查询 ORDER BY id DESC（updateBlock 以新 id 重建块+旧块索引异步收敛，取最新保证多次重填命中）；journal.json 独立存储避免 view-preferences 加载器级联。e2e 工作区累积污染致 dual-window 审计合并断言间歇超限（干净工作区复测通过，HEAD 构建同样复现=非本轮回归）——已清理工作区并留档。
 - [x] T-1467 洞察与可视化深化第一批（R-A17 第 3 批：R-17.1/R-17.2/R-17.3，2026-09-26 开工并完成；R-17.4 留待渲染块迭代）
@@ -264,7 +268,7 @@ T-1386 多来源统一面板与断开/重试 UX 也属于本地可推进增量�
   - **语法已破解（2026-09-25 e2e 实装叶归 v1.12.6，用户指令「e2e 里直接安装试试」）**：翻 SEP-EnLifeLog 配置开启 enabled/enableMarker → 设置面板原文抓取成功——**段落行首以时间开头即标记为 LifeLog 段落**：`12:00 工作` / `12:00 工作：写日报` / `12:00:00 工作：写日报`，仅作用于日记（DailyNote）文档；时间开头带任何样式则不标记；时长=相邻段落起始时间差（SEP-EnParagraphBlockTimeDiff 模块）；落点=日记文档普通段落块（用户可见）+渲染期 data-en_lifelog_* DOM 标注；叶归自带隐私模式（仅展示类型不展示内容）。可实施：绑定日记笔记本范围 → 5 分钟有界轮询 SQL（box IN 范围 + type=p + 行首时间 GLOB + created>=今日）→ 解析 → 相邻起始差算时长 → yeguif:<blockId> 幂等。工程形状=health-inbox 同型，单批次可实现。
   - 设计草案（语法确认后单批次实现）：yeguif 来源登记 + marker 解析纯模块 + 范围治理 + 5 分钟轮询摄取 + 墓碑撤销，工程形状与 health-inbox 同型。
 - [x] T-1457 叶归 LifeLog 联动适配器（用户需求 2026-09-24，e2e 探测后实现）
-  - 状态：done（2026-09-25）。features/yeguif-adapter.ts 纯模块（Marker 解析行首时间/类型备注拆分、结算相邻起始差+末条开放不记、yeguif:<blockId>:<localDate> 身份）；宿主 5 分钟有界轮询（绑定笔记本内当日新建段落、行首时间 GLOB 过滤、单轮 200 块上限）+不可见省电门+焦点补拉；幂等+墓碑；事件备注=类型：备注；只读用户日记文档（local-only）。偏好 yeguifIntegration {enabled, itemId, notebookId} 内联归一；设置面板第七块（开关/项目/笔记本懒加载按钮）+今日徽标；SourceChannel 不变（读本地文档属既有读共享文档型）、source 枚举全触点+防伪造+注册表+privacy 控制面。tests/yeguif-adapter.test.cjs 入 test:ui；架构守门 107 模块。
+  - 状态：done（2026-09-25，语义于 2026-09-26 修正）。features/yeguif-adapter.ts 纯模块（Marker 解析行首时间/类型备注拆分、当前记录吸收上一条到当前的时间差、首条无前置不记、yeguif:<blockId>:<localDate> 身份）；宿主 5 分钟有界轮询（绑定笔记本内当日 Marker、行首时间 GLOB 过滤、单轮 200 块上限）+不可见省电门+焦点补拉；幂等+墓碑；事件备注=类型：备注；只读用户日记文档（local-only）。偏好 yeguifIntegration {enabled, itemId, notebookId, mappings} 内联归一；设置面板第七块（开关/项目/项目映射/笔记本懒加载按钮）+今日徽标；SourceChannel 不变（读本地文档属既有读共享文档型）、source 枚举全触点+防伪造+注册表+privacy 控制面。tests/yeguif-adapter.test.cjs 入 test:ui；架构守门 107 模块。
 - [x] T-1456 《认知觉醒》「早冥读写跑」打卡模板包（用户需求 2026-09-25，已开发完成）
   - 状态：done（2026-09-25，研究结论见上方历史条目，按设计建议全项落地）。① 新模板「每日反思」（📔 binary evening 专注组，note=书中三问）；② 组合包 pack.awakening「认知觉醒·五件套」（早睡早起+冥想+阅读+每日反思+跑步，纯引用既有/新模板）；③ 四处模板 note 按书中方法论微调双语：早起补「事实记录不施压」（书中不打卡本意与低压力纪律同源）、冥想补「走神拉回=元认知训练 10~15 分钟」、阅读补「读后关联自身用起触动点」、跑步补「运动后 1 小时高强度脑力学习」；④ 模板库自动计 65 个。template-packs 守门扩 awakening 包+键；i18n parity 1757/1757。
 - [x] T-1456 《认知觉醒》「早冥读写跑」打卡模板包（用户需求 2026-09-25；已开发完成，研究记录见本条目，完成条目见上方）

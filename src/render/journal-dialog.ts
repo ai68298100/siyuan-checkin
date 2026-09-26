@@ -15,8 +15,75 @@ export interface JournalDialogDeps {
     isMobileFrontend: boolean;
     draft?: readonly string[];
     onDraft?(answers: string[], submitted?: readonly string[]): void;
-    onPersistIntegration(integration: JournalIntegration): Promise<void>;
+    onPersistIntegration(integration: JournalIntegration): Promise<JournalIntegration | void>;
     onSubmit(answers: readonly string[], integration: JournalIntegration): Promise<boolean>;
+    searchDocuments?: (query: string) => Promise<readonly DocumentTargetChoice[]>;
+}
+
+export interface DocumentTargetChoice { id?: string; content?: string; hPath?: string }
+
+/** Shared settings/questionnaire picker. A manual edit invalidates pending results too. */
+export function bindDocumentTargetPickerFor(field: HTMLInputElement, searchDocuments: (query: string) => Promise<readonly DocumentTargetChoice[]>): void {
+    const picker = document.createElement("div");
+    picker.className = "lc-checkin__document-picker";
+    const search = document.createElement("input");
+    search.type = "search";
+    search.placeholder = t("set.documentSearch");
+    search.setAttribute("aria-label", t("set.documentSearch"));
+    const choices = document.createElement("select");
+    choices.setAttribute("aria-label", t("set.documentResults"));
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "lc-checkin__text-button";
+    retry.textContent = t("bind.retry");
+    retry.hidden = true;
+    const status = document.createElement("span");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    picker.append(search, choices, retry, status);
+    field.before(picker);
+    let request = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const reset = () => {
+        choices.replaceChildren(new Option(t("set.documentResults"), ""));
+        retry.hidden = true;
+        status.textContent = "";
+        picker.removeAttribute("aria-busy");
+    };
+    const run = async (version: number) => {
+        const query = search.value.trim();
+        if (!query || !field.isConnected || field.disabled) return;
+        picker.setAttribute("aria-busy", "true");
+        status.textContent = t("bind.checking");
+        try {
+            const results = await searchDocuments(query);
+            if (version !== request || !field.isConnected) return;
+            const valid = results.filter(result => result.id).slice(0, 50);
+            choices.replaceChildren(new Option(t("set.documentResults"), ""), ...valid.map(result => new Option(`${result.hPath || result.content || result.id} · ${result.id}`, result.id)));
+            status.textContent = valid.length ? t("bind.searchCount", {n: valid.length}) : t("bind.searchEmpty");
+        } catch {
+            if (version !== request || !field.isConnected) return;
+            status.textContent = t("msg.diarySearchFailed");
+            retry.hidden = false;
+        } finally {
+            if (version === request) picker.removeAttribute("aria-busy");
+        }
+    };
+    search.addEventListener("input", () => {
+        if (timer) clearTimeout(timer);
+        const version = ++request;
+        reset();
+        timer = setTimeout(() => { void run(version); }, 180);
+    });
+    retry.addEventListener("click", () => { if (field.disabled) return; reset(); void run(++request); });
+    field.addEventListener("input", () => { ++request; if (timer) clearTimeout(timer); reset(); });
+    choices.addEventListener("change", () => {
+        if (!choices.value || field.disabled) return;
+        field.value = choices.value;
+        field.dispatchEvent(new Event("input", {bubbles: true}));
+        field.focus({preventScroll: true});
+    });
+    reset();
 }
 
 /** The text field remains the save boundary; both editors share one draft. */
@@ -36,7 +103,7 @@ export function bindJournalBuilder(root: HTMLElement, deps: {
     };
     const button = (action: string, label: string, disabled = false) => `<button type="button" class="lc-checkin__text-button" data-builder-action="${action}"${disabled ? " disabled" : ""}>${t(label)}</button>`;
     const render = () => {
-        host.innerHTML = `<h3>${t("journal.builder")}</h3>${button("undo", "review.undo", !undo)}${templates.map((template, i) => `<fieldset data-builder-template="${i}"><legend>${escapeHtml(template.name || "")}</legend><label>${t("journal.name")}<input data-builder-name maxlength="60" value="${escapeHtml(template.name || "")}" /></label>${button("remove-template", "journal.remove")}${template.questions.map((q, j) => `<div class="lc-checkin__journal-builder-question" data-builder-question="${j}"><label>${t("journal.question")} ${j + 1}<input data-builder-text maxlength="200" value="${escapeHtml(q.text || "")}" /></label><select data-builder-type aria-label="${t("journal.question")} ${j + 1}">${["text", "textarea", "slider"].map(type => `<option value="${type}"${q.type === type ? " selected" : ""}>${t(type === "text" ? "journal.typeText" : type === "slider" ? "journal.typeSlider" : "journal.typeTextarea")}</option>`).join("")}</select><label><input type="checkbox" data-builder-required${q.required ? " checked" : ""} />${t("journal.required")}</label>${button("up", "journal.moveUp", j === 0)}${button("remove-question", "journal.remove", template.questions.length === 1)}</div>`).join("")}${button("add-question", "journal.addQuestion", template.questions.length >= 20)}${button("preview", "journal.preview")}<div data-builder-preview></div></fieldset>`).join("")}${button("add-template", "journal.addTemplate", templates.length >= 10)}<select data-builder-preset aria-label="${t("journal.copyPreset")}">${deps.presets.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join("")}</select>${button("copy-preset", "journal.copyPreset", templates.length >= 10)}`;
+        host.innerHTML = `<h3>${t("journal.builder")}</h3>${button("undo", "review.undo", !undo)}${templates.map((template, i) => `<fieldset data-builder-template="${i}"><legend>${escapeHtml(template.name || "")}</legend><label>${t("journal.name")}<input data-builder-name maxlength="60" value="${escapeHtml(template.name || "")}" /></label>${button("remove-template", "journal.remove")}${template.questions.map((q, j) => `<div class="lc-checkin__journal-builder-question" data-builder-question="${j}"><label>${t("journal.question")} ${j + 1}<input data-builder-text maxlength="200" value="${escapeHtml(q.text || "")}" /></label><select data-builder-type aria-label="${t("journal.question")} ${j + 1}">${["text", "textarea", "slider"].map(type => `<option value="${type}"${q.type === type ? " selected" : ""}>${t(type === "text" ? "journal.typeText" : type === "slider" ? "journal.typeSlider" : "journal.typeTextarea")}</option>`).join("")}</select><label><input type="checkbox" data-builder-required${q.required ? " checked" : ""} />${t("journal.required")}</label>${button("up", "journal.moveUp", j === 0)}${button("down", "journal.moveDown", j === template.questions.length - 1)}${button("duplicate-question", "journal.duplicateQuestion", template.questions.length >= 20)}${button("remove-question", "journal.remove", template.questions.length === 1)}</div>`).join("")}${button("add-question", "journal.addQuestion", template.questions.length >= 20)}${button("preview", "journal.preview")}<div data-builder-preview></div></fieldset>`).join("")}${button("add-template", "journal.addTemplate", templates.length >= 10)}<select data-builder-preset aria-label="${t("journal.copyPreset")}">${deps.presets.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join("")}</select>${button("copy-preset", "journal.copyPreset", templates.length >= 10)}`;
     };
     const read = () => {
         const parsed = deps.parse(text.value);
@@ -86,10 +153,30 @@ export function bindJournalBuilder(root: HTMLElement, deps: {
             if (action === "add-question" && template.questions.length < 20) template.questions.push({text: t("journal.question"), type: "textarea", required: false});
             if (action === "remove-question" && template.questions.length > 1) template.questions.splice(j, 1);
             if (action === "up" && j > 0) [template.questions[j - 1], template.questions[j]] = [template.questions[j], template.questions[j - 1]];
+            if (action === "down" && j < template.questions.length - 1) [template.questions[j], template.questions[j + 1]] = [template.questions[j + 1], template.questions[j]];
+            if (action === "duplicate-question" && template.questions.length < 20) template.questions.splice(j + 1, 0, {...template.questions[j]});
         }
         sync();
         render();
         host.querySelector<HTMLInputElement>(`[data-builder-template="${Math.min(i || 0, templates.length - 1)}"] input`)?.focus({preventScroll: true});
+    });
+    host.addEventListener("keydown", event => {
+        const target = event.target as HTMLElement;
+        if (!target.matches("[data-builder-text]")) return;
+        const row = target.closest<HTMLElement>("[data-builder-question]");
+        const section = target.closest<HTMLElement>("[data-builder-template]");
+        if (!row || !section || !(event.ctrlKey || event.metaKey)) return;
+        const template = templates[Number(section.dataset.builderTemplate)];
+        const index = Number(row.dataset.builderQuestion);
+        if (!template || !Number.isInteger(index)) return;
+        const move = event.key === "ArrowUp" ? -1 : event.key === "ArrowDown" ? 1 : 0;
+        if (!move || index + move < 0 || index + move >= template.questions.length) return;
+        event.preventDefault();
+        undo = structuredClone(templates);
+        [template.questions[index], template.questions[index + move]] = [template.questions[index + move], template.questions[index]];
+        sync();
+        render();
+        host.querySelector<HTMLInputElement>(`[data-builder-template="${section.dataset.builderTemplate}"] [data-builder-question="${index + move}"] [data-builder-text]`)?.focus({preventScroll: true});
     });
     read();
 }
@@ -107,7 +194,7 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
             return `<label class="lc-checkin__journal-question"><span>${question.required ? `<em aria-hidden="true">*</em> ` : ""}${escapeHtml(question.text)}</span>${field}</label>`;
         })
         .join("");
-    const notebookOptions = deps.notebooks
+    const notebookOptions = `<option value="">${t("journal.notebookLabel")}</option>` + (deps.integration.notebookId && !deps.notebooks.some(book => book.id === deps.integration.notebookId) ? `<option value="${escapeHtml(deps.integration.notebookId)}" selected>${t("bind.notebookUnavailable")} · ${escapeHtml(deps.integration.notebookId)}</option>` : "") + deps.notebooks
         .map((notebook) => `<option value="${escapeHtml(notebook.id)}"${notebook.id === deps.integration.notebookId ? " selected" : ""}>${escapeHtml(notebook.name)}</option>`)
         .join("");
     const configMarkup = `<fieldset class="lc-checkin__journal-config"><legend>${t("journal.configTitle")}</legend>
@@ -126,6 +213,8 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
     dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("lc-checkin__journal-body");
     const form = dialog.element.querySelector<HTMLFormElement>("[data-journal-form]");
     if (!form) return;
+    const targetField = form.querySelector<HTMLInputElement>("input[name='journalDocId']");
+    if (targetField && deps.searchDocuments) bindDocumentTargetPickerFor(targetField, deps.searchDocuments);
     const status = document.createElement("p");
     status.setAttribute("role", "status");
     status.setAttribute("aria-live", "polite");
@@ -179,14 +268,14 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
         locked.forEach(input => { input.disabled = true; });
         void (async () => {
             try {
-                await deps.onPersistIntegration({mode, notebookId, docId});
-                if (await deps.onSubmit(answers, {mode, notebookId, docId})) {
+                const integration = await deps.onPersistIntegration({mode, notebookId, docId}) || {mode, notebookId, docId};
+                if (await deps.onSubmit(answers, integration)) {
                     deps.onDraft?.([], submittedDraft);
                     dialog.destroy();
                 } else status.textContent = t("journal.retryHint");
-            } catch {
-                status.textContent = t("journal.retryHint");
-                showMessage(t("journal.retryHint"));
+            } catch (error) {
+                status.textContent = error instanceof Error ? error.message : t("journal.retryHint");
+                showMessage(status.textContent);
             } finally {
                 locked.forEach(input => { input.disabled = false; });
                 if (submitButton) {

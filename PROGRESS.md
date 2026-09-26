@@ -1,3 +1,5 @@
+2026-09-26 T-1478/T-1479 收口：设置搜索细化到具体设置行，回车定位并清空恢复；提醒时刻及思阅、思播、微信读书手动保存字段补会话草稿、失败回滚与成功反馈。问卷支持题目复制、双向移动和键盘移动；删除仍被项目绑定的模板时拒绝保存并提示在项目编辑器修复。完整 test:quality 在最后两项修正前通过；修正后 check、journal-experience、i18n-parity、git diff --check 通过。8081cd 不是当前仓库可解析的提交，按继续开发处理；未 push。
+
 2026-09-26 D-275 文档验收：git diff --check、ecosystem-docs、upstream-proposals、ui-docs、preferences-docs、api-v5-docs、export-identity-docs 六项守门均 EXIT=0；扫描确认 12 个已撤销任务不再出现在未完成列表，T-1477～T-1483、T-1386 与真实外部依赖保留。此次仅更新文档，未重跑代码构建或完整 test:quality，也未将既有测试结果记作本轮实跑。下一开发切片从 T-1477 开始。
 
 2026-09-26 D-275 开发队列校正（用户要求去掉宿主正式版/真机反馈等待，并重审此前开发空间）：撤销 12 个任务条目中的版本/现场等待（其中 T-1346/T-1173 仅撤销剩余现场部分）及 B-001/B-007；取消不等于验收通过，原始证据保留。修正“无外部新增触发=没有可开发内容”的错误判断；核对源码确认目标保存仅格式校验、总览显示 ID、问卷弹窗裸 ID、设置搜索按分类、问卷仅上移等可深化点。登记 T-1477～T-1483，承接 T-1386 本地来源 UX；热图/宽屏设计纳入实际任务，不再空等设计窗口。同步 TODO/BLOCKERS/DECISIONS、交接、产品/执行路线和绑定盘点，纠正 T-1438 已提交却仍未勾选及绑定保存校验“已满足”的过度表述。本轮仅修改文档与排期，尚未实现上述新增任务；未 push/发版。文档验证结果随实际运行追加。
@@ -1807,3 +1809,12 @@ T-1301 摘要回填后全链 exit 0。
 2026-09-23 v18.2.1 发布完成（用户确认「发版」）:main 推送 b982aa5..369902b、v18.2.1 tag 推送、GitHub Release「小驴打卡 v18.2.1」创建并附 package.zip（696006 字节）标记 Latest;发布资产回源下载复验 SHA-256 450a481f… 与发布说明/本地构建三方一致;CI 在发布提交上自动通过（58s）。集市将随 Release 自动同步 18.2.1。
 状态:released。下一步:按 T-1400 第三轮触发条件（本地可执行任务清零+质量链全绿）启动生态调研第三轮（OpenHabitTracker 参考点补评 + easy-tracker 二轮）;真机验收窗口归集 T-1406/T-1408/T-1388。
 2026-09-25 发布候选全量复核（T-1460/T-1446）：设置页完成「文档联动 / 第三方联动」分组与七来源独立卡片，逐项补齐绑定目标、保存/启用顺序、数据流、隐私边界、停用保留、重绑历史、查询上限和宿主可用状态。移动视觉 QA 通过已完成项展开→折叠（completedExpanded=1、completedCollapsedAgain=0、aria-expanded/hidden 同步）及 320/360/390/430px 无横向溢出；`pnpm run test:quality` 全链通过（含 175 个测试文件、性能、摘要同步、发布清单、回滚演练）。真实思源 3.8.5 隔离内核 E2E 首轮 19/21，暴露思阅/思播 fixture 错把二值「次」项目用于分钟联动；按产品单位守门改为分钟时长项目后两个失败 spec 针对性复验 2/2，合并证据覆盖 21/21。修正 test:quality 将 digest 同步移至最终构建测试之后，避免真实 mtime 造成发布资产竞态；版本仍 18.4.0，README 未升 18.5.0，未运行 release.cjs、未 push。真实 Android/WebView 与实际第三方账号仍属 host-pending。
+# 2026-09-26 LifeLog 项目归属模型重整
+
+- 用户指出 LifeLog 记录是“12:00 工作：写日报”：当前记录的时长由同文档下一条时间边界结算，归属于当前记录中的项目与事项；不同项目时长应分别映射多个打卡项目。
+- 已新增多映射偏好及设置入口，逐条按项目名映射目标；映射模式里未命中类型跳过、不猜归属，目标不存在/归档或非分钟单位时跳过。空映射旧配置继续使用旧单目标，保持升级兼容。`externalRef` 仍按 blockId+日期幂等，事件备注保留“项目：事项”。新建 [lifelog-integration.md](docs/lifelog-integration.md) 定义语义与边界。
+- 参考 lumina 仓库 README/变更记录：其 LifeLog 视图以类型筛选、卡片/时间轴呈现，并有独立日期统计与记录时段逻辑；这轮只吸收与本需求相关的记录项目与相邻区间归属，不复制其 UI。来源：[LunaNorth/siyuan-lumina](https://github.com/LunaNorth/siyuan-lumina)。
+- 验证：`node tests/yeguif-adapter.test.cjs` 通过（解析/相邻结算/映射选择/身份/宿主触点）；`node tests/i18n-parity.test.cjs` 通过（1960/1960）；`pnpm run check` 通过；`pnpm run build:check` 通过（webpack 仅报告既有 bundle size 建议）。未跑完整质量链；工作区含其它未归属本任务的变更，未回退或覆盖。
+- 续跑修正：切换旧版固定目标时不再因映射目标存在而误关闭联动；映射文本保存保留目标 ID（目标暂时删除时可恢复），只有摄取时才跳过不存在/非分钟目标。回归：`node tests/yeguif-adapter.test.cjs`、`node tests/view-preferences.test.cjs`、`pnpm run check`、`pnpm run build:check` 全部通过。
+- 语义纠正：按用户原话将区间归属从“当前→下一条”改为“上一条→当前”，所以 `12:00 工作`、`13:00 阅读` 产生 60 分钟的“阅读”事件；当天第一条没有前置记录时不记。同步更新适配器、摄取注释、设置边界文案、说明文档及午夜边界测试。验证：`yeguif-adapter`、`midnight-boundary`、`i18n-parity`、`pnpm run check` 全部通过。
+- 完整主测试链 `pnpm test` 已通过，包含架构边界、核心模型、视图偏好、午夜边界、LifeLog 相关回归等全部阶段。

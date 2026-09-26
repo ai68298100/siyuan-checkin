@@ -58,7 +58,7 @@ assert.ok(indexSource.includes("content LIKE 'health:%'"), "inbox query must sco
 assert.match(indexSource, /content LIKE 'health:%'.*ORDER BY id ASC LIMIT 500/, "health rows must have deterministic oldest-first order before first-row dedupe");
 assert.ok(indexSource.includes('source: "api", externalRef'), "health writes must use the public api source with the composed identity");
 assert.match(indexSource, /eventTombstones\.some\(\(tombstone\) => tombstone\.source === "api"[\s\S]*externalRef === externalRef\)/, "health ingest must honor deleted-identity tombstones");
-assert.match(indexSource, /save-health-doc[\s\S]*persistViewPreferences\(\)\.then\(\(\) => \{[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");
+assert.match(indexSource, /bindVerifiedDocumentSave\("save-health-doc"[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
 for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc", "save-health-doc", "data-health-steps-item", "data-health-weight-item"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);

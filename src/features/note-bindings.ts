@@ -32,7 +32,7 @@ export interface NoteBindingsInput {
     healthInbox: {enabled: boolean; docId: string};
     journalIntegration: {mode: "daily" | "doc"; notebookId: string; docId: string};
     journalEnabled: boolean;
-    yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string};
+    yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string; mappings?: Array<{project: string; itemId: string}>};
     /** store 中绑定了笔记锚点的项目（含归档——归档项的锚点仍在但不再写回）。 */
     anchoredItems: ReadonlyArray<{id: string; name: string; blockId: string; archived?: boolean}>;
 }
@@ -108,6 +108,29 @@ export function collectNoteBindings(input: NoteBindingsInput): NoteBindingRow[] 
 
 /** 健康状态（会话内计算，不持久化）。 */
 export type NoteBindingHealth = "unchecked" | "ok" | "missing" | "error";
+
+export interface BindingBlockMetadata {
+    id: string;
+    root_id?: string;
+    type?: string;
+    hpath?: string;
+    content?: string;
+}
+
+/** Document fields accept an existing block only through its verified document root. */
+export function resolveBindingDocument(id: string, blocks: readonly BindingBlockMetadata[]): BindingBlockMetadata | undefined {
+    const target = blocks.find(block => block.id === id);
+    if (!target) return undefined;
+    if (target.type === "d") return target;
+    return blocks.find(block => block.id === target.root_id && block.type === "d");
+}
+
+/** Keep IDs available even when the title/path is empty or duplicated. */
+export function bindingTargetLabel(id: string, metadata?: {name?: string; hpath?: string}): string {
+    const name = metadata?.name?.trim();
+    const path = metadata?.hpath?.trim();
+    return [name, path && path !== name ? path : undefined, id].filter(Boolean).join(" · ");
+}
 
 /** 批量体检的分组：块/文档目标走一次 SQL IN 查询；笔记本目标走 lsNotebooks 成员校验。 */
 export function groupBindingTargets(rows: readonly NoteBindingRow[]): {docIds: string[]; notebookIds: string[]} {

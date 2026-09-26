@@ -23,6 +23,12 @@ transpile("src/features/yeguif-adapter.ts");
 const adapter = require(path.join(dir, "src/features/yeguif-adapter.js"));
 const ecosystem = require(path.join(dir, "src/ecosystem.js"));
 
+assert.equal(adapter.resolveYeguifItemId(" 工作 ", [{project: "工作", itemId: "work-id"}], "fallback"), "work-id", "项目映射忽略首尾空白");
+assert.equal(adapter.resolveYeguifItemId("阅读", [{project: "工作", itemId: "work-id"}], "fallback"), "", "启用映射后未映射类型跳过而不猜测归属");
+assert.equal(adapter.resolveYeguifItemId("阅读", [], "fallback"), "fallback", "空映射时兼容旧版单目标配置");
+assert.equal(adapter.resolveYeguifItemId("阅读", [], ""), "", "未映射且无旧目标时拒绝归属猜测");
+assert.deepEqual(adapter.normalizeYeguifMappings([{project: "工作", itemId: "a"}, {project: "工作 ", itemId: "b"}, {project: "", itemId: "c"}]), [{project: "工作", itemId: "a"}], "映射去空和重复类型保留首条");
+
 /* Marker 解析：三种官方形态 + 类型/备注拆分。 */
 assert.deepEqual(adapter.parseYeguifMarker("20260925120000-abc", "12:00 工作"), {blockId: "20260925120000-abc", startMinutes: 720, type: "工作", text: ""}, "无备注形态");
 assert.deepEqual(adapter.parseYeguifMarker("b0000002", "12:00 工作：写日报").text, "写日报", "全角冒号拆备注");
@@ -34,14 +40,14 @@ assert.equal(adapter.parseYeguifMarker("b0000007", "12:00   "), undefined, "空�
 assert.equal(adapter.parseYeguifMarker("bad id", "12:00 工作"), undefined, "非法块 ID 拒绝");
 assert.equal(adapter.parseYeguifMarker("b0000008", "12:60 工作"), undefined, "非法分钟拒绝");
 
-/* 结算：相邻起始差 + 末条开放不记 + 同分钟跳过 + 确定性。 */
+/* 结算：当前记录吸收上一条到当前的间隔 + 首条无前置不记 + 同分钟跳过 + 确定性。 */
 const mk = (id, minutes, type, text) => ({blockId: id, startMinutes: minutes, type, text: text || ""});
 const settled = adapter.settleYeguifEntries([mk("m1", 540, "工作", "a"), mk("m2", 600, "阅读", "b"), mk("m3", 600, "冥想"), mk("m4", 630, "跑步")], "2026-09-25");
 assert.deepEqual(settled, [
-    {blockId: "m1", localDate: "2026-09-25", minutes: 60, type: "工作", text: "a"},
-    {blockId: "m3", localDate: "2026-09-25", minutes: 30, type: "冥想", text: ""},
-], "60 分钟 + 同分钟零差跳过 + 末条开放不记（时长归属先开始的一条）");
-assert.deepEqual(adapter.settleYeguifEntries([mk("m1", 540, "工作")], "2026-09-25"), [], "单条开放记录不记");
+    {blockId: "m2", localDate: "2026-09-25", minutes: 60, type: "阅读", text: "b"},
+    {blockId: "m4", localDate: "2026-09-25", minutes: 30, type: "跑步", text: ""},
+], "当前项目吸收上一条到当前的 60/30 分钟，首条与同分钟记录不产出");
+assert.deepEqual(adapter.settleYeguifEntries([mk("m1", 540, "工作")], "2026-09-25"), [], "单条记录无前置不记");
 assert.deepEqual(adapter.settleYeguifEntries([mk("m1", 540, "工作")], "bad-date"), [], "非法日期 fail-closed");
 const frozen = Object.freeze([Object.freeze(mk("f1", 0, "早")), Object.freeze(mk("f2", 30, "读"))]);
 assert.equal(adapter.settleYeguifEntries(frozen, "2026-09-25").length, 1, "冻结输入安全");
@@ -56,12 +62,21 @@ assert.equal(adapter.buildYeguifEventNote("工作", ""), "工作");
 
 /* 偏好归一（内联于 view-preferences）：Key 缺失/笔记本缺失不物化。 */
 const vpCode = ts.transpileModule(fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8"), {compilerOptions}).outputText;
-assert.match(vpCode, /yeguifIntegration = \{\s*enabled: yeguifSource\.enabled === true && Boolean\(yeguifItemId\) && Boolean\(yeguifNotebookId\)/, "enabled 需项目+笔记本齐备");
-assert.match(vpCode, /yeguifIntegration: \{\s*enabled: false,\s*itemId: "",\s*notebookId: ""\s*\}/, "默认关闭");
+assert.match(vpCode, /yeguifMappings\.length > 0/, "映射模式允许以多个映射项目启用");
+assert.match(vpCode, /yeguifIntegration: \{\s*enabled: false,\s*itemId: "",\s*notebookId: "",\s*mappings: \[\]\s*\}/, "默认关闭并初始化空映射");
 
 /* 宿主全触点。 */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const settingsProjection = indexSource.slice(indexSource.indexOf('            yeguifIntegration: {...this.yeguifIntegration'), indexSource.indexOf('            openSourcePanels:'));
+assert.ok(settingsProjection.includes('mappings:'), "settings rerender must receive the persisted project mappings");
+const projectionExpression = settingsProjection.trim().replace(/^yeguifIntegration: /, '').replace(/,$/, '');
+const configured = {enabled: true, itemId: '', notebookId: 'book', mappings: [{project: '工作', itemId: 'work'}, {project: '阅读', itemId: 'read'}]};
+const projected = Function(`return (${projectionExpression});`).call({yeguifIntegration: configured});
+assert.deepEqual(projected, configured, "both mappings survive settings projection");
+projected.mappings[0].project = 'changed';
+assert.equal(configured.mappings[0].project, '工作', "settings data cannot mutate persisted mapping objects");
 assert.match(indexSource, /source: "yeguif", externalRef/, "写路径打 yeguif 来源");
+assert.match(indexSource, /resolveYeguifItemId\(entry\.type, governance\.mappings \|\| \[\], governance\.itemId\)/, "每条 LifeLog 记录按项目映射目标");
 assert.match(indexSource, /event\.source === "yeguif" && event\.externalRef === externalRef/, "块身份幂等守卫");
 assert.match(indexSource, /tombstone\.source === "yeguif" && tombstone\.externalRef === externalRef/, "墓碑永不重写");
 assert.ok((indexSource.match(/typeof document !== "undefined" && document\.hidden\) return/g) || []).length >= 3, "三大后台摄取均有不可见省电门");

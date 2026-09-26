@@ -71,7 +71,7 @@ export interface SettingsViewContext {
     wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
     wereadTodayMinutes: number;
     /** T-1457 叶归 LifeLog 联动（opt-in 默认关）。 */
-    yeguifIntegration?: {enabled: boolean; itemId: string; notebookId: string};
+    yeguifIntegration?: {enabled: boolean; itemId: string; notebookId: string; mappings?: Array<{project: string; itemId: string}>};
     /** Keep the source card the user is editing open after a preference save. */
     openSourcePanels?: readonly string[];
     /** T-1442 效果徽标：各来源当日已写入事件数（sireader/siplayer/weread）。 */
@@ -136,7 +136,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         const targetLabel = row.targetId ? `${t(`bind.target.${row.targetKind}`)} · ${row.targetId}` : t("bind.targetNone");
         const statusLabel = row.enabled && row.required && !row.targetId ? t("bind.statusMissing") : t("bind.statusUnknown");
         const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.itemId ? `<button class="lc-checkin__text-button" type="button" data-edit-binding="${escapeHtml(row.itemId)}">${t("bind.locate")}</button>` : row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}`;
-        return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target" title="${escapeHtml(targetLabel)}">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}${escapeHtml(targetLabel)}</span><span class="lc-checkin__binding-status" data-binding-status>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
+        return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}<span data-binding-target-label title="${escapeHtml(targetLabel)}">${escapeHtml(targetLabel)}</span></span><span class="lc-checkin__binding-status" data-binding-status>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
     }).join("");
     /* T-1465（D-273）：问卷日记自建模板缺省值。 */
     const journalCustomText = typeof ctx.journalCustomText === "string" ? ctx.journalCustomText : "";
@@ -189,7 +189,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             : t("set.wereadPullFail", {message: `${ctx.wereadLastPull.error || ""}${ctx.wereadLastPull.upgrade ? ` · ${ctx.wereadLastPull.upgrade}` : ""}`}))
         : t("set.wereadPullIdle");
     /* T-1457：叶归 LifeLog 缺省值，同上。 */
-    const yeguif = ctx.yeguifIntegration || {enabled: false, itemId: "", notebookId: ""};
+    const yeguif = ctx.yeguifIntegration || {enabled: false, itemId: "", notebookId: "", mappings: []};
     /* 外部联动统一三态：已启用 / 已配置待启用 / 待配置。配置完成不等于上游已连通，
        因此只在卡片上表达本地配置状态，运行结果由各来源自己的最近结果行表达。 */
     type SourceState = "enabled" | "ready" | "setup" | "rebind";
@@ -208,7 +208,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         && (!weread.finishItemId || projectAvailable(weread.finishItemId))
         && (!weread.notesItemId || projectAvailable(weread.notesItemId));
     const wereadState = sourceState(weread.enabled, Boolean(weread.itemId && wereadKeySet), wereadTargetsReady);
-    const yeguifState = sourceState(yeguif.enabled, Boolean(yeguif.itemId && yeguif.notebookId), projectAvailable(yeguif.itemId));
+    const yeguifMappedTargets = (yeguif.mappings || []).map((mapping) => mapping.itemId);
+    const yeguifHasTarget = Boolean(yeguif.itemId || yeguifMappedTargets.length);
+    const yeguifTargetsReady = [yeguif.itemId, ...yeguifMappedTargets].filter(Boolean).every(projectAvailable);
+    const yeguifState = sourceState(yeguif.enabled, Boolean(yeguifHasTarget && yeguif.notebookId), yeguifTargetsReady);
     const sourceStateCounts = (states: readonly SourceState[]) => {
         const enabled = states.filter((state) => state === "enabled").length;
         const ready = states.filter((state) => state !== "setup" && state !== "rebind").length;
@@ -454,6 +457,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsYeguif1")}</li><li>${t("set.stepsYeguif2")}</li><li>${t("set.stepsYeguif3")}</li><li>${t("set.stepsYeguif4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.yeguifBoundary")}</small>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifItem")}</span><small>${t("set.yeguifItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-item aria-label="${t("set.yeguifItem")}"><option value="">${t("set.yeguifItemChoose")}</option>${healthItemOptions(yeguif.itemId)}</select></span></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifMappings")}</span><small>${t("set.yeguifMappingsHint")}</small></span><textarea data-yeguif-mappings rows="3" aria-label="${t("set.yeguifMappings")}" placeholder="${escapeHtml(t("set.yeguifMappingsPlaceholder"))}">${(yeguif.mappings || []).map((mapping) => `${escapeHtml(mapping.project)} = ${escapeHtml(mapping.itemId)}`).join("\n")}</textarea></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifNotebook")}</span><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></span><span class="lc-checkin__settings-inline"><select data-yeguif-notebook aria-label="${t("set.yeguifNotebook")}"${yeguifNotebookDisabled}>${yeguifNotebookOption}</select><button class="lc-checkin__text-button" type="button" data-action="load-yeguif-notebooks">${t("set.yeguifNotebookLoad")}</button></span></div>
                     <div class="lc-checkin__settings-row" data-yeguif-integration><span class="lc-checkin__settings-label"><span>${t("set.yeguifTitle")}</span><small>${t("set.yeguifHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-yeguif-toggle ${yeguif.enabled ? "checked" : ""} aria-label="${t("set.yeguifToggle")}" /></div>
                     </details>

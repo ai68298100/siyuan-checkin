@@ -14,6 +14,15 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lc-bindings-"));
 fs.writeFileSync(path.join(dir, "note-bindings.js"), ts.transpileModule(read("src/features/note-bindings.ts"), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 const nb = require(path.join(dir, "note-bindings.js"));
 
+const documentMetadata = {id: "doc", type: "d", content: "Journal", hpath: "/Personal/Journal"};
+assert.equal(nb.resolveBindingDocument("doc", [documentMetadata]), documentMetadata);
+assert.equal(nb.resolveBindingDocument("child", [{id: "child", type: "p", root_id: "doc"}, documentMetadata]), documentMetadata);
+assert.equal(nb.resolveBindingDocument("child", [{id: "child", type: "p", root_id: "missing"}]), undefined);
+assert.equal(nb.resolveBindingDocument("child", [{id: "child", root_id: "parent"}, {id: "parent", type: "p"}]), undefined, "a non-document root must not be accepted");
+assert.equal(nb.resolveBindingDocument("gone", [documentMetadata]), undefined);
+assert.equal(nb.bindingTargetLabel("doc", {name: "Journal", hpath: "/Personal/Journal"}), "Journal · /Personal/Journal · doc");
+assert.equal(nb.bindingTargetLabel("doc"), "doc");
+
 const input = {
     diaryReport: {enabled: true, docId: "20260101000000-diary1"},
     summaryResident: {enabled: false, docId: "20260101000000-sumry1"},
