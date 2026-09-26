@@ -69,6 +69,10 @@
     .lc-checkin__occasion-icon { display: grid; place-items: center; width: 30px; height: 30px; margin-top: 1px; border-radius: 9px; background: var(--lc-checkin-muted-surface); }
     .lc-checkin__occasion-icon .lc-checkin__glyph { width: 17px; height: 17px; color: var(--lc-checkin-muted); }
     .lc-checkin__occasion-row-date { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-top: 5px; color: var(--lc-checkin-text); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+    /* T-1491 纪念日里程碑徽标：满 N 天/个月/周年（生日为 N 岁），当天命中转强调色。 */
+    .lc-checkin__occasion-milestone { display: inline-flex; align-items: center; margin-top: 4px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; padding: 1px 8px; color: var(--lc-checkin-muted); background: var(--lc-checkin-muted-surface); font-size: 12px; overflow-wrap: anywhere; }
+    .lc-checkin__occasion-milestone.is-today { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent-text) 35%, var(--lc-checkin-border-strong)); background: var(--lc-checkin-accent-soft); font-weight: 600; }
+    .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-milestone { display: none; }
     .lc-checkin__occasion-row-date strong { font-size: 12px; font-weight: 600; color: var(--lc-checkin-accent-text); }
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-date strong { color: var(--lc-checkin-muted); }
     .lc-checkin__occasion-manager-row.is-today .lc-checkin__occasion-icon { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }

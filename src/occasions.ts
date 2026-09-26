@@ -1,6 +1,6 @@
 import {lunarToSolar, solarToLunar} from "./lunar";
 import {t} from "./i18n";
-import {daysBetweenHalfOpen} from "./date-keys";
+import {addDays, daysBetweenHalfOpen} from "./date-keys";
 
 export type OccasionKind = "birthday" | "anniversary" | "scheduled";
 export type OccasionRecurrence = "once" | "annual" | "monthly" | "weekly" | "quarterly" | "halfyearly" | "interval";
@@ -468,6 +468,72 @@ export function describeRecurrence(item: Occasion): string {
 
 export function toLocalDateKey(date: Date): string {
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+
+/* ===== T-1491 纪念日里程碑投影（只读，不改 Occasion schema；D-280 批次二） =====
+   口径：满-N 约定——里程碑日期 = 锚点 + N（天/自然月/年），daysBetweenHalfOpen(锚点, 里程碑) = N，
+   文案统一「满 N 天 / 满 N 个月 / 满 N 周年（生日为 N 岁）」。仅 anniversary/birthday 派生；
+   农历年度事项只派生「满 N 天」（太阳日计数与农历月日回推不一致，不伪造月/年里程碑）；
+   月推进有界 1200 步、年推进有界 200 步，输出确定性排序。 */
+
+export type OccasionMilestoneKind = "days" | "monthly" | "yearly";
+
+export interface OccasionMilestone {
+    kind: OccasionMilestoneKind;
+    count: number;
+    /** 里程碑落点日期。 */
+    date: string;
+    /** 距 localDate 的天数（0 = 今天就是里程碑）。 */
+    daysUntil: number;
+}
+
+export const OCCASION_MILESTONE_LADDER: readonly number[] = [100, 200, 300, 365, 500, 1000, 2000, 3000, 4000, 5000, 10000];
+
+export function occasionMilestoneEligible(item: Occasion): boolean {
+    return (item.kind === "anniversary" || item.kind === "birthday") && isValidLocalDate(item.date);
+}
+
+/** 下一个（含今天命中）里程碑投影，按落点日期升序，最多 limit 个（有界 24）。 */
+export function nextOccasionMilestones(item: Occasion, localDate: string, limit = 3): OccasionMilestone[] {
+    if (!occasionMilestoneEligible(item) || !isValidLocalDate(localDate)) return [];
+    const cappedLimit = Math.max(1, Math.min(24, Math.round(limit) || 3));
+    const candidates: OccasionMilestone[] = [];
+    const anchor = item.date;
+    for (const count of OCCASION_MILESTONE_LADDER) {
+        const date = addDays(anchor, count);
+        if (!date || date < localDate) continue;
+        candidates.push({kind: "days", count, date, daysUntil: differenceInDays(localDate, date)});
+    }
+    if (item.calendar !== "lunar") {
+        const base = parseLocalDate(anchor);
+        const anchorMonths = base.getFullYear() * 12 + base.getMonth();
+        for (let step = 1; step <= 1200; step += 1) {
+            const total = anchorMonths + step;
+            const date = monthDate(Math.floor(total / 12), (total % 12) + 1, base.getDate());
+            if (date < localDate) continue;
+            candidates.push({kind: "monthly", count: step, date, daysUntil: differenceInDays(localDate, date)});
+            break;
+        }
+        const startYear = base.getFullYear();
+        for (let step = 1; step <= 200; step += 1) {
+            const date = monthDate(startYear + step, base.getMonth() + 1, base.getDate());
+            if (date < localDate) continue;
+            candidates.push({kind: "yearly", count: step, date, daysUntil: differenceInDays(localDate, date)});
+            break;
+        }
+    }
+    candidates.sort((left, right) => left.date.localeCompare(right.date) || left.kind.localeCompare(right.kind));
+    return candidates.slice(0, cappedLimit);
+}
+
+/** 里程碑文案（事项列表与今日横幅共用单一实现）；生日年里程碑读作「N 岁」。 */
+export function describeOccasionMilestone(item: Occasion, milestone: OccasionMilestone): string {
+    const core = milestone.kind === "days"
+        ? t("occ.milestoneDays", {n: milestone.count})
+        : milestone.kind === "monthly"
+            ? t("occ.milestoneMonthly", {n: milestone.count})
+            : item.kind === "birthday" ? t("occ.milestoneAge", {n: milestone.count}) : t("occ.milestoneYearly", {n: milestone.count});
+    return milestone.daysUntil === 0 ? t("occ.milestoneToday", {text: core}) : t("occ.milestoneUpcoming", {text: core, d: milestone.daysUntil});
 }
 
 function differenceInDays(from: string, to: string): number {

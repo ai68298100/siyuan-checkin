@@ -180,4 +180,62 @@ console.log("Occasion model structure checks passed.");
     assert.equal(annual.nthWeek, 2);
     assert.equal(writes, 3, "each form selection is persisted once");
     console.log("Occasion form save checks passed: monthly/weekly/annual use their visible weekday and shared ordinal.");
-})().catch(error => { console.error(error); process.exitCode = 1; });
+})();
+
+/* —— T-1491 纪念日里程碑投影：满-N 约定、阶梯/月/年派生、农历降级、确定性、文案。 —— */
+{
+    const anniversary = occasions.normalizeOccasion({id: "m1", name: "在一起", kind: "anniversary", date: "2024-06-01", recurrence: "annual", remindBeforeDays: 3, note: "", enabled: true, completedDates: [], createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z"});
+    assert.ok(anniversary, "fixture normalizes");
+    /* 满-N：锚点+365 → 2025-06-01，daysBetween = 365。 */
+    const milestones = occasions.nextOccasionMilestones(anniversary, "2024-09-01", 5);
+    assert.ok(milestones.length >= 3, "a fresh anniversary projects day/month/year milestones");
+    const days365 = milestones.find((entry) => entry.kind === "days" && entry.count === 365);
+    assert.equal(days365.date, "2025-06-01", "满-N day milestones land on anchor + N days");
+    assert.ok(milestones.every((entry) => entry.date >= "2024-09-01"), "past milestones are not projected");
+    const sorted = [...milestones].map((entry) => entry.date);
+    assert.deepEqual(sorted, [...sorted].sort(), "milestones are date-ascending");
+    /* 100 天里程碑恰在今天 → daysUntil 0 且文案走「今天…」。 */
+    const at100 = occasions.nextOccasionMilestones(anniversary, "2024-09-09", 5);
+    const today100 = at100.find((entry) => entry.kind === "days" && entry.count === 100);
+    assert.equal(today100.daysUntil, 0, "the milestone day itself projects with daysUntil 0");
+    const todayText = occasions.describeOccasionMilestone(anniversary, today100);
+    assert.match(todayText, /今天/, "today's milestone copy is prefixed as such");
+    const upcoming = occasions.describeOccasionMilestone(anniversary, milestones.find((entry) => entry.daysUntil > 0));
+    assert.match(upcoming, /还有/, "upcoming milestones carry a days-away suffix");
+    /* 越过阶梯末端后不再派生天数里程碑，但月/年仍继续。 */
+    const farFuture = occasions.nextOccasionMilestones(anniversary, "2056-06-02", 5);
+    assert.ok(farFuture.every((entry) => entry.kind !== "days" || entry.count <= 10000), "day milestones stay inside the ladder");
+    assert.ok(farFuture.some((entry) => entry.kind === "yearly"), "yearly milestones continue beyond the ladder");
+    /* 月钳制：锚点 31 日 → 2 月里程碑落在 2/29（闰年）而非 3/3。 */
+    const monthEnd = occasions.normalizeOccasion({...anniversary, id: "m2", date: "2024-01-31"});
+    const febMark = occasions.nextOccasionMilestones(monthEnd, "2024-02-01", 5).find((entry) => entry.kind === "monthly");
+    assert.equal(febMark.date, "2024-02-29", "month milestones clamp to the month end");
+    assert.equal(febMark.count, 1, "monthly count counts elapsed months");
+    /* 农历年度事项：只派生满 N 天（不伪造月/年里程碑）。 */
+    const lunarItem = occasions.normalizeOccasion({...anniversary, id: "m3", calendar: "lunar"});
+    const lunarMilestones = occasions.nextOccasionMilestones(lunarItem, "2024-09-01", 5);
+    assert.ok(lunarMilestones.length >= 1 && lunarMilestones.every((entry) => entry.kind === "days"), "lunar anniversaries project day milestones only");
+    /* scheduled 一次性事项不派生。 */
+    const once = occasions.normalizeOccasion({...anniversary, id: "m4", kind: "scheduled", recurrence: "once"});
+    assert.deepEqual(occasions.nextOccasionMilestones(once, "2024-09-01", 5), [], "scheduled occasions carry no since-anchor milestones");
+    /* 非法锚点 fail-closed；确定性。 */
+    assert.deepEqual(occasions.nextOccasionMilestones({...anniversary, date: "2024-13-01"}, "2024-09-01", 5), []);
+    assert.deepEqual(occasions.nextOccasionMilestones(anniversary, "2024-09-01", 5), occasions.nextOccasionMilestones(anniversary, "2024-09-01", 5));
+    /* 生日年里程碑文案读作「N 岁」（limit 放宽以免前面的天阶梯挤占窗口）。 */
+    const birthday = occasions.normalizeOccasion({...anniversary, id: "m5", kind: "birthday"});
+    const ageMark = occasions.nextOccasionMilestones(birthday, "2024-09-01", 9).find((entry) => entry.kind === "yearly");
+    const ageText = occasions.describeOccasionMilestone(birthday, ageMark);
+    assert.match(ageText, /岁/, "birthday yearly milestones read as age");
+}
+
+/* —— T-1491 接线：事项列表行 + 今日横幅 + i18n 双语。 —— */
+assert.match(viewSource, /nextOccasionMilestones\(item, todayKey, 1\)/, "occasion rows project the nearest milestone");
+assert.match(viewSource, /lc-checkin__occasion-milestone/, "occasion rows render the milestone badge");
+const fragmentsSource = fs.readFileSync("src/render/fragments.ts", "utf8");
+assert.match(fragmentsSource, /is-milestone/, "today banner marks milestone-day chips");
+assert.match(fragmentsSource, /describeOccasionMilestone\(item, milestone\)/, "banner copy goes through the shared formatter");
+const i18nSource = fs.readFileSync("src/i18n.ts", "utf8");
+for (const key of ["occ.milestoneDays", "occ.milestoneMonthly", "occ.milestoneYearly", "occ.milestoneAge", "occ.milestoneToday", "occ.milestoneUpcoming"]) {
+    assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+}
+console.log("occasion milestone gates passed: 满-N convention, ladder/month/year projection, lunar fallback, clamping, wiring, i18n parity");

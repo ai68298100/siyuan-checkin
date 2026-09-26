@@ -3464,6 +3464,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     cursor: pointer;
 }
 .lc-checkin__occasion-chip small { color: var(--lc-checkin-accent-text); font-weight: 650; }
+/* T-1491 里程碑当天：芯片文案呈现「今天满 N 天/周年」，色阶与打卡里程碑一致（金/强调）。 */
+.lc-checkin__occasion-chip.is-milestone small { color: var(--lc-checkin-gold-text, var(--lc-checkin-accent-text)); }
 .lc-checkin__occasion-chip.is-complete { opacity: .6; }
 .lc-checkin__occasion-chip.is-complete small { color: var(--lc-checkin-success-text); }
 .lc-checkin__occasion-chip[data-action="toggle-occasion"] small { min-width: 32px; padding-left: 6px; border-left: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); text-align: center; }

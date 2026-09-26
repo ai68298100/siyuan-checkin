@@ -7,7 +7,7 @@ import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashbo
 import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
-import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted} from "../occasions";
+import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -85,12 +85,17 @@ export function renderRecentRecordView(record: RecentRecordView | undefined, red
 export function renderOccasionBannerView(occasionStore: OccasionStore, date: Date): string {
     const items = getVisibleOccasions(occasionStore, date).slice(0, 3);
     const stateClass = items.length ? "" : " is-empty";
+    const todayKey = dateKey(date);
     const chips = items.map((item) => {
         const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : "◷";
         const timing = item.status === "today" ? t("review.today") : t("review.daysLater", {n: item.daysUntil});
         const completed = isOccasionCompleted(item, item.occurrenceDate);
         const action = item.status === "today" ? (completed ? t("today.occasionUndo") : t("today.occasionComplete")) : timing;
-        return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}" data-action="${item.status === "today" ? "toggle-occasion" : "occasions"}" data-occasion-id="${escapeHtml(item.id)}" data-occasion-date="${escapeHtml(item.occurrenceDate)}" aria-pressed="${completed}" title="${escapeHtml(item.name)} · ${action}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(action)}</small></button>`;
+        /* T-1491：里程碑当天（满 N 天/个月/周年/生日岁数）用里程碑文案替换动作词——
+           点击行为不变（仍走完成/撤销），文案只负责呈现情感节点。 */
+        const milestone = item.enabled ? nextOccasionMilestones(item, todayKey, 1)[0] : undefined;
+        const label = milestone && milestone.daysUntil === 0 ? describeOccasionMilestone(item, milestone) : action;
+        return `<button type="button" class="lc-checkin__occasion-chip ${completed ? "is-complete" : ""}${milestone && milestone.daysUntil === 0 ? " is-milestone" : ""}" data-action="${item.status === "today" ? "toggle-occasion" : "occasions"}" data-occasion-id="${escapeHtml(item.id)}" data-occasion-date="${escapeHtml(item.occurrenceDate)}" aria-pressed="${completed}" title="${escapeHtml(item.name)} · ${label}"><span aria-hidden="true">${icon}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(label)}</small></button>`;
     }).join("");
     return `<section class="lc-checkin__occasion-banner${stateClass}" aria-label="${t("today.occasionTitle")}">
             <span class="lc-checkin__occasion-banner-icon" aria-hidden="true">${uiIcon("calendar")}</span>
