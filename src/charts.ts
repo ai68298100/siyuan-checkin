@@ -417,8 +417,12 @@ export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: numbe
     const cell = options.cell ?? 14;
     const gap = options.gap ?? 3;
     const weeks: Array<{start: string; end: string; records: number; active: number; level: number}> = [];
-    for (let index = 0; index < heatmap.days.length; index += 7) {
-        const days = heatmap.days.slice(index, index + 7);
+    const firstDay = new Date(Number(heatmap.days[0]?.date.slice(0, 4)), 0, 1);
+    const leading = (firstDay.getDay() + 6) % 7;
+    const padded = Array.from({length: leading}, () => undefined as YearHeatmapDay | undefined).concat(heatmap.days);
+    for (let index = 0; index < padded.length; index += 7) {
+        const days = padded.slice(index, index + 7).filter((day): day is YearHeatmapDay => Boolean(day));
+        if (!days.length) continue;
         const records = days.reduce((sum, day) => sum + Math.max(0, day.count), 0);
         const active = days.filter(day => day.count > 0).length;
         const level = days.reduce((max, day) => Math.max(max, day.level), 0);

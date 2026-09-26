@@ -87,6 +87,7 @@ const weeklySvg = charts.renderWeeklyHeatmap(heatmap, {ariaLabel: "Weekly"});
 assert.match(weeklySvg, /lc-yearheatmap--weekly/);
 assert.match(weeklySvg, /aria-label="Weekly"/);
 assert.equal((weeklySvg.match(/<rect /g) || []).length, Math.ceil(heatmap.days.length / 7), "weekly variant keeps one spatial cell per week");
+assert.match(weeklySvg, /2026-01-01–2026-01-04/, "weekly variant aligns the first bucket to the Monday week boundary");
 
 // T-1410：四级色阶按有记录日的条数分布自适应分级（nearest-rank 百分位 25/50/75）
 const scaleStore = (spec) => {

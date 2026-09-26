@@ -21,4 +21,4 @@
 
 本地开发说明：下方摘要由质量链同步为当前工作树构建包，并非已上传的发布包。GitHub v18.7.0 正式资产摘要固定为 `75bbb7a06fdad91dec874ef114be5e24abae2b13be4d6b0d93b4c4511147acbe`，远端资产没有更新。
 
-- SHA-256：`a691aa15c50b1f613097359a2b67d9a1dcef3c99efb16b411bf845fc7d1f19af`
+- SHA-256：`74206220dca0cf83d926915a7c78eb546e9f79a5abc984e0d11b18a06b2048e9`
