@@ -1,3 +1,5 @@
+2026-09-26 T-1481 性能验收：问卷编辑器基准 DOM 26 个节点、设置搜索夹具 DOM 15 个节点；10k 事件今日完整渲染 29ms、100k 批量生命周期 21.4ms，横向溢出 0；既有回顾性能基线与后台刷新守门保持通过。未发现需要针对实测热点改写的重复计算，CSS 预算维持 620595 bytes。验证：node tests/journal-experience.cjs、pnpm run test:perf 均通过。
+
 2026-09-26 T-1480 验收：双主题 visual-qa、accessibility-audit（750 对比度组合，0 违规）、ui-state-ledger、responsive-layout、editor-validation、mobile-editor-structure、桌面/移动 width-walkthrough（49 surface + 32 interaction）全部通过；未发现高置信 UI、焦点或滚动回归。
 
 2026-09-26 T-1478/T-1479 收口：设置搜索细化到具体设置行，回车定位并清空恢复；提醒时刻及思阅、思播、微信读书手动保存字段补会话草稿、失败回滚与成功反馈。问卷支持题目复制、双向移动和键盘移动；删除仍被项目绑定的模板时拒绝保存并提示在项目编辑器修复。完整 test:quality 在最后两项修正前通过；修正后 check、journal-experience、i18n-parity、git diff --check 通过。8081cd 不是当前仓库可解析的提交，按继续开发处理；未 push。

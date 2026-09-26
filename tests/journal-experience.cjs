@@ -182,6 +182,7 @@ const root = path.resolve(__dirname, "..");
             modules.dialog.bindJournalBuilder(document.querySelector("#root"), {presets: [], parse: modules.journal.parseCustomJournalTemplatesText, serialize: modules.journal.serializeCustomJournalTemplatesText});
         });
         await page.locator('[data-builder-action="add-template"]').click();
+        const builderMetric = await page.evaluate(() => ({dom: document.querySelector('[data-journal-builder]')?.querySelectorAll('*').length || 0, started: performance.now()}));
         await page.locator('[data-builder-name]').fill("My journal");
         await page.locator('[data-builder-required]').check();
         await page.locator('[data-builder-action="add-question"]').click();
@@ -222,6 +223,7 @@ const root = path.resolve(__dirname, "..");
         await page.locator('[data-settings-search]').fill("");
         await page.evaluate(() => cleanupNav());
         assert.deepEqual(errors, []);
-        console.log("Journal experience: required focus, failure/retry/drafts, builder roundtrip, settings search passed.");
+        const settingsMetric = await page.evaluate(() => ({dom: document.querySelector('.lc-checkin--settings')?.querySelectorAll('*').length || 0}));
+        console.log(`Journal experience: required focus, failure/retry/drafts, builder roundtrip, settings search passed (builder DOM ${builderMetric.dom}, settings DOM ${settingsMetric.dom}).`);
     } finally { await browser.close(); }
 })().catch(error => {console.error(error); process.exitCode = 1;});
