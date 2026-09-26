@@ -2566,6 +2566,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 8px;
 }
+.lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__group-items[hidden],
+.lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__group-items[hidden] {
+    display: none !important;
+}
 .lc-checkin-dialog-host--mobile .lc-checkin--today .lc-checkin__item,
 .lc-checkin-tab-host:has(.lc-checkin__mobile-topbar) .lc-checkin--today .lc-checkin__item {
     grid-template-columns: 40px minmax(0, 1fr) auto;

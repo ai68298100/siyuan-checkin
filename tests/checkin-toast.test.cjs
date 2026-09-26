@@ -36,6 +36,7 @@ assert.match(fragments, /completed-section" aria-expanded="\$\{!ctx\.completedCo
 assert.match(todayBindings, /items\?\.toggleAttribute\("hidden", host\.completedCollapsed\)/, "completed cards must collapse immediately on the active mobile surface");
 assert.match(todayBindings, /toggle\.setAttribute\("aria-expanded", String\(!host\.completedCollapsed\)\)/, "completed toggle accessibility state must update without a full render");
 assert.doesNotMatch(todayBindings, /toggle-completed'[\s\S]{0,700}host\.render\(\)/, "completed collapse must not depend on a layout-shifting full render");
+assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin--today \.lc-checkin__group-items\[hidden\][\s\S]*?display: none !important;/, "mobile completed groups must stay hidden after the inline toggle");
 assert.doesNotMatch(fragments, /revision\.recordStep\s*\?\?\s*item\.recordStep/, "historical cards must not borrow the current quick-record amount");
 assert.match(fragments, /getRecordStep\(revision\.kind, revision\.unit, revision\.recordStep\)/, "cards must use the amount effective on their rendered date");
 
