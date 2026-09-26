@@ -23,6 +23,7 @@ export interface NoteBindingRow {
     required: boolean;
     /** 设置页源配置输入框选择器（「定位重选」用）；无独立输入框的行为空。 */
     sourceSelector: string;
+    itemId?: string;
 }
 
 export interface NoteBindingsInput {
@@ -33,7 +34,7 @@ export interface NoteBindingsInput {
     journalEnabled: boolean;
     yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string};
     /** store 中绑定了笔记锚点的项目（含归档——归档项的锚点仍在但不再写回）。 */
-    anchoredItems: ReadonlyArray<{id: string; name: string; blockId: string}>;
+    anchoredItems: ReadonlyArray<{id: string; name: string; blockId: string; archived?: boolean}>;
 }
 
 const ITEM_ID_PATTERN = /^[0-9A-Za-z-]{8,64}$/;
@@ -75,7 +76,7 @@ export function collectNoteBindings(input: NoteBindingsInput): NoteBindingRow[] 
         targetId: input.journalIntegration.mode === "doc" ? input.journalIntegration.docId : input.journalIntegration.notebookId,
         enabled: input.journalEnabled === true,
         required: true,
-        sourceSelector: "[data-journal-custom]",
+        sourceSelector: "[data-journal-mode]",
     });
     rows.push({
         key: "yeguif-lifelog",
@@ -96,16 +97,17 @@ export function collectNoteBindings(input: NoteBindingsInput): NoteBindingRow[] 
             featureParams: {name: item.name},
             targetKind: "block",
             targetId: item.blockId,
-            enabled: true,
+            enabled: !item.archived,
             required: true,
             sourceSelector: "",
+            itemId: item.id,
         });
     }
     return rows;
 }
 
 /** 健康状态（会话内计算，不持久化）。 */
-export type NoteBindingHealth = "unchecked" | "ok" | "missing";
+export type NoteBindingHealth = "unchecked" | "ok" | "missing" | "error";
 
 /** 批量体检的分组：块/文档目标走一次 SQL IN 查询；笔记本目标走 lsNotebooks 成员校验。 */
 export function groupBindingTargets(rows: readonly NoteBindingRow[]): {docIds: string[]; notebookIds: string[]} {
@@ -121,15 +123,15 @@ export function groupBindingTargets(rows: readonly NoteBindingRow[]): {docIds: s
 
 /** 体检结果归并：仅启用的联动参与判定——目标缺失 → missing，存在 → ok；
     未启用的绑定一律 unchecked（不制造噪音）；无目标的启用必填联动 → missing。 */
-export function mergeBindingHealth(rows: readonly NoteBindingRow[], foundIds: ReadonlySet<string>, validNotebooks: ReadonlySet<string>): Record<string, NoteBindingHealth> {
+export function mergeBindingHealth(rows: readonly NoteBindingRow[], foundIds: ReadonlySet<string> | null, validNotebooks: ReadonlySet<string> | null): Record<string, NoteBindingHealth> {
     const health: Record<string, NoteBindingHealth> = {};
     for (const row of rows) {
         if (!row.enabled || !row.targetId) {
             health[row.key] = row.enabled && row.required ? "missing" : "unchecked";
             continue;
         }
-        if (row.targetKind === "notebook") health[row.key] = validNotebooks.has(row.targetId) ? "ok" : "missing";
-        else health[row.key] = foundIds.has(row.targetId) ? "ok" : "missing";
+        const targets = row.targetKind === "notebook" ? validNotebooks : foundIds;
+        health[row.key] = targets === null ? "error" : targets.has(row.targetId) ? "ok" : "missing";
     }
     return health;
 }

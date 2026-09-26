@@ -33,6 +33,29 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         const id = group.dataset.settingsGroup;
         if (id) groupById.set(id, group);
     });
+    const search = root.querySelector<HTMLInputElement>("[data-settings-search]");
+    const searchStatus = root.querySelector<HTMLElement>("[data-settings-search-status]");
+    const panelStates = new Map<HTMLDetailsElement, boolean>();
+    const onSearch = () => {
+        const query = (search?.value || "").trim().toLocaleLowerCase();
+        let matches = 0;
+        groups.forEach(group => {
+            const match = !query || (group.textContent || "").toLocaleLowerCase().includes(query);
+            group.hidden = !match;
+            if (match) matches++;
+            group.querySelectorAll<HTMLDetailsElement>("details").forEach(panel => {
+                if (query) {
+                    if (!panelStates.has(panel)) panelStates.set(panel, panel.open);
+                    if ((panel.textContent || "").toLocaleLowerCase().includes(query)) panel.open = true;
+                } else if (panelStates.has(panel)) panel.open = panelStates.get(panel)!;
+            });
+        });
+        buttons.forEach(button => { button.hidden = Boolean(groupById.get(button.dataset.settingsNav || "")?.hidden); });
+        if (!query) panelStates.clear();
+        if (searchStatus) searchStatus.textContent = query ? `${matches} / ${groups.length}` : "";
+        scheduleSync();
+    };
+    search?.addEventListener("input", onSearch);
 
     let disposed = false;
     let frame = 0;
@@ -112,14 +135,15 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
            needed there. */
         const horizontal = isHorizontalRail();
         const threshold = scrollerRect.top + (horizontal ? navRect.height + 8 : 12);
-        let candidate = groups[0];
-        for (const group of groups) {
+        const visibleGroups = groups.filter(group => !group.hidden);
+        let candidate = visibleGroups[0];
+        for (const group of visibleGroups) {
             if (group.getBoundingClientRect().top <= threshold + 1) candidate = group;
             else break;
         }
         /* At the very bottom the last card can remain below the threshold when
            it is shorter than the viewport; make the terminal section active. */
-        if (scroller.clientHeight > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) candidate = groups[groups.length - 1];
+        if (scroller.clientHeight > 0 && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) candidate = visibleGroups[visibleGroups.length - 1];
         setActive(candidate?.dataset.settingsGroup || "");
     };
 
@@ -171,6 +195,7 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     return () => {
         if (disposed) return;
         disposed = true;
+        search?.removeEventListener("input", onSearch);
         scroller.removeEventListener("scroll", onScroll);
         nav.removeEventListener("click", onNavClick);
         if (frame) {

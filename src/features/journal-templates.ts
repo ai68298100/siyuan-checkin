@@ -188,26 +188,32 @@ export function parseCustomJournalTemplatesText(raw: string, existingIds: readon
     const blocks = String(raw || "").split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
     const templates: JournalTemplateDef[] = [];
     let invalidBlocks = 0;
-    const taken = new Set<string>(existingIds);
+    if (blocks.length > JOURNAL_MAX_CUSTOM_TEMPLATES) return {templates: [], invalidBlocks: blocks.length - JOURNAL_MAX_CUSTOM_TEMPLATES};
+    const taken = new Set<string>();
     for (const block of blocks) {
         const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
         const header = lines[0] || "";
         if (!header.startsWith("#")) { invalidBlocks += 1; continue; }
         const headerParts = header.slice(1).split("|").map((part) => part.trim());
+        if (headerParts.length > 3 || headerParts[2] && !TEMPLATE_ID_PATTERN.test(headerParts[2])) { invalidBlocks += 1; continue; }
         const name = headerParts[0] || "";
         if (!name) { invalidBlocks += 1; continue; }
         let icon = headerParts[1] || "📝";
         if (!icon) icon = "📝";
         const questions: JournalQuestionDef[] = [];
+        let invalidQuestion = false;
         for (const line of lines.slice(1)) {
-            const separator = line.lastIndexOf("|");
-            const text = separator > 0 ? line.slice(0, separator).trim() : line;
-            const typeText = separator > 0 ? line.slice(separator + 1).trim() : "";
+            const required = /\|\s*required$/.test(line);
+            const content = required ? line.replace(/\|\s*required$/, "").trim() : line;
+            const separator = content.lastIndexOf("|");
+            const text = separator >= 0 ? content.slice(0, separator).trim() : content;
+            const typeText = separator >= 0 ? content.slice(separator + 1).trim() : "";
             const type = normalizeType(typeText === "text" ? "text" : typeText === "slider" ? "slider" : "textarea");
             const clean = cleanText(text, QUESTION_TEXT_LIMIT);
-            if (clean) questions.push({text: clean, type});
+            if (clean) questions.push({text: clean, type, required});
+            else invalidQuestion = true;
         }
-        if (!questions.length) { invalidBlocks += 1; continue; }
+        if (invalidQuestion || !questions.length || questions.length > JOURNAL_MAX_QUESTIONS) { invalidBlocks += 1; continue; }
         /* id 从名称派生：ASCII 名称直接 slug 化；纯中文等无 ASCII 字符的名称回退到
            确定性哈希（djb2）——同一名称重解析得到同一 id，重命名即新模板（可接受）。 */
         let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
@@ -217,7 +223,9 @@ export function parseCustomJournalTemplatesText(raw: string, existingIds: readon
             slug = `custom-${hash.toString(36)}`;
         }
         if (!slug) { invalidBlocks += 1; continue; }
-        let candidate = slug;
+        const explicitId = headerParts[2] || "";
+        if (explicitId && (taken.has(explicitId) || JOURNAL_BUILTIN_TEMPLATES.some(template => template.id === explicitId))) { invalidBlocks += 1; continue; }
+        let candidate = TEMPLATE_ID_PATTERN.test(explicitId) ? explicitId : slug;
         let suffix = 2;
         while (taken.has(candidate)) candidate = `${slug}-${suffix++}`;
         taken.add(candidate);
@@ -290,10 +298,10 @@ export function normalizeJournalIntegration(value: unknown): JournalIntegration 
 export function serializeCustomJournalTemplatesText(templates: readonly JournalTemplateDef[]): string {
     return templates
         .map((template) => {
-            const lines = [`# ${template.name} | ${template.icon}`];
+            const lines = [`# ${template.name} | ${template.icon} | ${template.id}`];
             for (const question of template.questions) {
                 const text = typeof question.text === "string" ? question.text : "";
-                lines.push(question.type === "textarea" ? text : `${text} | ${question.type}`);
+                lines.push(`${text} | ${question.type}${question.required ? " | required" : ""}`);
             }
             return lines.join("\n");
         })

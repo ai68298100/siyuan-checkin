@@ -50,6 +50,11 @@ assert.equal(health["journal-target"], "ok");
 assert.equal(health["yeguif-lifelog"], "ok");
 assert.equal(health["anchor:item-a"], "missing", "stale anchor block is reported missing");
 assert.equal(health["anchor:item-b"], "ok");
+assert.equal(nb.mergeBindingHealth(rows, null, validNotebooks)["diary-report"], "error", "network failure is not a missing document");
+assert.equal(nb.mergeBindingHealth(rows, found, null)["journal-target"], "error", "notebook failure is independent of SQL results");
+assert.equal(nb.mergeBindingHealth(rows, new Set(), validNotebooks)["diary-report"], "missing", "successful empty query confirms missing");
+const archivedRows = nb.collectNoteBindings({...input, anchoredItems: [{id: "archived", name: "old", blockId: "20260101000000-ancha", archived: true}]});
+assert.equal(nb.mergeBindingHealth(archivedRows, new Set(), new Set())["anchor:archived"], "unchecked");
 
 /* —— 3. 接线：设置面板/体检动作/打开与定位/上下文注入。 —— */
 const indexSource = read("src/index.ts");

@@ -279,6 +279,8 @@ function assertActive(fixture, expectedId) {
     assert.deepEqual(fixture.root.queryLog, [
         ".lc-checkin--settings",
         ".lc-checkin--settings .lc-checkin__settings-nav",
+        "[data-settings-search]",
+        "[data-settings-search-status]",
     ], "the helper must select the page scroller and the nav inside that page");
     assert.equal(fixture.scroller.listenerOptions.get("scroll")?.passive, true, "scroll tracking must be passive");
     assert.equal(FakeIntersectionObserver.instances.length, 1);

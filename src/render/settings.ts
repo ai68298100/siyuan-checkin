@@ -44,8 +44,9 @@ export interface SettingsViewContext {
     /** T-1465（D-273）问卷日记：自建模板文本（设置页编辑区，空行分块）。 */
     journalCustomText?: string;
     journalCustomCount?: number;
+    journalIntegration?: {mode: "daily" | "doc"; notebookId: string; docId: string};
     /** T-1470 笔记联动总览：集中列出全部文档/笔记本/块绑定（健康检测会话内进行）。 */
-    noteBindings?: ReadonlyArray<{key: string; featureKey: string; featureParams?: Readonly<Record<string, string>>; targetKind: "doc" | "block" | "notebook" | "none"; targetId: string; enabled: boolean; required: boolean; sourceSelector: string}>;
+    noteBindings?: ReadonlyArray<{key: string; featureKey: string; featureParams?: Readonly<Record<string, string>>; targetKind: "doc" | "block" | "notebook" | "none"; targetId: string; enabled: boolean; required: boolean; sourceSelector: string; itemId?: string}>;
     palette: CheckinPalette;
     avatar: string;
     avatarImage?: string;
@@ -134,12 +135,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const bindingRows = noteBindings.map((row) => {
         const targetLabel = row.targetId ? `${t(`bind.target.${row.targetKind}`)} · ${row.targetId}` : t("bind.targetNone");
         const statusLabel = row.enabled && row.required && !row.targetId ? t("bind.statusMissing") : t("bind.statusUnknown");
-        const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}`;
+        const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.itemId ? `<button class="lc-checkin__text-button" type="button" data-edit-binding="${escapeHtml(row.itemId)}">${t("bind.locate")}</button>` : row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}`;
         return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target" title="${escapeHtml(targetLabel)}">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}${escapeHtml(targetLabel)}</span><span class="lc-checkin__binding-status" data-binding-status>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
     }).join("");
     /* T-1465（D-273）：问卷日记自建模板缺省值。 */
     const journalCustomText = typeof ctx.journalCustomText === "string" ? ctx.journalCustomText : "";
     const journalCustomCount = ctx.journalCustomCount ?? 0;
+    const journalTarget = ctx.journalIntegration ?? {mode: "daily", notebookId: "", docId: ""};
     /* T-1353：摘要驻留缺省值，同上。 */
     const summaryResident = ctx.summaryResident || {enabled: false, docId: ""};
     /* T-1384：思阅联动缺省值，同上。 */
@@ -385,6 +387,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="journal"${sourcePanelOpen("journal")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("journal.settingsTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("journal.customCount", {n: journalCustomCount})}</small></span></summary>
                     <small class="lc-checkin__source-boundary">${t("journal.settingsHint")}</small>
+                    <div class="lc-checkin__settings-row"><label class="lc-checkin__settings-label">${t("journal.configTitle")}<select data-journal-mode><option value="daily"${journalTarget.mode === "daily" ? " selected" : ""}>${t("journal.targetDaily")}</option><option value="doc"${journalTarget.mode === "doc" ? " selected" : ""}>${t("journal.targetDoc")}</option></select></label></div>
+                    <div class="lc-checkin__journal-target-settings"><label class="lc-checkin__settings-label" data-journal-daily-config>${t("journal.notebookLabel")}<select data-journal-notebook-id><option value="${escapeHtml(journalTarget.notebookId)}">${escapeHtml(journalTarget.notebookId || t("set.diaryNotebookLoading"))}</option></select></label><label class="lc-checkin__settings-label" data-journal-doc-config>${t("journal.docIdLabel")}<input data-journal-target-doc value="${escapeHtml(journalTarget.docId)}" /></label><button type="button" class="lc-checkin__text-button" data-action="save-journal-target">${t("set.diarySave")}</button></div>
+                    <div data-journal-builder></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span><small>${t("journal.customHint")}</small></span></div>
                     <div class="lc-checkin__settings-row"><textarea class="lc-checkin__journal-custom" data-journal-custom rows="6" aria-label="${t("journal.customLabel")}">${escapeHtml(journalCustomText)}</textarea></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span></span><button class="lc-checkin__text-button" type="button" data-action="save-journal-custom">${t("common.confirm")}</button></div>
@@ -465,6 +470,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     return `<div class="lc-checkin lc-checkin--settings" data-appearance="${ctx.resolvedAppearanceValue}">
             <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("set.personal")}</div><h1 class="lc-checkin__title">${t("settings.title")}</h1></div></header>
             <div class="lc-checkin__settings-feedback" data-settings-feedback role="status" aria-live="polite"></div>
+            <label class="lc-checkin__settings-search">${t("set.search")}<input type="search" data-settings-search aria-label="${t("set.search")}" /></label>
+            <div data-settings-search-status role="status" aria-live="polite"></div>
             <div class="lc-checkin__settings-layout">
                 <nav class="lc-checkin__settings-nav" aria-label="${t("set.groupsAria")}">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" aria-controls="${settingsViewId}-group-${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
                 <div class="lc-checkin__settings-groups">${groups.map((group) => `<section id="${settingsViewId}-group-${group.id}" class="lc-checkin__settings-card" data-settings-group="${group.id}" aria-labelledby="${settingsViewId}-heading-${group.id}"><h2 id="${settingsViewId}-heading-${group.id}">${group.label}</h2>${group.body}</section>`).join("")}</div>

@@ -10,6 +10,8 @@
 
 **当前版本：18.7.0**
 
+本地开发进展（未发布）：设置搜索、问卷可视化编辑与会话草稿保护、文档目标搜索，以及联动检测和日记写入可靠性修复。安装包仍以 GitHub Latest 为准，验收记录见 [PROGRESS](PROGRESS.md)。
+
 [最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.7.0 发布说明](docs/releases/release-notes-18.7.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>

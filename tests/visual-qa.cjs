@@ -254,6 +254,52 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     await goToday();
     await openSurface("settings", "[data-action='settings']");
     results.settings = await inspect("settings");
+    await page.locator('[data-source-panel="journal"] > summary').click();
+    await page.locator('[data-builder-action="add-template"]').click();
+    await page.locator('[data-builder-action="add-question"]').click();
+    await page.locator('[data-journal-builder]').scrollIntoViewIfNeeded();
+    await page.screenshot({path: path.join(outputRoot, "journal-builder.png")});
+    results.journalBuilder = await page.locator('[data-journal-builder]').evaluate(host => ({
+        overflow: host.scrollWidth > host.clientWidth + 1,
+        targets: [...host.querySelectorAll('button, select, input:not([type="checkbox"])')].every(el => el.getBoundingClientRect().height >= 44),
+    }));
+    assert.equal(results.journalBuilder.overflow, false, "journal builder must fit narrow settings");
+    assert.equal(results.journalBuilder.targets, true, "journal builder controls must meet 44px");
+    const customDraft = await page.locator('[data-journal-custom]').inputValue();
+    await goToday();
+    await openSurface("settings", "[data-action='settings']");
+    assert.equal(await page.locator('[data-journal-custom]').inputValue(), customDraft, "unsaved questionnaire survives navigation");
+    await page.locator('[data-source-panel="journal"]').evaluate(panel => {panel.open = true;});
+    await page.locator('[data-action="save-journal-custom"]').click();
+    await page.waitForFunction(() => !document.querySelector('[data-action="save-journal-custom"]')?.disabled);
+    await page.locator('[data-journal-custom]').fill("");
+    await goToday();
+    await openSurface("settings", "[data-action='settings']");
+    assert.equal(await page.locator('[data-journal-custom]').inputValue(), "", "editing back to the original empty value after save must survive navigation");
+    await page.evaluate(() => {
+        window.__originalKernelPost = window.__plugin.kernelPost;
+        window.__plugin.kernelPost = async (url, payload) => url === "/api/notebook/lsNotebooks"
+            ? {code: 0, data: {notebooks: [{id: "draft-book-a", name: "Notebook A"}, {id: "draft-book-b", name: "Notebook B"}]}}
+            : window.__originalKernelPost.call(window.__plugin, url, payload);
+    });
+    await goToday();
+    await openSurface("settings", "[data-action='settings']");
+    await page.locator('[data-source-panel="journal"]').evaluate(panel => {panel.open = true;});
+    await page.locator('[data-journal-notebook-id]').selectOption("draft-book-b");
+    await goToday();
+    await openSurface("settings", "[data-action='settings']");
+    await page.waitForFunction(() => document.querySelector('[data-journal-notebook-id]')?.value === "draft-book-b");
+    await page.locator('[data-source-panel="journal"]').evaluate(panel => {panel.open = true;});
+    await page.locator('[data-journal-mode]').selectOption("doc");
+    await page.locator('[data-journal-doc-config]').scrollIntoViewIfNeeded();
+    await page.screenshot({path: path.join(outputRoot, "journal-target.png")});
+    const targetOverflow = await page.locator('[data-journal-doc-config]').evaluate(field => field.scrollWidth > field.clientWidth + 1);
+    assert.equal(targetOverflow, false, "document search/selection must fit the journal target field");
+    assert.ok(await page.locator('[data-journal-target-doc]').evaluate(field => field.getBoundingClientRect().width >= 200), "target ID input must remain readable at phone width");
+    await page.evaluate(() => {
+        window.__plugin.kernelPost = window.__originalKernelPost;
+        window.__plugin.settingsDrafts.delete("data-journal-notebook-id");
+    });
     await goToday();
     await openSurface("add", "[data-action='add']");
     const initialValueFieldsHidden = await page.locator("[data-value-fields]").evaluate((element) => element.hidden);

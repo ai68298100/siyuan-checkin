@@ -14,6 +14,7 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     /* 全新工作区没有笔记本——建一个供「写入今日日记」目标定位（conf → sprig → 建文档）。 */
     const nb = await client.postChecked("/api/notebook/createNotebook", {name: `Journal E2E ${Date.now()}`});
     expect(typeof nb === "string" ? nb : nb?.id || nb?.notebook?.id).toBeTruthy();
+    const notebookId = typeof nb === "string" ? nb : nb?.id || nb?.notebook?.id;
 
     const item = {...makeTestItem("journal"), kind: "binary", journal: {templateId: "gratitude3"}};
     await seedStore(client, await snapshotStore(page), [item]);
@@ -33,8 +34,12 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     await expect(journalButton).toBeVisible({timeout: 20000});
     await journalButton.click();
     const form = page.locator("[data-journal-form]");
-    /* 弹窗前宿主会做目标预检（含首次 createDocWithMd 建当日日记），冷路径可能慢。 */
+    /* 预检只读；提交才创建日记。显式选本次笔记本，避免复用工作区的旧记录干扰。 */
     await expect(form).toBeVisible({timeout: 20000});
+    await form.locator('input[name="journalTarget"][value="daily"]').check();
+    await form.locator('select[name="journalNotebook"]').selectOption(notebookId);
+    const beforeSubmit = await client.post("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE type = 'd' AND box = '${notebookId}'`});
+    expect(beforeSubmit.data || []).toHaveLength(0);
     await expect(form.locator("[data-journal-answer=\"0\"]")).toBeVisible();
     await form.locator("[data-journal-answer=\"0\"]").fill("家人身体健康");
     await form.locator("[data-journal-answer=\"2\"]").fill("感谢同事帮我 review 代码");
@@ -51,7 +56,7 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     /* 旁路写入：目标文档出现带标记的条目块（索引异步重建 → 轮询）。 */
     let writtenBlock;
     await expect.poll(async () => {
-        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE content LIKE '%${marker}%' ORDER BY id ASC LIMIT 1`});
+        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE box = '${notebookId}' AND content LIKE '%${marker}%' ORDER BY id ASC LIMIT 1`});
         writtenBlock = (blocks.data || [])[0];
         return Boolean(writtenBlock);
     }, {timeout: 30000}).toBe(true).catch(async () => {
@@ -74,17 +79,20 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     await refillButton.click();
     const refillForm = page.locator("[data-journal-form]");
     await expect(refillForm).toBeVisible({timeout: 20000});
+    /* A copied paragraph ID must resolve to this same document, not append inside the paragraph. */
+    await refillForm.locator('input[name="journalTarget"][value="doc"]').check();
+    await refillForm.locator('input[name="journalDocId"]').fill(writtenBlock.id);
     /* 已填写提示属尽力而为预检（可静默失败），不作硬断言；权威幂等=提交后单块更新+事件不重复。 */
     await refillForm.locator("[data-journal-answer=\"0\"]").fill("家人健康，全家散步一小时");
     await refillForm.locator("[data-journal-submit]").click();
 
     await expect.poll(async () => {
-        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE content LIKE '%${marker}%' ORDER BY id DESC LIMIT 1`});
+        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE box = '${notebookId}' AND content LIKE '%${marker}%' ORDER BY id DESC LIMIT 1`});
         const rows = blocks.data || [];
         /* updateBlock 后内核以新 id 重建块、旧块索引异步收敛：断言最新块已更新即可（事件数下线断言）。 */
         return rows.length >= 1 && (rows[0].content || "").includes("全家散步一小时");
     }, {timeout: 30000}).toBe(true).catch(async () => {
-        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE content LIKE '%${marker}%' ORDER BY id DESC LIMIT 3`});
+        const blocks = await client.post("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE box = '${notebookId}' AND content LIKE '%${marker}%' ORDER BY id DESC LIMIT 3`});
         console.log("REFILL-BLOCKS", JSON.stringify(blocks.data || []));
         const audit = await client.getFile("checkin-store-audit");
         const entries = (typeof audit === "string" ? JSON.parse(audit) : audit) || [];

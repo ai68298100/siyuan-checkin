@@ -5,7 +5,7 @@
 import {t} from "../i18n";
 import {showMessage, Dialog} from "siyuan";
 import {escapeHtml} from "../shared";
-import type {JournalIntegration, ResolvedJournalTemplate} from "../features/journal-templates";
+import type {JournalIntegration, ResolvedJournalTemplate, JournalTemplateDef} from "../features/journal-templates";
 
 export interface JournalDialogDeps {
     template: ResolvedJournalTemplate;
@@ -13,8 +13,85 @@ export interface JournalDialogDeps {
     notebooks: ReadonlyArray<{id: string; name: string}>;
     alreadyWritten: boolean;
     isMobileFrontend: boolean;
-    onPersistIntegration(integration: JournalIntegration): void;
-    onSubmit(answers: readonly string[]): Promise<void>;
+    draft?: readonly string[];
+    onDraft?(answers: string[], submitted?: readonly string[]): void;
+    onPersistIntegration(integration: JournalIntegration): Promise<void>;
+    onSubmit(answers: readonly string[], integration: JournalIntegration): Promise<boolean>;
+}
+
+/** The text field remains the save boundary; both editors share one draft. */
+export function bindJournalBuilder(root: HTMLElement, deps: {
+    presets: ResolvedJournalTemplate[];
+    parse(text: string): {templates: JournalTemplateDef[]; invalidBlocks: number};
+    serialize(templates: JournalTemplateDef[]): string;
+}): void {
+    const host = root.querySelector<HTMLElement>("[data-journal-builder]");
+    const text = root.querySelector<HTMLTextAreaElement>("[data-journal-custom]");
+    if (!host || !text) return;
+    let templates: JournalTemplateDef[] = [];
+    let undo: JournalTemplateDef[] | undefined;
+    const sync = () => {
+        text.value = deps.serialize(templates);
+        text.dispatchEvent(new Event("input", {bubbles: true}));
+    };
+    const button = (action: string, label: string, disabled = false) => `<button type="button" class="lc-checkin__text-button" data-builder-action="${action}"${disabled ? " disabled" : ""}>${t(label)}</button>`;
+    const render = () => {
+        host.innerHTML = `<h3>${t("journal.builder")}</h3>${button("undo", "review.undo", !undo)}${templates.map((template, i) => `<fieldset data-builder-template="${i}"><legend>${escapeHtml(template.name || "")}</legend><label>${t("journal.name")}<input data-builder-name maxlength="60" value="${escapeHtml(template.name || "")}" /></label>${button("remove-template", "journal.remove")}${template.questions.map((q, j) => `<div class="lc-checkin__journal-builder-question" data-builder-question="${j}"><label>${t("journal.question")} ${j + 1}<input data-builder-text maxlength="200" value="${escapeHtml(q.text || "")}" /></label><select data-builder-type aria-label="${t("journal.question")} ${j + 1}">${["text", "textarea", "slider"].map(type => `<option value="${type}"${q.type === type ? " selected" : ""}>${t(type === "text" ? "journal.typeText" : type === "slider" ? "journal.typeSlider" : "journal.typeTextarea")}</option>`).join("")}</select><label><input type="checkbox" data-builder-required${q.required ? " checked" : ""} />${t("journal.required")}</label>${button("up", "journal.moveUp", j === 0)}${button("remove-question", "journal.remove", template.questions.length === 1)}</div>`).join("")}${button("add-question", "journal.addQuestion", template.questions.length >= 20)}${button("preview", "journal.preview")}<div data-builder-preview></div></fieldset>`).join("")}${button("add-template", "journal.addTemplate", templates.length >= 10)}<select data-builder-preset aria-label="${t("journal.copyPreset")}">${deps.presets.map((p, i) => `<option value="${i}">${escapeHtml(p.name)}</option>`).join("")}</select>${button("copy-preset", "journal.copyPreset", templates.length >= 10)}`;
+    };
+    const read = () => {
+        const parsed = deps.parse(text.value);
+        if (parsed.invalidBlocks) { host.textContent = t("journal.customInvalid", {n: parsed.invalidBlocks}); return; }
+        templates = parsed.templates;
+        render();
+    };
+    text.addEventListener("change", read);
+    host.addEventListener("input", event => {
+        const input = event.target as HTMLInputElement;
+        const section = input.closest<HTMLElement>("[data-builder-template]");
+        const template = templates[Number(section?.dataset.builderTemplate)];
+        if (!template) return;
+        if (input.hasAttribute("data-builder-name")) template.name = input.value;
+        const row = input.closest<HTMLElement>("[data-builder-question]");
+        const question = row ? template.questions[Number(row.dataset.builderQuestion)] : undefined;
+        if (question) {
+            if (input.hasAttribute("data-builder-text")) question.text = input.value;
+            if (input.hasAttribute("data-builder-required")) question.required = input.checked;
+            if (input.hasAttribute("data-builder-type")) question.type = input.value as "text" | "textarea" | "slider";
+        }
+        sync();
+    });
+    host.addEventListener("click", event => {
+        const target = (event.target as Element).closest<HTMLButtonElement>("[data-builder-action]");
+        if (!target || target.disabled) return;
+        const action = target.dataset.builderAction;
+        if (action === "undo" && undo) { templates = undo; undo = undefined; sync(); render(); return; }
+        const section = target.closest<HTMLElement>("[data-builder-template]");
+        const i = Number(section?.dataset.builderTemplate);
+        const template = templates[i];
+        const j = Number(target.closest<HTMLElement>("[data-builder-question]")?.dataset.builderQuestion);
+        if (action === "preview" && template) {
+            const preview = section?.querySelector<HTMLElement>("[data-builder-preview]");
+            if (preview) preview.innerHTML = template.questions.map(q => `<label class="lc-checkin__journal-question"><span>${escapeHtml(q.text || "")}${q.required ? " *" : ""}</span>${q.type === "textarea" ? `<textarea aria-label="${escapeHtml(q.text || "")}"></textarea>` : `<input type="${q.type === "slider" ? "range" : "text"}" min="1" max="5" aria-label="${escapeHtml(q.text || "")}" />`}</label>`).join("");
+            return;
+        }
+        if (action === "add-template" || action === "copy-preset") {
+            undo = structuredClone(templates);
+            if (templates.length >= 10) return;
+            const preset = action === "copy-preset" ? deps.presets[Number(host.querySelector<HTMLSelectElement>("[data-builder-preset]")?.value)] : undefined;
+            const id = `custom-${Array.from(crypto.getRandomValues(new Uint32Array(2)), part => part.toString(36)).join("-")}`;
+            templates.push({id, icon: preset?.icon || "📝", name: preset?.name || t("journal.addTemplate"), period: "any", layout: "list", questions: preset ? preset.questions.map(q => ({...q})) : [{text: t("journal.question"), type: "textarea", required: false}]});
+        } else if (template) {
+            undo = structuredClone(templates);
+            if (action === "remove-template") templates.splice(i, 1);
+            if (action === "add-question" && template.questions.length < 20) template.questions.push({text: t("journal.question"), type: "textarea", required: false});
+            if (action === "remove-question" && template.questions.length > 1) template.questions.splice(j, 1);
+            if (action === "up" && j > 0) [template.questions[j - 1], template.questions[j]] = [template.questions[j], template.questions[j - 1]];
+        }
+        sync();
+        render();
+        host.querySelector<HTMLInputElement>(`[data-builder-template="${Math.min(i || 0, templates.length - 1)}"] input`)?.focus({preventScroll: true});
+    });
+    read();
 }
 
 export function openJournalDialogFor(deps: JournalDialogDeps): void {
@@ -49,32 +126,74 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
     dialog.element.querySelector<HTMLElement>(".b3-dialog__body")?.classList.add("lc-checkin__journal-body");
     const form = dialog.element.querySelector<HTMLFormElement>("[data-journal-form]");
     if (!form) return;
+    const status = document.createElement("p");
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    form.querySelector(".lc-checkin__journal-actions")?.before(status);
+    const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-journal-answer]"));
+    fields.forEach((field, index) => {
+        if (deps.draft?.[index] !== undefined) field.value = deps.draft[index];
+    });
+    const updateTarget = () => {
+        const docMode = form.querySelector<HTMLInputElement>("input[name='journalTarget']:checked")?.value === "doc";
+        const notebook = form.querySelector<HTMLElement>(".lc-checkin__journal-notebook");
+        const doc = form.querySelector<HTMLElement>(".lc-checkin__journal-docid");
+        if (notebook) notebook.hidden = docMode;
+        if (doc) doc.hidden = !docMode;
+    };
+    form.querySelectorAll("input[name='journalTarget']").forEach(radio => radio.addEventListener("change", updateTarget));
+    updateTarget();
+    form.addEventListener("input", () => deps.onDraft?.(fields.map(field => field.value)));
     form.querySelector<HTMLElement>("[data-journal-cancel]")?.addEventListener("click", () => dialog.destroy());
     form.addEventListener("submit", (event) => {
         event.preventDefault();
         const submitButton = form.querySelector<HTMLButtonElement>("[data-journal-submit]");
         if (submitButton?.disabled) return;
+        status.textContent = "";
         const answers = template.questions.map((question, index) => {
             const input = form.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-journal-answer="${index}"]`);
             const value = input instanceof HTMLInputElement && input.type === "range" ? String(input.value) : (input?.value || "").trim();
             return question.type === "slider" ? `${value}/5` : value;
         });
-        const missing = template.questions.some((question, index) => question.required && !answers[index]);
-        if (missing) {
+        const missing = template.questions.findIndex((question, index) => question.required && !answers[index]);
+        fields.forEach(field => field.removeAttribute("aria-invalid"));
+        if (missing >= 0) {
+            fields[missing]?.setAttribute("aria-invalid", "true");
+            fields[missing]?.focus();
             showMessage(t("journal.requiredMissing"));
             return;
         }
         const mode = form.querySelector<HTMLInputElement>("input[name='journalTarget']:checked")?.value === "doc" ? "doc" : "daily";
         const notebookId = form.querySelector<HTMLSelectElement>("select[name='journalNotebook']")?.value || "";
         const docId = form.querySelector<HTMLInputElement>("input[name='journalDocId']")?.value?.trim() || "";
-        deps.onPersistIntegration({mode, notebookId, docId});
+        if ((mode === "doc" && !/^\d{14}-[a-z0-9]{7}$/.test(docId)) || (mode === "daily" && !notebookId)) {
+            showMessage(t("journal.targetInvalid"));
+            return;
+        }
         if (submitButton) {
             submitButton.disabled = true;
             submitButton.setAttribute("aria-busy", "true");
         }
-        void deps
-            .onSubmit(answers)
-            .catch(() => undefined)
-            .then(() => dialog.destroy());
+        const locked = Array.from(form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select")).filter(input => !input.disabled);
+        const submittedDraft = fields.map(field => field.value);
+        locked.forEach(input => { input.disabled = true; });
+        void (async () => {
+            try {
+                await deps.onPersistIntegration({mode, notebookId, docId});
+                if (await deps.onSubmit(answers, {mode, notebookId, docId})) {
+                    deps.onDraft?.([], submittedDraft);
+                    dialog.destroy();
+                } else status.textContent = t("journal.retryHint");
+            } catch {
+                status.textContent = t("journal.retryHint");
+                showMessage(t("journal.retryHint"));
+            } finally {
+                locked.forEach(input => { input.disabled = false; });
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.removeAttribute("aria-busy");
+                }
+            }
+        })();
     });
 }

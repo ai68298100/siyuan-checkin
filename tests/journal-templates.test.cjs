@@ -129,3 +129,8 @@ assert.match(scss, /\.lc-checkin__journal-answer,/, "mobile 44px baseline covers
 assert.match(scss, /\.lc-checkin__journal-actions button \{ min-height: 44px; \}/, "mobile 44px baseline covers journal actions");
 
 console.log("journal template guard tests passed.");
+const stableTemplate = {id: "my-stable-id", name: "Renamed", icon: "📝", period: "any", layout: "list", questions: [{text: "Required answer", type: "text", required: true}]};
+const stableRoundtrip = journal.parseCustomJournalTemplatesText(journal.serializeCustomJournalTemplatesText([stableTemplate]), [stableTemplate.id]);
+assert.equal(stableRoundtrip.templates[0].id, stableTemplate.id, "saving/renaming preserves bound template identity");
+assert.equal(stableRoundtrip.templates[0].questions[0].required, true, "text roundtrip preserves required questions");
+assert.equal(journal.parseCustomJournalTemplatesText("# Form | 📝 | blank-test\nValid | text\n | textarea | required").invalidBlocks, 1, "empty builder questions reject the whole template");

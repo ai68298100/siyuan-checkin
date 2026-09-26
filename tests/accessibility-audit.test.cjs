@@ -24,6 +24,7 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
 (async () => {
     const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
     const violations = [];
+    let checkedPairs = 0;
 
     for (const dark of [false, true]) {
         const page = await browser.newPage({viewport: {width: 1280, height: 900}});
@@ -125,25 +126,32 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                     if (value > 0) problems.push({kind: "positive-tabindex", surface: surfaceName, detail: `${el.tagName.toLowerCase()}[${value}]`});
                 });
                 /* 3. 对比度。 */
-                const lum = (color) => {
-                    const match = color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
-                    if (!match) return null;
-                    if (match[4] !== undefined && Number(match[4]) === 0) return null;
+                let checked = 0;
+                const canvas = document.createElement("canvas");
+                canvas.width = canvas.height = 1;
+                const painter = canvas.getContext("2d", {willReadFrequently: true});
+                const lum = (color, background) => {
+                    painter.clearRect(0, 0, 1, 1);
+                    if (background) { painter.fillStyle = background; painter.fillRect(0, 0, 1, 1); }
+                    painter.fillStyle = color;
+                    painter.fillRect(0, 0, 1, 1);
+                    const pixel = painter.getImageData(0, 0, 1, 1).data;
+                    if (!pixel[3]) return null;
                     const channel = (value) => {
                         const v = Number(value) / 255;
                         return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
                     };
-                    return 0.2126 * channel(match[1]) + 0.7152 * channel(match[2]) + 0.0722 * channel(match[3]);
+                    return 0.2126 * channel(pixel[0]) + 0.7152 * channel(pixel[1]) + 0.0722 * channel(pixel[2]);
                 };
                 const backgroundOf = (el) => {
-                    let node = el;
-                    while (node && node !== document.documentElement) {
-                        const style = getComputedStyle(node);
-                        const bg = lum(style.backgroundColor);
-                        if (bg !== null) return {lum: bg, node};
-                        node = node.parentElement;
-                    }
-                    return {lum: 1, node: null};
+                    const chain = [];
+                    for (let node = el; node; node = node.parentElement) chain.unshift(getComputedStyle(node).backgroundColor);
+                    painter.fillStyle = "white";
+                    painter.fillRect(0, 0, 1, 1);
+                    for (const color of chain) { painter.fillStyle = color; painter.fillRect(0, 0, 1, 1); }
+                    const pixel = painter.getImageData(0, 0, 1, 1).data;
+                    const color = `rgb(${pixel[0]},${pixel[1]},${pixel[2]})`;
+                    return {lum: lum(color), color};
                 };
                 const textEls = container.querySelectorAll("h1, h2, h3, strong, small, em, p, span, label, button, div:not(:has(*))");
                 const seen = new Set();
@@ -154,11 +162,12 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                     const text = (el.textContent || "").trim();
                     if (!text) continue;
                     const style = getComputedStyle(el);
-                    const fg = lum(style.color);
-                    if (fg === null) continue;
                     const bg = backgroundOf(el);
+                    const fg = lum(style.color, bg.color);
+                    if (fg === null) continue;
                     if (bg.lum === null) continue;
                     const ratio = (Math.max(fg, bg.lum) + 0.05) / (Math.min(fg, bg.lum) + 0.05);
+                    checked++;
                     const size = parseFloat(style.fontSize);
                     const bold = Number(style.fontWeight) >= 600;
                     const large = size >= 24 || (size >= 18.66 && bold);
@@ -170,8 +179,9 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                         problems.push({kind: "contrast", surface: surfaceName, detail: `${ratio.toFixed(2)}:1 @${size}px ${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""} "${text.slice(0, 16)}"`});
                     }
                 }
-                return problems;
-            }, surfaceName).then((found) => {
+                return {problems, checked};
+            }, surfaceName).then(({problems: found, checked}) => {
+                checkedPairs += checked;
                 for (const problem of found) violations.push({...problem, surface: auditName(problem.surface || surface)});
             });
         };
@@ -216,7 +226,8 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
     const missingName = violations.filter((v) => v.kind === "missing-name");
     const positiveTab = violations.filter((v) => v.kind === "positive-tabindex");
     const contrast = violations.filter((v) => v.kind === "contrast");
-    console.log(`accessibility audit: ${missingName.length} missing names, ${positiveTab.length} positive tabindex, ${contrast.length} contrast pairs (light+dark)`);
+    console.log(`accessibility audit: ${missingName.length} missing names, ${positiveTab.length} positive tabindex, ${contrast.length} contrast violations / ${checkedPairs} checked pairs (light+dark)`);
+    assert.ok(checkedPairs > 0, "contrast audit must inspect rendered text");
     for (const item of [...missingName, ...positiveTab].slice(0, 40)) console.log(`  [${item.kind}] ${item.surface} ${item.detail}`);
     const contrastSeen = new Set();
     for (const item of contrast) {

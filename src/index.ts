@@ -59,7 +59,7 @@ import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} f
 import {buildCorrelationInsights as computeCorrelationInsights, type CorrelationInsight, type CorrelationItemSeries} from "./features/correlation-insights";
 import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth} from "./features/note-bindings";
-import {openJournalDialogFor} from "./render/journal-dialog";
+import {openJournalDialogFor, bindJournalBuilder} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows} from "./features/health-inbox";
@@ -435,6 +435,9 @@ export default class CheckinPlugin extends Plugin {
     private journalCustomTemplates: JournalTemplateDef[] = [];
     private journalIntegrationPref: JournalIntegration = normalizeJournalIntegration(undefined);
     private journalNotebooks: ReadonlyArray<{id: string; name: string}> = [];
+    private journalDrafts = new Map<string, string[]>();
+    private journalPending = new Set<string>();
+    private settingsDrafts = new Map<string, string>();
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -700,18 +703,20 @@ export default class CheckinPlugin extends Plugin {
 
     /** 目标定位栈（D-273）：显式文档 > 当日日记（dailyNoteSavePath 经 sprig 渲染 + hpath 定位 +
         createDocWithMd 同路径幂等创建）；不硬编码 /diary/。 */
-    private async resolveJournalTarget(): Promise<{docId: string; docName: string; reason?: string}> {
-        if (this.journalIntegrationPref.mode === "doc") {
-            const docId = this.journalIntegrationPref.docId;
+    private async resolveJournalTarget(integration = this.journalIntegrationPref, create = true): Promise<{docId: string; docName: string; reason?: string}> {
+        if (integration.mode === "doc") {
+            const docId = integration.docId;
             if (!docId) return {docId: "", docName: "", reason: "missing-doc-id"};
-            const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE id = '${docId.replace(/'/g, "''")}' LIMIT 1`}).catch(() => undefined);
-            const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: unknown[]}).data : [];
+            const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, root_id FROM blocks WHERE id = '${docId.replace(/'/g, "''")}' LIMIT 1`});
+            if (found.code !== 0 || !Array.isArray((found as {data?: unknown}).data)) throw new Error("target-check-failed");
+            const rows = (found as {data: Array<{id: string; root_id?: string}>}).data;
             if (!rows.length) return {docId: "", docName: "", reason: "doc-not-found"};
-            return {docId, docName: t("journal.targetDoc")};
+            return {docId: rows[0].root_id || rows[0].id, docName: t("journal.targetDoc")};
         }
         const notebooks = await this.listNotebooksForJournal();
         if (!notebooks.length) return {docId: "", docName: "", reason: "no-notebook"};
-        const notebook = notebooks.find((entry) => entry.id === this.journalIntegrationPref.notebookId)?.id || notebooks[0].id;
+        const notebook = notebooks.find((entry) => entry.id === integration.notebookId)?.id || (!integration.notebookId ? notebooks[0].id : "");
+        if (!notebook) return {docId: "", docName: "", reason: "notebook-not-found"};
         const conf = await this.kernelPost("/api/notebook/getNotebookConf", {notebook}).catch(() => undefined);
         const confPayload = (((conf ?? {}) as {data?: unknown}).data ?? {}) as {conf?: {dailyNoteSavePath?: string}; dailyNoteSavePath?: string};
         const pathTemplate = confPayload.conf?.dailyNoteSavePath || confPayload.dailyNoteSavePath || "";
@@ -721,7 +726,8 @@ export default class CheckinPlugin extends Plugin {
         if (!hpath.startsWith("/")) return {docId: "", docName: "", reason: "render-failed"};
         const escaped = hpath.replace(/'/g, "''");
         const bare = escaped.replace(/^\//, "");
-        const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, hpath FROM blocks WHERE type = 'd' AND (hpath = '${escaped}' OR hpath = '${bare}') ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, hpath FROM blocks WHERE type = 'd' AND box = '${notebook.replace(/'/g, "''")}' AND (hpath = '${escaped}' OR hpath = '${bare}') ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        if (found?.code !== 0 || !Array.isArray((found as {data?: unknown}).data)) throw new Error("daily-lookup-failed");
         const rows = Array.isArray((found as {data?: unknown[]})?.data) ? (found as {data: Array<{id?: string; hpath?: string}>}).data : [];
         if (rows.length && rows[0].id) {
             return {docId: String(rows[0].id), docName: String(rows[0].hpath || hpath).split("/").filter(Boolean).pop() || hpath};
@@ -729,29 +735,35 @@ export default class CheckinPlugin extends Plugin {
         /* T-1470 健壮性吸收（dailynote-today 先例）：hpath 未命中时按宿主自动加的
            custom-dailynote 属性兜底定位（文档被改名/移动后仍能找到，防重复建文档）。 */
         const yyyymmdd = dateKey(currentCalendarDate()).replace(/-/g, "");
-        const byAttr = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE type = 'd' AND ial LIKE '%custom-dailynote-${yyyymmdd}%' ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        const byAttr = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE type = 'd' AND box = '${notebook.replace(/'/g, "''")}' AND ial LIKE '%custom-dailynote-${yyyymmdd}%' ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        if (byAttr?.code !== 0 || !Array.isArray((byAttr as {data?: unknown}).data)) throw new Error("daily-lookup-failed");
         const attrRows = Array.isArray((byAttr as {data?: Array<{id?: string}>})?.data) ? (byAttr as {data: Array<{id?: string}>}).data : [];
         if (attrRows.length && attrRows[0].id) {
             return {docId: String(attrRows[0].id), docName: t("journal.targetDaily")};
         }
+        if (!create) return {docId: "", docName: "", reason: "not-written"};
         const created = await this.kernelPost("/api/filetree/createDocWithMd", {notebook, path: hpath, markdown: ""}).catch(() => undefined);
+        if (created?.code !== 0) throw new Error("create-failed");
         const docId = typeof (created as {data?: unknown})?.data === "string" ? String((created as {data: string}).data) : "";
         if (!docId) return {docId: "", docName: "", reason: "create-failed"};
         return {docId, docName: hpath.split("/").filter(Boolean).pop() || hpath};
     }
 
     /** 幂等写入：标记命中 → updateBlock 更新插件自写块；否则 appendBlock 追加。 */
-    private async writeJournalEntry(template: ResolvedJournalTemplate, localDate: string, markdown: string): Promise<{ok: boolean; updated: boolean; docId: string; docName: string; reason?: string}> {
+    private async writeJournalEntry(template: ResolvedJournalTemplate, localDate: string, markdown: string, integration = this.journalIntegrationPref): Promise<{ok: boolean; updated: boolean; docId: string; docName: string; reason?: string}> {
         try {
-            const target = await this.resolveJournalTarget();
+            const target = await this.resolveJournalTarget(integration);
             if (!target.docId) return {ok: false, updated: false, docId: "", docName: "", reason: target.reason || "target"};
             const lookup = await this.kernelPost("/api/query/sql", {stmt: buildJournalLookupQuery(target.docId, template.id, localDate)});
+            if (lookup.code !== 0 || !Array.isArray((lookup as {data?: unknown}).data)) throw new Error("entry-lookup-failed");
             const rows = Array.isArray((lookup as {data?: Array<{id?: string}>})?.data) ? (lookup as {data: Array<{id?: string}>}).data : [];
             if (rows.length && rows[0].id) {
-                await this.kernelPost("/api/block/updateBlock", {id: rows[0].id, data: markdown, dataType: "markdown"});
+                const response = await this.kernelPost("/api/block/updateBlock", {id: rows[0].id, data: markdown, dataType: "markdown"});
+                if (response.code !== 0) throw new Error("update-failed");
                 return {ok: true, updated: true, docId: target.docId, docName: target.docName};
             }
-            await this.kernelPost("/api/block/appendBlock", {data: markdown, dataType: "markdown", parentID: target.docId});
+            const response = await this.kernelPost("/api/block/appendBlock", {data: markdown, dataType: "markdown", parentID: target.docId});
+            if (response.code !== 0) throw new Error("append-failed");
             return {ok: true, updated: false, docId: target.docId, docName: target.docName};
         } catch (error) {
             return {ok: false, updated: false, docId: "", docName: "", reason: String(error instanceof Error ? error.message : error)};
@@ -774,7 +786,7 @@ export default class CheckinPlugin extends Plugin {
         const localDate = dateKey(currentCalendarDate());
         let alreadyWritten = false;
         try {
-            const target = await this.resolveJournalTarget();
+            const target = await this.resolveJournalTarget(this.journalIntegrationPref, false);
             if (target.docId) {
                 const lookup = await this.kernelPost("/api/query/sql", {stmt: buildJournalLookupQuery(target.docId, template.id, localDate)});
                 alreadyWritten = (Array.isArray((lookup as {data?: unknown[]})?.data) ? (lookup as {data: unknown[]}).data : []).length > 0;
@@ -786,24 +798,42 @@ export default class CheckinPlugin extends Plugin {
             notebooks,
             alreadyWritten,
             isMobileFrontend: this.isMobileFrontend,
-            onPersistIntegration: (integration) => {
-                this.journalIntegrationPref = integration;
-                void this.saveJournalData().catch(() => undefined);
+            draft: this.journalDrafts.get(`${itemId}:${template.id}:${localDate}`),
+            onDraft: (answers, submitted) => {
+                const key = `${itemId}:${template.id}:${localDate}`;
+                if (answers.length) this.journalDrafts.set(key, answers);
+                else if (!submitted || JSON.stringify(this.journalDrafts.get(key)) === JSON.stringify(submitted)) this.journalDrafts.delete(key);
             },
-            onSubmit: async (answers) => {
+            onPersistIntegration: async (integration) => {
+                const previous = this.journalIntegrationPref;
+                this.journalIntegrationPref = integration;
+                try { await this.saveJournalData(); }
+                catch (error) { this.journalIntegrationPref = previous; throw error; }
+            },
+            onSubmit: async (answers, integration) => {
+                const pendingKey = `${itemId}:${template.id}:${localDate}`;
+                if (this.journalPending.has(pendingKey)) return false;
+                this.journalPending.add(pendingKey);
+                try {
+                if (localDate !== dateKey(currentCalendarDate())) {
+                    showMessage(t("journal.dateChanged"));
+                    return false;
+                }
                 const moment = captureActionMoment();
                 const fingerprint = this.revisionFingerprint(item, currentCalendarDate());
                 /* 重填分流：当日已完成 → 事实已落盘，只更新文档；未完成 → 先记事实再旁路写入。 */
                 if (!isComplete(this.store, item, currentCalendarDate())) {
                     const event = await this.recordEvent(item, 1, moment, fingerprint, buildJournalEventNote(template, answers));
-                    if (!event) return; /* 事实层失败：recordEvent 已提示，不旁路写入。 */
+                    if (!event) return false; /* 事实层失败：保留答案，不旁路写入。 */
                 }
                 const markdown = buildJournalEntryMarkdown({template, localDate, answers});
-                const result = await this.writeJournalEntry(template, localDate, markdown);
+                const result = await this.writeJournalEntry(template, localDate, markdown, integration);
                 this.auditEntries = appendStoreAudit(this.auditEntries, {type: "anchor", at: new Date().toISOString(), details: {channel: "journal", template: template.id, docId: result.docId, updated: result.updated, ok: result.ok, reason: result.reason || ""}});
                 this.scheduleAuditPersist();
                 showMessage(result.ok ? t("journal.written", {name: result.docName || template.name}) : t("journal.writeFailed", {reason: result.reason || ""}));
                 if (this.currentPage === "today") this.renderBackgroundUpdate();
+                return result.ok;
+                } finally { this.journalPending.delete(pendingKey); }
             },
         });
     }
@@ -823,16 +853,20 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 设置页：保存自建模板文本（解析 fail-closed，非法块计数提示）。 */
-    private async saveJournalCustomTemplates(rawText: string): Promise<void> {        const existingIds = this.journalCustomTemplates.map((template) => template.id);
+    private async saveJournalCustomTemplates(rawText: string): Promise<boolean> {
+        const existingIds = this.journalCustomTemplates.map((template) => template.id);
         const parsed = parseCustomJournalTemplatesText(rawText, existingIds);
-        if (!parsed.templates.length && parsed.invalidBlocks > 0) {
+        if (parsed.invalidBlocks > 0) {
             showMessage(t("journal.customInvalid", {n: parsed.invalidBlocks}));
-            return;
+            return false;
         }
+        const previous = this.journalCustomTemplates;
         this.journalCustomTemplates = parsed.templates;
-        await this.saveJournalData();
+        try { await this.saveJournalData(); }
+        catch { this.journalCustomTemplates = previous; showMessage(t("msg.prefSaveFail")); return false; }
         if (parsed.invalidBlocks > 0) showMessage(`${t("journal.customSaved", {n: parsed.templates.length})} ${t("journal.customInvalid", {n: parsed.invalidBlocks})}`);
         else showMessage(t("journal.customSaved", {n: parsed.templates.length}));
+        return true;
     }
 
     /* 设置页手动补写今日摘要：与自动路径同一幂等门槛，重复点击不会重复追加。 */
@@ -1727,6 +1761,8 @@ export default class CheckinPlugin extends Plugin {
     }
 
     async onunload() {
+        this.journalDrafts.clear();
+        this.settingsDrafts.clear();
         this.closeAvatarEditor?.();
         this.disposing = true;
         /* 拆除预算由宿主统一计时，这里从 onunload 入口开始自计一个更小的预算，
@@ -2885,6 +2921,7 @@ export default class CheckinPlugin extends Plugin {
             auditEntries: this.auditEntries,
             journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
             journalCustomCount: this.journalCustomTemplates.length,
+            journalIntegration: this.journalIntegrationPref,
             noteBindings: collectNoteBindings({
                 diaryReport: this.diaryReport,
                 summaryResident: this.summaryResident,
@@ -2892,7 +2929,7 @@ export default class CheckinPlugin extends Plugin {
                 journalIntegration: this.journalIntegrationPref,
                 journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
                 yeguifIntegration: this.yeguifIntegration,
-                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId})),
+                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId, archived: entry.archived})),
             }),
             snapshots: this.snapshotHistory.map((snapshot, index) => ({index, capturedAt: snapshot.capturedAt, legacy: snapshot.legacy,
                 itemCount: normalizeStore(snapshot.store).items.length, eventCount: normalizeStore(snapshot.store).events.length})),
@@ -2953,6 +2990,78 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindSettings(root: HTMLElement) {
+        for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc"]) {
+            const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[${attribute}]`);
+            if (!field) continue;
+            const saved = field.value;
+            const draft = this.settingsDrafts.get(attribute);
+            if (draft === saved) this.settingsDrafts.delete(attribute);
+            else if (draft !== undefined) field.value = draft;
+            field.addEventListener("input", () => {
+                // The saved baseline can change without a rerender; keep the latest edit.
+                this.settingsDrafts.set(attribute, field.value);
+                const status = root.querySelector<HTMLElement>("[data-settings-feedback]");
+                if (status) status.textContent = this.settingsDrafts.size ? t("set.draftRetained") : "";
+            });
+        }
+        bindJournalBuilder(root, {
+            presets: this.resolvedJournalTemplateList().filter(template => JOURNAL_BUILTIN_TEMPLATES.some(preset => preset.id === template.id)),
+            parse: parseCustomJournalTemplatesText,
+            serialize: serializeCustomJournalTemplatesText,
+        });
+        const modeField = root.querySelector<HTMLSelectElement>("[data-journal-mode]");
+        const showJournalTarget = () => {
+            const daily = root.querySelector<HTMLElement>("[data-journal-daily-config]");
+            const doc = root.querySelector<HTMLElement>("[data-journal-doc-config]");
+            if (daily) daily.hidden = modeField?.value === "doc";
+            if (doc) doc.hidden = modeField?.value !== "doc";
+        };
+        modeField?.addEventListener("change", showJournalTarget);
+        showJournalTarget();
+        const notebookField = root.querySelector<HTMLSelectElement>("[data-journal-notebook-id]");
+        if (notebookField) {
+            this.journalNotebooks = [];
+            void this.listNotebooksForJournal().then(notebooks => {
+                if (!notebookField.isConnected) return;
+                const current = this.settingsDrafts.get("data-journal-notebook-id") ?? notebookField.value;
+                notebookField.replaceChildren(new Option(t("journal.notebookLabel"), ""), ...notebooks.map(book => new Option(book.name, book.id)));
+                notebookField.value = current;
+            });
+        }
+        for (const attribute of ["data-summary-doc", "data-health-doc", "data-journal-target-doc"]) {
+            const field = root.querySelector<HTMLInputElement>(`[${attribute}]`);
+            if (!field) continue;
+            if (attribute === "data-journal-target-doc") field.setAttribute("aria-label", t("journal.docIdLabel"));
+            const search = document.createElement("input");
+            search.type = "search";
+            search.placeholder = t("set.documentSearch");
+            search.setAttribute("aria-label", t("set.documentSearch"));
+            const choices = document.createElement("select");
+            choices.setAttribute("aria-label", t("set.documentResults"));
+            choices.add(new Option(t("set.documentResults"), ""));
+            field.before(search, choices);
+            let request = 0;
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            search.addEventListener("input", () => {
+                if (timer) clearTimeout(timer);
+                const current = ++request;
+                choices.replaceChildren(new Option(t("set.documentResults"), ""));
+                timer = setTimeout(() => {
+                    if (!search.isConnected) return;
+                    void runDiarySearchRequest({query: search.value.trim(), request: current,
+                        isCurrent: value => value === request, getSelect: () => choices,
+                        post: (url, payload) => fetchSyncPost(url, payload),
+                        render: (select, blocks) => select.replaceChildren(new Option(t("set.documentResults"), ""), ...blocks.filter(block => block.id).map(block => new Option(block.hPath || block.content || block.id, block.id))),
+                        onFailure: () => showMessage(t("msg.diarySearchFailed")),
+                    });
+                }, 180);
+            });
+            choices.addEventListener("change", () => {
+                if (!choices.value) return;
+                field.value = choices.value;
+                field.dispatchEvent(new Event("input", {bubbles: true}));
+            });
+        }
         this.bindDialogClose(root);
         this.bindMobileNav(root);
         root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
@@ -3077,52 +3186,98 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
             void this.writeSummaryResidentNow();
         });
-        root.querySelector<HTMLElement>("[data-action='save-journal-custom']")?.addEventListener("click", () => {
+        root.querySelector<HTMLButtonElement>("[data-action='save-journal-custom']")?.addEventListener("click", async (event) => {
             /* T-1465：自建问卷模板文本——解析 fail-closed，保存后编辑器绑定下拉立即可见。 */
             const input = root.querySelector<HTMLTextAreaElement>("[data-journal-custom]");
-            void this.saveJournalCustomTemplates(input?.value ?? "");
+            const button = event.currentTarget as HTMLButtonElement;
+            if (button.disabled) return;
+            const submitted = input?.value ?? "";
+            button.disabled = true;
+            try {
+                if (await this.saveJournalCustomTemplates(submitted)) {
+                    if (input?.value === submitted) this.settingsDrafts.delete("data-journal-custom");
+                    settingsFeedback(t("journal.customSaved", {n: this.journalCustomTemplates.length}));
+                }
+            } finally { button.disabled = false; }
+        });
+        root.querySelector<HTMLButtonElement>("[data-action='save-journal-target']")?.addEventListener("click", async (event) => {
+            const button = event.currentTarget as HTMLButtonElement;
+            if (button.disabled) return;
+            const mode = root.querySelector<HTMLSelectElement>("[data-journal-mode]")?.value === "doc" ? "doc" : "daily";
+            const notebookId = root.querySelector<HTMLInputElement>("[data-journal-notebook-id]")?.value.trim() || "";
+            const docId = root.querySelector<HTMLInputElement>("[data-journal-target-doc]")?.value.trim() || "";
+            if (mode === "doc" && !validateAnchorBlockId(docId) || mode === "daily" && !notebookId) { showMessage(t("journal.targetInvalid")); return; }
+            button.disabled = true;
+            const previous = this.journalIntegrationPref;
+            this.journalIntegrationPref = {mode, notebookId, docId};
+            try { await this.saveJournalData(); showMessage(t("msg.diaryDocSaved")); this.render(); }
+            catch { this.journalIntegrationPref = previous; showMessage(t("msg.prefSaveFail")); }
+            finally { button.disabled = false; }
         });
         /* T-1470 笔记联动总览：批量体检（SQL IN 一次校验全部文档/块目标 + lsNotebooks 校验笔记本）。 */
-        root.querySelector<HTMLElement>("[data-action='check-note-bindings']")?.addEventListener("click", () => {
+        root.querySelector<HTMLButtonElement>("[data-action='check-note-bindings']")?.addEventListener("click", (event) => {
+            const button = event.currentTarget as HTMLButtonElement;
+            if (button.disabled) return;
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            button.textContent = t("bind.checking");
             const rows = collectNoteBindings({
-                diaryReport: this.diaryReport,
-                summaryResident: this.summaryResident,
-                healthInbox: this.healthInbox,
-                journalIntegration: this.journalIntegrationPref,
+                diaryReport: this.diaryReport, summaryResident: this.summaryResident,
+                healthInbox: this.healthInbox, journalIntegration: this.journalIntegrationPref,
                 journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
                 yeguifIntegration: this.yeguifIntegration,
-                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId})),
+                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId, archived: entry.archived})),
             });
             const {docIds, notebookIds} = groupBindingTargets(rows);
             void (async () => {
-                const found = new Set<string>();
+                let found: Set<string> | null = new Set();
+                let validNotebooks: Set<string> | null = new Set();
                 if (docIds.length) {
-                    const list = docIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",");
-                    const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE id IN (${list})`}).catch(() => undefined);
-                    const data = (response as {data?: Array<{id?: string}>})?.data;
-                    if (Array.isArray(data)) for (const row of data) if (row.id) found.add(row.id);
+                    try {
+                        const list = docIds.map((id) => "'" + id.replace(/'/g, "''") + "'").join(",");
+                        const response = await this.kernelPost("/api/query/sql", {stmt: "SELECT id FROM blocks WHERE id IN (" + list + ")"}) as {code?: number; data?: Array<{id?: string}>};
+                        if (response.code && response.code !== 0 || !Array.isArray(response.data)) throw new Error("invalid-response");
+                        found = new Set(response.data.map((row) => row.id).filter((id): id is string => typeof id === "string"));
+                    } catch { found = null; }
                 }
-                const validNotebooks = new Set((await this.listNotebooksForJournal()).map((notebook) => notebook.id));
+                if (notebookIds.length) {
+                    try {
+                        const response = await this.kernelPost("/api/notebook/lsNotebooks", {}) as {code?: number; data?: {notebooks?: Array<{id: string; closed?: boolean}>}};
+                        if (response.code && response.code !== 0 || !Array.isArray(response.data?.notebooks)) throw new Error("invalid-response");
+                        validNotebooks = new Set(response.data.notebooks.filter((book) => !book.closed).map((book) => book.id));
+                    } catch { validNotebooks = null; }
+                }
+                if (!button.isConnected || this.disposed || this.disposing) return;
                 const health = mergeBindingHealth(rows, found, validNotebooks);
-                for (const row of rows) {
-                    const rowNode = root.querySelector<HTMLElement>(`[data-binding-row="${row.key}"]`);
-                    const statusNode = rowNode?.querySelector<HTMLElement>("[data-binding-status]");
-                    if (!statusNode) continue;
-                    const status = health[row.key] || "unchecked";
-                    statusNode.textContent = t(status === "ok" ? "bind.statusOk" : status === "missing" ? "bind.statusMissing" : "bind.statusUnknown");
+                root.querySelectorAll<HTMLElement>("[data-binding-row]").forEach((rowNode) => {
+                    const statusNode = rowNode.querySelector<HTMLElement>("[data-binding-status]");
+                    if (!statusNode) return;
+                    const status = health[rowNode.dataset.bindingRow || ""] || "unchecked";
+                    statusNode.textContent = t(status === "ok" ? "bind.statusOk" : status === "missing" ? "bind.statusMissing" : status === "error" ? "bind.statusError" : "bind.statusUnknown");
                     statusNode.classList.toggle("is-ok", status === "ok");
                     statusNode.classList.toggle("is-missing", status === "missing");
-                }
-            })();
+                    statusNode.setAttribute("role", "status");
+                });
+            })().finally(() => {
+                button.disabled = false;
+                button.removeAttribute("aria-busy");
+                button.textContent = t("bind.checkAll");
+            });
         });
         root.querySelectorAll<HTMLElement>("[data-open-binding]").forEach((button) => button.addEventListener("click", () => {
             void this.openBindingTarget(button.dataset.openBinding || "");
+        }));
+        root.querySelectorAll<HTMLElement>("[data-edit-binding]").forEach((button) => button.addEventListener("click", () => {
+            const item = this.store.items.find((entry) => entry.id === button.dataset.editBinding);
+            if (item) this.showEditor(item);
         }));
         root.querySelectorAll<HTMLElement>("[data-goto-binding]").forEach((button) => button.addEventListener("click", () => {
             const selector = button.dataset.gotoBinding || "";
             if (!selector) return;
             const input = root.querySelector<HTMLElement>(selector);
-            input?.closest("details")?.setAttribute("open", "open");
+            for (let parent = input?.parentElement; parent; parent = parent.parentElement) {
+                if (parent instanceof HTMLDetailsElement) parent.open = true;
+            }
             input?.scrollIntoView({block: "center"});
             input?.focus({preventScroll: true});
         }));
