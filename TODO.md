@@ -1,9 +1,25 @@
 # TODO
 
+## 当前开发队列（2026-09-26，D-275）
+
+用户要求移除所有等待宿主正式版或真机反馈的任务。已撤销 T-1464、T-1406、T-1408、T-1388、T-1344、T-1347、T-023、T-033、T-129、T-1256，以及 T-1346/T-1173 剩余现场等待部分；B-001/B-007 同步撤销。撤销不等于验收通过，既有完成记录和证据仍可追溯。下方已完成条目中的现场等待描述属于历史，不再产生任务。
+
+前三批 T-1472～T-1476 已交付。后续按以下顺序深化，具体边界与验收见执行路线第十五节；不因缺少外部发布或用户设备反馈停止。
+
+- [ ] T-1477 文档绑定配置闭环：保存前核验目标存在性与类型；总览显示名称/路径；问卷弹窗与设置共享目标选择行为；请求失败保留配置与重试入口。
+- [ ] T-1478 设置查找与保存体验深化：从分类匹配细化到具体设置定位，补结果导航/清空恢复；盘点手动保存字段，统一未保存提示与失败保留语义。
+- [ ] T-1479 问卷编辑效率：在既有增删/排序/预览基础上补题目复制、双向移动与键盘操作；明确删除模板对已绑定项目的影响和修复入口。
+- [ ] T-1480 UI 与交互一致性：今日/回顾/设置/弹窗复核按钮图标文字对齐、对比度、加载/空态/失败态、焦点回归和滚动连续性；动效辅助状态反馈并支持减弱动态。
+- [ ] T-1481 渲染与样式性能深化：先测设置搜索、大问卷编辑、后台刷新和大记录量回顾的耗时/DOM 规模，按实测瓶颈优化重复计算与重建；核查样式重复并维持现有预算。
+- [ ] T-1482 热图变体设计与实现（承接 R-17.4）：比较稀疏/分段热图的信息收益，先做可运行呈现与双主题验证，再接入既有统计；不改完成率和排期口径。
+- [ ] T-1483 宽屏回顾布局（承接 R-18.3c）：按既有内容优先级做响应式卡片编排原型，明确阅读/键盘顺序与窄屏回退，通过几何和视觉验收后接入。
+
+T-1386 多来源统一面板与断开/重试 UX 也属于本地可推进增量，排在配置闭环之后。热图和宽屏布局的设计步骤纳入任务本身，不再空等“设计窗口”。积分/兑换等产品边界变化仍为独立决策，不因本次清理自动批准。
+
 ## 最新触发核查（2026-09-26，T-1400 第九轮）
 
 - [x] T-1472～T-1476 里程碑后的轻量调研：正式宿主/上游回应/竞品无新增开发触发，注册表新增为查找替换与本地插件辅助；证据见 benchmark 第十九节和 PROGRESS。
-- 当前无新增可直接开工项；T-1464 仍等 3.8.6 正式版，设计/决策/真机等待项不自动解锁。本轮仅更新研究与台账，不修改插件代码、不 push、不发版。
+- 该轮无外部新增触发仅为当时的调研结论；本地开发队列已按 D-275 重建，见本文件顶部。宿主正式版与真机反馈等待项已撤销，不再作为停止开发的理由。
 
 ## 设置与记录体验完善（2026-09-26，用户确认三批开工）
 
@@ -11,15 +27,15 @@
 - [x] T-1473 问卷填写保护：失败保留答案、必答定位、会话草稿恢复、打卡与文档写入结果区分；所选笔记本限定查询、只读预检、内核错误码与重填幂等校验。
 - [x] T-1474 设置查找与配置：设置搜索、保存反馈、手动保存字段会话草稿与文档搜索选择；保存后改回旧值、异步笔记本选项恢复均有回归。
 - [x] T-1475 可视化问卷编辑：增删/排序/必答/题型/复制预设/预览/撤销，保留文本编辑；稳定 ID、空题拒绝保存和新建不复用删除身份。
-- [x] T-1476 UI 与动效精修：窄屏目标配置纵排、44px 控件与焦点、双主题颜色检测；沿用已有减少动效与滚动边界，不新增复杂动画。完整质量链、双主题视觉、双前端宽度走查及定向真实内核验收通过，性能实测见 PROGRESS；真机项继续开放。
+- [x] T-1476 UI 与动效精修：窄屏目标配置纵排、44px 控件与焦点、双主题颜色检测；沿用已有减少动效与滚动边界，不新增复杂动画。完整质量链、双主题视觉、双前端宽度走查及定向真实内核验收通过，性能实测见 PROGRESS。原现场等待已按 D-275 撤销。
 
-本批已完成本地自动化验收，尚未发布。使用说明：docs/settings-journal-experience.md；最终质量链日志：.artifacts/quality-t1472-final-verified.log。等待项继续按既有触发条件执行，不自动 push。
+本批已完成本地自动化验收，尚未发布。使用说明：docs/settings-journal-experience.md；最终质量链日志：.artifacts/quality-t1472-final-verified.log。后续开发按 T-1477～T-1483 推进，不自动 push。
 
 ## v18.7.0 已发布（2026-09-26，用户明示发版）
 
 - [x] 发布 T-1470 笔记联动总览、T-1471 两项手机修复与 README 重构；标准发布脚本 EXIT=0，main/tag 已推送，GitHub Latest=v18.7.0。发布提交 `3a6639c`，package.zip 734538 bytes，回源 SHA-256 `75bbb7a06fdad91dec874ef114be5e24abae2b13be4d6b0d93b4c4511147acbe` 与本地及发布说明一致。
 - [x] R-REL-CHECK：sireader#55 / siplayer#180 均 open、0 评论；无契约变化，无需更新原帖。
-- [x] T-1400 第八轮轻量调研：核查宿主/竞品/生态，新增 Zenith 观察项，无新增直接采纳任务；范围与证据见 benchmark 第十八节。T-1464 仍等思源 3.8.6 正式版，其他触发/真机/决策项保持等待。
+- [x] T-1400 第八轮轻量调研：核查宿主/竞品/生态，新增 Zenith 观察项，无新增直接采纳任务；范围与证据见 benchmark 第十八节。当时的宿主版本与设备等待现已按 D-275 撤销。
 
 
 ## v18.6.0 已发布（2026-09-26）
@@ -49,14 +65,14 @@
   - 发布执行（2026-09-24 用户确认）：main 推送 a53037d（含此前 25 个本地提交一并上云）、tag v18.3.0 推送、GitHub Release 附 package.zip（708,902 字节）标记 Latest；发版前完整 test:quality EXIT=0，SHA ba25b80f… 回填后与资产实测一致（0ed8e093…）。
   - 状态：released（https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.3.0）。
 
-## 当前任务证据分类（D-264，2026-09-23）
+## 当前任务分类（D-275 覆盖原 D-264 排期）
 
 - `local-auto`：不需要用户操作即可完成的纯逻辑、契约、结构 UI、导入预览、性能、恢复脚本和文档一致性；自动证据通过后可以继续推进。
-- `host-pending`：思源桌面、页签、dock、Android WebView、系统键盘/安全区、用户工作区和真机显示；保持开放，不以浏览器或 mock 关闭。
+- 版本/设备等待：已撤销，不属于开放任务；证据仍需注明浏览器、隔离内核或实际设备，撤销不等于测试通过。
 - `external`：Task Horizon、Dock Tomato、思阅、思播、健康等外部插件消费端、上游 API 合并和真实双插件时序；对方未发布前只做本地契约/fallback。
 - `decision`：积分、微信读书 Key/ToS/限流、自建同步、自动摘要隐私扩展、截图视觉取舍等需要用户或隐私判断的方向；不自动开工。
 
-当前路线不要求字面意义的 TODO 全部关闭才可继续本地开发。只要剩余阻塞项均属于 `host-pending`、`external` 或 `decision`，就可以按 [产品战略落地执行路线](docs/implementation-roadmap-product-strategy-2026-09.md) 的 R-A0～R-A12 泳道继续本地批次，并在 PROGRESS 中区分自动证据与现场证据。
+当前按 [产品战略落地执行路线](docs/implementation-roadmap-product-strategy-2026-09.md) 第十五节继续本地批次；external/decision 仅约束对应工作。旧泳道已经交付，不重复开发；没有外部触发不代表没有本地任务。
 ## 生态调研循环（长期常设；T-1400，2026-09-22 用户指示登记）
 
 用户指示：在所有任务完成、性能/功能/UI 均完善后，启动全网调研——GitHub、同类独立软件、Obsidian/Logseq 等笔记生态插件、思源集市本地插件——寻找值得吸收到本插件的优秀功能与想法；列出最适合的开始开发、测试、优化；完成后进入下一轮，形成常设循环。触发条件、流程与边界见 D-256。
@@ -103,8 +119,6 @@
   - 落地：① `record-step.ts` 新增 normalizeQuickSteps 纯函数（逗号/空白解析、升序去重、2 位小数、上限 4 个、>1e6 拒绝、binary 恒空）；② types.CheckinItem + model.normalizeItem + save-form 三侧同构物化 quickSteps（写后指纹逐键一致）；③ 编辑器「快捷增量按钮」文本字段（data-value-fields 内，binary 整组隐藏），i18n 三键中英；④ 今日页——renderItemView 渲染 lc-checkin__chip-button（跳过与主步长重复值），bind-today quick-record handler 改读 data-amount（缺失/非法回落重算默认步长），零新写路径；⑤ today 渲染块——TodayViewRow 增 quickSteps/unit，buildTodayViewHtml 渲染 data-block-record-amount chips 组（complete 行不渲染），block-renderer 透传 amount，宿主 recordBlockToday(itemId, amount?) 优先 chips 值；⑥ SCSS chips 样式+移动 44px 基线覆盖；⑦ 新守门 `tests/quick-steps.test.cjs`（归一化 12 组+三侧同构+接线+i18n+样式）入主链。真实触控归 host-pending。
 - [x] T-1463 迁移健壮性与边界用例（R-A15，第六轮采纳③，local-auto）——已开发完成（2026-09-26）
   - 落地：① 新守门 `tests/midnight-boundary.test.cjs`——思播恰好零点结束归第一日、双日各自累计、settleSegmentsToDays 双日幂等（已写日跳过/未写日结算/零拒绝）、yeguif 末条开放不记+块身份日期隔离（streak v2.0 参照场景，证据补强零行为变更）；② 导入未知列——loop-csv parseLoopHabitsCsv 返回 unknownHeaders（LOOP_KNOWN_HEADERS 清单外如实上报），LoopImportPlan.unknownColumns 进预览损耗词表 unknown-columns（import-preview 防御读取兼容旧形状），确认弹窗 msg.importUnknownColumns 点名列名（中英）；③ docs/export-formats.md 追加「向前兼容承诺」四条（只增不改/宽容读取/版本可辨/源文件不动）；④ docs/sync-design-review.md 追加 PixelHabits 三段式合并语义参考（并集/LWW/id 幂等+护栏），不实现同步；⑤ tests/loop-csv.test.cjs、tests/import-preview.test.cjs 扩充未知列用例。
-- [ ] T-1464 宿主 3.8.6 渲染块兼容回归（触发条件批次，local-auto）
-  - 触发：思源 3.8.6 正式版发布（当前 3.8.6-alpha 四连发，数据库日历/列表视图 API 变动期）。执行：`pnpm run test:e2e` 全量+渲染块真实内核用例（combo/today/日期跳转），确认无宿主回归；结果记 PROGRESS 与证据报告。
 - [x] T-1465 问卷式日记打卡（journal-prompt check-in，用户想法 2026-09-26，已开发完成）
   - 状态：done（2026-09-26）。调研与可行性见 benchmark 第十六节；D-273 定型全项落地。① 纯模块 `src/features/journal-templates.ts`——内置 5 预设（感恩三问/五分钟日记/九宫格晨间日记/KPT 复盘/深度复盘周记，题干走 i18n 键 52 键双语）、自建模板归一化（≤10 模板×≤20 题，中文命名走 djb2 确定性 id）、设置文本解析往返、单段块 Markdown 渲染（首行带幂等标记）、事件 note 截断摘要、查询语句转义、写入目标归一化。② 项目绑定——CheckinItem.journal {templateId}（model/save-form 两侧同构 slug 校验），编辑器二值项目专属下拉（内置+自建），bind-today data-action=journal 全按钮绑定。③ 弹窗 `src/render/journal-dialog.ts`——表单+写入目标配置（今日日记/指定文档+笔记本下拉），必答题 fail-closed，提交防重，宿主类注入沿用 quick-dialog 模式。④ 写入通道（index）——目标定位栈（显式文档 > SQL custom-dailynote/渲染 sprig hpath > createDocWithMd 幂等建文档；不硬编码 /diary/）、标记命中 updateBlock 整块更新否则 appendBlock 追加、recordEvent 先落盘（重填当日已完成时跳过重复记账）、写入失败不阻断打卡（审计+toast）、auditEntries channel=journal。⑤ 设置页「问卷日记」面板（自建模板编辑区+计数徽标）。⑥ 真实内核 e2e `tests/e2e/journal.spec.mjs`——建笔记本→绑定点按钮→填三问→事件落盘+文档块（marker+问答一体）→重填更新同块不重复记账，**22/22 全绿**。⑦ 守门 `tests/journal-templates.test.cjs` 入主链。关键实现决策：单段落块口径（多块 Markdown 会被内核拆块破坏 update 幂等，probe 实测后定版）；查询 ORDER BY id DESC（updateBlock 以新 id 重建块+旧块索引异步收敛，取最新保证多次重填命中）；journal.json 独立存储避免 view-preferences 加载器级联。e2e 工作区累积污染致 dual-window 审计合并断言间歇超限（干净工作区复测通过，HEAD 构建同样复现=非本轮回归）——已清理工作区并留档。
 - [x] T-1467 洞察与可视化深化第一批（R-A17 第 3 批：R-17.1/R-17.2/R-17.3，2026-09-26 开工并完成；R-17.4 留待渲染块迭代）
@@ -302,12 +316,8 @@
   - 数据面：书架/阅读时长与天数/笔记划线/阅读进度/点评——「阅读时长→每日打卡」与思阅适配器同型，可走五段框架（descriptor: api-push、identity `weread:<bookId>:<date>`、每日一次结算、opt-in 默认关、断开保留规则沿用 T-1430）。
   - 评估项：① 从 skill 包提取 API endpoint/鉴权/限流契约（Apache-2.0 允许适配，注意附许可声明）；② ToS/数据范围核对（仅读用户自身数据）；③ 适配器设计走 T-1427 预览模型（导入/接入前披露）；④ 备选路径：经思源智能体 + skill 间接读取（非确定性，仅作补充不作主通道）。
   - 归类：评估阶段 `local-auto`；真实账号数据联调 `host-pending`（需用户 Key 与授权）；不改 Store v3，不自动写入打卡（结算入 T-1427 式预览确认流）。
-- [ ] T-1438 思阅/思播上游提案提交（R-40.2，等用户明确授权后执行）
-  - 现状核查（2026-09-24）：**上游 issue/PR 尚未提交**——T-1395 三份提案（思阅/思播/Task Horizon）仅存在于 `docs/contracts/upstream-proposals/` 本地草案 + 守门测试，符合 D-255「无授权不提交外部仓库」纪律。
-  - 匹配度答复：思阅=本地生命周期计时适配器已交付（opt-in）；思播=实验采样适配器已交付（默认关）；两者均能在隔离内核 E2E 自动化通过，但**上游 API 未合并、真实双插件联调（T-1388）未做**——「完全匹配」尚不成立，差上游合并与现场证据两步。
-  - 提交内容（授权后）：三份提案按各自仓库转 issue/PR；附 contract fixture 与降级说明；提交后更新 T-1395 状态与 BLOCKERS。
-  - 状态：**已提交（2026-09-25，用户授权）**——思阅 issue #55（github.com/mm-o/siyuan-sireader/issues/55）、思播 issue #180（github.com/mm-o/siyuan-media-player/issues/180）；成稿按 v18.4.0 已发布事实优化（消费侧 fallback 随版发布+真实内核 e2e 20/20 证据+完整草案外链）。后续：跟踪上游回应，合并→发布→真机验收三关全过后按 D-255 切换 canonical source。
-  - 历史进展（2026-09-24）：思阅/思播两份 issue **成稿已备好**（docs/contracts/upstream-proposals/sireader-issue-draft.md、siplayer-issue-draft.md，标题+正文可直接粘贴），上游仓库入口已核实存在（mm-o/siyuan-sireader、mm-o/siyuan-media-player）；用户询问进度时未给出授权决定，按 D-255 维持待授权，回复「提交」即发出。Task Horizon 反向提案维持本地草案。
+- [x] T-1438 思阅/思播上游提案提交（2026-09-25 用户授权后完成）
+  - 已提交 sireader#55 与 siplayer#180；后续公开 API 契约协同归 T-1395/R-REL-CHECK，Task Horizon 反向提案仍为本地草案。提交事实与实际发布能力分开记录，不保留设备反馈等待门。
 - [x] T-1428 Task Horizon mock consumer 消费侧契约（R-A5 第一切片，映射 R-40.2，2026-09-24 开工并完成）
   - 内容：消费者参考实现 `examples/task-horizon-bridge/plugin.js` 升级——calendar.read 能力发现（v5 宿主走投影、v4 宿主显式降级 summary-fallback，旧消费者不因缺少新能力而失效）；`getProjection` 单飞合流（并发调用共享一次提供方读取）+ 事件失效缓存（刷新事件清空，上限 16 防泄漏）+ 超时守卫（projectionTimeoutMs 放弃并给出原因，不挂死消费者）+ Abort 守卫（已中止 signal 直接放弃且不打提供方）；`getStatus` 暴露 projectionMode/缓存/待写状态。注册资格与降级语义全部显式，不猜 v5 字段。
   - 测试：`tests/task-horizon-mock-consumer.test.cjs`（async IIFE）——v5 能力发现/单飞合流（3 并发 1 调用）/事件失效缓存/超时放弃/Abort 不打提供方/v4 显式降级且 summary 照常刷新/stop 语义，入 `pnpm test:ecosystem` 链；既有 bridge 守门（readiness/refresh/write/retry/矩阵）全绿不回退。
@@ -345,11 +355,8 @@
 - [x] T-1405 锚点挂起与失效状态 UX 复核（v18.1.x）
   - 验收：删除/不可达进入挂起而非「未绑定」；编辑器可见挂起提示；解绑清理只动本插件键；导入后解析失败保留原 ID。
   - 状态：done（2026-09-23 复核确认既有实现已覆盖研究要求——`suspendedAnchors` 按 item+block 挂起、编辑器 anchorSuspended 警示、重绑清除挂起、`clearAnchorAttr` 空串清理、导入沿用 normalizeItem 保留原 ID；本轮补跳转不可达提示闭合最后缺口，无其他新增改动。）
-- [ ] T-1406 锚点移动端触控与 Android 真机验收（v18.1.x，外部依赖）
-  - 验收：移动端锚点跳转触控目标/滚动定位、Android WebView 打开文档行为、块内定位不可用时的提示可读性；按 integration-smoke-checklist 记录真机证据。归 T-1388/T-1344 真机窗口。
 - [x] T-1407 v18.2.x 日记只读与手动确认收口（交付度核对）
   - 状态：done（2026-09-23 核对：T-1352 日记集成（搜索/新建/预览选择/手动写入本期报告）与 T-1353 摘要驻留已交付全部本地可做项——摘要展示=设置页三件套、预览=文档搜索选择、幂等=有界重试+审计、周期报告保持用户主动触发；剩余仅真机读取验证归 T-1344。无新增工作。）
-- [ ] T-1408 v18.2.x 真机验收（外部依赖）：日记写入与摘要驻留的真机读取/写入证据，归 T-1344 真机窗口。
 - [x] T-1398 发布工程收尾：回滚演练脚本化与资产清单导出
   - 来源：T-1368/T-1371 状态注记的共同遗留。范围：预发布→回滚演练形成可复跑脚本；发布资产清单（ZIP 内容 + SHA-256）导出脚本化并入 `check:release` 证据链。
   - 验收：演练与清单脚本在本地全流程可复跑；不改变发布包内容结构。
@@ -384,8 +391,8 @@
 - [x] T-1393 日历显示开关的编辑器与设置 UX
   - 验收：高级区项目级开关默认开启，说明“只影响任务管理器日历”；双语、ARIA、窄屏、保存失败回滚和重载一致；不新增全局开关替代项目设置。
   - 状态：done（2026-09-23，D-259。编辑器高级区 `data-taskhorizon-visible-field` 开关缺省勾选、aria-label、双语（editor.thVisible/thVisibleHint 1544 对键保持）、窄屏沿用既有 field-check 布局；保存失败回滚走 save-form 既有 persist 失败路径；不设全局开关）。
-- [ ] T-1394 双向联动边界、幂等与真实宿主验收
-  - 验收：显示开关与任务完成回写解耦；`taskhorizon:<blockId>:<localDate>` 重放/墓碑/补录日期/跨午夜/删除/归档/多窗口一致；双方 contract test 及思源桌面/页签/dock/Android 现场证据齐全后，再决定进入哪个 v18.x 小版本。
+- [ ] T-1394 双向联动边界、幂等与契约互置（外部依赖）
+  - 验收：显示开关与任务完成回写解耦；externalRef 重放/墓碑/补录日期/跨午夜/删除/归档/多窗口一致的契约用例；对方消费端实现与双方 contract test 按实际结果记录。设备反馈等待已撤销。
 
 ## 合作插件公开 API 协同与 PR 双轨保障（2026-09-22；规划登记，未开工）
 
@@ -418,7 +425,6 @@
   - 进度（2026-09-23 首切片——累计预览）：思阅/思播设置标题行在启用后显示「今日已累计 N 分钟」（`sourceDayMinutes` 纯函数读 store，来源行实时预览写入进度）；治理层累计预览承诺就此兑现，i18n 双语 1595 对键。剩余：多来源统一面板聚合、断开/重试 UX 细化（随外部来源数量增长按需推进）。
 - [x] T-1387 事件幂等、撤销与诊断：新 source 前缀注册、跨窗口并发、失败重试、墓碑、卸载清理、导出诊断和回滚矩阵。
   - 状态：done（2026-09-23，D-261。前缀注册=T-1384 已落（sireader 注册表+四处白名单+facade 防伪）；**修复累计结算缺陷**——资格判定改为按「当日累计分钟」（tracker.dayTotal），20+20 跨段达标可用，写入值=达标时点累计；**墓碑防复活双保险**——宿主预检 eventTombstones + 模型 appendEvents 拒绝墓碑身份，用户删除后同日阅读不再重写；**失败自愈**——不设显式重试器，未写成功的资格日在下次生命周期事件以新累计值自动重结算（结算确定性保证无副作用）；跨窗口并发由合并层 deduplicateExternalRefs 按 itemId+source+externalRef 收敛为单条（新增回归测试）；卸载清理 T-1384 已落（unbind+discardInFlight）。诊断码枚举不变（无新增失败面，自愈路径不产生用户可见错误）。tests/sireader-adapter.test.cjs 扩展累计结算/墓碑不复活/跨窗口收敛/自愈重试四组验收。）
-- [ ] T-1388 真实宿主验收与小版本决策：桌面页签/dock、独立窗口、Android、插件缺失/升级/重载、暂停/seek/循环/切集、跨日和时区；证据齐全后再决定进入哪个 v18.x 小版本。
 - [x] T-1401 外部应用来源评估批（B/C 类，2026-09-22 用户指示登记）：微信读书、Keep、手机健康中心三来源的官方导出格式取证、指标语义与接入渠道评估（健康中心优先评估快捷指令经公开 API push 的 C 类路径）；产出「做/延后/不做」评估卡（T-1378 同款格式，含用户收益、适配代价、验证方法与防双重累计分析）；评估完成前不写接入代码。
   - 状态：done（2026-09-23，docs/external-source-evaluation-2026-09.md。三路并行取证。**重大发现：微信读书已上线官方 Agent API**（`i.weread.qq.com` Bearer Key，腾讯官方域名，主流工具已迁移），完读事件+划线计数=做（条件批次），阅读时长=延后（当月按日可行，推翻「无官方时长」旧结论）；Keep=不做（无自助导出/无个人 API，仅客服 xlsx，第三方全靠私有接口）；健康中心 iOS 步数+体重=做（快捷指令经公开 API push 的文档级零代码交付），睡眠/Android 延后，锻炼时长不做。框架学习：新增第五渠道形态 official-pull（出站拉取官方 API），随 T-1402 实现时入枚举。评估完成，未写任何接入代码。）
 - [x] T-1402 微信读书适配器（条件批次，前置已满足，可转开发）：官方 Agent API Gateway（`POST https://i.weread.qq.com/api/agent/gateway`，Bearer wrk- Key）拉取阅读统计 `/readdata/detail`——`totalReadTime`（秒）+ `dailyReadTimes` 每日明细 + `readDays`；`weread:` 前缀 + externalRef 幂等；用户自助填 Key（本地偏好存储，不入库不入导出），opt-in + 断网静默降级；与思阅按「载体归属」互斥。前置确认：✅ Key 已有（用户提供）、✅ 官方通道已确认（Tencent/WeChatReading Apache-2.0）、✅ API 契约已文档化（readdata.md 含字段单位和口径说明）。开发步骤：① 纯函数（extractDailyReading→映射为时长片段）② 治理配置（偏好 `wereadIntegration {enabled, itemId, thresholdMinutes}`）③ 设置 UI ④ 守门测试。
@@ -538,20 +544,9 @@
 - [x] T-1343 回顾导出增强
   - 验收：目标偏差解释（本地确定性生成，数据不足时明说）、导出报告来源筛选、批量导出入口；全部走安全导出通道。
   - 状态：done（2026-09-21。①目标偏差解释：review-comparison 新增 buildReviewDeviationNotes 纯函数（±5 个百分点阈值、按幅度稳定排序、上限 3 条、防御缺失 items），报告新增「偏差解释」区块（reportSections.deviations 缺省开，旧偏好自动开启；提升/下降/持平/数据不足四类确定性文案）；基线区块关闭而偏差开启时仍构建比较对象。②来源筛选：analytics 摘要管线新增 SummarySourceOptions（source 过滤当前与基线口径），报告设置菜单新增来源下拉（全部/手动/番茄/API/导入，view-preferences.reportSource 持久化 + 非法值回退全部），筛选口径在报告内显式声明（report.sourceLine）。③批量导出：回顾更多工具新增「导出全部（JSON/CSV/报告）」，顺序触发三个导出，全部走既有安全导出通道。新增 tests/report-deviations.test.cjs（偏差分类/阈值/上限/持平/不足 + 来源过滤线程 + export-all + 偏好归一）接入 test:ui；report-sections 期望同步 deviations 区块。中文+英文宽度走查全过）
-- [ ] T-1344 真实宿主验收清零（依赖用户）
-  - 验收：T-023/T-033/T-129/T-1256/T-1173 按 integration-smoke-checklist 逐项关闭；B-007 双插件现场联调。证据进 PROGRESS，浏览器结果不替代真机。
 - [x] T-1345 设置页状态可观察性收口
   - 验收：番茄钟/Task Horizon/智能体三类外部依赖的状态、错误原因、重试与恢复提示统一为同一套组件与文案模式。
   - 状态：done（2026-09-21。设置页三行统一 data-dependency + data-dependency-state 钩子（healthy/degraded/error 三态经 dependencyBucket 显式映射：番茄 ready/running/paused=healthy、版本/API/能力/错误=error、其余=degraded；智能体 registered=healthy、failed=error、其余=degraded），状态值统一 role="status" + is-success/is-muted/is-error 视觉；每行新增统一 class 的恢复/重试提示（番茄：重载刷新+收件箱重试；智能体：核对宿主版本后重载注册；TH：对方缺位不阻塞+合作文档指针）；新增 Task Horizon 提供方就绪行（API v5 · 契约 v1，不冒充运行时握手状态）。新增 tests/dependency-status.test.cjs 接入 test:ui；agent-status 旧正则适配统一钩子）
-- [ ] T-1346 UI 错乱清查与修复
-  - 验收：文本截断/重叠/错位/滚动穿透/塌陷/主题切换残留扫描 × 四端双主题 × 关键宽度 × 长文本/英文 i18n/显示缩放；修复即补守门断言；长尾入多端显示台账。
-  - 进度（2026-09-20/21）：宽度走查（Edge）浅深双主题 42 页面+32 交互+8 对比度+10 混合+16 长内容全过，含编辑器模板披露高度、芯片点击断言；模板区改动（分批/最近使用/预览摘要）无溢出回归。
-  - 发现 1（已解决 2026-09-21）：pluginLanguage 未接线——已实现设置页「界面语言」（zh-CN/en-US/跟随思源，缺省 zh-CN 行为不变）；走查脚本支持 CHECKIN_QA_LANG=en-US 全矩阵英文审计，修正走查内 14 处硬编码中文期望为双语后，**英文界面全矩阵通过**（布局无错乱；EN 文案布局首次获得真实走查证据）。
-  - 发现 2（已解决 2026-09-21）：模板区分批显示与最近使用行的运行时断言已补入走查（展开器可见→点击全显→芯片置顶→重渲染后保持）。
-  - 剩余：仅真机显示缩放（80%/110%）变量——随 T-1344 真机窗口一并执行。dock 实宽 280px 场景已本地化：走查新增 280px 档（49 页面场景），实测发现并修复回顾页自定义范围条在 EN+280px 下的横向溢出（range-tabs 允许换行 + summary 可换行，review-workspace.scss）。
-- [ ] T-1347 真机显示回归通道（依赖用户反馈）
-  - 验收：真机显示问题台账逐条「脚本复现 + 用户确认」双证据关闭。
-  - 状态：台账建立于本文件与 BLOCKERS 跟踪；当前无新增真机显示反馈，通道就绪待第一份反馈。
 - [x] T-1348 现有模板盘点与打磨
   - 验收：打卡模板与事项模板逐个盘点（类型/排期/默认值/图标/i18n/与 SKIP、配额、负向语义兼容）；不合理就地修正；不迁移已建项目。
   - 状态：done（2026-09-20。盘点 45 个内置打卡模板 + 60+ 事项模板：修复 8 个模板缺失的 TEMPLATE_NAME_KEYS 映射（早餐/午休/颈部放松/戒烟/戒奶茶/限制咖啡/不熬夜刷手机/戒糖饮料——英文界面此前回退显示中文）、补齐「戒除」分组 tplGroup.quitting 双语键、补 20 个缺失 tplNote.* 双语键；修复合 bind-editor 硬编码中文筛选计数「个模板」→ t("editor.templateCount")；at-most 契约（daily-only）经门禁断言锁定。证据 tests/template-gallery.test.cjs 全绿）
@@ -776,10 +771,6 @@
   - 依赖：T-100
   - 状态：done（回顾页提醒中心新增「逾期历史」小节：每行 事项名 + 发生日 + 逾期天数 + 「补记」按钮（data-occasion-complete 走 setOccasionCompleted），最多显示 12 条；i18n 中英补齐；按钮补记后重渲染自动从历史消失）
 
-- [ ] T-023 真实设备验证修复
-  - 验收：用户反馈的所有问题修复
-  - 依赖：用户测试
-  - 状态：doing（2026-09-12 真机走查提出桌面端优化项，见 T-024；v9.5.0 已部署真机待复测）
 
 - [x] T-130 桌面事项页顶栏与完整信息展示
   - 验收：事项页顶栏与其他桌面页面同一水平基线；事项列表显示类型、重复规则、下次日期、倒计时和备注；转为打卡项目后才进入 Today 卡片
@@ -937,7 +928,6 @@
 - [x] T-098 explicit overdue status - distinguish overdue from upcoming in reminder ranking and filtering types.
 
 - [x] T-099 overdue reminder center UI - expose overdue filter and dedicated overdue label in Review.
-- [ ] T-033 真机残留验证：重载后确认 (a) 悬浮 全屏/关闭 按钮不再出现 (b) 备份横幅消失（源码已移除渲染） (c) 顶部导航条形态是否需要进一步打磨
 
 ## P1 下一阶段（2026-09-13 规划）
 
@@ -1526,8 +1516,6 @@
 - [x] T-128 局部刷新基础设施：抽出可复用的窗口 toast 渲染器，并为未改变完成态/筛选结构的数值记录更新单卡片派生文本与进度。
   - 状态：done（跨 dock/页签/快速窗口逐一校验，结构不稳定时安全回退完整渲染；新增结构守门）
 
-- [ ] T-129 局部刷新真机验收：在手机、页签和 dock 分别验证数值记录、撤销、筛选、完成态切换后的焦点与滚动位置；记录性能前后对比。
-  - 验收清单：`docs/integration-smoke-checklist.md`
 
 ### T-819~T-848 9.8 稳定化自动化护栏（2026-09-14）
 
@@ -2963,12 +2951,6 @@
   - 验收：建立 1k/10k/100k 事件在范围切换、折叠、筛选、导出场景的耗时与长任务基线；只优化用户可感知的慢路径，不以 CSS 字节数作为指标。
   - 依赖：无
   - 状态：done（新增 `tests/review-performance-baseline.test.cjs` 并纳入 `test:extended`；当前 100k 事件范围查询约 429ms、分析快照约 335ms、导出序列化约 50ms；门槛为防灾难性退化而非单机承诺）
-- [ ] T-1173 v15 跨端交互回归批次
-  - 验收：Today/回顾/事项/设置在桌面、页签、dock、移动端的焦点、滚动、触控、键盘和错误反馈一致；完整质量链及真实宿主验收记录齐全。
-  - 依赖：T-1171、T-1172
-  - 进度：自动化结构、宽度、移动端、无障碍和性能门禁已覆盖；真实思源宿主与多窗口现场证据仍待 B-007。
-  - 进度：本轮补齐归档恢复/删除、回顾导出、设置导入/恢复的 aria-busy、重复提交、错误可见性与焦点恢复结构守门；真实思源宿主与多窗口现场证据仍待 B-007。
-  - 进度：归档页批量工具栏已补整组互斥、筛选结果全选、单事务恢复/删除和 560px 窄容器回流；真实宿主触控与焦点仍待 B-007。
 
 - [x] T-1174 自动归档手动记账闭环
   - 验收：手动打卡与外部 API 记账在持久化成功后均进入同一自动归档检查；未达阈值、保存失败和撤销不误归档。
@@ -3187,9 +3169,6 @@ G组 文档（5/5）：88 路线图五版本计划表 89 生态合作文档（Ta
   - 状态：done（根因与量测见 D-224。改 `src/ui/components.scss`：移动端 `.lc-checkin__header-actions` 由 `overflow:hidden` 改 visible；`.lc-checkin__editor-header` 由 `position:static` 改 `relative; z-index:8`（sticky 时代的 z-index 因 static 失效，头部失去层叠上下文）；`.lc-checkin__text-button` 全局 `margin-top:15px` 在工具条按钮与菜单项内归零；工具组去独立胶囊（边框/底色/内边距归零）避免双层胶囊撑高；summary 与按钮统一方角无边框透明底；移动端 `justify-content: flex-start` 消除「更多」被推到最右的空洞。验证：新增 `tests/e2e/mobile-review-ui.spec.mjs`——四个控件顶部差为 0、两处下拉三点命中全在菜单内、自定义范围面板中心可命中，全部通过）
 - [x] T-1255 原生容器导出通道（点导出导致思源重启）
   - 状态：done（新增 `src/download.ts` 的 `saveGeneratedFile`：检测到 `JSAndroid`/`webkit.messageHandlers`/`JSHarmony` 保存桥时，先 `/api/file/putFile` 写 `assets/`，再把绝对 URL 交给宿主 `saveExportFile`；宿主按前端能力返回 `status:"error"` 才退回容器桥，成功时不重复触发；原生路径任何分支都不再产生 `blob:` 导航，失败只报错。7 处导出入口统一改道，Loop 双文件顺序 await。验证：`tests/download-channel.test.cjs`（浏览器/三容器/宿主拒绝/宿主成功/写盘失败/文件名净化/通道唯一性）纳入 `test:extended`；`tests/e2e/mobile-review-ui.spec.mjs` 在真实例里断言零 blob 调用 + 报告确实落在 `assets/` + 导出后插件仍可用）
-- [ ] T-1256 真机复核移动端修复
-  - 现状：E2E 用 Chromium 的移动 bundle + 伪造的 `JSAndroid` 桥验证，覆盖不到 Android WebView 的真实下载/保存面板与键盘行为
-  - 验收：在思源 Android 客户端上复核回顾页工具栏、两处下拉与自定义范围展开，并实际完成一次「导出报告」的系统保存（确认不再重启、`assets/` 内生成报告文件）
 - [x] T-1257 移动端提示条遮挡回顾工具栏
   - 现象：思源的临时提示条（`#message`）在移动端会盖住工具栏按钮，E2E 里必须先移除提示条才能点中「导出报告」
   - 状态：done（不写死真机高度：监听 `#message` 可见 snackbar 的实际边界与动画帧，动态下移回顾工具栏，并把自定义范围浮层放到完整工具栏下方；观察器随插件卸载清理。真实思源 3.8.4 内核 E2E 不再删除提示条、改用真实点击后通过。）
