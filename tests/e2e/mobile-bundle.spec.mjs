@@ -38,3 +38,43 @@ test("移动端 bundle 下插件可加载并完成一次打卡", async ({browser
     expect(pageErrors, `移动端出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
     await context.close();
 });
+
+test("移动端已完成区域可以展开、折叠并保持 hidden 状态", async ({browser}) => {
+    const client = createClient();
+    const context = await browser.newContext({...devices["iPhone 13"]});
+    const page = await context.newPage();
+    const pageErrors = [];
+    page.on("pageerror", (error) => pageErrors.push(String(error.message || error)));
+
+    await openCheckin(page, {bundle: "mobile"});
+    const item = makeTestItem("mobile-completed-toggle");
+    await seedStore(client, await snapshotStore(page), [item]);
+    await expect.poll(() => page.evaluate((id) => window.siyuanCheckin.getItems().some((entry) => entry.id === id), item.id), {timeout: 20000}).toBe(true);
+    const eventId = await page.evaluate(async (id) => (await window.siyuanCheckin.recordEvent({itemId: id, source: "api", externalRef: `e2e:mobile-completed-toggle:${id}`}))?.id, item.id);
+    expect(typeof eventId).toBe("string");
+    await expect.poll(async () => (await recordedEvents(client, item.id)).some((event) => event.id === eventId), {timeout: 20000}).toBe(true);
+
+    await page.reload();
+    await openCheckin(page, {bundle: "mobile"});
+    await page.click("#lcCheckinMobileTopBarButton");
+    const today = page.locator(".lc-checkin-dialog-host--mobile .lc-checkin--today");
+    const toggle = today.locator("[data-action='toggle-completed']");
+    const items = today.locator(".lc-checkin__completed-section > .lc-checkin__group-items");
+    await expect(toggle).toBeVisible({timeout: 20000});
+
+    if (await toggle.getAttribute("aria-expanded") === "false") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(items).not.toHaveAttribute("hidden");
+    await expect.poll(() => items.evaluate((element) => getComputedStyle(element).display)).not.toBe("none");
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(items).toHaveAttribute("hidden", "");
+    await expect.poll(() => items.evaluate((element) => getComputedStyle(element).display)).toBe("none");
+
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(items).not.toHaveAttribute("hidden");
+    expect(pageErrors, `移动折叠出现未捕获异常：${pageErrors.join(" | ")}`).toEqual([]);
+    await context.close();
+});

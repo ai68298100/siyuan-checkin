@@ -309,6 +309,17 @@
     .lc-checkin__review-more > summary { padding-inline: 7px; }
 }
 
+/* A review surface owns the inner scrollport, but the mobile dialog stack and
+   document viewport are outside the lc5 container query.  Leaving those outer
+   boxes at the browser default lets a boundary drag escape the inner port in
+   WebView, exposing a thin strip and moving the whole page.  Lock the complete
+   mobile review stack so a top/bottom gesture is consumed by the review port. */
+:is(html, body):has(:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--review),
+:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile):has(.lc-checkin--review),
+:is(.b3-dialog, .b3-dialog__container, .b3-dialog__body):has(:is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) .lc-checkin--review) {
+    overscroll-behavior-y: none;
+}
+
 /* Mobile host already owns Back and the archive page title. The insight
    heading retains its project name, with a single host Back control. */
 :is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile) {

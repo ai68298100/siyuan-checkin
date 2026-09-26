@@ -13,6 +13,7 @@ const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quic
 const pluginOpsSource = fs.readFileSync(path.join(root, "src", "plugin-ops.ts"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src", "index.scss"), "utf8");
 const v5Components = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
+const contentResponsive = fs.readFileSync(path.join(root, "src", "ui", "content-responsive.scss"), "utf8");
 
 assert.match(quickDialogSource, /hostClass = mobile \? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile"/,
     "mobile dialog styling must be present in the initial Dialog content");
@@ -62,6 +63,10 @@ assert.match(source, /progress: getProgress\(this\.store, current, actionDate\)/
 
 assert.match(v5Components, /\.lc-checkin-dialog-host--mobile[\s\S]*overscroll-behavior: contain;/,
     "mobile dialog scrolling must stay inside the dialog");
+assert.match(contentResponsive, /:is\(html, body\):has\([\s\S]*\.lc-checkin--review\)[\s\S]*overscroll-behavior-y:\s*none;/,
+    "mobile review must lock overscroll through the document/dialog stack");
+assert.match(contentResponsive, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-dialog-host--mobile\):has\(\.lc-checkin--review\)[\s\S]*overscroll-behavior-y:\s*none;/,
+    "mobile review host must use none rather than contain so the edge has no rubber-band affordance");
 assert.match(v5Components, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 16px\)/,
     "mobile dialog must follow the visual viewport when the keyboard opens");
 assert.match(v5Components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,

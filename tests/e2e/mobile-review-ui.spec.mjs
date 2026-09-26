@@ -39,6 +39,18 @@ test("移动端回顾页：对齐、浮层与导出通道", async ({browser}) =>
     });
     const exportDisclosure = page.locator('.review-export-disclosure');
     await expect(exportDisclosure).toBeVisible({timeout: 15000});
+    const overscroll = await page.evaluate(() => {
+        const pick = (selector) => {
+            const element = document.querySelector(selector);
+            return element ? getComputedStyle(element).overscrollBehaviorY : "missing";
+        };
+        return {
+            review: pick(".lc-checkin--review"),
+            host: pick(":is(.lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile)"),
+            body: getComputedStyle(document.body).overscrollBehaviorY,
+        };
+    });
+    expect(overscroll, "移动回顾页边界下拉必须由整条宿主滚动链拦截").toEqual({review: "none", host: "none", body: "none"});
     if (!await exportDisclosure.evaluate(element => element.open)) await exportDisclosure.locator('> summary').click();
     await expect(page.locator('.lc-checkin__review-tools')).toBeVisible();
 
