@@ -1,3 +1,5 @@
+2026-09-26 T-1386 本地部分最终验收：统一来源卡片的健康/微信读书/叶归“立即刷新”入口及失败反馈通过完整质量链；`pnpm run test:quality` EXIT=0，183 个测试文件、性能、CSS hygiene（659 类、0 死类、621392 bytes）、发布资产和回滚演练全部通过。TODO 重复历史条目已改为本地完成、外部消费端依赖保留。
+
 2026-09-26 T-1386 本地来源刷新 UX：设置来源卡片新增统一“立即刷新”入口，健康、微信读书、叶归分别复用 ingestHealthInbox、ingestWeread、ingestYeguif；不删除事件、不重算 externalRef，失败仍走现有反馈/诊断路径。验证：health-inbox、weread-adapter、yeguif-adapter、i18n-parity、ui-docs、accessibility、build:check 全部通过。
 
 2026-09-26 T-1483 宽屏回顾布局交付：在 lc5 容器宽度 ≥1200px 时，概览项目卡使用三列，分析区折叠卡使用两列；DOM 顺序保持阅读和键盘顺序，≤1200px 自动回退单列。验证：review-layout-regression 52 个真实 bundle 几何场景、review-workspace、build 前 typecheck、css-hygiene、双主题 visual QA 均通过。
