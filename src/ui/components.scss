@@ -4992,6 +4992,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__year-heatmap > summary::-webkit-details-marker { display: none; }
 .lc-checkin__yearheatmap-scroll { overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
 .lc-yearheatmap { min-width: 680px; display: block; }
+.lc-yearheatmap--weekly { min-width: 0; width: min(100%, 820px); height: auto; }
+.lc-checkin__heatmap-weekly { margin-top: 10px; color: var(--lc-checkin-muted); }
+.lc-checkin__heatmap-weekly > summary { cursor: pointer; color: var(--lc-checkin-accent-text); font-size: 12px; }
+.lc-checkin__heatmap-weekly small { display: block; margin-top: 5px; }
 .lc-yearheatmap .is-empty { fill: var(--lc-checkin-muted-surface); stroke: var(--lc-checkin-border); stroke-width: .5; }
 .lc-yearheatmap .is-level-1 { fill: color-mix(in srgb, var(--lc-checkin-accent) 18%, var(--lc-checkin-surface)); }
 .lc-yearheatmap .is-level-2 { fill: color-mix(in srgb, var(--lc-checkin-accent) 38%, var(--lc-checkin-surface)); }

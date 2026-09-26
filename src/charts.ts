@@ -407,6 +407,29 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
     return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录">${monthLabels}${weekdayLabels}${cells}</svg>`;
 }
 
+/**
+ * Compact weekly variant for sparse histories. It keeps the year as 53 fixed
+ * columns, so month and week position remain readable while empty days no
+ * longer dominate the visual surface. Counts and the existing day levels are
+ * derived from the same YearHeatmap projection.
+ */
+export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: number; gap?: number; ariaLabel?: string} = {}): string {
+    const cell = options.cell ?? 14;
+    const gap = options.gap ?? 3;
+    const weeks: Array<{start: string; end: string; records: number; active: number; level: number}> = [];
+    for (let index = 0; index < heatmap.days.length; index += 7) {
+        const days = heatmap.days.slice(index, index + 7);
+        const records = days.reduce((sum, day) => sum + Math.max(0, day.count), 0);
+        const active = days.filter(day => day.count > 0).length;
+        const level = days.reduce((max, day) => Math.max(max, day.level), 0);
+        weeks.push({start: days[0]?.date || "", end: days[days.length - 1]?.date || "", records, active, level});
+    }
+    const width = Math.max(1, weeks.length) * (cell + gap) + gap;
+    const cells = weeks.map((week, index) => `<rect class="${week.level > 0 ? `is-level-${week.level}` : "is-empty"}" x="${gap + index * (cell + gap)}" y="${gap}" width="${cell}" height="${cell}" rx="3"><title>${week.start}–${week.end}: ${week.records} records, ${week.active} active days</title></rect>`).join("");
+    const label = escapeChartText(options.ariaLabel || `${heatmap.year} weekly check-in distribution`);
+    return `<svg class="lc-yearheatmap lc-yearheatmap--weekly" viewBox="0 0 ${width.toFixed(0)} ${(cell + gap * 2).toFixed(0)}" role="img" aria-label="${label}">${cells}</svg>`;
+}
+
 /* R-A16（2026-09-26）：轻量 SVG 视觉件。单色阶梯 + 文字冗余编码（T-1461 基线），
    静态呈现零动效（D-263），零依赖纯函数、确定性输出。 */
 

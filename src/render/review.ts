@@ -7,7 +7,7 @@ import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type 
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
-import {buildYearHeatmap, renderBarChart, renderLineChart, renderSparkline, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
+import {buildYearHeatmap, renderBarChart, renderLineChart, renderSparkline, renderWeeklyHeatmap, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
@@ -347,7 +347,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const renderHeatmap = (): string => {
         const heatmapYear = Number(ctx.analyticsSnapshot.asOf.slice(0, 4)) + ctx.heatmapYearOffset;
         const heatmap = buildYearHeatmap(ctx.store, heatmapYear);
-        return `<section class="lc-checkin__year-heatmap"><div class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></div><div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div><div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map(level => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em><i class="is-skip" aria-hidden="true"></i><em>${t("review.heatmapSkip")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div></section>`;
+        return `<section class="lc-checkin__year-heatmap"><div class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></div><div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div><div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map(level => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em><i class="is-skip"></i><em>${t("review.heatmapSkip")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div><details class="lc-checkin__heatmap-weekly"><summary>${t("review.heatmapWeeklyTitle")}</summary><div class="lc-checkin__yearheatmap-scroll">${renderWeeklyHeatmap(heatmap, {ariaLabel: t("review.heatmapWeeklyLabel")})}</div><small>${t("review.heatmapWeeklyHint")}</small></details></section>`;
     };
     const renderTrends = (): string => {
     const weeklyTrend = ctx.analyticsSnapshot.weekly;

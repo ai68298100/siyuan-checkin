@@ -83,6 +83,10 @@ const heatmapSvg = charts.renderYearHeatmap(heatmap);
 assert.match(heatmapSvg, /class="lc-yearheatmap"/);
 assert.equal((heatmapSvg.match(/月<\/text>/g) || []).length, 12, "year heatmap labels all months");
 assert.match(heatmapSvg, /每格一天/);
+const weeklySvg = charts.renderWeeklyHeatmap(heatmap, {ariaLabel: "Weekly"});
+assert.match(weeklySvg, /lc-yearheatmap--weekly/);
+assert.match(weeklySvg, /aria-label="Weekly"/);
+assert.equal((weeklySvg.match(/<rect /g) || []).length, Math.ceil(heatmap.days.length / 7), "weekly variant keeps one spatial cell per week");
 
 // T-1410：四级色阶按有记录日的条数分布自适应分级（nearest-rank 百分位 25/50/75）
 const scaleStore = (spec) => {
