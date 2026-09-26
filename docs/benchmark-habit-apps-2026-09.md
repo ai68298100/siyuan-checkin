@@ -541,6 +541,22 @@ royc01/pinch（思源集市，v2.7.1 @2026-09-18，30 个 release，repo 2026-01
 
 四路扫描 100+ 次取证 → 竞品警报 1（Workbench，叙事层）、采纳 3（T-1461 低压力呈现规范/T-1462 数值快捷增量/T-1463 迁移健壮性）、延后 13、不做 8、佐证 9、工程注意项 2。本轮最重要的战略结论：**竞争压力从功能转向叙事**——「反打卡/零记录」营销正在兴起，小驴的应对不是跟随去记录化，而是把「低压力记录」做成可验收的呈现规范（T-1461）并讲清「不记录就没有可回看的数据」；差异化锚点继续压在习惯算法内核、不可变事件账本与统计口径，呈现层与宿主通用视图保持克制分工。
 
+## 十九、T-1400 生态调研循环·第九轮（2026-09-26，设置与记录体验里程碑收口）
+
+触发：T-1472～T-1476 完成本地提交 `68c5c1b`，用户继续开发。沿用第十七节的轻量轮方法：核查正式版/上游/竞品，定向读第八轮之后的注册表增量；不把版本未变等同于全网没有需求。本轮没有改动插件代码或发布资产。
+
+| 核查面 | 证据与结论 |
+| --- | --- |
+| [思源 releases](https://github.com/siyuan-note/siyuan/releases) | GitHub API latest 仍为正式版 v3.8.5；最新预发布 v3.8.6-alpha.6，2026-09-26 03:20:49 UTC 发布。T-1464 要求正式版，因此未触发。 |
+| [alpha.6 发布说明](https://github.com/siyuan-note/siyuan/releases/tag/v3.8.6-alpha.6) | 定向查看移动编辑器命令入口、嵌入块导出/工具栏、插件资源选择与发布资源目录声明等条目。它们是候选版本累计说明，不能据此断言全部是 alpha.5→alpha.6 新增，也不替代本插件真实渲染块回归。待正式版按 T-1464 执行。 |
+| [思阅 #55](https://github.com/mm-o/siyuan-sireader/issues/55)、[思播 #180](https://github.com/mm-o/siyuan-media-player/issues/180) | 均 open、0 评论，updated_at 仍为 09-25；没有维护者回应触发接口调整，不追加无实质内容的外部评论。 |
+| [Workbench](https://github.com/IAliceBobI/sy-workbench-plugin)、[Pinch](https://github.com/royc01/pinch) | 最新 Release 分别 v1.0.4 / v2.7.1；pushed_at 分别 09-25 16:25:37 UTC / 09-18 00:09:12 UTC，较第八轮未推进。 |
+| [思源集市 plugins.txt](https://github.com/siyuan-note/bazaar/blob/main/plugins.txt) | commits API 对该路径查询 since=2026-09-26T00:00:00Z 返回空。本结论只覆盖这个文件和查询窗口，不推断所有插件都没有更新。 |
+| [Obsidian 注册表最新增量 a71a376](https://github.com/obsidianmd/obsidian-releases/commit/a71a376c7a76fa9865150b49c48b2c4722159234) | 09-26 03:31:18 UTC，新加 Search and replace helper、Local Linker，另修改 Excel Lite / TaskNotes AI Reporter 简介。直接审阅 community-plugins.json diff；新增是查找替换/本地插件开发辅助，未发现需要本插件跟进的习惯或问卷机制。前一条 081bfc6 已在第八轮审阅，不重复宣称新增发现。 |
+| [Zenith](https://github.com/saifun0/obsidian-zenith) | latest 0.2.5，pushed_at 09-25 18:48:31 UTC，无新版本；保留第八轮设备遮挡诊断观察，不在没有设备反馈时加入手调边距。 |
+
+本轮直接采纳 0，新增开发任务 0。可做队列已经完成，不主动解除积分、隐藏集 UI、bento 和热图设计窗口的条件，也不因一次“继续”再次发布。下一步：宿主正式版、上游回应、明确功能/设计选择或真机问题反馈到来时开对应任务；新里程碑再触发下一轮轻量调研。
+
 ## 十八、T-1400 生态调研循环·第八轮（2026-09-26，v18.7.0 收口轻量轮）
 
 触发：T-1470/T-1471 随 v18.7.0 发布。方法沿用第十七节：距上轮不足一天，核查触发器并定向审阅增量，不声称全网全量覆盖。来源为 GitHub API 与上游官方文档；竞品文档只证明其声明，不等同实测。
