@@ -10496,6 +10496,17 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__diag-table th { color: var(--lc-checkin-muted); font-weight: 600; }
 .lc-checkin__diag-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .lc-checkin__diag-range { margin: 0; color: var(--lc-checkin-muted); font-size: 11px; overflow-wrap: anywhere; }
+/* T-1470：笔记联动总览——集中列出绑定行（功能/目标/状态/操作）。 */
+.lc-checkin__binding-head { display: flex; justify-content: flex-end; margin: 6px 0; }
+.lc-checkin__binding-list { display: flex; flex-direction: column; gap: 4px; }
+.lc-checkin__binding-row { display: grid; grid-template-columns: minmax(96px, 1.1fr) minmax(0, 1.6fr) 72px auto; gap: 6px; align-items: center; padding: 4px 6px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); }
+.lc-checkin__binding-feature { font-weight: 600; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__binding-target { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--lc-checkin-muted); }
+.lc-checkin__binding-off { font-style: normal; color: var(--lc-checkin-muted); }
+.lc-checkin__binding-status { font-size: 11px; color: var(--lc-checkin-muted); white-space: nowrap; }
+.lc-checkin__binding-status.is-ok { color: var(--lc-checkin-success-text); font-weight: 600; }
+.lc-checkin__binding-status.is-missing { color: var(--lc-checkin-danger-text); font-weight: 600; }
+.lc-checkin__binding-actions { display: inline-flex; gap: 4px; }
 
 /* R-A16（2026-09-26）：轻量 SVG 视觉件。单色 accent 阶梯 + 文字冗余编码（T-1461），
    静态呈现零动效零过渡（D-263）；完成 100% 切 success 色。 */

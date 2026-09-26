@@ -44,6 +44,8 @@ export interface SettingsViewContext {
     /** T-1465（D-273）问卷日记：自建模板文本（设置页编辑区，空行分块）。 */
     journalCustomText?: string;
     journalCustomCount?: number;
+    /** T-1470 笔记联动总览：集中列出全部文档/笔记本/块绑定（健康检测会话内进行）。 */
+    noteBindings?: ReadonlyArray<{key: string; featureKey: string; featureParams?: Readonly<Record<string, string>>; targetKind: "doc" | "block" | "notebook" | "none"; targetId: string; enabled: boolean; required: boolean; sourceSelector: string}>;
     palette: CheckinPalette;
     avatar: string;
     avatarImage?: string;
@@ -127,6 +129,14 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         : "";
     /* T-1352：日记集成缺省值——旧调用方/测试未传该字段时按「未启用」渲染。 */
     const diary = ctx.diaryReport || {enabled: false, docId: ""};
+    /* T-1470 笔记联动总览：行渲染（状态列由「检测全部联动」会话内填充）。 */
+    const noteBindings = ctx.noteBindings ?? [];
+    const bindingRows = noteBindings.map((row) => {
+        const targetLabel = row.targetId ? `${t(`bind.target.${row.targetKind}`)} · ${row.targetId}` : t("bind.targetNone");
+        const statusLabel = row.enabled && row.required && !row.targetId ? t("bind.statusMissing") : t("bind.statusUnknown");
+        const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}`;
+        return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target" title="${escapeHtml(targetLabel)}">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}${escapeHtml(targetLabel)}</span><span class="lc-checkin__binding-status" data-binding-status>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
+    }).join("");
     /* T-1465（D-273）：问卷日记自建模板缺省值。 */
     const journalCustomText = typeof ctx.journalCustomText === "string" ? ctx.journalCustomText : "";
     const journalCustomCount = ctx.journalCustomCount ?? 0;
@@ -359,6 +369,11 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__settings-group" data-document-writes open>
                     <summary><span>${t("set.docWritesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: documentSourceCounts.enabled})}</span></summary>
                     <div class="lc-checkin__settings-row"><small class="lc-checkin__dependency-recovery">${t("set.docWritesSetupHint")}</small><span class="lc-checkin__settings-value" data-document-summary>${t("set.docWritesSummary", documentSourceCounts)}</span></div>
+                    <details class="lc-checkin__source-panel" data-source-panel="bindings"${sourcePanelOpen("bindings")}>
+                    <summary class="lc-checkin__source-panel-head"><strong>${t("bind.panelTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("bind.panelHint")}</small></span></summary>
+                    <div class="lc-checkin__binding-head"><button class="lc-checkin__text-button" type="button" data-action="check-note-bindings">${t("bind.checkAll")}</button></div>
+                    <div class="lc-checkin__binding-list" role="list">${bindingRows || `<div class="lc-checkin__history-empty">${t("bind.empty")}</div>`}</div>
+                    </details>
                     <details class="lc-checkin__source-panel" data-source-panel="diary" data-source-state="${diaryState}"${sourcePanelOpen("diary")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.diaryIntegration")}</strong>${sourceBadge(diaryState)}</summary>
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsDiary1")}</li><li>${t("set.stepsDiary2")}</li><li>${t("set.stepsDiary3")}</li><li>${t("set.stepsDiary4")}</li></ol>

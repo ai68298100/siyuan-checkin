@@ -58,6 +58,7 @@ import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNote
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
 import {buildCorrelationInsights as computeCorrelationInsights, type CorrelationInsight, type CorrelationItemSeries} from "./features/correlation-insights";
 import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown, buildJournalEventNote, buildJournalLookupQuery, normalizeCustomJournalTemplates, normalizeJournalIntegration, parseCustomJournalTemplatesText, resolveJournalTemplate, serializeCustomJournalTemplatesText, type JournalIntegration, type JournalTemplateDef, type ResolvedJournalTemplate} from "./features/journal-templates";
+import {collectNoteBindings, groupBindingTargets, mergeBindingHealth} from "./features/note-bindings";
 import {openJournalDialogFor} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
@@ -725,6 +726,14 @@ export default class CheckinPlugin extends Plugin {
         if (rows.length && rows[0].id) {
             return {docId: String(rows[0].id), docName: String(rows[0].hpath || hpath).split("/").filter(Boolean).pop() || hpath};
         }
+        /* T-1470 健壮性吸收（dailynote-today 先例）：hpath 未命中时按宿主自动加的
+           custom-dailynote 属性兜底定位（文档被改名/移动后仍能找到，防重复建文档）。 */
+        const yyyymmdd = dateKey(currentCalendarDate()).replace(/-/g, "");
+        const byAttr = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE type = 'd' AND ial LIKE '%custom-dailynote-${yyyymmdd}%' ORDER BY id ASC LIMIT 1`}).catch(() => undefined);
+        const attrRows = Array.isArray((byAttr as {data?: Array<{id?: string}>})?.data) ? (byAttr as {data: Array<{id?: string}>}).data : [];
+        if (attrRows.length && attrRows[0].id) {
+            return {docId: String(attrRows[0].id), docName: t("journal.targetDaily")};
+        }
         const created = await this.kernelPost("/api/filetree/createDocWithMd", {notebook, path: hpath, markdown: ""}).catch(() => undefined);
         const docId = typeof (created as {data?: unknown})?.data === "string" ? String((created as {data: string}).data) : "";
         if (!docId) return {docId: "", docName: "", reason: "create-failed"};
@@ -799,9 +808,22 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /** T-1470：打开绑定目标——块 ID 先解析所属文档根 ID，文档 ID 直接打开（openTab 公开通道）。 */
+    private async openBindingTarget(targetId: string): Promise<void> {
+        if (!targetId || this.disposed || this.disposing) return;
+        const escaped = targetId.replace(/'/g, "''");
+        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT root_id FROM blocks WHERE id = '${escaped}' LIMIT 1`}).catch(() => undefined);
+        const rootId = ((response as {data?: Array<{root_id?: string}>})?.data || [])[0]?.root_id;
+        const docId = rootId || targetId;
+        try {
+            await openTab({app: this.app as never, doc: {id: docId}});
+        } catch (error) {
+            showMessage(t("msg.anchorUnreachable"));
+        }
+    }
+
     /* 设置页：保存自建模板文本（解析 fail-closed，非法块计数提示）。 */
-    private async saveJournalCustomTemplates(rawText: string): Promise<void> {
-        const existingIds = this.journalCustomTemplates.map((template) => template.id);
+    private async saveJournalCustomTemplates(rawText: string): Promise<void> {        const existingIds = this.journalCustomTemplates.map((template) => template.id);
         const parsed = parseCustomJournalTemplatesText(rawText, existingIds);
         if (!parsed.templates.length && parsed.invalidBlocks > 0) {
             showMessage(t("journal.customInvalid", {n: parsed.invalidBlocks}));
@@ -2863,6 +2885,15 @@ export default class CheckinPlugin extends Plugin {
             auditEntries: this.auditEntries,
             journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
             journalCustomCount: this.journalCustomTemplates.length,
+            noteBindings: collectNoteBindings({
+                diaryReport: this.diaryReport,
+                summaryResident: this.summaryResident,
+                healthInbox: this.healthInbox,
+                journalIntegration: this.journalIntegrationPref,
+                journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
+                yeguifIntegration: this.yeguifIntegration,
+                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId})),
+            }),
             snapshots: this.snapshotHistory.map((snapshot, index) => ({index, capturedAt: snapshot.capturedAt, legacy: snapshot.legacy,
                 itemCount: normalizeStore(snapshot.store).items.length, eventCount: normalizeStore(snapshot.store).events.length})),
             customIconLibrary: this.customIconLibrary,
@@ -3051,6 +3082,50 @@ export default class CheckinPlugin extends Plugin {
             const input = root.querySelector<HTMLTextAreaElement>("[data-journal-custom]");
             void this.saveJournalCustomTemplates(input?.value ?? "");
         });
+        /* T-1470 笔记联动总览：批量体检（SQL IN 一次校验全部文档/块目标 + lsNotebooks 校验笔记本）。 */
+        root.querySelector<HTMLElement>("[data-action='check-note-bindings']")?.addEventListener("click", () => {
+            const rows = collectNoteBindings({
+                diaryReport: this.diaryReport,
+                summaryResident: this.summaryResident,
+                healthInbox: this.healthInbox,
+                journalIntegration: this.journalIntegrationPref,
+                journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
+                yeguifIntegration: this.yeguifIntegration,
+                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId})),
+            });
+            const {docIds, notebookIds} = groupBindingTargets(rows);
+            void (async () => {
+                const found = new Set<string>();
+                if (docIds.length) {
+                    const list = docIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(",");
+                    const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE id IN (${list})`}).catch(() => undefined);
+                    const data = (response as {data?: Array<{id?: string}>})?.data;
+                    if (Array.isArray(data)) for (const row of data) if (row.id) found.add(row.id);
+                }
+                const validNotebooks = new Set((await this.listNotebooksForJournal()).map((notebook) => notebook.id));
+                const health = mergeBindingHealth(rows, found, validNotebooks);
+                for (const row of rows) {
+                    const rowNode = root.querySelector<HTMLElement>(`[data-binding-row="${row.key}"]`);
+                    const statusNode = rowNode?.querySelector<HTMLElement>("[data-binding-status]");
+                    if (!statusNode) continue;
+                    const status = health[row.key] || "unchecked";
+                    statusNode.textContent = t(status === "ok" ? "bind.statusOk" : status === "missing" ? "bind.statusMissing" : "bind.statusUnknown");
+                    statusNode.classList.toggle("is-ok", status === "ok");
+                    statusNode.classList.toggle("is-missing", status === "missing");
+                }
+            })();
+        });
+        root.querySelectorAll<HTMLElement>("[data-open-binding]").forEach((button) => button.addEventListener("click", () => {
+            void this.openBindingTarget(button.dataset.openBinding || "");
+        }));
+        root.querySelectorAll<HTMLElement>("[data-goto-binding]").forEach((button) => button.addEventListener("click", () => {
+            const selector = button.dataset.gotoBinding || "";
+            if (!selector) return;
+            const input = root.querySelector<HTMLElement>(selector);
+            input?.closest("details")?.setAttribute("open", "open");
+            input?.scrollIntoView({block: "center"});
+            input?.focus({preventScroll: true});
+        }));
         root.querySelector<HTMLInputElement>("[data-sireader-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
             if (checked && (!this.sireaderIntegration.itemId || !getActiveItemById(this.store, this.sireaderIntegration.itemId))) {
