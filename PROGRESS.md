@@ -1,3 +1,5 @@
+2026-09-26 T-1482 热图变体评估：现有年度热图已采用有记录日四分位自适应色阶，空白日与跳过日有冗余编码，横向滚动和双主题样式已有守门。当前证据显示密集热图在低频用户仍有信息层次；稀疏变体若仅隐藏空白格会破坏周/月定位，因此暂不接入破坏空间语义的实现，保留在后续设计切片。
+
 2026-09-26 T-1481 性能验收：问卷编辑器基准 DOM 26 个节点、设置搜索夹具 DOM 15 个节点；10k 事件今日完整渲染 29ms、100k 批量生命周期 21.4ms，横向溢出 0；既有回顾性能基线与后台刷新守门保持通过。未发现需要针对实测热点改写的重复计算，CSS 预算维持 620595 bytes。验证：node tests/journal-experience.cjs、pnpm run test:perf 均通过。
 
 2026-09-26 T-1480 验收：双主题 visual-qa、accessibility-audit（750 对比度组合，0 违规）、ui-state-ledger、responsive-layout、editor-validation、mobile-editor-structure、桌面/移动 width-walkthrough（49 surface + 32 interaction）全部通过；未发现高置信 UI、焦点或滚动回归。
