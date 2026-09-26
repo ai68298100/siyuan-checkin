@@ -228,9 +228,50 @@ console.log("Occasion model structure checks passed.");
     assert.match(ageText, /岁/, "birthday yearly milestones read as age");
 }
 
+/* —— T-1492 时间表达：自然历跨度 + 长周期周期进度。 —— */
+{
+    /* 三段跨度：2024-06-01 → 2026-09-27 = 2 年 3 个月 26 天。 */
+    const span = occasions.elapsedSpanSince("2024-06-01", "2026-09-27");
+    assert.deepEqual(span, {years: 2, months: 3, days: 26}, "elapsed span splits calendar years/months/days");
+    /* 月满钳制：锚点 31 日 → 2/29 即满 1 个月；2/28 尚未满月（28 天）。 */
+    assert.deepEqual(occasions.elapsedSpanSince("2024-01-31", "2024-02-29"), {years: 0, months: 1, days: 0});
+    assert.deepEqual(occasions.elapsedSpanSince("2024-01-31", "2024-02-28"), {years: 0, months: 0, days: 28});
+    /* 零跨度与非法输入。 */
+    assert.deepEqual(occasions.elapsedSpanSince("2024-06-01", "2024-06-01"), {years: 0, months: 0, days: 0});
+    assert.equal(occasions.elapsedSpanSince("2024-06-01", "2024-05-31"), undefined, "before-anchor spans are undefined");
+    assert.equal(occasions.elapsedSpanSince("2024-02-30", "2024-03-30"), undefined);
+    /* 组合文案：零单位跳过（2 年 0 个月 14 天 → 「2 年 14 天」）。 */
+    const zhSpan = occasions.describeElapsedSpan({years: 2, months: 0, days: 14});
+    assert.ok(zhSpan.includes("2") && zhSpan.includes("14") && !zhSpan.split(" ").includes("0"), "zero middle units are skipped");
+    /* 周期进度：quarterly 锚点 2026-07-01 周期内 2026-09-27 → 前周期起点 07-01、终点 10-01。 */
+    const quarterly = occasions.normalizeOccasion({id: "c1", name: "季度节点", kind: "scheduled", date: "2026-07-01", recurrence: "quarterly", remindBeforeDays: 3, note: "", enabled: true, completedDates: [], createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z"});
+    const cycle = occasions.occasionCycleProgress(quarterly, "2026-09-27");
+    assert.ok(cycle && cycle.percent >= 90 && cycle.percent <= 100, `quarterly cycle progress near the cycle end (got ${cycle && cycle.percent})`);
+    /* 季度是模周期（锚点前后皆按月日网格取发生点）：任意发生日读作满周期，前一日接近满。 */
+    const atNode = occasions.occasionCycleProgress(quarterly, "2026-01-01");
+    assert.ok(atNode && atNode.percent === 100, "any occurrence day reads as a completed cycle");
+    assert.equal(occasions.occasionCycleProgress(quarterly, "2026-04-01").percent, 100);
+    const atEnd = occasions.occasionCycleProgress(quarterly, "2026-10-01");
+    assert.ok(atEnd && atEnd.percent === 100, "the occurrence day itself reads as a completed cycle");
+    /* 周期 <14 天不派生（weekly 太短）。 */
+    const weekly = occasions.normalizeOccasion({...quarterly, id: "c2", recurrence: "weekly", weekday: 6, date: "2026-09-26"});
+    assert.equal(occasions.occasionCycleProgress(weekly, "2026-09-27"), undefined, "short cycles stay bar-free");
+    /* nthweek / 农历 / once 不派生。 */
+    assert.equal(occasions.occasionCycleProgress({...quarterly, recurrence: "annual", annualSubtype: "nthweek", month: 5, nthWeek: 2, weekday: 0}, "2026-09-27"), undefined);
+    assert.equal(occasions.occasionCycleProgress({...quarterly, recurrence: "annual", calendar: "lunar"}, "2026-09-27"), undefined);
+    assert.equal(occasions.occasionCycleProgress({...quarterly, recurrence: "once"}, "2026-09-27"), undefined);
+    assert.deepEqual(occasions.elapsedSpanSince("2024-06-01", "2026-09-27"), occasions.elapsedSpanSince("2024-06-01", "2026-09-27"));
+}
+
 /* —— T-1491 接线：事项列表行 + 今日横幅 + i18n 双语。 —— */
 assert.match(viewSource, /nextOccasionMilestones\(item, todayKey, 1\)/, "occasion rows project the nearest milestone");
 assert.match(viewSource, /lc-checkin__occasion-milestone/, "occasion rows render the milestone badge");
+assert.match(viewSource, /elapsedSpanSince\(item\.date, todayKey\)/, "anniversary rows show the natural-calendar span");
+assert.match(viewSource, /occasionCycleProgress\(item, todayKey\)/, "long cycles render a per-cycle progress bar");
+assert.match(viewSource, /occ\.cycleProgress/, "cycle bars label themselves as cycle progress (not completion rate)");
+for (const key of ["occ.spanYear", "occ.spanMonth", "occ.spanDay", "occ.cycleProgress"]) {
+    assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+}
 const fragmentsSource = fs.readFileSync("src/render/fragments.ts", "utf8");
 assert.match(fragmentsSource, /is-milestone/, "today banner marks milestone-day chips");
 assert.match(fragmentsSource, /describeOccasionMilestone\(item, milestone\)/, "banner copy goes through the shared formatter");

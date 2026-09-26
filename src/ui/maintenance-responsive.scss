@@ -73,6 +73,11 @@
     .lc-checkin__occasion-milestone { display: inline-flex; align-items: center; margin-top: 4px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; padding: 1px 8px; color: var(--lc-checkin-muted); background: var(--lc-checkin-muted-surface); font-size: 12px; overflow-wrap: anywhere; }
     .lc-checkin__occasion-milestone.is-today { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent-text) 35%, var(--lc-checkin-border-strong)); background: var(--lc-checkin-accent-soft); font-weight: 600; }
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-milestone { display: none; }
+    /* T-1492 长周期进度条：呈现「本周期」而非完成率，细条 + 数值冗余。 */
+    .lc-checkin__occasion-cycle { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+    .lc-checkin__occasion-cycle-track { flex: 1; max-width: 220px; height: 4px; border-radius: 999px; background: var(--lc-checkin-muted-surface); overflow: hidden; }
+    .lc-checkin__occasion-cycle-bar { display: block; height: 100%; border-radius: 999px; background: var(--lc-checkin-accent); }
+    .lc-checkin__occasion-cycle small { color: var(--lc-checkin-muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .lc-checkin__occasion-row-date strong { font-size: 12px; font-weight: 600; color: var(--lc-checkin-accent-text); }
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-date strong { color: var(--lc-checkin-muted); }
     .lc-checkin__occasion-manager-row.is-today .lc-checkin__occasion-icon { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }

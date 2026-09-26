@@ -536,6 +536,73 @@ export function describeOccasionMilestone(item: Occasion, milestone: OccasionMil
     return milestone.daysUntil === 0 ? t("occ.milestoneToday", {text: core}) : t("occ.milestoneUpcoming", {text: core, d: milestone.daysUntil});
 }
 
+/* ===== T-1492 时间表达升级（只读投影）：自然历跨度 + 长周期进度 ===== */
+
+export interface ElapsedSpan {
+    years: number;
+    months: number;
+    days: number;
+}
+
+/** 锚点至 localDate 的自然历跨度（年/月/日三段）。月满以钳制后的锚点日为准
+    （锚点 31 日在 2 月按 28/29 日满月）；localDate 早于锚点或非法输入返回 undefined。 */
+export function elapsedSpanSince(anchor: string, localDate: string): ElapsedSpan | undefined {
+    if (!isValidLocalDate(anchor) || !isValidLocalDate(localDate) || localDate < anchor) return undefined;
+    const base = parseLocalDate(anchor);
+    const today = parseLocalDate(localDate);
+    let months = (today.getFullYear() - base.getFullYear()) * 12 + (today.getMonth() - base.getMonth());
+    if (localDate < monthDate(today.getFullYear(), today.getMonth() + 1, base.getDate())) months -= 1;
+    if (months < 0) months = 0;
+    const anchorPlusMonths = monthDate(base.getFullYear() + Math.floor((base.getMonth() + months) / 12), (base.getMonth() + months) % 12 + 1, base.getDate());
+    return {years: Math.floor(months / 12), months: months % 12, days: differenceInDays(anchorPlusMonths, localDate)};
+}
+
+/** 跨度本地化组合：跳过前导与中间的零单位（2 年 0 个月 14 天 → 「2 年 14 天」），全零返回空。 */
+export function describeElapsedSpan(span: ElapsedSpan): string {
+    const parts: string[] = [];
+    if (span.years > 0) parts.push(t("occ.spanYear", {n: span.years}));
+    if (span.months > 0) parts.push(t("occ.spanMonth", {n: span.months}));
+    if (span.days > 0 || !parts.length) parts.push(t("occ.spanDay", {n: span.days}));
+    return parts.join(" ");
+}
+
+/** 长周期事项的本周期进度（0..1，percent 为四舍五入整数）。只派生太阳历固定周期
+    且周期 > 14 天的口径（quarterly/halfyearly/annual-byday/monthly-byday/interval）；
+    第 N 个星期 X、月末、农历与一次性事项不派生（前一周期的起点无法无歧义回推）。 */
+export function occasionCycleProgress(item: Occasion, localDate: string): {progress: number; percent: number} | undefined {
+    if (!isValidLocalDate(localDate) || !isValidLocalDate(item.date)) return undefined;
+    if (item.calendar === "lunar" || item.recurrence === "once") return undefined;
+    if (item.recurrence === "monthly" && item.monthlySubtype && item.monthlySubtype !== "byday") return undefined;
+    if (item.recurrence === "annual" && item.annualSubtype === "nthweek") return undefined;
+    const end = getOccurrenceDate(item, localDate);
+    if (!end || end < localDate) return undefined;
+    const anchorDay = parseLocalDate(item.date).getDate();
+    const shiftMonths = (months: number): string => {
+        const [endYear, endMonth] = end.split("-").map(Number);
+        const index = endYear * 12 + (endMonth - 1) + months;
+        return monthDate(Math.floor(index / 12), (index % 12) + 1, anchorDay);
+    };
+    let prev: string | undefined;
+    switch (item.recurrence) {
+        case "weekly": prev = addDays(end, -7) ?? undefined; break;
+        case "monthly": prev = shiftMonths(-1); break;
+        case "quarterly": prev = shiftMonths(-3); break;
+        case "halfyearly": prev = shiftMonths(-6); break;
+        case "annual": prev = shiftMonths(-12); break;
+        case "interval": {
+            const count = clampInteger(item.intervalCount, 1, 365, 1);
+            prev = item.intervalUnit === "day" ? addDays(end, -count) ?? undefined : shiftMonths(item.intervalUnit === "year" ? -count * 12 : -count);
+            break;
+        }
+        default: return undefined;
+    }
+    if (!prev || prev >= localDate) return undefined;
+    const total = differenceInDays(prev, end);
+    if (total < 14) return undefined;
+    const progress = Math.min(1, Math.max(0, differenceInDays(prev, localDate) / total));
+    return {progress, percent: Math.round(progress * 100)};
+}
+
 function differenceInDays(from: string, to: string): number {
     return daysBetweenHalfOpen(from, to) ?? 0;
 }

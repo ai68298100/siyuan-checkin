@@ -4,7 +4,7 @@ import {dateKey} from "../model";
 import {daysBetweenHalfOpen} from "../date-keys";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
-import {describeRecurrence, describeOccasionMilestone, getOccurrenceDate, nextOccasionMilestones, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
+import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getOccurrenceDate, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
 export interface OccasionsViewContext {
@@ -53,6 +53,14 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         /* T-1491：纪念日/生日的里程碑投影（满 N 天/个月/周年），最近一个随行展示。 */
         const milestone = item.enabled ? nextOccasionMilestones(item, todayKey, 1)[0] : undefined;
         const milestoneMarkup = milestone ? `<div class="lc-checkin__occasion-milestone${milestone.daysUntil === 0 ? " is-today" : ""}">${escapeHtml(describeOccasionMilestone(item, milestone))}</div>` : "";
+        /* T-1492：纪念日/生日的自然历跨度（X 年 X 个月 X 天）+ 长周期事项的本周期进度。 */
+        const span = item.enabled && (item.kind === "birthday" || item.kind === "anniversary") ? elapsedSpanSince(item.date, todayKey) : undefined;
+        const spanText = span ? describeElapsedSpan(span) : "";
+        const dateLineWithSpan = next
+            ? `<time datetime="${escapeHtml(next)}">${escapeHtml(next)}</time><strong>${escapeHtml(countdown)}</strong>${spanText ? `<span>${escapeHtml(spanText)}</span>` : ""}`
+            : `<span>${t("occ.ended")}</span>`;
+        const cycle = item.enabled ? occasionCycleProgress(item, todayKey) : undefined;
+        const cycleMarkup = cycle ? `<div class="lc-checkin__occasion-cycle"><div class="lc-checkin__occasion-cycle-track" aria-hidden="true"><span class="lc-checkin__occasion-cycle-bar" style="width:${cycle.percent}%"></span></div><small>${t("occ.cycleProgress", {p: cycle.percent})}</small></div>` : "";
         /* The next date is the scanning anchor; recurrence and lead time are
            supporting detail. Only exceptional states need a visible badge. */
         const isToday = item.enabled && next === todayKey;
@@ -71,7 +79,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
            DOM gives wide/assistive surfaces a stable fallback and lets icon
            normalization update only the glyph on re-render. */
         const action = (attr: string, value: string, aria: string, title: string, content: string, extra = "") => `<button class="lc-checkin__small-button${extra ? ` ${escapeHtml(extra)}` : ""}" type="button" ${attr}="${escapeHtml(value)}" aria-label="${escapeHtml(aria)}" title="${escapeHtml(title)}"><span class="lc-checkin__action-icon" aria-hidden="true">${content}</span><span class="lc-checkin__action-label">${escapeHtml(title)}</span></button>`;
-        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}</div><div class="lc-checkin__occasion-row-date">${dateLine}</div>${milestoneMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span></div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "check" : "circle"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
+        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span></div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "check" : "circle"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</div>`;
     const date = editing?.date || dateKey(currentCalendarDate());
     const editLabel = editing ? t("occ.edit") : t("occ.create");
