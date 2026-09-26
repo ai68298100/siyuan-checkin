@@ -60,6 +60,8 @@ assert.ok(indexSource.includes('source: "api", externalRef'), "health writes mus
 assert.match(indexSource, /eventTombstones\.some\(\(tombstone\) => tombstone\.source === "api"[\s\S]*externalRef === externalRef\)/, "health ingest must honor deleted-identity tombstones");
 assert.match(indexSource, /bindVerifiedDocumentSave\("save-health-doc"[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
+assert.match(settingsSource, /data-action="refresh-source" data-source="health"/, "health source exposes a manual refresh action");
+assert.match(indexSource, /source === "health"\) await this\.ingestHealthInbox\(\)/, "health refresh reuses the bounded ingest path");
 for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc", "save-health-doc", "data-health-steps-item", "data-health-weight-item"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }

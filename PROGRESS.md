@@ -1,3 +1,5 @@
+2026-09-26 T-1386 本地来源刷新 UX：设置来源卡片新增统一“立即刷新”入口，健康、微信读书、叶归分别复用 ingestHealthInbox、ingestWeread、ingestYeguif；不删除事件、不重算 externalRef，失败仍走现有反馈/诊断路径。验证：health-inbox、weread-adapter、yeguif-adapter、i18n-parity、ui-docs、accessibility、build:check 全部通过。
+
 2026-09-26 T-1483 宽屏回顾布局交付：在 lc5 容器宽度 ≥1200px 时，概览项目卡使用三列，分析区折叠卡使用两列；DOM 顺序保持阅读和键盘顺序，≤1200px 自动回退单列。验证：review-layout-regression 52 个真实 bundle 几何场景、review-workspace、build 前 typecheck、css-hygiene、双主题 visual QA 均通过。
 
 2026-09-26 T-1482 热图变体交付：新增按周分段热图 `renderWeeklyHeatmap`，以同一 YearHeatmap 数据聚合 53 个周格，保留年度空间位置与悬停记录/活跃天数；回顾页默认折叠，展开后不增加首屏密度，双主题样式复用现有色阶。验证：v7-insights、review-presentation、i18n-parity、build:check、双主题 visual-qa、css-hygiene（659 类、0 死类，620904 bytes）、insight-a11y 全部通过。

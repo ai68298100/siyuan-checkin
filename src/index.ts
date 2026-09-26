@@ -3127,6 +3127,21 @@ export default class CheckinPlugin extends Plugin {
             });
         };
         const savePreference = () => { void this.persistViewPreferences().then(() => showMessage(t("msg.prefSaved"))).catch(() => showMessage(t("msg.prefSaveFail"))); };
+        root.querySelectorAll<HTMLElement>("[data-action='refresh-source']").forEach((control) => {
+            control.addEventListener("click", () => {
+                const source = control.dataset.source;
+                runSettingsAction(control, async () => {
+                    if (source === "health") await this.ingestHealthInbox();
+                    else if (source === "weread") await this.ingestWeread();
+                    else if (source === "yeguif") await this.ingestYeguif();
+                    else return;
+                    if (control.isConnected) {
+                        settingsFeedback(t("set.sourceRetry"));
+                        this.render();
+                    }
+                });
+            });
+        });
         root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "none" || value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
         root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
