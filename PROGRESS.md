@@ -1,3 +1,5 @@
+2026-09-26 T-1483 宽屏回顾布局交付：在 lc5 容器宽度 ≥1200px 时，概览项目卡使用三列，分析区折叠卡使用两列；DOM 顺序保持阅读和键盘顺序，≤1200px 自动回退单列。验证：review-layout-regression 52 个真实 bundle 几何场景、review-workspace、build 前 typecheck、css-hygiene、双主题 visual QA 均通过。
+
 2026-09-26 T-1482 热图变体交付：新增按周分段热图 `renderWeeklyHeatmap`，以同一 YearHeatmap 数据聚合 53 个周格，保留年度空间位置与悬停记录/活跃天数；回顾页默认折叠，展开后不增加首屏密度，双主题样式复用现有色阶。验证：v7-insights、review-presentation、i18n-parity、build:check、双主题 visual-qa、css-hygiene（659 类、0 死类，620904 bytes）、insight-a11y 全部通过。
 
 2026-09-26 T-1482 热图变体评估：现有年度热图已采用有记录日四分位自适应色阶，空白日与跳过日有冗余编码，横向滚动和双主题样式已有守门。当前证据显示密集热图在低频用户仍有信息层次；稀疏变体若仅隐藏空白格会破坏周/月定位，因此暂不接入破坏空间语义的实现，保留在后续设计切片。

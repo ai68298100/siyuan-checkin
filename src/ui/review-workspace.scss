@@ -1375,6 +1375,22 @@
     }
 }
 
+/* Wide review canvases can show related sections side by side while keeping
+   the DOM order as the reading and keyboard order. The single column remains
+   the fallback below this container width. */
+@container lc5 (min-width: 1200px) {
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="overview"] .lc-checkin__review-project-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__review-sections {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+    .lc-checkin.lc-checkin--review [data-review-workspace-panel="analysis"] .lc-checkin__review-sections > .review-section-heading {
+        grid-column: 1 / -1;
+    }
+}
+
 /* Mobile hosts already display the page title in their own top bar. Keep
    range and report tools on one 44px row when that duplicated title is hidden. */
 @container lc5 (max-width: 719px) {
