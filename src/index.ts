@@ -61,7 +61,8 @@ import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown,
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
-import {CHECKIN_TEMPLATES, templateName} from "./catalog";
+import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName} from "./catalog";
+import {buildTemplatePackPreview} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
@@ -5033,13 +5034,13 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 方法体外置于 render/save-form.ts（T-022）。 */
-    private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string) {
+    private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined> {
         /* T-1231：解绑时清除旧锚点块上的本插件属性（尽力而为，不阻断保存）。 */
         const previousAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         /* T-1486：联动预接线计划随表单提交；仅在条目真实落盘后消费（失败路径零副作用）。 */
         const plan = String(data.get("linkagePlan") || "");
-        const savedItemId = await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint);
-        if (!savedItemId) return;
+        const savedItemId = await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint, {continueCreation});
+        if (!savedItemId) return undefined;
         if (!editingId) this.advanceFirstSuccess("item-created");
         const newAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         if (previousAnchor && (!newAnchor || newAnchor.blockId !== previousAnchor.blockId)) {
@@ -5047,6 +5048,56 @@ export default class CheckinPlugin extends Plugin {
             void this.clearAnchorAttrBestEffort(previousAnchor.blockId);
         }
         if (isTemplateLinkagePlan(plan)) await this.applyTemplateLinkagePlan(plan, savedItemId);
+        return savedItemId;
+    }
+
+    /* T-1488：空状态一键装填——组合包内全部「新增」模板一次建项。条目字段=目录原样 +
+        模型归一化（与逐条表单通道同一 normalizeCheckinItem 边界）；重复名称沿用预览的
+        new/duplicate 判定不重建；失败恢复旧 store。仅空库时入口可见，非空库仍逐条确认。 */
+    private async applyTemplatePackBulk(packId: string): Promise<number> {
+        const pack = TEMPLATE_PACKS.find((candidate) => candidate.id === packId);
+        if (!pack) return 0;
+        const existingNames = this.store.items.filter((entry) => !entry.archived).map((entry) => entry.name);
+        const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
+        const fresh = preview.entries.filter((entry) => entry.status === "new");
+        if (!fresh.length) return 0;
+        const today = dateKey(currentCalendarDate());
+        const now = new Date().toISOString();
+        const created = fresh
+            .map((entry) => normalizeCheckinItem({
+                id: makeId("item"),
+                name: templateName(entry.template),
+                icon: entry.template.icon,
+                kind: entry.template.kind,
+                target: entry.template.target,
+                unit: entry.template.unit,
+                ...(entry.template.recordStep ? {recordStep: entry.template.recordStep} : {}),
+                schedule: {...entry.template.schedule, weekdays: entry.template.schedule.weekdays ? [...entry.template.schedule.weekdays] : undefined},
+                group: entry.template.group,
+                priority: entry.template.priority,
+                ...(entry.template.timeSlot ? {timeSlot: entry.template.timeSlot} : {}),
+                ...(entry.template.completionSource ? {completionSource: entry.template.completionSource} : {}),
+                ...(entry.template.tomatoMode ? {tomatoMode: entry.template.tomatoMode} : {}),
+                ...(entry.template.direction ? {direction: entry.template.direction} : {}),
+                createdDate: today,
+                createdAt: now,
+                updatedAt: now,
+            }))
+            .filter((entry): entry is CheckinItem => Boolean(entry));
+        if (!created.length) return 0;
+        const previous = this.store;
+        this.store = {...this.store, items: [...this.store.items, ...created]};
+        try {
+            await this.persist();
+        } catch {
+            this.store = previous;
+            showMessage(t("msg.createCheckinFail"));
+            return 0;
+        }
+        for (const item of created) this.broadcast({type: "item-created", item});
+        this.invalidateSummary();
+        this.advanceFirstSuccess("item-created");
+        return created.length;
     }
 
     /* T-1486：联动预接线计划消费——health 追加按项目映射（重复/超容量时 no-op），sireader 单项目改绑；

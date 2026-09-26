@@ -27,6 +27,7 @@ export async function saveEditorForm(
     editingId: string | undefined,
     submittedAt: {occurredAt: string; localDate: string},
     expectedFingerprint?: string,
+    options?: {continueCreation?: boolean},
 ): Promise<string | undefined> {
     const name = String(data.get("name") || "").trim();
     const requestedKind = String(data.get("kind") || "binary");
@@ -154,7 +155,9 @@ export async function saveEditorForm(
     }
     host.invalidateSummary();
     host.broadcast({type: existing ? "item-updated" : "item-created", item});
-    host.showToday();
+    /* T-1488：「保存并继续」保持编辑器打开（分组/类型等上下文由表单自身保留），
+       由 bind-editor 负责清空名称并聚焦；常规路径仍返回今日页。 */
+    if (!options?.continueCreation) host.showToday();
     /* T-1486：返回保存条目 id，供宿主消费联动预接线计划（失败路径均返回 undefined，零副作用）。 */
     return item.id;
 }

@@ -45,7 +45,9 @@ export interface BindEditorHost {
     saveData(name: string, value: unknown): Promise<void>;
     render(): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string): Promise<unknown>;
+    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined>;
+    /** T-1488：空状态一键装填——按组合包批量创建全部新增条目，返回创建数量（未知 pack 返回 0）。 */
+    applyTemplatePackBulk?(packId: string): Promise<number>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1359：待检查的智能体项目草案（存在时编辑器预填，检查后由用户手动保存）。 */
     pendingProjectDraft?: import("../features/project-draft").ProjectDraft;
@@ -768,7 +770,26 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 return `<button class="lc-checkin__template" type="button" data-template-apply="${index}"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></button>`;
             }).join("");
             panel.hidden = false;
-            panel.innerHTML = `<div class="lc-checkin__templates">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            /* T-1488：空状态一键装填——库中无活跃项目时，组合包预览提供「应用全部新增」；
+               非空库仍保持逐条确认通道。 */
+            const bulkApply = preview.newCount > 0 && host.store.items.every((entry) => entry.archived)
+                ? `<div class="lc-checkin__pack-bulk"><button type="button" class="lc-checkin__text-button" data-pack-apply-all="${escapeHtml(pack.id)}">${escapeHtml(t("editor.packApplyAll", {n: preview.newCount}))}</button></div>`
+                : "";
+            panel.innerHTML = `${bulkApply}<div class="lc-checkin__templates">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            return;
+        }
+        const bulkButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-apply-all]") : null;
+        if (bulkButton && !bulkButton.disabled) {
+            const packId = bulkButton.dataset.packApplyAll || "";
+            if (bulkButton.dataset.busy === "true") return;
+            bulkButton.dataset.busy = "true";
+            void host.enqueueMutation(() => (host.applyTemplatePackBulk ? host.applyTemplatePackBulk(packId) : Promise.resolve(0))).then((created) => {
+                delete bulkButton.dataset.busy;
+                if (created > 0) {
+                    showMessage(t("editor.packApplied", {n: created}));
+                    host.showToday();
+                }
+            }, () => { delete bulkButton.dataset.busy; });
             return;
         }
         const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-apply]") : null;
@@ -901,24 +922,38 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (confirm && !confirm.disabled) { setLinkagePlanPlanned(root, true); return; }
         if (target.closest("[data-linkage-cancel]")) setLinkagePlanPlanned(root, false);
     });
-    root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const form = event.currentTarget as HTMLFormElement;
-        form.dataset.submitBound = "true";
-        if (form.dataset.submitting === "true") return;
-        form.dataset.submitting = "true";
-        const data = new FormData(form);
-        const editingId = host.editingId;
-        const submittedAt = captureActionMoment();
-        const expectedFingerprint = editingId ? host.editingFingerprint : undefined;
-        const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
-        if (submitButton) submitButton.disabled = true;
-        const resetSubmitting = () => {
-            form.dataset.submitting = "false";
-            if (submitButton) submitButton.disabled = false;
-        };
-        void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint)).then(resetSubmitting, resetSubmitting);
-    });
+        root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            form.dataset.submitBound = "true";
+            if (form.dataset.submitting === "true") return;
+            form.dataset.submitting = "true";
+            const data = new FormData(form);
+            const editingId = host.editingId;
+            const submittedAt = captureActionMoment();
+            const expectedFingerprint = editingId ? host.editingFingerprint : undefined;
+            /* T-1488：提交来源区分「保存并继续」（保留分组/类型上下文，清空名称继续建）。 */
+            const submitter = (event as SubmitEvent).submitter instanceof HTMLElement ? (event as SubmitEvent).submitter as HTMLElement : null;
+            const continueCreation = Boolean(submitter?.hasAttribute("data-save-continue")) && !editingId;
+            const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
+            if (submitButton) submitButton.disabled = true;
+            const resetSubmitting = () => {
+                form.dataset.submitting = "false";
+                if (submitButton) submitButton.disabled = false;
+            };
+            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation)).then((savedId) => {
+                resetSubmitting();
+                if (continueCreation && typeof savedId === "string" && savedId) {
+                    const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");
+                    if (nameInput) nameInput.value = "";
+                    renderLinkageCard(root, host, undefined);
+                    const inferenceRow = root.querySelector<HTMLElement>("[data-name-inference]");
+                    if (inferenceRow) { inferenceRow.hidden = true; inferenceRow.innerHTML = ""; delete inferenceRow.dataset.dismissedFor; }
+                    updateEditorPreview();
+                    nameInput?.focus();
+                }
+            }, resetSubmitting);
+        });
 
     /* T-1359：智能体项目草案预填——存在待检查草案时套用到新建表单，
        用户在编辑器内检查/修改后手动保存；预填不写 store，检查后即清除。 */

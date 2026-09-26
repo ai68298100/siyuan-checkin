@@ -88,6 +88,8 @@
 .lc-checkin__name-inference { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; padding: 6px 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); font-size: 12px; background: var(--lc-checkin-surface); }
 .lc-checkin__name-inference[hidden] { display: none !important; }
 .lc-checkin__name-inference span { color: var(--lc-checkin-muted); overflow-wrap: anywhere; }
+/* T-1488 空状态一键装填：组合包预览面板顶部的批量应用行。 */
+.lc-checkin__pack-bulk { display: flex; justify-content: flex-end; padding: 2px 0 6px; }
 .lc-checkin__journal-config legend { font-size: 11px; color: var(--lc-checkin-muted); padding: 0 4px; }
 .lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .lc-checkin__journal-form [hidden] { display: none !important; }

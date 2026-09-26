@@ -151,8 +151,8 @@ export function renderEditorView(ctx: EditorViewContext): string {
         initialCompletionSource === "tomato" ? t("source.tomato") : t("source.manual"),
         formatScheduleLabel(schedule),
     ].filter(Boolean).join(" · ");
-    const templates = !item ? `<details class="lc-checkin__template-section" data-template-disclosure>
-            <summary class="lc-checkin__template-summary"><span>${t("editor.templateHeading")}</span><em>${CHECKIN_TEMPLATES.length}</em><small>${t("editor.templateHint")}</small><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
+    const templates = !item ? `<details class="lc-checkin__template-section" data-template-disclosure${ctx.store.items.length ? "" : " open"}>
+            <summary class="lc-checkin__template-summary"><span>${t("editor.templateHeading")}</span><em>${CHECKIN_TEMPLATES.length}</em><small>${t(ctx.store.items.length ? "editor.templateHint" : "editor.templateEmptyHint")}</small><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
             <div class="lc-checkin__template-browser">
             ${recentMarkup}
             ${recommendedMarkup}
@@ -287,6 +287,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                 </aside>
                 <div class="lc-checkin__editor-actions">
                     <button class="lc-checkin__save-button" type="submit">${item ? t("editor.save") : t("editor.saveNew")}</button>
+                    ${!item ? `<button class="lc-checkin__text-button" type="submit" data-save-continue>${t("editor.saveContinue")}</button>` : ""}
                     <button class="lc-checkin__text-button" type="button" data-action="save-template">${t("editor.saveTemplate")}</button>
                     ${item ? `<button class="lc-checkin__archive-button" type="button" data-action="archive">${item.archived ? t("editor.restore") : t("editor.archive")}</button><button class="lc-checkin__delete-button" type="button" data-action="delete-item" aria-label="${t("editor.deleteItemAria")}" title="${t("editor.deleteItemAria")}">${t("editor.deleteItem")}</button>` : ""}
             ${renderSaveStatusView(ctx.saveState)}

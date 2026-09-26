@@ -75,4 +75,19 @@ for (const key of ["editor.packs", "editor.packsHint", "editor.packCount", "edit
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
 
+/* —— T-1488 空状态一键装填：批量按钮仅在空库出现，走宿主批量方法，逐条通道保留。 —— */
+assert.match(bindSource, /data-pack-apply-all/, "预览面板必须提供一键装填按钮");
+assert.match(bindSource, /host\.store\.items\.every\(\(entry\) => entry\.archived\)/, "批量按钮必须以「无活跃项目」为前提（非空库仍逐条确认）");
+assert.match(bindSource, /applyTemplatePackBulk/, "批量应用必须经宿主方法");
+assert.match(bindSource, /editor\.packApplied/, "批量创建后必须有结果反馈");
+const indexPackSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+assert.match(indexPackSource, /private async applyTemplatePackBulk\(packId: string\): Promise<number>/, "宿主实现批量建项方法");
+assert.match(indexPackSource, /buildTemplatePackPreview\(pack\.templates/, "批量路径复用同一预览纯函数做 new/duplicate 判定");
+assert.match(indexPackSource, /normalizeCheckinItem\(\{/, "批量建项必须过模型归一化边界");
+assert.match(indexPackSource, /advanceFirstSuccess\("item-created"\)/, "批量建项推进新手旅程");
+for (const key of ["editor.packApplyAll", "editor.packApplied", "editor.saveContinue"]) {
+    const occurrences = i18nSource.split(`"${key}"`).length - 1;
+    assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
+}
+
 console.log("template packs gates passed: 引用解析/未知名降级/新旧分类/本地化比对/纯度/目录完整性/编辑器接线/i18n 双语");

@@ -106,6 +106,14 @@ assert.match(indexSource, /recordRecentTemplate\(this\.recentTemplates, name\)/,
 assert.match(viewPrefs, /export const RECENT_TEMPLATES_LIMIT = 6/, "recent limit constant lives with preferences");
 assert.match(viewPrefs, /recentTemplates/, "preferences carry the recent templates field");
 
+/* T-1488 保存并继续：仅新建表单提供；真实落盘后才清空名称聚焦继续，失败不动表单。 */
+assert.match(editor, /\$\{!item \? `<button class="lc-checkin__text-button" type="submit" data-save-continue>/, "save-and-continue is creation-only");
+assert.match(bindEditor, /hasAttribute\("data-save-continue"\)/, "submit source decides the continue flow");
+assert.match(bindEditor, /continueCreation && typeof savedId === "string" && savedId/, "form resets only after the item actually saved");
+const saveFormSource = fs.readFileSync("src/render/save-form.ts", "utf8");
+assert.match(saveFormSource, /continueCreation\?: boolean/, "saveEditorForm carries the continue option");
+assert.match(saveFormSource, /if \(!options\?\.continueCreation\) host\.showToday\(\)/, "continue flow keeps the editor open");
+
 /* ---------- 运行时断言（转译后真实模块） ---------- */
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lc-template-gallery-"));
