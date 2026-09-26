@@ -541,6 +541,29 @@ royc01/pinch（思源集市，v2.7.1 @2026-09-18，30 个 release，repo 2026-01
 
 四路扫描 100+ 次取证 → 竞品警报 1（Workbench，叙事层）、采纳 3（T-1461 低压力呈现规范/T-1462 数值快捷增量/T-1463 迁移健壮性）、延后 13、不做 8、佐证 9、工程注意项 2。本轮最重要的战略结论：**竞争压力从功能转向叙事**——「反打卡/零记录」营销正在兴起，小驴的应对不是跟随去记录化，而是把「低压力记录」做成可验收的呈现规范（T-1461）并讲清「不记录就没有可回看的数据」；差异化锚点继续压在习惯算法内核、不可变事件账本与统计口径，呈现层与宿主通用视图保持克制分工。
 
+## 十八、T-1400 生态调研循环·第八轮（2026-09-26，v18.7.0 收口轻量轮）
+
+触发：T-1470/T-1471 随 v18.7.0 发布。方法沿用第十七节：距上轮不足一天，核查触发器并定向审阅增量，不声称全网全量覆盖。来源为 GitHub API 与上游官方文档；竞品文档只证明其声明，不等同实测。
+
+| 核查面 | 本轮证据与结论 |
+| --- | --- |
+| [思源 releases](https://github.com/siyuan-note/siyuan/releases) | 最新预发布 3.8.6-alpha.5；latest 正式版 3.8.5（09-22）。T-1464 未触发。 |
+| [思阅 #55](https://github.com/mm-o/siyuan-sireader/issues/55)、[思播 #180](https://github.com/mm-o/siyuan-media-player/issues/180) | 均 open、0 评论、最后更新 09-25。R-REL-CHECK 无需追加；Task Horizon/Dock Tomato 草案仍未提交。 |
+| [Workbench](https://github.com/IAliceBobI/sy-workbench-plugin/releases/tag/v1.0.4)、[Pinch](https://github.com/royc01/pinch/releases/tag/v2.7.1) | 版本及 pushed_at 均未推进：Workbench 最后推送 09-25 16:25 UTC，Pinch 09-18。Workbench 帮助中心/演示投入结论不变。 |
+| 思源集市 plugins.txt 自 09-25 的变更 | 仅 mindmap 与已知 Workbench 上架；[Workbench 注册提交](https://github.com/siyuan-note/bazaar/commit/63c7199f3c64e3d0e169b6e0b4a1c2faa8620fb0) 可复核，无新增习惯竞品。 |
+| [Loop](https://github.com/iSoron/uhabits/releases/latest)、[Table Habit](https://github.com/FriesI23/mhabit/releases/latest)、[Streak](https://github.com/InlitX/streak/releases/latest) | 分别保持 v2.3.1、v1.27.9+198、v2.0.0。Table Habit 的表单状态保持、导入逐项失败提示与未知字段保留佐证既有方向，无新版本触发。 |
+| Obsidian 注册表 | 查询 09-25 以来 16 条提交摘要，定向读最新两条 diff（081bfc6、34a8b40）；新增多为文档/AI/手写工具。发现邻近的 Zenith 条目后追加读其官方日记/移动文档，见下。其余 diff 未逐条展开，不推断全表无新增。 |
+
+### 新观察对象：Zenith（不直接立项）
+
+[Zenith](https://github.com/saifun0/obsidian-zenith) 最新 0.2.5（09-25），查阅时 HEAD `772df0837bad21490d5d3467506e53aa87c69e9e`。[日记说明](https://github.com/saifun0/obsidian-zenith/blob/772df0837bad21490d5d3467506e53aa87c69e9e/docs/en/journal.md) 描述日记 frontmatter 中的 checkbox/scale/number、周配额、目标修订、晨晚复盘和每日问题；[移动说明](https://github.com/saifun0/obsidian-zenith/blob/772df0837bad21490d5d3467506e53aa87c69e9e/docs/en/mobile.md) 描述安全区与宿主覆盖高度测量、当前读数和设备本地手动覆盖。
+
+- **佐证**：日记和打卡组合、按修订保留历史目标、记录与统计入口分工，与既有方向一致。先前“生态内无先例”应收窄为“此前扫描未发现完全相同闭环”，不能继续作为排他性产品结论；Zenith 文档未证明与小驴问卷幂等写入完全同构。
+- **延后观察**：把设备遮挡测量值纳入诊断值得在下一次安全区/软键盘真机反馈时评估。当前缺少小驴实际设备测量需求，不引入用户手调边距或宿主私有 DOM 依赖。
+- **不采纳**：其“戒除只算已记录日”与本插件 at-most 既有统计口径不同，不因竞品文档而改写历史语义；其 frontmatter 账本与全家桶模块不替代本插件事件库。
+
+本轮结论：直接采纳 0、新增观察对象 1（Zenith）、无新的可执行开发任务。T-1464、设计窗口、用户决策、上游回应和真机反馈继续按触发条件等待；下一轮由新里程碑/新版本/用户点名触发。
+
 ## 十七、T-1400 生态调研循环·第七轮（2026-09-26，轻量轮）
 
 触发口径：v18.6.0 发布当日，按「里程碑结束 → 增量调研」执行轻量轮（方法=触发条件核查 + 定向取证，距第六轮全量扫描仅一日，不做全量重扫）。
