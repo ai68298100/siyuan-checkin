@@ -84,6 +84,10 @@
 .lc-checkin__linkage-warning { margin: 0; color: var(--lc-checkin-warm-text); font-size: 12px; overflow-wrap: anywhere; }
 .lc-checkin__linkage-planned-row { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lc-checkin__linkage-planned { color: var(--lc-checkin-accent-text); font-size: 12px; }
+/* T-1487 名称联想建议行：非阻断提示，应用前不改任何字段。 */
+.lc-checkin__name-inference { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 0; padding: 6px 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); font-size: 12px; background: var(--lc-checkin-surface); }
+.lc-checkin__name-inference[hidden] { display: none !important; }
+.lc-checkin__name-inference span { color: var(--lc-checkin-muted); overflow-wrap: anywhere; }
 .lc-checkin__journal-config legend { font-size: 11px; color: var(--lc-checkin-muted); padding: 0 4px; }
 .lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .lc-checkin__journal-form [hidden] { display: none !important; }

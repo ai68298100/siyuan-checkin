@@ -185,6 +185,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                 <div class="lc-checkin__form-scroll">
                     ${templates}
                     <label class="lc-checkin__field lc-checkin__field--name"><span>${t("occ.name")}</span><input name="name" type="text" required maxlength="40" placeholder="${t("editor.namePlaceholder")}" value="${escapeHtml(item?.name || "")}" /></label>
+                    <div class="lc-checkin__name-inference" data-name-inference hidden></div>
                     <div class="lc-checkin__linkage-card" data-linkage-card hidden></div>
                     <input type="hidden" name="linkagePlan" data-linkage-plan value="" />
                     <div class="lc-checkin__field lc-checkin__field--icons">

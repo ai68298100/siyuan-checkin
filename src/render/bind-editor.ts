@@ -13,6 +13,7 @@ import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
 import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
 import {buildTemplateLinkageCard, templateLinkageForName, templateLinkageI18nKey, isTemplateLinkagePlan, EMPTY_LINKAGE_BINDING_STATE, type LinkageBindingState, type TemplateLinkageKind} from "../features/template-linkage";
+import {buildNameInference, inferFieldsFromName} from "../features/name-inference";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
@@ -53,6 +54,8 @@ export interface BindEditorHost {
     recordRecentTemplateUse(name: string): void;
     /** T-1486：联动建议卡片的当前绑定状态投影（显示名，渲染前调用）。 */
     linkageState?(): LinkageBindingState;
+    /** T-1487：名称联想的目录对照（zh 锚点 + 当前语言显示名）。 */
+    nameInferenceCatalog?(): ReadonlyArray<{anchor: string; display: string}>;
     [key: string]: unknown;
 }
 
@@ -613,6 +616,133 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         applyTemplateFilter();
         templateQuery?.focus();
     }));
+    /* T-1486/T-1487 共用：模板字段填表（含联动建议卡重置）。名称联想的「套用模板」走同一函数，
+        保证两条路径填充的字段集合与条件字段刷新完全一致。 */
+    const applyTemplateFields = (template: typeof CHECKIN_TEMPLATES[number]) => {
+        const setInput = (name: string, value: string) => {
+            const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+            if (control) control.value = value;
+        };
+        setInput("name", templateName(template));
+        setInput("target", String(template.target));
+        setInput("unit", template.unit);
+        setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep)));
+        setInput("group", template.group);
+        setInput("priority", template.priority);
+        setInput("timeSlot", template.timeSlot || "any");
+        setInput("completionSource", template.completionSource || "manual");
+        setInput("tomatoMode", template.tomatoMode || "minutes");
+        setInput("schedule", template.schedule.type);
+        /* T-1239：戒除类模板同步方向开关。 */
+        const atMostInput = root.querySelector<HTMLInputElement>("input[name='directionAtMost']");
+        if (atMostInput) atMostInput.checked = template.direction === "atMost";
+        const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`);
+        if (kindInput) kindInput.checked = true;
+        root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => {
+            input.checked = (template.schedule.weekdays || []).includes(Number(input.value));
+        });
+        selectIcon(template.icon);
+        const iconGroup = ICON_GROUPS.find((group) => group.icons.includes(template.icon));
+        if (iconGroup) selectIconGroup(iconGroup.id);
+        updateConditionalFields(false);
+        root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
+        root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
+        updateEditorPreview();
+        updateAdvancedSummary();
+        /* 亲和锚点是 zh 原名，不能用 templateName() 的译文（语言切换后译文无法命中亲和表）。 */
+        renderLinkageCard(root, host, templateLinkageForName(template.name));
+    };
+
+    /* T-1487 名称联想：键入停顿后按名称解析建议；应用前不改动任何字段（点击门控，
+        「不覆盖显式选择」由设计保证）；同一名称手动关闭后不再重复提示。 */
+    const renderNameInference = () => {
+        const row = root.querySelector<HTMLElement>("[data-name-inference]");
+        const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");
+        if (!row || !nameInput) return;
+        const value = nameInput.value;
+        if (row.dataset.dismissedFor === value) return;
+        const catalog = host.nameInferenceCatalog ? host.nameInferenceCatalog() : [];
+        const suggestion = buildNameInference(value, catalog);
+        row.dataset.inferenceName = value;
+        if (!suggestion) {
+            row.hidden = true;
+            row.innerHTML = "";
+            return;
+        }
+        if (suggestion.templateAnchor) {
+            const index = CHECKIN_TEMPLATES.findIndex((template) => template.name === suggestion.templateAnchor);
+            if (index < 0) { row.hidden = true; row.innerHTML = ""; return; }
+            const template = CHECKIN_TEMPLATES[index];
+            row.hidden = false;
+            row.innerHTML = `<span>${escapeHtml(t("editor.nameSuggestTemplate", {name: templateName(template)}))}</span><button type="button" class="lc-checkin__text-button" data-name-inference-template="${index}">${escapeHtml(t("editor.nameSuggestApply"))}</button><button type="button" class="lc-checkin__text-button" data-name-inference-dismiss aria-label="${escapeHtml(t("editor.nameSuggestDismiss"))}">×</button>`;
+            return;
+        }
+        const fields = suggestion.fields;
+        if (!fields) { row.hidden = true; row.innerHTML = ""; return; }
+        const summary: string[] = [];
+        if (fields.kind) summary.push(t(KIND_LABELS[fields.kind]));
+        if (fields.target !== undefined && fields.unit) summary.push(`${formatNumber(fields.target)} ${fields.unit}`);
+        if (fields.schedule) summary.push(t(SCHEDULE_LABELS[fields.schedule.type]));
+        if (fields.timeSlot) summary.push(t(TIME_SLOT_LABELS[fields.timeSlot]));
+        row.hidden = false;
+        row.innerHTML = `<span>${escapeHtml(t("editor.nameSuggestFields", {summary: summary.join(" · ")}))}</span><button type="button" class="lc-checkin__text-button" data-name-inference-fields>${escapeHtml(t("editor.nameSuggestApply"))}</button><button type="button" class="lc-checkin__text-button" data-name-inference-dismiss aria-label="${escapeHtml(t("editor.nameSuggestDismiss"))}">×</button>`;
+    };
+    let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
+    root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", () => {
+        if (inferenceTimer) clearTimeout(inferenceTimer);
+        inferenceTimer = setTimeout(renderNameInference, 250);
+    });
+    root.addEventListener("click", (event) => {
+        const target = event.target instanceof HTMLElement ? event.target : null;
+        if (!target) return;
+        const applyTemplate = target.closest<HTMLButtonElement>("[data-name-inference-template]");
+        if (applyTemplate && !applyTemplate.disabled) {
+            const template = CHECKIN_TEMPLATES[Number(applyTemplate.dataset.nameInferenceTemplate)];
+            if (!template) return;
+            applyTemplateFields(template);
+            host.recordRecentTemplateUse(template.name);
+            const row = root.querySelector<HTMLElement>("[data-name-inference]");
+            if (row) { row.hidden = true; row.innerHTML = ""; }
+            return;
+        }
+        if (target.closest("[data-name-inference-fields]")) {
+            const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");
+            const fields = nameInput ? inferFieldsFromName(nameInput.value) : undefined;
+            if (fields) {
+                const setInput = (name: string, value: string) => {
+                    const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+                    if (control) control.value = value;
+                };
+                if (fields.kind) {
+                    const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${fields.kind}']`);
+                    if (kindInput) kindInput.checked = true;
+                }
+                if (fields.unit) setInput("unit", fields.unit);
+                if (fields.target !== undefined) setInput("target", String(fields.target));
+                if (fields.timeSlot) setInput("timeSlot", fields.timeSlot);
+                if (fields.schedule) {
+                    setInput("schedule", fields.schedule.type);
+                    root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => {
+                        input.checked = (fields.schedule?.weekdays || []).includes(Number(input.value));
+                    });
+                }
+                updateConditionalFields(false);
+                updateEditorPreview();
+                updateAdvancedSummary();
+            }
+            const row = root.querySelector<HTMLElement>("[data-name-inference]");
+            if (row) { row.hidden = true; row.innerHTML = ""; }
+            return;
+        }
+        const dismiss = target.closest<HTMLElement>("[data-name-inference-dismiss]");
+        if (dismiss) {
+            const row = root.querySelector<HTMLElement>("[data-name-inference]");
+            const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");
+            if (row && nameInput) row.dataset.dismissedFor = nameInput.value;
+            if (row) { row.hidden = true; row.innerHTML = ""; }
+        }
+    });
+
     /* T-1349/T-1357：委托绑定——应用钩子 data-template-apply 同时命中主列表与最近使用/精选行。 */
     root.addEventListener("click", (event) => {
         /* T-1454：场景组合包芯片——展开预览面板（解析引用+新旧标记），条目复用
@@ -650,39 +780,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             candidate.classList.toggle("is-selected", selected);
             candidate.setAttribute("aria-pressed", String(selected));
         });
-        const setInput = (name: string, value: string) => {
-            const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
-            if (control) control.value = value;
-        };
-        setInput("name", templateName(template));
-        setInput("target", String(template.target));
-        setInput("unit", template.unit);
-        setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep)));
-        setInput("group", template.group);
-        setInput("priority", template.priority);
-        setInput("timeSlot", template.timeSlot || "any");
-        setInput("completionSource", template.completionSource || "manual");
-        setInput("tomatoMode", template.tomatoMode || "minutes");
-        setInput("schedule", template.schedule.type);
-        /* T-1239：戒除类模板同步方向开关。 */
-        const atMostInput = root.querySelector<HTMLInputElement>("input[name='directionAtMost']");
-        if (atMostInput) atMostInput.checked = template.direction === "atMost";
-        const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`);
-        if (kindInput) kindInput.checked = true;
-        root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => {
-            input.checked = (template.schedule.weekdays || []).includes(Number(input.value));
-        });
-        selectIcon(template.icon);
-        const iconGroup = ICON_GROUPS.find((group) => group.icons.includes(template.icon));
-        if (iconGroup) selectIconGroup(iconGroup.id);
-        updateConditionalFields(false);
-        root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
-        root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
-        updateEditorPreview();
-        updateAdvancedSummary();
-        /* T-1486：按模板亲和渲染联动建议（换模板即重置旧计划）；亲和锚点是 zh 原名，
-            不能用 templateName() 的译文（语言切换后译文无法命中亲和表）。 */
-        renderLinkageCard(root, host, templateLinkageForName(template.name));
+        applyTemplateFields(template);
         const advanced = root.querySelector<HTMLDetailsElement>("[data-advanced]");
         if (advanced) advanced.open = true;
         host.recordRecentTemplateUse(template.name);

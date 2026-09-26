@@ -61,6 +61,7 @@ import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown,
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
+import {CHECKIN_TEMPLATES, templateName} from "./catalog";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
@@ -5081,6 +5082,11 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* T-1486：编辑器联动建议卡片的绑定状态投影（显示名，只读）。 */
+    /* T-1487：名称联想的目录对照（zh 锚点 + 当前语言显示名），供编辑器建议行命中内置模板。 */
+    private nameInferenceCatalog(): ReadonlyArray<{anchor: string; display: string}> {
+        return CHECKIN_TEMPLATES.map((template) => ({anchor: template.name, display: templateName(template)}));
+    }
+
     private linkageState(): LinkageBindingState {
         const itemName = (itemId: string) => getActiveItemById(this.store, itemId)?.name || "";
         return {
