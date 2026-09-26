@@ -30,11 +30,10 @@ T-1386 多来源统一面板与断开/重试 UX 也属于本地可推进增量�
 ## T-1400 生态调研循环·第十轮（2026-09-26，用户点名触发，宽覆盖全量轮）
 
 - [x] 第十轮调研（七路并行：独立应用/GitHub 开源/笔记生态/宿主与集市/行为科学/AI 智能体/可穿戴，约 20 次取证）。竞品警报 0；采纳 1；延后 5（pause 挂起/连击历史最小长度/打印 PDF/Exactly 口径/失速前瞻提示，均带触发条件）；不做 5（边界维持）；工程注意项 2（宿主 3.8.5 三条插件修复对照快捷入口/dock/只读命令链路，登记下次真机验收检查项；HabitKit DST 漂移事故佐证 date-keys 契约）。全案见 benchmark 第二十节。
-- [ ] T-1484 问卷日记提示词轮换（第十轮采纳①，local-auto）
+- [x] T-1484 问卷日记提示词轮换（第十轮采纳①，local-auto）——done（2026-09-26）。journal-templates 纯函数扩展：JournalQuestionDef 增 prompts/promptKeys、normalizePromptPool（fail-closed：trim/去重/≤6 条、有界扫描 18 项、<2 条不物化）、journalIsoWeekKey（零依赖 ISO 周算法、非法日期空串）、resolveJournalQuestionText（ISO 周 djb2 hash 确定性轮换，无池/单候选/非法日期回落基础题干）；弹窗与写入文档题干共用同一取词（同日一致），事件摘要与幂等标记不变；内置感恩三问 q1、五分钟日记 q2/q5 自带 3 条候选池（i18n 双语 9 键），自建模板文本以 `> 候选` 行配置池（解析/序列化往返、孤立池行计坏块、单候选剪除）；builder 复制预设/复制题目深拷贝池数组、预览标注候选数；journal.customHint 双语补池语法、新增 journal.poolVariants。守门 journal-templates.test.cjs 扩展（归一化/ISO 周锚点含跨年与 53 周年/轮换确定性/全年三候选覆盖/内置与部分池解析/文本往返/弹窗与宿主接线）仍入主链；journal-experience.cjs require 桩补 journal 模块映射。验证：pnpm run check、pnpm test 主链、build+test:quality（release assets/回滚演练）、宽度走查 49+32、双主题 visual-qa 全部通过；真机弹窗触控归 host-pending；未 push。
 - [x] T-1485 绑定目标卡片样式：日报、摘要驻留、问卷日记、健康收件箱与叶归笔记本的目标输入/选择/保存入口统一为独立目标卡片；保留原有 `data-*` 绑定、保存校验和失败草稿语义，补齐 44px 控件、长文案换行、窄屏纵排与双主题边框状态。结构、类型、视觉和宽度验收通过，未 push。
-  - 语义：内置问卷模板每题可选配「提示词池」（多候选提示词），按 ISO 周 hash 确定性轮换展示，缓解每日同题套路化；自建模板同支持；未配置池行为不变；轮换只影响呈现不影响事件结构与幂等标记。
-  - 来源：Daily Journal Plus rotating prompts（Obsidian 社区）+ Positive Psychology 综述「轮换防套路化」（benchmark 第十六节既有结论）+ Habitify Pause & Reflect 同向印证。
-  - 验收：journal-templates 纯函数扩展（池归一化 fail-closed/确定性轮换/空池回落）、弹窗取词、journal-dialog 与渲染往返、双语 i18n、守门入主链；真机弹窗触控归 host-pending。
+  - 语义（T-1484）：内置问卷模板每题可选配「提示词池」（多候选提示词），按 ISO 周 hash 确定性轮换展示，缓解每日同题套路化；自建模板同支持；未配置池行为不变；轮换只影响呈现不影响事件结构与幂等标记。
+  - 来源（T-1484）：Daily Journal Plus rotating prompts（Obsidian 社区）+ Positive Psychology 综述「轮换防套路化」（benchmark 第十六节既有结论）+ Habitify Pause & Reflect 同向印证。
 
 ## 设置与记录体验完善（2026-09-26，用户确认三批开工）
 

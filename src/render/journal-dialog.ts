@@ -5,10 +5,12 @@
 import {t} from "../i18n";
 import {showMessage, Dialog} from "siyuan";
 import {escapeHtml} from "../shared";
-import type {JournalIntegration, ResolvedJournalTemplate, JournalTemplateDef} from "../features/journal-templates";
+import {resolveJournalQuestionText, type JournalIntegration, type ResolvedJournalTemplate, type JournalTemplateDef} from "../features/journal-templates";
 
 export interface JournalDialogDeps {
     template: ResolvedJournalTemplate;
+    /** 当日 localDate：提示词池按 ISO 周轮换取词（与写入文档共用同一实现）。 */
+    localDate: string;
     integration: JournalIntegration;
     notebooks: ReadonlyArray<{id: string; name: string}>;
     alreadyWritten: boolean;
@@ -138,7 +140,7 @@ export function bindJournalBuilder(root: HTMLElement, deps: {
         const j = Number(target.closest<HTMLElement>("[data-builder-question]")?.dataset.builderQuestion);
         if (action === "preview" && template) {
             const preview = section?.querySelector<HTMLElement>("[data-builder-preview]");
-            if (preview) preview.innerHTML = template.questions.map(q => `<label class="lc-checkin__journal-question"><span>${escapeHtml(q.text || "")}${q.required ? " *" : ""}</span>${q.type === "textarea" ? `<textarea aria-label="${escapeHtml(q.text || "")}"></textarea>` : `<input type="${q.type === "slider" ? "range" : "text"}" min="1" max="5" aria-label="${escapeHtml(q.text || "")}" />`}</label>`).join("");
+            if (preview) preview.innerHTML = template.questions.map(q => `<label class="lc-checkin__journal-question"><span>${escapeHtml(q.text || "")}${q.required ? " *" : ""}${q.prompts?.length ? ` <small class="lc-checkin__journal-pool-hint">${t("journal.poolVariants", {n: q.prompts.length})}</small>` : ""}</span>${q.type === "textarea" ? `<textarea aria-label="${escapeHtml(q.text || "")}"></textarea>` : `<input type="${q.type === "slider" ? "range" : "text"}" min="1" max="5" aria-label="${escapeHtml(q.text || "")}" />`}</label>`).join("");
             return;
         }
         if (action === "add-template" || action === "copy-preset") {
@@ -146,7 +148,7 @@ export function bindJournalBuilder(root: HTMLElement, deps: {
             if (templates.length >= 10) return;
             const preset = action === "copy-preset" ? deps.presets[Number(host.querySelector<HTMLSelectElement>("[data-builder-preset]")?.value)] : undefined;
             const id = `custom-${Array.from(crypto.getRandomValues(new Uint32Array(2)), part => part.toString(36)).join("-")}`;
-            templates.push({id, icon: preset?.icon || "📝", name: preset?.name || t("journal.addTemplate"), period: "any", layout: "list", questions: preset ? preset.questions.map(q => ({...q})) : [{text: t("journal.question"), type: "textarea", required: false}]});
+            templates.push({id, icon: preset?.icon || "📝", name: preset?.name || t("journal.addTemplate"), period: "any", layout: "list", questions: preset ? preset.questions.map(q => ({...q, prompts: q.prompts ? [...q.prompts] : undefined})) : [{text: t("journal.question"), type: "textarea", required: false}]});
         } else if (template) {
             undo = structuredClone(templates);
             if (action === "remove-template") templates.splice(i, 1);
@@ -154,7 +156,7 @@ export function bindJournalBuilder(root: HTMLElement, deps: {
             if (action === "remove-question" && template.questions.length > 1) template.questions.splice(j, 1);
             if (action === "up" && j > 0) [template.questions[j - 1], template.questions[j]] = [template.questions[j], template.questions[j - 1]];
             if (action === "down" && j < template.questions.length - 1) [template.questions[j], template.questions[j + 1]] = [template.questions[j + 1], template.questions[j]];
-            if (action === "duplicate-question" && template.questions.length < 20) template.questions.splice(j + 1, 0, {...template.questions[j]});
+            if (action === "duplicate-question" && template.questions.length < 20) template.questions.splice(j + 1, 0, {...template.questions[j], prompts: template.questions[j].prompts ? [...template.questions[j].prompts] : undefined});
         }
         sync();
         render();
@@ -185,13 +187,15 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
     const template = deps.template;
     const questionsMarkup = template.questions
         .map((question, index) => {
+            /* T-1484：有池按 ISO 周轮换取词，与 buildJournalEntryMarkdown 同一实现（同日一致）。 */
+            const promptText = resolveJournalQuestionText(question, deps.localDate);
             const field =
                 question.type === "slider"
-                    ? `<input class="lc-checkin__journal-answer" data-journal-answer="${index}" type="range" min="1" max="5" step="1" value="3" aria-label="${escapeHtml(question.text)}" />`
+                    ? `<input class="lc-checkin__journal-answer" data-journal-answer="${index}" type="range" min="1" max="5" step="1" value="3" aria-label="${escapeHtml(promptText)}" />`
                     : question.type === "text"
-                        ? `<input class="lc-checkin__journal-answer" data-journal-answer="${index}" type="text" maxlength="500" aria-label="${escapeHtml(question.text)}" />`
-                        : `<textarea class="lc-checkin__journal-answer" data-journal-answer="${index}" rows="3" maxlength="2000" aria-label="${escapeHtml(question.text)}"></textarea>`;
-            return `<label class="lc-checkin__journal-question"><span>${question.required ? `<em aria-hidden="true">*</em> ` : ""}${escapeHtml(question.text)}</span>${field}</label>`;
+                        ? `<input class="lc-checkin__journal-answer" data-journal-answer="${index}" type="text" maxlength="500" aria-label="${escapeHtml(promptText)}" />`
+                        : `<textarea class="lc-checkin__journal-answer" data-journal-answer="${index}" rows="3" maxlength="2000" aria-label="${escapeHtml(promptText)}"></textarea>`;
+            return `<label class="lc-checkin__journal-question"><span>${question.required ? `<em aria-hidden="true">*</em> ` : ""}${escapeHtml(promptText)}</span>${field}</label>`;
         })
         .join("");
     const notebookOptions = `<option value="">${t("journal.notebookLabel")}</option>` + (deps.integration.notebookId && !deps.notebooks.some(book => book.id === deps.integration.notebookId) ? `<option value="${escapeHtml(deps.integration.notebookId)}" selected>${t("bind.notebookUnavailable")} · ${escapeHtml(deps.integration.notebookId)}</option>` : "") + deps.notebooks

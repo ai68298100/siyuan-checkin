@@ -4,7 +4,10 @@
    - 写入目标文档的内容以结构化标记 `lv-checkin-journal:<模板id>:<localDate>` 定位，
      同日同模板幂等（更新插件自写块），绝不改写用户已有内容；
    - 事件 note 只存截断摘要，答案正文只进目标文档（privacy-scope 既有审计覆盖）；
-   - 本模块零依赖、无时钟、确定性输出；宿主 IO（SQL/appendBlock）在 index.ts 侧。 */
+   - 本模块零依赖、无时钟、确定性输出；宿主 IO（SQL/appendBlock）在 index.ts 侧。
+   T-1484 提示词轮换：每题可选配「提示词池」（≥2 条候选），按 ISO 周 key 的 djb2 hash
+   确定性轮换展示，缓解每日同题套路化；轮换只影响呈现（弹窗题干与写入文档的题干同行），
+   不影响事件结构（note 摘要）与幂等标记；无池/单候选/非法日期一律回落基础题干。 */
 
 export type JournalQuestionType = "text" | "textarea" | "slider";
 export type JournalLayout = "list" | "grid";
@@ -15,6 +18,10 @@ export interface JournalQuestionDef {
     textKey?: string;
     /** 自建模板的原文。 */
     text?: string;
+    /** 提示词池原文（自建模板）；内置模板经 promptKeys 解析。≥2 条有效候选才构成池。 */
+    prompts?: string[];
+    /** 内置模板的提示词池 i18n 键（journal.tpl.<id>.qN.pK）。 */
+    promptKeys?: string[];
     type: JournalQuestionType;
     required?: boolean;
 }
@@ -38,7 +45,7 @@ export interface ResolvedJournalTemplate {
     period: JournalPeriod;
     layout: JournalLayout;
     custom: boolean;
-    questions: ReadonlyArray<{text: string; type: JournalQuestionType; required: boolean}>;
+    questions: ReadonlyArray<{text: string; type: JournalQuestionType; required: boolean; prompts?: ReadonlyArray<string>}>;
 }
 
 export interface JournalAnswer {
@@ -53,6 +60,8 @@ const TEMPLATE_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const JOURNAL_MAX_CUSTOM_TEMPLATES = 10;
 export const JOURNAL_MAX_QUESTIONS = 20;
+/** 提示词池容量上限；≥2 条有效候选才构成池（单候选不是轮换，按无池回落基础题干）。 */
+export const JOURNAL_MAX_PROMPT_POOL = 6;
 const ANSWER_NOTE_LIMIT = 60;
 
 export function journalMarker(templateId: string, localDate: string): string {
@@ -72,7 +81,7 @@ export const JOURNAL_BUILTIN_TEMPLATES: readonly JournalTemplateDef[] = [
         period: "any",
         layout: "list",
         questions: [
-            {textKey: "journal.tpl.gratitude3.q1", type: "textarea", required: true},
+            {textKey: "journal.tpl.gratitude3.q1", promptKeys: ["journal.tpl.gratitude3.q1.p1", "journal.tpl.gratitude3.q1.p2", "journal.tpl.gratitude3.q1.p3"], type: "textarea", required: true},
             {textKey: "journal.tpl.gratitude3.q2", type: "textarea"},
             {textKey: "journal.tpl.gratitude3.q3", type: "textarea"},
         ],
@@ -85,10 +94,10 @@ export const JOURNAL_BUILTIN_TEMPLATES: readonly JournalTemplateDef[] = [
         layout: "list",
         questions: [
             {textKey: "journal.tpl.fiveminute.q1", type: "textarea", required: true},
-            {textKey: "journal.tpl.fiveminute.q2", type: "textarea"},
+            {textKey: "journal.tpl.fiveminute.q2", promptKeys: ["journal.tpl.fiveminute.q2.p1", "journal.tpl.fiveminute.q2.p2", "journal.tpl.fiveminute.q2.p3"], type: "textarea"},
             {textKey: "journal.tpl.fiveminute.q3", type: "text"},
             {textKey: "journal.tpl.fiveminute.q4", type: "textarea", required: true},
-            {textKey: "journal.tpl.fiveminute.q5", type: "textarea"},
+            {textKey: "journal.tpl.fiveminute.q5", promptKeys: ["journal.tpl.fiveminute.q5.p1", "journal.tpl.fiveminute.q5.p2", "journal.tpl.fiveminute.q5.p3"], type: "textarea"},
         ],
     },
     {
@@ -140,6 +149,56 @@ const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(v
 const normalizeType = (value: unknown): JournalQuestionType => (value === "text" || value === "slider" ? value : "textarea");
 const normalizePeriod = (value: unknown): JournalPeriod => (value === "morning" || value === "evening" ? value : "any");
 const cleanText = (value: unknown, limit: number): string => (typeof value === "string" ? value.trim().slice(0, limit) : "");
+const hashSeed = (value: string): number => {
+    let hash = 5381;
+    for (let index = 0; index < value.length; index += 1) hash = ((hash << 5) + hash + value.charCodeAt(index)) >>> 0;
+    return hash;
+};
+
+/** 提示词池归一化（fail-closed）：只接受字符串数组，trim/限长/去重、容量封顶；
+    有界扫描（最多检查前 18 项，防损坏稀疏巨数组），凑满 6 条即停；
+    有效候选不足 2 条时返回空数组（调用方按无池处理，回落基础题干）。 */
+export function normalizePromptPool(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set<string>();
+    const pool: string[] = [];
+    for (const entry of value.slice(0, JOURNAL_MAX_PROMPT_POOL * 3)) {
+        const text = cleanText(entry, QUESTION_TEXT_LIMIT);
+        if (!text || seen.has(text)) continue;
+        seen.add(text);
+        pool.push(text);
+        if (pool.length >= JOURNAL_MAX_PROMPT_POOL) break;
+    }
+    return pool.length >= 2 ? pool : [];
+}
+
+const MONTH_LENGTHS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const isRealCalendarDate = (year: number, month: number, day: number): boolean => {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+    if (month < 1 || month > 12 || day < 1) return false;
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    return day <= (month === 2 && leap ? 29 : MONTH_LENGTHS[month - 1]);
+};
+
+/** ISO 周 key（如 2026-W39）：提示词轮换的确定性相位。零依赖实现（模块保持单文件可转译），
+    UTC 日历运算不读隐式时钟；非法/不存在日期返回空串（fail-closed 回落基础题干）。 */
+export function journalIsoWeekKey(localDate: string): string {
+    if (typeof localDate !== "string" || !DATE_PATTERN.test(localDate)) return "";
+    const [year, month, day] = localDate.split("-").map(Number);
+    if (!isRealCalendarDate(year, month, day)) return "";
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const week = Math.ceil(((date.getTime() - Date.UTC(date.getUTCFullYear(), 0, 1)) / 86400000 + 1) / 7);
+    return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+/** 当日应展示的题干：有池按 ISO 周 hash 确定性轮换；无池/单候选/非法日期回落基础题干。
+    弹窗取词与写入文档的题干必须共用本函数，保证同日呈现一致。 */
+export function resolveJournalQuestionText(question: {text: string; prompts?: ReadonlyArray<string>}, localDate: string): string {
+    if (!question.prompts || question.prompts.length < 2) return question.text;
+    const week = journalIsoWeekKey(localDate);
+    return week ? question.prompts[hashSeed(week) % question.prompts.length] : question.text;
+}
 
 /** 把模板定义解析为可用形态：缺题干/无有效问题的模板 fail-closed 丢弃。 */
 export function resolveJournalTemplate(def: JournalTemplateDef, translate: (key: string) => string): ResolvedJournalTemplate | undefined {
@@ -154,7 +213,10 @@ export function resolveJournalTemplate(def: JournalTemplateDef, translate: (key:
         if (!isRecord(question as unknown)) continue;
         const text = cleanText(question.textKey ? translate(question.textKey) : question.text, QUESTION_TEXT_LIMIT);
         if (!text) continue;
-        questions.push({text, type: normalizeType(question.type), required: question.required === true});
+        const pool = normalizePromptPool(Array.isArray(question.promptKeys)
+            ? question.promptKeys.slice(0, JOURNAL_MAX_PROMPT_POOL).map((key) => translate(typeof key === "string" ? key : ""))
+            : question.prompts);
+        questions.push({text, type: normalizeType(question.type), required: question.required === true, ...(pool.length ? {prompts: pool} : {})});
         if (questions.length >= JOURNAL_MAX_QUESTIONS) break;
     }
     if (!questions.length) return undefined;
@@ -175,7 +237,8 @@ export function normalizeCustomJournalTemplates(value: unknown): JournalTemplate
             if (!isRecord(question as unknown)) continue;
             const text = cleanText(question.text, QUESTION_TEXT_LIMIT);
             if (!text) continue;
-            questions.push({text, type: normalizeType(question.type), required: question.required === true});
+            const pool = normalizePromptPool(question.prompts);
+            questions.push({text, type: normalizeType(question.type), required: question.required === true, ...(pool.length ? {prompts: pool} : {})});
         }
         if (!name || !questions.length) continue;
         templates.push({id, icon: cleanText(entry.icon, 8) || "📝", name, period: "any", layout: "list", questions});
@@ -183,7 +246,8 @@ export function normalizeCustomJournalTemplates(value: unknown): JournalTemplate
     return templates;
 }
 
-/** 设置页自建模板文本解析：空行分块；块首行 `# 名称 | 图标`；其后每行 `问题 | 类型`（缺省 textarea）。 */
+/** 设置页自建模板文本解析：空行分块；块首行 `# 名称 | 图标`；其后每行 `问题 | 类型`（缺省 textarea）；
+    问题行之后可跟 `> 候选提示词` 行，累积为该题的提示词池（≥2 条有效候选生效，不足整体回落该题主干）。 */
 export function parseCustomJournalTemplatesText(raw: string, existingIds: readonly string[] = []): {templates: JournalTemplateDef[]; invalidBlocks: number} {
     const blocks = String(raw || "").split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
     const templates: JournalTemplateDef[] = [];
@@ -203,6 +267,15 @@ export function parseCustomJournalTemplatesText(raw: string, existingIds: readon
         const questions: JournalQuestionDef[] = [];
         let invalidQuestion = false;
         for (const line of lines.slice(1)) {
+            /* `> ` 前缀行是上一题的提示词池候选；出现在任何问题行之前视为坏块（fail-closed）。 */
+            if (line.startsWith(">")) {
+                const candidate = cleanText(line.slice(1), QUESTION_TEXT_LIMIT);
+                const last = questions[questions.length - 1];
+                if (!candidate || !last) { invalidQuestion = true; continue; }
+                last.prompts = last.prompts || [];
+                if (!last.prompts.includes(candidate)) last.prompts.push(candidate);
+                continue;
+            }
             const required = /\|\s*required$/.test(line);
             const content = required ? line.replace(/\|\s*required$/, "").trim() : line;
             const separator = content.lastIndexOf("|");
@@ -212,6 +285,12 @@ export function parseCustomJournalTemplatesText(raw: string, existingIds: readon
             const clean = cleanText(text, QUESTION_TEXT_LIMIT);
             if (clean) questions.push({text: clean, type, required});
             else invalidQuestion = true;
+        }
+        /* 池统一走归一化收口：去重/限长/封顶，不足 2 条整体移除（该题回落基础题干）。 */
+        for (const question of questions) {
+            const pool = normalizePromptPool(question.prompts);
+            if (pool.length) question.prompts = pool;
+            else delete question.prompts;
         }
         if (invalidQuestion || !questions.length || questions.length > JOURNAL_MAX_QUESTIONS) { invalidBlocks += 1; continue; }
         /* id 从名称派生：ASCII 名称直接 slug 化；纯中文等无 ASCII 字符的名称回退到
@@ -253,7 +332,8 @@ export function buildJournalEntryMarkdown(entry: JournalEntryInput): string {
     entry.template.questions.forEach((question, index) => {
         const answer = (entry.answers[index] || "").trim().replace(/\n+/g, " ");
         if (!answer) return;
-        lines.push(`**${question.text}** ${answer}`);
+        /* 题干与弹窗共用同一轮换取词：同日呈现一致，跨周自然轮换（仅呈现，标记不变）。 */
+        lines.push(`**${resolveJournalQuestionText(question, entry.localDate)}** ${answer}`);
     });
     if (lines.length === 1) lines.push("*（空）*");
     return `${lines.join("\n")}\n`;
@@ -294,7 +374,7 @@ export function normalizeJournalIntegration(value: unknown): JournalIntegration 
     return {mode, notebookId, docId};
 }
 
-/** 自建模板序列化回设置页文本（与 parseCustomJournalTemplatesText 往返一致）。 */
+/** 自建模板序列化回设置页文本（与 parseCustomJournalTemplatesText 往返一致，含 `> ` 提示词池行）。 */
 export function serializeCustomJournalTemplatesText(templates: readonly JournalTemplateDef[]): string {
     return templates
         .map((template) => {
@@ -302,6 +382,9 @@ export function serializeCustomJournalTemplatesText(templates: readonly JournalT
             for (const question of template.questions) {
                 const text = typeof question.text === "string" ? question.text : "";
                 lines.push(`${text} | ${question.type}${question.required ? " | required" : ""}`);
+                for (const candidate of Array.isArray(question.prompts) ? question.prompts : []) {
+                    lines.push(`> ${candidate}`);
+                }
             }
             return lines.join("\n");
         })

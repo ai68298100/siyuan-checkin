@@ -21,6 +21,7 @@ const root = path.resolve(__dirname, "..");
                     constructor(options) { this.element = document.createElement("div"); this.element.innerHTML = options.content; document.body.append(this.element); }
                     destroy() { this.element.remove(); }
                 }};
+                if (name === "../features/journal-templates") return modules.journal; /* T-1484：dialog 值导入轮换取词（journal 先于 dialog 装载）。 */
                 throw Error(name);
             };
         });
@@ -152,6 +153,7 @@ const root = path.resolve(__dirname, "..");
             window.submits = 0; window.persistFails = false; window.succeeds = false; window.draft = [];
             window.openForm = () => modules.dialog.openJournalDialogFor({
                 template: {id: "test", icon: "", name: "Test", questions: [{text: "Answer", type: "text", required: true}]},
+                localDate: "2026-09-26",
                 integration: {mode: "doc", docId: "20260926120000-abcdef0", notebookId: ""}, notebooks: [], alreadyWritten: false, isMobileFrontend: true,
                 draft, onDraft: answers => {window.draft = answers;},
                 onPersistIntegration: async integration => {if (persistFails) throw Error("disk"); return {...integration, docId: "20260926120000-abcdef1"};},

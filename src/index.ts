@@ -850,6 +850,7 @@ export default class CheckinPlugin extends Plugin {
         } catch { /* 预检尽力而为，失败按未填写处理 */ }
         openJournalDialogFor({
             template,
+            localDate,
             integration: this.journalIntegrationPref,
             notebooks,
             alreadyWritten,

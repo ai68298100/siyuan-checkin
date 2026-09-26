@@ -1,6 +1,8 @@
 /* T-1465 · D-273 问卷式日记打卡守门：内置 5 预设解析、自建模板归一化（fail-closed）、
    设置文本解析往返、写入 Markdown（标记/表格/空答案）、事件摘要截断、幂等查询语句、
-   目标配置归一化；外加全链接线（model/save-form/fragments/bind-today/index/editor/settings）与双语。 */
+   目标配置归一化；外加全链接线（model/save-form/fragments/bind-today/index/editor/settings）与双语。
+   T-1484 提示词池守门：池归一化 fail-closed、ISO 周确定性轮换、空池/单候选/非法日期回落、
+   解析/序列化往返、弹窗与 Markdown 共用取词、宿主接线。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -59,7 +61,12 @@ assert.deepEqual(roundtrip.templates.map((entry) => [entry.name, entry.icon, ent
 const template = journal.resolveJournalTemplate(journal.JOURNAL_BUILTIN_TEMPLATES[0], translate);
 const markdown = journal.buildJournalEntryMarkdown({template, localDate: "2026-09-26", answers: ["家人健康", "", "感谢同事帮忙review"]});
 assert.match(markdown, /^\*\*🙏 感恩三问 · 2026-09-26\*\* · lv-checkin-journal:gratitude3:2026-09-26\n/, "first line carries the idempotent marker");
-assert.match(markdown, /\*\*今天值得感恩的三件事是什么？\*\* 家人健康/, "Q/A pairs render as bold-prefixed lines");
+/* T-1484：q1 配有提示词池，题干与弹窗共用同一轮换取词（同日一致），基础题干不再直接出现。 */
+const rotatedQ1 = journal.resolveJournalQuestionText(template.questions[0], "2026-09-26");
+assert.notEqual(rotatedQ1, template.questions[0].text, "pool question rotates away from the base text on 2026-W39");
+assert.ok(template.questions[0].prompts.includes(rotatedQ1), "rotated prompt comes from the resolved pool");
+assert.match(markdown, new RegExp(`\\*\\*${rotatedQ1.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\*\\* 家人健康`), "Q/A pairs render with the same rotated prompt as the dialog");
+assert.ok(!markdown.includes(template.questions[0].text), "base text is not rendered when a pool is in effect");
 assert.ok(!markdown.includes("今日亮点"), "empty answers are omitted");
 assert.equal(markdown.split("\n").filter((line) => line.trim()).length, 3, "single-block model: marker + two answered questions, no blank lines");
 assert.equal(journal.buildJournalEntryMarkdown({template, localDate: "bad", answers: []}), "", "invalid date → no markdown (fail-closed)");
@@ -79,6 +86,44 @@ assert.match(query, /LIKE '%lv-checkin-journal:gratitude3:2026-09-26%'/, "lookup
 /* —— 7. 集成配置归一化。 —— */
 assert.deepEqual(journal.normalizeJournalIntegration(undefined), {mode: "daily", notebookId: "", docId: ""});
 assert.deepEqual(journal.normalizeJournalIntegration({mode: "doc", docId: " abc ", notebookId: "n"}), {mode: "doc", notebookId: "n", docId: "abc"});
+
+/* —— 7.5 T-1484 提示词池：归一化 fail-closed、ISO 周确定性轮换、空池/单候选/非法日期回落基础题干。 —— */
+assert.deepEqual(journal.normalizePromptPool("x"), [], "non-array input is not a pool");
+assert.deepEqual(journal.normalizePromptPool([" a ", "a", "b", 3, null, "", "c"]), ["a", "b", "c"], "trim + dedupe + non-string/empty drop");
+assert.deepEqual(journal.normalizePromptPool(["only"]), [], "a single candidate is not a pool");
+assert.deepEqual(journal.normalizePromptPool(["1", "2", "3", "4", "5", "6", "7", "8"]), ["1", "2", "3", "4", "5", "6"], "pool caps at JOURNAL_MAX_PROMPT_POOL");
+assert.equal(journal.journalIsoWeekKey("2026-01-01"), "2026-W01");
+assert.equal(journal.journalIsoWeekKey("2025-12-29"), "2026-W01", "cross-year Monday belongs to the next ISO year");
+assert.equal(journal.journalIsoWeekKey("2026-09-26"), "2026-W39");
+assert.equal(journal.journalIsoWeekKey("2026-12-31"), "2026-W53", "2026 has 53 ISO weeks");
+assert.equal(journal.journalIsoWeekKey("2027-01-01"), "2026-W53", "Jan 1 2027 stays in the previous ISO year's week");
+assert.equal(journal.journalIsoWeekKey("2026-02-30"), "", "non-existent calendar date fails closed");
+assert.equal(journal.journalIsoWeekKey("2026-9-6"), "", "non-ISO format fails closed");
+const poolQuestion = {text: "BASE", prompts: ["P1", "P2", "P3"]};
+assert.equal(journal.resolveJournalQuestionText(poolQuestion, "2026-09-26"), journal.resolveJournalQuestionText(poolQuestion, "2026-09-27"), "same ISO week → same prompt");
+assert.equal(journal.resolveJournalQuestionText(poolQuestion, "2026-02-30"), "BASE", "invalid date falls back to base text");
+assert.equal(journal.resolveJournalQuestionText({text: "BASE"}, "2026-09-26"), "BASE", "no pool → base text");
+assert.equal(journal.resolveJournalQuestionText({text: "BASE", prompts: ["P1"]}, "2026-09-26"), "BASE", "singleton pool → base text");
+const yearSpread = new Set();
+for (let day = 1; day <= 365; day += 1) yearSpread.add(journal.resolveJournalQuestionText(poolQuestion, new Date(Date.UTC(2026, 0, day)).toISOString().slice(0, 10)));
+assert.equal(yearSpread.size, 3, "a year of weeks exercises every pool candidate");
+/* 内置池经 i18n 解析：3 条候选齐备；缺翻译候选被丢弃；不足 2 条整体不物化（回落基础题干）。 */
+assert.equal(template.questions[0].prompts.length, 3, "gratitude3 q1 resolves a 3-candidate pool");
+assert.ok(!template.questions[1].prompts, "questions without pools keep prompts unset");
+const fiveminuteResolved = journal.resolveJournalTemplate(journal.JOURNAL_BUILTIN_TEMPLATES[1], translate);
+assert.equal(fiveminuteResolved.questions[1].prompts.length, 3, "fiveminute q2 pool resolves");
+assert.equal(fiveminuteResolved.questions[4].prompts.length, 3, "fiveminute q5 pool resolves");
+const partialPool = journal.resolveJournalTemplate({id: "x2", icon: "x", name: "n", period: "any", questions: [{textKey: "journal.tpl.gratitude3.q1", promptKeys: ["journal.tpl.gratitude3.q1.p1", "journal.missing.pool.key"], type: "text"}]}, translate);
+assert.ok(!partialPool.questions[0].prompts, "a pool with fewer than 2 resolvable candidates is not materialized");
+/* 自建模板文本：`> ` 行累积为上一题池（去重）；孤立池行计坏块；单候选池解析时剪除；序列化往返保留。 */
+const poolText = "# 周记 | 📝\n本周一题 | textarea\n> 候选一\n> 候选一\n> 候选二\n> 候选三\n\n# 坏块 | 📝\n> 孤立池行\n真题 | text\n\n# 单候选 | 📝\n一题 | text\n> 唯一候选";
+const poolParsed = journal.parseCustomJournalTemplatesText(poolText);
+assert.equal(poolParsed.invalidBlocks, 1, "a stray pool line before any question invalidates its block");
+assert.deepEqual(poolParsed.templates[0].questions[0].prompts, ["候选一", "候选二", "候选三"], "pool lines accumulate on the preceding question with dedupe");
+assert.ok(!poolParsed.templates[1].questions[0].prompts, "singleton pool is pruned on parse");
+const poolRoundtrip = journal.parseCustomJournalTemplatesText(journal.serializeCustomJournalTemplatesText(poolParsed.templates));
+assert.deepEqual(poolRoundtrip.templates[0].questions[0].prompts, ["候选一", "候选二", "候选三"], "serialize → parse round-trip keeps pools");
+assert.equal(poolRoundtrip.invalidBlocks, 0, "pool-bearing text re-parses cleanly");
 
 /* —— 8. 全链接线 —— */
 const modelSource = read("src/model.ts");
@@ -115,6 +160,15 @@ const settingsSource = read("src/render/settings.ts");
 assert.match(settingsSource, /data-journal-custom/, "settings expose the custom template textarea");
 assert.match(settingsSource, /data-source-panel="journal"/, "settings expose the journal panel");
 assert.match(indexSource, /data-action='save-journal-custom'/, "settings save is wired");
+
+/* —— 8.5 T-1484 接线：弹窗按日取词、宿主传入 localDate、builder 深拷贝池数组、预览提示。 —— */
+const dialogSource = read("src/render/journal-dialog.ts");
+assert.match(dialogSource, /localDate: string;/, "dialog deps require the rotation date");
+assert.match(dialogSource, /resolveJournalQuestionText\(question, deps\.localDate\)/, "dialog picks the rotated prompt through the shared implementation");
+assert.match(dialogSource, /prompts: q\.prompts \? \[\.\.\.q\.prompts\] : undefined/, "copy-preset deep-copies pool arrays");
+assert.match(dialogSource, /prompts: template\.questions\[j\]\.prompts \? \[\.\.\.template\.questions\[j\]\.prompts\] : undefined/, "duplicate-question deep-copies pool arrays");
+assert.match(dialogSource, /journal\.poolVariants/, "builder preview surfaces the pool size hint");
+assert.match(indexSource, /template,\s*\n\s*localDate,\s*\n\s*integration: this\.journalIntegrationPref/, "host passes the day key into the journal dialog");
 
 /* —— 9. i18n 双语 + 移动触控基线覆盖。 —— */
 const journalKeys = i18nSource.match(/"journal\.[a-zA-Z0-9.]+"/g) || [];
