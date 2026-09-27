@@ -22,7 +22,9 @@ export interface BindPageNavigationHost {
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
     historyQuery: string;
-    historySource: "all" | "manual" | "tomato" | "import" | "api";
+    historySource: import("../features/history-filter").HistoryChannelFilter;
+    /** T-1512 计量方式筛选（可选：旧桩缺省按 all 处理）。 */
+    historyMetering?: import("../features/history-filter").HistoryMeteringFilter;
     historyOrder: "newest" | "oldest";
     historyScope: "day" | "period";
     historyItemId: string;
@@ -368,6 +370,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;
         host.historyQuery = "";
         host.historySource = "all";
+        host.historyMetering = "all";
         host.historyItemId = "";
         host.historyOrder = "newest";
         host.jumpToHistoryDate(date);
@@ -465,19 +468,32 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         cancelHistorySearch();
         host.historyQuery = "";
         host.historySource = "all";
+        host.historyMetering = "all";
         host.historyOrder = "newest";
         host.historyItemId = "";
         host.historyPage = 0;
         host.editingHistoryNoteId = undefined;
         renderReviewPreservingView("[data-history-search]");
     });
+    /* T-1512：渠道细筛值含 api 登记渠道（api:health 等）；计量方式独立筛选。 */
+    const HISTORY_CHANNEL_VALUES: ReadonlySet<string> = new Set(["all", "manual", "tomato", "import", "api", "api:health", "api:notequery", "api:taskhorizon", "api:other", "sireader", "siplayer", "weread", "yeguif"]);
+    const HISTORY_METERING_VALUES: ReadonlySet<string> = new Set(["all", "session", "daily", "other"]);
     root.querySelector<HTMLSelectElement>("[data-history-source]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        if (value === "all" || value === "manual" || value === "tomato" || value === "import" || value === "api") {
-            host.historySource = value;
+        if (HISTORY_CHANNEL_VALUES.has(value)) {
+            host.historySource = value as import("../features/history-filter").HistoryChannelFilter;
             host.historyPage = 0;
             host.editingHistoryNoteId = undefined;
             renderReviewPreservingView("[data-history-source]");
+        }
+    });
+    root.querySelector<HTMLSelectElement>("[data-history-metering]")?.addEventListener("change", (event) => {
+        const value = (event.currentTarget as HTMLSelectElement).value;
+        if (HISTORY_METERING_VALUES.has(value)) {
+            host.historyMetering = value as import("../features/history-filter").HistoryMeteringFilter;
+            host.historyPage = 0;
+            host.editingHistoryNoteId = undefined;
+            renderReviewPreservingView("[data-history-metering]");
         }
     });
     root.querySelector<HTMLSelectElement>("[data-history-order]")?.addEventListener("change", (event) => {

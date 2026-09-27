@@ -2,7 +2,7 @@
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup} from "../shared";
-import {filterHistoryRecords, type HistorySortOrder, type HistorySourceFilter} from "../features/history-filter";
+import {filterHistoryRecords, type HistorySortOrder, type HistoryChannelFilter, type HistoryMeteringFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
@@ -45,7 +45,9 @@ export interface ReviewViewContext {
     selectedHistoryDate: string;
     historyBatchSelected?: ReadonlySet<string>;
     historyQuery: string;
-    historySource: HistorySourceFilter;
+    historySource: HistoryChannelFilter;
+    /** T-1512 计量方式筛选（可选：旧桩缺省按 all 处理）。 */
+    historyMetering?: HistoryMeteringFilter;
     historyOrder: HistorySortOrder;
     heatmapYearOffset: number;
     reviewFoldSections: Set<string>;
@@ -213,9 +215,11 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         }).join("");
         return `<div class="review-batch-preview" data-batch-preview role="group" aria-label="${t("review.batchPreviewAria")}"><p class="review-scope-note">${escapeHtml(t("review.batchPreviewHint", {n: batchPreview.readyCount}))}</p>${rows}<div class="review-batch-actions"><button type="button" data-batch-submit data-ready-count="${batchPreview.readyCount}" ${batchPreview.readyCount ? "" : "disabled"}>${t("review.batchSubmit", {n: batchPreview.readyCount})}</button><button type="button" data-batch-cancel>${t("review.batchCancel")}</button></div></div>`;
     })()}</section>` : "";
-    const filteredRecords = filterHistoryRecords(selectedRecords.filter(record => !ctx.historyItemId || record.event.itemId === ctx.historyItemId), {
+    const dimensionBase = selectedRecords.filter(record => !ctx.historyItemId || record.event.itemId === ctx.historyItemId);
+    const filteredRecords = filterHistoryRecords(dimensionBase, {
         query: ctx.historyQuery,
         source: ctx.historySource,
+        metering: ctx.historyMetering,
         order: ctx.historyOrder,
     });
     const filteredEvents = filteredRecords.map((record) => record.event);
@@ -231,7 +235,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         });
     });
     const aggregateDetails = totals.size ? `<div class="lc-checkin__history-aggregate" aria-label="${t("review.historyAggregate")}">${[...totals.values()].map((entry) => `<div class="lc-checkin__history-row"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(formatNumber(entry.value))}${escapeHtml(entry.unit)}</span></div>`).join("")}</div>` : "";
-    const hasHistoryFilter = Boolean(ctx.historyQuery.trim()) || ctx.historySource !== "all" || Boolean(ctx.historyItemId) || ctx.historyOrder !== "newest";
+    const hasHistoryFilter = Boolean(ctx.historyQuery.trim()) || ctx.historySource !== "all" || (ctx.historyMetering && ctx.historyMetering !== "all") || Boolean(ctx.historyItemId) || ctx.historyOrder !== "newest";
     const renderEvent = ({event, itemName}: {event: CheckinEvent; itemName: string}) => {
         const clock = new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
         // The recorded calendar day is durable across device timezone changes;
@@ -294,12 +298,21 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         : `<div class="lc-checkin__history-empty">${selectedEvents.length ? t("review.historyFilterEmpty") : t("review.historyDayEmpty")}</div>`;
     const currentMonth = new Date(asOf.getFullYear(), asOf.getMonth(), 1);
     const nextDisabled = ctx.historyMonth >= currentMonth;
-    const historySourceOptions = (["all", "manual", "tomato", "import", "api"] as HistorySourceFilter[]).map((value) => `<option value="${value}" ${ctx.historySource === value ? "selected" : ""}>${escapeHtml(t(`source.${value}`))}</option>`).join("");
+    /* T-1512 渠道细筛与计量方式筛选：选项带命中数（其余条件不变时）；
+       api 按登记前缀细分，未知身份归其他/未知，不猜插件名。 */
+    const historyChannelOptions: HistoryChannelFilter[] = ["all", "manual", "tomato", "import", "api", "api:health", "api:notequery", "api:taskhorizon", "api:other", "sireader", "siplayer", "weread", "yeguif"];
+    const channelLabel = (value: HistoryChannelFilter): string => value.startsWith("api:") ? t(`review.filterChannel.${value.slice(4)}`) : t(`source.${value}`);
+    const filterHits = (source: HistoryChannelFilter, metering: HistoryMeteringFilter): number => filterHistoryRecords(dimensionBase, {query: ctx.historyQuery, source, metering, order: ctx.historyOrder}).length;
+    const currentMetering: HistoryMeteringFilter = ctx.historyMetering ?? "all";
+    const historySourceOptions = historyChannelOptions.map((value) => `<option value="${value}" ${ctx.historySource === value ? "selected" : ""}>${escapeHtml(`${channelLabel(value)} (${filterHits(value, currentMetering)})`)}</option>`).join("");
+    const historyMeteringOptions: HistoryMeteringFilter[] = ["all", "session", "daily", "other"];
+    const meteringLabel = (value: HistoryMeteringFilter): string => value === "all" ? t("review.filterMetering.all") : t(`review.filterMetering.${value}`);
+    const historyMeteringSelect = `<label><span>${t("review.meteringLabel")}</span><select data-history-metering aria-label="${t("review.meteringAria")}">${historyMeteringOptions.map((value) => `<option value="${value}" ${(ctx.historyMetering ?? "all") === value ? "selected" : ""}>${escapeHtml(`${meteringLabel(value)} (${filterHits(ctx.historySource, value)})`)}</option>`).join("")}</select></label>`;
     const historyOrderOptions = [["newest", "review.orderNewest"], ["oldest", "review.orderOldest"]] as const;
     const resultLabel = hasHistoryFilter ? t("review.historyResultFiltered", {shown: filteredEvents.length, total: selectedEvents.length}) : t("review.historyResultAll", {total: selectedEvents.length});
     const itemOptions = ctx.store.items.map(item => `<option value="${escapeHtml(item.id)}" ${ctx.historyItemId === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("");
-    const hasAdvancedHistoryFilter = Boolean(ctx.historyItemId) || ctx.historySource !== "all" || ctx.historyOrder !== "newest";
-    const historyTools = `<section class="review-record-tools" role="search" aria-label="${t("review.searchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(ctx.historyQuery)}" placeholder="${t("review.searchAria")}" aria-label="${t("review.searchAria")}" enterkeyhint="search" />${ctx.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><details class="lc-checkin__history-filter-disclosure review-more-filters"${hasAdvancedHistoryFilter ? " open" : ""}><summary>${hasAdvancedHistoryFilter ? t("review.moreFiltersOn") : t("review.moreFilters")}</summary><div class="lc-checkin__history-filter-row"><label><span>${t("review.recordItem")}</span><select data-history-item aria-label="${t("review.recordItem")}"><option value="">${t("review.allItems")}</option>${itemOptions}</select></label><label><span>${t("review.sourceLabel")}</span><select data-history-source aria-label="${t("review.sourceAria")}">${historySourceOptions}</select></label><label><span>${t("review.orderLabel")}</span><select data-history-order aria-label="${t("review.orderAria")}">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${ctx.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></details></section>`;
+    const hasAdvancedHistoryFilter = Boolean(ctx.historyItemId) || ctx.historySource !== "all" || (ctx.historyMetering && ctx.historyMetering !== "all") || ctx.historyOrder !== "newest";
+    const historyTools = `<section class="review-record-tools" role="search" aria-label="${t("review.searchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-history-search type="search" value="${escapeHtml(ctx.historyQuery)}" placeholder="${t("review.searchAria")}" aria-label="${t("review.searchAria")}" enterkeyhint="search" />${ctx.historyQuery ? `<button type="button" data-action="clear-history-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><details class="lc-checkin__history-filter-disclosure review-more-filters"${hasAdvancedHistoryFilter ? " open" : ""}><summary>${hasAdvancedHistoryFilter ? t("review.moreFiltersOn") : t("review.moreFilters")}</summary><div class="lc-checkin__history-filter-row"><label><span>${t("review.recordItem")}</span><select data-history-item aria-label="${t("review.recordItem")}"><option value="">${t("review.allItems")}</option>${itemOptions}</select></label><label><span>${t("review.sourceLabel")}</span><select data-history-source aria-label="${t("review.sourceAria")}">${historySourceOptions}</select></label>${historyMeteringSelect}<label><span>${t("review.orderLabel")}</span><select data-history-order aria-label="${t("review.orderAria")}">${historyOrderOptions.map(([value, label]) => `<option value="${value}" ${ctx.historyOrder === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></label></div></details></section>`;
 
 
     return `<div class="review-record-scopes" role="group" aria-label="${t("review.recordScope")}">

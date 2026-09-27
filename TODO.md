@@ -12,9 +12,8 @@
   - 状态：done。
 - [x] T-1511 批量补记实际数量与提交预览（P0）——done（2026-09-27，local-auto）。新纯模块 features/batch-backfill.ts：classifyBatchBackfillItem 单条分类（优先级 已存在→排期不适用→限额/戒除 atMost→绑定问卷→类型），二值固定 1 无输入；数值型逐项填实际数量——空/零/负/非法/超限一律不提交且绝不默认目标值；buildBatchBackfillPreview/planBatchBackfillSubmit 输出可提交计数与提交计划。回顾页批量补记改为预览流：「补记」先开预览面板（逐项分类原因 + 数值输入草稿，input 只更新草稿防打断输入、change 重渲染刷新计数），提交按钮带可提交条数并确认；宿主 recordHistoryBatchEntries 在 mutation 内以当前 store 重建快照重新分类（预览后项目改动自动重校验），一批一次持久化失败整批回滚，成功清空选择/草稿并逐条可撤销；日期/范围/翻页/取消均收起预览。跳过路径保持原语义。新守门 tests/batch-backfill.test.cjs 入主链（分类优先级/数值边界/提交计划重校验/接线/双语 14 键）。验证：check、主链、build（CSS 636319）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1512 来源渠道细筛与计量方式筛选（P0）
-  - 范围与验收：区分 api 下登记渠道与会话/日汇总，保持筛选与导出一致。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1512 来源渠道细筛与计量方式筛选（P0）——done（2026-09-27，local-auto）。history-filter.ts 扩展：HistoryChannelFilter（api:health/api:notequery/api:taskhorizon/api:other 为 UI 筛选值，公开 source 枚举不变）与 HistoryMeteringFilter（session/daily/other，与 T-1510 计量描述同一证据口径）；historyEventChannel 按登记前缀派生渠道（未知/旧身份/无 ref 如实归 api:other，不猜插件名），historyMeteringBucket 派生计量分桶（思阅/思播/番茄=会话片段；微信读书时长与健康=日汇总；完读/笔记合计/手动/导入/笔记推导/Task Horizon/未知接口=其他）；"api" 保持伞选项语义匹配全部 api 渠道（既有守门抓回一处回归）。回顾记录筛选：来源下拉扩展 13 项（来源枚举 + api 细分渠道）并显示各选项命中数（其余条件不变时），新增计量方式下拉（带命中数），组合筛选/清空（clear-history-filters 与节奏日跳转重置计量维度）/翻页先过滤后分页一致性；查询零写入。新守门 tests/history-channel-filter.test.cjs 入主链。验证：check、主链、build（CSS 636319）、test:ui、test:ecosystem、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。批次 A（T-1509～T-1512）就此收官。
 - [ ] T-1513 单项目未来 30 天排期预演（P1）
   - 范围与验收：编辑器草稿只读展开未来安排，配额不伪造执行日。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

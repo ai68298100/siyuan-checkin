@@ -30,7 +30,7 @@ import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appe
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
-import type {HistorySortOrder, HistorySourceFilter} from "./features/history-filter";
+import type {HistorySortOrder, HistorySourceFilter, HistoryChannelFilter, HistoryMeteringFilter} from "./features/history-filter";
 import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, normalizeDailyReminderSlots, reminderMinutesOfDay, type ReminderQuietHours} from "./features/reminder-preferences";
 import {addDays, daysBetweenHalfOpen} from "./date-keys";
@@ -1619,7 +1619,9 @@ export default class CheckinPlugin extends Plugin {
     private historyBatchPreviewOpen = false;
     private historyBatchValues: Record<string, string> = {};
     private historyQuery = "";
-    private historySource: HistorySourceFilter = "all";
+    private historySource: HistoryChannelFilter = "all";
+    /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
+    private historyMetering: HistoryMeteringFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
     private historyScope: "day" | "period" = "period";
     private historyItemId = "";
@@ -4782,6 +4784,7 @@ export default class CheckinPlugin extends Plugin {
             historyBatchValues: this.historyBatchValues,
             historyQuery: this.historyQuery,
             historySource: this.historySource,
+            historyMetering: this.historyMetering,
             historyOrder: this.historyOrder,
             historyScope: this.historyScope,
             historyItemId: this.historyItemId,
