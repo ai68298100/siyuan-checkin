@@ -51,6 +51,8 @@
 
 ## 本轮自主任务（2026-09-28：走查收口与 T-1392 本地切片）
 
+- [x] T-1530 上游状态复查、文档保鲜与英文文案审计——done（2026-09-28，local-auto）。①R-REL-CHECK 复查（2026-09-28）：[sireader#55](https://github.com/mm-o/siyuan-sireader/issues/55) 与 [siplayer#180](https://github.com/mm-o/siyuan-media-player/issues/180) 均仍 open、0 评论、无维护者回应、无关联 PR（与 09-27 基线一致，无解封；不追加无实质内容的外部评论）。②文档过期数字修正——product-direction 计划表「67 个目录模板」→72（T-1525 后）；roadmap-current 当前状态表「65 个模板」→72 且移除「近 30 日 sparkline」表述（T-1524 已按用户反馈移除）；HANDOFF-2026-09-28 未 push 提交数 18→24 并补 T-1528/1529/1530 里程碑行。③英文文案审计（2343 键，与 09-28 中文审计对偶）：双空格 0、标点前空格 2 处均为合法文件扩展名写法（habit .md files）、拼写变体一致（color 系 5 处无 colour）、句尾句点按族内一致（mixed families=0）、弯双引号 31 处均为 `“{name}”` 包裹动态值的统一惯例；发现并修复唯一真实不一致——set.yeguifBoundary 弯撇号（Marker’s/today’s）归一为全库通行的直撇号。验证：i18n-parity 2349/2349、upstream-proposals、build 全 EXIT=0。
+
 - [x] T-1529 质量审计三项与 CSS 微重复降级决策——done（2026-09-28，local-auto，结论 D-297）。零代码改动的研究收口：①编辑器截图「可疑文案」与 i18n 全量核对后判定为低分辨率截图误读，无缺陷字符串；②中文文案脚本审计 2330 个含 CJK 键——ASCII 标点混排/重复标点/你您称谓冲突全 0，4 个首尾空白键均为有意格式（`\n\n` 多行确认框前缀；尾部空格是确认文案拼接分隔符，index.ts:4558/4603 依赖）；③visual-qa harness 确认已有硬断言（mobileMatrix 横向溢出 scrollWidth===clientWidth、卡片动作区重叠、标题不换行、API 行为矩阵、pageErrors 深比较），无「只记录不拦截」的薄弱守门；④CSS 微重复 57 组 ~5.2KB 主动降级为护栏管理（每组均为同编译上下文同选择器同声明的级联等价规则，但源形态分散于嵌套/平铺，~45 处摘除风险大于 0.7% 体积收益；css-hygiene 10KB 护栏余量近半，未来触碰某组时顺手处理该组）。
 
 - [x] T-1528 产品视觉走查与阶段交接收口——done（2026-09-28，local-auto）。本地队列清零后按「实际问题」做产品级 QA：亲查 visual-qa 全部 26 张产物截图（今日/回顾×2/编辑器/设置/事项/洞察/归档/问卷/320~430 宽矩阵/宽 dock），未发现真实 UI 缺陷——编辑器底部“文字裁切”经定位为 harness 已注明的 fullPage+fixed 截图伪影（判断遮挡以 viewport-*.png 为准，320 实视口验证无遮挡）；桌面/移动、双主题、窄宽全部干净。补跑 test:mobile/test:ecosystem/test:extended 三链（本会话此前未覆盖）全 EXIT=0。按仓库惯例新增 docs/HANDOFF-2026-09-28.md 阶段交接（取代 09-27 交接的当前状态节：18 个未 push 提交分段、开放队列仅剩外部依赖项、2026-09-28 新增工程要点五条）。

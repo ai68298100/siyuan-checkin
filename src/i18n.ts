@@ -3975,7 +3975,7 @@ const enUS: Dict = {
     "set.siplayerHostMissing": "Host controller: not detected; no new records are produced even when the local switch is on.",
     "set.siplayerHostUnknown": "Host controller: not checked yet; open SiPlayer and return here to refresh the status.",
     "set.wereadBoundary": "Flow: WeRead official API → time/completion/notes → separate target projects; the Key stays in local preferences. Duration keeps at most 62 recent days; completion verifies 10 books per poll, notes at most 5 pages/10 books; rebinding does not migrate old events, so windowed history may reappear on the new target.",
-    "set.yeguifBoundary": "Flow: diary Markers → time from the previous Marker to the current one → the current Marker’s project; today’s Markers only, and the first Marker without a predecessor is not counted. Each poll reads at most 200 blocks; rebinding does not migrate old events, and blocks past the cap need archiving or splitting before verification.",
+    "set.yeguifBoundary": "Flow: diary Markers → time from the previous Marker to the current one → the current Marker's project; today's Markers only, and the first Marker without a predecessor is not counted. Each poll reads at most 200 blocks; rebinding does not migrate old events, and blocks past the cap need archiving or splitting before verification.",
     "set.siplayerTitle": "SiPlayer watch integration (experimental)",
     "set.siplayerHint": "Log each completed playback session in whole minutes; experimental, off by default and revocable.",
     "set.siplayerToggle": "Enable SiPlayer integration",
