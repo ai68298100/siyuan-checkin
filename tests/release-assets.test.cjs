@@ -65,7 +65,9 @@ for (const filename of ["zh_CN.json", "en_US.json"]) {
     assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(i18nPath, "utf8"))).sort(), ["dock.title", "entry.topBar", "openCheckin", "openCheckinTab", "blockPresetSummary", "blockPresetMonth", "blockPresetHeatmap", "blockPresetGroups"].sort(), `dist i18n keys must stay complete: ${filename}`);
 }
 const builtCss = fs.readFileSync(path.join(root, "dist", "index.css"), "utf8");
-for (const surface of ["today", "history", "summary", "settings", "occasions", "insights", "archived"]) {
+/* T-1526：表面清单与 TS 实际施加的 8 个 lc-checkin--* 表面类对齐（"summary" 只是
+   回顾页的图标名，从来不是表面类；其幻影样式已随死规则清理移除）。 */
+for (const surface of ["today", "review", "history", "insights", "archived", "settings", "occasions", "editor"]) {
     assert.match(builtCss, new RegExp(`\\.lc-checkin--${surface}`), `built CSS missing 4.0 ${surface} surface`);
 }
 /* D-246: user explicitly defers CSS size limits during the UI iteration.

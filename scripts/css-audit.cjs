@@ -1,9 +1,25 @@
-/* T-1354 CSS 审计工具：找出 dist/index.css 中在 src 源码（.ts/.scss）无字面引用的类。
-   动态类（is-/has- 前缀、数字后缀状态、含 ${} 插值的类名片段）单独归类为 dynamic-suspect，
-   不自动判死——删除需人工核对。用法：node scripts/css-audit.cjs [--json]；
-   也可被测试 require：const {cssAudit} = require(".../css-audit.cjs")。 */
+/* T-1354 CSS 审计工具：找出 dist/index.css 中无消费方的类。
+   T-1526 修正：旧实现对「TS+SCSS 合并文本」做包含判定，而 dist CSS 本就编译自
+   SCSS，任何类都必然命中自身定义——dead 恒为空，守门形同虚设。现改为：
+   - TS 零字面引用 + 非动态/外部前缀 → dead（真实可清理的死规则）；
+   - is-/has- 前缀、数字后缀 → dynamicSuspect（TS 以 is-${state} 等模板拼接，人工核对）；
+   - b3- 前缀 → dynamicSuspect（思源宿主 DOM 类，插件只做覆盖样式，不由 TS 生成）。
+   用法：node scripts/css-audit.cjs [--json]；也可被测试 require。 */
 const fs = require("node:fs");
 const path = require("node:path");
+
+function readSources(dir, filter) {
+    const files = [];
+    const walk = (current) => {
+        for (const entry of fs.readdirSync(current, {withFileTypes: true})) {
+            const full = path.join(current, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (filter.test(entry.name)) files.push(fs.readFileSync(full, "utf8"));
+        }
+    };
+    walk(dir);
+    return files.join("\n");
+}
 
 function cssAudit(cssPath) {
     const resolved = cssPath || path.join(__dirname, "..", "dist", "index.css");
@@ -13,23 +29,15 @@ function cssAudit(cssPath) {
     const classes = new Set();
     for (const match of css.matchAll(classTokenRe)) classes.add(match[1]);
 
-    /* 收集 src 源码文本（模板串里的类名、classList 拼接、SCSS 规则）。 */
-    const sources = [];
-    const walk = (dir) => {
-        for (const entry of fs.readdirSync(dir, {withFileTypes: true})) {
-            const full = path.join(dir, entry.name);
-            if (entry.isDirectory()) walk(full);
-            else if (/\.(ts|scss)$/.test(entry.name)) sources.push(fs.readFileSync(full, "utf8"));
-        }
-    };
-    walk(path.join(__dirname, "..", "src"));
-    const haystack = sources.join("\n");
+    /* 死判定只看 TS：TS 是唯一会在运行时把类写进 DOM 的来源；
+       SCSS 里出现只说明「有样式定义」，不说明「有元素挂这个类」。 */
+    const tsBlob = readSources(path.join(__dirname, "..", "src"), /\.ts$/);
 
     const dead = [];
     const dynamicSuspect = [];
     for (const cls of [...classes].sort()) {
-        if (haystack.includes(cls)) continue;
-        if (/^(is|has)-/.test(cls) || /\d$/.test(cls)) dynamicSuspect.push(cls);
+        if (tsBlob.includes(cls)) continue;
+        if (/^(is|has|b3)-/.test(cls) || /\d$/.test(cls)) dynamicSuspect.push(cls);
         else dead.push(cls);
     }
 
@@ -60,7 +68,7 @@ if (require.main === module) {
         console.log(JSON.stringify(result, null, 2));
     } else {
         console.log(`total class tokens: ${result.total}`);
-        console.log(`dead (no literal source reference): ${result.dead.length}`);
+        console.log(`dead (no TS consumer): ${result.dead.length}`);
         result.dead.forEach((cls) => console.log(`  DEAD ${cls}`));
         console.log(`dynamic-suspect (manual review): ${result.dynamicSuspect.length}`);
         console.log(`duplicate rules: ${result.duplicateRules} (~${result.duplicateRuleBytes} bytes)`);

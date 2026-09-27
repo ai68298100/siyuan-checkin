@@ -71,7 +71,7 @@ assert.ok(!styles.includes("min-height: 88px; padding: 16px 12px"), "the ninth n
 assert.match(liveStyles, /Ninth narrow-surface pass: mobile empty states, headers and occasion forms[\s\S]*\.lc-checkin--occasions \.lc-checkin__section-heading strong/,
     "mobile empty states, headers and occasion forms belong to the component layer");
 assert.ok(!styles.includes("overscroll-behavior-y: contain; scrollbar-width: thin"), "the tenth narrow-surface pass must not return to legacy index.scss");
-assert.match(liveStyles, /Tenth narrow-surface pass: sticky layers, touch targets and calendar markers[\s\S]*\.lc-checkin__calendar-day\.has-records/,
+assert.match(liveStyles, /Tenth narrow-surface pass: sticky layers, touch targets and calendar markers[\s\S]*\.lc-checkin__calendar-day\.is-selected/,
     "sticky layers, touch targets and calendar markers belong to the component layer");
 assert.ok(!styles.includes("lc-checkin__coaching-item { border-left-width: 3px"), "the eleventh narrow-surface pass must not return to legacy index.scss");
 assert.match(liveStyles, /Eleventh narrow-surface pass: insights, history events and Today controls[\s\S]*\.lc-checkin__mobile-nav button\.is-selected/,
@@ -162,7 +162,7 @@ const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render
 assert.match(settingsSource, /lc-checkin__settings-nav/);
 assert.match(source, /window\.confirm\(t\("msg\.prefsResetConfirm"\)\)/);
 assert.match(i18n, /"msg\.prefsResetConfirm": "确定恢复全部显示偏好吗？打卡数据不会受到影响。"/);
-assert.match(liveStyles, /\.lc-checkin\[data-reduced-motion="true"\]/);
+assert.match(liveStyles, /\[data-reduced-motion="true"\] \.lc-checkin--history/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-success:/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-danger:/);
 /* radius-lg 的真实生效声明在 tokens.scss（20px）；index.scss 里曾有一份死块里的 16px 从未生效 */

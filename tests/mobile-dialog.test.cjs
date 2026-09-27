@@ -69,8 +69,8 @@ assert.match(contentResponsive, /:is\(\.lc-checkin-host--mobile, \.lc-checkin-di
     "mobile review host must use none rather than contain so the edge has no rubber-band affordance");
 assert.match(v5Components, /@supports \(height: 100dvh\)[\s\S]*height: calc\(100dvh - 16px\)/,
     "mobile dialog must follow the visual viewport when the keyboard opens");
-assert.match(v5Components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__dialog-close[\s\S]*width: 38px[\s\S]*height: 38px/,
-    "mobile dialog close action must meet a touch-friendly target size");
+assert.ok(!v5Components.includes("lc-checkin__dialog-close"),
+    "plugin-drawn dialog close is retired (T-1526, zero TS consumers); the host b3 dialog owns the close action");
 assert.match(v5Components, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\) !important/,
     "mobile navigation must fit four destinations around the central add action");
 assert.match(source, /saveState: "idle" \| "saving" \| "error"/,

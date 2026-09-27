@@ -45,6 +45,10 @@
 
 - [x] T-1525 循证模板批次——done（2026-09-28，用户指令：D-291 收官后调研习惯养成书评与 HowToLiveBetter 仓库设计新模板）。选型口径见 D-294：5 个与既有 67 模板不重叠、证据较强的新模板入 `src/catalog.ts` CHECKIN_TEMPLATES——读一页书（《掌控习惯》两分钟法则微习惯版）、按时服药（HowToLiveBetter 慢性病章：服药依从性价比最高）、定时起身（久坐章：count 工作日×6 打断久坐）、联系亲友（放松章/哈佛成人发展研究：关系是幸福感最强预测因素）、分散复习（学习章：分散练习+自测，证据 A 级）；「户外时间/无屏幕餐/即刻两分钟」等候选与既有散步/跑步/读一页书重叠被裁掉，保持精选。TEMPLATE_NAME_KEYS + i18n zh/en 各 10 键双语完备；template-gallery 守门 curated 上限 70→75 并新增循证批次存在性断言（缺任一即红）。验证：`pnpm run check`、`pnpm test`、`pnpm run build`（CSS 647610 字节，纯内容资产零新增样式）、`pnpm run test:ui`、浅/深主题 `node tests/visual-qa.cjs`、`node tests/width-walkthrough.cjs`、`pnpm run test:quality`（i18n 平价 2349/2349）全部 EXIT=0。
 
+## 本轮自主任务（2026-09-28：CSS 死规则清理与守门修复）
+
+- [x] T-1526 CSS 死规则清理与审计守门修复——done（2026-09-28，local-auto，口径 D-295）。开放队列 9 项全部挂上游/用户拍板后，按 D-242 预警自选本地任务：修复 scripts/css-audit.cjs 恒真缺陷（旧实现把 SCSS 定义本身算作引用，dead 恒为空、css-hygiene 门禁形同虚设），改为 **TS-only 消费方判定**（is-/has-/数字后缀归 dynamicSuspect、b3- 宿主类不判死）；据实清理 26 个死类家族约 250 行规则——骨架屏 skeleton 全家（含 keyframes/reduced-motion）、插件自绘弹窗关闭钮 dialog-close 全变体（宿主 b3-dialog 承担关闭）、warning/badge 呼出块、首版强度行 strength-list/row/detail/fold（T-1243 overview 实现取代）、review-hero-copy/rate/cutoff（hero 旧三栏结构）、summary-agent、history-tools/details/expand、fold-count、header-streak、diary-doc-controls、renderblock-today-summary、has-records 日历点、provider-help、review-actions、幻影表面 --summary。CSS 647610→**630747 字节（-16.9KB，重回 620KB 软线以下）**，类 token 763→735，产物 dead=0。守门同步：css-hygiene 长出真牙齿（dead>0 即红）；ui-state-ledger 退役词表纳入 skeleton；mobile-dialog 反向断言插件关闭钮不得回流；ui-theme has-records 锚点换 is-selected、reduced-motion 断言指向存活规则；stats-visuals 区域锚点换 renderblock-summary；release-assets 表面清单对齐 TS 实际 8 表面（summary 实为图标名）。过程教训：退役注释含字面类名会同时触发正向/反向断言，注释一律去字面量。验证：check、主链、build、test:ui、test:quality、双主题 visual-qa（零 pageErrors）、宽度走查全 EXIT=0。
+
 ## 外部联动逻辑总账与治理深化（2026-09-27，用户点名）
 
 - [x] T-1503 外部联动逻辑盘点与功能分层

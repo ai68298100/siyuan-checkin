@@ -6,17 +6,13 @@
 
     .lc-checkin__eyebrow { font-size: 12px; line-height: 1.4; }
     .lc-checkin__review-tool-button,
-    .lc-checkin__review-actions .lc-checkin__text-button,
     .lc-checkin__review-tools button { min-height: 44px; font-size: 12px; }
 
-    .lc-checkin__review-hero-cutoff,
     .lc-checkin__summary-stats span:not(.lc-checkin__analytics-badge),
     .lc-checkin__history-result,
     .lc-checkin__history-date > span,
-    .lc-checkin__history-details > summary em,
     .lc-checkin__history-filter-row label > span,
     .lc-checkin__review-item-meta,
-    .lc-checkin__fold-count,
     .lc-checkin__compare-stat :is(small, span, em),
     .lc-checkin__compare-chart-legend,
     .lc-checkin__compare-chart-row > :is(strong, span),
@@ -41,7 +37,6 @@
     .lc-checkin__calendar-day b { font-size: 10px; line-height: 1.2; }
     .lc-checkin__history-date { flex-wrap: wrap; row-gap: 4px; }
     .lc-checkin__history-date > strong { font-size: 14px; line-height: 1.5; }
-    .lc-checkin__history-details > summary { font-size: 13px; min-height: 44px; }
     .lc-checkin__history-aggregate .lc-checkin__history-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
     .lc-checkin__history-aggregate .lc-checkin__history-row > :is(strong, span) {
         min-width: 0; font-size: 13px; line-height: 1.5; white-space: normal; overflow-wrap: anywhere;
@@ -100,13 +95,7 @@
     .lc-checkin__strength-overview > header { gap: 8px; }
     .lc-checkin__strength-overview strong { font-size: 13px; line-height: 1.5; }
     .lc-checkin__strength-overview em { font-size: 14px; flex: none; }
-    .lc-checkin__strength-detail > summary { gap: 8px; min-height: 44px; }
-    .lc-checkin__strength-detail > summary strong {
-        min-width: 0; flex: 1; font-size: 13px; line-height: 1.5; overflow: visible; white-space: normal; overflow-wrap: anywhere;
-    }
-    .lc-checkin__strength-detail > summary em { font-size: 13px; flex: none; }
-    .lc-checkin__strength-overview svg,
-    .lc-checkin__strength-detail-body svg { min-width: 0; }
+    .lc-checkin__strength-overview svg { min-width: 0; }
 
     .lc-checkin__log-month > summary { font-size: 14px; }
     .lc-checkin__log-week > summary { font-size: 13px; }
@@ -127,7 +116,6 @@
     .lc-checkin__log-week > summary,
     .lc-checkin__log-day.is-folded > summary,
     .lc-checkin__log-more > summary,
-    .lc-checkin__strength-details-fold > summary,
     .lc-checkin__compare-item-batch > summary,
     .lc-checkin__achievement-category > summary {
         min-height: 44px; box-sizing: border-box; font-size: 13px; line-height: 1.5;
@@ -155,9 +143,7 @@
     .lc-checkin__custom-range input { min-height: 44px; font-size: 13px; }
     .lc-checkin__summary-text { font-size: 14px; line-height: 1.7; }
     .lc-checkin__summary-text > small { font-size: 12px; line-height: 1.5; }
-    .lc-checkin__summary-agent { font-size: 12px; line-height: 1.5; }
     .lc-checkin__eyebrow { font-size: 12px; line-height: 1.5; }
-    .lc-checkin__summary-agent > span:first-child { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
     .lc-checkin__review-tool-button,
     .lc-checkin__review-more > summary,
     .lc-checkin__review-subnav button { min-height: 44px; font-size: 12px; }

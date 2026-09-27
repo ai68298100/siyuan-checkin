@@ -54,7 +54,7 @@ assert.ok(!i18nSource.includes("statsSpark"), "retired sparkline i18n keys are r
 const scss = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 assert.match(scss, /\.lc-checkin__ring-value \{ stroke: var\(--lc-checkin-accent\); \}/, "ring value stays on the accent ladder");
 assert.match(scss, /\.lc-checkin__completion-ring\.is-complete \.lc-checkin__ring-value \{ stroke: var\(--lc-checkin-success\); \}/, "complete state uses success color");
-assert.ok(!/\.lc-checkin__completion-ring[^]*transition/.test(scss.split(".lc-checkin__renderblock-today-summary")[0].split("R-A16（2026-09-26）")[1] || ""), "ring stays static (D-263 no motion)");
+assert.ok(!/\.lc-checkin__completion-ring[^]*transition/.test(scss.split(".lc-checkin__renderblock-summary")[0].split("R-A16（2026-09-26）")[1] || ""), "ring stays static (D-263 no motion)");
 assert.ok(!scss.includes("lc-checkin__spark"), "sparkline styles are removed (zero dead classes)");
 
 console.log("stats visuals guard tests passed.");

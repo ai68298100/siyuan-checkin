@@ -51,9 +51,8 @@ for (const marker of ["emptyActiveTitle", "emptyOnboardTitle", "emptyScheduledTi
 }
 assert.match(interactionStates, /\.lc-checkin__empty-actions \{ flex-wrap: wrap;/, "空态动作按钮窄宽换行");
 
-/* —— 族 5：加载（R-18.4 退役 lc-checkin__loading 后，骨架屏 skeleton 家族为加载呈现） —— */
-assert.match(components, /\.lc-checkin__skeleton \{/, "加载骨架基座类存在");
-assert.match(components, /\.lc-checkin\[data-reduced-motion="true"\] \.lc-checkin__skeleton \{ animation:none; \}/, "加载动效尊重 reduced motion");
+/* —— 族 5：加载（R-18.4 退役 lc-checkin__loading；T-1526 核查 skeleton 家族亦零
+   TS 消费方，随 D-242 预算清理一并退役，加载反馈仍由既有通道承担） —— */
 
 /* —— 族 6：禁用 —— */
 assert.match(
@@ -83,12 +82,11 @@ assert.ok(!review.includes('class="is-error"'), "回顾助手不得再使用散�
    零消费方（2026-09-26），统一退役：CSS 规则与 i18n 键删除；加载/成功反馈由
    toast、recent-record 与 save-status(error) 通道承担。断言翻转为「不得复活」：
    静默重新引入视为违规，如需加载骨架请登记新族后再引入。 */
-for (const retired of ["lc-checkin__loading", "lc-checkin__success", "is-saving", "msg.saving", "lc-checkin-spin"]) {
+for (const retired of ["lc-checkin__loading", "lc-checkin__success", "is-saving", "msg.saving", "lc-checkin-spin", "lc-checkin__skeleton", "lc-checkin__skeleton-line"]) {
     assert.ok(!components.includes(retired), `已退役词表不得回流 SCSS：${retired}`);
     assert.ok(!i18n.includes(`"${retired}"`), `已退役词表不得回流 i18n：${retired}`);
 }
 assert.ok(!fragments.includes("__loading") && !fragments.includes("__success"), "渲染层不得引用已退役类");
-assert.match(components, /\.lc-checkin__skeleton \{/, "skeleton 家族仍有消费方，保留（与已退役 loading 无关）");
 
 /* —— 交叉引用：矩阵维度由既有门禁承担 —— */
 for (const gate of ["tests/responsive-layout.test.cjs", "tests/ui-theme.test.cjs", "tests/i18n-parity.test.cjs", "tests/css-hygiene.test.cjs", "tests/mobile-release-quality.test.cjs"]) {

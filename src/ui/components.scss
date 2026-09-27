@@ -207,7 +207,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 
 @container lc-dialog (min-width: 900px) {
     .lc-checkin-dialog-host .lc-checkin { padding-top: 26px; }
-    .lc-checkin-dialog-host .lc-checkin__dialog-close { top: 12px; }
     .lc-checkin-dialog--fullscreen .lc-checkin-dialog-host .lc-checkin { border-radius: 0; }
 }
 
@@ -439,27 +438,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         margin: 0 0 8px;
         align-items: center;
     }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close {
-        position: absolute;
-        z-index: 4;
-        top: max(6px, env(safe-area-inset-top));
-        right: 6px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 38px;
-        height: 38px;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        color: var(--lc-checkin-muted);
-        background: var(--lc-checkin-muted-surface);
-        font-size: 24px;
-        line-height: 1;
-        cursor: pointer;
-        touch-action: manipulation;
-        &:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
-    }
     .lc-checkin-tab-host .lc-checkin__mobile-nav { display: none; }
     .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(82px + env(safe-area-inset-bottom)); }
     .lc-checkin__mobile-nav {
@@ -526,7 +504,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 @media (max-width: 600px) and (orientation: landscape) {
  .lc-checkin-dialog-host--mobile .lc-checkin__header { min-height: 38px; padding-block: 2px; }
  .lc-checkin-dialog-host--mobile .lc-checkin__title { font-size: 18px; }
- .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { width: 32px; height: 32px; }
  .lc-checkin-dialog-host--mobile .lc-checkin:not(.lc-checkin--editor) { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
  .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav { min-height: 46px; padding-top: 2px; }
  .lc-checkin-dialog-host--mobile .lc-checkin__mobile-nav button { min-height: 36px; }
@@ -604,7 +581,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-icon { border-radius:var(--lc-checkin-radius-sm); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__occasion-form-panel form { gap:var(--lc-checkin-space-4); }
 .lc-checkin--occasions .lc-checkin__field textarea { min-height:88px; }
-.lc-checkin__history-tools,.lc-checkin__history-filter-row { padding:var(--lc-checkin-space-3); border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); }
+.lc-checkin__history-filter-row { padding:var(--lc-checkin-space-3); border:1px solid var(--lc-checkin-border); border-radius:var(--lc-checkin-radius); background:var(--lc-checkin-surface); }
 .lc-checkin__occasion-form-panel .lc-checkin__field > span { font-weight:650; }
 .lc-checkin__occasion-form-panel .lc-checkin__field input,.lc-checkin__occasion-form-panel .lc-checkin__field select { min-height:38px; }
 .lc-checkin__occasion-form-panel .lc-checkin__field textarea { min-height:84px; }
@@ -643,8 +620,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__mobile-nav button { user-select:none; -webkit-tap-highlight-color:transparent; }
 .lc-checkin__mobile-nav button span { display:flex; align-items:center; justify-content:center; }
 .lc-checkin__mobile-nav button small { display:block; max-width:100%; overflow:hidden; }
-.lc-checkin__dialog-close { -webkit-tap-highlight-color:transparent; }
-.lc-checkin__dialog-close:hover { color:var(--lc-checkin-text); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__back-button:hover { color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__icon-button:hover { color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); }
 .lc-checkin__text-button:hover { color:var(--lc-checkin-accent-text); }
@@ -656,23 +631,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__empty { min-width:0; overflow-wrap:anywhere; }
 .lc-checkin__empty-title { overflow-wrap:anywhere; }
 .lc-checkin__empty-description { overflow-wrap:anywhere; }
-.lc-checkin__skeleton { min-height:14px; border-radius:5px; background:linear-gradient(90deg,var(--lc-checkin-muted-surface),var(--lc-checkin-surface),var(--lc-checkin-muted-surface)); background-size:200% 100%; animation:lc-checkin-skeleton 1.2s ease-in-out infinite; }
-@keyframes lc-checkin-skeleton { from { background-position:200% 0; } to { background-position:-200% 0; } }
-.lc-checkin[data-reduced-motion="true"] .lc-checkin__skeleton { animation:none; }
-.lc-checkin__skeleton-line { width:100%; }
-.lc-checkin__skeleton-line.is-short { width:42%; }
-.lc-checkin__skeleton-line.is-medium { width:68%; }
 .lc-checkin__error { padding:10px; border:1px solid var(--lc-checkin-danger); border-radius:8px; color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 8%,transparent); overflow-wrap:anywhere; }
 .lc-checkin__error button { margin-top:7px; }
-.lc-checkin__warning { padding:8px 10px; border:1px solid var(--lc-checkin-warning); border-radius:8px; color:var(--lc-checkin-warning-text); background:color-mix(in srgb,var(--lc-checkin-warning) 8%,transparent); overflow-wrap:anywhere; }
-.lc-checkin[data-appearance="dark"] .lc-checkin__skeleton { background:linear-gradient(90deg,var(--lc-checkin-muted-surface),var(--lc-checkin-surface-raised),var(--lc-checkin-muted-surface)); background-size:200% 100%; }
 .lc-checkin[data-appearance="light"] .lc-checkin__error { background:color-mix(in srgb,var(--lc-checkin-danger) 6%,transparent); }
-.lc-checkin[data-appearance="light"] .lc-checkin__warning { background:color-mix(in srgb,var(--lc-checkin-warning) 6%,transparent); }
-.lc-checkin__badge { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; color:var(--lc-checkin-accent-text); background:var(--lc-checkin-accent-soft); font-size:10px; font-weight:650; }
-.lc-checkin__badge.is-success { color:var(--lc-checkin-success-text); background:color-mix(in srgb,var(--lc-checkin-success) 12%,transparent); }
-.lc-checkin__badge.is-warning { color:var(--lc-checkin-warning-text); background:color-mix(in srgb,var(--lc-checkin-warning) 12%,transparent); }
-.lc-checkin__badge.is-danger { color:var(--lc-checkin-danger-text); background:color-mix(in srgb,var(--lc-checkin-danger) 12%,transparent); }
-@media (prefers-reduced-motion: reduce) { .lc-checkin__skeleton { animation:none !important; } }
+/* T-1526 退役死规则组：骨架屏（skeleton 家族，keyframes+主题变体）、
+   warning 与 badge 呼出块——构建产物类在 TS 全量零字面引用。 */
 /* 10.0 foundation pass 9: keyboard, screen-reader and focus continuity. */
 .lc-checkin [tabindex="0"]:focus-visible { outline:2px solid var(--lc-checkin-accent); outline-offset:2px; }
 .lc-checkin [aria-disabled="true"] { cursor:not-allowed; }
@@ -716,10 +679,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__group-header button { min-width: 28px; }
 .lc-checkin__group-header button:focus-visible { outline: 2px solid var(--lc-checkin-accent); }
 .lc-checkin__group-header [aria-expanded="false"] + * { visibility: hidden; }
-.lc-checkin__history-details > summary:focus-visible { outline: 2px solid var(--lc-checkin-accent); outline-offset: 2px; }
 .lc-checkin__history-event.is-selected { border-color: var(--lc-checkin-accent); background: var(--lc-checkin-accent-soft); }
 .lc-checkin__history-event-note a:hover { text-decoration: underline; }
-.lc-checkin__history-expand { justify-self: start; }
 .lc-checkin__calendar-day[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--lc-checkin-accent); }
 .lc-checkin__calendar-day[aria-disabled="true"] { cursor: not-allowed; opacity: .45; }
 .lc-checkin__calendar-day:not([aria-disabled="true"]):hover { background: var(--lc-checkin-accent-soft); }
@@ -737,8 +698,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__audit-list li.is-error { border-color: var(--lc-checkin-danger); }
 .lc-checkin__summary-text[data-summary-source="agent"] { border-left: 3px solid var(--lc-checkin-accent); padding-left: 10px; }
 .lc-checkin__summary-text[data-summary-source="local"] { border-left: 3px solid var(--lc-checkin-muted); padding-left: 10px; }
-.lc-checkin__summary-agent[data-summary-refresh-state="loading"] { opacity: .72; }
-.lc-checkin__summary-agent[data-summary-refresh-state="loading"] button { cursor: wait; }
 .lc-checkin__suggestion-workflow[data-state="pending"] { border-color: var(--lc-checkin-accent); }
 .lc-checkin__suggestion-workflow[data-state="confirmed"] { border-color: var(--lc-checkin-success); }
 .lc-checkin__suggestion-workflow[data-state="failed"] { border-color: var(--lc-checkin-danger); }
@@ -805,13 +764,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button { min-width: 92px; }
  .lc-checkin--today .lc-checkin__item-action .lc-checkin__quick-button { min-width: 72px; }
  .lc-checkin__history-filter-row { grid-template-columns: repeat(3,minmax(0,1fr)); }
- .lc-checkin__history-tools { padding: 12px 14px; }
  .lc-checkin__history-event-actions { min-width: 150px; }
  .lc-checkin__occasion-manager-row { min-height: 58px; }
  .lc-checkin__occasion-row-actions { min-width: 104px; }
  .lc-checkin--settings .lc-checkin__settings-row { grid-template-columns: minmax(0,1fr) 260px; }
  .lc-checkin--settings .lc-checkin__settings-row select,.lc-checkin--settings .lc-checkin__settings-row input { width: 100%; }
- .lc-checkin__summary-agent { min-height: 36px; }
  .lc-checkin__suggestion-workflow { max-width: 860px; }
 }
 @container lc-dock (min-width: 560px) {
@@ -837,7 +794,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin__item-action .lc-checkin__more-button { flex: 0 0 28px; }
  .lc-checkin__item-action .lc-checkin__focus-button { flex: 0 0 28px; }
  .lc-checkin__item-action .lc-checkin__drag-handle { flex: 0 0 28px; }
- .lc-checkin__review-hero-rate { flex: 0 0 auto; }
  .lc-checkin__summary-text { overflow-wrap: anywhere; }
  .lc-checkin__summary-text > div { line-height: 1.55; }
  .lc-checkin__trend-stats { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
@@ -872,7 +828,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 50px; padding-inline: 8px; }
  .lc-checkin--review .lc-checkin__summary-stats strong { font-size: 17px; }
  .lc-checkin--review .lc-checkin__review-hero { padding: 12px 14px; }
- .lc-checkin--review .lc-checkin__review-hero-rate { font-size: 32px; }
  .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 30px minmax(0,1fr) auto; gap: 6px; }
  .lc-checkin--occasions .lc-checkin__occasion-manager-row .lc-checkin__occasion-row-actions { flex-wrap: wrap; }
  .lc-checkin--occasions .lc-checkin__occasion-manager-row small { line-height: 1.3; }
@@ -915,8 +870,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
  .lc-checkin--review .lc-checkin__review-hero { min-height: 0; }
  .lc-checkin--review .lc-checkin__review-hero > div { min-width: 0; }
  .lc-checkin--review .lc-checkin__review-hero p { overflow-wrap: anywhere; }
- .lc-checkin--review .lc-checkin__summary-agent { flex-wrap: wrap; }
- .lc-checkin--review .lc-checkin__summary-agent > span:last-child { margin-left: auto; }
  .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 28px minmax(0,1fr); }
  .lc-checkin--occasions .lc-checkin__occasion-row-actions { grid-column: 2; justify-self: start; }
  .lc-checkin--occasions .lc-checkin__occasion-row-actions button { min-height: 34px; }
@@ -1566,7 +1519,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__quota-schedule { display: flex; gap: 8px; flex-direction: column; padding: 9px; border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 30%, var(--lc-checkin-border-strong)); border-radius: 8px; background: color-mix(in srgb, var(--lc-checkin-accent-soft) 55%, var(--lc-checkin-surface)); }
 .lc-checkin__quota-help { color: var(--lc-checkin-muted); font-size: 10px; line-height: 1.4; }
 .lc-checkin__field-action { align-self: flex-start; min-height: 28px; padding: 0 8px; border: 1px solid var(--lc-checkin-border-strong); border-radius: 6px; color: var(--lc-checkin-accent-text); background: transparent; font-size: 11px; cursor: pointer; }
-.lc-checkin__history-tools { display: flex; min-width: 0; flex-direction: column; gap: 7px; margin-top: 12px; }
 .lc-checkin__history-search { width: 100%; input { height: 36px; } }
 .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px;
     label { display: flex; min-width: 0; align-items: center; gap: 6px; color: var(--lc-checkin-muted); font-size: 10px; }
@@ -1585,7 +1537,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--history .lc-checkin__history-selected { max-height: 52vh; overflow: auto; overscroll-behavior: contain; }
     .lc-checkin--history .lc-checkin__history-event { padding: 7px; }
     .lc-checkin { overscroll-behavior-y: contain; -webkit-tap-highlight-color: transparent; }
-    .lc-checkin__history-tools,
     .lc-checkin__history-filter-row { position: sticky; z-index: 2; top: 0; }
 
     .lc-checkin--history,
@@ -1610,7 +1561,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .b3-dialog__container:has(.lc-checkin-dialog-host--mobile) .b3-dialog__content { overflow: hidden; border-radius: 18px 18px 0 0; }
     .lc-checkin-dialog-host--mobile { isolation: isolate; }
     .lc-checkin-dialog-host--mobile .lc-checkin { position: relative; z-index: 1; }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { box-shadow: 0 2px 8px color-mix(in srgb, var(--lc-checkin-text) 10%, transparent); }
 
     .lc-checkin--today .lc-checkin__item-topline { align-items: center; }
     .lc-checkin--today .lc-checkin__item-tag { flex: 0 0 auto; max-width: 42%; padding: 2px 5px; line-height: 1.25; }
@@ -1700,17 +1650,13 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__mobile-nav button span,
     .lc-checkin__mobile-nav button small { pointer-events: none; }
     .lc-checkin--today [data-action="add"] { right: max(14px, env(safe-area-inset-right)); }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, calc(env(safe-area-inset-top) + 4px)); right: max(8px, calc(env(safe-area-inset-right) + 4px)); }
-    .lc-checkin__back-button,
-    .lc-checkin__dialog-close { -webkit-tap-highlight-color: transparent; }
-    .lc-checkin__back-button:active,
-    .lc-checkin__dialog-close:active { transform: scale(.96); }
+    .lc-checkin__back-button { -webkit-tap-highlight-color: transparent; }
+    .lc-checkin__back-button:active { transform: scale(.96); }
     .lc-checkin-dialog-host--mobile .lc-checkin__header,
     .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { padding-right: 52px; }
     .lc-checkin--today .lc-checkin__organize + .lc-checkin__list { margin-top: 4px; }
     .lc-checkin--today .lc-checkin__list > .lc-checkin__group:first-child { margin-top: 8px; }
     .lc-checkin--history .lc-checkin__month-nav { margin-top: 2px; }
-    .lc-checkin--history .lc-checkin__history-tools { margin-top: 6px; }
     .lc-checkin__occasion-manager-list,
     .lc-checkin__templates,
     .lc-checkin__icon-grid { overscroll-behavior: contain; scrollbar-width: thin; }
@@ -1763,8 +1709,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--history .lc-checkin__history-selected,
     .lc-checkin--settings .lc-checkin__settings-card:last-child { margin-bottom: 10px; }
     .lc-checkin__occasion-manager-list { padding-bottom: 4px; }
-    .lc-checkin__organize,
-    .lc-checkin__history-tools { border-color: color-mix(in srgb, var(--lc-checkin-border-strong) 70%, transparent); }
+    .lc-checkin__organize { border-color: color-mix(in srgb, var(--lc-checkin-border-strong) 70%, transparent); }
     .lc-checkin__item + .lc-checkin__item { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 46%, transparent); }
     .lc-checkin__settings-card + .lc-checkin__settings-card { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 54%, transparent); }
     .lc-checkin__history-event + .lc-checkin__history-event { border-top-color: color-mix(in srgb, var(--lc-checkin-border-strong) 46%, transparent); }
@@ -1838,14 +1783,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__item,
     .lc-checkin__organize,
     .lc-checkin__settings-card,
-    .lc-checkin__history-tools,
     .lc-checkin__history-selected { margin-right: 0; margin-left: 0; }
     .lc-checkin--today .lc-checkin__item-icon { align-self: start; line-height: 1; }
     .lc-checkin--today .lc-checkin__item-topline { min-height: 22px; }
     .lc-checkin--today .lc-checkin__item-name { padding-top: 1px; }
     .lc-checkin--history .lc-checkin__calendar-weekdays { margin-bottom: 2px; }
-    .lc-checkin--history .lc-checkin__calendar + .lc-checkin__history-tools { margin-top: 6px; }
-    .lc-checkin--history .lc-checkin__history-tools + .lc-checkin__history-result { margin-top: 4px; }
     .lc-checkin--history .lc-checkin__history-result + .lc-checkin__history-selected { margin-top: 6px; }
     .lc-checkin__insight-legend span { display: inline-flex; align-items: center; gap: 4px; }
     .lc-checkin__insight-legend i { width: 8px; height: 8px; border-radius: 2px; }
@@ -1896,18 +1838,15 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin { background: var(--lc-checkin-bg); color: var(--lc-checkin-text); }
     .lc-checkin__item,
     .lc-checkin__organize,
-    .lc-checkin__history-tools,
     .lc-checkin__history-selected,
     .lc-checkin__settings-card,
     .lc-checkin__insight-section { background: var(--lc-checkin-surface); }
     .lc-checkin__item.is-complete { background: color-mix(in srgb, var(--lc-checkin-success) 8%, var(--lc-checkin-surface)); }
     .lc-checkin__section-heading strong { color: var(--lc-checkin-text); }
     [data-appearance="dark"] .lc-checkin__organize,
-    [data-appearance="dark"] .lc-checkin__history-tools,
     [data-appearance="dark"] .lc-checkin__history-selected,
     [data-appearance="dark"] .lc-checkin__settings-card { background: color-mix(in srgb, var(--lc-checkin-surface) 94%, #000 6%); }
-    [data-appearance="dark"] .lc-checkin__organize select,
-    [data-appearance="dark"] .lc-checkin__history-tools input { background: var(--lc-checkin-muted-surface); }
+    [data-appearance="dark"] .lc-checkin__organize select { background: var(--lc-checkin-muted-surface); }
     [data-appearance="dark"] .lc-checkin__mobile-nav { background: color-mix(in srgb, var(--lc-checkin-bg) 96%, #000 4%); }
     .lc-checkin--today .lc-checkin__item-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
     .lc-checkin--today .lc-checkin__item-action .lc-checkin__record-button,
@@ -1959,7 +1898,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__header-actions { max-width: 52%; gap: 2px; }
     .lc-checkin__header-actions .lc-checkin__count { font-size: 11px; }
     .lc-checkin__icon-button { min-width: 38px; min-height: 38px; }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { width: 40px; height: 40px; }
     .lc-checkin__organize { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; padding: 8px; border-radius: 11px; box-shadow: none; }
     .lc-checkin__today-search { grid-column: 1 / -1; width: 100%; }
     .lc-checkin__organize label:not(.lc-checkin__today-search) { min-width: 0; }
@@ -1968,7 +1906,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--archived) .lc-checkin__calendar { padding: 4px; margin-bottom: 10px; }
     .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--archived) .lc-checkin__calendar-day { min-height: 42px; padding: 4px; border-radius: 7px; font-size: 10px; }
     .lc-checkin--history:not(.lc-checkin--insights):not(.lc-checkin--archived) .lc-checkin__calendar-day strong { font-size: 11px; }
-    .lc-checkin__history-tools { padding: 9px; border-radius: 11px; box-shadow: none; }
     .lc-checkin__history-filter-row { gap: 7px; }
     .lc-checkin__history-filter-row label { min-width: 0; }
     .lc-checkin__history-filter-row select { min-width: 0; width: 100%; }
@@ -2024,7 +1961,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin { --lc-checkin-radius-sm: 7px; --lc-checkin-radius: 11px; --lc-checkin-radius-lg: 15px; }
     .lc-checkin__item,
     .lc-checkin__organize,
-    .lc-checkin__history-tools,
     .lc-checkin__history-selected,
     .lc-checkin__settings-card,
     .lc-checkin__insight-section { border-radius: var(--lc-checkin-radius); box-shadow: none; }
@@ -2061,7 +1997,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__header-actions { align-items: center; }
     .lc-checkin__header-actions .lc-checkin__small-button { min-width: 30px; min-height: 30px; }
     .lc-checkin__header-actions .lc-checkin__icon-button { flex: 0 0 40px; }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { top: max(8px, env(safe-area-inset-top)); right: 8px; }
     .lc-checkin--occasions .lc-checkin__field { gap: 5px; font-size: 11px; }
     .lc-checkin--occasions .lc-checkin__field input,
     .lc-checkin--occasions .lc-checkin__field select { width: 100%; min-height: 40px; box-sizing: border-box; }
@@ -2083,7 +2018,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin { overscroll-behavior-y: contain; scrollbar-width: thin; }
     .lc-checkin-dialog-host--mobile .lc-checkin__header,
     .lc-checkin-dialog-host--mobile .lc-checkin__editor-header { position: sticky; z-index: 4; top: 0; padding-top: max(8px, env(safe-area-inset-top)); background: color-mix(in srgb, var(--lc-checkin-bg) 94%, transparent); backdrop-filter: blur(10px); }
-    .lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { z-index: 7; }
     .lc-checkin__mobile-nav { z-index: 8; }
     .lc-checkin--today [data-action="add"] { z-index: 9; }
     .lc-checkin--editor .lc-checkin__editor-actions { z-index: 10; }
@@ -2104,7 +2038,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__calendar-day { position: relative; border: 1px solid transparent; }
     .lc-checkin__calendar-day.is-today { border-color: var(--lc-checkin-accent-text); }
     .lc-checkin__calendar-day.is-selected { box-shadow: 0 0 0 2px var(--lc-checkin-accent-soft); }
-    .lc-checkin__calendar-day.has-records::after { content: ""; position: absolute; right: 5px; bottom: 5px; width: 4px; height: 4px; border-radius: 50%; background: var(--lc-checkin-accent); }
     .lc-checkin__calendar-day.is-empty { color: color-mix(in srgb, var(--lc-checkin-muted) 48%, transparent); }
     .lc-checkin__month-nav strong { font-size: 17px; }
     .lc-checkin button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
@@ -2487,7 +2420,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 /* Twentieth interaction pass: keyboard and print-friendly affordances. */
 @media print {
- .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__text-button,.lc-checkin__history-event-actions,.lc-checkin__editor-actions,.lc-checkin__dialog-close{display:none!important}
+ .lc-checkin__mobile-nav,.lc-checkin__header-actions,.lc-checkin__text-button,.lc-checkin__history-event-actions,.lc-checkin__editor-actions{display:none!important}
  .lc-checkin,.lc-checkin__layout{padding:0!important;box-shadow:none!important}
  .lc-checkin{height:auto;overflow:visible;color:#111;background:#fff}
  .lc-checkin__item,.lc-checkin__history-event,.lc-checkin__summary-stats div,.lc-checkin__insight-section{break-inside:avoid;box-shadow:none}
@@ -2509,7 +2442,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__organize select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__insight-picker select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__header-actions button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
-.lc-checkin__dialog-close:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__settings-nav button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__rail button:focus-visible{outline:2px solid var(--lc-checkin-accent)}
 .lc-checkin__history-filter-row select:focus-visible{outline:2px solid var(--lc-checkin-accent)}
@@ -2906,24 +2838,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__count { padding: 4px 10px; border-radius: 999px; color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-size: 12px; font-variant-numeric: tabular-nums; font-weight: 720; }
 .lc-checkin__count > span { margin: 0 1px; color: var(--lc-checkin-muted); }
 
-/* dialog chrome: close + fullscreen sit side by side, never overlap */
-.lc-checkin__dialog-close {
-    position: absolute;
-    z-index: var(--lc-checkin-z-popup);
-    top: 10px;
-    right: 12px;
-    display: grid;
-    place-items: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: 50%;
-    color: var(--lc-checkin-muted);
-    background: var(--lc-checkin-surface-raised);
-    box-shadow: var(--lc-checkin-shadow-sm);
-    cursor: pointer;
-}
-.lc-checkin__dialog-close:hover { color: var(--lc-checkin-accent-text); border-color: color-mix(in srgb, var(--lc-checkin-accent) 40%, var(--lc-checkin-border)); }
+/* T-1526 退役：插件自绘弹窗关闭钮家族（桌面/移动/dock 容器全部变体）——
+   关闭动作由思源 b3-dialog 宿主提供（b3-dialog__close 覆盖保留），插件侧已无消费方。 */
 
 /* ---------------- buttons ---------------- */
 .lc-checkin :is(.lc-checkin__primary-button, .lc-checkin__record-button, .lc-checkin__save-button) {
@@ -3655,8 +3571,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--review .lc-checkin__summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .lc-checkin--review .lc-checkin__header-actions > .lc-checkin__text-button { min-height: 32px; padding-inline: 11px; border-radius: 999px; }
 .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { font-size: 9px; letter-spacing: .01em; }
-.lc-checkin--review .lc-checkin__summary-agent { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--lc-checkin-muted-surface); }
-.lc-checkin--review .lc-checkin__summary-agent > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .lc-checkin__review-layout { display: grid; gap: 14px; }
 @container lc5 (min-width: 880px) {
@@ -3736,7 +3650,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__review-hero { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:10px 0 14px; padding:16px 20px; border:1px solid var(--lc-checkin-border); border-radius:18px; background:linear-gradient(120deg,var(--lc-checkin-lilac-soft),var(--lc-checkin-surface)); }
 .lc-checkin__review-hero small,.lc-checkin__review-hero p { color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__review-hero h2 { margin:4px 0; font-size:20px; }
-.lc-checkin__review-hero-rate { color:var(--lc-checkin-accent-text); font-size:30px; font-weight:800; }
 .lc-checkin__review-attention { display:block; margin-top:6px; color:var(--lc-checkin-warning-text, var(--lc-checkin-accent-text)); font-size:10px; font-weight:650; }
 .lc-checkin__review-advice { display:block; margin-top:4px; color:var(--lc-checkin-text); font-size:10px; }
 .lc-checkin__agent-preview { min-width: min(420px, 80vw); padding: 8px; color: var(--lc-checkin-text); line-height: 1.6; }
@@ -3840,7 +3753,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 .lc-checkin__history-filter-disclosure > summary::-webkit-details-marker { display: none; }
 .lc-checkin__history-filter-disclosure[open] > summary { color: var(--lc-checkin-accent-text); }
-.lc-checkin__history-tools { display: grid; gap: 8px; margin-top: 8px; padding: 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-muted-surface); }
 .lc-checkin__history-search { display: flex; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; background: var(--lc-checkin-surface); }
 .lc-checkin__search-symbol { color: var(--lc-checkin-muted); }
 .lc-checkin__history-search input { flex: 1; min-width: 0; min-height: 32px; border: 0; background: transparent; }
@@ -3858,13 +3770,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__history-events { display: grid; }
 .lc-checkin__history-aggregate { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .lc-checkin__history-aggregate .lc-checkin__history-row { min-height: 42px; padding: 7px 10px; border: 1px solid var(--lc-checkin-border); border-radius: 12px; background: var(--lc-checkin-muted-surface); }
-.lc-checkin__history-details { margin-top: 8px; border-top: 1px solid var(--lc-checkin-border); }
-.lc-checkin__history-details > summary { display: flex; align-items: center; gap: 8px; min-height: 38px; color: var(--lc-checkin-text); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
-.lc-checkin__history-details > summary::-webkit-details-marker { display: none; }
-.lc-checkin__history-details > summary em { margin-left: auto; color: var(--lc-checkin-muted); font-size: 10.5px; font-style: normal; font-weight: 500; }
-.lc-checkin__history-details > summary i { color: var(--lc-checkin-muted); font-style: normal; transition: transform var(--lc-checkin-motion-fast); }
-.lc-checkin__history-details[open] > summary i { transform: rotate(180deg); }
-.lc-checkin__history-details:not([open]) > .lc-checkin__history-events { display: none; }
 @container lc5 (max-width: 520px) { .lc-checkin__history-aggregate { grid-template-columns: minmax(0, 1fr); } }
 .lc-checkin__history-event {
     display: grid;
@@ -3913,20 +3818,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__review-item-bar { grid-area: bar; display: block; height: 3px; border-radius: 3px; background: color-mix(in srgb, var(--lc-checkin-accent) 10%, var(--lc-checkin-muted-surface)); overflow: hidden; }
 .lc-checkin__review-item-bar span { display: block; height: 100%; border-radius: 3px; background: var(--lc-checkin-accent); }
 
-.lc-checkin__summary-agent {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-top: 12px;
-    padding: 9px 14px;
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: var(--lc-checkin-radius);
-    background: var(--lc-checkin-muted-surface);
-    color: var(--lc-checkin-muted);
-    font-size: 11.5px;
-}
 .lc-checkin__summary-text { margin-top: 12px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 28%, var(--lc-checkin-border)); border-radius: var(--lc-checkin-radius-lg); background: linear-gradient(135deg,var(--lc-checkin-lilac-soft),var(--lc-checkin-surface)); color: var(--lc-checkin-text); font-size: 12.5px; line-height: 1.65; white-space: pre-wrap; }
 .lc-checkin__summary-text small { display:block; margin-bottom:6px; color:var(--lc-checkin-accent-text); font-size:10px; font-weight:700; letter-spacing:.02em; }
 .lc-checkin__summary-text.is-local { border-style: dashed; background: var(--lc-checkin-muted-surface); }
@@ -4404,9 +4295,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     color: var(--lc-checkin-accent-text); background: color-mix(in srgb, var(--lc-checkin-accent) 10%, var(--lc-checkin-surface));
 }
 .lc-checkin__source-panel .lc-checkin__settings-row { padding-inline: 0; }
-.lc-checkin__diary-doc-controls { flex-wrap: wrap; justify-content: flex-end; }
-.lc-checkin__diary-doc-controls select { min-width: 180px; max-width: 240px; }
-.lc-checkin__diary-doc-controls .lc-checkin__diary-doc { width: 220px; }
 .lc-checkin__diary-create { display: flex; flex-basis: 100%; justify-content: flex-end; gap: 6px; }
 .lc-checkin__diary-create input { width: 220px; }
 .lc-checkin__audit-list ul { display: grid; gap: 6px; margin: 4px 0 10px; padding: 0; list-style: none; }
@@ -4864,8 +4752,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin--review .lc-checkin__summary-stats > div { min-height: 56px; display: grid; place-content: center; overflow: hidden; }
     .lc-checkin--review .lc-checkin__summary-stats { gap: 6px; }
     .lc-checkin--review .lc-checkin__summary-stats .lc-checkin__analytics-badge { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-    .lc-checkin--review .lc-checkin__summary-text,
-    .lc-checkin--review .lc-checkin__summary-agent { max-width: 1180px; margin-inline: auto; }
+    .lc-checkin--review .lc-checkin__summary-text { max-width: 1180px; margin-inline: auto; }
     .lc-checkin--review .lc-checkin__review-subnav { max-width: 1180px; margin-inline: auto; }
     .lc-checkin--review .lc-checkin__review-subnav { top: 58px; gap: 4px; overscroll-behavior: contain; box-shadow: 0 1px 0 color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); }
     .lc-checkin--review .lc-checkin__review-subnav button { padding-inline: 10px; }
@@ -5271,17 +5158,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     font-weight: 720;
     font-variant-numeric: tabular-nums;
 }
-.lc-checkin__header-streak {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: 999px;
-    color: var(--lc-checkin-warning-text);
-    background: var(--lc-checkin-warm-soft);
-    font-size: 11px;
-    font-weight: 650;
-    white-space: nowrap;
-}
 
 /* ============================================================
    UI 走查修复：多选按钮行内化、FAB 避让、间距统一
@@ -5315,9 +5191,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 /* 设置分类导航在窄容器下不截断 */
 .lc-checkin__settings-nav { scrollbar-width: none; -ms-overflow-style: none; }
 .lc-checkin__settings-nav::-webkit-scrollbar { display: none; }
-
-/* 弹窗关闭按钮在暗色主题下可见度 */
-.lc-checkin__dialog-close { color: var(--lc-checkin-muted); border-color: var(--lc-checkin-border); }
 
 /* ============================================================
    打卡卡片精致化：统一操作区、清晰层级、一致高度
@@ -5574,9 +5447,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     background: transparent;
     cursor: pointer;
 }
-
-/* 隐藏旧的悬浮关闭按钮（在手机全屏模式下不需要） */
-.lc-checkin-dialog-host--mobile .lc-checkin__dialog-close { display: none !important; }
 
 
 /* 顶栏标题和右侧占位 */
@@ -6019,7 +5889,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host a { overflow-wrap: anywhere; }
     .lc-checkin-dock-host .lc-checkin__group,
     .lc-checkin-dock-host .lc-checkin__group-items { min-width: 0; max-width: 100%; overflow-x: clip; }
-    .lc-checkin-dock-host .lc-checkin__badge,
     .lc-checkin-dock-host .lc-checkin__count { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav { padding-bottom: max(2px, env(safe-area-inset-bottom)); }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button { min-width: 0; width: 100%; overflow: hidden; }
@@ -6027,13 +5896,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; max-width: 48%; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__count { font-size: 11px; }
     .lc-checkin-dock-host .lc-checkin--today .lc-checkin__progress { max-width: 100%; min-width: 0; }
-    .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-filter-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__history-filter-row select { min-width: 0; max-width: 100%; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates-fold { margin-bottom: 6px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-templates { max-height: 150px; overflow: auto; gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-list { gap: 5px; }
-    .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-tools { grid-template-columns: minmax(0, 1fr); gap: 5px; }
     .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-list { gap: 6px; }
     .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-row { grid-template-columns: minmax(0, 1fr) auto; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin--archived .lc-checkin__history-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -6054,9 +5921,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host time { white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__header,
     .lc-checkin-dock-host .lc-checkin__editor-header { position: relative; min-height: 44px; padding: 4px 0; align-items: center; }
-    .lc-checkin-dock-host .lc-checkin__dialog-close { position: absolute; top: 2px; right: 0; width: 34px; height: 34px; }
-    .lc-checkin-dock-host .lc-checkin__dialog-close { border: 0; box-shadow: none; background: transparent; color: var(--lc-checkin-muted); }
-    .lc-checkin-dock-host .lc-checkin__dialog-close:hover { color: var(--lc-checkin-text); background: var(--lc-checkin-accent-soft); }
     .lc-checkin-dock-host .lc-checkin__layout { padding: 6px 8px 10px; }
     .lc-checkin-dock-host .lc-checkin__header > div:first-child,
     .lc-checkin-dock-host .lc-checkin__header-actions { min-width: 0; }
@@ -6070,10 +5934,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 5px; }
     .lc-checkin-dock-host input, .lc-checkin-dock-host select, .lc-checkin-dock-host textarea { max-width: 100%; min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: minmax(0, 1fr) minmax(110px, 42%); gap: 6px; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: none; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { flex: 0 0 auto; min-height: 32px; padding-inline: 8px; }
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__month-nav { grid-template-columns: 30px minmax(0, 1fr) 30px; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; max-height: 210px; overflow: auto; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__kind-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
@@ -6115,7 +5976,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-body { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .lc-checkin-dock-host .lc-checkin__calendar { gap: 3px; }
     .lc-checkin-dock-host .lc-checkin__calendar-day { min-height: 30px; padding: 4px 3px; }
@@ -6146,7 +6006,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__item-action .lc-checkin__record-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lc-checkin-dock-host .lc-checkin__item-body { min-width: 0; }
     .lc-checkin-dock-host .lc-checkin__item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lc-checkin-dock-host .lc-checkin--summary > *,
     .lc-checkin-dock-host .lc-checkin--history > * { width: 100%; max-width: 100%; }
     .lc-checkin-dock-host .lc-checkin__summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .lc-checkin-dock-host .lc-checkin__agent-preview,
@@ -6178,10 +6037,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin-dock-host .lc-checkin__item-icon { width: 30px; height: 30px; font-size: 16px; }
     .lc-checkin-dock-host .lc-checkin__item-action button { font-size: 11px; }
     .lc-checkin-dock-host > .lc-checkin__mobile-nav button small { font-size: 9px; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__summary-stats,
     .lc-checkin-dock-host .lc-checkin--history .lc-checkin__summary-stats { grid-template-columns: 1fr; gap: 5px; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav > * { padding-inline: 6px; font-size: 11px; }
-    .lc-checkin-dock-host .lc-checkin--summary .lc-checkin__review-subnav { gap: 3px; }
     .lc-checkin-dock-host .lc-checkin--occasions .lc-checkin__occasion-manager-row { grid-template-columns: 26px minmax(0, 1fr); }
     .lc-checkin-dock-host .lc-checkin__settings-row { grid-template-columns: 1fr; gap: 4px; }
     .lc-checkin-dock-host .lc-checkin--editor .lc-checkin__templates { max-height: 160px; gap: 4px; }
@@ -6814,9 +6670,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     .lc-checkin__topnav-action:hover { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }
 }
 
-/* 桌面弹窗：旧的悬浮关闭按钮已并入顶栏，彻底隐藏（移动端自己的关闭不受影响） */
-.lc-checkin-dialog-host:not(.lc-checkin-dialog-host--mobile) .lc-checkin__dialog-close { display: none !important; }
-
 /* ============================================================
    T-032 桌面顶栏（应用栏式）：导航并入一条通栏顶栏，rail 退役。
    顶栏结构上固定（flex 列：顶栏 / 滚动区），内容不可能滚到它后面。
@@ -7143,20 +6996,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--editor .lc-checkin__icon-tabs button small { margin-left: 4px; opacity: .62; font-size: 9px; }
 
 /* ============================================================
-   T-117 回顾页区域化：折叠计数徽章、长内容内部滚动、逾期展开
+   T-117 回顾页区域化：长内容内部滚动、逾期展开
+   （T-1526 退役：折叠计数徽章 lc-checkin__fold-count 无 TS 消费方）
    ============================================================ */
-.lc-checkin__fold-count {
-    display: inline-block;
-    margin-left: 8px;
-    padding: 1px 8px;
-    border-radius: 999px;
-    color: var(--lc-checkin-accent-text);
-    background: var(--lc-checkin-accent-soft);
-    font-size: 10px;
-    font-style: normal;
-    font-weight: 700;
-    vertical-align: 1px;
-}
 /* 打卡日志/项目汇总展开后可能很长：限制区域高度内部滚动，页面节奏不被撑爆 */
 .lc-checkin__review-fold[data-review-fold="log"] .lc-checkin__review-fold-body,
 .lc-checkin__review-fold[data-review-fold="projects"] .lc-checkin__review-fold-body { max-height: 480px; overflow: auto; }
@@ -7511,11 +7353,8 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 }
 
 /* R-18.4：原保留词表（加载/成功/saving 家族）已退役（零消费方，D-051 可证明性口径）；
-   加载/成功反馈由 toast、recent-record 与 save-status(error) 通道承担。 */
-
-@media (prefers-reduced-motion: reduce) {
-    .lc-checkin__skeleton { animation: none; }
-}
+   加载/成功反馈由 toast、recent-record 与 save-status(error) 通道承担。
+   T-1526：骨架屏 skeleton 家族同批退役（TS 零消费方），reduced-motion 残块一并移除。 */
 
 @container lc5 (max-width: 600px) {
     .lc-checkin__error {
@@ -8278,10 +8117,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         font-size: 10.5px;
     }
 
-    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
-        font-size: 26px;
-    }
-
     .lc-checkin--review .lc-checkin__review-subnav {
         gap: 4px;
         top: 0;
@@ -8818,21 +8653,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     grid-template-columns: minmax(0, 1fr) max-content;
     overflow: visible;
 }
-.lc-checkin--review .lc-checkin__review-hero-copy {
-    display: grid;
-    gap: 2px;
-    min-width: 0;
-}
-.lc-checkin--review .lc-checkin__review-hero-copy > h2,
-.lc-checkin--review .lc-checkin__review-hero-copy > p,
-.lc-checkin--review .lc-checkin__review-hero-copy > small {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
-.lc-checkin--review .lc-checkin__review-hero-copy > p {
-    margin: 0;
-    white-space: normal;
-}
 .lc-checkin--review .lc-checkin__review-guidance {
     display: grid;
     gap: 2px;
@@ -8854,12 +8674,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     flex-wrap: wrap;
     gap: 5px;
     margin-top: 2px;
-}
-.lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
-    min-width: 3ch;
-    align-self: center;
-    text-align: right;
-    white-space: nowrap;
 }
 
 @container lc5 (max-width: 719px) {
@@ -8894,14 +8708,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         gap: 8px;
         padding: 9px 10px;
     }
-    .lc-checkin--review .lc-checkin__review-hero-copy { gap: 1px; }
-    .lc-checkin--review .lc-checkin__review-hero-copy > p {
-        display: block;
-        max-width: none;
-        overflow: visible;
-        -webkit-line-clamp: unset;
-        white-space: normal;
-    }
     .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-guidance > :is(.lc-checkin__review-attention, .lc-checkin__review-advice) {
         display: block;
         max-width: none;
@@ -8910,10 +8716,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         white-space: normal;
     }
     .lc-checkin--review .lc-checkin__review-hero-actions { margin-top: 2px; }
-    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate {
-        align-self: start;
-        font-size: 26px;
-    }
 }
 
 @container lc-dock (max-width: 719px) {
@@ -8960,8 +8762,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         .lc-checkin__review-subnav,
         .lc-checkin__review-layout,
         .lc-checkin__review-sections,
-        .lc-checkin__summary-text,
-        .lc-checkin__summary-agent) {
+        .lc-checkin__summary-text) {
         width: min(100%, 1180px);
         max-width: 1180px;
         margin-inline: auto;
@@ -8998,7 +8799,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         margin-top: 3px;
         padding-inline: 9px;
     }
-    .lc-checkin--review .lc-checkin__review-hero .lc-checkin__review-hero-rate { font-size: 28px; }
 
     /* When only one fold has content, auto-fit lets it use the complete rail
        instead of leaving an empty second half. */
@@ -9742,15 +9542,6 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
         gap: 3px;
         overflow: hidden;
     }
-    .lc-checkin--today .lc-checkin__header-streak {
-        min-width: 0;
-        max-width: 78px;
-        overflow: hidden;
-        padding-inline: 6px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 10px;
-    }
     .lc-checkin--today .lc-checkin__header-actions .lc-checkin__count {
         flex: 0 0 auto;
         padding: 3px 7px;
@@ -10484,48 +10275,8 @@ details:not([open]) > :not(summary) { display: none !important; }
     line-height: 1.5;
 }
 
-/* T-1227 习惯强度曲线：每项目 30 天强度折线（0~100）。 */
-.lc-checkin__strength-list {
-    display: grid;
-    gap: 8px;
-}
-.lc-checkin__strength-row {
-    display: grid;
-    gap: 4px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: var(--lc-checkin-muted-surface);
-}
-.lc-checkin__strength-row header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-    min-width: 0;
-}
-.lc-checkin__strength-row strong {
-    color: var(--lc-checkin-text);
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.lc-checkin__strength-row em {
-    font-style: normal;
-    color: var(--lc-checkin-accent-text, var(--lc-checkin-muted));
-    font-size: 10.5px;
-    font-variant-numeric: tabular-nums;
-}
-.lc-checkin__strength-row svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    color: var(--lc-checkin-accent);
-    min-width: 300px;
-}
-.lc-checkin__strength-row {
-    overflow-x: auto;
-}
+/* T-1526 退役：T-1227 首版 per-item 强度行（strength-list/strength-row）已被
+   T-1243 strength-overview 曲线实现取代，TS 零引用。 */
 
 /* T-1243 汇总优先：总览卡（平均强度曲线）+ 二级 per-item details。 */
 .lc-checkin__strength-overview {
@@ -10560,78 +10311,12 @@ details:not([open]) > :not(summary) { display: none !important; }
     color: var(--lc-checkin-accent);
     min-width: 300px;
 }
-.lc-checkin__strength-overview,
-.lc-checkin__strength-details-fold {
+.lc-checkin__strength-overview {
     overflow-x: auto;
 }
-.lc-checkin__strength-details-fold > summary {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 32px;
-    margin-top: 8px;
-    padding: 4px 10px;
-    border: 1px dashed var(--lc-checkin-border-strong);
-    border-radius: var(--lc-checkin-radius-sm);
-    color: var(--lc-checkin-muted);
-    background: transparent;
-    font-size: 11.5px;
-    font-weight: 620;
-    cursor: pointer;
-    list-style: none;
-}
-.lc-checkin__strength-details-fold > summary::-webkit-details-marker { display: none; }
-.lc-checkin__strength-details-fold > summary .lc-checkin__fold-chevron { margin-left: auto; }
-.lc-checkin__strength-details-fold[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
-.lc-checkin__strength-details-fold[open] > summary { color: var(--lc-checkin-text); }
-.lc-checkin__strength-details-fold[open] > .lc-checkin__strength-list { margin-top: 8px; }
-.lc-checkin__strength-detail {
-    border: 1px solid var(--lc-checkin-border);
-    border-radius: 10px;
-    background: var(--lc-checkin-muted-surface);
-    overflow-x: auto;
-}
-.lc-checkin__strength-detail > summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    min-height: 36px;
-    padding: 4px 10px;
-    cursor: pointer;
-    list-style: none;
-}
-.lc-checkin__strength-detail > summary::-webkit-details-marker { display: none; }
-.lc-checkin__strength-detail > summary strong {
-    color: var(--lc-checkin-text);
-    font-size: 11px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.lc-checkin__strength-detail > summary em {
-    font-style: normal;
-    color: var(--lc-checkin-accent-text);
-    font-size: 10.5px;
-    font-variant-numeric: tabular-nums;
-}
-.lc-checkin__strength-detail > summary .lc-checkin__fold-chevron { color: var(--lc-checkin-muted); }
-.lc-checkin__strength-detail[open] > summary .lc-checkin__fold-chevron { transform: rotate(180deg); }
-.lc-checkin__strength-detail-body {
-    padding: 0 8px 8px;
-    overflow-x: auto;
-}
-.lc-checkin__strength-detail-body svg {
-    width: 100%;
-    height: auto;
-    display: block;
-    color: var(--lc-checkin-accent);
-    min-width: 300px;
-}
-.lc-checkin__strength-list {
-    display: grid;
-    gap: 7px;
-}
+
+/* T-1526 退役：strength-details-fold / strength-detail / strength-detail-body /
+   尾部 strength-list 二次定义——T-1243 总览卡只保留 strength-overview，其余无消费方。 */
 
 /* T-1234/T-1235 渲染块：月历/热力/汇总只读预览（ Neutral 跳过格 + today 环）。 */
 .lc-checkin__renderblock-host {
@@ -10754,10 +10439,6 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__completion-ring.is-complete .lc-checkin__ring-value { stroke: var(--lc-checkin-success); }
 /* 摘要条内的环：负边距抵消条内边距，不增加条高（30 项密度场景首卡位置预算不受影响）。 */
 .lc-checkin__console .lc-checkin__completion-ring { height: 30px; width: 30px; margin-block: -6px; }
-.lc-checkin__renderblock-today-summary {
-    color: var(--lc-checkin-muted);
-    font-size: 9.5px;
-}
 .lc-checkin__renderblock-summary {
     display: grid;
     gap: 6px;
