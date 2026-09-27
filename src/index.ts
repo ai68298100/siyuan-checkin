@@ -103,6 +103,7 @@ import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry,
 import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
 import {normalizeWeeklyReviewDrafts, upsertWeeklyReviewDraft, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "./features/weekly-review";
+import {planImportDecisions, type ImportDecision} from "./features/template-import";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
@@ -1633,6 +1634,38 @@ export default class CheckinPlugin extends Plugin {
         void saveGeneratedFile({fileName: `siyuan-checkin-template-share-${dateKey(new Date())}.json`, content, mime: "application/json;charset=utf-8"});
     }
 
+    /** T-1520 模板包导入应用：按逐项决策写入；一次 saveData，失败整批回滚原模板；
+        替换只覆盖模板本身，不影响已创建项目。 */
+    async applyTemplateShareImport(decisions: ImportDecision[]): Promise<number> {
+        const applicable = decisions.filter((decision) => decision.disposition !== "skip");
+        if (!applicable.length) return 0;
+        const previous = this.userTemplates;
+        let next = [...previous];
+        let imported = 0;
+        for (const decision of applicable) {
+            if (decision.disposition === "replace" && decision.matchedId) {
+                next = upsertUserTemplate(next, {...decision.entry, id: decision.matchedId});
+            } else if (decision.disposition === "saveAs") {
+                next = upsertUserTemplate(next, {...decision.entry, id: makeId("tpl"), name: decision.saveAsName || `${decision.entry.name} · 导入`});
+            } else {
+                next = upsertUserTemplate(next, {...decision.entry, id: makeId("tpl")});
+            }
+            imported += 1;
+        }
+        try {
+            await this.saveData(USER_TEMPLATES_NAME, next);
+        } catch {
+            this.userTemplates = previous;
+            showMessage(t("msg.templateImportFail"));
+            return 0;
+        }
+        this.userTemplates = next;
+        this.templateImportSession = undefined;
+        showMessage(t("msg.templateImportDone", {n: imported}));
+        this.render();
+        return imported;
+    }
+
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
@@ -1657,6 +1690,8 @@ export default class CheckinPlugin extends Plugin {
     private itemCompareSelection = new Set<string>();
     /** T-1518 周复盘草稿（按周键隔离，持久化于偏好存储）。 */
     private weeklyReviewDrafts: WeeklyReviewDraft[] = [];
+    /** T-1520 模板包导入会话（文件解析结果与逐项决策；确认/取消后清空）。 */
+    private templateImportSession?: {fileName: string; decisions: ImportDecision[]};
     private historyQuery = "";
     private historySource: HistoryChannelFilter = "all";
     /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
@@ -4924,6 +4959,7 @@ export default class CheckinPlugin extends Plugin {
         return renderEditorView({
             store: this.store,
             userTemplates: this.userTemplates,
+            templateImport: this.templateImportSession,
             customIconLibrary: this.customIconLibrary,
             editingId: this.editingId,
             appearance: this.resolvedAppearance(),

@@ -28,9 +28,8 @@
   - 状态：done。批次 B（T-1513～T-1518）就此全部交付。
 - [x] T-1519 个人模板脱敏分享（P1）——done（2026-09-28，local-auto）。新纯模块 features/template-share.ts：buildTemplateSharePackage **白名单构建**（name/icon/kind/target/unit/recordStep?/schedule 深净化含 quota/group/priority/timeSlot?/completionSource?/tomatoMode?，键序固定）——未来新增敏感字段天然不出包；note、内部 id、createdAt/updatedAt、journal/noteAnchor/apiKey/attachment/任意未知字段全部不出现；版本声明 app+shareVersion=1（TEMPLATE_SHARE_MAX=20 超量拦截、空选择拦截）；serializeTemplateSharePackage 确定性序列化（同输入同字节）；原模板对象零修改。编辑器「我的模板」区新增「分享模板」折叠区（复选框选择、pre 预览实时刷新不重渲染不丢焦点、导出按钮带所选计数与禁用态、状态行反馈）；宿主 downloadTemplateShare 走既有 saveGeneratedFile 通道（文件名 siyuan-checkin-template-share-<日期>.json）。新守门 tests/template-share.test.cjs 入主链（敏感夹具逐一断言不出包/确定性/版本/拦截/零修改/接线/双语 7 键）。验证：check、主链、build（CSS 643839）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1520 模板包导入逐项差异与冲突处理（P1）
-  - 范围与验收：逐项跳过/另存/明确替换，不影响既有项目；依赖 T-1519。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1520 模板包导入逐项差异与冲突处理（P1）——done（2026-09-28，local-auto）。新纯模块 features/template-import.ts：parseTemplateShare 按 T-1519 契约解析——shareVersion≠1 或 app 不符整包拒绝、超 200KB/超 20 模板拒绝、非法 JSON/结构拒绝、字段非法条目逐条丢弃计数（name/kind/target/unit/schedule 校验，icon/优先级/时段/番茄模式 fail-closed 归一）；planImportDecisions 逐项决策：新模板默认「导入」，**重名（大小写不敏感）默认「跳过」（最安全）**，可改「替换现有」（只覆盖模板本身不影响已创建项目，保留原 id）或「另存为」（确定性后缀「· 导入」）；重复导入同一包第二次全部判重名（幂等）。编辑器分享区新增导入段：本地文件读取（FileReader 无宿主新契约）→ 大小守卫 → 解析 → 逐项 radio 决策表 → 确认/取消（取消清会话零写入）。宿主 applyTemplateShareImport 一次 saveData 批量应用，失败整批回滚原模板并提示「已恢复原模板」。新守门 tests/template-import.test.cjs 入主链。验证：check、主链、build（CSS 644735）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1521 设置保存前变更清单与分节恢复（P1）
   - 范围与验收：脱敏前后值、撤回单项/分节，失败保留草稿。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

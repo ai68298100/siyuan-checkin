@@ -4124,6 +4124,17 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__share-preview { margin: 0; padding: 8px; max-height: 180px; overflow: auto; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); font-size: 10px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lc-checkin__share-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lc-checkin__share-status { color: var(--lc-checkin-muted); font-size: 10.5px; }
+/* T-1520 模板包导入：逐项决策行（新/重名）+ 确认/取消。 */
+.lc-checkin__share-import { display: grid; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--lc-checkin-border); }
+.lc-checkin__share-file { display: grid; gap: 4px; font-size: 11.5px; }
+.lc-checkin__share-file input { max-width: 100%; font-size: 11px; }
+.lc-checkin__import-hint { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__import-list { display: grid; gap: 4px; max-height: 220px; overflow: auto; }
+.lc-checkin__import-row { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--lc-checkin-border); }
+.lc-checkin__import-row > strong { min-width: 0; flex: 1 1 30%; font-size: 11.5px; overflow-wrap: anywhere; }
+.lc-checkin__import-meta { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__import-radios { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-inline-start: auto; }
+.lc-checkin__import-option { display: inline-flex; gap: 4px; align-items: center; min-height: 26px; font-size: 10.5px; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

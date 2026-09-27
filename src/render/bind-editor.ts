@@ -14,6 +14,7 @@ import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
 import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
 import {buildTemplateLinkageCard, templateLinkageForName, templateLinkageI18nKey, isTemplateLinkagePlan, EMPTY_LINKAGE_BINDING_STATE, type LinkageBindingState, type TemplateLinkageKind} from "../features/template-linkage";
 import {buildTemplateSharePackage} from "../features/template-share";
+import {parseTemplateShare, planImportDecisions, TEMPLATE_IMPORT_MAX_BYTES, type ImportDecision} from "../features/template-import";
 import {buildNameInference, inferFieldsFromName} from "../features/name-inference";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
@@ -53,6 +54,10 @@ export interface BindEditorHost {
     applyTemplatePackBulk?(packId: string): Promise<number>;
     /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
     downloadTemplateShare?(content: string): void;
+    /** T-1520 模板包导入会话（宿主持有；确认/取消后清空）。 */
+    templateImportSession?: {fileName: string; decisions: ImportDecision[]};
+    /** T-1520 应用导入（失败整批回滚原模板）。 */
+    applyTemplateShareImport?(decisions: ImportDecision[]): Promise<number>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1359：待检查的智能体项目草案（存在时编辑器预填，检查后由用户手动保存）。 */
     pendingProjectDraft?: import("../features/project-draft").ProjectDraft;
@@ -901,6 +906,47 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         host.downloadTemplateShare?.(result.serialized);
         if (shareStatus) shareStatus.textContent = t("editor.shareExported");
+    });
+    /* T-1520 模板包导入：本地读取文件（无宿主新契约）→ 解析 → 逐项决策 → 确认整批应用。
+       大小/版本/字段校验全在纯函数；取消零写入。 */
+    root.querySelector<HTMLInputElement>("[data-share-import-file]")?.addEventListener("change", () => {
+        const input = root.querySelector<HTMLInputElement>("[data-share-import-file]");
+        const file = input?.files?.[0];
+        if (!input || !file) return;
+        if (file.size > TEMPLATE_IMPORT_MAX_BYTES) {
+            showMessage(t("editor.importErrorLimit"));
+            input.value = "";
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = parseTemplateShare(String(reader.result || ""), {rawByteLength: file.size});
+            if (result.errorKey) {
+                showMessage(t(result.errorKey));
+                input.value = "";
+                return;
+            }
+            host.templateImportSession = {fileName: file.name, decisions: planImportDecisions(result.entries, host.userTemplates)};
+            if (result.invalidCount) showMessage(t("editor.importInvalidCount", {n: result.invalidCount}));
+            host.render();
+        };
+        reader.readAsText(file);
+    });
+    root.querySelectorAll<HTMLInputElement>("input[data-import-disposition]").forEach((input) => input.addEventListener("change", () => {
+        const session = host.templateImportSession;
+        if (!session) return;
+        const index = Number(input.dataset.importDisposition);
+        const decision = session.decisions.find((entry) => entry.index === index);
+        if (decision && input.checked) decision.disposition = input.value as ImportDecision["disposition"];
+    }));
+    root.querySelector<HTMLElement>("[data-share-import-confirm]")?.addEventListener("click", () => {
+        const session = host.templateImportSession;
+        if (!session) return;
+        void host.applyTemplateShareImport?.(session.decisions.map((decision) => ({...decision, entry: {...decision.entry, schedule: {...decision.entry.schedule}}})));
+    });
+    root.querySelector<HTMLElement>("[data-share-import-cancel]")?.addEventListener("click", () => {
+        host.templateImportSession = undefined;
+        host.render();
     });
     root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
         const form = root.querySelector<HTMLFormElement>("form");
