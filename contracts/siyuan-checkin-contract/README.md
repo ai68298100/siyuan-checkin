@@ -35,3 +35,21 @@ const report = await runContractChecks({api: myMock});
 ## 版本
 
 跟随插件 API 主版本：v5 → `5.x`。`manifest.json` 为该版本的机器可读契约（能力清单、since、限制、事件名、externalRef 前缀登记处）；与仓库 `docs/contracts/checkin-api-v5.json` 强制一致（仓库门禁锁定）。
+
+## 日历消费端参考层（calendar-consumer.mjs，T-1392 本地切片）
+
+面向日历类消费方（如 Task Horizon 的「打卡」图层）的 `calendar.read` 参考实现：能力协商 → 区间规划 → 单飞加载（超时/中止/有界缓存）→ 防御性归一化 → 刷新分类。语义纪律与宿主一致：只呈现不自算完成率、日期原样回显不做时区换算、过期缓存不回退旧值、失败一律可诊断（`api-missing`/`host-outdated`/`capability-missing`/`invalid-range`/`range-too-long`/`timeout`/`aborted`/`provider-failed`/`projection-invalid`）不抛裸异常。
+
+```js
+import {createCalendarProjectionSession, runCalendarConsumerChecks} from "./calendar-consumer.mjs";
+
+const session = createCalendarProjectionSession(window.siyuanCheckin, {timeoutMs: 8000});
+const result = await session.load({startDate: "2026-09-01", endDateExclusive: "2026-10-01"});
+if (result.ok) render(result.projection); else console.warn(result.reasonKey);
+
+// 刷新：订阅 manifest.events，按四类决定是否重载（隐藏开关走 item-updated，重载即生效）
+// 自检：开发期对宿主逐条核对消费前提
+const report = await runCalendarConsumerChecks({api: window.siyuanCheckin});
+```
+
+状态：**参考层，v1 机器契约未变**。真实双插件联调（多窗口/加载顺序/移动端）仍按 T-1394 门槛现场验收后才可作为稳定路径。

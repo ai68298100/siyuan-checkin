@@ -1,5 +1,13 @@
 # 决策
 
+## D-296：T-1392 消费端切片只做参考层与夹具，不接线真实视图（T-1527，2026-09-28）
+
+- **切片边界从严**：BLOCKERS 与路线图明示 T-1392 当前只准备「本地契约草案和夹具」。因此本任务只交付契约包内的消费端参考模块（calendar-consumer.mjs）与仓库门禁夹具；不修改 task-horizon-v1.json、不改 manifest.json、不动 api-v5.md、不在小驴日历视图接线任务图层——后者待 T-1394 双向真实宿主验收后再立项。
+- **零臆造契约**：参考层的唯一依据是已发布的 v5 calendar.read 契约（manifest 事件清单、limits.calendarProjection 366/200、6 状态枚举、防御性副本与超限语义）。刷新分类的「四类」从已发布 8 事件归纳（record/structure/derived/unrelated），不发明宿主不存在的事件。
+- **失败一律可诊断**：消费端九个 reasonKey（api-missing/host-outdated/capability-missing/invalid-range/range-too-long/timeout/aborted/provider-failed/projection-invalid）全部走结果对象，不抛裸异常——符合契约包准入清单第 5 条（失败隔离）。超时/中止语义由参考层自己承担（race 独立定时器与中止 promise），不依赖提供方实现 signal。
+- **过期缓存不回退旧事实**：缓存只在 TTL 内命中，过期即重查；失败结果一律不写缓存。与 D-291「可信记录」口径一致：宁可多查一次，不给用户看旧事实。
+- **参考层的价值定位**：Task Horizon 侧可零成本据此生成消费层常量与 CI 夹具（同 check-contract.mjs 用法）；小驴侧后续接线时复用同一模块，保证双方测试同一份语义。
+
 ## D-295：CSS 审计恒真缺陷的修复口径与死规则退役流程（T-1526，2026-09-28）
 
 - **死类判定只看 TS**：TS 是唯一在运行时把类写进 DOM 的来源；SCSS 里出现只说明「有样式定义」，不说明「有元素挂这个类」。旧审计用 TS+SCSS 合并文本做包含判定，而 dist CSS 编译自 SCSS，任何类必命中自身定义——dead 恒为空，css-hygiene 守门自 T-1354 起形同虚设。修正后：零 TS 字面引用 → dead；is-/has- 前缀与数字后缀 → dynamicSuspect（TS 以 is-${state} 模板拼接，人工核对）；b3- → 宿主 DOM 类（插件只做覆盖，不判死）。

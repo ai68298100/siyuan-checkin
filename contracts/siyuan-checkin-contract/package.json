@@ -4,6 +4,6 @@
   "description": "Consumer-side contract self-test kit for the siyuanCheckin public API (v5). 小驴打卡公开 API 契约自测包。",
   "type": "module",
   "main": "check-contract.mjs",
-  "files": ["check-contract.mjs", "manifest.json", "README.md"],
+  "files": ["check-contract.mjs", "calendar-consumer.mjs", "manifest.json", "README.md"],
   "license": "MIT"
 }
