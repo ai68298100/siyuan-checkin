@@ -13,6 +13,7 @@ import {buildRecordTrust} from "../features/record-trust";
 import {buildRecordDetails} from "../features/record-details";
 import {buildBatchBackfillPreview, type BatchBackfillItemSnapshot} from "../features/batch-backfill";
 import {buildItemDenominatorDetail, buildRangeDayCounts} from "../features/stat-denominators";
+import {buildItemTrendSeries, groupItemTrendsByUnit} from "../features/item-trend-compare";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -80,6 +81,8 @@ export interface ReviewViewContext {
     /** T-1511 批量补记预览：面板开合与逐项实际值草稿（会话态；可选：旧桩按关闭处理）。 */
     historyBatchPreviewOpen?: boolean;
     historyBatchValues?: Readonly<Record<string, string>>;
+    /** T-1517 横向比较选中的项目（会话态，2~4 个；可选：旧桩按空处理）。 */
+    itemCompareSelection?: ReadonlySet<string>;
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -582,9 +585,34 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__denominators"><p class="review-scope-note">${escapeHtml(t("review.denominatorsHint", {start: summary.startDate, end: summary.endDate}))}</p>${defs}${dayChips ? `<div class="lc-checkin__denominator-days">${dayChips}</div>` : ""}<div class="lc-checkin__denominator-items">${itemRows}</div></div>`;
     };
 
+    /* T-1517 横向趋势比较：2~4 个项目同一期间；按单位分组（组内才比原始数值），
+       配额项目单列；数据不足明确提示；渲染按选择顺序，不排名。 */
+    const renderItemCompare = (): string => {
+        const selection = ctx.itemCompareSelection;
+        const picker = ctx.store.items.filter((candidate) => !candidate.archived).slice(0, 12).map((item) => `<label class="lc-checkin__item-compare-option"><input type="checkbox" data-item-compare-toggle="${escapeHtml(item.id)}" ${selection?.has(item.id) ? "checked" : ""} ${!selection?.has(item.id) && (selection?.size ?? 0) >= 4 ? "disabled" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("");
+        const rangeDays = Math.min(31, Math.max(1, Math.round((calendarDateFromKey(summary.endDate).getTime() - calendarDateFromKey(summary.startDate).getTime()) / 86400000) + 1));
+        const seriesList = (selection ? [...selection] : []).map((id) => buildItemTrendSeries(ctx.store, id, summary.startDate, rangeDays)).filter((series): series is NonNullable<typeof series> => Boolean(series));
+        const comparison = groupItemTrendsByUnit(seriesList);
+        const groups = comparison.groups.map((group) => {
+            const head = `<tr><th scope="col"></th>${group.series.map((series) => `<th scope="col">${escapeHtml(series.name)}</th>`).join("")}</tr>`;
+            const rowCount = group.series[0]?.values.length ?? 0;
+            const rows = Array.from({length: rowCount}, (_, index) => `<tr><th scope="row">${escapeHtml(group.series[0].labels[index])}</th>${group.series.map((series) => `<td>${series.values[index] ? escapeHtml(formatNumber(series.values[index])) : "·"}</td>`).join("")}</tr>`).join("");
+            const charts = group.series.map((series) => {
+                const rate = series.scheduledDays > 0 ? t("review.itemCompareRate", {completed: series.completedDays, scheduled: series.scheduledDays, rate: series.completionRate}) : t("review.itemCompareRecords", {n: series.recordDays});
+                const chart = series.sparse ? "" : renderLineChart({title: series.name, unit: series.unit, points: series.values.map((value, index) => ({label: series.labels[index], value}))}, {width: 320, height: 150});
+                return `<div class="lc-checkin__item-compare-series"><strong>${escapeHtml(series.name)}</strong>${series.sparse ? `<small>${escapeHtml(t("review.itemCompareSparse"))}</small>` : chart}<small>${escapeHtml(rate)}</small></div>`;
+            }).join("");
+            return `<div class="lc-checkin__item-compare-group"><h4>${escapeHtml(t("review.itemCompareUnitGroup", {unit: group.unit}))}</h4><div class="lc-checkin__item-compare-charts">${charts}</div><table class="lc-checkin__item-compare-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+        }).join("");
+        const quotaNotes = comparison.quotaSeries.map((series) => `<small>${escapeHtml(t("review.itemCompareQuotaNote", {name: series.name}))}</small>`).join("");
+        const selectionHint = (selection?.size ?? 0) < 2 ? `<p class="review-scope-note">${escapeHtml(t("review.itemCompareHint"))}</p>` : "";
+        return `<div class="lc-checkin__item-compare"><div class="lc-checkin__item-compare-picker">${picker}</div>${selectionHint}${groups}${quotaNotes}</div>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
+            ${fold("itemCompare", t("review.itemCompareTitle"), renderItemCompare)}
             ${assistantEntry}
             ${fold("heatmap", t("review.heatmapTitle"), renderHeatmap)}
             ${fold("strength", t("review.foldStrength"), renderStrength)}

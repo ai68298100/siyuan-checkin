@@ -57,6 +57,8 @@ export interface BindPageNavigationHost {
     /** T-1511 批量补记预览状态与逐项实际值草稿（会话态）。 */
     historyBatchPreviewOpen?: boolean;
     historyBatchValues?: Record<string, string>;
+    /** T-1517 横向比较选中的项目（会话态，2~4 个）。 */
+    itemCompareSelection?: Set<string>;
     /** T-1511 提交实际数量补记（mutation 内重校验、整批回滚）。 */
     recordHistoryBatchEntries?(date: string, entries: ReadonlyArray<{itemId: string; value: number}>): Promise<number>;
     disposed: boolean;
@@ -367,6 +369,20 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     /* T-1516：分母明细日期跳记录——沿用 jumpToHistoryDate 通道，
        不清空既有筛选/排序（与节奏日跳转的清筛选行为不同）。 */
+    /* T-1517：横向比较项目选择（至多 4 个；键盘原生可用；移除即时重渲染）。 */
+    root.querySelectorAll<HTMLInputElement>("[data-item-compare-toggle]").forEach((input) => input.addEventListener("change", () => {
+        const id = input.dataset.itemCompareToggle || "";
+        if (!id) return;
+        const selection = host.itemCompareSelection ?? (host.itemCompareSelection = new Set());
+        if (input.checked) {
+            if (selection.size >= 4) {
+                input.checked = false;
+                return;
+            }
+            selection.add(id);
+        } else selection.delete(id);
+        renderReviewPreservingView("[data-item-compare-toggle]");
+    }));
     root.querySelectorAll<HTMLElement>("[data-denominator-date]").forEach((button) => button.addEventListener("click", () => {
         const date = button.dataset.denominatorDate || "";
         if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;

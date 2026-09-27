@@ -4090,6 +4090,19 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__denominator-list { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; margin-top: 4px; font-size: 10.5px; }
 .lc-checkin__denominator-list > span:first-child { flex: none; color: var(--lc-checkin-muted); }
 .lc-checkin__denominator-list > span:last-child { min-width: 0; overflow-wrap: anywhere; text-align: end; font-variant-numeric: tabular-nums; }
+/* T-1517 横向比较：选择器 + 按单位分组的图与表。 */
+.lc-checkin__item-compare { display: grid; gap: 10px; }
+.lc-checkin__item-compare-picker { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.lc-checkin__item-compare-option { display: inline-flex; gap: 5px; align-items: center; min-height: 32px; font-size: 12px; }
+.lc-checkin__item-compare-group { display: grid; gap: 8px; }
+.lc-checkin__item-compare-group h4 { margin: 0; font-size: 12px; }
+.lc-checkin__item-compare-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+.lc-checkin__item-compare-series { display: grid; gap: 4px; padding: 8px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); }
+.lc-checkin__item-compare-series strong { font-size: 11.5px; }
+.lc-checkin__item-compare-series small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__item-compare-table { width: 100%; max-width: 100%; border-collapse: collapse; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.lc-checkin__item-compare-table th, .lc-checkin__item-compare-table td { padding: 3px 6px; border-bottom: 1px solid var(--lc-checkin-border); text-align: end; overflow-wrap: anywhere; }
+.lc-checkin__item-compare-table th:first-child, .lc-checkin__item-compare-table td:first-child { text-align: start; color: var(--lc-checkin-muted); }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

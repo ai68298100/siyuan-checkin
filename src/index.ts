@@ -1618,6 +1618,8 @@ export default class CheckinPlugin extends Plugin {
     /** T-1511 批量补记预览：面板开合与逐项实际值草稿（会话态）。 */
     private historyBatchPreviewOpen = false;
     private historyBatchValues: Record<string, string> = {};
+    /** T-1517 横向比较选中的项目（会话态，2~4 个）。 */
+    private itemCompareSelection = new Set<string>();
     private historyQuery = "";
     private historySource: HistoryChannelFilter = "all";
     /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
@@ -4782,6 +4784,7 @@ export default class CheckinPlugin extends Plugin {
             historyBatchSelected: this.historyBatchSelected,
             historyBatchPreviewOpen: this.historyBatchPreviewOpen,
             historyBatchValues: this.historyBatchValues,
+            itemCompareSelection: this.itemCompareSelection,
             historyQuery: this.historyQuery,
             historySource: this.historySource,
             historyMetering: this.historyMetering,

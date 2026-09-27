@@ -22,9 +22,8 @@
   - 状态：done。
 - [x] T-1516 统计分母与状态贡献明细（P1）——done（2026-09-27，local-auto）。新纯模块 features/stat-denominators.ts：buildItemDenominatorDetail 逐日分类收集器（completed/missed/skipped/rest + unavailableCount），与 analytics.summarizeItem 分母循环**同序同谓词**（同批 model 函数：可用性→排期→跳过豁免→完成判定），配额项目与 summarizeQuota 同款短路（按区间末修订判定 isQuota，日级明细为空，解释沿用 summary.items 既有 quota 投影——不复制第二套公式）；每列表有界 62 项截断如实标注；buildRangeDayCounts 逐日事件计数（范围过滤、排序、只读）。概览新增「如何计算」折叠区（默认关闭懒渲染）：三条指标口径定义 + 逐日条记录芯片（data-denominator-date 跳转记录，走 jumpToHistoryDate 通道**保留筛选与排序**）+ 前 8 个项目分母明细（完成/未完成/跳过/非应做日期列表，分母为零显示「无适用数据」）。新守门 tests/stat-denominators.test.cjs 入主链（一致性断言：明细计数与 buildSummaryContext 的 completedDays/scheduledDays 逐项相等）。验证：check、主链、build（CSS 640741）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1517 选定项目横向趋势比较（P1）
-  - 范围与验收：2～4 项同期间比较，异单位分图；依赖 T-1516。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1517 选定项目横向趋势比较（P1）——done（2026-09-27，local-auto）。新纯模块 features/item-trend-compare.ts：buildItemTrendSeries 逐日序列（区间有界 31 天；数值按**当日生效修订单位**聚合与 evaluateRule 同口径；完成判定复用 isComplete/scheduledToday；sparse=无记录或无应做日如实标注；配额项目携带 quota 信息）；groupItemTrendsByUnit **按单位分组**（组内才比原始数值，不同单位分图分表，绝不换算），配额项目单列 quotaSeries（无日级完成率不参与比较）；归档/缺失项目返回 undefined。分析工作区新增「横向比较」折叠区（默认关闭懒渲染）：原生复选框选择器（键盘可用，至多 4 个，满 4 禁用未选项）→ 每单位组：renderLineChart 单项目折线图 + 同源数据表格（表图一致）+ 完成率行（仅适用口径：scheduledDays>0，否则显示记录天数）+ 稀疏提示；渲染按选择顺序不排名施压。宿主会话态 itemCompareSelection 有界 4。新守门 tests/item-trend-compare.test.cjs 入主链。验证：check、主链、build（CSS 641938）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1518 周复盘向导与可恢复草稿（P1）
   - 范围与验收：事实、阻力、下周调整三步，无模型可用，不自动改目标；依赖 T-1516。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。
