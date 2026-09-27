@@ -7,6 +7,7 @@ import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvid
 import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
+import type {ExternalPendingEntryView} from "../features/external-pending";
 import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import type {NoteQueryPreference} from "../features/note-query";
 import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ingest-report";
@@ -116,6 +117,8 @@ export interface SettingsViewContext {
     /** T-1442 效果徽标：各来源当日已写入事件数（sireader/siplayer/weread）。 */
     sourceTodayCounts?: Record<string, number>;
     sourceIngestReports?: Partial<Record<DocumentSourceKey, SourceIngestReport>>;
+    /** T-1509 外部失败待处理箱：纯数据投影（容量/条目/箱保存失败/启动恢复摘要）。 */
+    externalPending?: {capacity: number; count: number; entries: readonly ExternalPendingEntryView[]; saveFailed: boolean; recovery?: {recovered: number; refused: number; kept: number}};
     /** T-1362 智能体建议审计条数（0 时导出入口禁用）。 */
     suggestionWorkflowAudits: number;
     /** T-1361 会话诊断：条数与最新一条的本地化标签（空串 = 无诊断）。 */
@@ -276,6 +279,32 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         if (!report) return "";
         return `<div class="lc-checkin__source-report" data-source-report="${source}" data-report-mode="${report.mode}" data-report-outcome="${report.outcome}" role="status"><strong>${t(report.mode === "preview" ? "set.sourceReportPreview" : "set.sourceReportIngest")} · ${t(`set.sourceReportOutcome.${report.outcome}`)}</strong><span>${t("set.sourceReportCounts", {scanned: report.scanned, matched: report.matched, planned: report.planned, written: report.written})}</span><small>${t("set.sourceReportSkips", {duplicate: report.duplicate, tombstoned: report.tombstoned, manual: report.manualConflict, invalid: report.invalid, unmatched: report.unmatched, blocked: report.blocked})}</small>${report.windowFull ? `<small class="is-warning">${t("set.sourceReportWindowFull")}</small>` : ""}</div>`;
     };
+    /* T-1509 外部失败待处理箱：跨来源只读投影 + 重试/丢弃。
+       仅在有待处理条目、箱保存失败或刚完成启动恢复时渲染，不为空箱制造常驻噪音。 */
+    const pendingRefuseKeys: Record<string, string> = {
+        "storage-failed": "set.externalPendingReasonStorage",
+        "target-gone": "set.externalPendingRefuseTarget",
+        "source-disabled": "set.externalPendingRefuseSource",
+        "tombstoned": "set.externalPendingRefuseTombstone",
+        "unit-changed": "set.externalPendingRefuseUnit",
+        "future-date": "set.externalPendingRefuseFuture",
+    };
+    const pendingState = ctx.externalPending;
+    const pendingEntries = pendingState?.entries ?? [];
+    const renderPendingEntry = (entry: ExternalPendingEntryView) => {
+        const reasonLabel = entry.lastReason && pendingRefuseKeys[entry.lastReason] ? t(pendingRefuseKeys[entry.lastReason]) : t("set.externalPendingReasonStorage");
+        return `<div class="lc-checkin__inbox-entry" data-pending-id="${escapeHtml(entry.id)}"><small>${escapeHtml(t(`source.${entry.source}`))} · ${escapeHtml(entry.itemName || entry.itemId)} · ${escapeHtml(entry.localDate)} · ${escapeHtml(`${formatNumber(entry.value)} ${entry.unit}`)}</small><small class="lc-checkin__settings-value is-muted">${reasonLabel}${entry.attempts > 0 ? ` · ${t("set.inboxAttempts", {n: entry.attempts})}` : ""}</small><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-pending-retry="${escapeHtml(entry.id)}">${t("set.externalPendingRetry")}</button><button class="lc-checkin__text-button" type="button" data-pending-discard="${escapeHtml(entry.id)}">${t("set.externalPendingDiscard")}</button></span></div>`;
+    };
+    const pendingRest = pendingEntries.length > 5
+        ? `<details class="lc-checkin__settings-fold"><summary>${t("set.inboxMore", {n: pendingEntries.length - 5})}</summary>${pendingEntries.slice(5).map(renderPendingEntry).join("")}</details>`
+        : "";
+    const pendingRows = pendingEntries.length
+        ? `${pendingEntries.slice(0, 5).map(renderPendingEntry).join("")}${pendingRest}`
+        : `<small class="lc-checkin__settings-value is-muted">${t("set.externalPendingEmpty")}</small>`;
+    const pendingRecovery = pendingState?.recovery ? `<small>${t("set.externalPendingRecovered", pendingState.recovery)}</small>` : "";
+    const externalPendingRow = pendingState && (pendingState.count > 0 || pendingState.saveFailed || pendingState.recovery)
+        ? `<div class="lc-checkin__settings-row" data-external-pending><div class="lc-checkin__settings-label"><span>${t("set.externalPendingTitle")}</span><small>${t("set.externalPendingHint")}</small><small>${t("set.externalPendingCapacity", {n: pendingState.count, total: pendingState.capacity})}</small>${pendingState.saveFailed ? `<small class="is-warning" role="alert">${t("set.externalPendingSaveFailed")}</small>` : ""}${pendingRecovery}${pendingRows}</div></div>`
+        : "";
     const sourcePanelOpen = (source: string) => ctx.openSourcePanels?.includes(source) ? " open" : "";
     const healthItemOptions = (selectedId: string) => projectOptions(selectedId);
     const yeguifNotebookOption = yeguif.notebookId
@@ -494,6 +523,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__settings-group" data-external-sources open>
                     <summary><span>${t("set.thirdPartySourcesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: thirdPartySourceCounts.enabled})}</span></summary>
                     <div class="lc-checkin__settings-row"><small class="lc-checkin__dependency-recovery">${t("set.thirdPartySourcesSetupHint")}</small><span class="lc-checkin__settings-value" data-external-summary>${t("set.thirdPartySourcesSummary", thirdPartySourceCounts)}</span></div>
+                    ${externalPendingRow}
                     <div class="lc-checkin__source-category" data-source-category="plugin-event">${t("set.sourceCategory.pluginEvent")}</div>
                     <details class="lc-checkin__source-panel" data-source-panel="sireader" data-source-state="${sireaderState}"${sourcePanelOpen("sireader")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.sireaderIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.sireader ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.sireader})}</span>` : ""}${sourceBadge(sireaderState)}</span></summary>

@@ -100,6 +100,7 @@ import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} fro
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
+import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
@@ -118,6 +119,16 @@ const STREAK_MILESTONES = [7, 14, 30, 60, 100, 180, 365, 500, 1000];
 const SUGGESTION_WORKFLOW_STORAGE_NAME = "checkin-suggestion-workflow";
 const FOCUS_DIAGNOSTICS_STORAGE_NAME = "checkin-focus-diagnostics";
 const DOCKTOMATO_INBOX_STORAGE_NAME = "checkin-docktomato-inbox";
+/* T-1509：外部失败记录待处理箱——独立有界存储桶（容量/保留期常量在 features/external-pending.ts）。 */
+const EXTERNAL_PENDING_STORAGE_NAME = "checkin-external-pending";
+/* T-1509：重试拒绝原因 → 可读提示（双语键见 i18n）。 */
+const REFUSE_TOAST_KEYS: Record<string, string> = {
+    "target-gone": "set.externalPendingRefuseTarget",
+    "source-disabled": "set.externalPendingRefuseSource",
+    "tombstoned": "set.externalPendingRefuseTombstone",
+    "unit-changed": "set.externalPendingRefuseUnit",
+    "future-date": "set.externalPendingRefuseFuture",
+};
 type OccasionImport = import("./occasions").Occasion;
 const STORAGE_LOCK_NAME = "siyuan-checkin-store-write";
 /* 审计是旁路诊断，同一变更窗口内的多次追加合成一次整文件写入（T-1246）。 */
@@ -427,7 +438,7 @@ export default class CheckinPlugin extends Plugin {
     private yeguifTimer?: number;
     private sourceIngestReports: Partial<Record<DocumentSourceKey, SourceIngestReport>> = {};
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
-    private wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
+    private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
     private pendingRenderAfterTyping = false;
     /** T-1455：展开中的精确录入面板（itemId 列表；会话态，重渲染保持展开）。 */
@@ -1147,12 +1158,14 @@ export default class CheckinPlugin extends Plugin {
                 if (preview) continue;
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
                 const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
+                const writeOutcome: ExternalWriteOutcome = {};
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint, writeOutcome));
                 if (recorded) {
                     report.written += 1;
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
-                } else report.blocked += 1;
+                } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
+                else report.blocked += 1;
             }
         }
         } catch { report.outcome = report.scanned ? "write-failed" : "read-failed"; }
@@ -1188,12 +1201,14 @@ export default class CheckinPlugin extends Plugin {
             if (preview) continue;
             const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
             const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint)).catch(() => { report.outcome = "write-failed"; return undefined; });
+            const writeOutcome: ExternalWriteOutcome = {};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint, writeOutcome)).catch(() => { report.outcome = "write-failed"; return undefined; });
             if (recorded) {
                 report.written += 1;
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
-            } else report.blocked += 1;
+            } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
+            else report.blocked += 1;
         }
     }
 
@@ -1236,6 +1251,7 @@ export default class CheckinPlugin extends Plugin {
             toLocalDateFromUnix: (seconds) => dateKey(new Date(seconds * 1000)),
         });
         let written = 0;
+        let storageRetryable = 0;
         if (!outcome.ok) {
             const status = typeof gateway.status === "number" && gateway.status !== 200 ? ` (HTTP ${gateway.status})` : "";
             this.wereadLastPull = {ok: false, days: 0, written: 0, error: `${outcome.message || "pull failed"}${status}`, upgrade: outcome.upgrade};
@@ -1256,15 +1272,16 @@ export default class CheckinPlugin extends Plugin {
                 if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
                 const fingerprint = this.revisionFingerprint(durationItem, calendarDateFromKey(day.localDate));
                 const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint));
+                const writeOutcome: ExternalWriteOutcome = {};
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "weread", externalRef}, moment, fingerprint, writeOutcome));
                 if (recorded) {
                     written += 1;
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
-                }
+                } else if (writeOutcome.reason === "storage-failed") storageRetryable += 1;
             }
         }
-        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(storageRetryable ? {pendingRetryable: storageRetryable} : {}), ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
         const todayKey = dateKey(currentCalendarDate());
         if (governance.finishItemId) await this.ingestWereadFinished();
         const yesterday = addDays(todayKey, -1);
@@ -1418,12 +1435,14 @@ export default class CheckinPlugin extends Plugin {
                 if (preview) continue;
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(today));
                 const moment = {occurredAt: new Date().toISOString(), localDate: today};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint)).catch(() => { report.outcome = "write-failed"; return undefined; });
+                const writeOutcome: ExternalWriteOutcome = {};
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint, writeOutcome)).catch(() => { report.outcome = "write-failed"; return undefined; });
                 if (recorded) {
                     report.written += 1;
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
-                } else report.blocked += 1;
+                } else if (writeOutcome.reason === "storage-failed") report.storageRetryable += 1;
+                else report.blocked += 1;
             }
         }
         report.unmatched = Math.max(0, report.scanned - report.invalid - report.matched);
@@ -1568,6 +1587,12 @@ export default class CheckinPlugin extends Plugin {
     /** 底栏番茄钟完成回写收件箱(D-227):已接收未入账的完成通知,持久化于独立存储。 */
     private dockTomatoInbox: DockTomatoInboxStore = {schemaVersion: 1, items: []};
     private dockTomatoInboxTimer?: number;
+    /** T-1509 外部失败待处理箱：可重试存储失败的持久化最少字段，独立有界存储桶。 */
+    private externalPendingBox: ExternalPendingBox = {schemaVersion: 1, items: []};
+    /** 箱自身的持久化失败必须可见，不静默。 */
+    private externalPendingSaveFailed = false;
+    /** 本次会话的启动恢复摘要（一次性，重试不累计）。 */
+    private externalPendingRecovery?: {recovered: number; refused: number; kept: number};
     private api?: CheckinApi;
     private focusAdapters = new Map<string, FocusAdapter>();
     private disposeDockTomatoBridge?: () => void;
@@ -1810,6 +1835,7 @@ export default class CheckinPlugin extends Plugin {
                 const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
                 const storedSnapshots = await this.loadData(BACKUP_STORAGE_NAME);
                 const storedDockTomatoInbox = await this.loadData(DOCKTOMATO_INBOX_STORAGE_NAME);
+                const storedExternalPending = await this.loadData(EXTERNAL_PENDING_STORAGE_NAME);
                 if (this.disposed || this.disposing) return;
                 this.store = normalizeStore(stored);
                 this.lastPersistedStore = this.cloneStore(this.store);
@@ -1829,6 +1855,11 @@ export default class CheckinPlugin extends Plugin {
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
                 restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
                 this.dockTomatoInbox = normalizeInboxStore(storedDockTomatoInbox);
+                /* T-1509：恢复待处理箱并按保留期剪除（到期条目数仅计入会话摘要，不静默丢弃未到期数据）。 */
+                this.externalPendingBox = normalizeExternalPendingBox(storedExternalPending);
+                const pruned = pruneExternalPending(this.externalPendingBox, dateKey(currentCalendarDate()));
+                this.externalPendingBox = pruned.box;
+                if (pruned.expired > 0) void this.persistExternalPendingBox();
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
@@ -1841,6 +1872,8 @@ export default class CheckinPlugin extends Plugin {
             if (this.isMobileFrontend) this.ensureMobileTopBarButton();
             this.ensureSpeedSwitchQuickActions();
             void this.reconcileDockTomatoInbox();
+            /* T-1509：启动恢复——对持久化待处理箱做一轮全量重查的一次性尝试。 */
+            void this.recoverExternalPendingBox();
         } catch (error) {
             if (this.disposed || this.disposing) return;
             this.storageReady = false;
@@ -2044,27 +2077,33 @@ export default class CheckinPlugin extends Plugin {
         return cloneStoreValue(store);
     }
 
-    private async recordExternalEvent(input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}, moment: ActionMoment, expectedRevisionFingerprint?: string): Promise<CheckinEvent | undefined> {
-        if (this.disposed || this.initializationState !== "ready" || !input || typeof input !== "object" || !this.storageReady) {
+    /** T-1509：外部写入失败归因——outcome.reason 让调用方区分配置拒绝与可重试存储失败；
+        只有 storage-failed 会入待处理箱，其余拒绝不入箱（不自动复活）。 */
+    private async recordExternalEvent(input: {itemId: string; value?: number; unit?: string; source?: CheckinEvent["source"]; note?: string; externalRef?: string}, moment: ActionMoment, expectedRevisionFingerprint?: string, outcome?: ExternalWriteOutcome): Promise<CheckinEvent | undefined> {
+        const fail = (reason: NonNullable<ExternalWriteOutcome["reason"]>): undefined => {
+            if (outcome) outcome.reason = reason;
             return undefined;
+        };
+        if (this.disposed || this.initializationState !== "ready" || !input || typeof input !== "object" || !this.storageReady) {
+            return fail("lifecycle");
         }
         const item = getActiveItemById(this.store, input.itemId);
         const actionDate = calendarDateFromKey(moment.localDate);
         if (!item || !isItemAvailableOnDate(item, actionDate)) {
-            return undefined;
+            return fail("item-unavailable");
         }
         if (input.value !== undefined && typeof input.value !== "number") {
-            return undefined;
+            return fail("invalid-value");
         }
         const value = input.value ?? 1;
         if (!Number.isFinite(value) || value < 0) {
-            return undefined;
+            return fail("invalid-value");
         }
         const source: CheckinEvent["source"] = input.source === "manual" || input.source === "tomato" || input.source === "import" || input.source === "sireader" || input.source === "siplayer" || input.source === "weread" || input.source === "yeguif" ? input.source : "api";
         const externalRef = typeof input.externalRef === "string" && input.externalRef ? input.externalRef : undefined;
         const taskHorizonRef = externalRef?.trim();
         if (taskHorizonRef?.startsWith("taskhorizon:") && (source !== "api" || !isTaskHorizonExternalRef(taskHorizonRef))) {
-            return undefined;
+            return fail("identity-rejected");
         }
         if (externalRef) {
             const existing = this.store.events.find((event) => event.itemId === item.id && event.source === source && event.externalRef === externalRef);
@@ -2073,25 +2112,35 @@ export default class CheckinPlugin extends Plugin {
             }
         }
         if (!expectedRevisionFingerprint || this.revisionFingerprint(item, actionDate) !== expectedRevisionFingerprint) {
-            return undefined;
+            return fail("revision-changed");
         }
         const revision = getItemRevisionForDate(item, actionDate);
         const requestedUnit = typeof input.unit === "string" && input.unit.trim() ? input.unit.trim().slice(0, 16) : revision.unit;
         if (requestedUnit !== revision.unit) {
-            return undefined;
+            return fail("unit-mismatch");
         }
         const unit = revision.unit;
         const note = typeof input.note === "string" ? input.note : undefined;
         const event = this.makeEvent(item, value, source, unit, note, externalRef, moment);
         const previous = this.store;
         const next = appendEvent(this.store, event);
-        if (next === this.store) return undefined;
+        if (next === this.store) return fail("unchanged");
         this.store = next;
         try {
             await this.persist();
         } catch {
             this.store = previous;
-            return undefined;
+            /* T-1509：可重试存储失败——持久化最少字段入箱，恢复/重试时全量重查，不静默丢失。 */
+            if (externalRef) {
+                const pending = buildExternalPendingEntry({itemId: item.id, value, unit, note, source, externalRef}, moment, new Date().toISOString());
+                if (pending) {
+                    const buffered = enqueueExternalPending(this.externalPendingBox, pending);
+                    this.externalPendingBox = buffered.box;
+                    if (buffered.outcome === "full") showMessage(t("set.externalPendingFull"));
+                    void this.persistExternalPendingBox();
+                }
+            }
+            return fail("storage-failed");
         }
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item, event});
@@ -2466,6 +2515,130 @@ export default class CheckinPlugin extends Plugin {
             await this.persistDockTomatoInbox();
             return false;
         });
+    }
+
+    /* ===== T-1509 外部失败待处理箱（D-293）：可重试存储失败的持久化、
+       启动恢复与设置页重试/丢弃。重试决策在 features/external-pending.ts，
+       宿主只负责用当前 store/偏好提供重查输入。容量与保留期常量见该模块。 ===== */
+
+    /** 箱持久化：失败必须可见（externalPendingSaveFailed 置位），不静默。 */
+    private async persistExternalPendingBox(): Promise<void> {
+        try {
+            await this.saveData(EXTERNAL_PENDING_STORAGE_NAME, serializeExternalPendingBox(this.externalPendingBox));
+            this.externalPendingSaveFailed = false;
+        } catch {
+            this.externalPendingSaveFailed = true;
+        }
+    }
+
+    /** 来源治理重查：目标是否仍映射到该来源、通道是否启用。
+        api 来源按登记前缀区分健康/笔记推导；其余 api 写入方（公开 API 消费者）无本地启用位。 */
+    private externalPendingGovernance(entry: ExternalPendingEntry): {available: boolean; enabled: boolean} {
+        const item = getActiveItemById(this.store, entry.itemId);
+        if (!item) return {available: false, enabled: false};
+        if (entry.source === "sireader") return {available: this.sireaderIntegration.itemId === entry.itemId, enabled: this.sireaderIntegration.enabled};
+        if (entry.source === "siplayer") return {available: this.siplayerIntegration.itemId === entry.itemId, enabled: this.siplayerIntegration.enabled};
+        if (entry.source === "weread") return {available: this.wereadIntegration.itemId === entry.itemId || this.wereadIntegration.finishItemId === entry.itemId || this.wereadIntegration.notesItemId === entry.itemId, enabled: this.wereadIntegration.enabled};
+        if (entry.source === "yeguif") return {available: this.yeguifIntegration.itemId === entry.itemId || (this.yeguifIntegration.mappings || []).some((mapping) => mapping.itemId === entry.itemId), enabled: this.yeguifIntegration.enabled};
+        if (entry.externalRef.startsWith("health:")) return {available: (this.healthInbox.metricBindings || []).some((binding) => binding.itemId === entry.itemId), enabled: this.healthInbox.enabled};
+        if (entry.externalRef.startsWith("notequery:")) return {available: this.noteQuery.itemId === entry.itemId, enabled: this.noteQuery.enabled};
+        return {available: true, enabled: true};
+    }
+
+    /** 单条重试决策输入（唯一组装点）：全部来自当前 store/偏好，禁止用入箱时的旧快照。 */
+    private externalPendingRetryPlan(entry: ExternalPendingEntry) {
+        const todayKey = dateKey(currentCalendarDate());
+        const governance = this.externalPendingGovernance(entry);
+        const tombstoned = this.store.eventTombstones.some((tombstone) => tombstone.source === entry.source && tombstone.externalRef === entry.externalRef && (!tombstone.itemId || tombstone.itemId === entry.itemId));
+        const actionDate = calendarDateFromKey(entry.localDate);
+        const item = getActiveItemById(this.store, entry.itemId);
+        const unitMatches = Boolean(item) && getItemRevisionForDate(item as CheckinItem, actionDate).unit === entry.unit;
+        return planExternalPendingRetry({
+            targetAvailable: governance.available,
+            sourceEnabled: governance.enabled,
+            tombstoned,
+            unitMatches,
+            dateNotFuture: entry.localDate <= todayKey,
+        });
+    }
+
+    /** 对单条待处理记录执行一次完整重试：拒绝给出可见原因；再失败记一次尝试；成功/重复移除。 */
+    private async retryExternalPendingEntry(id: string): Promise<boolean> {
+        if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return false;
+        const entry = this.externalPendingBox.items.find((item) => item.id === id);
+        if (!entry) return false;
+        const plan = this.externalPendingRetryPlan(entry);
+        if (plan.kind === "refuse") {
+            this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: false, duplicate: false, reason: plan.reason}, new Date().toISOString());
+            void this.persistExternalPendingBox();
+            showMessage(t(REFUSE_TOAST_KEYS[plan.reason] ?? "set.externalPendingRetryFail"));
+            return false;
+        }
+        const outcome: ExternalWriteOutcome = {};
+        const fingerprint = this.revisionFingerprint(getActiveItemById(this.store, entry.itemId) as CheckinItem, calendarDateFromKey(entry.localDate));
+        const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: entry.itemId, value: entry.value, unit: entry.unit, note: entry.note, source: entry.source, externalRef: entry.externalRef}, {occurredAt: entry.occurredAt, localDate: entry.localDate}, fingerprint, outcome));
+        if (recorded) {
+            this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: true, duplicate: true}, new Date().toISOString());
+            void this.persistExternalPendingBox();
+            this.renderBackgroundUpdate();
+            showMessage(t("set.externalPendingRetryDone"));
+            return true;
+        }
+        if (outcome.reason !== "storage-failed") {
+            this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, id, {written: false, duplicate: false, reason: outcome.reason}, new Date().toISOString());
+            void this.persistExternalPendingBox();
+            showMessage(t("set.externalPendingRetryFail"));
+            return false;
+        }
+        /* storage-failed：recordExternalEvent 已合并回箱（保留首次数据），这里只提示。 */
+        void this.persistExternalPendingBox();
+        showMessage(t("set.externalPendingRetryFail"));
+        return false;
+    }
+
+    /** 丢弃：只移除箱条目，不写墓碑、不改事件。 */
+    private async discardExternalPendingEntry(id: string): Promise<boolean> {
+        const next = removeExternalPendingEntry(this.externalPendingBox, id);
+        if (next === this.externalPendingBox) return false;
+        this.externalPendingBox = next;
+        await this.persistExternalPendingBox();
+        showMessage(t("set.externalPendingDiscarded"));
+        return this.externalPendingSaveFailed === false;
+    }
+
+    /** 启动恢复（每条每次启动至多尝试一次）：全部重查后写入；结果计入会话摘要并在设置页可见。 */
+    private async recoverExternalPendingBox(): Promise<void> {
+        if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return;
+        if (!this.externalPendingBox.items.length) return;
+        let recovered = 0;
+        let refused = 0;
+        let kept = 0;
+        for (const entry of [...this.externalPendingBox.items]) {
+            if (this.disposed || this.disposing) return;
+            const plan = this.externalPendingRetryPlan(entry);
+            if (plan.kind === "refuse") {
+                this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, entry.id, {written: false, duplicate: false, reason: plan.reason}, new Date().toISOString());
+                refused += 1;
+                continue;
+            }
+            const outcome: ExternalWriteOutcome = {};
+            const item = getActiveItemById(this.store, entry.itemId);
+            if (!item) { kept += 1; continue; }
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: entry.itemId, value: entry.value, unit: entry.unit, note: entry.note, source: entry.source, externalRef: entry.externalRef}, {occurredAt: entry.occurredAt, localDate: entry.localDate}, fingerprint, outcome));
+            if (recorded) {
+                this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, entry.id, {written: true, duplicate: true}, new Date().toISOString());
+                recovered += 1;
+            } else {
+                if (outcome.reason !== "storage-failed") {
+                    this.externalPendingBox = settleExternalPendingAfterRetry(this.externalPendingBox, entry.id, {written: false, duplicate: false, reason: outcome.reason}, new Date().toISOString());
+                }
+                kept += 1;
+            }
+        }
+        this.externalPendingRecovery = {recovered, refused, kept};
+        await this.persistExternalPendingBox();
+        if (this.externalPendingBox.items.length) this.renderBackgroundUpdate();
     }
 
     private showToday() {
@@ -3114,6 +3287,13 @@ export default class CheckinPlugin extends Plugin {
                     const itemName = this.store.items.find((i) => i.id === entry.itemId)?.name || entry.itemId;
                     return {...entry, itemName};
                 }),
+            },
+            externalPending: {
+                capacity: EXTERNAL_PENDING_CAPACITY,
+                count: this.externalPendingBox.items.length,
+                entries: projectExternalPendingEntries(this.externalPendingBox, (itemId) => this.store.items.find((item) => item.id === itemId)?.name),
+                saveFailed: this.externalPendingSaveFailed,
+                recovery: this.externalPendingRecovery,
             },
             focusTimerBusy: this.focusBusy,
             palette: this.palette,
@@ -3965,6 +4145,20 @@ export default class CheckinPlugin extends Plugin {
             if (!window.confirm(t("msg.dockInboxDiscardConfirm"))) return;
             runSettingsAction(event.currentTarget as HTMLElement, () => this.discardDockTomatoInboxEntry(identity).then((ok) => {
                 showMessage(ok ? t("msg.dockInboxDiscarded") : t("msg.dockInboxRetryFail"));
+                this.render();
+            }));
+        }));
+        /* T-1509 外部失败待处理箱：重试会全量重查（项目/修订/单位/映射/启用/墓碑），丢弃有确认。 */
+        root.querySelectorAll<HTMLElement>("[data-pending-retry]").forEach((button) => button.addEventListener("click", (event) => {
+            const id = button.dataset.pendingRetry || "";
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.retryExternalPendingEntry(id).then(() => {
+                this.render();
+            }));
+        }));
+        root.querySelectorAll<HTMLElement>("[data-pending-discard]").forEach((button) => button.addEventListener("click", (event) => {
+            const id = button.dataset.pendingDiscard || "";
+            if (!window.confirm(t("set.externalPendingDiscardConfirm"))) return;
+            runSettingsAction(event.currentTarget as HTMLElement, () => this.discardExternalPendingEntry(id).then(() => {
                 this.render();
             }));
         }));

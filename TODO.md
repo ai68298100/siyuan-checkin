@@ -6,9 +6,8 @@
 
 顺序：A（T-1509～T-1512）→ B（T-1513～T-1518）→ C（T-1519～T-1522）；D（T-1523）可在 A 后穿插。每项详细验收与共用门禁见计划第五、六节；不新增一级导航，不重复立项已完成能力。
 
-- [ ] T-1509 外部失败记录待处理箱（P0）
-  - 范围与验收：区分写入结果，有界持久待处理、恢复复核与幂等重试；承接 T-1508 本地恢复部分。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1509 外部失败记录待处理箱（P0）——done（2026-09-27，local-auto，口径 D-293）。新增 features/external-pending.ts（零运行时依赖）：有界箱（容量 40/保留期 14 天显式常量）、入箱按 source+itemId+externalRef 合并、满员显式拒绝、fail-closed 归一化、planExternalPendingRetry 重试决策（目标/映射/启用/墓碑/单位/日期全重查，拒绝不写绝不转投）。index.ts：recordExternalEvent 增加失败归因出口，仅 persist 失败入箱；独立存储桶 checkin-external-pending + 箱自身保存失败可见；启动恢复每条一次并出会话摘要；设置页外部来源区新增待处理箱（重试/丢弃带确认，空箱不渲染）；摄取报告新增 storageRetryable 与 blocked 区分。验证：check、主链、build、test:ui、test:ecosystem、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done；剩余边界（跨窗口会话身份、未收到的监听事件）仍归 T-1508 上游边界，不因本任务关闭。
 - [ ] T-1510 单条记录事实详情（P0）
   - 范围与验收：展开数值、计量方式、生效修订与来源归属，缺证据明确未知。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。
