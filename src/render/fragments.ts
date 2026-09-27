@@ -14,6 +14,7 @@ import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {selectPriorityReminders} from "../features/priority-reminder";
 import {isBannerCoveredReminder} from "../features/reminder-digest";
+import {buildRecordTrust} from "../features/record-trust";
 import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
 import {projectReminderCenter, type ReminderUserAction} from "../reminders";
 import type {TodayGroupMode} from "../view-preferences";
@@ -324,7 +325,10 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
             if (events.length === 1) {
                 const event = first;
                 const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
-                return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time(event)}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span></div>`;
+                /* T-1490 信任层：自动完成在日志行呈现来源徽标（原因与撤销在回顾页历史行）。 */
+                const trust = buildRecordTrust(event);
+                const badge = trust.auto ? ` · <span class="lc-checkin__source-badge">${escapeHtml(t(trust.sourceKey))}</span>` : "";
+                return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time(event)}${badge}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span></div>`;
             }
             const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`);
             return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${renderRowBatches(eventRows, "review.logMoreEntries")}</div></details>`;

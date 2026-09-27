@@ -10260,6 +10260,28 @@ details:not([open]) > :not(summary) { display: none !important; }
     line-height: 1.4;
 }
 
+/* T-1490 信任层：自动记录来源徽标与命中原因——低干扰小徽标+灰色说明行，
+   文字走 muted（对等 skip-badge 的已验证对比度），accent-soft 仅作描边提示，
+   双主题复用既有变量，不新增色彩。 */
+.lc-checkin__source-badge {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--lc-checkin-accent-soft);
+    color: var(--lc-checkin-muted);
+    font-size: 9px;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+.lc-checkin__record-reason {
+    display: block;
+    margin: 2px 0 0;
+    color: var(--lc-checkin-muted);
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+
 /* T-1222 今日卡跳过态：中性虚线标签，卡片仍可正常打卡（完成优先）。 */
 .lc-checkin__item-tag.is-skip-tag {
     border: 1px dashed var(--lc-checkin-muted);

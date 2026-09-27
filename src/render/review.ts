@@ -9,6 +9,7 @@ import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
 import {buildYearHeatmap, renderBarChart, renderLineChart, renderSparkline, renderWeeklyHeatmap, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
+import {buildRecordTrust} from "../features/record-trust";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -66,6 +67,8 @@ export interface ReviewViewContext {
     reminderUserActions: ReminderUserAction[];
     /** T-1495 事项提前提醒「仅一次」（可选：旧桩缺省按关闭处理）。 */
     reminderAdvanceOnce?: boolean;
+    /** T-1490 信任层：仍生效的时长结算绑定（当前偏好快照，缺省不派生阈值原因）。 */
+    trustThresholds?: Array<{source: string; itemId: string; value: number}>;
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -199,10 +202,15 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const noteEditor = ctx.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">${t("review.saveNote")}</button>` : "";
         const photoThumb = event.attachment ? `<img class="lc-checkin__history-thumb" src="${escapeHtml(event.attachment)}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
         const sourceLabel = t(`source.${event.source}`) || event.source;
+        /* T-1490 信任层：自动完成显示来源徽标+命中原因（只读投影，派生不了不显示）；
+           撤销沿用行内既有 data-history-event-id 通道（removeEvents 自动写墓碑）。 */
+        const trust = buildRecordTrust(event, {threshold: ctx.trustThresholds?.find((entry) => entry.source === event.source && entry.itemId === event.itemId)});
+        const sourceBadge = trust.auto ? `<span class="lc-checkin__source-badge">${escapeHtml(sourceLabel)}</span>` : escapeHtml(sourceLabel);
+        const trustReason = trust.reasonKey ? `<small class="lc-checkin__record-reason">${escapeHtml(t(trust.reasonKey, trust.reasonParams))}</small>` : "";
         /* T-1221：跳过行显示中性徽章而非数值列。 */
         const skipBadge = isSkipEvent(event) ? `<span class="lc-checkin__history-skip-badge">${escapeHtml(t("review.skipBadge"))}</span>` : "";
         const valueLabel = isSkipEvent(event) ? "" : `<span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span>`;
-        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span><time datetime="${escapeHtml(event.occurredAt)}" title="${escapeHtml(time)}">${escapeHtml(clock)}</time> · ${escapeHtml(sourceLabel)}${skipBadge}</span>${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
+        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span><time datetime="${escapeHtml(event.occurredAt)}" title="${escapeHtml(time)}">${escapeHtml(clock)}</time> · ${sourceBadge}${skipBadge}</span>${trustReason}${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
     };
     const page = Math.min(Math.max(0, ctx.historyPage || 0), Math.max(0, Math.ceil(filteredRecords.length / 30) - 1));
     const pageRecords = filteredRecords.slice(page * 30, (page + 1) * 30);

@@ -4500,6 +4500,12 @@ export default class CheckinPlugin extends Plugin {
             reminderFilter: this.reminderFilter,
             reminderUserActions: this.reminderUserActions,
             reminderAdvanceOnce: this.occasionRemindOnce,
+            /* T-1490 信任层：仍生效的时长结算绑定快照（事件项目不匹配则不派生阈值原因）。 */
+            trustThresholds: ([
+                {source: "sireader", itemId: this.sireaderIntegration?.itemId, value: this.sireaderIntegration?.thresholdMinutes},
+                {source: "siplayer", itemId: this.siplayerIntegration?.itemId, value: this.siplayerIntegration?.thresholdMinutes},
+                {source: "weread", itemId: this.wereadIntegration?.itemId, value: this.wereadIntegration?.thresholdMinutes},
+            ] as Array<{source: string; itemId?: string; value?: number}>).filter((entry): entry is {source: string; itemId: string; value: number} => Boolean(entry.itemId) && typeof entry.value === "number" && entry.value > 0),
             analyticsSnapshot,
         });
     }
