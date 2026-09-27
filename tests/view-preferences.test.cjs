@@ -65,6 +65,7 @@ const wereadModule = loadTypeScript("src/features/weread-adapter.ts", {}, {});
 const reminderPreferencesModule = loadTypeScript("src/features/reminder-preferences.ts", {}, {});
 const firstSuccessModule = loadTypeScript("src/features/first-success.ts", {}, {});
 const viewScopeModule = loadTypeScript("src/features/view-scope.ts", {}, {"../date-keys": {addDays: (key) => key}});
+const weeklyReviewModule = loadTypeScript("src/features/weekly-review.ts", {}, {});
 const noteQueryModule = loadTypeScript("src/features/note-query.ts", {}, {
     "./note-anchor": {
         validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
@@ -83,6 +84,7 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/first-success": firstSuccessModule,
     "./features/view-scope": viewScopeModule,
     "./features/note-query": noteQueryModule,
+    "./features/weekly-review": weeklyReviewModule,
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";

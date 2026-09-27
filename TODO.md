@@ -24,9 +24,8 @@
   - 状态：done。
 - [x] T-1517 选定项目横向趋势比较（P1）——done（2026-09-27，local-auto）。新纯模块 features/item-trend-compare.ts：buildItemTrendSeries 逐日序列（区间有界 31 天；数值按**当日生效修订单位**聚合与 evaluateRule 同口径；完成判定复用 isComplete/scheduledToday；sparse=无记录或无应做日如实标注；配额项目携带 quota 信息）；groupItemTrendsByUnit **按单位分组**（组内才比原始数值，不同单位分图分表，绝不换算），配额项目单列 quotaSeries（无日级完成率不参与比较）；归档/缺失项目返回 undefined。分析工作区新增「横向比较」折叠区（默认关闭懒渲染）：原生复选框选择器（键盘可用，至多 4 个，满 4 禁用未选项）→ 每单位组：renderLineChart 单项目折线图 + 同源数据表格（表图一致）+ 完成率行（仅适用口径：scheduledDays>0，否则显示记录天数）+ 稀疏提示；渲染按选择顺序不排名施压。宿主会话态 itemCompareSelection 有界 4。新守门 tests/item-trend-compare.test.cjs 入主链。验证：check、主链、build（CSS 641938）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1518 周复盘向导与可恢复草稿（P1）
-  - 范围与验收：事实、阻力、下周调整三步，无模型可用，不自动改目标；依赖 T-1516。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1518 周复盘向导与可恢复草稿（P1）——done（2026-09-27，local-auto）。新纯模块 features/weekly-review.ts：草稿按周键（周起始日）隔离、有界 8、文本 500 上限 fail-closed 归一化、upsert 幂等合并淘汰最旧；buildWeeklyReviewMarkdown 确定性导出（事实/阻力/调整分节标注，空文本占位 —，无模型依赖、不写宿主文档）。偏好存储新增 weeklyReviewDrafts（additive，normalize 复用纯模块），跨重载恢复。概览新增「周复盘」折叠区（仅周范围显示）：第一步核对事实（本地统计：记录数/完成项/前 5 项目）、第二步阻力 textarea、第三步下周一项调整 textarea（草案提示：确认需去项目编辑器，不自动写目标）；保存/导出/清除按钮（bind-page-navigation 绑定，清除只清当前周并清空输入）。宿主 saveWeeklyReviewDraft/clearWeeklyReviewDraft/exportWeeklyReviewMarkdown（导出走既有 downloadReportMarkdown 通道）。修复 6 个既有测试的 view-preferences 模块桩清单（补 weekly-review 映射：template-manager/view-preferences/template-gallery/report-sections/report-deviations/templates/v8-platform/avatar-editor-browser）。新守门 tests/weekly-review.test.cjs 入主链。验证：check、主链、build（CSS 642955）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。批次 B（T-1513～T-1518）就此全部交付。
 - [ ] T-1519 个人模板脱敏分享（P1）
   - 范围与验收：白名单纯配置导出预览，排除记录、绑定、凭据、备注。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

@@ -59,6 +59,10 @@ export interface BindPageNavigationHost {
     historyBatchValues?: Record<string, string>;
     /** T-1517 横向比较选中的项目（会话态，2~4 个）。 */
     itemCompareSelection?: Set<string>;
+    /** T-1518 周复盘草稿存取与导出（可选：旧桩缺省安全跳过）。 */
+    saveWeeklyReviewDraft?(weekKey: string, friction: string, adjustment: string): Promise<void>;
+    clearWeeklyReviewDraft?(weekKey: string): Promise<void>;
+    exportWeeklyReviewMarkdown?(weekKey: string, friction: string, adjustment: string): void;
     /** T-1511 提交实际数量补记（mutation 内重校验、整批回滚）。 */
     recordHistoryBatchEntries?(date: string, entries: ReadonlyArray<{itemId: string; value: number}>): Promise<number>;
     disposed: boolean;
@@ -383,6 +387,39 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         } else selection.delete(id);
         renderReviewPreservingView("[data-item-compare-toggle]");
     }));
+    /* T-1518：周复盘向导——保存草稿（不清输入）、导出 Markdown、清除本周草稿。 */
+    root.querySelector<HTMLElement>("[data-weekly-save]")?.addEventListener("click", () => {
+        const container = root.querySelector<HTMLElement>("[data-weekly-key]");
+        const weekKey = container?.dataset.weeklyKey || "";
+        if (!weekKey) return;
+        const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
+        const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
+        void host.saveWeeklyReviewDraft?.(weekKey, friction, adjustment).then(() => {
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = t("review.weeklySaved");
+        });
+    });
+    root.querySelector<HTMLElement>("[data-weekly-export]")?.addEventListener("click", () => {
+        const container = root.querySelector<HTMLElement>("[data-weekly-key]");
+        const weekKey = container?.dataset.weeklyKey || "";
+        if (!weekKey) return;
+        const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
+        const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
+        host.exportWeeklyReviewMarkdown?.(weekKey, friction, adjustment);
+    });
+    root.querySelector<HTMLElement>("[data-weekly-clear]")?.addEventListener("click", () => {
+        const container = root.querySelector<HTMLElement>("[data-weekly-key]");
+        const weekKey = container?.dataset.weeklyKey || "";
+        if (!weekKey) return;
+        void host.clearWeeklyReviewDraft?.(weekKey).then(() => {
+            const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]");
+            const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]");
+            if (friction) friction.value = "";
+            if (adjustment) adjustment.value = "";
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = "";
+        });
+    });
     root.querySelectorAll<HTMLElement>("[data-denominator-date]").forEach((button) => button.addEventListener("click", () => {
         const date = button.dataset.denominatorDate || "";
         if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;

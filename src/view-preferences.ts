@@ -6,6 +6,7 @@ import {normalizeWereadIntegration} from "./features/weread-adapter";
 import {normalizeReminderQuietHours, type ReminderQuietHours, normalizeDailyReminderPreference, type DailyReminderPreference} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
+import {normalizeWeeklyReviewDrafts} from "./features/weekly-review";
 import {normalizeNoteQueryPreference, type NoteQueryPreference} from "./features/note-query";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
@@ -107,6 +108,8 @@ export interface CheckinViewPreferences {
     savedViews: Array<{id: string; name: string; scope: ViewScopeV1}>;
     /** T-1349 最近使用的内置模板名（zh 名为数据锚点），最多 6 条，驱动新建页「最近使用」置顶。 */
     recentTemplates: string[];
+    /** T-1518 周复盘草稿（按周键隔离，可跨重载恢复），最多 8 份。 */
+    weeklyReviewDrafts: Array<{weekKey: string; friction: string; adjustment: string; updatedAt: string}>;
 }
 
 export const DEFAULT_REPORT_SECTIONS: ReportSectionToggles = {
@@ -158,6 +161,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     firstSuccess: {stage: "not-started", skipped: false},
     savedViews: [],
     recentTemplates: [],
+    weeklyReviewDrafts: [],
 };
 
 /** T-1349 「最近使用」保留条数上限。 */
@@ -332,5 +336,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
             return [{id, name, scope: normalizeViewScope(candidate.scope).scope}];
         }),
         recentTemplates,
+        /* T-1518 周复盘草稿：归一化复用纯模块（坏条目丢弃/去重/有界 8）。 */
+        weeklyReviewDrafts: normalizeWeeklyReviewDrafts(source.weeklyReviewDrafts),
     };
 }

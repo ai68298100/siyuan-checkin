@@ -14,6 +14,7 @@ import {buildRecordDetails} from "../features/record-details";
 import {buildBatchBackfillPreview, type BatchBackfillItemSnapshot} from "../features/batch-backfill";
 import {buildItemDenominatorDetail, buildRangeDayCounts} from "../features/stat-denominators";
 import {buildItemTrendSeries, groupItemTrendsByUnit} from "../features/item-trend-compare";
+import {weeklyReviewDraftFor, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "../features/weekly-review";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -83,6 +84,8 @@ export interface ReviewViewContext {
     historyBatchValues?: Readonly<Record<string, string>>;
     /** T-1517 横向比较选中的项目（会话态，2~4 个；可选：旧桩按空处理）。 */
     itemCompareSelection?: ReadonlySet<string>;
+    /** T-1518 周复盘草稿（可选：旧桩按无草稿处理）。 */
+    weeklyReviewDrafts?: readonly WeeklyReviewDraft[];
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -609,6 +612,19 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__item-compare"><div class="lc-checkin__item-compare-picker">${picker}</div>${selectionHint}${groups}${quotaNotes}</div>`;
     };
 
+    /* T-1518 周复盘向导：核对事实（本地统计，无模型可用）→ 记录阻力 → 下周一项调整。
+       草稿按周键隔离、可跨重载恢复；调整只是草案，不自动写目标。仅周范围显示。 */
+    const renderWeeklyReview = (): string => {
+        if (ctx.summaryCustomRange || ctx.summaryRange !== "week") {
+            return `<p class="review-scope-note">${escapeHtml(t("review.weeklyOnlyWeek"))}</p>`;
+        }
+        const weekKey = summary.startDate;
+        const draft = weeklyReviewDraftFor(ctx.weeklyReviewDrafts || [], weekKey);
+        const itemLines = summary.items.slice(0, 5).map((entry) => `${entry.name} · ${entry.completedDays}/${entry.scheduledDays} ${t("review.weeklyDays")}`);
+        const facts = `<div class="lc-checkin__weekly-facts"><strong>${escapeHtml(t("review.weeklyStepFacts"))}</strong><small>${escapeHtml(t("review.weeklyFactsHint"))}</small><ul><li>${escapeHtml(t("review.weeklyFactEvents", {n: summary.totalEvents}))}</li><li>${escapeHtml(t("review.weeklyFactItems", {completed: completedItemCount, scheduled: scheduledItemCount}))}</li>${itemLines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}</ul></div>`;
+        return `<div class="lc-checkin__weekly-review" data-weekly-key="${escapeHtml(weekKey)}">${facts}<label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepFriction"))}</span><textarea data-weekly-friction rows="2" placeholder="${escapeHtml(t("review.weeklyFrictionPlaceholder"))}">${escapeHtml(draft?.friction || "")}</textarea></label><label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepAdjust"))}</span><textarea data-weekly-adjustment rows="2" placeholder="${escapeHtml(t("review.weeklyAdjustPlaceholder"))}">${escapeHtml(draft?.adjustment || "")}</textarea><small>${escapeHtml(t("review.weeklyAdjustHint"))}</small></label><div class="lc-checkin__weekly-actions"><button class="lc-checkin__text-button" type="button" data-weekly-save>${t("review.weeklySave")}</button><button class="lc-checkin__text-button" type="button" data-weekly-export>${t("review.weeklyExport")}</button><button class="lc-checkin__text-button" type="button" data-weekly-clear>${t("review.weeklyClear")}</button><span class="lc-checkin__weekly-status" data-weekly-status role="status"></span></div></div>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
@@ -625,6 +641,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
             ${renderRhythm()}<div class="lc-checkin__review-sections">
             ${fold("denominators", t("review.denominatorsTitle"), renderDenominators)}
+            ${fold("weeklyReview", t("review.weeklyTitle"), renderWeeklyReview)}
             ${fold("projects", `${t("review.foldProjects")} · ${summary.items.length}`, renderProjects)}
             ${assistantEntry}
             ${fold("compare", t("review.compareTitle"), renderComparison)}

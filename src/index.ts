@@ -102,6 +102,7 @@ import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectD
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
+import {normalizeWeeklyReviewDrafts, upsertWeeklyReviewDraft, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "./features/weekly-review";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
@@ -1598,6 +1599,36 @@ export default class CheckinPlugin extends Plugin {
     private focusAdapters = new Map<string, FocusAdapter>();
     private disposeDockTomatoBridge?: () => void;
     private summaryProviders = new Map<string, SummaryProvider>();
+    /** T-1518 周复盘草稿：保存/清除（持久化到偏好存储，可跨重载恢复）；导出 Markdown。 */
+    async saveWeeklyReviewDraft(weekKey: string, friction: string, adjustment: string): Promise<void> {
+        this.weeklyReviewDrafts = upsertWeeklyReviewDraft(this.weeklyReviewDrafts, {weekKey, friction, adjustment, updatedAt: new Date().toISOString()});
+        await this.persistViewPreferences();
+    }
+
+    async clearWeeklyReviewDraft(weekKey: string): Promise<void> {
+        this.weeklyReviewDrafts = this.weeklyReviewDrafts.filter((entry) => entry.weekKey !== weekKey);
+        await this.persistViewPreferences();
+    }
+
+    /** T-1518 导出周复盘 Markdown：事实来自本地统计（无模型可用），与用户解释分开标注。 */
+    exportWeeklyReviewMarkdown(weekKey: string, friction: string, adjustment: string): void {
+        const summary = buildSummaryContext(this.store, "week");
+        const markdown = buildWeeklyReviewMarkdown({
+            rangeLabel: t("review.weeklyRangeLabel", {start: summary.startDate, end: summary.endDate}),
+            totalEvents: summary.totalEvents,
+            completedItems: summary.completedItems,
+            scheduledItems: summary.scheduledItems,
+            itemLines: summary.items.slice(0, 5).map((entry) => `${entry.name} · ${entry.completedDays}/${entry.scheduledDays} ${t("review.weeklyDays")}`),
+            headings: {
+                facts: t("review.weeklyStepFacts"),
+                friction: t("review.weeklyStepFriction"),
+                adjustment: t("review.weeklyStepAdjust"),
+                note: t("review.weeklyMarkdownNote"),
+            },
+        }, friction, adjustment);
+        this.downloadReportMarkdown(markdown);
+    }
+
     private summaryRange: SummaryRange = "week";
     private summaryCustomRange?: {startDate: string; endDate: string};
     private summaryText?: string;
@@ -1620,6 +1651,8 @@ export default class CheckinPlugin extends Plugin {
     private historyBatchValues: Record<string, string> = {};
     /** T-1517 横向比较选中的项目（会话态，2~4 个）。 */
     private itemCompareSelection = new Set<string>();
+    /** T-1518 周复盘草稿（按周键隔离，持久化于偏好存储）。 */
+    private weeklyReviewDrafts: WeeklyReviewDraft[] = [];
     private historyQuery = "";
     private historySource: HistoryChannelFilter = "all";
     /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
@@ -4785,6 +4818,7 @@ export default class CheckinPlugin extends Plugin {
             historyBatchPreviewOpen: this.historyBatchPreviewOpen,
             historyBatchValues: this.historyBatchValues,
             itemCompareSelection: this.itemCompareSelection,
+            weeklyReviewDrafts: this.weeklyReviewDrafts,
             historyQuery: this.historyQuery,
             historySource: this.historySource,
             historyMetering: this.historyMetering,
@@ -6406,6 +6440,7 @@ export default class CheckinPlugin extends Plugin {
         this.occasionRemindOnce = preferences.occasionRemindOnce;
         this.firstSuccessState = normalizeFirstSuccessState(preferences.firstSuccess);
         this.savedViews = preferences.savedViews;
+        this.weeklyReviewDrafts = normalizeWeeklyReviewDrafts(preferences.weeklyReviewDrafts);
         this.activeSavedViewId = undefined;
         this.todayQuery = preferences.todayQuery;
         this.pendingOnly = preferences.pendingOnly;
@@ -6475,6 +6510,7 @@ export default class CheckinPlugin extends Plugin {
             collapsedGroups: [...this.collapsedTodayGroups].slice(0, 200),
             reviewFold: [...this.reviewFoldSections],
             reviewFoldTouched: this.reviewFoldTouched,
+            weeklyReviewDrafts: this.weeklyReviewDrafts,
             lastInsightsItemId: this.insightsItemId,
             appearance: this.appearance,
             reducedMotion: this.reducedMotion,
