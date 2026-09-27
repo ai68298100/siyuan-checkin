@@ -13,6 +13,7 @@ import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {selectPriorityReminders} from "../features/priority-reminder";
+import {isBannerCoveredReminder} from "../features/reminder-digest";
 import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
 import {projectReminderCenter, type ReminderUserAction} from "../reminders";
 import type {TodayGroupMode} from "../view-preferences";
@@ -134,7 +135,16 @@ export function renderThisDayHistoryView(store: CheckinStore, occasionStore: Occ
     return `<section class="lc-checkin__this-day" aria-label="${t("today.thisDayTitle")}"><strong>${t("today.thisDayTitle")}</strong>${rows}</section>`;
 }
 
-export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false, quiet = false): string {    const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
+/* T-1495 降噪：今日页事项横幅已聚合的当日事项，不在优先卡与行动台计数中重复弹出
+   （与每日推送摘要共用 isBannerCoveredReminder 判定，口径一致）。 */
+function selectTodayPriorityEntries(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []) {
+    const todayKey = dateKey(date);
+    return selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions))
+        .filter((entry) => !isBannerCoveredReminder(entry, todayKey));
+}
+
+export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false, quiet = false): string {
+    const entries = selectTodayPriorityEntries(store, occasionStore, date, userActions);
     const entry = entries[0];
     if (!entry) return "";
     const overdue = entry.status === "overdue";
@@ -435,7 +445,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 streak: ctx.currentStreaks.get(item.id),
             };
         }),
-        attention: selectPriorityReminders(projectReminderCenter(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [])).map((entry) => ({
+        attention: selectTodayPriorityEntries(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || []).map((entry) => ({
             id: entry.id,
             title: entry.title,
             severity: entry.status === "overdue" ? "overdue" as const : "today" as const,

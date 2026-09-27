@@ -64,6 +64,8 @@ export interface ReviewViewContext {
     editingHistoryNoteId?: string;
     reminderFilter: ReminderFilter;
     reminderUserActions: ReminderUserAction[];
+    /** T-1495 事项提前提醒「仅一次」（可选：旧桩缺省按关闭处理）。 */
+    reminderAdvanceOnce?: boolean;
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -367,7 +369,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<label class="review-analysis-trend">${t("review.trendMetric")}<select data-review-trend>${(["weekly", "monthly", "daily", "yearly"] as const).map(name => `<option value="${name}" ${key === name ? "selected" : ""}>${escapeHtml(ctx.analyticsSnapshot[name].title)}</option>`).join("")}</select></label><p class="review-scope-note">${t("review.trendScope")}</p><div class="lc-checkin__trend-grid">${trendCard(series, chart, key === "daily" ? t("review.trendDailyHint") : t("review.trendCompared"))}</div>${dataTable}`;
     };
     const renderReminders = (): string => {
-    const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions), ctx.reminderFilter);
+    const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions, {advanceOnce: ctx.reminderAdvanceOnce === true}), ctx.reminderFilter);
     /* 同一打卡只保留最新实例，累计次数以内联摘要展示，避免提醒列表纵向膨胀。 */
     const reminderByTitle = new Map<string, (typeof rawReminders)[number] & {occurrenceCount?: number}>();
     rawReminders.forEach((entry) => {

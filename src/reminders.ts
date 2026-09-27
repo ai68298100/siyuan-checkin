@@ -141,7 +141,19 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
         || left.id.localeCompare(right.id));
 }
 
-export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = []): ReminderEntry[] {
+/** T-1495 提前提醒「仅一次」：开启后提前提醒只在窗口首日（daysUntil === remindBeforeDays）
+    出现一次，不再逐日重复；当天提醒（daysUntil === 0）不受影响；关闭时保持原行为。
+    非法输入 fail-closed 回落可见（不隐藏既有信息）。 */
+export function advanceReminderVisible(daysUntil: number, remindBeforeDays: number, once: boolean): boolean {
+    if (!once) return true;
+    if (!Number.isFinite(daysUntil) || !Number.isFinite(remindBeforeDays) || daysUntil <= 0) return true;
+    return daysUntil === remindBeforeDays;
+}
+
+/** T-1495 提前提醒降噪选项（additive）：advanceOnce 开启时窗口内非首日的 upcoming 条目不投影。 */
+export interface ReminderCenterOptions {advanceOnce?: boolean}
+
+export function projectReminderCenter(store: CheckinStore, occasions: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], options: ReminderCenterOptions = {}): ReminderEntry[] {
     /*
      * Keep the reminder-center hot path linear over occasions.  The previous
      * implementation projected overdue occasions, visible occasions, and
@@ -176,6 +188,7 @@ export function projectReminderCenter(store: CheckinStore, occasions: OccasionSt
         if (!occurrenceDate) continue;
         const daysUntil = differenceInLocalDays(today, occurrenceDate);
         if (daysUntil < 0 || daysUntil > occasion.remindBeforeDays) continue;
+        if (!advanceReminderVisible(daysUntil, occasion.remindBeforeDays, options.advanceOnce === true)) continue;
         const completed = isOccasionCompleted(occasion, occurrenceDate);
         occasionEntries.push({
             id: `occasion:${occasion.id}:${occurrenceDate}`,

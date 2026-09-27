@@ -78,6 +78,7 @@ import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
 import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
+import {buildReminderDigest, isBannerCoveredReminder} from "./features/reminder-digest";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
 import {bindSettingsNavigationFor} from "./render/settings-navigation";
@@ -1475,6 +1476,8 @@ export default class CheckinPlugin extends Plugin {
     private dailyReminder = {...DEFAULT_VIEW_PREFERENCES.dailyReminder};
     private reminderFireLog: Record<string, string> = {};
     private reminderSlotTimer?: number;
+    /* T-1495：事项提前提醒「仅一次」（默认关 = 原逐日提醒）。 */
+    private occasionRemindOnce = DEFAULT_VIEW_PREFERENCES.occasionRemindOnce;
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
@@ -3038,6 +3041,7 @@ export default class CheckinPlugin extends Plugin {
             hapticFeedback: this.hapticFeedback,
             focusTimerProvider: this.focusTimerProvider,
             reminderQuietHours: this.reminderQuietHours,
+            occasionRemindOnce: this.occasionRemindOnce,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
             dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
@@ -3221,6 +3225,12 @@ export default class CheckinPlugin extends Plugin {
                 this.dailyReminder = previous;
                 showMessage(t("msg.prefSaveFail"));
             }
+        });
+        /* T-1495 事项提前提醒「仅一次」：开关即存即生效（默认关 = 原逐日提醒）。 */
+        root.querySelector<HTMLInputElement>("[data-setting-occasion-once]")?.addEventListener("change", (event) => {
+            this.occasionRemindOnce = (event.currentTarget as HTMLInputElement).checked;
+            void this.persistViewPreferences();
+            this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
@@ -4489,6 +4499,7 @@ export default class CheckinPlugin extends Plugin {
             editingHistoryNoteId: this.editingHistoryNoteId,
             reminderFilter: this.reminderFilter,
             reminderUserActions: this.reminderUserActions,
+            reminderAdvanceOnce: this.occasionRemindOnce,
             analyticsSnapshot,
         });
     }
@@ -5903,7 +5914,7 @@ export default class CheckinPlugin extends Plugin {
             showMessage(t("msg.saveFailedShort"));
             this.render();
         });
-        const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions).find((entry) => entry.id === id)?.title;
+        const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions, {advanceOnce: this.occasionRemindOnce}).find((entry) => entry.id === id)?.title;
         if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
     }
 
@@ -5969,6 +5980,7 @@ export default class CheckinPlugin extends Plugin {
         this.focusTimerProvider = preferences.focusTimerProvider;
         this.reminderQuietHours = normalizeReminderQuietHours(preferences.reminderQuietHours);
         this.dailyReminder = {...preferences.dailyReminder};
+        this.occasionRemindOnce = preferences.occasionRemindOnce;
         this.firstSuccessState = normalizeFirstSuccessState(preferences.firstSuccess);
         this.savedViews = preferences.savedViews;
         this.activeSavedViewId = undefined;
@@ -6059,6 +6071,7 @@ export default class CheckinPlugin extends Plugin {
             reportSections: {...this.reportSections},
             reportSource: this.reportSource,
             dailyReminder: {...this.dailyReminder},
+            occasionRemindOnce: this.occasionRemindOnce,
             diaryReport: {...this.diaryReport},
             summaryResident: {...this.summaryResident},
             sireaderIntegration: {...this.sireaderIntegration},
@@ -6226,10 +6239,12 @@ export default class CheckinPlugin extends Plugin {
         this.scheduleMidnightRefresh();
     }
 
-    /** T-1443/T-1451：每日统一提醒——汇总当日逾期/待完成/事项为一条思源原生通知。
+    /** T-1443/T-1451：每日统一提醒——汇总当日逾期/待完成为一条思源原生通知。
         未配置槽位：启动后一天一条（原行为）；配置槽位后：每时刻一条、每槽每日至多
         一次（minute 级有界轮询检查到点即发，启动时补发当日已到点未发的槽，合并为
-        至多一条）。零事项不消费槽位；安静时段内静默跳过。 */
+        至多一条）。零事项不消费槽位；安静时段内静默跳过。
+        T-1495：同日多事件聚合为单条摘要（计数+代表项目名）；今日页事项横幅已聚合的
+        当日事项不再重复弹。 */
     private async maybeSendDailyReminder(trigger: "launch" | "slot" = "launch") {
         if (this.disposed || this.disposing || !this.storageReady) return;
         if (!this.dailyReminder.enabled) return;
@@ -6242,15 +6257,25 @@ export default class CheckinPlugin extends Plugin {
             ? slots.filter((slot) => nowMinutes >= (reminderMinutesOfDay(slot) ?? 1441) && this.reminderFireLog[`slot:${slot}`] !== today).map((slot) => `slot:${slot}`)
             : trigger === "launch" && this.reminderFireLog.launch !== today ? ["launch"] : [];
         if (!dueKeys.length) return;
-        const entries = projectReminderCenter(this.store, this.occasionStore, now, this.reminderUserActions);
-        const actionable = entries.filter((entry) => entry.status === "overdue" || entry.status === "today");
-        if (!actionable.length) return;
+        const entries = projectReminderCenter(this.store, this.occasionStore, now, this.reminderUserActions, {advanceOnce: this.occasionRemindOnce});
+        /* T-1495 降噪：今日页事项横幅已聚合的当日事项不再重复弹；同日多事件经
+           buildReminderDigest 聚合为单条摘要（计数+代表项目名），零事项不消费槽位。 */
+        const actionable = entries.filter((entry) => entry.status === "overdue"
+            || (entry.status === "today" && !isBannerCoveredReminder(entry, today)));
+        const digest = buildReminderDigest(actionable, {today});
+        if (!digest.total) return;
         for (const key of dueKeys) this.reminderFireLog[key] = today;
         this.lastDailyReminderDate = today;
-        const msg = t("msg.dailyReminder", {
-            overdue: actionable.filter((entry) => entry.status === "overdue").length,
-            today: actionable.filter((entry) => entry.status === "today").length,
-        });
+        const formatNames = (segment: {names: string[]; overflow: number}) => {
+            if (!segment.names.length) return "";
+            const rendered = segment.names.join(t("msg.reminderDigestNameJoin"));
+            return t("msg.reminderDigestNames", {names: segment.overflow > 0 ? `${rendered}${t("msg.reminderDigestOverflow", {n: segment.overflow})}` : rendered});
+        };
+        const body = [
+            digest.today ? t("msg.reminderDigestToday", {count: digest.today.count, names: formatNames(digest.today)}) : "",
+            digest.overdue ? t("msg.reminderDigestOverdue", {count: digest.overdue.count, names: formatNames(digest.overdue)}) : "",
+        ].filter(Boolean).join(t("msg.reminderDigestJoin"));
+        const msg = t("msg.dailyReminder", {body});
         try {
             await fetchSyncPost("/api/notification/pushMsg", {msg, timeout: 6000});
         } catch {

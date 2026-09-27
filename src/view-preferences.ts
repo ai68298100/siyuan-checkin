@@ -94,6 +94,8 @@ export interface CheckinViewPreferences {
     reminderQuietHours: ReminderQuietHours;
     /** T-1451 每日提醒调度（默认启用 + 启动一条）：slots 非空时按时刻触发、每槽每日一条。 */
     dailyReminder: DailyReminderPreference;
+    /** T-1495 事项提前提醒「仅一次」（默认关 = 原逐日提醒）：开启后提前提醒只在窗口首日出现。 */
+    occasionRemindOnce: boolean;
     /** T-1424 新手首次成功路径阶段（可选字段，缺省未开始，旧偏好零迁移）。 */
     firstSuccess: FirstSuccessState;
     /** T-1432 · R-A8 命名保存视图：只存查询偏好（相对天数范围+来源），上限 10。 */
@@ -145,6 +147,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     yeguifIntegration: {enabled: false, itemId: "", notebookId: "", mappings: []},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
     dailyReminder: {enabled: true, slots: []},
+    occasionRemindOnce: false,
     firstSuccess: {stage: "not-started", skipped: false},
     savedViews: [],
     recentTemplates: [],
@@ -306,6 +309,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         yeguifIntegration,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),
         dailyReminder: normalizeDailyReminderPreference(source.dailyReminder),
+        occasionRemindOnce: source.occasionRemindOnce === true,
         firstSuccess: normalizeFirstSuccessState(source.firstSuccess),
         /* T-1432 · R-A8：命名保存视图——上限 10，非法条目丢弃，scope 经 normalizeViewScope fail-closed。 */
         savedViews: (Array.isArray(source.savedViews) ? source.savedViews : []).slice(0, 10).flatMap((entry) => {

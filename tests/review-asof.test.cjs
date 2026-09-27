@@ -16,7 +16,7 @@ assert.match(reviewSource, /buildCustomSummaryContext\(ctx\.store, ctx\.summaryC
     "custom summaries must use the shared cutoff");
 assert.match(reviewSource, /buildAchievements\(ctx\.store, asOf\)/,
     "achievements must use the shared cutoff");
-assert.match(reviewSource, /projectReminderCenter\(ctx\.store, ctx\.occasionStore, asOf, ctx\.reminderUserActions\)/,
+assert.match(reviewSource, /projectReminderCenter\(ctx\.store, ctx\.occasionStore, asOf, ctx\.reminderUserActions(, \{advanceOnce: ctx\.reminderAdvanceOnce === true\})?\)/,
     "reminders must use the shared cutoff");
 assert.match(reviewSource, /projectOverdueOccurrenceHistory\(ctx\.occasionStore, asOf\)/,
     "overdue history must use the shared cutoff");
