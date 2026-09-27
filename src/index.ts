@@ -108,6 +108,7 @@ import {buildSettingsChangeList, SETTINGS_FIELD_REGISTRY, type SettingsChangeSec
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, obsidianHabitName, parseObsidianHabitFile, type ObsidianImportPlan} from "./features/obsidian-habits";
 import {planImportConflicts, type ImportConflictDecision} from "./features/import-conflicts";
+import {sandboxYeguifSample, sandboxHealthSample, sandboxNoteQuerySample, type SandboxOutcome, type SandboxSource} from "./features/source-sandbox";
 import {runDiarySearchRequest} from "./features/diary-search";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef, TASK_HORIZON_CONTRACT} from "./ecosystem";
@@ -1638,6 +1639,26 @@ export default class CheckinPlugin extends Plugin {
         void saveGeneratedFile({fileName: `siyuan-checkin-template-share-${dateKey(new Date())}.json`, content, mime: "application/json;charset=utf-8"});
     }
 
+    /** T-1523 样例试算：复用生产解析/映射函数，零 SQL、零网络、零事件写入、零映射修改。 */
+    runSourceSandbox(source: SandboxSource, text: string): void {
+        if (source === "yeguif") {
+            const mappings = this.yeguifIntegration.mappings || [];
+            const items = this.store.items.filter((item) => !item.archived).map((item) => ({id: item.id, name: item.name, kind: item.kind, unit: getItemRevisionForDate(item, currentCalendarDate()).unit}));
+            this.sourceSandboxOutcomes.yeguif = sandboxYeguifSample(text, mappings, items);
+        } else if (source === "health") {
+            const governance = normalizeHealthInboxPreference(this.healthInbox);
+            const bindings = governance.metricBindings.map((binding) => ({
+                metric: binding.metric,
+                itemNames: binding.itemId ? [getItemById(this.store, binding.itemId)].filter((item): item is CheckinItem => Boolean(item)).map((item) => item.name) : [],
+            }));
+            this.sourceSandboxOutcomes.health = sandboxHealthSample(text, bindings, dateKey(currentCalendarDate()));
+        } else {
+            const targetName = this.store.items.find((item) => item.id === this.noteQuery.itemId)?.name;
+            this.sourceSandboxOutcomes.notequery = sandboxNoteQuerySample(text, this.noteQuery, dateKey(currentCalendarDate()), targetName);
+        }
+        this.render();
+    }
+
     /** T-1520 模板包导入应用：按逐项决策写入；一次 saveData，失败整批回滚原模板；
         替换只覆盖模板本身，不影响已创建项目。 */
     async applyTemplateShareImport(decisions: ImportDecision[]): Promise<number> {
@@ -1703,6 +1724,9 @@ export default class CheckinPlugin extends Plugin {
         obsidianPlan?: ObsidianImportPlan;
         decisions: ImportConflictDecision[];
     };
+    /** T-1523 样例试算台：结果与输入文本仅存于会话内存，绝不持久化正文。 */
+    private sourceSandboxOutcomes: Partial<Record<SandboxSource, SandboxOutcome>> = {};
+    private sourceSandboxTexts: Partial<Record<SandboxSource, string>> = {};
     private historyQuery = "";
     private historySource: HistoryChannelFilter = "all";
     /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
@@ -3347,6 +3371,8 @@ export default class CheckinPlugin extends Plugin {
             store: this.store,
             settingsChangeSections: this.buildSettingsChangeSections(),
             importConflicts: this.importConflictSession ? {format: this.importConflictSession.format, decisions: this.importConflictSession.decisions} : undefined,
+            sourceSandboxOutcomes: this.sourceSandboxOutcomes,
+            sourceSandboxTexts: this.sourceSandboxTexts,
             auditEntries: this.auditEntries,
             journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
             journalCustomCount: this.journalCustomTemplates.length,
@@ -3529,6 +3555,16 @@ export default class CheckinPlugin extends Plugin {
             this.importConflictSession = undefined;
             this.render();
         });
+        /* T-1523 样例试算台：textarea 输入仅存会话内存；试算复用生产解析函数，零写入。 */
+        root.querySelectorAll<HTMLTextAreaElement>("[data-sandbox-text]").forEach((area) => area.addEventListener("input", () => {
+            const source = area.dataset.sandboxText as SandboxSource | undefined;
+            if (source) this.sourceSandboxTexts[source] = area.value;
+        }));
+        root.querySelectorAll<HTMLElement>("[data-sandbox-run]").forEach((button) => button.addEventListener("click", () => {
+            const source = button.dataset.sandboxRun as SandboxSource | undefined;
+            if (!source) return;
+            this.runSourceSandbox(source, this.sourceSandboxTexts[source] || "");
+        }));
         const modeField = root.querySelector<HTMLSelectElement>("[data-journal-mode]");
         const showJournalTarget = () => {
             const daily = root.querySelector<HTMLElement>("[data-journal-daily-config]");

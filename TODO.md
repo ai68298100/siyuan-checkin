@@ -34,9 +34,8 @@
   - 状态：done。
 - [x] T-1522 数据迁移重名冲突主动选择（P1）——done（2026-09-28，local-auto）。新纯模块 features/import-conflicts.ts：planImportConflicts 只对与**活跃**现有项目同名的迁移来源生成决策行；合入仅在类型+单位都兼容时可用，单位/类型不兼容明示原因并默认回落「跳过」（绝不静默换算单位）；另建名称确定性派生（「· 导入」+序号，与现有不重名）；新名字面来源不干预。plugin-ops：importLoopPlanInto/importObsidianHabitsInto 增加可选 conflictDispositions（merge=既有语义/createNew=新名新建/skip=整名跳过并计 skippedRows，返回值 additive）。设置页导入流：有同名冲突时先出决策面板（逐行 radio：合入/另建/跳过 + 来源与现有单位/类型对比 + 不兼容原因），radio 即时更新会话；确认重查后整批应用（一次 persist，失败 this.store=previousStore 回滚+提示），跳过行数单独反馈；取消清会话零写入；无冲突保持原确认流。新增守门 tests/import-conflicts.test.cjs 入主链（Proxy 桩加载 plugin-ops 真实迁移函数，断言跳过计行/另建保源单位/合入既有语义/重复导入幂等）；loop-csv 守门的执行器断言放宽为前缀匹配（可选第三参数合法演化）。验证：check、主链、build（CSS 646342）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1523 外部来源粘贴样例试算台（P2）
-  - 范围与验收：未连接也可试算叶归/健康/笔记映射，零网络、零宿主调用、零事件写入。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1523 外部来源粘贴样例试算台（P2）——done（2026-09-28，local-auto）。新纯模块 features/source-sandbox.ts：sandboxYeguifSample（逐行 parseYeguifMarker+resolveYeguifItemId——拉伸/阅读按显式映射分别归属，未知类型不落通用目标如实 unmatched，单位为分钟的项目才是候选）、sandboxHealthSample（逐行 parseHealthInboxLine 严格格式——按 metricBindings 归属并明示单位（步/公斤），未来日期与无法解析判 invalid）、sandboxNoteQuerySample（粘贴行合成伪块——伪块 ID/当日 dailynote ial 由注入 todayKey 派生——跑生产 parseNoteQueryRows，未就绪偏好如实 unmatched）；输入有界（50 行×200 字符+截断计数）；输出逐行 state（matched/unmatched/invalid）+目标名/原因键+计数摘要。设置页三个来源卡片（健康/笔记推导/叶归）各内嵌「用样例检查」折叠区（textarea 会话内存保存+试算按钮+逐行结果+摘要+截断提示+「样例仅会话内保留；不写事件、不改映射、不代表已连接」声明）；宿主 runSourceSandbox 复用生产解析/映射函数，零 SQL、零网络、零事件写入、零映射修改；正文仅会话内存。新守门 tests/source-sandbox.test.cjs 入主链（拉伸/阅读分别归属/未知类型不落通用/未来日期/有界截断/恶意输入截断/确定性/接线/双语 13 键）。验证：check、主链、build（CSS 647610）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。**D-291 全部 15 项（T-1509～T-1523）就此交付完毕**。
 
 ## 本轮用户触发（2026-09-27：回顾概览统计迷你线移除）
 

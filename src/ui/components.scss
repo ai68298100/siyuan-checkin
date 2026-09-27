@@ -4154,6 +4154,20 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__conflict-panel summary { display: flex; gap: 6px; align-items: baseline; min-height: 36px; padding: 0 10px; cursor: pointer; }
 .lc-checkin__conflict-panel summary span { font-size: 12px; font-weight: 600; }
 .lc-checkin__conflict-panel summary small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+/* T-1523 样例试算台：输入 + 逐行判定（符号+颜色双通道）。 */
+.lc-checkin__sandbox { margin-top: 8px; }
+.lc-checkin__sandbox summary { display: flex; gap: 6px; align-items: baseline; min-height: 36px; cursor: pointer; }
+.lc-checkin__sandbox summary span { font-size: 12px; font-weight: 600; }
+.lc-checkin__sandbox summary small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__sandbox-body { display: grid; gap: 6px; padding: 6px 0; }
+.lc-checkin__sandbox-text { width: 100%; min-height: 64px; padding: 6px 8px; border: 1px solid var(--lc-checkin-border-strong); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: inherit; font: inherit; font-size: 11px; resize: vertical; }
+.lc-checkin__sandbox-result { display: grid; gap: 3px; }
+.lc-checkin__sandbox-line { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; font-size: 10.5px; line-height: 1.5; }
+.lc-checkin__sandbox-line > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.lc-checkin__sandbox-line > span:last-child { flex: none; font-variant-numeric: tabular-nums; }
+.lc-checkin__sandbox-line.is-matched > span:last-child { color: var(--lc-checkin-accent-text); font-weight: 600; }
+.lc-checkin__sandbox-line.is-unmatched > span:last-child, .lc-checkin__sandbox-line.is-invalid > span:last-child { color: var(--lc-checkin-muted); }
+.lc-checkin__sandbox-result > small { color: var(--lc-checkin-muted); font-size: 10px; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;
