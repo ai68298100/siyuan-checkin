@@ -54,6 +54,8 @@ export function projectIntegrationStatus(input: {
 
 export interface SettingsViewContext {
     store: CheckinStore;
+    /** T-1521 保存前变更清单（草稿≠已保存的分节汇总；可选：旧桩按无改动处理）。 */
+    settingsChangeSections?: import("../features/settings-change-list").SettingsChangeSection[];
     auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration" | "anchor"; at: string; details: Record<string, unknown>}>;
     snapshots: Array<{index: number; capturedAt?: string; legacy: boolean; itemCount: number; eventCount: number}>;
     customIconLibrary: string[];
@@ -616,6 +618,14 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             <div class="lc-checkin__settings-feedback" data-settings-feedback role="status" aria-live="polite"></div>
             <label class="lc-checkin__settings-search">${t("set.search")}<input type="search" data-settings-search aria-label="${t("set.search")}" /></label>
             <div data-settings-search-status role="status" aria-live="polite"></div>
+            ${(() => {
+                /* T-1521 保存前变更清单：草稿≠已保存才显示；敏感值遮罩；撤回/分节恢复走草稿通道。 */
+                const sections = ctx.settingsChangeSections || [];
+                if (!sections.length) return `<p class="lc-checkin__change-empty" data-settings-change-empty role="status">${t("set.changeNone")}</p>`;
+                const sectionBlocks = sections.map((section) => `<div class="lc-checkin__change-section" data-change-section="${section.sectionId}"><div class="lc-checkin__change-section-head"><strong>${t(section.labelKey)}</strong><button class="lc-checkin__text-button" type="button" data-revert-section="${section.sectionId}">${t("set.changeRevertSection")}</button></div>${section.entries.map((entry) => `<div class="lc-checkin__change-row"><span>${t(entry.labelKey)}</span><span class="lc-checkin__change-values"><s>${entry.saved}</s> → ${entry.draft}</span><button class="lc-checkin__text-button" type="button" data-revert-setting="${entry.attribute}">${t("set.changeRevertOne")}</button></div>`).join("")}</div>`).join("");
+                const total = sections.reduce((sum, section) => sum + section.entries.length, 0);
+                return `<details class="lc-checkin__change-list" data-settings-change-list open><summary><span>${t("set.changeTitle", {n: total})}</span><small>${t("set.changeDraftHint")}</small></summary><div class="lc-checkin__change-body">${sectionBlocks}</div></details>`;
+            })()}
             <div class="lc-checkin__settings-layout">
                 <nav class="lc-checkin__settings-nav" aria-label="${t("set.groupsAria")}">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" aria-controls="${settingsViewId}-group-${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>
                 <div class="lc-checkin__settings-groups">${groups.map((group) => `<section id="${settingsViewId}-group-${group.id}" class="lc-checkin__settings-card" data-settings-group="${group.id}" aria-labelledby="${settingsViewId}-heading-${group.id}"><h2 id="${settingsViewId}-heading-${group.id}">${group.label}</h2>${group.body}</section>`).join("")}</div>

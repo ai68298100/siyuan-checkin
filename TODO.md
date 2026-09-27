@@ -30,9 +30,8 @@
   - 状态：done。
 - [x] T-1520 模板包导入逐项差异与冲突处理（P1）——done（2026-09-28，local-auto）。新纯模块 features/template-import.ts：parseTemplateShare 按 T-1519 契约解析——shareVersion≠1 或 app 不符整包拒绝、超 200KB/超 20 模板拒绝、非法 JSON/结构拒绝、字段非法条目逐条丢弃计数（name/kind/target/unit/schedule 校验，icon/优先级/时段/番茄模式 fail-closed 归一）；planImportDecisions 逐项决策：新模板默认「导入」，**重名（大小写不敏感）默认「跳过」（最安全）**，可改「替换现有」（只覆盖模板本身不影响已创建项目，保留原 id）或「另存为」（确定性后缀「· 导入」）；重复导入同一包第二次全部判重名（幂等）。编辑器分享区新增导入段：本地文件读取（FileReader 无宿主新契约）→ 大小守卫 → 解析 → 逐项 radio 决策表 → 确认/取消（取消清会话零写入）。宿主 applyTemplateShareImport 一次 saveData 批量应用，失败整批回滚原模板并提示「已恢复原模板」。新守门 tests/template-import.test.cjs 入主链。验证：check、主链、build（CSS 644735）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1521 设置保存前变更清单与分节恢复（P1）
-  - 范围与验收：脱敏前后值、撤回单项/分节，失败保留草稿。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1521 设置保存前变更清单与分节恢复（P1）——done（2026-09-28，local-auto）。新纯模块 features/settings-change-list.ts：SETTINGS_FIELD_REGISTRY 注册 10 个草稿字段（attribute/分节/标签键/敏感标记——weread key 与问卷自定义文本为敏感）；buildSettingsChangeList 只收「草稿≠已保存」字段（未改动/注册表外字段排除），按注册表顺序分节确定性输出；maskSettingValue 敏感字段前后值一律 •••••• 遮罩、普通值截断 24 字符、空值占位。宿主：bindSettings 捕获已保存基线 settingsSavedBaselines（草稿应用前），buildSettingsChangeSections 对比草稿与基线生成清单；撤回单项/恢复分节均 confirm 后删除草稿并重渲染（输入回落已保存值，不触碰记录/文档/已生效设置），保存失败既有通道保留草稿。设置页搜索下方新增「未保存的修改（N 项）」面板（默认展开：分节块+前后值（已遮罩）+逐项撤回/分节恢复按钮；无改动显示「没有待保存的修改」）；面板标注「仍是草稿，尚未生效」不把草稿当已生效。新守门 tests/settings-change-list.test.cjs 入主链。验证：check、主链、build（CSS 645890）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1522 数据迁移重名冲突主动选择（P1）
   - 范围与验收：在既有格式预览上增加合入/另建/跳过，不静默换算单位。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

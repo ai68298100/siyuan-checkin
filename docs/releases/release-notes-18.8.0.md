@@ -30,4 +30,4 @@
 
 本地开发说明：下方摘要由质量链同步为当前工作树构建包，并非已上传的发布包。GitHub v18.8.0 正式资产摘要以 Release 页面标注为准。
 
-- SHA-256：`95d83eede9d70fdd38eaccec5cdab18866acc5e30908bd64d8378069b5dc1b4a`
+- SHA-256：`6fbc160a4c260f6f64c5adb069d5908f8c408677743c304ce28d60b4a40502b4`

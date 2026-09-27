@@ -104,6 +104,7 @@ import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPend
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
 import {normalizeWeeklyReviewDrafts, upsertWeeklyReviewDraft, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "./features/weekly-review";
 import {planImportDecisions, type ImportDecision} from "./features/template-import";
+import {buildSettingsChangeList, SETTINGS_FIELD_REGISTRY, type SettingsChangeSection} from "./features/settings-change-list";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
@@ -466,6 +467,8 @@ export default class CheckinPlugin extends Plugin {
     private journalDrafts = new Map<string, string[]>();
     private journalPending = new Set<string>();
     private settingsDrafts = new Map<string, string>();
+    /** T-1521 各草稿字段的已保存基线（bind 时捕获；变更清单据此对比）。 */
+    private settingsSavedBaselines = new Map<string, string>();
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -3334,6 +3337,7 @@ export default class CheckinPlugin extends Plugin {
     private renderSettings(openSourcePanels?: ReadonlySet<string>): string {
         return renderSettingsView({
             store: this.store,
+            settingsChangeSections: this.buildSettingsChangeSections(),
             auditEntries: this.auditEntries,
             journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
             journalCustomCount: this.journalCustomTemplates.length,
@@ -3419,11 +3423,40 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /** T-1521 变更清单：草稿≠已保存的字段按分节汇总（敏感值遮罩由纯函数处理）。 */
+    private buildSettingsChangeSections(): SettingsChangeSection[] {
+        const pairs = SETTINGS_FIELD_REGISTRY.map(({attribute}) => ({
+            attribute,
+            saved: this.settingsSavedBaselines.get(attribute),
+            draft: this.settingsDrafts.get(attribute),
+        })).filter((pair): pair is {attribute: string; saved: string; draft: string} => pair.saved !== undefined && pair.draft !== undefined);
+        return buildSettingsChangeList(pairs);
+    }
+
+    private settingSectionOf(attribute: string): string | undefined {
+        return SETTINGS_FIELD_REGISTRY.find((descriptor) => descriptor.attribute === attribute)?.sectionId;
+    }
+
+    /** T-1521 撤回单项草稿：删除草稿并重渲染（输入回落到已保存值），不触碰已生效设置。 */
+    private revertSettingDraft(attribute: string): void {
+        this.settingsDrafts.delete(attribute);
+        this.render();
+    }
+
+    /** T-1521 恢复一个分节：删除该节全部草稿并重渲染。 */
+    private revertSettingSection(sectionId: string): void {
+        for (const attribute of [...this.settingsDrafts.keys()]) {
+            if (this.settingSectionOf(attribute) === sectionId) this.settingsDrafts.delete(attribute);
+        }
+        this.render();
+    }
+
     private bindSettings(root: HTMLElement) {
         for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc", "data-setting-reminder-slots", "data-weread-threshold", "data-weread-key"]) {
             const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[${attribute}]`);
             if (!field) continue;
             const saved = field.value;
+            this.settingsSavedBaselines.set(attribute, saved);
             const draft = this.settingsDrafts.get(attribute);
             if (draft === saved) this.settingsDrafts.delete(attribute);
             else if (draft !== undefined) field.value = draft;
@@ -3439,6 +3472,19 @@ export default class CheckinPlugin extends Plugin {
             parse: parseCustomJournalTemplatesText,
             serialize: serializeCustomJournalTemplatesText,
         });
+        /* T-1521 变更清单撤回/分节恢复：删除草稿回落已保存值；确认防误触文本丢失。 */
+        root.querySelectorAll<HTMLElement>("[data-revert-setting]").forEach((button) => button.addEventListener("click", () => {
+            const attribute = button.dataset.revertSetting || "";
+            if (!attribute || !this.settingsDrafts.has(attribute)) return;
+            if (!window.confirm(t("set.changeRevertConfirm"))) return;
+            this.revertSettingDraft(attribute);
+        }));
+        root.querySelectorAll<HTMLElement>("[data-revert-section]").forEach((button) => button.addEventListener("click", () => {
+            const sectionId = button.dataset.revertSection || "";
+            if (!sectionId) return;
+            if (!window.confirm(t("set.changeSectionConfirm"))) return;
+            this.revertSettingSection(sectionId);
+        }));
         const modeField = root.querySelector<HTMLSelectElement>("[data-journal-mode]");
         const showJournalTarget = () => {
             const daily = root.querySelector<HTMLElement>("[data-journal-daily-config]");
