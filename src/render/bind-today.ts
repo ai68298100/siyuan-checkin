@@ -59,6 +59,8 @@ export interface BindTodayHost {
     firstSuccessSkipGuidance(): void;
     /** T-1465（D-273）问卷日记：打开绑定模板的问卷弹窗（宿主负责事实层与旁路写入）。 */
     openJournalEntry?(itemId: string): void;
+    /** T-1493：打开往年今天的日记文档（只读定位 custom-dailynote ial，找不到提示不创建）。 */
+    openPastDiary?(pastDate: string): void;
     /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
     pulseHaptic(): void;
     /** 打卡后焦点归位（T-114）：记录刚操作的打卡项，重渲染后焦点还原到该卡主按钮。 */
@@ -189,6 +191,11 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => host.showSummary());
     root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => host.showInsights());
     root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => host.showOccasions()));
+    /* T-1493：往年日记跳转（只读定位，找不到由宿主提示）。 */
+    root.querySelectorAll<HTMLElement>("[data-action='this-day-jump']").forEach((button) => button.addEventListener("click", () => {
+        const pastDate = (button as HTMLElement).dataset.thisdayDate || "";
+        if (host.openPastDiary) host.openPastDiary(pastDate);
+    }));
 
     root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => host.showSettings()));
     root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => host.openTabPage());

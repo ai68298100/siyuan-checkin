@@ -896,9 +896,27 @@ export default class CheckinPlugin extends Plugin {
         });
     }
 
+    /* T-1493：打开往年今天的日记——只读定位宿主自动加的 custom-dailynote-YYYYMMDD ial；
+        找不到只提示（绝不创建文档）。 */
+    private async openPastDiary(pastDate: string): Promise<void> {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(pastDate) || this.disposed || this.disposing || !this.acceptingOperations) return;
+        const yyyymmdd = pastDate.replace(/-/g, "");
+        try {
+            const found = await this.kernelPost("/api/query/sql", {stmt: `SELECT id FROM blocks WHERE type = 'd' AND ial LIKE '%custom-dailynote-${yyyymmdd}%' ORDER BY id ASC LIMIT 1`});
+            const rows = Array.isArray((found as {data?: unknown}).data) ? (found as {data: Array<{id?: string}>}).data : [];
+            const docId = rows.length && rows[0].id ? String(rows[0].id) : "";
+            if (!docId) {
+                showMessage(t("msg.pastDiaryMissing", {date: pastDate}));
+                return;
+            }
+            await openTab({app: this.app as never, doc: {id: docId}});
+        } catch {
+            showMessage(t("msg.pastDiaryMissing", {date: pastDate}));
+        }
+    }
+
     /** T-1470：打开绑定目标——块 ID 先解析所属文档根 ID，文档 ID 直接打开（openTab 公开通道）。 */
-    private async openBindingTarget(targetId: string): Promise<void> {
-        if (!targetId || this.disposed || this.disposing) return;
+    private async openBindingTarget(targetId: string): Promise<void> {        if (!targetId || this.disposed || this.disposing) return;
         const escaped = targetId.replace(/'/g, "''");
         const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT root_id FROM blocks WHERE id = '${escaped}' LIMIT 1`}).catch(() => undefined);
         const rootId = ((response as {data?: Array<{root_id?: string}>})?.data || [])[0]?.root_id;

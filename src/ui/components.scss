@@ -3466,6 +3466,10 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__occasion-chip small { color: var(--lc-checkin-accent-text); font-weight: 650; }
 /* T-1491 里程碑当天：芯片文案呈现「今天满 N 天/周年」，色阶与打卡里程碑一致（金/强调）。 */
 .lc-checkin__occasion-chip.is-milestone small { color: var(--lc-checkin-gold-text, var(--lc-checkin-accent-text)); }
+/* T-1493 那年今天回顾卡：低干扰只读卡，无历史不渲染。 */
+.lc-checkin__this-day { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); font-size: 12px; background: var(--lc-checkin-surface); }
+.lc-checkin__this-day strong { font-size: 12px; color: var(--lc-checkin-muted); }
+.lc-checkin__this-day-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--lc-checkin-text); overflow-wrap: anywhere; }
 .lc-checkin__occasion-chip.is-complete { opacity: .6; }
 .lc-checkin__occasion-chip.is-complete small { color: var(--lc-checkin-success-text); }
 .lc-checkin__occasion-chip[data-action="toggle-occasion"] small { min-width: 32px; padding-left: 6px; border-left: 1px solid color-mix(in srgb, var(--lc-checkin-border) 70%, transparent); text-align: center; }

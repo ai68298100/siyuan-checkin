@@ -8,6 +8,7 @@ import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
+import {buildThisDayHistory} from "../features/this-day-history";
 import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -107,8 +108,33 @@ export function renderOccasionBannerView(occasionStore: OccasionStore, date: Dat
         </section>`;
 }
 
-export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false, quiet = false): string {
-    const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
+/* T-1493「X 年前的今天」：往年同月的打卡与事项锚点回顾卡（无历史不渲染，低干扰）。
+   条目按钮按宿主 custom-dailynote ial 只读定位往年日记，找不到则提示（绝不创建文档）。 */
+export function renderThisDayHistoryView(store: CheckinStore, occasionStore: OccasionStore, date: Date): string {
+    const todayKey = dateKey(date);
+    const history = buildThisDayHistory(
+        store.events.map((event) => ({itemId: event.itemId, localDate: event.localDate, value: event.value})),
+        store.items.map((item) => ({id: item.id, name: item.name})),
+        occasionStore.occasions.map((occasion) => ({name: occasion.name, date: occasion.date, enabled: occasion.enabled})),
+        todayKey,
+    );
+    if (!history.entries.length) return "";
+    const rows = history.entries.map((entry) => {
+        const pastDate = `${entry.year}-${history.monthDay}`;
+        let text: string;
+        if (entry.kind === "checkin") {
+            const names = entry.itemNames.map((name) => escapeHtml(name)).join("、");
+            const overflow = entry.overflow ? t("today.thisDayOverflow", {n: entry.overflow}) : "";
+            text = `${escapeHtml(t("today.thisDayCheckin", {year: entry.year, n: entry.completedCount}))}${names ? `：${names}` : ""}${overflow}`;
+        } else {
+            text = escapeHtml(t("today.thisDayOccasion", {year: entry.year, name: entry.occasionName || ""}));
+        }
+        return `<div class="lc-checkin__this-day-row"><span>${text}</span><button class="lc-checkin__text-button" type="button" data-action="this-day-jump" data-thisday-date="${pastDate}" aria-label="${escapeHtml(t("today.thisDayJumpAria", {date: pastDate}))}">${escapeHtml(t("today.thisDayJump"))}</button></div>`;
+    }).join("");
+    return `<section class="lc-checkin__this-day" aria-label="${t("today.thisDayTitle")}"><strong>${t("today.thisDayTitle")}</strong>${rows}</section>`;
+}
+
+export function renderPriorityReminderView(store: CheckinStore, occasionStore: OccasionStore, date: Date, userActions: readonly ReminderUserAction[] = [], expanded = false, quiet = false): string {    const entries = selectPriorityReminders(projectReminderCenter(store, occasionStore, date, userActions));
     const entry = entries[0];
     if (!entry) return "";
     const overdue = entry.status === "overdue";
@@ -523,7 +549,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}
-            <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}</main>
+            <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}</main>
             ${recentRecord}
         </div>`;
 }
