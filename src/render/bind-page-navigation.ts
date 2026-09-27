@@ -52,6 +52,11 @@ export interface BindPageNavigationHost {
     editingHistoryNoteId?: string;
     /** T-1510 展开中的记录事实详情（事件 id，会话态）。 */
     recordDetailsExpanded?: Set<string>;
+    /** T-1511 批量补记预览状态与逐项实际值草稿（会话态）。 */
+    historyBatchPreviewOpen?: boolean;
+    historyBatchValues?: Record<string, string>;
+    /** T-1511 提交实际数量补记（mutation 内重校验、整批回滚）。 */
+    recordHistoryBatchEntries?(date: string, entries: ReadonlyArray<{itemId: string; value: number}>): Promise<number>;
     disposed: boolean;
     disposing: boolean;
     bindDialogClose(root: HTMLElement): void;
@@ -298,6 +303,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (value !== "day" && value !== "period") return;
         host.historyScope = value;
         host.historyBatchSelected?.clear();
+        host.historyBatchPreviewOpen = false;
         host.historyPage = 0;
         host.editingHistoryNoteId = undefined;
         renderReviewPreservingView(control.tagName === "SELECT" ? "select[data-history-scope]" : `[data-history-scope="${value}"]`);
@@ -305,6 +311,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelector<HTMLSelectElement>("[data-history-item]")?.addEventListener("change", (event) => {
         host.historyItemId = (event.currentTarget as HTMLSelectElement).value;
         host.historyPage = 0;
+        host.historyBatchPreviewOpen = false;
         host.editingHistoryNoteId = undefined;
         renderReviewPreservingView("[data-history-item]");
     });
@@ -312,6 +319,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const page = Number(button.dataset.historyPage);
         if (!Number.isInteger(page) || page < 0) return;
         host.historyPage = page;
+        host.historyBatchPreviewOpen = false;
         host.editingHistoryNoteId = undefined;
         renderReviewPage(".lc-checkin__history-date > strong");
     }));
@@ -496,6 +504,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (value) {
             host.selectedHistoryDate = value;
             host.historyBatchSelected?.clear();
+            host.historyBatchPreviewOpen = false;
             host.historyScope = "day";
             host.historyPage = 0;
             host.editingHistoryNoteId = undefined;
@@ -512,8 +521,14 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((button) => button.addEventListener("click", async () => {
         const action = button.dataset.historyBatchAction;
         if (action !== "record" && action !== "skip" || !host.historyBatchSelected.size) return;
+        if (action === "record") {
+            /* T-1511：补记先进入预览面板（分类解释 + 逐项实际值），不再直接确认提交。 */
+            host.historyBatchPreviewOpen = true;
+            renderReviewPreservingView("[data-batch-preview]");
+            return;
+        }
         const ids = [...host.historyBatchSelected];
-        if (!window.confirm(t("review.batchConfirm", {n: ids.length, action: t(action === "record" ? "review.batchRecord" : "review.batchSkip")}))) return;
+        if (!window.confirm(t("review.batchConfirm", {n: ids.length, action: t("review.batchSkip")}))) return;
         button.textContent = t("review.batchWorking");
         button.setAttribute("aria-busy", "true");
         root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((control) => { control.disabled = true; });
@@ -521,6 +536,53 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         showMessage(t(count ? "review.batchDone" : "review.batchNoop", {n: count}));
         renderReviewPage("[data-history-batch-item]");
     }));
+    /* T-1511 预览面板：实际值输入（input 只更新草稿不重渲染防打断输入；
+       change 时重渲染刷新可提交计数）、提交重校验、取消清草稿。 */
+    root.querySelectorAll<HTMLInputElement>("[data-batch-value]").forEach((input) => {
+        const itemId = input.dataset.batchValue || "";
+        input.addEventListener("input", () => {
+            if (!itemId) return;
+            const values = host.historyBatchValues ?? (host.historyBatchValues = {});
+            values[itemId] = input.value;
+        });
+        input.addEventListener("change", () => {
+            if (!itemId) return;
+            const values = host.historyBatchValues ?? (host.historyBatchValues = {});
+            values[itemId] = input.value;
+            renderReviewPreservingView(`[data-batch-value="${CSS.escape(itemId)}"]`);
+        });
+    });
+    root.querySelector<HTMLButtonElement>("[data-batch-submit]")?.addEventListener("click", async (event) => {
+        const button = event.currentTarget as HTMLButtonElement;
+        if (button.disabled || button.dataset.busy === "true") return;
+        const entries = Object.entries(host.historyBatchValues || {})
+            .filter(([itemId]) => host.historyBatchSelected.has(itemId))
+            .map(([itemId, raw]) => ({itemId, value: raw}))
+            .filter((entry) => entry.value.trim() !== "")
+            .map((entry) => ({itemId: entry.itemId, value: Number(entry.value)}))
+            .filter((entry) => Number.isFinite(entry.value));
+        /* 二值条目没有输入框：按固定 1 提交。 */
+        for (const itemId of host.historyBatchSelected) {
+            if (!entries.some((entry) => entry.itemId === itemId) && !root.querySelector(`[data-batch-value="${CSS.escape(itemId)}"]`)) entries.push({itemId, value: 1});
+        }
+        const expected = Number(button.dataset.readyCount || entries.length);
+        if (!expected || !entries.length) return;
+        if (!window.confirm(t("review.batchSubmitConfirm", {n: expected}))) return;
+        button.dataset.busy = "true";
+        button.setAttribute("aria-busy", "true");
+        const count = await host.recordHistoryBatchEntries?.(host.selectedHistoryDate, entries);
+        showMessage(t(count ? "review.batchDone" : "review.batchNoop", {n: count ?? 0}));
+        if (!count) {
+            button.dataset.busy = "false";
+            button.removeAttribute("aria-busy");
+        }
+        renderReviewPage("[data-history-batch-item]");
+    });
+    root.querySelector<HTMLButtonElement>("[data-batch-cancel]")?.addEventListener("click", () => {
+        host.historyBatchPreviewOpen = false;
+        host.historyBatchValues = {};
+        renderReviewPreservingView("[data-history-batch-item]");
+    });
     root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
         const eventId = button.dataset.historyEventId;
         const event = getEventById(host.store, eventId);

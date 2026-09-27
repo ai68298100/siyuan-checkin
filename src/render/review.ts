@@ -11,6 +11,7 @@ import {buildYearHeatmap, renderBarChart, renderLineChart, renderWeeklyHeatmap, 
 import {buildAchievements} from "../features/achievements";
 import {buildRecordTrust} from "../features/record-trust";
 import {buildRecordDetails} from "../features/record-details";
+import {buildBatchBackfillPreview, type BatchBackfillItemSnapshot} from "../features/batch-backfill";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -73,6 +74,9 @@ export interface ReviewViewContext {
     trustThresholds?: Array<{source: string; itemId: string; value: number}>;
     /** T-1510 展开中的记录事实详情（事件 id，会话态；可选：旧桩缺省按全收起）。 */
     recordDetailsExpanded?: ReadonlySet<string>;
+    /** T-1511 批量补记预览：面板开合与逐项实际值草稿（会话态；可选：旧桩按关闭处理）。 */
+    historyBatchPreviewOpen?: boolean;
+    historyBatchValues?: Readonly<Record<string, string>>;
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -177,11 +181,38 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         event,
         itemName: itemNames.get(event.itemId) || t("review.deletedItem"),
     }));
-    const batchCandidates = ctx.historyScope === "day" && ctx.selectedHistoryDate <= today
-        ? activeItems.filter((item) => !item.archived && isItemAvailableOnDate(item, calendarDateFromKey(ctx.selectedHistoryDate))
-            && isScheduledToday(item, calendarDateFromKey(ctx.selectedHistoryDate))
-            && !selectedEvents.some((event) => event.itemId === item.id)) : [];
-    const batchTools = batchCandidates.length ? `<section class="review-batch-tools" aria-label="${t("review.batchTitle")}"><strong>${t("review.batchTitle")}</strong><div class="review-batch-items">${batchCandidates.map((item) => `<label><input type="checkbox" data-history-batch-item="${escapeHtml(item.id)}" ${ctx.historyBatchSelected?.has(item.id) ? "checked" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("")}</div><div class="review-batch-actions"><button type="button" data-history-batch-action="record" ${ctx.historyBatchSelected?.size ? "" : "disabled"}>${t("review.batchRecord")}</button><button type="button" data-history-batch-action="skip" ${ctx.historyBatchSelected?.size ? "" : "disabled"}>${t("review.batchSkip")}</button></div></section>` : "";
+    /* T-1511 批量补记：选择列表包含全部活跃项目，预览面板分类解释
+       （可提交/已存在/排期不适用/不支持），数值型逐项填写实际数量，不默认目标值。 */
+    const batchCandidates = ctx.historyScope === "day" && ctx.selectedHistoryDate <= today ? activeItems : [];
+    const batchDay = calendarDateFromKey(ctx.selectedHistoryDate);
+    const batchSnapshots: BatchBackfillItemSnapshot[] = batchCandidates.map((item) => {
+        const revision = getItemRevisionForDate(item, batchDay);
+        return {
+            id: item.id,
+            name: item.name,
+            hasEvent: selectedEvents.some((event) => event.itemId === item.id),
+            scheduled: !item.archived && isItemAvailableOnDate(item, batchDay) && isScheduledToday(item, batchDay),
+            kind: revision.kind,
+            unit: revision.unit,
+            recordStep: revision.recordStep,
+            atMost: item.direction === "atMost",
+            hasJournal: Boolean(item.journal?.templateId),
+        };
+    });
+    const batchPreview = buildBatchBackfillPreview(batchSnapshots, ctx.historyBatchValues);
+    const selectedCount = ctx.historyBatchSelected?.size ?? 0;
+    const batchTools = batchCandidates.length ? `<section class="review-batch-tools" aria-label="${t("review.batchTitle")}"><strong>${t("review.batchTitle")}</strong><div class="review-batch-items">${batchCandidates.map((item) => `<label><input type="checkbox" data-history-batch-item="${escapeHtml(item.id)}" ${ctx.historyBatchSelected?.has(item.id) ? "checked" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("")}</div><div class="review-batch-actions"><button type="button" data-history-batch-action="record" ${selectedCount ? "" : "disabled"}>${t("review.batchRecord")}</button><button type="button" data-history-batch-action="skip" ${selectedCount ? "" : "disabled"}>${t("review.batchSkip")}</button></div>${(() => {
+        if (!ctx.historyBatchPreviewOpen) return "";
+        const rows = batchPreview.entries.filter((entry) => ctx.historyBatchSelected?.has(entry.itemId)).map((entry) => {
+            let control = "";
+            if (entry.inputMode === "number" && entry.state === "ready") {
+                control = `<input type="number" data-batch-value="${escapeHtml(entry.itemId)}" inputmode="decimal" min="0" step="${entry.recordStep || 1}" value="${escapeHtml(ctx.historyBatchValues?.[entry.itemId] || "")}" placeholder="${escapeHtml(t("review.batchValuePlaceholder", {unit: entry.unit}))}" aria-label="${escapeHtml(t("review.batchValueAria", {name: entry.name}))}" />`;
+            }
+            const state = entry.state !== "ready" ? `<span class="review-batch-state">${escapeHtml(entry.reasonKey ? t(entry.reasonKey) : "")}</span>` : entry.errorKey ? `<span class="review-batch-state is-error">${escapeHtml(t(entry.errorKey))}</span>` : entry.inputMode === "none" ? `<span class="review-batch-state">${escapeHtml(t("review.batchBinaryFixed"))}</span>` : "";
+            return `<div class="review-batch-entry" data-batch-entry="${escapeHtml(entry.itemId)}"><strong>${escapeHtml(entry.name)}</strong>${control}${state}</div>`;
+        }).join("");
+        return `<div class="review-batch-preview" data-batch-preview role="group" aria-label="${t("review.batchPreviewAria")}"><p class="review-scope-note">${escapeHtml(t("review.batchPreviewHint", {n: batchPreview.readyCount}))}</p>${rows}<div class="review-batch-actions"><button type="button" data-batch-submit data-ready-count="${batchPreview.readyCount}" ${batchPreview.readyCount ? "" : "disabled"}>${t("review.batchSubmit", {n: batchPreview.readyCount})}</button><button type="button" data-batch-cancel>${t("review.batchCancel")}</button></div></div>`;
+    })()}</section>` : "";
     const filteredRecords = filterHistoryRecords(selectedRecords.filter(record => !ctx.historyItemId || record.event.itemId === ctx.historyItemId), {
         query: ctx.historyQuery,
         source: ctx.historySource,

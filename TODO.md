@@ -10,9 +10,8 @@
   - 状态：done；剩余边界（跨窗口会话身份、未收到的监听事件）仍归 T-1508 上游边界，不因本任务关闭。
 - [x] T-1510 单条记录事实详情（P0）——done（2026-09-27，local-auto）。新纯模块 features/record-details.ts：buildRecordDetails 只读投影（记录日期/时刻/实际数值单位/计量方式/生效修订/归属项目六行固定序）；计量方式仅按登记前缀与来源确证（微信读书日汇总/完读/笔记、健康步数体重、笔记推导、Task Horizon、思阅/思播片段、叶归、番茄、导入、手动），api 无登记前缀如实未知；生效修订取事件日期修订历史（getItemRevisionForDate），项目已删除或修订缺失标未知，绝不以当前配置反推；externalRef 敏感身份不进投影。回顾页历史行新增「详情」切换（aria-expanded，跳过行不显示），展开面板零写入，焦点与滚动经 renderReviewPreservingView 保持；展开集会话态有界 50。新守门 tests/record-details.test.cjs 入主链（20/15 分钟两条、官方日汇总、手动/导入/未知来源、规则缺失、跨日事件夹具 + 接线 + 双语 20 键）。测试驱动修正健康身份前缀规则（health:<itemId>:<metric> 实际格式）。验证：check、主链、build（CSS 635504）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1511 批量补记实际数量与提交预览（P0）
-  - 范围与验收：逐项实际值、类型排除原因、确认复核、失败回滚。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1511 批量补记实际数量与提交预览（P0）——done（2026-09-27，local-auto）。新纯模块 features/batch-backfill.ts：classifyBatchBackfillItem 单条分类（优先级 已存在→排期不适用→限额/戒除 atMost→绑定问卷→类型），二值固定 1 无输入；数值型逐项填实际数量——空/零/负/非法/超限一律不提交且绝不默认目标值；buildBatchBackfillPreview/planBatchBackfillSubmit 输出可提交计数与提交计划。回顾页批量补记改为预览流：「补记」先开预览面板（逐项分类原因 + 数值输入草稿，input 只更新草稿防打断输入、change 重渲染刷新计数），提交按钮带可提交条数并确认；宿主 recordHistoryBatchEntries 在 mutation 内以当前 store 重建快照重新分类（预览后项目改动自动重校验），一批一次持久化失败整批回滚，成功清空选择/草稿并逐条可撤销；日期/范围/翻页/取消均收起预览。跳过路径保持原语义。新守门 tests/batch-backfill.test.cjs 入主链（分类优先级/数值边界/提交计划重校验/接线/双语 14 键）。验证：check、主链、build（CSS 636319）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1512 来源渠道细筛与计量方式筛选（P0）
   - 范围与验收：区分 api 下登记渠道与会话/日汇总，保持筛选与导出一致。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

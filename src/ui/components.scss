@@ -10984,4 +10984,12 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 .review-batch-items input { accent-color: var(--lc-checkin-accent); }
 .review-batch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .review-batch-actions button { min-height: 44px; }
+/* T-1511 批量补记预览：逐项分类 + 实际值输入。 */
+.review-batch-preview { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); }
+.review-batch-preview .review-scope-note { margin: 0; }
+.review-batch-entry { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
+.review-batch-entry > strong { min-width: 0; flex: 1 1 40%; font-size: 12px; overflow-wrap: anywhere; }
+.review-batch-entry input[type="number"] { width: 120px; max-width: 40%; min-height: 36px; padding: 4px 8px; border: 1px solid var(--lc-checkin-border-strong); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: inherit; font: inherit; }
+.review-batch-state { color: var(--lc-checkin-muted); font-size: 11px; }
+.review-batch-state.is-error { color: var(--lc-checkin-danger-text); }
 .lc-checkin--today .lc-checkin__item-topline .lc-checkin__streak-badge { height: 28px; min-height: 28px; line-height: 28px; }

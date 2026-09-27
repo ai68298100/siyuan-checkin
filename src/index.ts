@@ -101,6 +101,7 @@ import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
+import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
@@ -1614,6 +1615,9 @@ export default class CheckinPlugin extends Plugin {
     private historyMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     private selectedHistoryDate = dateKey(new Date());
     private historyBatchSelected = new Set<string>();
+    /** T-1511 批量补记预览：面板开合与逐项实际值草稿（会话态）。 */
+    private historyBatchPreviewOpen = false;
+    private historyBatchValues: Record<string, string> = {};
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
@@ -4774,6 +4778,8 @@ export default class CheckinPlugin extends Plugin {
             historyMonth: this.historyMonth,
             selectedHistoryDate: this.selectedHistoryDate,
             historyBatchSelected: this.historyBatchSelected,
+            historyBatchPreviewOpen: this.historyBatchPreviewOpen,
+            historyBatchValues: this.historyBatchValues,
             historyQuery: this.historyQuery,
             historySource: this.historySource,
             historyOrder: this.historyOrder,
@@ -5218,6 +5224,67 @@ export default class CheckinPlugin extends Plugin {
             this.broadcast({type: "analytics-updated", analyticsAsOf: events[0].localDate});
             showMessage(t("msg.skipBatchDone", {n: skipped.length}));
             return true;
+        });
+    }
+
+    /** T-1511：批量补记快照构建（预览与提交重校验共用同一分类）。 */
+    private batchBackfillSnapshots(date: string, ids: ReadonlySet<string>): BatchBackfillItemSnapshot[] {
+        const day = calendarDateFromKey(date);
+        return this.store.items
+            .filter((item) => ids.has(item.id))
+            .map((item) => {
+                const revision = getItemRevisionForDate(item, day);
+                return {
+                    id: item.id,
+                    name: item.name,
+                    hasEvent: getEventsForDay(this.store, item.id, day).length > 0,
+                    scheduled: !item.archived && isItemAvailableOnDate(item, day) && isScheduledToday(item, day),
+                    kind: revision.kind,
+                    unit: revision.unit,
+                    recordStep: revision.recordStep,
+                    atMost: item.direction === "atMost",
+                    hasJournal: Boolean(item.journal?.templateId),
+                };
+            });
+    }
+
+    /** T-1511 批量补记实际数量提交：mutation 内以当前 store 重建快照重新分类
+        （预览后项目改动自动重校验），一批一次持久化、失败整批回滚；已存在/排期
+        变化/被改绑的条目不重复记账。返回实际入账条数（每条可在日志独立撤销）。 */
+    async recordHistoryBatchEntries(date: string, entries: ReadonlyArray<{itemId: string; value: number}>): Promise<number> {
+        if (!isValidLocalDateInput(date) || date > dateKey(new Date()) || !entries.length || this.disposed || this.disposing) return 0;
+        return this.enqueueMutation(async () => {
+            const values: Record<string, string> = {};
+            for (const entry of entries) values[entry.itemId] = String(entry.value);
+            const requested = new Set(Object.keys(values));
+            const planned = planBatchBackfillSubmit(this.batchBackfillSnapshots(date, requested), values);
+            if (!planned.length) return 0;
+            const day = calendarDateFromKey(date);
+            const occurredAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12).toISOString();
+            const moment = {occurredAt, localDate: date};
+            const events: CheckinEvent[] = [];
+            for (const entry of planned) {
+                const item = getItemById(this.store, entry.itemId);
+                /* plan 阶段已确认项目存在；此处防御跳过。 */
+                if (!item) continue;
+                const revision = getItemRevisionForDate(item, day);
+                events.push(this.makeEvent(item, entry.value, "manual", revision.unit, undefined, undefined, moment));
+            }
+            if (!events.length) return 0;
+            const previous = this.store;
+            const next = appendEvents(previous, events);
+            if (next === previous || next.events.length - previous.events.length !== events.length) return 0;
+            this.store = next;
+            try { await this.persist(); }
+            catch { this.store = previous; showMessage(t("msg.saveFail")); return 0; }
+            this.historyBatchSelected.clear();
+            this.historyBatchPreviewOpen = false;
+            this.historyBatchValues = {};
+            this.invalidateSummary();
+            for (const event of events) this.broadcast({type: "event-recorded", item: getItemById(this.store, event.itemId), event});
+            this.broadcast({type: "analytics-updated", analyticsAsOf: date});
+            this.renderBackgroundUpdate();
+            return events.length;
         });
     }
 
