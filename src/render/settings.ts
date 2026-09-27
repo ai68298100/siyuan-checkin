@@ -56,6 +56,8 @@ export interface SettingsViewContext {
     store: CheckinStore;
     /** T-1521 保存前变更清单（草稿≠已保存的分节汇总；可选：旧桩按无改动处理）。 */
     settingsChangeSections?: import("../features/settings-change-list").SettingsChangeSection[];
+    /** T-1522 迁移重名冲突决策会话（可选：无会话时不渲染面板）。 */
+    importConflicts?: {format: string; decisions: import("../features/import-conflicts").ImportConflictDecision[]};
     auditEntries: Array<{type: "conflict" | "merge" | "restore" | "migration" | "anchor"; at: string; details: Record<string, unknown>}>;
     snapshots: Array<{index: number; capturedAt?: string; legacy: boolean; itemCount: number; eventCount: number}>;
     customIconLibrary: string[];
@@ -625,6 +627,22 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                 const sectionBlocks = sections.map((section) => `<div class="lc-checkin__change-section" data-change-section="${section.sectionId}"><div class="lc-checkin__change-section-head"><strong>${t(section.labelKey)}</strong><button class="lc-checkin__text-button" type="button" data-revert-section="${section.sectionId}">${t("set.changeRevertSection")}</button></div>${section.entries.map((entry) => `<div class="lc-checkin__change-row"><span>${t(entry.labelKey)}</span><span class="lc-checkin__change-values"><s>${entry.saved}</s> → ${entry.draft}</span><button class="lc-checkin__text-button" type="button" data-revert-setting="${entry.attribute}">${t("set.changeRevertOne")}</button></div>`).join("")}</div>`).join("");
                 const total = sections.reduce((sum, section) => sum + section.entries.length, 0);
                 return `<details class="lc-checkin__change-list" data-settings-change-list open><summary><span>${t("set.changeTitle", {n: total})}</span><small>${t("set.changeDraftHint")}</small></summary><div class="lc-checkin__change-body">${sectionBlocks}</div></details>`;
+            })()}
+            ${(() => {
+                /* T-1522 迁移重名冲突决策面板：仅在有同名冲突的导入会话时渲染。 */
+                const conflicts = ctx.importConflicts;
+                if (!conflicts) return "";
+                const rows = conflicts.decisions.map((decision) => {
+                    const reason = decision.incompatibility === "unit" ? t("set.importIncompatibleUnit") : decision.incompatibility === "kind" ? t("set.importIncompatibleKind") : "";
+                    const radios: Array<[string, string, boolean]> = [
+                        ["merge", t("set.importConflictMerge"), decision.mergeCompatible],
+                        ["createNew", t("set.importConflictCreateNew", {name: decision.createNewName}), true],
+                        ["skip", t("set.importConflictSkip"), true],
+                    ];
+                    const radiosMarkup = radios.map(([value, label, enabled]) => `<label class="lc-checkin__import-option"><input type="radio" name="conflict-${escapeHtml(decision.name)}" value="${value}" data-conflict-name="${escapeHtml(decision.name)}" ${decision.disposition === value ? "checked" : ""} ${enabled ? "" : "disabled"} />${escapeHtml(label)}</label>`).join("");
+                    return `<div class="lc-checkin__import-row"><strong>${escapeHtml(decision.name)}</strong><span class="lc-checkin__import-meta">${escapeHtml(t("set.importConflictMeta", {sourceUnit: decision.sourceUnit, existingUnit: decision.existingUnit, dates: decision.dateCount}))}${reason ? ` · ${escapeHtml(reason)}` : ""}</span><span class="lc-checkin__import-radios">${radiosMarkup}</span></div>`;
+                }).join("");
+                return `<details class="lc-checkin__conflict-panel" data-import-conflict-panel open><summary><span>${t("set.importConflictTitle", {n: conflicts.decisions.length})}</span><small>${t("set.importConflictHint")}</small></summary><div class="lc-checkin__import-list">${rows}</div><div class="lc-checkin__share-actions"><button class="lc-checkin__text-button" type="button" data-import-conflict-confirm>${t("set.importConflictConfirm")}</button><button class="lc-checkin__text-button" type="button" data-import-conflict-cancel>${t("editor.importCancel")}</button></div></details>`;
             })()}
             <div class="lc-checkin__settings-layout">
                 <nav class="lc-checkin__settings-nav" aria-label="${t("set.groupsAria")}">${groups.map((group, index) => `<button type="button" data-settings-nav="${group.id}" aria-controls="${settingsViewId}-group-${group.id}" class="${index === 0 ? "is-active" : ""}" aria-current="${index === 0 ? "true" : "false"}">${group.label}</button>`).join("")}</nav>

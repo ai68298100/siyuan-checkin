@@ -4149,6 +4149,11 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__change-row > span:first-child { flex: none; min-width: 0; }
 .lc-checkin__change-values { min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .lc-checkin__change-values s { color: var(--lc-checkin-muted); }
+/* T-1522 迁移重名冲突决策面板。 */
+.lc-checkin__conflict-panel { margin-bottom: 8px; border: 1px solid var(--lc-checkin-accent); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); }
+.lc-checkin__conflict-panel summary { display: flex; gap: 6px; align-items: baseline; min-height: 36px; padding: 0 10px; cursor: pointer; }
+.lc-checkin__conflict-panel summary span { font-size: 12px; font-weight: 600; }
+.lc-checkin__conflict-panel summary small { color: var(--lc-checkin-muted); font-size: 10.5px; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

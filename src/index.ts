@@ -52,7 +52,7 @@ import {saveEditorForm, type SaveFormHost} from "./render/save-form";
 import {cloneItemForDateValue, cloneItemValue, cloneStoreValue, computeStreaksValue, getSummaryEventsValue, itemFingerprintValue, makeEventValue, revisionFingerprintValue} from "./model-helpers";
 import {persistNormalizedStoreWithVerification, reconcileNormalizedStoreSnapshots} from "./storage-transaction";
 import {createTeardownDeadline, createTeardownWriteGate, TEARDOWN_DRAIN_BUDGET_MS, TEARDOWN_FLUSH_BUDGET_MS, waitWithinDeadline} from "./teardown";
-import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type PluginOpsHost} from "./plugin-ops";
+import {bindDialogCloseFor, bindMobileNavFor, changeHistoryMonthFor, downloadDiagnosticsFor, downloadDockTomatoDiagnosticsFor, downloadExportFor, downloadLoopExportFor, downloadReportMarkdownFor, downloadSnapshotHistoryFor, downloadStoreAuditFor, downloadSuggestionAuditFor, focusTodaySearchFor, getQuickTodayItems, importCsvRowsInto, downloadObsidianExportFor, importLoopPlanInto, importObsidianHabitsInto, invalidateSummaryFor, renderBackgroundUpdateFor, restoreItemFor, settleReadyFor, showSyncNoticeFor, type ImportConflictDisposition, type PluginOpsHost} from "./plugin-ops";
 import {buildLoopImportPlan, type LoopImportPlan} from "./features/loop-csv";
 import {ANCHOR_ATTR_KEY, appendAnchorNote, buildAnchorAttrValue, buildAnchorNoteMarkdown, clearAnchorAttr, resolveAnchorBlock, validateAnchorBlockId, withBoundedRetry, writeAnchorAttr} from "./features/note-anchor";
 import {buildDailySummaryLine, buildSummaryDuplicateQuery, extractSummaryRows} from "./features/summary-resident";
@@ -106,7 +106,8 @@ import {normalizeWeeklyReviewDrafts, upsertWeeklyReviewDraft, buildWeeklyReviewM
 import {planImportDecisions, type ImportDecision} from "./features/template-import";
 import {buildSettingsChangeList, SETTINGS_FIELD_REGISTRY, type SettingsChangeSection} from "./features/settings-change-list";
 import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
-import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
+import {buildObsidianImportPlan, obsidianHabitName, parseObsidianHabitFile, type ObsidianImportPlan} from "./features/obsidian-habits";
+import {planImportConflicts, type ImportConflictDecision} from "./features/import-conflicts";
 import {runDiarySearchRequest} from "./features/diary-search";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef, TASK_HORIZON_CONTRACT} from "./ecosystem";
@@ -1695,6 +1696,13 @@ export default class CheckinPlugin extends Plugin {
     private weeklyReviewDrafts: WeeklyReviewDraft[] = [];
     /** T-1520 模板包导入会话（文件解析结果与逐项决策；确认/取消后清空）。 */
     private templateImportSession?: {fileName: string; decisions: ImportDecision[]};
+    /** T-1522 迁移重名冲突决策会话（确认/取消后清空）。 */
+    private importConflictSession?: {
+        format: "loop-csv" | "obsidian-habits";
+        loopPlan?: LoopImportPlan;
+        obsidianPlan?: ObsidianImportPlan;
+        decisions: ImportConflictDecision[];
+    };
     private historyQuery = "";
     private historySource: HistoryChannelFilter = "all";
     /** T-1512 计量方式筛选（会话/日汇总/其他）。 */
@@ -3338,6 +3346,7 @@ export default class CheckinPlugin extends Plugin {
         return renderSettingsView({
             store: this.store,
             settingsChangeSections: this.buildSettingsChangeSections(),
+            importConflicts: this.importConflictSession ? {format: this.importConflictSession.format, decisions: this.importConflictSession.decisions} : undefined,
             auditEntries: this.auditEntries,
             journalCustomText: serializeCustomJournalTemplatesText(this.journalCustomTemplates),
             journalCustomCount: this.journalCustomTemplates.length,
@@ -3485,6 +3494,41 @@ export default class CheckinPlugin extends Plugin {
             if (!window.confirm(t("set.changeSectionConfirm"))) return;
             this.revertSettingSection(sectionId);
         }));
+        /* T-1522 迁移重名冲突：radio 即时更新会话决策；确认前重查目标状态；取消清会话零写入。 */
+        const IMPORT_CONFLICT_DISPOSITIONS: ReadonlySet<string> = new Set(["merge", "createNew", "skip"]);
+        root.querySelectorAll<HTMLInputElement>("input[data-conflict-name]").forEach((input) => input.addEventListener("change", () => {
+            const session = this.importConflictSession;
+            if (!session || !input.checked) return;
+            const decision = session.decisions.find((candidate) => candidate.name === input.dataset.conflictName);
+            if (decision && IMPORT_CONFLICT_DISPOSITIONS.has(input.value)) decision.disposition = input.value as ImportConflictDecision["disposition"];
+        }));
+        root.querySelector<HTMLElement>("[data-import-conflict-confirm]")?.addEventListener("click", async () => {
+            const session = this.importConflictSession;
+            if (!session) return;
+            const map = new Map(session.decisions.map((decision) => [decision.name, {disposition: decision.disposition, createNewName: decision.createNewName}]));
+            const previousStore = this.store;
+            try {
+                const report = session.format === "loop-csv" && session.loopPlan
+                    ? this.importLoopPlan(session.loopPlan, map)
+                    : session.obsidianPlan
+                        ? (() => { const result = importObsidianHabitsInto(this.store, session.obsidianPlan, map); this.store = result.store; return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates, skippedRows: result.skippedRows}; })()
+                        : null;
+                if (!report) return;
+                /* 确认前已重查；保存失败整批回滚到导入前状态。 */
+                await this.persist();
+                this.importConflictSession = undefined;
+                showMessage(t(session.format === "loop-csv" ? "msg.loopDone" : "msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
+                if (report.skippedRows) showMessage(t("set.importSkippedRows", {n: report.skippedRows}));
+                this.render();
+            } catch (error) {
+                this.store = previousStore;
+                showMessage(t("msg.importFail", {error: String(error)}));
+            }
+        });
+        root.querySelector<HTMLElement>("[data-import-conflict-cancel]")?.addEventListener("click", () => {
+            this.importConflictSession = undefined;
+            this.render();
+        });
         const modeField = root.querySelector<HTMLSelectElement>("[data-journal-mode]");
         const showJournalTarget = () => {
             const daily = root.querySelector<HTMLElement>("[data-journal-daily-config]");
@@ -4476,6 +4520,16 @@ export default class CheckinPlugin extends Plugin {
                 /* T-1463 · R-A15：未识别列名在确认时点名（源文件不动，仅不参与导入）。 */
                 const unknownColumnsNote = plan.unknownColumns.length ? t("msg.importUnknownColumns", {names: plan.unknownColumns.join("、")}) : "";
                 const loopWarn = (loopPreview.conflictCount ? t("msg.importConflictsWarn", {n: loopPreview.conflictCount}) : "") + (loopPreview.lossyCount ? t("msg.importLossyNote", {n: loopPreview.lossyCount}) : "") + unknownColumnsNote;
+                /* T-1522 重名冲突主动选择：有同名冲突时先出逐项决策面板，不再直接确认导入。 */
+                const conflictDecisions = planImportConflicts(
+                    plan.habits.map((habit) => ({name: habit.name, kind: habit.measurable ? "quantity" : "binary", unit: habit.measurable ? (habit.unit || "次") : "次", dateCount: plan.rows.filter((row) => row.name === habit.name).length})),
+                    this.store.items.map((item) => ({id: item.id, name: item.name, kind: item.kind, unit: item.unit, archived: item.archived})),
+                );
+                if (conflictDecisions.length) {
+                    this.importConflictSession = {format: "loop-csv", loopPlan: plan, obsidianPlan: undefined, decisions: conflictDecisions};
+                    this.render();
+                    return;
+                }
                 if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}) + loopWarn)) { input.value = ""; return; }
                 const report = this.importLoopPlan(plan);
                 await this.persist();
@@ -4511,6 +4565,16 @@ export default class CheckinPlugin extends Plugin {
                 /* T-1427 · R-30.4：应用前统一预览——重名合并与语义损耗先行声明。 */
                 const obsidianPreview = summarizeImportPreview(buildObsidianImportPreview(plan, this.store.items.filter((item) => !item.archived).map((item) => item.name)));
                 const obsidianWarn = (obsidianPreview.conflictCount ? t("msg.importConflictsWarn", {n: obsidianPreview.conflictCount}) : "") + (obsidianPreview.lossyCount ? t("msg.importLossyNote", {n: obsidianPreview.lossyCount}) : "");
+                /* T-1522 重名冲突主动选择：有同名冲突时先出逐项决策面板，不再直接确认导入。 */
+                const conflictDecisions = planImportConflicts(
+                    plan.habits.map((habit) => ({name: obsidianHabitName(habit), kind: "binary", unit: "次", dateCount: habit.dates.length})),
+                    this.store.items.map((item) => ({id: item.id, name: item.name, kind: item.kind, unit: item.unit, archived: item.archived})),
+                );
+                if (conflictDecisions.length) {
+                    this.importConflictSession = {format: "obsidian-habits", loopPlan: undefined, obsidianPlan: plan, decisions: conflictDecisions};
+                    this.render();
+                    return;
+                }
                 if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}) + obsidianWarn)) { input.value = ""; return; }
                 const report = importObsidianHabitsInto(this.store, plan);
                 await this.persist();
@@ -6208,10 +6272,10 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* T-1218 Loop 导入：计划落库 + 持久化前自动快照（persist 管线）；导出为两个同构 CSV。 */
-    private importLoopPlan(plan: LoopImportPlan): {itemsCreated: number; eventsCreated: number; duplicates: number} {
-        const result = importLoopPlanInto(this.store, plan);
+    private importLoopPlan(plan: LoopImportPlan, conflictDispositions?: ReadonlyMap<string, ImportConflictDisposition>): {itemsCreated: number; eventsCreated: number; duplicates: number; skippedRows: number} {
+        const result = importLoopPlanInto(this.store, plan, conflictDispositions);
         this.store = result.store;
-        return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates};
+        return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates, skippedRows: result.skippedRows};
     }
 
     private downloadLoopExport() {

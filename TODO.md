@@ -32,9 +32,8 @@
   - 状态：done。
 - [x] T-1521 设置保存前变更清单与分节恢复（P1）——done（2026-09-28，local-auto）。新纯模块 features/settings-change-list.ts：SETTINGS_FIELD_REGISTRY 注册 10 个草稿字段（attribute/分节/标签键/敏感标记——weread key 与问卷自定义文本为敏感）；buildSettingsChangeList 只收「草稿≠已保存」字段（未改动/注册表外字段排除），按注册表顺序分节确定性输出；maskSettingValue 敏感字段前后值一律 •••••• 遮罩、普通值截断 24 字符、空值占位。宿主：bindSettings 捕获已保存基线 settingsSavedBaselines（草稿应用前），buildSettingsChangeSections 对比草稿与基线生成清单；撤回单项/恢复分节均 confirm 后删除草稿并重渲染（输入回落已保存值，不触碰记录/文档/已生效设置），保存失败既有通道保留草稿。设置页搜索下方新增「未保存的修改（N 项）」面板（默认展开：分节块+前后值（已遮罩）+逐项撤回/分节恢复按钮；无改动显示「没有待保存的修改」）；面板标注「仍是草稿，尚未生效」不把草稿当已生效。新守门 tests/settings-change-list.test.cjs 入主链。验证：check、主链、build（CSS 645890）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1522 数据迁移重名冲突主动选择（P1）
-  - 范围与验收：在既有格式预览上增加合入/另建/跳过，不静默换算单位。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1522 数据迁移重名冲突主动选择（P1）——done（2026-09-28，local-auto）。新纯模块 features/import-conflicts.ts：planImportConflicts 只对与**活跃**现有项目同名的迁移来源生成决策行；合入仅在类型+单位都兼容时可用，单位/类型不兼容明示原因并默认回落「跳过」（绝不静默换算单位）；另建名称确定性派生（「· 导入」+序号，与现有不重名）；新名字面来源不干预。plugin-ops：importLoopPlanInto/importObsidianHabitsInto 增加可选 conflictDispositions（merge=既有语义/createNew=新名新建/skip=整名跳过并计 skippedRows，返回值 additive）。设置页导入流：有同名冲突时先出决策面板（逐行 radio：合入/另建/跳过 + 来源与现有单位/类型对比 + 不兼容原因），radio 即时更新会话；确认重查后整批应用（一次 persist，失败 this.store=previousStore 回滚+提示），跳过行数单独反馈；取消清会话零写入；无冲突保持原确认流。新增守门 tests/import-conflicts.test.cjs 入主链（Proxy 桩加载 plugin-ops 真实迁移函数，断言跳过计行/另建保源单位/合入既有语义/重复导入幂等）；loop-csv 守门的执行器断言放宽为前缀匹配（可选第三参数合法演化）。验证：check、主链、build（CSS 646342）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1523 外部来源粘贴样例试算台（P2）
   - 范围与验收：未连接也可试算叶归/健康/笔记映射，零网络、零宿主调用、零事件写入。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

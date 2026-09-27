@@ -299,18 +299,25 @@ export function importCsvRowsInto(store: CheckinStore, rows: Array<{name: string
 /* T-1218：按 Loop 导入计划落库——MEASURABLE 只建项目（历史数值降级不导入），
    YES_NO 完成日写 source=import 事件并按 (item,date,value,unit) 去重；
    上层在 persist 前调用，恢复点由既有持久化管线自动生成。 */
-export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number} {
+/** T-1522 重名冲突逐项决策（可选）：merge=合入现有（既有语义，缺省）；createNew=另建新项目；
+    skip=整名跳过（其行计 skippedRows，不入账）。未提供决策的名字保持既有合并语义。 */
+export type ImportConflictDisposition = {disposition: "merge" | "createNew" | "skip"; createNewName?: string};
+
+export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan, conflictDispositions?: ReadonlyMap<string, ImportConflictDisposition>): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number; skippedRows: number} {
     const now = new Date().toISOString();
     const today = dateKey(new Date());
     const items = [...store.items];
     const itemByName = new Map<string, CheckinItem>();
+    const skippedNames = new Set<string>();
     let itemsCreated = 0;
     for (const habit of plan.habits) {
-        const existing = items.find((candidate) => candidate.name === habit.name && !candidate.archived) || itemByName.get(habit.name);
+        const decision = conflictDispositions?.get(habit.name);
+        if (decision?.disposition === "skip") { skippedNames.add(habit.name); continue; }
+        const existing = decision?.disposition === "createNew" ? undefined : (items.find((candidate) => candidate.name === habit.name && !candidate.archived) || itemByName.get(habit.name));
         if (existing) { itemByName.set(habit.name, existing); continue; }
         const created = normalizeCheckinItem({
             id: makeId("item"),
-            name: habit.name,
+            name: decision?.disposition === "createNew" && decision.createNewName ? decision.createNewName : habit.name,
             icon: "✓",
             kind: habit.measurable ? "quantity" : "binary",
             target: habit.target > 0 ? habit.target : 1,
@@ -328,9 +335,13 @@ export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan): {
     const events = [...store.events];
     let eventsCreated = 0;
     let duplicates = 0;
+    let skippedRows = 0;
     for (const row of plan.rows) {
         const item = itemByName.get(row.name);
-        if (!item) continue;
+        if (!item) {
+            if (skippedNames.has(row.name)) skippedRows += 1;
+            continue;
+        }
         const duplicate = events.some((event) => event.itemId === item.id && event.localDate === row.date && event.value === row.value && event.unit === item.unit);
         if (duplicate) { duplicates += 1; continue; }
         events.push({
@@ -344,28 +355,31 @@ export function importLoopPlanInto(store: CheckinStore, plan: LoopImportPlan): {
         });
         eventsCreated += 1;
     }
-    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
+    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates, skippedRows};
 }
 
 /* T-1279：按 Obsidian Habit Tracker 21 导入计划落库——一习惯一文件映射为每日二值项目,
    完成日写 source=import 事件并带 obsidian21:<filename>:<date> 幂等身份;
    颜色与 maxGap 容忍不迁移（降级已在确认文案说明）;上层 persist 前调用。 */
-export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImportPlan): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number} {
+export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImportPlan, conflictDispositions?: ReadonlyMap<string, ImportConflictDisposition>): {store: CheckinStore; itemsCreated: number; eventsCreated: number; duplicates: number; skippedRows: number} {
     const now = new Date().toISOString();
     const today = dateKey(new Date());
     const items = [...store.items];
     const itemByName = new Map<string, CheckinItem>();
+    const skippedNames = new Set<string>();
     let itemsCreated = 0;
     for (const habit of plan.habits) {
         const name = obsidianHabitName(habit);
-        const existing = items.find((candidate) => candidate.name === name && !candidate.archived) || itemByName.get(name);
+        const decision = conflictDispositions?.get(name);
+        if (decision?.disposition === "skip") { skippedNames.add(name); continue; }
+        const existing = decision?.disposition === "createNew" ? undefined : (items.find((candidate) => candidate.name === name && !candidate.archived) || itemByName.get(name));
         if (existing) {
             itemByName.set(name, existing);
             continue;
         }
         const created = normalizeCheckinItem({
             id: makeId("item"),
-            name,
+            name: decision?.disposition === "createNew" && decision.createNewName ? decision.createNewName : name,
             icon: "✓",
             kind: "binary",
             target: 1,
@@ -383,10 +397,14 @@ export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImpo
     const events = [...store.events];
     let eventsCreated = 0;
     let duplicates = 0;
+    let skippedRows = 0;
     for (const habit of plan.habits) {
         const name = obsidianHabitName(habit);
         const item = itemByName.get(name);
-        if (!item) continue;
+        if (!item) {
+            if (skippedNames.has(name)) skippedRows += habit.dates.length;
+            continue;
+        }
         for (const date of habit.dates) {
             const externalRef = obsidianExternalRef(habit, date);
             if (knownRefs.has(externalRef)) {
@@ -412,7 +430,7 @@ export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImpo
             eventsCreated += 1;
         }
     }
-    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates};
+    return {store: {...store, items, events}, itemsCreated, eventsCreated, duplicates, skippedRows};
 }
 
 /* T-1283：导出活跃项目为 Habit Tracker 21 习惯 .md 文件（顺序多文件下载,上限 30）。 */

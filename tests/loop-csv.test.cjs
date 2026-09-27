@@ -18,7 +18,7 @@ assert.match(opsSource, /export function importLoopPlanInto/, "plugin-ops owns t
 assert.match(opsSource, /source: "import"/, "Loop events are recorded with import source");
 assert.match(opsSource, /export function downloadLoopExportFor/, "plugin-ops owns the two-file Loop export");
 assert.match(indexSource, /buildLoopImportPlan\(habitsCsv, checkmarksCsv/, "index builds the plan from selected files");
-assert.match(indexSource, /importLoopPlanInto\(this\.store, plan\)/, "index delegates persistence through the shared executor");
+assert.match(indexSource, /importLoopPlanInto\(this\.store, plan/, "index delegates persistence through the shared executor (T-1522 起 third arg 为可选冲突决策)");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-loop-csv-"));
 for (const filename of ["features/loop-csv.ts"]) {
