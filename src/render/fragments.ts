@@ -9,6 +9,7 @@ import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevi
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {buildThisDayHistory} from "../features/this-day-history";
+import {buildWeekLoadPreview} from "../features/week-load";
 import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -138,6 +139,18 @@ export function renderThisDayHistoryView(store: CheckinStore, occasionStore: Occ
         return `<div class="lc-checkin__this-day-row"><span>${text}</span><button class="lc-checkin__text-button" type="button" data-action="this-day-jump" data-thisday-date="${pastDate}" aria-label="${escapeHtml(t("today.thisDayJumpAria", {date: pastDate}))}">${escapeHtml(t("today.thisDayJump"))}</button></div>`;
     }).join("");
     return `<section class="lc-checkin__this-day" aria-label="${t("today.thisDayTitle")}"><strong>${t("today.thisDayTitle")}</strong>${rows}</section>`;
+}
+
+/* T-1515 未来七天负荷预览：按需展开的只读投影（零事件写入）。
+   每行保留自身单位，不做任何单位换算；配额单列为灵活周期任务不摊派到每天；
+   项目名可点击跳回编辑器。 */
+export function renderWeekLoadView(store: CheckinStore, now: Date): string {
+    const preview = buildWeekLoadPreview(store.items, dateKey(now));
+    if (!preview.items.length && !preview.quotaItems.length) return "";
+    const head = preview.dates.map((date) => `<span>${escapeHtml(date.slice(5).replace("-", "/"))}</span>`).join("");
+    const rows = preview.items.map((item) => `<div class="lc-checkin__week-load-row"><button class="lc-checkin__text-button" type="button" data-week-load-edit="${escapeHtml(item.itemId)}" aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}">${escapeHtml(item.name)}</button>${item.days.map((day) => `<span class="${day.scheduled ? "is-on" : "is-off"}"${day.scheduled ? ` title="${escapeHtml(formatNumber(item.target))}${escapeHtml(item.unit)}"` : ""}>${day.scheduled ? "●" : "·"}</span>`).join("")}</div>`).join("");
+    const quotaRows = preview.quotaItems.map((item) => `<div class="lc-checkin__week-load-row is-quota"><button class="lc-checkin__text-button" type="button" data-week-load-edit="${escapeHtml(item.itemId)}" aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}">${escapeHtml(item.name)}</button><span>${escapeHtml(t("today.weekLoadQuota", {amount: formatNumber(item.quota?.amount ?? 0), period: t((item.quota?.period ?? "week") === "week" ? "today.weekLoadWeek" : "today.weekLoadMonth")}))}</span></div>`).join("");
+    return `<details class="lc-checkin__week-load" data-week-load><summary><span>${t("today.weekLoadTitle")}</span><small>${t("today.weekLoadHint")}</small></summary><div class="lc-checkin__week-load-body"><div class="lc-checkin__week-load-head"><span></span>${head}</div>${rows}${quotaRows ? `<div class="lc-checkin__week-load-quota-title">${escapeHtml(t("today.weekLoadQuotaTitle"))}</div>${quotaRows}` : ""}</div></details>`;
 }
 
 /* T-1495 降噪：今日页事项横幅已聚合的当日事项，不在优先卡与行动台计数中重复弹出
@@ -574,7 +587,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>专注 <strong>${ctx.celebration.message}</strong> 已完成 · ${ctx.celebration.itemName}</span></div>` : ""}
-            <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}</main>
+            <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
             ${recentRecord}
         </div>`;
 }

@@ -225,6 +225,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const pastDate = (button as HTMLElement).dataset.thisdayDate || "";
         if (host.openPastDiary) host.openPastDiary(pastDate);
     }));
+    /* T-1515：周负荷预览中的项目名跳回编辑器。 */
+    root.querySelectorAll<HTMLElement>("[data-week-load-edit]").forEach((button) => button.addEventListener("click", () => {
+        const itemId = button.dataset.weekLoadEdit || "";
+        const item = host.store.items.find((candidate) => candidate.id === itemId);
+        if (item) host.showEditor(item);
+    }));
 
     root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => host.showSettings()));
     root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => host.openTabPage());

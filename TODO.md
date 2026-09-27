@@ -18,9 +18,8 @@
   - 状态：done。
 - [x] T-1514 规则修改前后影响对照（P1）——done（2026-09-27，local-auto）。新纯模块 features/rule-change-diff.ts：buildRuleChangeDiff 仅对照规则字段（类型/目标/单位/频率/同类型排期参数 canonical 比较），名称等展示字段天然不触发；未来 30 天安排差集复用 T-1513 buildSchedulePreview（旧侧=当前生效修订，新侧=表单草稿），单位 from/to 原样呈现不自动换算；任一侧排期非法 previewUnavailable（保存被既有校验拦截）。编辑器保存流：既有项目提交时先算 diff，changed 才渲染对照面板（字段行+新增/不再应做天数及代表日期+历史保留说明）并 window.confirm 摘要；取消零写入表单保留，确认走既有 saveForm 修订机制（生效日=今天，历史快照不变）；保存失败由 saveForm 既有回滚保留草稿。新守门 tests/rule-change-diff.test.cjs 入主链。验证：check、主链、build（CSS 638256）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1515 全项目未来一周负荷预览（P1）
-  - 范围与验收：分单位展示计划，配额单列，零自动排程；依赖 T-1513。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1515 全项目未来一周负荷预览（P1）——done（2026-09-27，local-auto）。新纯模块 features/week-load.ts：buildWeekLoadPreview(items, startDate) 从今日起 7 天逐日投影（复用 T-1513 buildSchedulePreview 与排期内核同口径），非配额项目产出逐日应做标记（全休项目不列出）；**配额单列** quotaItems（周期/额度/计数方式），不摊派到每天；归档排除、排期非法如实排除并计数 invalidCount（不伪造应做日）；**计量分开**：每行保留自身 unit/target，模块无任何跨单位汇总字段（无 totalMinutes）。今日页「那年今天」后新增「未来七天负荷」按需折叠区（details，无数据不渲染）：日期表头 MM/DD + 项目名（点击 data-week-load-edit 跳编辑器）+ 7 日格（●应做/·非应做，应做格 title 显示目标+单位）+ 灵活周期任务分节；bind-today 绑定跳转 showEditor(item)；零事件写入。新守门 tests/week-load.test.cjs 入主链。⚠️ CSS 639591 字节，距 D-242 硬线 655360 仅剩 ~15.7KB——批次 B 收官后评估清理，后续任务优先复用既有样式。验证：check、主链、build、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1516 统计分母与状态贡献明细（P1）
   - 范围与验收：展开指标参与日期及口径并下钻记录，与现有计算一致。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。
