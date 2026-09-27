@@ -51,6 +51,8 @@
 
 ## 本轮自主任务（2026-09-28：T-1392 本地切片——日历消费端参考层）
 
+- [x] T-1528 产品视觉走查与阶段交接收口——done（2026-09-28，local-auto）。本地队列清零后按「实际问题」做产品级 QA：亲查 visual-qa 全部 26 张产物截图（今日/回顾×2/编辑器/设置/事项/洞察/归档/问卷/320~430 宽矩阵/宽 dock），未发现真实 UI 缺陷——编辑器底部“文字裁切”经定位为 harness 已注明的 fullPage+fixed 截图伪影（判断遮挡以 viewport-*.png 为准，320 实视口验证无遮挡）；桌面/移动、双主题、窄宽全部干净。补跑 test:mobile/test:ecosystem/test:extended 三链（本会话此前未覆盖）全 EXIT=0。按仓库惯例新增 docs/HANDOFF-2026-09-28.md 阶段交接（取代 09-27 交接的当前状态节：18 个未 push 提交分段、开放队列仅剩外部依赖项、2026-09-28 新增工程要点五条）。
+
 - [x] T-1527 calendar.read 消费端参考层与契约夹具（T-1392 小驴侧本地切片，P1）——done（2026-09-28，local-auto，口径 D-296）。依 BLOCKERS/路线图明示「当前只准备本地契约草案和夹具，不修改 task-horizon-v1.json、不把私有实现当稳定依赖」：契约包新增 `calendar-consumer.mjs`（v5 已发布的 calendar.read 契约为唯一依据，零臆造）——①能力协商 negotiateCalendarRead（api-missing/host-outdated/capability-missing 三态拒绝 + getCapabilityInfo effect=read 校验，绝不带病调用）；②区间规划 planProjectionRange（严格 localDate/半开区间/民历日序号运算无夏令时依赖，>366 天拒绝或 clamp 截齐）；③刷新分类 planCalendarRefresh（已发布 8 事件 → record/structure/derived/unrelated 四类，隐藏开关走 item-updated 服务端过滤+重载即生效，未知事件 fail-closed）；④防御性归一化 normalizeCalendarProjection（6 状态枚举/逐条丢弃坏 item/point 并计数/不发明字段）；⑤单飞会话 createCalendarProjectionSession（并发同区间共享一次在途、超时/中止/提供方异常全部可诊断、过期缓存不回退旧值、固定时钟注入可测）；⑥消费端自检 runCalendarConsumerChecks（合规宿主 9 项断言，与 runContractChecks 同风格）。新守门 tests/calendar-consumer-kit.test.cjs 入主链（协商矩阵/区间含闰年/8 事件全分类/脏数据逐条丢弃/单飞缓存过期/30ms 超时/中止确定性/合规 9 断言+legacy 单失败+throwing 宿主不崩）。契约包 package.json files + README 使用说明同步；未改 manifest.json、未改 api-v5.md、未接线真实日历视图（待 T-1394 双向现场验收）。验证：check、主链、build、test:ui、test:quality、双主题 visual-qa、宽度走查全 EXIT=0。
 
 ## 外部联动逻辑总账与治理深化（2026-09-27，用户点名）
