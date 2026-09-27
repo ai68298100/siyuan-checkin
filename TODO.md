@@ -30,7 +30,7 @@
 
 **批次三·联动自动化（用户点名主线）**
 - [x] T-1490 自动记录信任层——done（2026-09-27，local-auto）。①新纯模块 features/record-trust.ts（零运行时依赖、无时钟、确定性）：buildRecordTrust 只读消费 source/externalRef/note 派生信任信息——来源徽标复用既有 source.* 双语词汇（未知来源降级 source.api 与宿主归一口径一致）、命中原因仅在能确证时派生（阈值结算「32 分钟 ≥ 阈值 30 分钟」且事件值须达当前阈值——低于即口径已变不冒认；weread :finish: 带书名、:notes: 笔记合计；health: 前缀=快捷指令同步；tomato=专注会话；yeguif=LifeLog 推导；api/import 无解释不编造），手动记录无徽标无原因。②呈现：回顾页历史行来源文本升级为徽标（lc-checkin__source-badge，muted 文字+accent-soft 描边，9px 对比度过无障碍审计预算）+命中原因行（lc-checkin__record-reason）；今日页日志行加来源徽标；一键撤销沿用历史行既有 data-history-event-id→removeEvents 通道（墓碑自动写入，防重复累计），零 schema 变更。③宿主回顾 ctx 透传 trustThresholds（仍生效的 sireader/siplayer/weread 结算绑定快照，类型谓词 filter 收窄）。i18n 6 键双语（2057 对）；新守门 tests/record-trust.test.cjs 入 pnpm test 主链（来源键/阈值达标与口径已变/前缀派生/fail-closed/确定性/接线/墓碑通道未绕过/双语/纯度）。验证：check、pnpm test、test:ui、build+test:quality（EXIT=0，CSS 632261 预算内，无障碍审计 0 违例）、宽度走查 49+32、双主题 visual-qa 全绿；未 push。
-- [ ] T-1501 快捷指令自动化配方文档：健康收件箱已有管道补「官方配方」——iOS 快捷指令模板（含步数/体重/自定义指标）、常见自动化场景、失败排查；docs+发布说明引用。来源：Habitify/Streaks Shortcuts 自动化（二十一·B 路）。验收：配方经真机快捷指令可复现（host-pending 标注）；不新增运行时代码。
+- [x] T-1501 快捷指令自动化配方文档——done（2026-09-27，local-auto；真机部分仍 host-pending）：重写 `docs/health-shortcuts-integration.md` 为可照做的 iOS 官方配方，覆盖步数/体重、到家/睡前/手动补录/分支场景、幂等验收、失败排查和隐私边界；明确当前解析器只接受 `steps` / `weight`，自定义健康指标不伪装成已支持能力；v18.8.0 发布说明与健康守门同步引用。无运行时代码变更。
 - [ ] T-1500 笔记推导打卡查询模板（Obsidian Tracker/Logseq query 同型）：opt-in 预置「从指定笔记本/文档字段推导完成状态」的只读 SQL 查询模板（如日记 frontmatter/标签→打卡建议），经既有收件箱式解析入库（source 登记、幂等）。来源：obsidian-tracker README+Logseq query（二十一·B 路，证据 A）。验收：只读 SQL、显式 opt-in、来源前缀登记、防双重累计（与手动互斥提示）；性能有界。
 
 **批次四·交互/性能/UI 全面优化（用户点名）**

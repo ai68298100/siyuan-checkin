@@ -126,6 +126,12 @@ assert.match(indexSource, /msg\.healthNeedMapping/, "health inbox must require a
 /* 接入文档与评估卡修正注记存在。 */
 const integrationDoc = fs.readFileSync(path.join(__dirname, "..", "docs/health-shortcuts-integration.md"), "utf8");
 assert.ok(integrationDoc.includes("health:steps:") && integrationDoc.includes("appendBlock") && integrationDoc.includes("Token"), "integration guide must document the line format, kernel appendBlock call and token auth");
+for (const phrase of ["官方配方 A", "官方配方 B", "失败排查", "自定义自动化场景", "host-pending", "health:sleep", "只接受以下形式"]) {
+    assert.ok(integrationDoc.includes(phrase), `T-1501 integration guide must retain the ${phrase} boundary or recipe`);
+}
+assert.match(integrationDoc, /当前不能用任意名称扩展指标[\s\S]*严格解析器忽略/, "the recipe must not claim unsupported custom health metrics");
+const releaseNotes = fs.readFileSync(path.join(__dirname, "..", "docs/releases/release-notes-18.8.0.md"), "utf8");
+assert.ok(releaseNotes.includes("快捷指令配方") && releaseNotes.includes("health-shortcuts-integration.md"), "release notes must point to the T-1501 recipes");
 const evaluationDoc = fs.readFileSync(path.join(__dirname, "..", "docs/external-source-evaluation-2026-09.md"), "utf8");
 assert.ok(evaluationDoc.includes("收件箱文档中转"), "evaluation card 4 must carry the zero-code correction note");
 
