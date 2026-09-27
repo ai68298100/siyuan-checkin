@@ -3,8 +3,6 @@ import {deleteUserTemplate, upsertUserTemplate} from "./templates";
 
 export interface TemplateManagerState {query: string; editingId?: string; confirmDeleteId?: string; statusMessage?: string;}
 
-export function createTemplateManagerState(): TemplateManagerState { return {query: ""}; }
-
 export function selectTemplates(store: readonly UserTemplate[], query = ""): UserTemplate[] {
     const normalized = query.trim().toLocaleLowerCase();
     return store.filter((template) => !normalized || [template.name, template.group, template.note, template.unit].join(" ").toLocaleLowerCase().includes(normalized)).map((template) => ({...template}));

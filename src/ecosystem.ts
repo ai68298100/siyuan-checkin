@@ -260,7 +260,3 @@ export function hasExternalRecord(events: readonly Pick<CheckinEvent, "source" |
     const key = integrationKey(record);
     return events.some((event) => Boolean(event.externalRef) && integrationKey({source: event.source, externalRef: event.externalRef || ""}) === key);
 }
-
-export function toCalendarSyncRecord(event: CheckinEvent): {id: string; itemId: string; start: string; value: number; unit: string; source: string; externalRef?: string} {
-    return {id: event.id, itemId: event.itemId, start: event.occurredAt, value: event.value, unit: event.unit, source: event.source, externalRef: event.externalRef};
-}

@@ -14,8 +14,6 @@ import {isValidDateKey} from "../date-keys";
 
 export type HealthInboxMetric = "steps" | "weight";
 
-export const HEALTH_INBOX_METRICS: readonly HealthInboxMetric[] = ["steps", "weight"];
-
 /** 轮询周期（毫秒）：收件箱按有界间隔轮询，保存设置后立即摄取一次。 */
 export const HEALTH_INGEST_INTERVAL_MS = 300_000;
 /** 单次摄取最多解析的行数（有界）。 */
