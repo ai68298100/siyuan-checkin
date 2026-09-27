@@ -49,7 +49,9 @@
 
 - [x] T-1526 CSS 死规则清理与审计守门修复——done（2026-09-28，local-auto，口径 D-295）。开放队列 9 项全部挂上游/用户拍板后，按 D-242 预警自选本地任务：修复 scripts/css-audit.cjs 恒真缺陷（旧实现把 SCSS 定义本身算作引用，dead 恒为空、css-hygiene 门禁形同虚设），改为 **TS-only 消费方判定**（is-/has-/数字后缀归 dynamicSuspect、b3- 宿主类不判死）；据实清理 26 个死类家族约 250 行规则——骨架屏 skeleton 全家（含 keyframes/reduced-motion）、插件自绘弹窗关闭钮 dialog-close 全变体（宿主 b3-dialog 承担关闭）、warning/badge 呼出块、首版强度行 strength-list/row/detail/fold（T-1243 overview 实现取代）、review-hero-copy/rate/cutoff（hero 旧三栏结构）、summary-agent、history-tools/details/expand、fold-count、header-streak、diary-doc-controls、renderblock-today-summary、has-records 日历点、provider-help、review-actions、幻影表面 --summary。CSS 647610→**630747 字节（-16.9KB，重回 620KB 软线以下）**，类 token 763→735，产物 dead=0。守门同步：css-hygiene 长出真牙齿（dead>0 即红）；ui-state-ledger 退役词表纳入 skeleton；mobile-dialog 反向断言插件关闭钮不得回流；ui-theme has-records 锚点换 is-selected、reduced-motion 断言指向存活规则；stats-visuals 区域锚点换 renderblock-summary；release-assets 表面清单对齐 TS 实际 8 表面（summary 实为图标名）。过程教训：退役注释含字面类名会同时触发正向/反向断言，注释一律去字面量。验证：check、主链、build、test:ui、test:quality、双主题 visual-qa（零 pageErrors）、宽度走查全 EXIT=0。
 
-## 本轮自主任务（2026-09-28：T-1392 本地切片——日历消费端参考层）
+## 本轮自主任务（2026-09-28：走查收口与 T-1392 本地切片）
+
+- [x] T-1529 质量审计三项与 CSS 微重复降级决策——done（2026-09-28，local-auto，结论 D-297）。零代码改动的研究收口：①编辑器截图「可疑文案」与 i18n 全量核对后判定为低分辨率截图误读，无缺陷字符串；②中文文案脚本审计 2330 个含 CJK 键——ASCII 标点混排/重复标点/你您称谓冲突全 0，4 个首尾空白键均为有意格式（`\n\n` 多行确认框前缀；尾部空格是确认文案拼接分隔符，index.ts:4558/4603 依赖）；③visual-qa harness 确认已有硬断言（mobileMatrix 横向溢出 scrollWidth===clientWidth、卡片动作区重叠、标题不换行、API 行为矩阵、pageErrors 深比较），无「只记录不拦截」的薄弱守门；④CSS 微重复 57 组 ~5.2KB 主动降级为护栏管理（每组均为同编译上下文同选择器同声明的级联等价规则，但源形态分散于嵌套/平铺，~45 处摘除风险大于 0.7% 体积收益；css-hygiene 10KB 护栏余量近半，未来触碰某组时顺手处理该组）。
 
 - [x] T-1528 产品视觉走查与阶段交接收口——done（2026-09-28，local-auto）。本地队列清零后按「实际问题」做产品级 QA：亲查 visual-qa 全部 26 张产物截图（今日/回顾×2/编辑器/设置/事项/洞察/归档/问卷/320~430 宽矩阵/宽 dock），未发现真实 UI 缺陷——编辑器底部“文字裁切”经定位为 harness 已注明的 fullPage+fixed 截图伪影（判断遮挡以 viewport-*.png 为准，320 实视口验证无遮挡）；桌面/移动、双主题、窄宽全部干净。补跑 test:mobile/test:ecosystem/test:extended 三链（本会话此前未覆盖）全 EXIT=0。按仓库惯例新增 docs/HANDOFF-2026-09-28.md 阶段交接（取代 09-27 交接的当前状态节：18 个未 push 提交分段、开放队列仅剩外部依赖项、2026-09-28 新增工程要点五条）。
 
