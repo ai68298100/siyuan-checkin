@@ -13,6 +13,7 @@ import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
 import {upsertUserTemplate, deleteUserTemplate} from "../features/templates";
 import {RECENT_TEMPLATES_LIMIT} from "../view-preferences";
 import {buildTemplateLinkageCard, templateLinkageForName, templateLinkageI18nKey, isTemplateLinkagePlan, EMPTY_LINKAGE_BINDING_STATE, type LinkageBindingState, type TemplateLinkageKind} from "../features/template-linkage";
+import {buildTemplateSharePackage} from "../features/template-share";
 import {buildNameInference, inferFieldsFromName} from "../features/name-inference";
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
@@ -50,6 +51,8 @@ export interface BindEditorHost {
     saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined>;
     /** T-1488：空状态一键装填——按组合包批量创建全部新增条目，返回创建数量（未知 pack 返回 0）。 */
     applyTemplatePackBulk?(packId: string): Promise<number>;
+    /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
+    downloadTemplateShare?(content: string): void;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1359：待检查的智能体项目草案（存在时编辑器预填，检查后由用户手动保存）。 */
     pendingProjectDraft?: import("../features/project-draft").ProjectDraft;
@@ -866,6 +869,39 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             host.render();
         }).catch(() => showMessage(t("msg.templateDeleteFail")));
     }));
+    /* T-1519 模板脱敏分享：勾选即时刷新预览（纯函数白名单脱敏，确定性序列化）；
+       导出走宿主保存通道；不修改原模板。 */
+    const sharePreview = root.querySelector<HTMLElement>("[data-share-preview]");
+    const shareExportButton = root.querySelector<HTMLButtonElement>("[data-share-export]");
+    const shareStatus = root.querySelector<HTMLElement>("[data-share-status]");
+    const shareSelection = new Set<string>();
+    const updateSharePreview = () => {
+        const selected = host.userTemplates.filter((template) => shareSelection.has(template.id));
+        const result = buildTemplateSharePackage(selected);
+        if (sharePreview) sharePreview.textContent = result.errorKey ? t(result.errorKey) : (result.serialized || "");
+        if (shareExportButton) {
+            shareExportButton.disabled = !result.package;
+            shareExportButton.textContent = t("editor.shareExport", {n: selected.length});
+        }
+    };
+    root.querySelectorAll<HTMLInputElement>("[data-share-template]").forEach((input) => input.addEventListener("change", () => {
+        const id = input.dataset.shareTemplate || "";
+        if (!id) return;
+        if (input.checked) shareSelection.add(id);
+        else shareSelection.delete(id);
+        if (shareStatus) shareStatus.textContent = "";
+        updateSharePreview();
+    }));
+    shareExportButton?.addEventListener("click", () => {
+        const selected = host.userTemplates.filter((template) => shareSelection.has(template.id));
+        const result = buildTemplateSharePackage(selected);
+        if (!result.package || !result.serialized) {
+            if (shareStatus) shareStatus.textContent = result.errorKey ? t(result.errorKey) : "";
+            return;
+        }
+        host.downloadTemplateShare?.(result.serialized);
+        if (shareStatus) shareStatus.textContent = t("editor.shareExported");
+    });
     root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
         const form = root.querySelector<HTMLFormElement>("form");
         if (!form) return;

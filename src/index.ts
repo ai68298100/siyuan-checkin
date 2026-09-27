@@ -1611,8 +1611,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /** T-1518 导出周复盘 Markdown：事实来自本地统计（无模型可用），与用户解释分开标注。 */
-    exportWeeklyReviewMarkdown(weekKey: string, friction: string, adjustment: string): void {
-        const summary = buildSummaryContext(this.store, "week");
+    exportWeeklyReviewMarkdown(weekKey: string, friction: string, adjustment: string): void {        const summary = buildSummaryContext(this.store, "week");
         const markdown = buildWeeklyReviewMarkdown({
             rangeLabel: t("review.weeklyRangeLabel", {start: summary.startDate, end: summary.endDate}),
             totalEvents: summary.totalEvents,
@@ -1627,6 +1626,11 @@ export default class CheckinPlugin extends Plugin {
             },
         }, friction, adjustment);
         this.downloadReportMarkdown(markdown);
+    }
+
+    /** T-1519 模板分享导出：走既有本地保存通道（移动端回落 /assets + saveExportFile）。 */
+    downloadTemplateShare(content: string): void {
+        void saveGeneratedFile({fileName: `siyuan-checkin-template-share-${dateKey(new Date())}.json`, content, mime: "application/json;charset=utf-8"});
     }
 
     private summaryRange: SummaryRange = "week";

@@ -4114,6 +4114,16 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__weekly-field small { color: var(--lc-checkin-muted); font-size: 10px; }
 .lc-checkin__weekly-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lc-checkin__weekly-status { color: var(--lc-checkin-muted); font-size: 10.5px; }
+/* T-1519 模板分享：复用 item-compare-option 选择器样式；预览用等宽窄块。 */
+.lc-checkin__template-share { margin-top: 8px; }
+.lc-checkin__template-share summary { display: flex; gap: 6px; align-items: baseline; min-height: 36px; cursor: pointer; }
+.lc-checkin__template-share summary span { font-size: 12px; font-weight: 600; }
+.lc-checkin__template-share summary small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__template-share-body { display: grid; gap: 8px; padding: 6px 0; }
+.lc-checkin__share-picker { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.lc-checkin__share-preview { margin: 0; padding: 8px; max-height: 180px; overflow: auto; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); font-size: 10px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lc-checkin__share-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lc-checkin__share-status { color: var(--lc-checkin-muted); font-size: 10.5px; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;
