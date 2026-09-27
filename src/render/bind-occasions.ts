@@ -25,6 +25,10 @@ export interface BindOccasionsHost {
     createOccasionLinkedItem(occasionId: string): Promise<unknown>;
     updateOccasion(item: {enabled: boolean} & Record<string, unknown>): Promise<unknown>;
     persistOccasions(): Promise<void>;
+    /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
+    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
+    /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
+    saveOccasionOverride?(id: string, originalDate: string, newDate: string): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
     saveOccasionForm(data: FormData): Promise<unknown>;
 }
@@ -68,6 +72,33 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!item || !window.confirm(t("msg.occasionDeleteConfirm"))) return;
         void host.enqueueMutation(async () => { const previous = host.occasionStore; host.occasionStore = deleteOccasion(previous, id); try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); } if (host.editingOccasionId === id) host.editingOccasionId = undefined; host.render(); });
     }));
+
+    /* T-1494：错过补标记（沿用既有按日期完成通道）+ 单次改期（内联日期行，确认后走宿主覆盖通道）。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-late-complete]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionLateId || "";
+        const missedDate = button.dataset.occasionLateDate || "";
+        if (!id || !missedDate) return;
+        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true); });
+    }));
+    root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionMoveToggle || "";
+        const row = root.querySelector<HTMLElement>(`[data-occasion-move-row='${CSS.escape(id) || id}']`);
+        if (!row) return;
+        row.hidden = !row.hidden;
+        button.setAttribute("aria-expanded", row.hidden ? "false" : "true");
+        if (!row.hidden) row.querySelector<HTMLInputElement>("[data-occasion-move-date]")?.focus();
+    }));
+    root.querySelectorAll<HTMLElement>("[data-occasion-move-row]").forEach((row) => {
+        const id = row.dataset.occasionMoveRow || "";
+        const dateInput = row.querySelector<HTMLInputElement>("[data-occasion-move-date]");
+        const confirmButton = row.querySelector<HTMLButtonElement>("[data-occasion-move-confirm]");
+        if (!dateInput || !confirmButton) return;
+        dateInput.addEventListener("change", () => { confirmButton.disabled = !dateInput.value; });
+        confirmButton.addEventListener("click", () => {
+            if (!dateInput.value || confirmButton.disabled) return;
+            if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value);
+        });
+    });
 
     const syncBlocks = () => {
         const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");

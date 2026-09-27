@@ -90,7 +90,7 @@ import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserialize
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
 import type {CheckinAppearance, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
-import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
+import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, setOccasionOverride, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
@@ -5915,6 +5915,28 @@ export default class CheckinPlugin extends Plugin {
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionToggleFail")); return false; }
         this.renderBackgroundUpdate();
         return true;
+    }
+
+    /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
+        持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
+    private saveOccasionOverride(id: string, originalDate: string, newDate: string): void {
+        const previous = this.occasionStore;
+        const next = setOccasionOverride(previous, id, originalDate, newDate);
+        if (next === previous) {
+            showMessage(t("occ.moveInvalid"));
+            return;
+        }
+        this.occasionStore = next;
+        void this.enqueueMutation(async () => {
+            try {
+                await this.persistOccasions();
+                showMessage(t("occ.moveDone", {date: newDate}));
+            } catch {
+                this.occasionStore = previous;
+                showMessage(t("msg.occasionToggleFail"));
+            }
+            this.renderBackgroundUpdate();
+        });
     }
 
     private async retrySave() {

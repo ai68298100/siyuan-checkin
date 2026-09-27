@@ -78,6 +78,15 @@
     .lc-checkin__occasion-cycle-track { flex: 1; max-width: 220px; height: 4px; border-radius: 999px; background: var(--lc-checkin-muted-surface); overflow: hidden; }
     .lc-checkin__occasion-cycle-bar { display: block; height: 100%; border-radius: 999px; background: var(--lc-checkin-accent); }
     .lc-checkin__occasion-cycle small { color: var(--lc-checkin-muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    /* T-1494 错过提示（中性、非欠账红）与单次改期内联行。 */
+    .lc-checkin__occasion-late { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; padding: 2px 8px; border-radius: 999px; color: var(--lc-checkin-muted); background: var(--lc-checkin-muted-surface); font-size: 12px; }
+    .lc-checkin__occasion-late span { overflow-wrap: anywhere; }
+    .lc-checkin__occasion-move { margin-top: 4px; }
+    .lc-checkin__occasion-move-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .lc-checkin__occasion-move-row[hidden] { display: none !important; }
+    .lc-checkin__occasion-move-row input { min-height: 30px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: var(--lc-checkin-text); font: inherit; font-size: 12px; padding: 2px 6px; }
+    .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-late,
+    .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-move { display: none; }
     .lc-checkin__occasion-row-date strong { font-size: 12px; font-weight: 600; color: var(--lc-checkin-accent-text); }
     .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-date strong { color: var(--lc-checkin-muted); }
     .lc-checkin__occasion-manager-row.is-today .lc-checkin__occasion-icon { color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); }

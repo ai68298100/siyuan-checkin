@@ -228,6 +228,47 @@ console.log("Occasion model structure checks passed.");
     assert.match(ageText, /岁/, "birthday yearly milestones read as age");
 }
 
+/* —— T-1494 实例覆盖与错过处理：改期包装、错过后投影、覆盖写入往返。 —— */
+{
+    const monthly = occasions.normalizeOccasion({id: "o1", name: "月度检查", kind: "scheduled", date: "2026-01-15", recurrence: "monthly", remindBeforeDays: 3, note: "", enabled: true, completedDates: [], createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z"});
+    /* 未覆盖时下一次为 2026-09-15（锚点 15 日）。 */
+    assert.equal(occasions.getOccurrenceDate(monthly, "2026-09-01"), "2026-09-15");
+    /* 单次改期到未来：新日期呈现，之后回周期轨道。 */
+    const moved = occasions.setOccasionOverride({version: 1, occasions: [monthly]}, "o1", "2026-09-15", "2026-09-20");
+    const movedItem = moved.occasions[0];
+    assert.equal(movedItem.overrides["2026-09-15"].date, "2026-09-20");
+    assert.equal(occasions.getOccurrenceDate(movedItem, "2026-09-01"), "2026-09-20", "the rescheduled instance surfaces on its new date");
+    assert.equal(occasions.getOccurrenceDate(movedItem, "2026-09-20"), "2026-09-20");
+    assert.equal(occasions.getOccurrenceDate(movedItem, "2026-09-21"), "2026-10-15", "after a consumed move the engine returns to the cycle track");
+    /* 改期日已过（迟到的覆盖记录）不阻断后续发生点。 */
+    const stale = occasions.setOccasionOverride({version: 1, occasions: [monthly]}, "o1", "2026-09-15", "2026-09-02");
+    assert.equal(occasions.getOccurrenceDate(stale.occasions[0], "2026-09-21"), "2026-10-15");
+    /* 移除覆盖（newDate undefined）恢复原轨道；覆盖条目随之整体移除。 */
+    const restored = occasions.setOccasionOverride(moved, "o1", "2026-09-15", undefined);
+    assert.ok(!restored.occasions[0].overrides, "an emptied override map is not materialized");
+    assert.equal(occasions.getOccurrenceDate(restored.occasions[0], "2026-09-01"), "2026-09-15");
+    /* 归一化 fail-closed：非法键/相同日期/非对象值丢弃；有界 60。 */
+    const dirty = occasions.normalizeOccasion({...monthly, overrides: {"2026-13-01": {date: "2026-12-01"}, "2026-09-15": {date: "2026-09-15"}, "2026-10-15": "not-an-object", "2026-11-15": {date: "2026-12-15"}}});
+    assert.deepEqual(dirty.overrides, {"2026-11-15": {date: "2026-12-15"}});
+    const flood = occasions.normalizeOccasion({...monthly, overrides: Object.fromEntries(Array.from({length: 80}, (_, index) => {
+        const day = new Date(2026, 0, 1 + index);
+        const key = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+        return [key, {date: "2027-01-01"}];
+    }))});
+    assert.equal(Object.keys(flood.overrides || {}).length, 60, "override entries cap at 60");
+    /* 错过后投影：上一周期未标记 → 提示；补标记后消失。 */
+    const withHistory = occasions.normalizeOccasion({...monthly, completedDates: ["2026-09-15"]});
+    assert.equal(occasions.getMissedOccurrence(monthly, "2026-09-20"), "2026-09-15", "an unmarked previous cycle is surfaced");
+    assert.equal(occasions.getMissedOccurrence(withHistory, "2026-09-20"), undefined, "a marked previous cycle is not flagged");
+    assert.equal(occasions.getMissedOccurrence({...monthly, enabled: false}, "2026-09-20"), undefined);
+    assert.equal(occasions.getMissedOccurrence({...monthly, recurrence: "once"}, "2026-09-20"), undefined, "once items have no missed-cycle semantics");
+    /* 未匹配 id 原样返回 store（宿主身份回滚依赖）。 */
+    const monthlyStore = {version: 1, occasions: [monthly]};
+    assert.equal(occasions.setOccasionOverride(monthlyStore, "nope", "2026-09-15", "2026-09-20"), monthlyStore);
+    /* 确定性。 */
+    assert.deepEqual(occasions.nextOccasionMilestones(monthly, "2026-09-01", 3), occasions.nextOccasionMilestones(monthly, "2026-09-01", 3));
+}
+
 /* —— T-1492 时间表达：自然历跨度 + 长周期周期进度。 —— */
 {
     /* 三段跨度：2024-06-01 → 2026-09-27 = 2 年 3 个月 26 天。 */
@@ -269,6 +310,17 @@ assert.match(viewSource, /lc-checkin__occasion-milestone/, "occasion rows render
 assert.match(viewSource, /elapsedSpanSince\(item\.date, todayKey\)/, "anniversary rows show the natural-calendar span");
 assert.match(viewSource, /occasionCycleProgress\(item, todayKey\)/, "long cycles render a per-cycle progress bar");
 assert.match(viewSource, /occ\.cycleProgress/, "cycle bars label themselves as cycle progress (not completion rate)");
+assert.match(viewSource, /getMissedOccurrence\(item, todayKey\)/, "occasion rows surface the unmarked previous cycle");
+assert.match(viewSource, /data-occasion-late-complete/, "late occurrences expose a mark-complete action");
+assert.match(viewSource, /data-occasion-move-toggle/, "recurring occasions expose a single-instance reschedule action");
+assert.match(bindSource, /data-occasion-late-complete/, "late marks route through the shared completion channel");
+assert.match(bindSource, /saveOccasionOverride/, "reschedules go through the host override channel");
+const indexSource2 = fs.readFileSync("src/index.ts", "utf8");
+assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string\): void/, "host implements the override persistence wrapper");
+assert.match(indexSource2, /setOccasionOverride\(previous, id, originalDate, newDate\)/, "host delegates to the pure override writer");
+for (const key of ["occ.lateHint", "occ.lateComplete", "occ.moveOccurrence", "occ.moveConfirm", "occ.moveDone", "occ.moveInvalid"]) {
+    assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
+}
 for (const key of ["occ.spanYear", "occ.spanMonth", "occ.spanDay", "occ.cycleProgress"]) {
     assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }

@@ -36,8 +36,15 @@ export interface Occasion {
     note: string;
     enabled: boolean;
     completedDates: string[];
+    /** T-1494 单次实例覆盖（additive，v1 仅改期）：键=原发生日期，值.date=新日期。 */
+    overrides?: Record<string, OccasionOverride>;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface OccasionOverride {
+    /** 改期后的日期（有效日历日且不同于键）。 */
+    date: string;
 }
 
 export interface OccasionStore {
@@ -226,6 +233,17 @@ export function normalizeOccasion(value: unknown): Occasion | undefined {
     if (!name || !isValidOccasionDate(date)) return undefined;
     const now = new Date().toISOString();
     const completedDates = Array.isArray(source.completedDates) ? source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)).slice(-120) : [];
+    /* T-1494 实例覆盖归一化（additive，有界 60 条）：键与改期值都必须是真实日历日且不同。 */
+    const overrides: Record<string, OccasionOverride> = {};
+    if (source.overrides && typeof source.overrides === "object" && !Array.isArray(source.overrides)) {
+        for (const [key, value] of Object.entries(source.overrides as Record<string, unknown>).slice(0, 60)) {
+            if (!isValidOccasionDate(key)) continue;
+            if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+            const moved = (value as {date?: unknown}).date;
+            if (typeof moved !== "string" || !isValidOccasionDate(moved) || moved === key) continue;
+            overrides[key] = {date: moved};
+        }
+    }
     const calendar = source.calendar === "lunar" ? "lunar" : "solar";
     const monthlySubtype = source.monthlySubtype === "nthweek" || source.monthlySubtype === "lastday" ? source.monthlySubtype : "byday";
     const annualSubtype = source.annualSubtype === "nthweek" ? "nthweek" : "byday";
@@ -245,6 +263,7 @@ export function normalizeOccasion(value: unknown): Occasion | undefined {
         remindBeforeDays: clampInteger(source.remindBeforeDays, 0, 365, 0),
         note: typeof source.note === "string" ? source.note.trim().slice(0, 500) : "",
         enabled: source.enabled !== false, completedDates,
+        ...(Object.keys(overrides).length ? {overrides} : {}),
         createdAt: typeof source.createdAt === "string" ? source.createdAt : now,
         updatedAt: typeof source.updatedAt === "string" ? source.updatedAt : now,
     };
@@ -266,8 +285,37 @@ export function toVisibleOccasion(item: Occasion, localDate: string): VisibleOcc
     return {...item, occurrenceDate, status: daysUntil === 0 ? "today" : "upcoming", daysUntil, completionKey: item.id + ":" + occurrenceDate};
 }
 
-/** 事项在 localDate 当天或之后的下一次发生日期。 */
+/** 事项在 localDate 当天或之后的下一次发生日期；T-1494 起尊重单次实例覆盖：
+    改期目标日本身进入时间线（在其新日期呈现），被覆盖的原基点跳过；
+    改期日已过的覆盖视为已消费，不再影响。输出有界（至多消费 12 个被覆盖基点）。 */
 export function getOccurrenceDate(item: Occasion, localDate: string): string | undefined {
+    if (!isValidLocalDate(localDate)) return undefined;
+    const overrides = item.overrides || {};
+    /* 预扫：所有落在 localDate 之后的改期目标都是候选。 */
+    let earliest: string | undefined;
+    for (const override of Object.values(overrides)) {
+        if (override.date >= localDate && (!earliest || override.date < earliest)) earliest = override.date;
+    }
+    let cursor = localDate;
+    for (let guard = 0; guard < 12; guard += 1) {
+        const base = getBaseOccurrenceDate(item, cursor);
+        if (!base) break;
+        const override = overrides[base];
+        if (override) {
+            /* 被覆盖的原基点不直接呈现（其目标已在预扫计入），继续看下一基点。 */
+            const nextCursor = addDays(base, 1);
+            if (!nextCursor) break;
+            cursor = nextCursor;
+            continue;
+        }
+        if (!earliest || base < earliest) earliest = base;
+        break;
+    }
+    return earliest;
+}
+
+/** 基础发生引擎（不含实例覆盖）。 */
+function getBaseOccurrenceDate(item: Occasion, localDate: string): string | undefined {
     if (!isValidLocalDate(localDate)) return undefined;
     switch (item.recurrence) {
         case "once":
@@ -407,6 +455,62 @@ function intervalOccurrence(item: Occasion, localDate: string): string | undefin
 
 export function isOccasionCompleted(item: Occasion, occurrenceDate: string): boolean {
     return item.completedDates.includes(occurrenceDate);
+}
+
+/** T-1494 错过处理投影：localDate 之前最近一次发生（仅太阳历固定周期口径），
+    若未标记完成则返回该日期；weekly/农历/第 N 个星期 X 等无法无歧义回推的口径返回 undefined。 */
+export function getMissedOccurrence(item: Occasion, localDate: string): string | undefined {
+    if (!item.enabled) return undefined;
+    if (item.recurrence === "once" || item.calendar === "lunar") return undefined;
+    if (item.recurrence === "annual" && item.annualSubtype === "nthweek") return undefined;
+    if (item.recurrence === "monthly" && item.monthlySubtype && item.monthlySubtype !== "byday") return undefined;
+    const end = getOccurrenceDate(item, localDate);
+    if (!end) return undefined;
+    const anchorDay = parseLocalDate(item.date).getDate();
+    const shift = (months: number): string | undefined => {
+        const [endYear, endMonth] = end.split("-").map(Number);
+        const index = endYear * 12 + (endMonth - 1) + months;
+        return monthDate(Math.floor(index / 12), (index % 12) + 1, anchorDay);
+    };
+    let previous: string | undefined;
+    switch (item.recurrence) {
+        case "weekly": previous = addDays(end, -7) ?? undefined; break;
+        case "monthly": previous = shift(-1); break;
+        case "quarterly": previous = shift(-3); break;
+        case "halfyearly": previous = shift(-6); break;
+        case "annual": previous = shift(-12); break;
+        case "interval": {
+            const count = clampInteger(item.intervalCount, 1, 365, 1);
+            previous = item.intervalUnit === "day" ? addDays(end, -count) ?? undefined : shift(item.intervalUnit === "year" ? -count * 12 : -count);
+            break;
+        }
+        default: return undefined;
+    }
+    if (!previous || previous >= localDate) return undefined;
+    return item.completedDates.includes(previous) ? undefined : previous;
+}
+
+/** T-1494 写入单次实例覆盖（改期）；newDate 为空/等于原日期时移除该覆盖。
+    有界：单事项覆盖至多 60 条（与归一化一致），未匹配 id 时原样返回 store。 */
+export function setOccasionOverride(store: OccasionStore, id: string, originalDate: string, newDate: string | undefined): OccasionStore {
+    if (!isValidLocalDate(originalDate)) return store;
+    if (newDate !== undefined && (!isValidLocalDate(newDate) || newDate === originalDate)) return store;
+    if (!store.occasions.some((item) => item.id === id)) return store;
+    return {
+        version: OCCASIONS_STORE_VERSION,
+        occasions: store.occasions.map((item) => {
+            if (item.id !== id) return item;
+            const overrides: Record<string, OccasionOverride> = {...(item.overrides || {})};
+            if (newDate) overrides[originalDate] = {date: newDate};
+            else delete overrides[originalDate];
+            const changed = JSON.stringify(overrides) !== JSON.stringify(item.overrides || {});
+            if (!changed) return item;
+            const next: Occasion = {...item, updatedAt: new Date().toISOString()};
+            if (Object.keys(overrides).length) next.overrides = overrides;
+            else delete next.overrides;
+            return next;
+        }),
+    };
 }
 
 export function markOccasionCompleted(store: OccasionStore, id: string, occurrenceDate: string, completed: boolean): OccasionStore {
