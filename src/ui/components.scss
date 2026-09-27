@@ -4077,6 +4077,19 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__week-load-row > span.is-off { color: var(--lc-checkin-muted); }
 .lc-checkin__week-load-row.is-quota > span { justify-content: start; text-align: start; font-size: 10.5px; color: var(--lc-checkin-muted); }
 .lc-checkin__week-load-quota-title { margin-top: 4px; color: var(--lc-checkin-muted); font-size: 10.5px; }
+/* T-1516 统计分母明细：定义行 + 逐日跳转芯片 + 逐项目展开列表。 */
+.lc-checkin__denominators { display: grid; gap: 8px; }
+.lc-checkin__denominator-defs { display: grid; gap: 4px; }
+.lc-checkin__denominator-defs small { color: var(--lc-checkin-muted); font-size: 10.5px; line-height: 1.5; }
+.lc-checkin__denominator-days { display: flex; flex-wrap: wrap; gap: 4px; }
+.lc-checkin__denominator-days .lc-checkin__text-button { min-height: 30px; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.lc-checkin__denominator-items { display: grid; gap: 4px; }
+.lc-checkin__denominator-item { border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); padding: 6px 10px; }
+.lc-checkin__denominator-item > summary { min-height: 32px; display: flex; align-items: center; font-size: 11.5px; cursor: pointer; }
+.lc-checkin__denominator-item > small { display: block; margin-top: 4px; color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__denominator-list { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; margin-top: 4px; font-size: 10.5px; }
+.lc-checkin__denominator-list > span:first-child { flex: none; color: var(--lc-checkin-muted); }
+.lc-checkin__denominator-list > span:last-child { min-width: 0; overflow-wrap: anywhere; text-align: end; font-variant-numeric: tabular-nums; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

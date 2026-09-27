@@ -12,6 +12,7 @@ import {buildAchievements} from "../features/achievements";
 import {buildRecordTrust} from "../features/record-trust";
 import {buildRecordDetails} from "../features/record-details";
 import {buildBatchBackfillPreview, type BatchBackfillItemSnapshot} from "../features/batch-backfill";
+import {buildItemDenominatorDetail, buildRangeDayCounts} from "../features/stat-denominators";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -557,6 +558,30 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const savedViewControls = `<label class="lc-checkin__report-option"><span>${t("review.savedViewLabel")}</span><select data-saved-view aria-label="${t("review.savedViewLabel")}">${savedViewOptions.map((view) => `<option value="${escapeHtml(view.id)}"${ctx.activeSavedViewId === view.id ? " selected" : ""}>${escapeHtml(view.name)}</option>`).join("")}</select></label><div class="lc-checkin__report-option"><button class="lc-checkin__text-button" type="button" data-action="save-saved-view">${t("review.savedViewSave")}</button><button class="lc-checkin__text-button" type="button" data-action="delete-saved-view">${t("review.savedViewDelete")}</button></div>`;
     const reviewTools = `<details class="review-export-disclosure"><summary>${t("review.reportActions")}</summary><div class="lc-checkin__review-tools" role="toolbar" aria-label="${t("review.toolsAria")}"><div class="lc-checkin__review-tool-group" role="group" aria-label="${t("review.reportToolsAria")}">${assistantEntry}<button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="copy-weekly-report" aria-label="${t("review.copyReportAria")}" title="${t("review.copyReportAria")}">${t("review.copyReport")}</button><button class="lc-checkin__text-button lc-checkin__review-tool-button" type="button" data-action="export-report" aria-label="${t("review.exportReportAria")}" title="${t("review.exportReportAria")}">${t("review.exportReport")}</button><details class="lc-checkin__review-more lc-checkin__report-settings"><summary aria-label="${t("review.reportSettingsAria")}" title="${t("review.reportSettingsAria")}">${t("review.reportSettings")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu lc-checkin__report-settings-menu" role="group" aria-label="${t("review.reportSettingsAria")}">${reportSectionOptions}${reportSourceSelect}${savedViewControls}${exportScopeSelect}</div></details></div><details class="lc-checkin__review-more"><summary aria-label="${t("review.moreToolsAria")}" title="${t("review.moreToolsAria")}">${t("review.moreTools")}<span aria-hidden="true">⌄</span></summary><div class="lc-checkin__review-more-menu" role="group" aria-label="${t("review.moreToolsAria")}"><button class="lc-checkin__text-button" type="button" data-action="archived" aria-label="${t("review.archivedAria")}">${t("review.archived")}</button><button class="lc-checkin__text-button" type="button" data-action="export-all" aria-label="${t("review.exportAllAria")}">${t("review.exportAll")}</button><button class="lc-checkin__text-button" type="button" data-action="export-json" aria-label="${t("review.exportJson")}">${t("review.exportJson")}</button><button class="lc-checkin__text-button" type="button" data-action="export-csv" aria-label="${t("review.exportCsv")}">${t("review.exportCsv")}</button><button class="lc-checkin__text-button" type="button" data-action="export-share-card" aria-label="${t("review.exportShareCardAria")}" title="${t("review.exportShareCardAria")}">${t("review.exportShareCard")}</button></div></details></div></details>`;
 
+    /* T-1516 统计分母与状态贡献明细：复用既有 summary 投影与同口径逐日收集器，
+       默认折叠（懒渲染）；日期跳转走既有 records 通道且保留筛选。 */
+    const renderDenominators = (): string => {
+        const rangeEvents = getEventsInDateRange(ctx.store, summary.startDate, summary.endDate);
+        const dayCounts = buildRangeDayCounts(rangeEvents, summary.startDate, summary.endDate);
+        const shownCounts = dayCounts.slice(-14);
+        const dayChips = shownCounts.map((entry) => `<button class="lc-checkin__text-button" type="button" data-denominator-date="${escapeHtml(entry.date)}" title="${escapeHtml(t("review.denominatorJumpAria", {date: entry.date, n: entry.count}))}">${escapeHtml(entry.date.slice(5))} · ${entry.count}</button>`).join("");
+        const itemRows = summary.items.slice(0, 8).map((itemSummary) => {
+            if (itemSummary.quota) {
+                const quota = itemSummary.quota;
+                const current = quota.current ? ` · ${t("review.denominatorQuotaCurrent", {remaining: quota.current.remaining, amount: quota.current.quota})}` : "";
+                return `<details class="lc-checkin__denominator-item"><summary>${escapeHtml(itemSummary.name)} · ${escapeHtml(t("review.denominatorQuotaItem", {completed: quota.completedPeriods, elapsed: quota.elapsedPeriods}))}${current}</summary><small>${escapeHtml(t("review.denominatorQuotaNote"))}</small></details>`;
+            }
+            const item = ctx.store.items.find((candidate) => candidate.id === itemSummary.itemId);
+            if (!item) return "";
+            const detail = buildItemDenominatorDetail(ctx.store, item, summary.startDate, summary.endDate);
+            const denominator = detail.completedDates.length + detail.missedDates.length;
+            const list = (labelKey: string, dates: string[]): string => dates.length ? `<div class="lc-checkin__denominator-list"><span>${escapeHtml(t(labelKey, {n: dates.length}))}</span><span>${escapeHtml(dates.slice(-8).map((date) => date.slice(5)).join(" · "))}${dates.length > 8 ? " …" : ""}</span></div>` : "";
+            return `<details class="lc-checkin__denominator-item"><summary>${escapeHtml(itemSummary.name)} · ${denominator ? `${itemSummary.completedDays}/${itemSummary.scheduledDays}` : escapeHtml(t("review.denominatorNone"))}</summary>${denominator ? `${list("review.denominatorCompletedDates", detail.completedDates)}${list("review.denominatorMissedDates", detail.missedDates)}${list("review.denominatorSkippedDates", detail.skippedDates)}${list("review.denominatorRestDates", detail.restDates)}${detail.truncated ? `<small>${escapeHtml(t("review.denominatorTruncated"))}</small>` : ""}` : `<small>${escapeHtml(t("review.denominatorNone"))}</small>`}</details>`;
+        }).join("");
+        const defs = `<div class="lc-checkin__denominator-defs"><small>${escapeHtml(t("review.denominatorEvents"))}</small><small>${escapeHtml(t("review.denominatorCompleted"))}</small><small>${escapeHtml(t("review.denominatorScheduled"))}</small></div>`;
+        return `<div class="lc-checkin__denominators"><p class="review-scope-note">${escapeHtml(t("review.denominatorsHint", {start: summary.startDate, end: summary.endDate}))}</p>${defs}${dayChips ? `<div class="lc-checkin__denominator-days">${dayChips}</div>` : ""}<div class="lc-checkin__denominator-items">${itemRows}</div></div>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
@@ -571,6 +596,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
           </div>`
         : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
             ${renderRhythm()}<div class="lc-checkin__review-sections">
+            ${fold("denominators", t("review.denominatorsTitle"), renderDenominators)}
             ${fold("projects", `${t("review.foldProjects")} · ${summary.items.length}`, renderProjects)}
             ${assistantEntry}
             ${fold("compare", t("review.compareTitle"), renderComparison)}

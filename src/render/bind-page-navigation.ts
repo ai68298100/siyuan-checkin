@@ -365,6 +365,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         renderReviewPage('[data-review-fold="report"] > summary');
         root.querySelector<HTMLElement>("[data-review-assistant-goal]")?.focus({preventScroll: true});
     }));
+    /* T-1516：分母明细日期跳记录——沿用 jumpToHistoryDate 通道，
+       不清空既有筛选/排序（与节奏日跳转的清筛选行为不同）。 */
+    root.querySelectorAll<HTMLElement>("[data-denominator-date]").forEach((button) => button.addEventListener("click", () => {
+        const date = button.dataset.denominatorDate || "";
+        if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;
+        host.jumpToHistoryDate(date);
+    }));
     root.querySelectorAll<HTMLElement>("[data-review-rhythm-date]").forEach(button => button.addEventListener("click", () => {
         const date = button.dataset.reviewRhythmDate || "";
         if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;

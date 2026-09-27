@@ -20,9 +20,8 @@
   - 状态：done。
 - [x] T-1515 全项目未来一周负荷预览（P1）——done（2026-09-27，local-auto）。新纯模块 features/week-load.ts：buildWeekLoadPreview(items, startDate) 从今日起 7 天逐日投影（复用 T-1513 buildSchedulePreview 与排期内核同口径），非配额项目产出逐日应做标记（全休项目不列出）；**配额单列** quotaItems（周期/额度/计数方式），不摊派到每天；归档排除、排期非法如实排除并计数 invalidCount（不伪造应做日）；**计量分开**：每行保留自身 unit/target，模块无任何跨单位汇总字段（无 totalMinutes）。今日页「那年今天」后新增「未来七天负荷」按需折叠区（details，无数据不渲染）：日期表头 MM/DD + 项目名（点击 data-week-load-edit 跳编辑器）+ 7 日格（●应做/·非应做，应做格 title 显示目标+单位）+ 灵活周期任务分节；bind-today 绑定跳转 showEditor(item)；零事件写入。新守门 tests/week-load.test.cjs 入主链。⚠️ CSS 639591 字节，距 D-242 硬线 655360 仅剩 ~15.7KB——批次 B 收官后评估清理，后续任务优先复用既有样式。验证：check、主链、build、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1516 统计分母与状态贡献明细（P1）
-  - 范围与验收：展开指标参与日期及口径并下钻记录，与现有计算一致。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1516 统计分母与状态贡献明细（P1）——done（2026-09-27，local-auto）。新纯模块 features/stat-denominators.ts：buildItemDenominatorDetail 逐日分类收集器（completed/missed/skipped/rest + unavailableCount），与 analytics.summarizeItem 分母循环**同序同谓词**（同批 model 函数：可用性→排期→跳过豁免→完成判定），配额项目与 summarizeQuota 同款短路（按区间末修订判定 isQuota，日级明细为空，解释沿用 summary.items 既有 quota 投影——不复制第二套公式）；每列表有界 62 项截断如实标注；buildRangeDayCounts 逐日事件计数（范围过滤、排序、只读）。概览新增「如何计算」折叠区（默认关闭懒渲染）：三条指标口径定义 + 逐日条记录芯片（data-denominator-date 跳转记录，走 jumpToHistoryDate 通道**保留筛选与排序**）+ 前 8 个项目分母明细（完成/未完成/跳过/非应做日期列表，分母为零显示「无适用数据」）。新守门 tests/stat-denominators.test.cjs 入主链（一致性断言：明细计数与 buildSummaryContext 的 completedDays/scheduledDays 逐项相等）。验证：check、主链、build（CSS 640741）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1517 选定项目横向趋势比较（P1）
   - 范围与验收：2～4 项同期间比较，异单位分图；依赖 T-1516。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。
