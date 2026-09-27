@@ -261,6 +261,13 @@ export const CHECKIN_TEMPLATES: readonly CheckinTemplate[] = [
     {name: "思阅阅读", icon: "📕", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "medium", timeSlot: "any", note: "配合思阅插件使用：在设置 → 连接与能力中开启思阅联动后自动累计有效阅读时长。"},
     {name: "思播观看", icon: "▶", kind: "duration", target: 30, unit: "分钟", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合思播插件使用（实验）：在设置 → 连接与能力中开启思播联动后自动累计有效观看时长。"},
     {name: "健康步数", icon: "👟", kind: "quantity", target: 6000, unit: "步", schedule: daily, group: "联动", priority: "low", timeSlot: "any", note: "配合健康收件箱使用：在设置 → 连接与能力中绑定步数项目和收件箱文档。"},
+    /* 循证模板批次（D-294）：源自习惯方法论书评（《掌控习惯》《福格行为模型》）与
+       HowToLiveBetter 循证生活指南，只收与既有目录不重叠、证据较强的条目。 */
+    {name: "读一页书", icon: "📄", kind: "binary", target: 1, unit: "次", schedule: daily, group: "学习", priority: "low", timeSlot: "evening", note: "两分钟法则：只要求读一页，翻开之后自然会继续。"},
+    {name: "按时服药", icon: "⏰", kind: "binary", target: 1, unit: "次", schedule: daily, group: "健康", priority: "high", timeSlot: "morning", note: "慢性病管理里性价比最高的习惯：固定时间服药，尽量不断档。"},
+    {name: "定时起身", icon: "🧍", kind: "count", target: 6, unit: "次", schedule: workdays, group: "健康", priority: "medium", timeSlot: "any", note: "每坐一小时左右起身活动两三分钟，打断久坐。"},
+    {name: "联系亲友", icon: "💬", kind: "binary", target: 1, unit: "次", schedule: daily, group: "生活", priority: "medium", timeSlot: "any", note: "良好关系是幸福感最强的预测因素：主动联系一位亲友。"},
+    {name: "分散复习", icon: "🔁", kind: "binary", target: 1, unit: "次", schedule: daily, group: "学习", priority: "medium", timeSlot: "evening", note: "按遗忘节奏回头复习旧内容，用自测代替重读。"},
 ] as const;
 
 /** T-1357 精选推荐位：无最近使用时展示这些跨类别模板（zh 名为锚点）。 */
@@ -359,6 +366,11 @@ const TEMPLATE_NAME_KEYS: Record<string, string> = {
     "思阅阅读": "tpl.sireader",
     "思播观看": "tpl.siplayer",
     "健康步数": "tpl.healthSteps",
+    "读一页书": "tpl.onePage",
+    "按时服药": "tpl.medication",
+    "定时起身": "tpl.standUp",
+    "联系亲友": "tpl.reachOut",
+    "分散复习": "tpl.spacedReview",
 };
 
 const TEMPLATE_GROUP_KEYS: Record<string, string> = {

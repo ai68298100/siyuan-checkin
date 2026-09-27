@@ -41,6 +41,10 @@
 
 - [x] T-1524 移除回顾概览统计区 30 天迷你趋势线——done（2026-09-27，用户反馈「线出现得突兀、不该放这里」）。口径见 D-292：统计卡为本周期口径、迷你线为固定 30 天口径混排，且作为第 4 网格项悬在「条记录」下方无视觉归属；趋势呈现由分析工作区「趋势」图唯一承载。移除 `render/review.ts` 统计区第 4 网格项、`charts.ts` renderSparkline、3 条 SCSS 规则与 2 对 i18n 键（零死类、零死键）；守门升格为「概览默认零 SVG、零豁免」并断言 sparkline 全面退役。验证：`pnpm run check`、`pnpm test`、`pnpm run build`（CSS 634843 字节）、`pnpm run test:ui`、双主题 `node tests/visual-qa.cjs`、`node tests/width-walkthrough.cjs`（49 表面+32 交互）、`pnpm run test:quality`（回滚演练+发布资产）全部 EXIT=0。未 commit（工作树含同批在途改动，留待阶段收口）。
 
+## 本轮用户触发（2026-09-28：循证打卡模板批次）
+
+- [x] T-1525 循证模板批次——done（2026-09-28，用户指令：D-291 收官后调研习惯养成书评与 HowToLiveBetter 仓库设计新模板）。选型口径见 D-294：5 个与既有 67 模板不重叠、证据较强的新模板入 `src/catalog.ts` CHECKIN_TEMPLATES——读一页书（《掌控习惯》两分钟法则微习惯版）、按时服药（HowToLiveBetter 慢性病章：服药依从性价比最高）、定时起身（久坐章：count 工作日×6 打断久坐）、联系亲友（放松章/哈佛成人发展研究：关系是幸福感最强预测因素）、分散复习（学习章：分散练习+自测，证据 A 级）；「户外时间/无屏幕餐/即刻两分钟」等候选与既有散步/跑步/读一页书重叠被裁掉，保持精选。TEMPLATE_NAME_KEYS + i18n zh/en 各 10 键双语完备；template-gallery 守门 curated 上限 70→75 并新增循证批次存在性断言（缺任一即红）。验证：`pnpm run check`、`pnpm test`、`pnpm run build`（CSS 647610 字节，纯内容资产零新增样式）、`pnpm run test:ui`、浅/深主题 `node tests/visual-qa.cjs`、`node tests/width-walkthrough.cjs`、`pnpm run test:quality`（i18n 平价 2349/2349）全部 EXIT=0。
+
 ## 外部联动逻辑总账与治理深化（2026-09-27，用户点名）
 
 - [x] T-1503 外部联动逻辑盘点与功能分层
