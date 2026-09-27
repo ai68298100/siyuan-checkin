@@ -1622,6 +1622,8 @@ export default class CheckinPlugin extends Plugin {
     private historyPage = 0;
     private archivedQuery = "";
     private editingHistoryNoteId?: string;
+    /** T-1510 展开中的记录事实详情（事件 id，会话态，有界 50）。 */
+    private recordDetailsExpanded = new Set<string>();
     private summaryRequestId = 0;
     private currentDateKey = dateKey(new Date());
     private midnightTimer?: number;
@@ -4806,6 +4808,7 @@ export default class CheckinPlugin extends Plugin {
             analysisHistoryCount: this.analysisHistory.length,
             summaryProvidersCount: this.summaryProviders.size,
             editingHistoryNoteId: this.editingHistoryNoteId,
+            recordDetailsExpanded: this.recordDetailsExpanded,
             reminderFilter: this.reminderFilter,
             reminderUserActions: this.reminderUserActions,
             reminderAdvanceOnce: this.occasionRemindOnce,

@@ -8,9 +8,8 @@
 
 - [x] T-1509 外部失败记录待处理箱（P0）——done（2026-09-27，local-auto，口径 D-293）。新增 features/external-pending.ts（零运行时依赖）：有界箱（容量 40/保留期 14 天显式常量）、入箱按 source+itemId+externalRef 合并、满员显式拒绝、fail-closed 归一化、planExternalPendingRetry 重试决策（目标/映射/启用/墓碑/单位/日期全重查，拒绝不写绝不转投）。index.ts：recordExternalEvent 增加失败归因出口，仅 persist 失败入箱；独立存储桶 checkin-external-pending + 箱自身保存失败可见；启动恢复每条一次并出会话摘要；设置页外部来源区新增待处理箱（重试/丢弃带确认，空箱不渲染）；摄取报告新增 storageRetryable 与 blocked 区分。验证：check、主链、build、test:ui、test:ecosystem、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done；剩余边界（跨窗口会话身份、未收到的监听事件）仍归 T-1508 上游边界，不因本任务关闭。
-- [ ] T-1510 单条记录事实详情（P0）
-  - 范围与验收：展开数值、计量方式、生效修订与来源归属，缺证据明确未知。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1510 单条记录事实详情（P0）——done（2026-09-27，local-auto）。新纯模块 features/record-details.ts：buildRecordDetails 只读投影（记录日期/时刻/实际数值单位/计量方式/生效修订/归属项目六行固定序）；计量方式仅按登记前缀与来源确证（微信读书日汇总/完读/笔记、健康步数体重、笔记推导、Task Horizon、思阅/思播片段、叶归、番茄、导入、手动），api 无登记前缀如实未知；生效修订取事件日期修订历史（getItemRevisionForDate），项目已删除或修订缺失标未知，绝不以当前配置反推；externalRef 敏感身份不进投影。回顾页历史行新增「详情」切换（aria-expanded，跳过行不显示），展开面板零写入，焦点与滚动经 renderReviewPreservingView 保持；展开集会话态有界 50。新守门 tests/record-details.test.cjs 入主链（20/15 分钟两条、官方日汇总、手动/导入/未知来源、规则缺失、跨日事件夹具 + 接线 + 双语 20 键）。测试驱动修正健康身份前缀规则（health:<itemId>:<metric> 实际格式）。验证：check、主链、build（CSS 635504）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1511 批量补记实际数量与提交预览（P0）
   - 范围与验收：逐项实际值、类型排除原因、确认复核、失败回滚。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

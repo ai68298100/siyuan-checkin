@@ -10,6 +10,7 @@ import {renderReviewCompareSection, renderReviewCompareItems} from "./review-com
 import {buildYearHeatmap, renderBarChart, renderLineChart, renderWeeklyHeatmap, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {buildRecordTrust} from "../features/record-trust";
+import {buildRecordDetails} from "../features/record-details";
 import {renderUpcomingOccasionsView} from "./fragments";
 import type {CheckinEvent, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -70,6 +71,8 @@ export interface ReviewViewContext {
     reminderAdvanceOnce?: boolean;
     /** T-1490 信任层：仍生效的时长结算绑定（当前偏好快照，缺省不派生阈值原因）。 */
     trustThresholds?: Array<{source: string; itemId: string; value: number}>;
+    /** T-1510 展开中的记录事实详情（事件 id，会话态；可选：旧桩缺省按全收起）。 */
+    recordDetailsExpanded?: ReadonlySet<string>;
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -213,10 +216,35 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const trust = buildRecordTrust(event, {threshold: ctx.trustThresholds?.find((entry) => entry.source === event.source && entry.itemId === event.itemId)});
         const sourceBadge = trust.auto ? `<span class="lc-checkin__source-badge">${escapeHtml(sourceLabel)}</span>` : escapeHtml(sourceLabel);
         const trustReason = trust.reasonKey ? `<small class="lc-checkin__record-reason">${escapeHtml(t(trust.reasonKey, trust.reasonParams))}</small>` : "";
+        /* T-1510 记录事实详情：展开只读显示日期/时间/实际值/计量方式/生效修订/归属；
+           敏感外部身份不进投影；缺证据标未知，不用当前配置反推历史。预览零写入。 */
+        const detailsOpen = ctx.recordDetailsExpanded?.has(event.id) ?? false;
+        const detailsButton = isSkipEvent(event) ? "" : `<button class="lc-checkin__text-button" type="button" data-record-details="${escapeHtml(event.id)}" aria-expanded="${detailsOpen}" aria-label="${escapeHtml(t("review.detailsActionAria", {name: itemName}))}">${t("review.detailsAction")}</button>`;
+        const detailsPanel = (() => {
+            if (!detailsOpen || isSkipEvent(event)) return "";
+            const owner = ctx.store.items.find((item) => item.id === event.itemId);
+            let revision;
+            if (owner) {
+                try {
+                    revision = getItemRevisionForDate(owner, calendarDateFromKey(getEventDateKey(event)));
+                } catch {
+                    revision = undefined;
+                }
+            }
+            const projection = buildRecordDetails(event, {
+                revision: revision ? {effectiveDate: revision.effectiveDate, kind: revision.kind, target: revision.target, unit: revision.unit} : undefined,
+                itemName: owner?.name,
+            });
+            const rows = projection.rows.map((row) => {
+                const valueText = row.isKey ? escapeHtml(t(row.text, row.params)) : row.labelKey === "review.detailsRow.time" ? escapeHtml(new Date(row.text).toLocaleString(getPluginLocale(), {year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"})) : escapeHtml(row.text);
+                return `<div class="lc-checkin__record-details-row"><span>${escapeHtml(t(row.labelKey))}</span><span${row.unknown ? ' class="is-unknown"' : ""}>${valueText}</span></div>`;
+            }).join("");
+            return `<div class="lc-checkin__record-details" data-record-details-panel="${escapeHtml(event.id)}" role="group" aria-label="${escapeHtml(t("review.detailsPanelAria"))}">${rows}</div>`;
+        })();
         /* T-1221：跳过行显示中性徽章而非数值列。 */
         const skipBadge = isSkipEvent(event) ? `<span class="lc-checkin__history-skip-badge">${escapeHtml(t("review.skipBadge"))}</span>` : "";
         const valueLabel = isSkipEvent(event) ? "" : `<span class="lc-checkin__history-event-value">${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</span>`;
-        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span><time datetime="${escapeHtml(event.occurredAt)}" title="${escapeHtml(time)}">${escapeHtml(clock)}</time> · ${sourceBadge}${skipBadge}</span>${trustReason}${note}${noteEditor}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
+        return `<div class="lc-checkin__history-event${isSkipEvent(event) ? " is-skip" : ""}">${photoThumb}<div class="lc-checkin__history-event-main"><strong>${escapeHtml(itemName)}</strong><span><time datetime="${escapeHtml(event.occurredAt)}" title="${escapeHtml(time)}">${escapeHtml(clock)}</time> · ${sourceBadge}${skipBadge}</span>${trustReason}${note}${noteEditor}${detailsPanel}</div>${valueLabel}<div class="lc-checkin__history-event-actions">${ctx.store.items.some((item) => item.id === event.itemId && !item.archived) ? `<button class="lc-checkin__text-button" type="button" data-history-insights-id="${escapeHtml(event.itemId)}" aria-label="${escapeHtml(t("review.insightsActionAria", {name: itemName}))}">${t("review.insightsAction")}</button>` : ""}${detailsButton}<button class="lc-checkin__text-button" type="button" data-edit-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.noteActionAria", {name: itemName, time}))}">${t("review.noteAction")}</button><button class="lc-checkin__text-button" type="button" data-history-event-id="${escapeHtml(event.id)}" aria-label="${escapeHtml(t("review.undoActionAria", {name: itemName, time}))}">${t("review.undoAction")}</button></div></div>`;
     };
     const page = Math.min(Math.max(0, ctx.historyPage || 0), Math.max(0, Math.ceil(filteredRecords.length / 30) - 1));
     const pageRecords = filteredRecords.slice(page * 30, (page + 1) * 30);

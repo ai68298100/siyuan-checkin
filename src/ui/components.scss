@@ -10308,6 +10308,38 @@ details:not([open]) > :not(summary) { display: none !important; }
     font-size: 10.5px;
     line-height: 1.5;
 }
+/* T-1510 记录事实详情：只读行列表；未知项弱化呈现（文字仍可读，不只靠颜色）。 */
+.lc-checkin__record-details {
+    display: grid;
+    gap: 3px;
+    margin: 6px 0 2px;
+    padding: 8px 10px;
+    border: 1px solid var(--lc-checkin-border);
+    border-radius: var(--lc-checkin-radius-sm);
+    background: var(--lc-checkin-muted-surface);
+}
+.lc-checkin__record-details-row {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 10.5px;
+    line-height: 1.5;
+}
+.lc-checkin__record-details-row > span:first-child {
+    flex: none;
+    color: var(--lc-checkin-muted);
+}
+.lc-checkin__record-details-row > span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}
+.lc-checkin__record-details-row > .is-unknown {
+    color: var(--lc-checkin-muted);
+    font-style: italic;
+}
 
 /* T-1222 今日卡跳过态：中性虚线标签，卡片仍可正常打卡（完成优先）。 */
 .lc-checkin__item-tag.is-skip-tag {

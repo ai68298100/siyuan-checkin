@@ -50,6 +50,8 @@ export interface BindPageNavigationHost {
     analysisHistory: import("../agent-suggestions").AgentAnalysisSnapshot[];
     summaryRequestId: number;
     editingHistoryNoteId?: string;
+    /** T-1510 展开中的记录事实详情（事件 id，会话态）。 */
+    recordDetailsExpanded?: Set<string>;
     disposed: boolean;
     disposing: boolean;
     bindDialogClose(root: HTMLElement): void;
@@ -564,6 +566,21 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             input.focus({preventScroll: true});
             input.setSelectionRange(input.value.length, input.value.length);
         }
+    }));
+    /* T-1510 记录事实详情：切换展开集合并重渲染；焦点经 renderReviewPreservingView
+       回到同一切换按钮，滚动位置保持。展开集有界（50），不触碰事件存储。 */
+    root.querySelectorAll<HTMLElement>("[data-record-details]").forEach((button) => button.addEventListener("click", () => {
+        const eventId = button.dataset.recordDetails || "";
+        if (!eventId || !getEventById(host.store, eventId)) return;
+        const expanded = host.recordDetailsExpanded ?? (host.recordDetailsExpanded = new Set<string>());
+        if (expanded.has(eventId)) {
+            expanded.delete(eventId);
+        } else {
+            if (expanded.size >= 50) expanded.clear();
+            expanded.add(eventId);
+            host.editingHistoryNoteId = undefined;
+        }
+        renderReviewPreservingView(`[data-record-details="${CSS.escape(eventId)}"]`);
     }));
     root.querySelectorAll<HTMLElement>("[data-save-history-note-id]").forEach((button) => button.addEventListener("click", () => {
         const event = getEventById(host.store, button.dataset.saveHistoryNoteId);
