@@ -61,6 +61,8 @@ export function planSourceDisconnect(source: string, events: readonly {source?: 
     for (const event of events) {
         const belongsToSource = source === "health"
             ? event.source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("health:")
+            : source === "notequery"
+                ? event.source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("notequery:")
             : event.source === source;
         if (!belongsToSource) continue;
         retainedEvents += 1;
@@ -96,6 +98,7 @@ export function summarizePrivacyControlPlane(preferences: {
     sireaderIntegration?: {enabled?: boolean};
     siplayerIntegration?: {enabled?: boolean};
     healthInbox?: {enabled?: boolean};
+    noteQuery?: {enabled?: boolean; targetId?: string};
     wereadIntegration?: {enabled?: boolean};
     yeguifIntegration?: {enabled?: boolean};
 }): PrivacyControlPlaneSummary {
@@ -118,6 +121,7 @@ export function summarizePrivacyControlPlane(preferences: {
             external("sireader", source.sireaderIntegration),
             external("siplayer", source.siplayerIntegration),
             external("health", source.healthInbox),
+            external("notequery", source.noteQuery),
             external("weread", source.wereadIntegration),
             external("yeguif", source.yeguifIntegration),
         ],

@@ -209,6 +209,25 @@ const qaFrontend = process.env.CHECKIN_QA_FRONTEND || "desktop";
     if (await filterDisclosure.count()) {
         await filterDisclosure.evaluate((element) => { element.open = true; });
     }
+    const quickEntryEventsBefore = await page.evaluate(() => window.siyuanCheckin.getEvents().length);
+    await page.locator("[data-today-search]").fill("30分钟");
+    await page.waitForTimeout(220);
+    assert.equal(await page.locator("[data-action='quick-entry-record']").count(), 0, "a bare amount must not choose a project");
+    await page.locator("[data-today-search]").fill("深度阅读 30分钟");
+    await page.waitForTimeout(220);
+    assert.equal(await page.locator("[data-action='quick-entry-record'][data-item-id='reading']").count(), 1, "one named compatible project exposes a record action");
+    await page.locator("[data-today-search]").fill("明天 深度阅读 30分钟");
+    await page.waitForTimeout(220);
+    assert.equal(await page.locator("[data-action='quick-entry-record']").count(), 0, "a future date stays preview-only");
+    await page.locator("[data-today-search]").fill("深度阅读 30分钟");
+    await page.waitForTimeout(220);
+    await page.locator("[data-action='cancel-quick-entry'][data-quick-entry-token^='value:']").click();
+    assert.equal(await page.locator("[data-action='quick-entry-record']").count(), 0, "cancelled value cannot be submitted");
+    const quickEntryEventsAfter = await page.evaluate(() => window.siyuanCheckin.getEvents().length);
+    assert.equal(quickEntryEventsAfter, quickEntryEventsBefore, "preview and cancellation do not write events");
+    results.quickEntry = {bareValueBlocked: true, namedTarget: "reading", futureBlocked: true, cancelledBlocked: true, eventsUnchanged: true};
+    await page.locator("[data-today-search]").fill("");
+    await page.waitForTimeout(220);
     await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "time"; el.dispatchEvent(new Event("change", {bubbles: true})); });
     const timeGroupCount = await page.locator("[data-group-toggle]").count();
     await page.evaluate(() => { const el = document.querySelector("[data-group-mode]"); el.value = "priority"; el.dispatchEvent(new Event("change", {bubbles: true})); });

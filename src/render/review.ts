@@ -7,7 +7,7 @@ import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type 
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
 import {summarizeProjectDraft} from "../features/project-draft";
 import {renderReviewCompareSection, renderReviewCompareItems} from "./review-compare";
-import {buildYearHeatmap, renderBarChart, renderLineChart, renderSparkline, renderWeeklyHeatmap, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
+import {buildYearHeatmap, renderBarChart, renderLineChart, renderWeeklyHeatmap, renderYearHeatmap, summarizeAnalyticsSnapshot, summarizeTrend, type AnalyticsSnapshot} from "../charts";
 import {buildAchievements} from "../features/achievements";
 import {buildRecordTrust} from "../features/record-trust";
 import {renderUpcomingOccasionsView} from "./fragments";
@@ -41,6 +41,7 @@ export interface ReviewViewContext {
     appearance: "light" | "dark";
     historyMonth: Date;
     selectedHistoryDate: string;
+    historyBatchSelected?: ReadonlySet<string>;
     historyQuery: string;
     historySource: HistorySourceFilter;
     historyOrder: HistorySortOrder;
@@ -173,6 +174,11 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         event,
         itemName: itemNames.get(event.itemId) || t("review.deletedItem"),
     }));
+    const batchCandidates = ctx.historyScope === "day" && ctx.selectedHistoryDate <= today
+        ? activeItems.filter((item) => !item.archived && isItemAvailableOnDate(item, calendarDateFromKey(ctx.selectedHistoryDate))
+            && isScheduledToday(item, calendarDateFromKey(ctx.selectedHistoryDate))
+            && !selectedEvents.some((event) => event.itemId === item.id)) : [];
+    const batchTools = batchCandidates.length ? `<section class="review-batch-tools" aria-label="${t("review.batchTitle")}"><strong>${t("review.batchTitle")}</strong><div class="review-batch-items">${batchCandidates.map((item) => `<label><input type="checkbox" data-history-batch-item="${escapeHtml(item.id)}" ${ctx.historyBatchSelected?.has(item.id) ? "checked" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("")}</div><div class="review-batch-actions"><button type="button" data-history-batch-action="record" ${ctx.historyBatchSelected?.size ? "" : "disabled"}>${t("review.batchRecord")}</button><button type="button" data-history-batch-action="skip" ${ctx.historyBatchSelected?.size ? "" : "disabled"}>${t("review.batchSkip")}</button></div></section>` : "";
     const filteredRecords = filterHistoryRecords(selectedRecords.filter(record => !ctx.historyItemId || record.event.itemId === ctx.historyItemId), {
         query: ctx.historyQuery,
         source: ctx.historySource,
@@ -248,7 +254,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         <div class="lc-checkin__review-detail">
             ${historyTools}${hasHistoryFilter ? `<div class="lc-checkin__history-result" role="status" aria-live="polite"><span>${resultLabel}</span><button class="lc-checkin__text-button" type="button" data-action="clear-history-filters">${t("review.clearFilters")}</button></div>` : ""}
             ${ctx.historyScope === "day" && aggregateDetails ? `<details class="review-day-totals"><summary>${t("review.historyAggregate")}</summary>${aggregateDetails}</details>` : ""}
-            <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${ctx.historyScope === "day" ? escapeHtml(formatHistoryDate(ctx.selectedHistoryDate)) : t("review.scopePeriod")}</strong><span>${t("review.recordsCount", {n: filteredEvents.length})}</span></div>${eventDetails}</section>
+            <section class="lc-checkin__history-selected"><div class="lc-checkin__history-date"><strong>${ctx.historyScope === "day" ? escapeHtml(formatHistoryDate(ctx.selectedHistoryDate)) : t("review.scopePeriod")}</strong><span>${t("review.recordsCount", {n: filteredEvents.length})}</span></div>${batchTools}${eventDetails}</section>
         </div></div>`;
 
     };
@@ -491,13 +497,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             ${fold("reminders", t("review.foldReminders"), renderReminders)}
             ${fold("upcoming", t("review.foldUpcoming"), () => renderUpcomingOccasionsView(ctx.occasionStore))}
           </div>`
-        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${(() => {
-            /* R-16.2 sparkline：近 30 日记录趋势迷你线（数据来自既有 analytics daily 序列，零新口径）。 */
-            const sparkValues = ctx.analyticsSnapshot.daily.points.slice(-30).map((point) => point.value);
-            if (!sparkValues.length) return "";
-            const days = sparkValues.length;
-            return `<div class="lc-checkin__stat-spark" data-stat-spark-days="${days}">${renderSparkline(sparkValues, {ariaLabel: t("review.statsSparkAria", {days})})}<span>${t("review.statsSparkLabel", {days})}</span></div>`;
-        })()}${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
+        : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
             ${renderRhythm()}<div class="lc-checkin__review-sections">
             ${fold("projects", `${t("review.foldProjects")} · ${summary.items.length}`, renderProjects)}
             ${assistantEntry}

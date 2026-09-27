@@ -24,6 +24,7 @@ fs.mkdirSync(path.join(dir, "features"), {recursive: true});
 fs.writeFileSync(path.join(dir, "features", "note-anchor.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "features", "note-anchor.ts"), "utf8"), {compilerOptions}).outputText);
 fs.writeFileSync(path.join(dir, "date-keys.js"), ts.transpileModule(fs.readFileSync(path.join(root, "src", "date-keys.ts"), "utf8"), {compilerOptions}).outputText);
 const health = load("features/health-inbox.ts", "features/health-inbox.js");
+const notequery = load("features/note-query.ts", "features/note-query.js");
 
 const governance = framework.normalizeSourceGovernance({enabled: true, thresholdValue: 0, dailyCapValue: 0, itemIds: ["item-1"]});
 assert.equal(governance.enabled, true);
@@ -33,6 +34,7 @@ const SOURCES = [
     {key: "sireader", ref: (localDate) => sireader.buildSireaderExternalRef("item-1", localDate)},
     {key: "siplayer", ref: (localDate) => siplayer.buildSiplayerExternalRef("item-1", localDate)},
     {key: "health", ref: (localDate) => health.buildHealthExternalRef("item-1", "steps", localDate)},
+    {key: "notequery", ref: (localDate) => notequery.buildNoteQueryExternalRef("item-1", "20260927090000-block001", localDate)},
 ];
 
 for (const source of SOURCES) {
@@ -113,10 +115,28 @@ for (const source of SOURCES) {
 /* —— 契约对齐：externalRefPrefixes 清单覆盖全部已注册身份前缀 —— */
 const kitManifest = JSON.parse(fs.readFileSync(path.join(root, "contracts", "siyuan-checkin-contract", "manifest.json"), "utf8"));
 const declaredPrefixes = kitManifest.externalRefPrefixes.map((entry) => entry.prefix);
-for (const prefix of ["docktomato:", "taskhorizon:", "obsidian21:", "sireader:", "siplayer:", "health:"]) {
+for (const prefix of ["docktomato:", "taskhorizon:", "obsidian21:", "sireader:", "siplayer:", "health:", "notequery:"]) {
     assert.ok(declaredPrefixes.includes(prefix), `契约前缀清单必须包含 ${prefix}`);
 }
 const repoDocsManifest = JSON.parse(fs.readFileSync(path.join(root, "docs", "contracts", "checkin-api-v5.json"), "utf8"));
 assert.deepEqual(kitManifest.externalRefPrefixes, repoDocsManifest.externalRefPrefixes, "契约两份前缀清单一致");
 
-console.log("source-lifecycle-matrix tests passed: 思阅/思播/健康 × 正常接入/跨日切段/重复幂等/异常 fail-closed + 超限批 + 健康行解析 + 契约前缀对齐 全部通过");
+/* —— 笔记推导来源：固定模板、日期投影、手动互斥与墓碑沿用统一身份 —— */
+{
+    const preference = {enabled: true, template: "frontmatter", scope: "notebook", targetId: "20260927090000-abcd123", itemId: "item-1", field: "checkin", value: "done", tag: "checkin"};
+    const rows = [
+        {id: "20260927090100-block001", content: "checkin: done", root_ial: "custom-dailynote-20260927"},
+        {id: "20260927090101-block002", content: "checkin: todo", root_ial: "custom-dailynote-20260927"},
+        {id: "20260927090102-block003", content: "checkin: done", root_hpath: "/日记/2026-09-26"},
+    ];
+    const entries = notequery.parseNoteQueryRows(rows, preference);
+    assert.equal(entries.length, 2, "notequery: 只投影完整标记且可定位日期的笔记块");
+    assert.match(entries[0].externalRef, /^notequery:item-1:/, "notequery: 稳定身份前缀");
+    const entry = entries[0];
+    const manual = {itemId: "item-1", localDate: entry.localDate, source: "manual", externalRef: undefined};
+    assert.equal(notequery.noteQueryIngestDecision([manual], [], entry, "item-1"), "manual-conflict", "notequery: 同日手动事实优先");
+    assert.equal(notequery.noteQueryIngestDecision([], [{itemId: "item-1", source: "api", externalRef: entry.externalRef}], entry, "item-1"), "tombstoned", "notequery: 墓碑阻止复活");
+    assert.equal(notequery.noteQueryIngestDecision([], [], entry, "item-1"), "write", "notequery: 无冲突时允许写入");
+}
+
+console.log("source-lifecycle-matrix tests passed: 思阅/思播/健康/笔记查询 × 正常接入/跨日切段/重复幂等/异常 fail-closed + 超限批 + 健康行解析 + 笔记模板互斥 + 契约前缀对齐 全部通过");

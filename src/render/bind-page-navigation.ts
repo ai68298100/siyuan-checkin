@@ -35,6 +35,8 @@ export interface BindPageNavigationHost {
     reviewAssistantGoal: ReviewAssistantGoal;
     heatmapYearOffset: number;
     selectedHistoryDate: string;
+    historyBatchSelected: Set<string>;
+    recordHistoryBatch(date: string, itemIds: string[], action: "record" | "skip"): Promise<number>;
     archivedQuery: string;
     summaryRange: "day" | "week" | "month";
     summaryCustomRange?: {startDate: string; endDate: string};
@@ -293,6 +295,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const value = control.tagName === "SELECT" ? (control as HTMLSelectElement).value : control.dataset.historyScope;
         if (value !== "day" && value !== "period") return;
         host.historyScope = value;
+        host.historyBatchSelected?.clear();
         host.historyPage = 0;
         host.editingHistoryNoteId = undefined;
         renderReviewPreservingView(control.tagName === "SELECT" ? "select[data-history-scope]" : `[data-history-scope="${value}"]`);
@@ -490,11 +493,31 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const value = button.dataset.historyDate;
         if (value) {
             host.selectedHistoryDate = value;
+            host.historyBatchSelected?.clear();
             host.historyScope = "day";
             host.historyPage = 0;
             host.editingHistoryNoteId = undefined;
             renderReviewPreservingView(`[data-history-date="${CSS.escape(value)}"]`);
         }
+    }));
+    root.querySelectorAll<HTMLInputElement>("[data-history-batch-item]").forEach((input) => input.addEventListener("change", () => {
+        const id = input.dataset.historyBatchItem;
+        if (!id) return;
+        if (input.checked) host.historyBatchSelected.add(id);
+        else host.historyBatchSelected.delete(id);
+        root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((button) => { button.disabled = host.historyBatchSelected.size === 0; });
+    }));
+    root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((button) => button.addEventListener("click", async () => {
+        const action = button.dataset.historyBatchAction;
+        if (action !== "record" && action !== "skip" || !host.historyBatchSelected.size) return;
+        const ids = [...host.historyBatchSelected];
+        if (!window.confirm(t("review.batchConfirm", {n: ids.length, action: t(action === "record" ? "review.batchRecord" : "review.batchSkip")}))) return;
+        button.textContent = t("review.batchWorking");
+        button.setAttribute("aria-busy", "true");
+        root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((control) => { control.disabled = true; });
+        const count = await host.recordHistoryBatch(host.selectedHistoryDate, ids, action);
+        showMessage(t(count ? "review.batchDone" : "review.batchNoop", {n: count}));
+        renderReviewPage("[data-history-batch-item]");
     }));
     root.querySelectorAll<HTMLElement>("[data-history-event-id]").forEach((button) => button.addEventListener("click", () => {
         const eventId = button.dataset.historyEventId;

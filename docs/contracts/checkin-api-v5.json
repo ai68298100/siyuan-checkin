@@ -224,15 +224,19 @@
     },
     {
       "prefix": "sireader:",
-      "format": "sireader:<itemId>:<localDate>"
+      "format": "sireader:<itemId>:<startUnixMs>:<localDate>"
     },
     {
       "prefix": "siplayer:",
-      "format": "siplayer:<itemId>:<localDate>"
+      "format": "siplayer:<itemId>:<startUnixMs>:<localDate>"
     },
     {
       "prefix": "health:",
       "format": "health:<metric>:<localDate> or health:<itemId>:<metric>:<localDate>"
+    },
+    {
+      "prefix": "notequery:",
+      "format": "notequery:<itemId>:<blockId>:<localDate>"
     },
     {
       "prefix": "weread:",

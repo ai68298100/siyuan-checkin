@@ -1,6 +1,7 @@
 /* R-A16（2026-09-26）轻量 SVG 视觉件守门：完成度环（dash 数学/钳制/完成态/aria）、
-   sparkline（点数映射/空序列/确定性）、行动台与回顾页接线、i18n 双语、
-   静态零动效（D-263）与单色 accent 阶梯（T-1461）在位。 */
+   行动台接线、i18n 双语、静态零动效（D-263）与单色 accent 阶梯（T-1461）在位。
+   D-292（2026-09-27）：概览统计区迷你趋势线（R-16.2 sparkline）按用户反馈移除，
+   趋势呈现由分析工作区既有趋势图唯一承载；本文件不再守门 sparkline。 */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -32,37 +33,28 @@ const charts = require(path.join(outputRoot, "src/charts.js"));
     assert.match(charts.renderCompletionRing(Number.NaN), /stroke-dasharray="0\.00 /, "non-finite input fails closed to 0");
 }
 
-/* —— 2. sparkline：点序列映射为 polyline 坐标，空序列占位，确定性。 —— */
-{
-    const spark = charts.renderSparkline([0, 5, 10], {width: 100, height: 20, ariaLabel: "trend"});
-    assert.match(spark, /aria-label="trend"/, "aria label passes through");
-    assert.match(spark, /points="2\.0,18\.0 50\.0,10\.0 98\.0,2\.0"/, "points normalize to the box (max=10, 2px padding)");
-    assert.match(charts.renderSparkline([7]), /points="2\.0,2\.0"/, "single point at the max sits on the top edge");
-    assert.match(charts.renderSparkline([0.5]), /points="2\.0,12\.0"/, "sub-1 values use the max floor of 1 (half-height)");
-    assert.equal(charts.renderSparkline([]), `<span class="lc-checkin__spark is-empty" aria-hidden="true"></span>`, "empty series renders a placeholder");
-    assert.equal(charts.renderSparkline([1, 2, 3]), charts.renderSparkline([1, 2, 3]), "deterministic output");
-    assert.doesNotMatch(charts.renderSparkline([NaN, 3]).match(/points="([^"]+)"/)[1], /NaN/, "non-finite values fail closed to 0");
-}
-
-/* —— 3. 接线：行动台摘要条带环、回顾页统计带 sparkline，均复用既有数据投影。 —— */
+/* —— 2. 接线：行动台摘要条带环，复用既有数据投影。 —— */
 const fragmentsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "fragments.ts"), "utf8");
 assert.match(fragmentsSource, /renderCompletionRing\(dashboard\.totals\.completionRate/, "console ring consumes the existing dashboard projection");
 assert.match(fragmentsSource, /today\.consoleRingAria/, "ring aria uses the i18n key");
 
+/* D-292：概览统计区不再渲染任何图表（含旧 sparkline）。 */
 const reviewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "review.ts"), "utf8");
-assert.match(reviewSource, /ctx\.analyticsSnapshot\.daily\.points\.slice\(-30\)/, "sparkline reuses the daily analytics series (no new metric)");
-assert.match(reviewSource, /renderSparkline\(sparkValues/, "review renders the sparkline");
+assert.doesNotMatch(reviewSource, /renderSparkline|stat-spark|statsSpark/, "overview stats render no sparkline (D-292)");
+const chartsSource = fs.readFileSync(path.join(__dirname, "..", "src", "charts.ts"), "utf8");
+assert.doesNotMatch(chartsSource, /renderSparkline|lc-checkin__spark/, "sparkline helper is fully retired");
 
-/* —— 4. i18n 双语 + 样式在位（accent 单色、零动效）。 —— */
+/* —— 3. i18n 双语 + 样式在位（accent 单色、零动效）。 —— */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
-for (const key of ["today.consoleRingAria", "review.statsSparkAria", "review.statsSparkLabel"]) {
+for (const key of ["today.consoleRingAria"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;
     assert.ok(count >= 2, `${key} must exist in both locales (${count})`);
 }
+assert.ok(!i18nSource.includes("statsSpark"), "retired sparkline i18n keys are removed");
 const scss = fs.readFileSync(path.join(__dirname, "..", "src", "ui", "components.scss"), "utf8");
 assert.match(scss, /\.lc-checkin__ring-value \{ stroke: var\(--lc-checkin-accent\); \}/, "ring value stays on the accent ladder");
 assert.match(scss, /\.lc-checkin__completion-ring\.is-complete \.lc-checkin__ring-value \{ stroke: var\(--lc-checkin-success\); \}/, "complete state uses success color");
-assert.ok(!/\.lc-checkin__completion-ring[^]*transition/.test(scss.split(".lc-checkin__stat-spark")[0].split("R-A16（2026-09-26）")[1] || ""), "ring stays static (D-263 no motion)");
-assert.match(scss, /\.lc-checkin__spark-line \{ stroke: var\(--lc-checkin-accent\); \}/, "sparkline stays on the accent ladder");
+assert.ok(!/\.lc-checkin__completion-ring[^]*transition/.test(scss.split(".lc-checkin__renderblock-today-summary")[0].split("R-A16（2026-09-26）")[1] || ""), "ring stays static (D-263 no motion)");
+assert.ok(!scss.includes("lc-checkin__spark"), "sparkline styles are removed (zero dead classes)");
 
 console.log("stats visuals guard tests passed.");

@@ -199,8 +199,11 @@ T-1391：有界「项目 × 日期」只读日历投影，面向日历类消费�
 
 ## 6. externalRef 幂等身份
 
+当前思阅和思播的新记录按完整片段生成身份：`sireader:<itemId>:<startUnixMs>:<localDate>`、`siplayer:<itemId>:<startUnixMs>:<localDate>`。下方旧的每日格式及此前短暂使用的分钟桶格式仅描述已写入历史，继续可读取但不再用于新片段。
+
 - 同一外部事件**永远**使用相同 `source + externalRef`；重复写入返回已有事件副本，不产生重复记录。
-- 前缀登记处：`docktomato:<sessionId>`、`taskhorizon:<blockId>:<localDate>`、`obsidian21:<filename>:<localDate>`、`sireader:<itemId>:<localDate>`、`siplayer:<itemId>:<localDate>`、`health:<itemId>:<metric>:<localDate>`、`weread:<itemId>:<localDate>`（时长；完读 `weread:<itemId>:finish:<bookId>:<localDate>`、笔记计数 `weread:<itemId>:notes:<localDate>`）、`yeguif:<blockId>:<localDate>`（叶归 LifeLog，与来源框架治理注册表一致）；新生态来源按 [identity-and-merge.md](identity-and-merge.md) 规则登记前缀，禁止使用已登记前缀伪装他方事件，禁止伪装 `source: "manual"`。
+- 前缀登记处：`docktomato:<sessionId>`、`taskhorizon:<blockId>:<localDate>`、`obsidian21:<filename>:<localDate>`、`sireader:<itemId>:<localDate>`、`siplayer:<itemId>:<localDate>`、`health:<itemId>:<metric>:<localDate>`、`notequery:<itemId>:<blockId>:<localDate>`（笔记查询推导；事件仍走 `source: "api"`）、`weread:<itemId>:<localDate>`（时长；完读 `weread:<itemId>:finish:<bookId>:<localDate>`、笔记计数 `weread:<itemId>:notes:<localDate>`）、`yeguif:<blockId>:<localDate>`（叶归 LifeLog，与来源框架治理注册表一致）；新生态来源按 [identity-and-merge.md](identity-and-merge.md) 规则登记前缀，禁止使用已登记前缀伪装他方事件，禁止伪装 `source: "manual"`。
+- `notequery:` 只允许由 [笔记推导接入指南](note-query-integration.md) 的固定只读模板生成；查询必须显式 opt-in 且绑定单一文档/笔记本与单一项目，不能把任意 SQL、自然语言或未登记字段写入事件。
 - 同步失败时保留原始引用重试，不要生成新的随机引用。
 
 ## 7. 集成事件

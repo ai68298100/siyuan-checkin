@@ -24,6 +24,7 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
 (async () => {
     const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
     const violations = [];
+    const smallTargets = new Map();
     let checkedPairs = 0;
 
     for (const dark of [false, true]) {
@@ -95,10 +96,16 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                     return style.visibility !== "hidden" && style.display !== "none";
                 };
                 const problems = [];
+                const small = [];
                 /* 1. 交互元素的可访问名称。 */
                 const interactive = container.querySelectorAll("button, a, input, select, textarea, [tabindex]:not([tabindex='-1'])");
                 for (const el of interactive) {
                     if (!visible(el)) continue;
+                    const bounds = el.getBoundingClientRect();
+                    const labelBounds = el.closest("label")?.getBoundingClientRect();
+                    if ((bounds.width < 24 || bounds.height < 24) && !(labelBounds && labelBounds.width >= 24 && labelBounds.height >= 24)) {
+                        small.push(`${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""} ${Math.round(bounds.width)}x${Math.round(bounds.height)} min ${getComputedStyle(el).minHeight} max ${getComputedStyle(el).maxHeight}`);
+                    }
                     const tag = el.tagName.toLowerCase();
                     let name = el.getAttribute("aria-label") || "";
                     if (!name) {
@@ -179,9 +186,10 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                         problems.push({kind: "contrast", surface: surfaceName, detail: `${ratio.toFixed(2)}:1 @${size}px ${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""} "${text.slice(0, 16)}"`});
                     }
                 }
-                return {problems, checked};
-            }, surfaceName).then(({problems: found, checked}) => {
+                return {problems, checked, small};
+            }, surfaceName).then(({problems: found, checked, small}) => {
                 checkedPairs += checked;
+                for (const target of small) smallTargets.set(target, (smallTargets.get(target) || 0) + 1);
                 for (const problem of found) violations.push({...problem, surface: auditName(problem.surface || surface)});
             });
         };
@@ -227,6 +235,8 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
     const positiveTab = violations.filter((v) => v.kind === "positive-tabindex");
     const contrast = violations.filter((v) => v.kind === "contrast");
     console.log(`accessibility audit: ${missingName.length} missing names, ${positiveTab.length} positive tabindex, ${contrast.length} contrast violations / ${checkedPairs} checked pairs (light+dark)`);
+    console.log(`target-size audit: ${smallTargets.size} distinct rendered controls below 24px without an enclosing label target`);
+    for (const [target, count] of [...smallTargets].slice(0, 30)) console.log(`  [target-size] ${target} x${count}`);
     assert.ok(checkedPairs > 0, "contrast audit must inspect rendered text");
     for (const item of [...missingName, ...positiveTab].slice(0, 40)) console.log(`  [${item.kind}] ${item.surface} ${item.detail}`);
     const contrastSeen = new Set();
@@ -240,6 +250,7 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
     /* 名称与 tabindex 必须零违规；对比度问题允许已知豁免数量内通过由阈值控制。 */
     assert.equal(missingName.length, 0, `interactive elements without accessible names: ${missingName.length}`);
     assert.equal(positiveTab.length, 0, `positive tabindex values: ${positiveTab.length}`);
+    assert.equal(smallTargets.size, 0, `rendered controls below 24px without an enclosing label target: ${smallTargets.size}`);
     assert.ok(contrast.length <= Number(process.env.CHECKIN_A11Y_CONTRAST_BUDGET || 0),
         `contrast violations ${contrast.length} exceed budget`);
     console.log("Accessibility audit passed.");

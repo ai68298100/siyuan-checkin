@@ -23,10 +23,13 @@ transpile("src/features/yeguif-adapter.ts");
 const adapter = require(path.join(dir, "src/features/yeguif-adapter.js"));
 const ecosystem = require(path.join(dir, "src/ecosystem.js"));
 
-assert.equal(adapter.resolveYeguifItemId(" 工作 ", [{project: "工作", itemId: "work-id"}], "fallback"), "work-id", "项目映射忽略首尾空白");
-assert.equal(adapter.resolveYeguifItemId("阅读", [{project: "工作", itemId: "work-id"}], "fallback"), "", "启用映射后未映射类型跳过而不猜测归属");
-assert.equal(adapter.resolveYeguifItemId("阅读", [], "fallback"), "fallback", "空映射时兼容旧版单目标配置");
-assert.equal(adapter.resolveYeguifItemId("阅读", [], ""), "", "未映射且无旧目标时拒绝归属猜测");
+const yeguifTargets = [{id: "stretch-id", name: "拉伸"}, {id: "read-id", name: "阅读"}];
+assert.equal(adapter.resolveYeguifItemId("拉伸", [], yeguifTargets), "stretch-id", "拉伸只对应同名拉伸打卡");
+assert.equal(adapter.resolveYeguifItemId("阅读", [], yeguifTargets), "read-id", "阅读只对应同名阅读打卡");
+assert.equal(adapter.resolveYeguifItemId("工作", [], yeguifTargets), "", "未知项目不回退到一个通用目标");
+assert.equal(adapter.resolveYeguifItemId("阅读", [], [...yeguifTargets, {id: "read-again", name: "阅读"}]), "", "同名目标不猜测");
+assert.equal(adapter.resolveYeguifItemId(" 拉伸 ", [{project: "拉伸", itemId: "read-id"}], yeguifTargets), "read-id", "显式映射优先于同名自动匹配");
+assert.equal(adapter.resolveYeguifItemId("阅读", [{project: "拉伸", itemId: "stretch-id"}], yeguifTargets), "", "存在显式映射时未配置的类型不得自动落入同名目标");
 assert.deepEqual(adapter.normalizeYeguifMappings([{project: "工作", itemId: "a"}, {project: "工作 ", itemId: "b"}, {project: "", itemId: "c"}]), [{project: "工作", itemId: "a"}], "映射去空和重复类型保留首条");
 
 /* Marker 解析：三种官方形态 + 类型/备注拆分。 */
@@ -62,7 +65,7 @@ assert.equal(adapter.buildYeguifEventNote("工作", ""), "工作");
 
 /* 偏好归一（内联于 view-preferences）：Key 缺失/笔记本缺失不物化。 */
 const vpCode = ts.transpileModule(fs.readFileSync(path.join(root, "src", "view-preferences.ts"), "utf8"), {compilerOptions}).outputText;
-assert.match(vpCode, /yeguifMappings\.length > 0/, "映射模式允许以多个映射项目启用");
+assert.match(vpCode, /enabled: yeguifSource\.enabled === true && Boolean\(yeguifNotebookId\)/, "同名自动匹配只需绑定笔记本即可启用");
 assert.match(vpCode, /yeguifIntegration: \{\s*enabled: false,\s*itemId: "",\s*notebookId: "",\s*mappings: \[\]\s*\}/, "默认关闭并初始化空映射");
 
 /* 宿主全触点。 */
@@ -76,7 +79,7 @@ assert.deepEqual(projected, configured, "both mappings survive settings projecti
 projected.mappings[0].project = 'changed';
 assert.equal(configured.mappings[0].project, '工作', "settings data cannot mutate persisted mapping objects");
 assert.match(indexSource, /source: "yeguif", externalRef/, "写路径打 yeguif 来源");
-assert.match(indexSource, /resolveYeguifItemId\(entry\.type, governance\.mappings \|\| \[\], governance\.itemId\)/, "每条 LifeLog 记录按项目映射目标");
+assert.match(indexSource, /resolveYeguifItemId\(entry\.type, governance\.mappings \|\| \[\], this\.store\.items\.filter/, "每条 LifeLog 记录仅在可用分钟项目中逐项匹配");
 assert.match(indexSource, /event\.source === "yeguif" && event\.externalRef === externalRef/, "块身份幂等守卫");
 assert.match(indexSource, /tombstone\.source === "yeguif" && tombstone\.externalRef === externalRef/, "墓碑永不重写");
 assert.ok((indexSource.match(/typeof document !== "undefined" && document\.hidden\) return/g) || []).length >= 3, "三大后台摄取均有不可见省电门");
@@ -101,7 +104,7 @@ assert.match(privacySource, /external\("yeguif", source\.yeguifIntegration\)/, "
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
 assert.match(settingsSource, /data-action="refresh-source" data-source="yeguif"/, "yeguif source exposes a manual refresh action");
 assert.match(indexSource, /source === "yeguif"\) await this\.ingestYeguif\(\)/, "yeguif refresh reuses the bounded ingest path");
-for (const hook of ["data-yeguif-integration", "data-yeguif-toggle", "data-yeguif-item", "data-yeguif-notebook", "load-yeguif-notebooks"]) {
+for (const hook of ["data-yeguif-integration", "data-yeguif-toggle", "data-yeguif-mappings", "data-yeguif-notebook", "load-yeguif-notebooks"]) {
     assert.ok(settingsSource.includes(hook), `设置面板必须包含 ${hook}`);
 }
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");

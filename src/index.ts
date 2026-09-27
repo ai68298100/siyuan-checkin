@@ -64,10 +64,12 @@ import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleTy
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName} from "./catalog";
 import {buildTemplatePackPreview} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
-import {HEALTH_INGEST_INTERVAL_MS, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
+import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
+import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
+import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -102,7 +104,7 @@ import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, parseObsidianHabitFile} from "./features/obsidian-habits";
 import {runDiarySearchRequest} from "./features/diary-search";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
-import {isTaskHorizonExternalRef} from "./ecosystem";
+import {isTaskHorizonExternalRef, TASK_HORIZON_CONTRACT} from "./ecosystem";
 
 const STORAGE_NAME = "checkin-store";
 const BACKUP_STORAGE_NAME = "checkin-store-backup";
@@ -240,6 +242,8 @@ export default class CheckinPlugin extends Plugin {
     private todayGroupMode: TodayGroupMode = DEFAULT_VIEW_PREFERENCES.groupMode;
     /** T-1502 默认打开方式：openCheckin 命令/热键的落点。 */
     private defaultOpenMode: "quick" | "tab" = DEFAULT_VIEW_PREFERENCES.defaultOpenMode;
+    private quickEntryNlp = DEFAULT_VIEW_PREFERENCES.quickEntryNlp;
+    private quickEntryCancelled = new Set<string>();
     private todaySortMode: CheckinItemSortMode = DEFAULT_VIEW_PREFERENCES.sortMode;
     private todayQuery = "";
     private pendingOnly = false;
@@ -412,12 +416,16 @@ export default class CheckinPlugin extends Plugin {
     healthInbox = {...DEFAULT_VIEW_PREFERENCES.healthInbox};
     private healthInboxTimer?: number;
     private healthInboxStartupTimers: number[] = [];
+    /* T-1500 笔记推导打卡（opt-in 默认关；固定只读 SQL）。 */
+    noteQuery: NoteQueryPreference = {...DEFAULT_VIEW_PREFERENCES.noteQuery};
+    private noteQueryTimer?: number;
     /* T-1402 微信读书联动（official-pull，opt-in 默认关）。 */
     wereadIntegration = {...DEFAULT_VIEW_PREFERENCES.wereadIntegration};
     private wereadTimer?: number;
     /* T-1457 叶归 LifeLog 联动（本地读取用户日记文档，opt-in 默认关）。 */
     yeguifIntegration = {...DEFAULT_VIEW_PREFERENCES.yeguifIntegration};
     private yeguifTimer?: number;
+    private sourceIngestReports: Partial<Record<DocumentSourceKey, SourceIngestReport>> = {};
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
     private wereadLastPull?: {ok: boolean; days: number; written: number; error?: string; upgrade?: string};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
@@ -1008,34 +1016,26 @@ export default class CheckinPlugin extends Plugin {
             });
         }
         const tracker = this.siplayerTracker;
-        const segments = tracker.sample(playing, Date.now());
-        if (segments.length) void this.writeSiplayerSegments(segments, governance.itemId, tracker);
+        const sampledAtMs = Date.now();
+        const segments = tracker.sample(playing, sampledAtMs);
+        if (segments.length) void this.writeSiplayerSegments(segments, governance.itemId, sampledAtMs);
     }
 
-    /* 累计结算 + 每日一次幂等写入：与思阅同构（见 writeSireaderSegments 注释）。 */
-    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, tracker: SiplayerPlaybackTracker): Promise<void> {
+    /* Each completed playback session yields one tombstone-protected event per local day. */
+    private async writeSiplayerSegments(segments: ReadonlyArray<{localDate: string; minutes: number; startedAtMs: number}>, expectedItemId: string, sampledAtMs: number): Promise<void> {
         const governance = this.siplayerIntegration;
         if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
         if (!this.hasMinuteTarget(governance.itemId)) return;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return;
-        const refFor = (localDate: string) => buildSiplayerExternalRef(governance.itemId, localDate);
-        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "siplayer" && event.externalRef === ref);
-        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === ref);
-        const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
-        const settlement = settleSegmentsToDays(
-            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker.dayTotal(localDate)})),
-            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
-            touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
-        );
-        for (const day of settlement.days) {
-            if (!day.qualifies) continue;
-            if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
-            const externalRef = refFor(day.localDate);
-            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
-            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
-            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "siplayer", externalRef}, moment, fingerprint));
+        for (const segment of segments) {
+            if (segment.minutes <= 0 || !this.hasMinuteTargetOnDate(governance.itemId, segment.localDate)) continue;
+            const externalRef = buildSiplayerExternalRef(governance.itemId, segment.localDate, segment.startedAtMs);
+            if (!externalRef || this.store.events.some((event) => event.source === "siplayer" && event.externalRef === externalRef)
+                || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "siplayer" && tombstone.externalRef === externalRef)) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
+            const moment = {occurredAt: new Date(sampledAtMs).toISOString(), localDate: segment.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "siplayer", externalRef}, moment, fingerprint));
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -1043,7 +1043,7 @@ export default class CheckinPlugin extends Plugin {
         }
     }
 
-    /* T-1384 思阅联动：生命周期事件 → 焦点片段 → 结算 → 每日一次幂等写入（opt-in 默认关）。
+    /* T-1384 思阅联动：生命周期事件 → 焦点片段 → 每段独立写入（opt-in 默认关）。
        监听思阅公开事件 reader:open/focus/blur/close；无事件信号时不做任何事。 */
     private bindSireaderListeners(): void {
         for (const type of ["reader:open", "reader:focus", "reader:blur", "reader:close"]) {
@@ -1078,37 +1078,26 @@ export default class CheckinPlugin extends Plugin {
             });
         }
         const tracker = this.sireaderTracker;
+        const sessionStartedAt = tracker.sessionStartedAt;
         const segments = tracker.handle(type, atMs);
-        if (segments.length) void this.writeSireaderSegments(segments, governance.itemId, tracker);
+        if (segments.length && sessionStartedAt !== undefined) void this.writeSireaderSegments(segments, governance.itemId, sessionStartedAt, atMs);
     }
 
-    /* 片段 → 按日累计结算 → 资格日写入。语义（D-261）：
-       - 结算按「当日累计分钟」而非单批片段——跨多段达标也能触发（如 20+20 过 30 阈值）；
-       - 每日一次：同 source+externalRef 已存在即跳过；被用户删除（墓碑）的当日身份永不重写（可撤销）；
-       - 失败自愈：写入失败不重试，下次生命周期事件以新的累计值重新结算。 */
-    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, tracker: SireaderFocusTracker): Promise<void> {
+    /* A focus session yields one event per local day. Identity uses exact start time and day. */
+    private async writeSireaderSegments(segments: ReadonlyArray<{localDate: string; minutes: number}>, expectedItemId: string, sessionStartedAt: number, endedAt: number): Promise<void> {
         const governance = this.sireaderIntegration;
         if (!governance.enabled || !governance.itemId || governance.itemId !== expectedItemId) return;
         if (!this.hasMinuteTarget(governance.itemId)) return;
         const item = getActiveItemById(this.store, governance.itemId);
         if (!item) return;
-        const refFor = (localDate: string) => buildSireaderExternalRef(governance.itemId, localDate);
-        const alreadyWritten = (ref: string) => Boolean(ref) && this.store.events.some((event) => event.source === "sireader" && event.externalRef === ref);
-        const tombstoned = (ref: string) => Boolean(ref) && this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === ref);
-        const touchedDays = [...new Set(segments.map((segment) => segment.localDate))].sort();
-        const settlement = settleSegmentsToDays(
-            touchedDays.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker.dayTotal(localDate)})),
-            normalizeSourceGovernance({enabled: true, thresholdValue: governance.thresholdMinutes, itemIds: [governance.itemId]}),
-            touchedDays.map(refFor).filter((ref) => alreadyWritten(ref)),
-        );
-        for (const day of settlement.days) {
-            if (!day.qualifies) continue;
-            if (!this.hasMinuteTargetOnDate(governance.itemId, day.localDate)) continue;
-            const externalRef = refFor(day.localDate);
-            if (!externalRef || alreadyWritten(externalRef) || tombstoned(externalRef)) continue;
-            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(day.localDate));
-            const moment = {occurredAt: new Date().toISOString(), localDate: day.localDate};
-            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: day.countedValue, source: "sireader", externalRef}, moment, fingerprint));
+        for (const segment of segments) {
+            if (segment.minutes <= 0 || !this.hasMinuteTargetOnDate(governance.itemId, segment.localDate)) continue;
+            const externalRef = buildSireaderExternalRef(governance.itemId, segment.localDate, sessionStartedAt);
+            if (!externalRef || this.store.events.some((event) => event.source === "sireader" && event.externalRef === externalRef)
+                || this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.itemId && tombstone.source === "sireader" && tombstone.externalRef === externalRef)) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(segment.localDate));
+            const moment = {occurredAt: new Date(endedAt).toISOString(), localDate: segment.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: segment.minutes, source: "sireader", externalRef}, moment, fingerprint));
             if (recorded) {
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
@@ -1118,39 +1107,93 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1403 健康收件箱：轮询用户绑定文档，解析「health:指标:日期 数值」行，幂等入库（source api）。
        同 metric+日期 只入一条（外部自动化经公开 API 的既定语义）；行保留在文档中由用户归档。 */
-    private async ingestHealthInbox(): Promise<void> {
+    private async ingestHealthInbox(preview = false): Promise<void> {
         const governance = this.healthInbox;
-        if (!governance.enabled || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        if ((!governance.enabled && !preview) || !governance.docId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
         /* 文档不可见时跳过本轮，回前台由焦点补拉（与 T-1402 微信读书同一省电策略）。 */
-        if (typeof document !== "undefined" && document.hidden) return;
-        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' ORDER BY id ASC LIMIT 500`});
-        const entries = parseHealthInboxRows((response as {data?: Array<{content?: string}>}).data || []);
-        if (!entries.length) return;
+        if (!preview && typeof document !== "undefined" && document.hidden) return;
+        const report = createSourceIngestReport(preview ? "preview" : "ingest");
+        this.sourceIngestReports.health = report;
+        if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
+        try {
+        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' ORDER BY id ASC LIMIT 500`}) as {code?: number; data?: unknown};
+        if (response?.code !== 0 || !Array.isArray(response.data)) { report.outcome = "read-failed"; return; }
+        const rows = response.data as Array<{content?: string}>;
+        report.scanned = rows.length;
+        report.windowFull = rows.length >= HEALTH_INBOX_MAX_ROWS;
+        const validRows = rows.filter((row) => Boolean(parseHealthInboxLine(row?.content))).length;
+        const entries = parseHealthInboxRows(rows);
+        report.matched = entries.length;
+        report.invalid = rows.length - validRows;
+        report.duplicate = validRows - entries.length;
         const todayKey = dateKey(currentCalendarDate());
         for (const entry of entries) {
             /* Health lines may backfill history, but a future date is never a
                valid completed day and must not be written into the store. */
-            if (entry.localDate > todayKey) continue;
+            if (entry.localDate > todayKey) { report.blocked += 1; continue; }
             /* T-1486 按项目映射：同指标投递全部挂载项目（身份含 itemId，各自幂等互不顶账）。 */
             for (const target of governance.metricBindings.filter((binding) => binding.metric === entry.metric)) {
                 const itemId = target.itemId;
-                if (!itemId) continue;
-                if (!this.hasHealthTarget(itemId, entry.metric)) continue;
-                if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) continue;
+                if (!itemId) { report.blocked += 1; continue; }
+                if (!this.hasHealthTarget(itemId, entry.metric)) { report.blocked += 1; continue; }
+                if (!this.hasHealthTargetOnDate(itemId, entry.metric, entry.localDate)) { report.blocked += 1; continue; }
                 const item = getActiveItemById(this.store, itemId);
-                if (!item) continue;
+                if (!item) { report.blocked += 1; continue; }
                 /* 身份含 itemId：同日换绑项目不互相顶账；同项目同日重复行幂等跳过。 */
                 const externalRef = `health:${itemId}:${entry.metric}:${entry.localDate}`;
-                if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) continue;
-                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) continue;
+                if (this.store.events.some((event) => event.source === "api" && event.itemId === itemId && event.externalRef === externalRef)) { report.duplicate += 1; continue; }
+                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "api" && tombstone.itemId === itemId && tombstone.externalRef === externalRef)) { report.tombstoned += 1; continue; }
+                report.planned += 1;
+                if (preview) continue;
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
                 const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
                 const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.value, source: "api", externalRef}, moment, fingerprint));
                 if (recorded) {
+                    report.written += 1;
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
-                }
+                } else report.blocked += 1;
             }
+        }
+        } catch { report.outcome = report.scanned ? "write-failed" : "read-failed"; }
+    }
+
+    /* T-1500 笔记推导打卡：只执行内置 SELECT，解析显式 frontmatter/tag 完成信号。
+       查询结果不写回笔记；同日手动事件优先，notequery externalRef 负责重放幂等。 */
+    private async ingestNoteQuery(preview = false): Promise<void> {
+        const governance = normalizeNoteQueryPreference(this.noteQuery);
+        if ((!governance.enabled && !preview) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        if (!preview && typeof document !== "undefined" && document.hidden) return;
+        const report = createSourceIngestReport(preview ? "preview" : "ingest");
+        this.sourceIngestReports.notequery = report;
+        const statement = buildNoteQuerySql(governance);
+        if (!statement) { report.outcome = "not-configured"; return; }
+        const response = await this.kernelPost("/api/query/sql", {stmt: statement}).catch(() => undefined) as {code?: number; data?: unknown} | undefined;
+        if (!response || response.code !== 0 || !Array.isArray(response.data)) { report.outcome = "read-failed"; return; }
+        report.scanned = response.data.length;
+        report.windowFull = report.scanned >= NOTE_QUERY_MAX_ROWS;
+        const entries = parseNoteQueryRows(response.data, governance);
+        report.matched = entries.length;
+        report.unmatched = Math.max(0, report.scanned - entries.length);
+        const todayKey = dateKey(currentCalendarDate());
+        for (const entry of entries) {
+            if (entry.localDate > todayKey) { report.blocked += 1; continue; }
+            const item = getActiveItemById(this.store, governance.itemId);
+            if (!item) { report.blocked += 1; continue; }
+            const decision = noteQueryIngestDecision(this.store.events, this.store.eventTombstones, entry, governance.itemId);
+            if (decision === "duplicate") { report.duplicate += 1; continue; }
+            if (decision === "tombstoned") { report.tombstoned += 1; continue; }
+            if (decision === "manual-conflict") { report.manualConflict += 1; continue; }
+            report.planned += 1;
+            if (preview) continue;
+            const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(entry.localDate));
+            const moment = {occurredAt: new Date().toISOString(), localDate: entry.localDate};
+            const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.itemId, value: entry.value, source: "api", externalRef: entry.externalRef, note: entry.note}, moment, fingerprint)).catch(() => { report.outcome = "write-failed"; return undefined; });
+            if (recorded) {
+                report.written += 1;
+                this.invalidateSummary();
+                this.renderBackgroundUpdate();
+            } else report.blocked += 1;
         }
     }
 
@@ -1334,46 +1377,56 @@ export default class CheckinPlugin extends Plugin {
     /* T-1457 叶归 LifeLog：轮询绑定笔记本内今日 Marker 段落，
        时长 = 上一条记录到当前记录的起始差，并归属当前记录；当天第一条无前置记录不记；
        只读用户自己的日记文档（local-only），失败静默。 */
-    private async ingestYeguif(): Promise<void> {
+    private async ingestYeguif(preview = false): Promise<void> {
         const governance = this.yeguifIntegration;
-        if (!governance.enabled || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
-        if (typeof document !== "undefined" && document.hidden) return;
+        if ((!governance.enabled && !preview) || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        if (!preview && typeof document !== "undefined" && document.hidden) return;
+        const report = createSourceIngestReport(preview ? "preview" : "ingest");
+        this.sourceIngestReports.yeguif = report;
         const fallbackItem = getActiveItemById(this.store, governance.itemId);
-        if (!fallbackItem && !governance.mappings?.some((mapping) => getActiveItemById(this.store, mapping.itemId))) return;
+        if (!governance.notebookId || (!fallbackItem && !governance.mappings?.some((mapping) => getActiveItemById(this.store, mapping.itemId)))) { report.outcome = "not-configured"; return; }
         const today = dateKey(currentCalendarDate());
         const createdFloor = `${today.replace(/-/g, "")}000000`;
         const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND (content GLOB '[0-9]:[0-9][0-9]*' OR content GLOB '[0-9][0-9]:[0-9][0-9]*') ORDER BY id ASC LIMIT ${YEGUIF_MAX_BLOCKS}`}).catch(() => undefined);
-        const rows = ((response as {data?: Array<{id?: string; content?: string; root_id?: string}>} | undefined)?.data || []) as Array<{id?: string; content?: string; root_id?: string}>;
+        if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) { report.outcome = "read-failed"; return; }
+        const rows = (response as {data: Array<{id?: string; content?: string; root_id?: string}>}).data;
+        report.scanned = rows.length;
+        report.windowFull = rows.length >= YEGUIF_MAX_BLOCKS;
         /* 按文档分组解析 → 当前记录吸收上一条到当前的时长 → 过滤已写/墓碑 → 写入。 */
         const grouped = new Map<string, Array<NonNullable<ReturnType<typeof parseYeguifMarker>>>>();
         for (const row of rows) {
-            if (!row?.id || typeof row.content !== "string" || !row.root_id) continue;
+            if (!row?.id || typeof row.content !== "string" || !row.root_id) { report.invalid += 1; continue; }
             const marker = parseYeguifMarker(row.id, row.content);
-            if (!marker) continue;
+            if (!marker) { report.invalid += 1; continue; }
             const bucket = grouped.get(row.root_id) || [];
             bucket.push(marker);
             grouped.set(row.root_id, bucket);
         }
         for (const markers of grouped.values()) {
             const settled = settleYeguifEntries(markers, today);
+            report.matched += settled.length;
             for (const entry of settled) {
-                const itemId = resolveYeguifItemId(entry.type, governance.mappings || [], governance.itemId);
+                const itemId = resolveYeguifItemId(entry.type, governance.mappings || [], this.store.items.filter((item) => !item.archived && this.hasMinuteTargetOnDate(item.id, today)));
                 const item = getActiveItemById(this.store, itemId);
                 /* 未配置映射的 LifeLog 项目只保留在叶归自身，不猜测归属。 */
-                if (!item || !this.hasMinuteTarget(itemId)) continue;
+                if (!item || !this.hasMinuteTargetOnDate(itemId, today)) { report.blocked += 1; continue; }
                 const externalRef = buildYeguifExternalRef(entry.blockId, today);
-                if (!externalRef) continue;
-                if (this.store.events.some((event) => event.source === "yeguif" && event.externalRef === externalRef)) continue;
-                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "yeguif" && tombstone.externalRef === externalRef)) continue;
+                if (!externalRef) { report.invalid += 1; continue; }
+                if (this.store.events.some((event) => event.source === "yeguif" && event.externalRef === externalRef)) { report.duplicate += 1; continue; }
+                if (this.store.eventTombstones.some((tombstone) => tombstone.source === "yeguif" && tombstone.externalRef === externalRef)) { report.tombstoned += 1; continue; }
+                report.planned += 1;
+                if (preview) continue;
                 const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(today));
                 const moment = {occurredAt: new Date().toISOString(), localDate: today};
-                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint));
+                const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId, value: entry.minutes, source: "yeguif", externalRef, note: buildYeguifEventNote(entry.type, entry.text)}, moment, fingerprint)).catch(() => { report.outcome = "write-failed"; return undefined; });
                 if (recorded) {
+                    report.written += 1;
                     this.invalidateSummary();
                     this.renderBackgroundUpdate();
-                }
+                } else report.blocked += 1;
             }
         }
+        report.unmatched = Math.max(0, report.scanned - report.invalid - report.matched);
     }
 
     /* T-1351：打开锚点块所在文档（rootID 来自已验证的内核 getBlockInfo）。
@@ -1535,6 +1588,7 @@ export default class CheckinPlugin extends Plugin {
     private apiSubscriptions = new Set<() => void>();
     private historyMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     private selectedHistoryDate = dateKey(new Date());
+    private historyBatchSelected = new Set<string>();
     private historyQuery = "";
     private historySource: HistorySourceFilter = "all";
     private historyOrder: HistorySortOrder = "newest";
@@ -1576,6 +1630,7 @@ export default class CheckinPlugin extends Plugin {
         this.ensureSpeedSwitchQuickActions();
         /* 外部来源轮询在文档不可见期间被跳过——回前台立即补拉一次（摄取全部幂等，不会重复记账）。 */
         void this.ingestHealthInbox();
+        void this.ingestNoteQuery();
         void this.ingestWeread();
         void this.ingestYeguif();
     };
@@ -1692,12 +1747,14 @@ export default class CheckinPlugin extends Plugin {
         window.addEventListener("focus", this.handleWindowFocus);
         this.bindSireaderListeners();
         this.healthInboxTimer = window.setInterval(() => void this.ingestHealthInbox(), HEALTH_INGEST_INTERVAL_MS);
+        this.noteQueryTimer = window.setInterval(() => void this.ingestNoteQuery(), NOTE_QUERY_INTERVAL_MS);
         this.startSiplayerSampler();
         /* T-1403：就绪后分三级补摄取（2s/10s/30s）——快机器立即收漏，慢机器多重尝试；
            摄取幂等（同 externalRef 跳过），不会重复记账。 */
         for (const delay of [2_000, 10_000, 30_000]) {
             this.healthInboxStartupTimers.push(window.setTimeout(() => void this.ingestHealthInbox(), delay));
         }
+        this.healthInboxStartupTimers.push(window.setTimeout(() => void this.ingestNoteQuery(), 4_000));
         /* T-1402 微信读书：就绪后 5s 首拉 + 30 分钟有界轮询；失败静默（官方统计按日粒度，无需密集重试）。 */
         this.wereadTimer = window.setInterval(() => void this.ingestWeread(), WEREAD_INGEST_INTERVAL_MS);
         window.setTimeout(() => void this.ingestWeread(), 5_000);
@@ -1889,6 +1946,10 @@ export default class CheckinPlugin extends Plugin {
         }
         for (const timer of this.healthInboxStartupTimers.splice(0)) {
             window.clearTimeout(timer);
+        }
+        if (this.noteQueryTimer !== undefined) {
+            window.clearInterval(this.noteQueryTimer);
+            this.noteQueryTimer = undefined;
         }
         if (this.wereadTimer !== undefined) {
             window.clearInterval(this.wereadTimer);
@@ -3026,6 +3087,7 @@ export default class CheckinPlugin extends Plugin {
                 diaryReport: this.diaryReport,
                 summaryResident: this.summaryResident,
                 healthInbox: this.healthInbox,
+                noteQuery: this.noteQuery,
                 journalIntegration: this.journalIntegrationPref,
                 journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
                 yeguifIntegration: this.yeguifIntegration,
@@ -3044,6 +3106,7 @@ export default class CheckinPlugin extends Plugin {
             occasionRemindOnce: this.occasionRemindOnce,
             focusTimerAdapterCount: this.focusAdapters.has(DOCK_TOMATO_ADAPTER_ID) ? 1 : 0,
             dockTomatoDiagnostics: inspectDockTomatoProvider(),
+            publicApiContract: {version: CHECKIN_API_VERSION, capabilities: [...CHECKIN_CAPABILITIES], taskHorizonVersion: TASK_HORIZON_CONTRACT.version},
             dockTomatoCompletionIssues: getDockTomatoCompletionIssues(),
             dockTomatoInbox: {
                 capacity: DOCKTOMATO_INBOX_CAPACITY,
@@ -3063,6 +3126,7 @@ export default class CheckinPlugin extends Plugin {
             /* 只报告公开 controller 是否当前可调用；“已启用（本地）”不等于宿主已连通。 */
             siplayerControllerAvailable: typeof window !== "undefined" && detectSiplayerController(window),
             healthInbox: {...this.healthInbox},
+            noteQuery: {...this.noteQuery},
             yeguifIntegration: {...this.yeguifIntegration, mappings: this.yeguifIntegration.mappings.map(mapping => ({...mapping}))},
             openSourcePanels: openSourcePanels ? [...openSourcePanels] : [],
             /* T-1402 微信读书治理面：Key 不进渲染上下文，只暴露「已设置」布尔与最近拉取结果。 */
@@ -3072,6 +3136,7 @@ export default class CheckinPlugin extends Plugin {
             wereadTodayMinutes: sourceDayMinutes(this.store, "weread", this.wereadIntegration.itemId, dateKey(currentCalendarDate())),
             /* T-1442 效果徽标：各来源当日已写入事件数（面板头部「今日 N 条」）。 */
             sourceTodayCounts: this.sourceTodayCounts(),
+            sourceIngestReports: {...this.sourceIngestReports},
             /* T-1386 治理可观测性：来源当日已写入分钟（来源行的「今日累计」预览）。 */
             sireaderTodayMinutes: sourceDayMinutes(this.store, "sireader", this.sireaderIntegration.itemId, dateKey(currentCalendarDate())),
             siplayerTodayMinutes: sourceDayMinutes(this.store, "siplayer", this.siplayerIntegration.itemId, dateKey(currentCalendarDate())),
@@ -3081,6 +3146,7 @@ export default class CheckinPlugin extends Plugin {
             todayGroupMode: this.todayGroupMode,
             todaySortMode: this.todaySortMode,
             defaultOpenMode: this.defaultOpenMode,
+            quickEntryNlp: this.quickEntryNlp,
             completedCollapsed: this.completedCollapsed,
             weekStripVisible: this.weekStripVisible,
             dialogSizeMode: this.dialogSizeMode,
@@ -3092,7 +3158,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     private bindSettings(root: HTMLElement) {
-        for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc", "data-setting-reminder-slots", "data-sireader-threshold", "data-siplayer-threshold", "data-weread-threshold", "data-weread-key"]) {
+        for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc", "data-setting-reminder-slots", "data-weread-threshold", "data-weread-key"]) {
             const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[${attribute}]`);
             if (!field) continue;
             const saved = field.value;
@@ -3172,13 +3238,27 @@ export default class CheckinPlugin extends Plugin {
                 const source = control.dataset.source;
                 runSettingsAction(control, async () => {
                     if (source === "health") await this.ingestHealthInbox();
+                    else if (source === "notequery") await this.ingestNoteQuery();
                     else if (source === "weread") await this.ingestWeread();
                     else if (source === "yeguif") await this.ingestYeguif();
                     else return;
                     if (control.isConnected) {
-                        settingsFeedback(t("set.sourceRetry"));
+                        const report = source === "health" || source === "notequery" || source === "yeguif" ? this.sourceIngestReports[source] : undefined;
+                        settingsFeedback(report ? t(`set.sourceReportOutcome.${report.outcome}`) : t("set.sourceRetry"));
                         this.render();
                     }
+                });
+            });
+        });
+        root.querySelectorAll<HTMLElement>("[data-action='preview-source']").forEach((control) => {
+            control.addEventListener("click", () => {
+                const source = control.dataset.source;
+                runSettingsAction(control, async () => {
+                    if (source === "health") await this.ingestHealthInbox(true);
+                    else if (source === "notequery") await this.ingestNoteQuery(true);
+                    else if (source === "yeguif") await this.ingestYeguif(true);
+                    else return;
+                    if (control.isConnected) this.render();
                 });
             });
         });
@@ -3189,6 +3269,7 @@ export default class CheckinPlugin extends Plugin {
         root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.pluginLanguageSetting = value; this.syncPluginLanguage(); void this.persistViewPreferences(); this.render(); } });
         root.querySelector<HTMLSelectElement>("[data-setting-open-mode]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "quick" || value === "tab") { this.defaultOpenMode = value; void this.persistViewPreferences(); } });
+        root.querySelector<HTMLInputElement>("[data-setting-quick-entry-nlp]")?.addEventListener("change", (event) => { this.quickEntryNlp = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
         root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
         /* T-1421 提醒安静时段：开关与起止时间；非法时间输入由归一化回落默认值。 */
@@ -3350,7 +3431,7 @@ export default class CheckinPlugin extends Plugin {
             button.textContent = t("bind.checking");
             const rows = collectNoteBindings({
                 diaryReport: this.diaryReport, summaryResident: this.summaryResident,
-                healthInbox: this.healthInbox, journalIntegration: this.journalIntegrationPref,
+                healthInbox: this.healthInbox, noteQuery: this.noteQuery, journalIntegration: this.journalIntegrationPref,
                 journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
                 yeguifIntegration: this.yeguifIntegration,
                 anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId, archived: entry.archived})),
@@ -3443,15 +3524,6 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='save-sireader']")?.addEventListener("click", async () => {
-            const input = root.querySelector<HTMLInputElement>("[data-sireader-threshold]");
-            const submitted = input?.value || "";
-            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
-            const previous = this.sireaderIntegration;
-            this.sireaderIntegration = {...this.sireaderIntegration, thresholdMinutes};
-            try { await this.persistViewPreferences(); if (input?.value === submitted) this.settingsDrafts.delete("data-sireader-threshold"); showMessage(t("msg.sireaderSaved")); this.render(); }
-            catch { this.sireaderIntegration = previous; showMessage(t("msg.prefSaveFail")); }
-        });
         root.querySelector<HTMLInputElement>("[data-siplayer-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
             if (checked && (!this.siplayerIntegration.itemId || !getActiveItemById(this.store, this.siplayerIntegration.itemId))) {
@@ -3480,15 +3552,6 @@ export default class CheckinPlugin extends Plugin {
             this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.siplayerIntegration.enabled : false};
             void this.persistViewPreferences();
             this.render();
-        });
-        root.querySelector<HTMLElement>("[data-action='save-siplayer']")?.addEventListener("click", async () => {
-            const input = root.querySelector<HTMLInputElement>("[data-siplayer-threshold]");
-            const submitted = input?.value || "";
-            const thresholdMinutes = Math.max(1, Math.min(1440, Math.round(Number(input?.value) || 30)));
-            const previous = this.siplayerIntegration;
-            this.siplayerIntegration = {...this.siplayerIntegration, thresholdMinutes};
-            try { await this.persistViewPreferences(); if (input?.value === submitted) this.settingsDrafts.delete("data-siplayer-threshold"); showMessage(t("msg.siplayerSaved")); this.render(); }
-            catch { this.siplayerIntegration = previous; showMessage(t("msg.prefSaveFail")); }
         });
         root.querySelector<HTMLInputElement>("[data-health-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -3559,6 +3622,59 @@ export default class CheckinPlugin extends Plugin {
             const bindingsRoot = root.querySelector<HTMLElement>("[data-health-bindings]");
             if (!select || !select.matches("[data-health-binding-metric], [data-health-binding-item]") || !bindingsRoot) return;
             applyHealthBindingsFromDom(bindingsRoot);
+        });
+        /* T-1500：固定模板配置只在用户点击保存后生效；启用前要求目标与项目均存在。 */
+        const readNoteQueryFromDom = (enabled = this.noteQuery.enabled): NoteQueryPreference => normalizeNoteQueryPreference({
+            ...this.noteQuery,
+            enabled,
+            template: root.querySelector<HTMLSelectElement>("[data-note-query-template]")?.value ?? this.noteQuery.template,
+            scope: root.querySelector<HTMLSelectElement>("[data-note-query-scope]")?.value ?? this.noteQuery.scope,
+            targetId: root.querySelector<HTMLInputElement>("[data-note-query-target]")?.value ?? this.noteQuery.targetId,
+            itemId: root.querySelector<HTMLSelectElement>("[data-note-query-item]")?.value ?? this.noteQuery.itemId,
+            field: root.querySelector<HTMLInputElement>("[data-note-query-field]")?.value ?? this.noteQuery.field,
+            value: root.querySelector<HTMLInputElement>("[data-note-query-value]")?.value ?? this.noteQuery.value,
+            tag: root.querySelector<HTMLInputElement>("[data-note-query-tag]")?.value ?? this.noteQuery.tag,
+        });
+        root.querySelector<HTMLElement>("[data-action='save-note-query']")?.addEventListener("click", async () => {
+            const next = readNoteQueryFromDom(this.noteQuery.enabled);
+            if (!next.targetId || !next.itemId || !getActiveItemById(this.store, next.itemId)) {
+                showMessage(t("msg.noteQueryNeedConfig"));
+                return;
+            }
+            try {
+                await this.validateBindingTarget(next.scope === "document" ? "doc" : "notebook", next.targetId);
+            } catch (error) {
+                showMessage(error instanceof Error && error.message ? error.message : t("msg.noteQueryNeedConfig"));
+                return;
+            }
+            const previous = this.noteQuery;
+            this.noteQuery = next;
+            try {
+                await this.persistViewPreferences();
+                showMessage(t("msg.noteQuerySaved"));
+                if (this.noteQuery.enabled) void this.ingestNoteQuery();
+                this.render();
+            } catch {
+                this.noteQuery = previous;
+                showMessage(t("msg.prefSaveFail"));
+            }
+        });
+        root.querySelector<HTMLInputElement>("[data-note-query-toggle]")?.addEventListener("change", (event) => {
+            const checked = (event.currentTarget as HTMLInputElement).checked;
+            const next = readNoteQueryFromDom(checked);
+            if (checked && (!next.targetId || !next.itemId || !getActiveItemById(this.store, next.itemId))) {
+                showMessage(t("msg.noteQueryNeedConfig"));
+                this.render();
+                return;
+            }
+            this.noteQuery = next;
+            if (!checked) {
+                const disconnectPlan = planSourceDisconnect("notequery", this.store.events);
+                if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "笔记推导", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+            }
+            void this.persistViewPreferences();
+            if (checked) void this.ingestNoteQuery();
+            this.render();
         });
         root.querySelector<HTMLInputElement>("[data-weread-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
@@ -3634,14 +3750,12 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLInputElement>("[data-yeguif-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
-            const mappedItemIds = (this.yeguifIntegration.mappings || []).map((mapping) => mapping.itemId).filter((itemId) => getActiveItemById(this.store, itemId));
-            const hasConfiguredTarget = Boolean(this.yeguifIntegration.itemId && getActiveItemById(this.store, this.yeguifIntegration.itemId)) || mappedItemIds.length > 0;
-            if (checked && (!hasConfiguredTarget || !this.yeguifIntegration.notebookId)) {
+            if (checked && !this.yeguifIntegration.notebookId) {
                 showMessage(t("msg.yeguifNeedConfig"));
                 this.render();
                 return;
             }
-            if (checked && !((this.yeguifIntegration.itemId && this.hasMinuteTarget(this.yeguifIntegration.itemId)) || mappedItemIds.some((itemId) => this.hasMinuteTarget(itemId)))) {
+            if (checked && !this.store.items.some((item) => !item.archived && this.hasMinuteTarget(item.id))) {
                 showMessage(t("msg.yeguifNeedMinuteItem"));
                 this.render();
                 return;
@@ -3655,22 +3769,19 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        root.querySelector<HTMLSelectElement>("[data-yeguif-item]")?.addEventListener("change", (event) => {
-            const itemId = (event.currentTarget as HTMLSelectElement).value;
-            const mappingTargetsReady = (this.yeguifIntegration.mappings || []).some((mapping) => getActiveItemById(this.store, mapping.itemId) && this.hasMinuteTarget(mapping.itemId));
-            const selectedTargetReady = Boolean(itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId));
-            this.yeguifIntegration = {...this.yeguifIntegration, itemId, enabled: (selectedTargetReady || mappingTargetsReady) && Boolean(this.yeguifIntegration.notebookId) ? this.yeguifIntegration.enabled : false};
-            void this.persistViewPreferences();
-            this.render();
-        });
         root.querySelector<HTMLTextAreaElement>("[data-yeguif-mappings]")?.addEventListener("change", (event) => {
+            let invalid = false;
             const mappings = (event.currentTarget as HTMLTextAreaElement).value.split(/\r?\n/).map((line) => {
+                if (!line.trim()) return undefined;
                 const separator = line.indexOf("=");
-                if (separator < 0) return undefined;
+                if (separator < 0) { invalid = true; return undefined; }
                 const project = line.slice(0, separator).trim();
-                const itemId = line.slice(separator + 1).trim();
-                return project && itemId ? {project, itemId} : undefined;
+                const target = line.slice(separator + 1).trim();
+                const candidates = this.store.items.filter((item) => !item.archived && this.hasMinuteTarget(item.id) && (item.id === target || item.name.trim().toLocaleLowerCase() === target.toLocaleLowerCase()));
+                if (!project || candidates.length !== 1) { invalid = true; return undefined; }
+                return {project, itemId: candidates[0].id};
             }).filter((entry): entry is {project: string; itemId: string} => Boolean(entry)).slice(0, 50);
+            if (invalid) { showMessage(t("msg.yeguifMappingInvalid")); this.render(); return; }
             const seen = new Set<string>();
             this.yeguifIntegration = {...this.yeguifIntegration, mappings: mappings.filter((entry) => {
                 const key = entry.project.toLocaleLowerCase();
@@ -3722,7 +3833,7 @@ export default class CheckinPlugin extends Plugin {
         });
         root.querySelector<HTMLSelectElement>("[data-yeguif-notebook]")?.addEventListener("change", (event) => {
             const notebookId = (event.currentTarget as HTMLSelectElement).value;
-            this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: notebookId && this.yeguifIntegration.itemId ? this.yeguifIntegration.enabled : false};
+            this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: Boolean(notebookId) && this.yeguifIntegration.enabled};
             void this.persistViewPreferences();
             this.render();
         });
@@ -3934,7 +4045,7 @@ export default class CheckinPlugin extends Plugin {
         });
         /* T-1361：会话诊断导出。R-18.2 · R-A18：裸 confirm 升级为结构化预览——
            按原因码计数、时间范围与内容边界披露，确认后才导出。 */
-        root.querySelector<HTMLElement>("[data-action='export-diagnostics']")?.addEventListener("click", () => {
+        root.querySelectorAll<HTMLElement>("[data-action='export-diagnostics']").forEach((control) => control.addEventListener("click", () => {
             const preview = summarizeDiagnosticsPreview(this.diagnostics);
             const codeRows = preview.codes
                 .map((entry) => `<tr><td>${escapeHtml(t(`diag.${entry.code}`))}</td><td class="num">${entry.count}</td></tr>`)
@@ -3952,7 +4063,7 @@ export default class CheckinPlugin extends Plugin {
                 dialog.destroy();
                 downloadDiagnosticsFor(this.diagnostics);
             });
-        });
+        }));
         root.querySelector<HTMLInputElement>("[data-import-json]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
             const file = input.files?.[0];
@@ -4343,7 +4454,8 @@ export default class CheckinPlugin extends Plugin {
             /* 健康收件箱复用公开 api 来源，按 canonical health: 身份单独投影，
                避免健康卡片漏计，也避免把 Task Horizon 等 API 写入算进健康。 */
             const source = event.source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("health:") ? "health" : event.source;
-            counts[source] = (counts[source] || 0) + 1;
+            const normalizedSource = source === "api" && typeof event.externalRef === "string" && event.externalRef.startsWith("notequery:") ? "notequery" : source;
+            counts[normalizedSource] = (counts[normalizedSource] || 0) + 1;
         }
         return counts;
     }
@@ -4387,6 +4499,8 @@ export default class CheckinPlugin extends Plugin {
             focusAvailable: Boolean(this.focusTimerProvider),
             reminderQuiet: this.isReminderQuietNow(),
             firstSuccessSkipped: isFirstSuccessSuppressed(this.firstSuccessState),
+            quickEntryNlp: this.quickEntryNlp,
+            quickEntryCancelled: [...this.quickEntryCancelled],
         });
     }
 
@@ -4463,6 +4577,7 @@ export default class CheckinPlugin extends Plugin {
             appearance: this.resolvedAppearance(),
             historyMonth: this.historyMonth,
             selectedHistoryDate: this.selectedHistoryDate,
+            historyBatchSelected: this.historyBatchSelected,
             historyQuery: this.historyQuery,
             historySource: this.historySource,
             historyOrder: this.historyOrder,
@@ -4502,8 +4617,6 @@ export default class CheckinPlugin extends Plugin {
             reminderAdvanceOnce: this.occasionRemindOnce,
             /* T-1490 信任层：仍生效的时长结算绑定快照（事件项目不匹配则不派生阈值原因）。 */
             trustThresholds: ([
-                {source: "sireader", itemId: this.sireaderIntegration?.itemId, value: this.sireaderIntegration?.thresholdMinutes},
-                {source: "siplayer", itemId: this.siplayerIntegration?.itemId, value: this.siplayerIntegration?.thresholdMinutes},
                 {source: "weread", itemId: this.wereadIntegration?.itemId, value: this.wereadIntegration?.thresholdMinutes},
             ] as Array<{source: string; itemId?: string; value?: number}>).filter((entry): entry is {source: string; itemId: string; value: number} => Boolean(entry.itemId) && typeof entry.value === "number" && entry.value > 0),
             analyticsSnapshot,
@@ -4908,6 +5021,38 @@ export default class CheckinPlugin extends Plugin {
             this.broadcast({type: "analytics-updated", analyticsAsOf: events[0].localDate});
             showMessage(t("msg.skipBatchDone", {n: skipped.length}));
             return true;
+        });
+    }
+
+    async recordHistoryBatch(date: string, itemIds: string[], action: "record" | "skip"): Promise<number> {
+        if (!isValidLocalDateInput(date) || date > dateKey(new Date()) || !itemIds.length || this.disposed || this.disposing) return 0;
+        return this.enqueueMutation(async () => {
+            const day = calendarDateFromKey(date);
+            const occurredAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12).toISOString();
+            const moment = {occurredAt, localDate: date};
+            const requested = new Set(itemIds);
+            const events: CheckinEvent[] = [];
+            for (const item of this.store.items) {
+                if (!requested.has(item.id) || item.archived || !isItemAvailableOnDate(item, day) || !isScheduledToday(item, day)
+                    || getEventsForDay(this.store, item.id, day).length || action === "record" && item.direction === "atMost") continue;
+                const revision = getItemRevisionForDate(item, day);
+                const value = action === "skip" ? 0 : revision.kind === "binary" ? 1 : Math.max(1, revision.target);
+                const event = this.makeEvent(item, value, "manual", revision.unit, undefined, undefined, moment);
+                events.push(action === "skip" ? {...event, kind: "skip"} : event);
+            }
+            if (!events.length) return 0;
+            const previous = this.store;
+            const next = appendEvents(previous, events);
+            if (next === previous || next.events.length - previous.events.length !== events.length) return 0;
+            this.store = next;
+            try { await this.persist(); }
+            catch { this.store = previous; showMessage(t("msg.saveFail")); return 0; }
+            this.historyBatchSelected.clear();
+            this.invalidateSummary();
+            for (const event of events) this.broadcast({type: "event-recorded", item: getItemById(this.store, event.itemId), event});
+            this.broadcast({type: "analytics-updated", analyticsAsOf: date});
+            this.renderBackgroundUpdate();
+            return events.length;
         });
     }
 
@@ -5973,6 +6118,8 @@ export default class CheckinPlugin extends Plugin {
         this.todayGroupMode = preferences.groupMode;
         this.todaySortMode = preferences.sortMode;
         this.defaultOpenMode = preferences.defaultOpenMode;
+        this.quickEntryNlp = preferences.quickEntryNlp;
+        this.quickEntryCancelled.clear();
         this.completedCollapsed = preferences.completedCollapsed;
         this.appearance = preferences.appearance;
         this.dialogSizeMode = preferences.dialogSizeMode;
@@ -6008,8 +6155,9 @@ export default class CheckinPlugin extends Plugin {
         const healthUnitsReady = (!healthPreference.stepsItemId || this.hasHealthTarget(healthPreference.stepsItemId, "steps"))
             && (!healthPreference.weightItemId || this.hasHealthTarget(healthPreference.weightItemId, "weight"));
         this.healthInbox = {...healthPreference, enabled: healthPreference.enabled && healthUnitsReady};
+        this.noteQuery = {...preferences.noteQuery, enabled: preferences.noteQuery.enabled && Boolean(getActiveItemById(this.store, preferences.noteQuery.itemId))};
         this.wereadIntegration = {...preferences.wereadIntegration, enabled: preferences.wereadIntegration.enabled && this.hasMinuteTarget(preferences.wereadIntegration.itemId)};
-        const yeguifTargetsReady = (preferences.yeguifIntegration.itemId && this.hasMinuteTarget(preferences.yeguifIntegration.itemId)) || (preferences.yeguifIntegration.mappings || []).some((mapping) => this.hasMinuteTarget(mapping.itemId));
+        const yeguifTargetsReady = this.store.items.some((item) => !item.archived && this.hasMinuteTarget(item.id));
         this.yeguifIntegration = {...preferences.yeguifIntegration, enabled: preferences.yeguifIntegration.enabled && Boolean(yeguifTargetsReady)};
         this.recentTemplates = [...preferences.recentTemplates];
         this.pluginLanguageSetting = preferences.pluginLanguage;
@@ -6083,6 +6231,7 @@ export default class CheckinPlugin extends Plugin {
             sireaderIntegration: {...this.sireaderIntegration},
             siplayerIntegration: {...this.siplayerIntegration},
             healthInbox: {...this.healthInbox},
+            noteQuery: {...this.noteQuery},
             wereadIntegration: {...this.wereadIntegration},
             yeguifIntegration: {...this.yeguifIntegration},
             reminderQuietHours: this.reminderQuietHours,
@@ -6090,6 +6239,7 @@ export default class CheckinPlugin extends Plugin {
             savedViews: this.savedViews,
             pluginLanguage: this.pluginLanguageSetting,
             defaultOpenMode: this.defaultOpenMode,
+            quickEntryNlp: this.quickEntryNlp,
             recentTemplates: [...this.recentTemplates],
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));

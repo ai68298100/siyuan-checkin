@@ -450,20 +450,3 @@ export function renderCompletionRing(percent: number, options: {size?: number; a
     const label = options.ariaLabel ?? `${clamped}%`;
     return `<svg class="lc-checkin__completion-ring${clamped >= 100 ? " is-complete" : ""}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${escapeChartText(label)}"><circle class="lc-checkin__ring-track" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}"/><circle class="lc-checkin__ring-value" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${center} ${center})"/></svg>`;
 }
-
-/** R-16.2 sparkline：内联迷你趋势线（近 N 日记录数等序列）。
-    零基线归一（max≥1 防除零）；空序列输出空占位；只读呈现不承载唯一信息（旁边保留数字）。 */
-export function renderSparkline(values: readonly number[], options: {width?: number; height?: number; ariaLabel?: string} = {}): string {
-    const width = options.width ?? 96;
-    const height = options.height ?? 24;
-    const stroke = 2;
-    const series = values.map((value) => (Number.isFinite(value) ? Math.max(0, value) : 0));
-    if (!series.length) return `<span class="lc-checkin__spark is-empty" aria-hidden="true"></span>`;
-    const maximum = Math.max(...series, 1);
-    const step = series.length > 1 ? (width - stroke * 2) / (series.length - 1) : 0;
-    const points = series
-        .map((value, index) => `${(stroke + index * step).toFixed(1)},${(height - stroke - ((height - stroke * 2) * value) / maximum).toFixed(1)}`)
-        .join(" ");
-    const label = options.ariaLabel ?? "";
-    return `<svg class="lc-checkin__spark" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img"${label ? ` aria-label="${escapeChartText(label)}"` : ` aria-hidden="true"`}><polyline class="lc-checkin__spark-line" points="${points}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-}

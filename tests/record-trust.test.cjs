@@ -32,12 +32,13 @@ assert.equal(rt.buildRecordTrust({source: "mystery", value: 1, unit: "次"}).sou
 
 /* —— 2. 阈值结算原因：达标才解释，口径已变（值低于当前阈值）不冒认 —— */
 const threshold = {threshold: {value: 30}};
-const hit = rt.buildRecordTrust(base, threshold);
+const hit = rt.buildRecordTrust({...base, source: "weread"}, threshold);
 assert.equal(hit.reasonKey, "trust.reasonThreshold");
 assert.deepEqual(hit.reasonParams, {value: 32, threshold: 30, unit: "分钟"});
-assert.equal(rt.buildRecordTrust({...base, value: 20}, threshold).reasonKey, undefined, "低于当前阈值不编造解释");
+assert.equal(rt.buildRecordTrust({...base, source: "weread", value: 20}, threshold).reasonKey, undefined, "低于当前阈值不编造解释");
 assert.equal(rt.buildRecordTrust(base).reasonKey, undefined, "无绑定口径不派生阈值原因");
-assert.equal(rt.buildRecordTrust({...base, source: "siplayer"}, threshold).reasonKey, "trust.reasonThreshold", "思播同走阈值口径");
+assert.equal(rt.buildRecordTrust({...base, source: "siplayer"}, threshold).reasonKey, undefined, "思播分段记账不再冒称阈值结算");
+assert.equal(rt.buildRecordTrust(base, threshold).reasonKey, undefined, "思阅分段记账不再冒称阈值结算");
 assert.equal(rt.buildRecordTrust({...base, source: "import"}, threshold).reasonKey, undefined, "导入不吃阈值解释");
 
 /* —— 3. externalRef 前缀派生：完读/笔记/快捷指令/番茄/LifeLog —— */
@@ -49,6 +50,8 @@ const notes = rt.buildRecordTrust({source: "weread", value: 5, unit: "条", exte
 assert.equal(notes.reasonKey, "trust.reasonNotes");
 const inbox = rt.buildRecordTrust({source: "api", value: 6543, unit: "步", externalRef: "health:it1:steps:2026-06-10"});
 assert.equal(inbox.reasonKey, "trust.reasonInbox", "快捷指令（健康收件箱）来源可解释");
+const noteQuery = rt.buildRecordTrust({source: "api", value: 1, unit: "次", externalRef: "notequery:item-1:block-1:2026-06-10"});
+assert.equal(noteQuery.reasonKey, "trust.reasonNoteQuery", "笔记字段/标签推导来源可解释");
 const tomato = rt.buildRecordTrust({source: "tomato", value: 25, unit: "分钟"});
 assert.equal(tomato.reasonKey, "trust.reasonTomato");
 assert.equal(rt.buildRecordTrust({source: "yeguif", value: 2, unit: "次"}).reasonKey, "trust.reasonYeguif");
@@ -75,7 +78,7 @@ assert.match(modelSource, /tombstonesByEventId\.set/, "墓碑写入逻辑保持�
 
 /* —— 6. 双语键齐备 —— */
 const i18nSource = fs.readFileSync(path.join(sourceRoot, "i18n.ts"), "utf8");
-for (const key of ["trust.reasonThreshold", "trust.reasonFinish", "trust.reasonNotes", "trust.reasonInbox", "trust.reasonTomato", "trust.reasonYeguif"]) {
+for (const key of ["trust.reasonThreshold", "trust.reasonFinish", "trust.reasonNotes", "trust.reasonInbox", "trust.reasonNoteQuery", "trust.reasonTomato", "trust.reasonYeguif"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }

@@ -1417,3 +1417,13 @@
 @media (prefers-reduced-motion: reduce) {
     .lc-checkin.lc-checkin--review .review-workspace-nav button[data-review-workspace] { transition: none; }
 }
+/* Offscreen records retain their last measured height when scrolled back into view. */
+.lc-checkin--review [data-review-workspace-panel="records"] .lc-checkin__history-event {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 72px;
+}
+
+.lc-checkin--review [data-review-workspace-panel="records"] .lc-checkin__review-calendar {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 360px;
+}

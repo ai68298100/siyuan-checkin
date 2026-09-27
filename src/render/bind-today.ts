@@ -2,7 +2,7 @@
    宿主成员经 BindTodayHost 结构化接口声明；index.ts 通过
    `bindTodayHandlers(root, this as unknown as BindTodayHost)` 接线。 */
 import {t} from "../i18n";
-import {getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay, isSkipEvent} from "../model";
+import {dateKey, getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
@@ -12,6 +12,7 @@ import {inspectDockTomatoProvider, type DockTomatoProviderState} from "../dock-t
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
 import type {OccasionStore} from "../occasions";
 import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
+import {applyQuickEntryCancellations, parseQuickEntryText, resolveQuickEntryRecordTarget} from "../features/quick-entry-nlp";
 
 export interface BindTodayHost {
     disposed?: boolean;
@@ -21,6 +22,8 @@ export interface BindTodayHost {
     occasionStore: OccasionStore;
     insightsReturnPage: "today" | "review";
     todayQuery: string;
+    quickEntryNlp: boolean;
+    quickEntryCancelled: Set<string>;
     pendingOnly: boolean;
     todayGroupMode: TodayGroupMode;
     todaySortMode: CheckinItemSortMode;
@@ -144,8 +147,34 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     search?.addEventListener("compositionstart", () => { composing = true; cancelSearch(); });
     search?.addEventListener("compositionend", () => { composing = false; applySearch(); });
     search?.addEventListener("input", (event) => {
+        host.quickEntryCancelled.clear();
         if (composing || (event as InputEvent).isComposing) cancelSearch();
         else applySearch();
+    });
+    root.querySelectorAll<HTMLElement>("[data-action='cancel-quick-entry']").forEach((button) => button.addEventListener("click", () => {
+        const token = button.dataset.quickEntryToken;
+        if (!token) return;
+        host.quickEntryCancelled.add(token);
+        host.render();
+        host.focusTodaySearch(search?.value.length);
+    }));
+    root.querySelector<HTMLElement>("[data-action='quick-entry-record']")?.addEventListener("click", (event) => {
+        if (!search || !host.quickEntryNlp || host.disposed || host.disposing || host.currentPage !== "today") return;
+        const date = currentCalendarDate();
+        const todayKey = dateKey(date);
+        const parsed = applyQuickEntryCancellations(parseQuickEntryText(search.value, todayKey), [...host.quickEntryCancelled]);
+        const candidates = host.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date)).map((item) => {
+            const revision = getItemRevisionForDate(item, date);
+            return {id: item.id, name: item.name, kind: revision.kind, unit: revision.unit, direction: item.direction};
+        });
+        const targetId = resolveQuickEntryRecordTarget(parsed, todayKey, candidates);
+        if (!targetId || targetId !== (event.currentTarget as HTMLElement).dataset.itemId) return;
+        const item = getActiveItemById(host.store, targetId);
+        if (!item || isComplete(host.store, item, date) || parsed.value === undefined) return;
+        const moment = captureActionMoment();
+        host.pendingFocusItemId = item.id;
+        host.pulseHaptic();
+        void host.enqueueMutation(() => host.recordEvent(item, parsed.value!, moment, host.revisionFingerprint(item, date)));
     });
     root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
         cancelSearch();

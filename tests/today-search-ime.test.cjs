@@ -21,7 +21,7 @@ function fixture() {
     const search = element(), clear = element();
     const root = {search, querySelector: selector => selector === "[data-today-search]" ? root.search : null,
         querySelectorAll: selector => selector === "[data-action='clear-search']" ? [clear] : []};
-    const host = {todayQuery: "", currentPage: "today", renders: 0,
+    const host = {todayQuery: "", quickEntryCancelled: new Set(), currentPage: "today", renders: 0,
         render() { this.renders++; }, focusTodaySearch(cursor) { this.cursor = cursor; }};
     for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav"]) host[name] = () => {};
     exportsObject.bindTodayHandlers(root, host);

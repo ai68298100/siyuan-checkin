@@ -5,7 +5,7 @@
    - 采样间隔有界（默认 15s）；相邻采样间隔超过 3 倍周期视为断档，该段时间丢弃
      （页面休眠/后台不可信，宁少记不多记）；
    - 切集（媒体键变化）即断段；跨午夜按 localDate 预切分；分钟向下取整；
-   - 重载丢弃在飞状态；已写入当日由 `siplayer:<itemId>:<localDate>` externalRef 幂等兜底；
+   - 重载丢弃在飞状态；完整播放段按开始分钟与日期组成身份；
    - 纯逻辑无 IO：时间戳与日期换算由调用方注入，可离线回放测试。 */
 
 export type SiplayerSampleState = "playing" | "paused" | "absent";
@@ -13,6 +13,7 @@ export type SiplayerSampleState = "playing" | "paused" | "absent";
 export interface SiplayerSegment {
     localDate: string;
     minutes: number;
+    startedAtMs: number;
 }
 
 export interface SiplayerTrackerOptions {
@@ -30,6 +31,7 @@ export class SiplayerPlaybackTracker {
     private playingSince?: number;
     private lastSampleAt?: number;
     private readonly dayMs = new Map<string, number>();
+    private readonly pendingMs = new Map<string, number>();
 
     constructor(private readonly options: SiplayerTrackerOptions) {}
 
@@ -37,7 +39,7 @@ export class SiplayerPlaybackTracker {
         return this.playingSince !== undefined;
     }
 
-    /** 该日已累计的向下取整分钟数。 */
+    /** 该日已观察到的向下取整分钟数，含尚未结束的播放段。 */
     dayTotal(localDate: string): number {
         return Math.floor((this.dayMs.get(localDate) || 0) / 60_000);
     }
@@ -53,9 +55,10 @@ export class SiplayerPlaybackTracker {
         if (inPlay && previous !== undefined) {
             const span = atMs - previous;
             if (span > 0 && span <= this.options.sampleIntervalMs * 3) {
-                segments.push(...this.accumulate(previous, atMs));
+                this.accumulate(previous, atMs);
             } else if (span > this.options.sampleIntervalMs * 3) {
                 /* 断档：区间不可信，丢弃并重新锚定（新状态决定是否在播）。 */
+                segments.push(...this.flush());
                 this.playingSince = playing ? atMs : undefined;
                 this.lastSampleAt = atMs;
                 return segments;
@@ -63,7 +66,10 @@ export class SiplayerPlaybackTracker {
         }
         this.lastSampleAt = atMs;
         if (playing && this.playingSince === undefined) this.playingSince = atMs;
-        if (!playing) this.playingSince = undefined;
+        if (!playing) {
+            segments.push(...this.flush());
+            this.playingSince = undefined;
+        }
         return segments;
     }
 
@@ -76,9 +82,19 @@ export class SiplayerPlaybackTracker {
     discardInFlight(): void {
         this.playingSince = undefined;
         this.lastSampleAt = undefined;
+        this.pendingMs.clear();
     }
 
-    private accumulate(startedAt: number, endedAt: number): SiplayerSegment[] {
+    private flush(): SiplayerSegment[] {
+        const startedAtMs = this.playingSince;
+        if (startedAtMs === undefined) return [];
+        const segments = [...this.pendingMs].map(([localDate, ms]) => ({localDate, minutes: Math.floor(ms / 60_000), startedAtMs}))
+            .filter((segment) => segment.minutes > 0).sort((left, right) => left.localDate.localeCompare(right.localDate));
+        this.pendingMs.clear();
+        return segments;
+    }
+
+    private accumulate(startedAt: number, endedAt: number): void {
         const totals = new Map<string, number>();
         let cursor = startedAt;
         while (cursor < endedAt) {
@@ -88,22 +104,21 @@ export class SiplayerPlaybackTracker {
             totals.set(localDate, (totals.get(localDate) || 0) + (sliceEnd - cursor));
             cursor = sliceEnd;
         }
-        /* 毫秒累计、整分钟晋升：晋升时产出段（携带该日累计分钟），不再丢秒。 */
-        const segments: SiplayerSegment[] = [];
+        /* Keep sub-minute samples until the playback session ends. */
         for (const [localDate, ms] of totals) {
             const before = this.dayMs.get(localDate) || 0;
             this.dayMs.set(localDate, before + ms);
-            const promoted = Math.floor((before + ms) / 60_000);
-            if (promoted > Math.floor(before / 60_000)) segments.push({localDate, minutes: promoted});
+            this.pendingMs.set(localDate, (this.pendingMs.get(localDate) || 0) + ms);
         }
-        return segments.sort((left, right) => left.localDate.localeCompare(right.localDate));
     }
 }
 
-/** 写入身份：`siplayer:<itemId>:<localDate>`（每日一次，幂等键）。 */
-export function buildSiplayerExternalRef(itemId: string, localDate: string): string {
+/** Exact session start is the identity; old daily refs remain readable. */
+export function buildSiplayerExternalRef(itemId: string, localDate: string, sampledAtMs?: number): string {
     const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
-    return safeItem && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(localDate) ? `siplayer:${safeItem}:${localDate}` : "";
+    if (!safeItem || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(localDate)) return "";
+    if (sampledAtMs === undefined) return `siplayer:${safeItem}:${localDate}`; // Legacy daily identity.
+    return Number.isSafeInteger(sampledAtMs) && sampledAtMs > 0 ? `siplayer:${safeItem}:${sampledAtMs}:${localDate}` : "";
 }
 
 /** 特征探测：宿主窗口是否存在可用的思播 controller（isPlaying 可调用）。 */

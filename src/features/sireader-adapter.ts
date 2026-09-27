@@ -4,8 +4,7 @@
    纪律（docs/roadmap-cross-plugin-study-2026-09.md + 框架文档 §七）：
    - 只把事件当信号，读取自有时钟，不读思阅私有 reader_stats / daily.json；
    - 片段按 localDate 预切分（一段一日），分钟向下取整——宁少记不多记；
-   - 重载即丢弃在飞焦点区间（fail-closed 少记），已写入当日身份由
-     `sireader:<itemId>:<localDate>` externalRef 幂等兜底；
+   - 重载即丢弃在飞焦点区间（fail-closed 少记），每段使用开始分钟与日期组成身份；
    - 纯逻辑无 IO：时间戳由调用方注入，localDate 换算与次日零点由调用方注入。 */
 
 export type SireaderLifecycleType = "open" | "focus" | "blur" | "close";
@@ -32,6 +31,10 @@ export class SireaderFocusTracker {
     /** 焦点是否在飞（诊断/测试用）。 */
     get focusing(): boolean {
         return this.focusStartedAt !== undefined;
+    }
+
+    get sessionStartedAt(): number | undefined {
+        return this.focusStartedAt;
     }
 
     /** 已累计（未结算）的当日分钟数。 */
@@ -82,8 +85,10 @@ export class SireaderFocusTracker {
     }
 }
 
-/** 写入身份：`sireader:<itemId>:<localDate>`（每日一次，幂等键）。 */
-export function buildSireaderExternalRef(itemId: string, localDate: string): string {
+/** Exact start time keeps distinct sessions within the same minute independent. */
+export function buildSireaderExternalRef(itemId: string, localDate: string, startedAtMs?: number): string {
     const safeItem = typeof itemId === "string" ? itemId.trim().slice(0, 160) : "";
-    return safeItem && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(localDate) ? `sireader:${safeItem}:${localDate}` : "";
+    if (!safeItem || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(localDate)) return "";
+    if (startedAtMs === undefined) return `sireader:${safeItem}:${localDate}`; // Legacy daily identity.
+    return Number.isSafeInteger(startedAtMs) && startedAtMs > 0 ? `sireader:${safeItem}:${startedAtMs}:${localDate}` : "";
 }

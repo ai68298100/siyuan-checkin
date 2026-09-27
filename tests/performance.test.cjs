@@ -74,15 +74,22 @@ assert.ok(fs.existsSync(distCss) && fs.existsSync(distJs), "run pnpm run build b
         } : (() => { throw new Error(name); })();
     });
     await page.addScriptTag({path: distJs});
-    const renderMs = await page.evaluate(async () => {
+    const renderTiming = await page.evaluate(async () => {
         const PluginClass = window.module.exports.default || window.module.exports;
         const plugin = new PluginClass();
         plugin.onload();
         window.__dockOptions.init.call({element: document.querySelector("#dock")});
         await plugin.onLayoutReady();
+        const longTasks = [];
+        const observer = PerformanceObserver.supportedEntryTypes.includes("longtask")
+            ? new PerformanceObserver((list) => longTasks.push(...list.getEntries().map((entry) => entry.duration))) : undefined;
+        observer?.observe({type: "longtask"});
         const start = performance.now();
         plugin.render();
-        return performance.now() - start;
+        const renderMs = performance.now() - start;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        observer?.disconnect();
+        return {renderMs, longTasks};
     });
     const overflow = await page.evaluate(() => {
         const layout = document.querySelector(".lc-checkin__layout");
@@ -93,8 +100,9 @@ assert.ok(fs.existsSync(distCss) && fs.existsSync(distJs), "run pnpm run build b
     await browser.close();
 
     assert.equal(eventCount, 10000, "fixture loads 10k events");
-    assert.ok(renderMs < 3000, `today render with 10k events must stay under 3s (took ${Math.round(renderMs)}ms)`);
+    assert.ok(renderTiming.renderMs < 3000, `today render with 10k events must stay under 3s (took ${Math.round(renderTiming.renderMs)}ms)`);
+    assert.ok(renderTiming.renderMs < 50 && renderTiming.longTasks.length === 0, `10k-event rerender must not block the main thread for 50ms (${Math.round(renderTiming.renderMs)}ms, observed tasks: ${renderTiming.longTasks.join(",")})`);
     assert.ok(overflow <= 0, `no horizontal overflow under load (overflow=${overflow}px)`);
     assert.equal(pageErrors.length, 0, "no page errors under load");
-    console.log(`8.0 performance benchmark passed: 10k events, full render ${Math.round(renderMs)}ms, overflow ${overflow}px.`);
+    console.log(`8.0 performance benchmark passed: 10k events, full render ${Math.round(renderTiming.renderMs)}ms, 0 long tasks, overflow ${overflow}px.`);
 })().catch((error) => { console.error(error); process.exit(1); });

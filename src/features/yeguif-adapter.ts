@@ -62,14 +62,16 @@ export interface YeguifProjectMapping {
     itemId: string;
 }
 
-/** 归属规则：项目名精确匹配（忽略首尾空白与大小写）；仅旧版空映射配置使用单目标回退。 */
-export function resolveYeguifItemId(project: string, mappings: readonly YeguifProjectMapping[], legacyItemId = ""): string {
+/** Explicit mapping wins; otherwise only one exact-name target may receive the entry. */
+export function resolveYeguifItemId(project: string, mappings: readonly YeguifProjectMapping[], candidates: readonly {id: string; name: string}[] = []): string {
     const normalized = typeof project === "string" ? project.trim().toLocaleLowerCase() : "";
     if (!normalized) return "";
     const match = mappings.find((entry) => typeof entry?.project === "string" && typeof entry?.itemId === "string"
         && entry.project.trim().toLocaleLowerCase() === normalized && entry.itemId.trim());
     if (match) return match.itemId.trim();
-    return mappings.length === 0 && typeof legacyItemId === "string" ? legacyItemId.trim() : "";
+    if (mappings.length) return "";
+    const matching = candidates.filter((item) => item.name.trim().toLocaleLowerCase() === normalized);
+    return matching.length === 1 ? matching[0].id : "";
 }
 
 /** 归一化设置输入；重复项目保留第一条，避免一条 LifeLog 同时写入多个项目。 */

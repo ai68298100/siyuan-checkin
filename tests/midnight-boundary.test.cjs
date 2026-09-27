@@ -14,7 +14,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/siplayer-adapter.ts", "src/features/yeguif-adapter.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/siplayer-adapter.ts", "src/features/yeguif-adapter.ts"].forEach(transpile);
 const adapter = require(path.join(outputRoot, "src/features/siplayer-adapter.js"));
 const yeguif = require(path.join(outputRoot, "src/features/yeguif-adapter.js"));
 const {settleSegmentsToDays, normalizeSourceGovernance} = require(path.join(outputRoot, "src/features/source-framework.js"));
@@ -33,9 +33,9 @@ const makeTracker = () => new adapter.SiplayerPlaybackTracker({toLocalDate, next
 const boundary = makeTracker();
 boundary.sample(true, DAY1 + 23 * 60 * MIN + 45 * MIN);
 const atMidnight = boundary.sample(true, DAY2);
-assert.deepEqual(atMidnight, [{localDate: "2026-09-24", minutes: 15}], "span ending exactly at midnight settles to the first day");
+assert.deepEqual(atMidnight, [], "playback remains one session across midnight");
 const afterMidnight = boundary.sample(false, DAY2 + 15 * MIN);
-assert.deepEqual(afterMidnight, [{localDate: "2026-09-25", minutes: 15}], "the post-midnight slice settles to the second day");
+assert.deepEqual(afterMidnight, [{localDate: "2026-09-24", minutes: 15, startedAtMs: DAY1 + 23 * 60 * MIN + 45 * MIN}, {localDate: "2026-09-25", minutes: 15, startedAtMs: DAY1 + 23 * 60 * MIN + 45 * MIN}], "completed session settles once per local day");
 assert.deepEqual([boundary.dayTotal("2026-09-24"), boundary.dayTotal("2026-09-25")], [15, 15], "both days keep their own accumulated total");
 
 /* —— 2. 双日归账 × 幂等身份：同日重复结算是 no-op，两日身份不同（双日计数不重复记账）。 —— */

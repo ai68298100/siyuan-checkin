@@ -26,11 +26,13 @@
 
 ## 三、externalRef 约定（新集成的接入方式）
 
-格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。
+格式：`<前缀>:<外部身份>:<本地日期>`，例如 Task Horizon 使用 `taskhorizon:<blockId>:<localDate>`。
 - `obsidian21:<文件名>:<localDate>`：Obsidian Habit Tracker 21 迁入（T-1279）；文件名经去冒号消毒作为身份，来源 `import`。
+- `notequery:<itemId>:<blockId>:<localDate>`：笔记推导打卡（T-1500）；`itemId` 是用户显式绑定的项目，`blockId` 是命中的笔记块，事件仍使用 `source: "api"`，仅以 `notequery:` 前缀标识推导身份。
 
 - 前缀即来源注册名（v18 开放 externalRef 前缀注册）；本地日期必须是设备本地时区日历日（`YYYY-MM-DD`）；
 - **派生规则必须确定性**：同一外部实体在同一日期重复触发必须产出同一 externalRef——这是多端/多窗口幂等的基础（mhabit 确定性 UUID 思路的等价物）；
+- `notequery:` 仅由 [笔记推导接入指南](note-query-integration.md) 的固定只读 SQL 模板生成；配置必须显式 opt-in，并绑定单一文档或笔记本与单一项目。命中同一项目同一日期已有 `source: "manual"` 事件时，推导结果跳过并提示手动事实优先；命中既有 `source: "api" + notequery:` 身份时返回重复，不产生第二条事件。
 - 不迁移历史 id：已入库事件的 `id` 永不重写；换设备迁移依赖 JSON 备份全量搬运或按 externalRef 幂等重放。
 
 ## 四、合并与冲突

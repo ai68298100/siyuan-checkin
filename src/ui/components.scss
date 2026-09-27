@@ -4219,11 +4219,17 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__external-overview strong { color: var(--lc-checkin-text); font-size: 12px; font-weight: 700; }
 .lc-checkin__external-overview span { color: var(--lc-checkin-accent-text); font-size: 11.5px; font-weight: 650; }
 .lc-checkin__external-overview small { color: var(--lc-checkin-muted); font-size: 10.5px; line-height: 1.45; }
+.lc-checkin__external-overview .lc-checkin__source-conflict { color: var(--lc-checkin-warning-text); }
 /* T-1442 · R-A10 来源子面板：每个外部来源一块，含头部（名称+状态徽标）与编号步骤。 */
 .lc-checkin__source-panel {
     margin: 8px 10px; padding: 8px 10px 10px;
     border: 1px solid var(--lc-checkin-border); border-radius: 10px;
     background: color-mix(in srgb, var(--lc-checkin-accent) 3%, var(--lc-checkin-surface));
+}
+.lc-checkin__source-category {
+    margin: 14px 10px 4px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--lc-checkin-border);
+    font-size: 11px; font-weight: 650; color: var(--lc-checkin-muted);
 }
 .lc-checkin__source-panel > summary { position: relative; padding-right: 16px; cursor: pointer; list-style: none; }
 .lc-checkin__source-panel > summary::-webkit-details-marker { display: none; }
@@ -4257,6 +4263,18 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__source-boundary[data-siplayer-host-state="available"] { color: var(--lc-checkin-success-text); }
 .lc-checkin__source-boundary[data-siplayer-host-state="missing"] { color: var(--lc-checkin-warning-text); }
 .lc-checkin__source-panel-meta { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.lc-checkin__source-status {
+    display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 2px 0 8px;
+    font-size: 10.5px; line-height: 1.5; color: var(--lc-checkin-muted);
+}
+.lc-checkin__source-status[data-runtime-state="missing"],
+.lc-checkin__source-status[data-problem-state="last-read-failed"],
+.lc-checkin__source-status[data-problem-state="last-write-failed"] { color: var(--lc-checkin-warning-text); }
+.lc-checkin__source-report { display: grid; gap: 3px; margin: 5px 0 9px; font-size: 10.5px; line-height: 1.5; color: var(--lc-checkin-muted); }
+.lc-checkin__source-report strong { font-size: 11px; color: var(--lc-checkin-text); }
+.lc-checkin__source-report .is-warning,
+.lc-checkin__source-report[data-report-outcome="read-failed"] strong,
+.lc-checkin__source-report[data-report-outcome="write-failed"] strong { color: var(--lc-checkin-warning-text); }
 .lc-checkin__source-today {
     padding: 1px 8px; border-radius: 9px; font-size: 10px; font-weight: 620;
     color: var(--lc-checkin-accent-text); background: color-mix(in srgb, var(--lc-checkin-accent) 10%, var(--lc-checkin-surface));
@@ -4846,6 +4864,15 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
     border-radius: var(--lc-checkin-radius);
     background: var(--lc-checkin-accent-soft);
 }
+
+/* T-1496：解析提示是轻量辅助层，不改变筛选框的布局语义。片段按钮可逐个撤销，
+   颜色只作类型提示并保留文字通道，低压力/暗色主题下不依赖颜色识别。 */
+.lc-checkin__quick-entry-preview { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; min-width: 0; padding: 4px 2px; color: var(--lc-checkin-muted); font-size: 11px; }
+.lc-checkin__quick-entry-label { font-weight: 700; }
+.lc-checkin__quick-entry-tokens { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.lc-checkin__quick-entry-token { min-height: 26px; border: 1px solid var(--lc-checkin-border); border-radius: 999px; padding: 0 8px; color: var(--lc-checkin-text); background: var(--lc-checkin-surface); cursor: pointer; font-size: 11px; }
+.lc-checkin__quick-entry-token:hover, .lc-checkin__quick-entry-token:focus-visible { border-color: var(--lc-checkin-accent); outline: 2px solid color-mix(in srgb, var(--lc-checkin-accent) 32%, transparent); }
+.lc-checkin__quick-entry-preview small { color: var(--lc-checkin-muted); }
 .lc-checkin__bulk-bar strong { color: var(--lc-checkin-accent-text); font-size: 12.5px; font-weight: 700; }
 .lc-checkin__bulk-bar .lc-checkin__text-button { min-height: 28px; font-size: 11.5px; }
 .lc-checkin__bulk-check {
@@ -10571,9 +10598,6 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__completion-ring.is-complete .lc-checkin__ring-value { stroke: var(--lc-checkin-success); }
 /* 摘要条内的环：负边距抵消条内边距，不增加条高（30 项密度场景首卡位置预算不受影响）。 */
 .lc-checkin__console .lc-checkin__completion-ring { height: 30px; width: 30px; margin-block: -6px; }
-.lc-checkin__spark { display: block; }
-.lc-checkin__spark-line { stroke: var(--lc-checkin-accent); }
-.lc-checkin__stat-spark { display: inline-flex; align-items: center; gap: 6px; color: var(--lc-checkin-muted); font-size: 10px; white-space: nowrap; }
 .lc-checkin__renderblock-today-summary {
     color: var(--lc-checkin-muted);
     font-size: 9.5px;
@@ -10921,3 +10945,11 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
         .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > button { width: auto; }
     }
 }
+.review-batch-tools { display: grid; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--lc-checkin-border-strong); }
+.review-batch-tools > strong { font-size: 13px; }
+.review-batch-items { display: flex; flex-wrap: wrap; gap: 6px 12px; max-height: 148px; overflow: auto; }
+.review-batch-items label { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; max-width: 100%; font-size: 12px; overflow-wrap: anywhere; }
+.review-batch-items input { accent-color: var(--lc-checkin-accent); }
+.review-batch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.review-batch-actions button { min-height: 44px; }
+.lc-checkin--today .lc-checkin__item-topline .lc-checkin__streak-badge { height: 28px; min-height: 28px; line-height: 28px; }

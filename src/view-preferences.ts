@@ -6,6 +6,7 @@ import {normalizeWereadIntegration} from "./features/weread-adapter";
 import {normalizeReminderQuietHours, type ReminderQuietHours, normalizeDailyReminderPreference, type DailyReminderPreference} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
+import {normalizeNoteQueryPreference, type NoteQueryPreference} from "./features/note-query";
 
 export type TodayGroupMode = "none" | "group" | "time" | "priority";
 export type CheckinAppearance = "system" | "light" | "dark";
@@ -34,6 +35,8 @@ export interface CheckinViewPreferences {
     sortMode: CheckinItemSortMode;
     /** T-1502 默认打开方式：openCheckin 命令/热键的落点（快捷弹窗或缺省；页签仅桌面可用）。 */
     defaultOpenMode: "quick" | "tab";
+    /** T-1496 快速弹窗自然语言提示；关闭后输入仍按原搜索/提交路径处理。 */
+    quickEntryNlp: boolean;
     completedCollapsed: boolean;
     collapsedGroups: string[];
     /** Expanded review sections, shared across review workspaces. */
@@ -77,13 +80,15 @@ export interface CheckinViewPreferences {
     diaryReport: {enabled: boolean; docId: string};
     /** T-1353 摘要驻留：每日把当天汇总单行追加进用户绑定的思源文档（opt-in，默认关）。 */
     summaryResident: {enabled: boolean; docId: string};
-    /** T-1384 思阅联动（opt-in，默认关）：有效阅读分钟达阈值后每日一次幂等写入。 */
+    /** 思阅联动按完成的焦点片段写入；thresholdMinutes 只为旧偏好兼容保留。 */
     sireaderIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
-    /** T-1385 思播联动（实验，opt-in 默认关）：有效播放分钟达阈值后每日一次幂等写入。 */
+    /** 思播联动按完成的播放片段写入；thresholdMinutes 只为旧偏好兼容保留。 */
     siplayerIntegration: {enabled: boolean; itemId: string; thresholdMinutes: number};
     /** T-1403 健康收件箱（opt-in，默认关）：快捷指令经内核向收件箱文档追加行，插件轮询摄取。
         T-1486：metricBindings 按项目映射（同指标可挂多项目）；stepsItemId/weightItemId 为旧字段镜像。 */
     healthInbox: HealthInboxPreference;
+    /** T-1500 笔记推导打卡（opt-in，固定只读 SQL 模板，手动同日事实优先）。 */
+    noteQuery: NoteQueryPreference;
     /** T-1402 微信读书联动（official-pull，opt-in 默认关）：官方 Agent API 拉取每日阅读分钟。
         apiKey 仅存本地偏好，不入库不入导出（导出/快照路径只暴露 wereadKeySet 布尔）。
         finishItemId=完读书目绑定项目（可选，空 = 不启用完读事件）。 */
@@ -117,6 +122,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     groupMode: "none",
     sortMode: "manual",
     defaultOpenMode: "quick",
+    quickEntryNlp: true,
     completedCollapsed: true,
     collapsedGroups: [],
     reviewFold: [],
@@ -143,6 +149,7 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     sireaderIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     siplayerIntegration: {enabled: false, itemId: "", thresholdMinutes: 30},
     healthInbox: {enabled: false, docId: "", metricBindings: [], stepsItemId: "", weightItemId: ""},
+    noteQuery: {enabled: false, template: "frontmatter", scope: "notebook", targetId: "", itemId: "", field: "checkin", value: "done", tag: "checkin"},
     wereadIntegration: {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""},
     yeguifIntegration: {enabled: false, itemId: "", notebookId: "", mappings: []},
     reminderQuietHours: {enabled: false, start: "22:00", end: "07:00"},
@@ -183,6 +190,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const groupMode = GROUP_MODES_ALL.has(source.groupMode as TodayGroupMode) ? source.groupMode as TodayGroupMode : DEFAULT_VIEW_PREFERENCES.groupMode;
     const sortMode = SORT_MODES.has(source.sortMode as CheckinItemSortMode) ? source.sortMode as CheckinItemSortMode : DEFAULT_VIEW_PREFERENCES.sortMode;
     const defaultOpenMode = source.defaultOpenMode === "tab" ? "tab" as const : "quick" as const;
+    const quickEntryNlp = typeof source.quickEntryNlp === "boolean" ? source.quickEntryNlp : DEFAULT_VIEW_PREFERENCES.quickEntryNlp;
     const collapsedGroups = Array.isArray(source.collapsedGroups)
         ? [...new Set(source.collapsedGroups.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()))].slice(0, 200)
         : [];
@@ -246,6 +254,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const diaryReport = {enabled: diarySource.enabled === true && Boolean(diaryDocId), docId: diaryDocId};
     const summaryResident = normalizeSummaryResidentPreference(source.summaryResident);
     const healthInbox = normalizeHealthInboxPreference(source.healthInbox);
+    const noteQuery = normalizeNoteQueryPreference(source.noteQuery);
     /* T-1384：思阅联动——enabled 无有效 itemId 不物化；阈值钳制 1~1440（缺省 30）。 */
     const sireaderSource = (source.sireaderIntegration && typeof source.sireaderIntegration === "object" ? source.sireaderIntegration : {}) as Record<string, unknown>;
     const sireaderItemId = typeof sireaderSource.itemId === "string" ? sireaderSource.itemId.trim().slice(0, 160) : "";
@@ -258,7 +267,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const siplayerIntegration = {enabled: siplayerSource.enabled === true && Boolean(siplayerItemId), itemId: siplayerItemId, thresholdMinutes: siplayerThreshold};
     /* T-1402：微信读书联动——同 sireader 口径，另要求 apiKey（拉取通道缺 Key 不物化）。 */
     const wereadIntegration = normalizeWereadIntegration(source.wereadIntegration);
-    /* T-1457：叶归 LifeLog——同 sireader 口径，enabled 要求项目+笔记本绑定（归一内联，避免引入适配器模块依赖）。 */
+    /* LifeLog may use exact-name project matching; the old single target is retained only for compatibility. */
     const yeguifSource = (source.yeguifIntegration && typeof source.yeguifIntegration === "object" ? source.yeguifIntegration : {}) as Record<string, unknown>;
     const yeguifItemId = typeof yeguifSource.itemId === "string" ? yeguifSource.itemId.trim().slice(0, 160) : "";
     const yeguifNotebookId = typeof yeguifSource.notebookId === "string" && /^[0-9A-Za-z-]{8,64}$/.test(yeguifSource.notebookId.trim()) ? yeguifSource.notebookId.trim() : "";
@@ -267,11 +276,12 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
             .map((entry) => ({project: entry.project.trim().slice(0, 60), itemId: entry.itemId.trim().slice(0, 160)}))
             .filter((entry, index, list) => entry.project && entry.itemId && list.findIndex((candidate) => candidate.project.toLocaleLowerCase() === entry.project.toLocaleLowerCase()) === index).slice(0, 50)
         : [];
-    const yeguifIntegration = {enabled: yeguifSource.enabled === true && Boolean(yeguifNotebookId) && (Boolean(yeguifItemId) || yeguifMappings.length > 0), itemId: yeguifItemId, notebookId: yeguifNotebookId, mappings: yeguifMappings};
+    const yeguifIntegration = {enabled: yeguifSource.enabled === true && Boolean(yeguifNotebookId), itemId: yeguifItemId, notebookId: yeguifNotebookId, mappings: yeguifMappings};
     return {
         groupMode,
         sortMode,
         defaultOpenMode,
+        quickEntryNlp,
         completedCollapsed: typeof source.completedCollapsed === "boolean" ? source.completedCollapsed : true,
         collapsedGroups,
         reviewFold,
@@ -305,6 +315,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
         sireaderIntegration,
         siplayerIntegration,
         healthInbox,
+        noteQuery,
         wereadIntegration,
         yeguifIntegration,
         reminderQuietHours: normalizeReminderQuietHours(source.reminderQuietHours),

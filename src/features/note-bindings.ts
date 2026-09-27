@@ -30,6 +30,7 @@ export interface NoteBindingsInput {
     diaryReport: {enabled: boolean; docId: string};
     summaryResident: {enabled: boolean; docId: string};
     healthInbox: {enabled: boolean; docId: string};
+    noteQuery?: {enabled: boolean; scope: "document" | "notebook"; targetId: string};
     journalIntegration: {mode: "daily" | "doc"; notebookId: string; docId: string};
     journalEnabled: boolean;
     yeguifIntegration: {enabled: boolean; itemId: string; notebookId: string; mappings?: Array<{project: string; itemId: string}>};
@@ -69,6 +70,17 @@ export function collectNoteBindings(input: NoteBindingsInput): NoteBindingRow[] 
         required: true,
         sourceSelector: "[data-health-doc]",
     });
+    if (input.noteQuery) {
+        rows.push({
+            key: "note-query",
+            featureKey: "bind.feature.noteQuery",
+            targetKind: input.noteQuery.scope === "notebook" ? "notebook" : "doc",
+            targetId: input.noteQuery.targetId || "",
+            enabled: input.noteQuery.enabled === true,
+            required: true,
+            sourceSelector: "[data-note-query-target]",
+        });
+    }
     rows.push({
         key: "journal-target",
         featureKey: "bind.feature.journal",

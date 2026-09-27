@@ -75,6 +75,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/today-dashboard.ts",
     "src/features/reminder-preferences.ts",
     "src/features/quick-entry-capabilities.ts",
+    "src/features/quick-entry-nlp.ts",
     "src/features/first-success.ts",
     "src/features/view-scope.ts",
     "src/features/pace-projection.ts",
@@ -89,6 +90,7 @@ const CLOCK_FREE_MODULES = [
     "src/features/yeguif-adapter.ts",
     "src/features/docktomato-inbox.ts",
     "src/features/health-inbox.ts",
+    "src/features/note-query.ts", // T-1500：固定只读查询/身份投影，禁止隐式时钟
     "src/quota.ts",
     "src/record-step.ts",
     "src/storage-transaction.ts",
@@ -133,6 +135,7 @@ const SOURCE_MANIFEST = [
     {prefix: "sireader", modules: ["src/features/sireader-adapter.ts"], tests: ["tests/sireader-adapter.test.cjs"]},
     {prefix: "siplayer", modules: ["src/features/siplayer-adapter.ts"], tests: ["tests/siplayer-adapter.test.cjs"]},
     {prefix: "health", modules: ["src/features/health-inbox.ts"], tests: ["tests/health-inbox.test.cjs"]},
+    {prefix: "notequery", modules: ["src/features/note-query.ts"], tests: ["tests/note-query.test.cjs", "tests/source-lifecycle-matrix.test.cjs"]},
     {prefix: "weread", modules: ["src/features/weread-adapter.ts"], tests: ["tests/weread-adapter.test.cjs"]},
     {prefix: "yeguif", modules: ["src/features/yeguif-adapter.ts"], tests: ["tests/yeguif-adapter.test.cjs"]},
 ];

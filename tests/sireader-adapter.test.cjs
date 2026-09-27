@@ -14,7 +14,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts"].forEach(transpile);
 const {SireaderFocusTracker, buildSireaderExternalRef} = require(path.join(outputRoot, "src/features/sireader-adapter.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
 const {normalizeSourceGovernance, settleSegmentsToDays} = require(path.join(outputRoot, "src/features/source-framework.js"));
@@ -34,6 +34,7 @@ const makeTracker = () => new SireaderFocusTracker({toLocalDate, nextMidnight});
 const tracker = makeTracker();
 assert.deepEqual(tracker.handle("open", DAY1 + 10 * MIN), []);
 assert.equal(tracker.focusing, true);
+assert.equal(tracker.sessionStartedAt, DAY1 + 10 * MIN);
 assert.deepEqual(tracker.handle("blur", DAY1 + 45 * MIN + 20_000), [{localDate: "2026-09-22", minutes: 35}], "10min to 45m20s floors to 35 minutes");
 assert.equal(tracker.focusing, false);
 assert.equal(tracker.dayTotal("2026-09-22"), 35);
@@ -65,6 +66,9 @@ assert.deepEqual(tracker.handle("blur", DAY2 + 500 * MIN + 30_000), []);
 
 /* 写入身份：sireader:<itemId>:<localDate>；非法输入空串。 */
 assert.equal(buildSireaderExternalRef("read-item", "2026-09-22"), "sireader:read-item:2026-09-22");
+assert.equal(buildSireaderExternalRef("read-item", "2026-09-22", DAY1 + 10 * MIN), `sireader:read-item:${DAY1 + 10 * MIN}:2026-09-22`);
+assert.notEqual(buildSireaderExternalRef("read-item", "2026-09-22", DAY1 + 10 * MIN), buildSireaderExternalRef("read-item", "2026-09-22", DAY1 + 10 * MIN + 15_000), "distinct same-minute sessions must not collide");
+assert.notEqual(buildSireaderExternalRef("read-item", "2026-09-22", DAY1 + 10 * MIN), buildSireaderExternalRef("read-item", "2026-09-22", DAY1 + 40 * MIN), "two reading sessions keep independent identities");
 assert.equal(buildSireaderExternalRef("", "2026-09-22"), "");
 assert.equal(buildSireaderExternalRef("read-item", "2026/09/22"), "");
 
@@ -75,32 +79,16 @@ assert.equal(normalizeViewPreferences({sireaderIntegration: {enabled: true, item
 assert.equal(normalizeViewPreferences({sireaderIntegration: {enabled: true, itemId: "read", thresholdMinutes: 9999}}).sireaderIntegration.thresholdMinutes, 1440);
 assert.deepEqual(normalizeViewPreferences({sireaderIntegration: "on"}).sireaderIntegration.itemId, "");
 
-/* 组合：计时器片段 → 按日累计结算 → 只写未写过的资格日（T-1387 宿主同逻辑）。 */
-const governance = normalizeSourceGovernance({enabled: true, thresholdValue: 30, itemIds: ["read"]});
+/* Legacy daily identity stays readable, while each new session receives its own identity. */
 const refFor = (localDate) => buildSireaderExternalRef("read", localDate);
-
-/* 累计结算：20 分与 20 分两段各自不到阈值，按日累计 40 才达标（D-261 修复的回归锚）。 */
 const tracker2 = makeTracker();
-const settleForHost = (localDates) => settleSegmentsToDays(
-    localDates.map((localDate) => ({externalRef: refFor(localDate), localDate, value: tracker2.dayTotal(localDate)})),
-    governance,
-    localDates.map(refFor).filter((ref) => writtenRefs.has(ref)),
-);
-const writtenRefs = new Set();
 tracker2.handle("focus", DAY1 + 10 * MIN);
-tracker2.handle("blur", DAY1 + 30 * MIN);
+const firstSession = tracker2.handle("blur", DAY1 + 30 * MIN);
 tracker2.handle("focus", DAY1 + 40 * MIN);
-tracker2.handle("blur", DAY1 + 60 * MIN);
-assert.equal(tracker2.dayTotal("2026-09-22"), 40, "two 20-minute sessions accumulate 40 minutes on the tracker");
-const firstSettlement = settleForHost(["2026-09-22"]);
-assert.equal(firstSettlement.days[0].qualifies, true, "cumulative 40 crosses the 30 threshold even though each session is below");
-assert.equal(firstSettlement.days[0].countedValue, 40, "write value carries the cumulative minutes");
-
-/* 已写当日再结算必须跳过（每日一次幂等）。 */
-writtenRefs.add(refFor("2026-09-22"));
-const secondSettlement = settleForHost(["2026-09-22"]);
-const secondWritable = secondSettlement.days.filter((day) => day.qualifies && !writtenRefs.has(refFor(day.localDate)));
-assert.equal(secondWritable.length, 0, "written day never rewrites");
+const secondSession = tracker2.handle("blur", DAY1 + 55 * MIN);
+assert.deepEqual(firstSession, [{localDate: "2026-09-22", minutes: 20}]);
+assert.deepEqual(secondSession, [{localDate: "2026-09-22", minutes: 15}]);
+assert.equal(tracker2.dayTotal("2026-09-22"), 35, "two events contribute 20 + 15 minutes without a threshold");
 
 /* T-1387 验收：删除不复活（墓碑身份在 appendEvents 被拒）。 */
 const model = require(path.join(outputRoot, "src/model.js"));
@@ -113,6 +101,16 @@ const storeWithTombstone = model.normalizeStore({
 });
 const resurrected = model.appendEvents(storeWithTombstone, [makeEvent()]);
 assert.equal(resurrected.events.length, 0, "a tombstoned sireader identity must never resurrect after user deletion");
+const firstRef = buildSireaderExternalRef("read", "2026-09-22", DAY1 + 10 * MIN);
+const secondRef = buildSireaderExternalRef("read", "2026-09-22", DAY1 + 40 * MIN);
+const sessionStore = model.appendEvents(model.normalizeStore({version: 3, items: storeWithTombstone.items, events: []}), [
+    makeEvent({id: "session-20", value: 20, externalRef: firstRef}),
+    makeEvent({id: "session-15", value: 15, externalRef: secondRef}),
+]);
+assert.deepEqual(sessionStore.events.map((event) => event.value).sort((a, b) => a - b), [15, 20], "same-day sessions remain two events");
+assert.equal(model.appendEvents(sessionStore, [makeEvent({id: "replay", externalRef: firstRef})]).events.length, 2, "replaying a session cannot add a third event");
+const removedSession = model.removeEvents(sessionStore, [sessionStore.events.find((event) => event.externalRef === firstRef)], "2026-09-23T00:00:00Z");
+assert.equal(model.appendEvents(removedSession, [makeEvent({id: "resurrect", externalRef: firstRef})]).events.length, 1, "a removed session cannot resurrect while a distinct session remains");
 
 /* T-1387 验收：跨窗口并发——两个窗口各自写入同身份事件，合并后收敛为一条。 */
 const readItem = {id: "read", name: "阅读", kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, createdAt: "2026-09-01T00:00:00Z", createdDate: "2026-09-01"};
@@ -123,36 +121,21 @@ const sireaderEvents = merged.events.filter((event) => event.source === "sireade
 assert.equal(sireaderEvents.length, 1, "duplicate sireader identities from two windows converge to one event");
 assert.ok(sireaderEvents[0].externalRef === refFor("2026-09-22"));
 
-/* T-1387 验收：失败自愈——写入失败后同输入重复结算仍给出资格日（宿主下次事件自动重试）。 */
-const retrySettlement = settleSegmentsToDays(
-    [{externalRef: refFor("2026-09-24"), localDate: "2026-09-24", value: 40}],
-    governance,
-    [],
-);
-assert.equal(retrySettlement.days[0].qualifies, true, "unwritten qualifying day stays eligible until the write succeeds");
-const retryAgain = settleSegmentsToDays(
-    [{externalRef: refFor("2026-09-24"), localDate: "2026-09-24", value: 40}],
-    governance,
-    [],
-);
-assert.equal(JSON.stringify(retryAgain), JSON.stringify(retrySettlement), "settlement determinism makes retry self-healing");
-
-
-/* 接线断言：监听绑定/拆除、结算→写入路径、每日一次守卫、facade 防伪、注册表、设置结构。 */
+/* 接线断言：监听绑定/拆除、分段写入、身份守卫、facade 防伪、注册表、设置结构。 */
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
 assert.ok(indexSource.includes("this.bindSireaderListeners();") && indexSource.includes("this.unbindSireaderListeners();"), "sireader listeners must be bound at startup and unbound at teardown");
 assert.ok(indexSource.includes('source: "sireader", externalRef'), "write path must stamp the sireader source and externalRef");
-assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === ref'), "daily write must be guarded by the existing identity");
+assert.ok(indexSource.includes('event.source === "sireader" && event.externalRef === externalRef'), "session write must be guarded by the existing identity");
 assert.ok(indexSource.includes("this.store.eventTombstones.some"), "deleted (tombstoned) sireader days must be pre-checked before writing");
 assert.ok(indexSource.includes('["manual", "tomato", "api", "import", "sireader", "siplayer", "weread", "yeguif"]'), "summary resident source counts must include sireader/siplayer/weread/yeguif");
 const apiSource = fs.readFileSync(path.join(__dirname, "..", "src/api.ts"), "utf8");
 assert.match(apiSource, /"sireader" \|\| input\.source === "siplayer" \|\| input\.source === "weread" \|\| input\.source === "yeguif" \? \{source: "api"/, "public API input must not be able to mint adapter sources");
 const ecosystemSource = fs.readFileSync(path.join(__dirname, "..", "src/ecosystem.ts"), "utf8");
-assert.match(ecosystemSource, /prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<localDate>"/, "sireader prefix must be registered in the identity registry");
+assert.match(ecosystemSource, /prefix: "sireader", label: "SiReader", format: "sireader:<itemId>:<startUnixMs>:<localDate>"/, "sireader prefix must be registered in the identity registry");
 const modelSource = fs.readFileSync(path.join(__dirname, "..", "src/model.ts"), "utf8");
 assert.match(modelSource, /value\.source === "sireader"/, "event normalization must accept sireader so multi-window merge keeps provenance");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
-for (const hook of ["data-sireader-integration", "data-sireader-toggle", "data-sireader-item", "data-sireader-threshold", "save-sireader"]) {
+for (const hook of ["data-sireader-integration", "data-sireader-toggle", "data-sireader-item"]) {
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }
 

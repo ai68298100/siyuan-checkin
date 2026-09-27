@@ -17,6 +17,7 @@ import {isBannerCoveredReminder} from "../features/reminder-digest";
 import {buildRecordTrust} from "../features/record-trust";
 import {buildCheckinLogHierarchy, type CheckinLogDay} from "../features/checkin-log-hierarchy";
 import {projectReminderCenter, type ReminderUserAction} from "../reminders";
+import {applyQuickEntryCancellations, parseQuickEntryText, resolveQuickEntryRecordTarget, type QuickEntryParseResult} from "../features/quick-entry-nlp";
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinEvent, CheckinItem, CheckinItemSortMode, CheckinPriority, CheckinStore, CheckinTimeSlot} from "../types";
 import type {OccasionStore} from "../occasions";
@@ -57,6 +58,9 @@ export interface TodayViewContext extends TodayItemContext {
     reminderQuiet?: boolean;
     /** T-1424 用户已跳过新手引导：空态不再显示三步引导。 */
     firstSuccessSkipped?: boolean;
+    /** T-1496：快速录入提示开关与当前会话内取消的解析片段。 */
+    quickEntryNlp?: boolean;
+    quickEntryCancelled?: readonly string[];
 }
 
 export type SaveState = "idle" | "saving" | "error";
@@ -419,13 +423,19 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const now = currentCalendarDate();
     const activeItems = ctx.store.items.filter((item) => !item.archived);
     const scheduledItems = ctx.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, now) && isScheduledToday(item, now));
-    const query = ctx.todayQuery.trim().toLocaleLowerCase();
+    const quickEntry = ctx.quickEntryNlp === false || !ctx.todayQuery.trim() ? undefined : applyQuickEntryCancellations(parseQuickEntryText(ctx.todayQuery, dateKey(now)), ctx.quickEntryCancelled || []);
+    const query = (quickEntry?.tokens.length ? quickEntry.remainder : ctx.todayQuery).trim().toLocaleLowerCase();
     const visibleItems = query
         ? scheduledItems.filter((item) => `${item.name} ${item.group || ""}`.toLocaleLowerCase().includes(query))
         : scheduledItems;
     const filteredItems = ctx.pendingOnly ? visibleItems.filter((item) => !isComplete(ctx.store, item, now)) : visibleItems;
     const pendingItems = sortCheckinItems(filteredItems.filter((item) => !isComplete(ctx.store, item, now)), ctx.todaySortMode);
     const completedItems = sortCheckinItems(filteredItems.filter((item) => isComplete(ctx.store, item, now)), ctx.todaySortMode);
+    const quickEntryTargetId = quickEntry && resolveQuickEntryRecordTarget(quickEntry, dateKey(now), scheduledItems.map((item) => {
+        const revision = getItemRevisionForDate(item, now);
+        return {id: item.id, name: item.name, kind: revision.kind, unit: revision.unit, direction: item.direction};
+    }));
+    const quickEntryTarget = pendingItems.find((item) => item.id === quickEntryTargetId);
     const completed = scheduledItems.filter((item) => isComplete(ctx.store, item, now)).length;
     const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
     /* T-1420 今日行动台投影：事实经 model 单一实现计算，编排排序委托投影层。 */
@@ -545,6 +555,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             ${occasionIsToday ? occasionBanner : ""}
             ${scheduledItems.length ? `<div class="lc-checkin__organize">
                 <label class="lc-checkin__today-search"><span aria-hidden="true">⌕</span><input data-today-search type="search" value="${escapeHtml(ctx.todayQuery)}" placeholder="${t("today.filterPlaceholder")}" aria-label="${t("today.filterPlaceholder")}" />${ctx.todayQuery ? `<button type="button" data-action="clear-search" aria-label="${t("today.clearFilter")}" title="${t("today.clearFilter")}">×</button>` : ""}</label>
+                ${renderQuickEntryPreview(quickEntry, quickEntryTarget)}
                 <details class="lc-checkin__today-filters" data-today-filters ${ctx.pendingOnly ? "open" : ""}><summary>${ctx.pendingOnly ? t("today.filterActive") : t("today.filter")}</summary><div class="lc-checkin__today-filter-fields"><label><span>${t("today.group")}</span><select data-group-mode aria-label="${t("today.groupMode")}">
                     <option value="none" ${ctx.todayGroupMode === "none" ? "selected" : ""}>${t("set.groupNone")}</option>
                     <option value="group" ${ctx.todayGroupMode === "group" ? "selected" : ""}>${t("today.groupCustom")}</option>
@@ -566,4 +577,17 @@ export function renderTodayView(ctx: TodayViewContext): string {
             <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}</main>
             ${recentRecord}
         </div>`;
+}
+
+function renderQuickEntryPreview(result: QuickEntryParseResult | undefined, target?: CheckinItem): string {
+    if (!result || !result.tokens.length) return "";
+    const tokenButtons = result.tokens.map((token) => `<button type="button" class="lc-checkin__quick-entry-token is-${token.kind}" data-action="cancel-quick-entry" data-quick-entry-token="${escapeHtml(token.id)}" title="${escapeHtml(t("today.quickEntryCancel"))}">${escapeHtml(token.text)} ×</button>`).join("");
+    const summary = result.value !== undefined
+        ? t("today.quickEntryValue", {value: formatNumber(result.value), unit: result.unit || ""})
+        : result.date
+            ? t("today.quickEntryDate", {date: result.date})
+            : result.recurrence
+                ? t("today.quickEntryRecurrence", {days: result.recurrence.weekdays.join("、")})
+                : "";
+    return `<div class="lc-checkin__quick-entry-preview" data-quick-entry-preview role="status" aria-live="polite"><span class="lc-checkin__quick-entry-label">${escapeHtml(t("today.quickEntryDetected"))}</span><span class="lc-checkin__quick-entry-tokens">${tokenButtons}</span><small>${escapeHtml(summary)}</small>${target ? `<button type="button" class="lc-checkin__text-button" data-action="quick-entry-record" data-item-id="${escapeHtml(target.id)}">${escapeHtml(t("today.quickEntryUse", {name: target.name}))}</button>` : ""}</div>`;
 }

@@ -40,7 +40,7 @@ const TRUST_SOURCE_KEYS: Record<string, string> = {
 };
 
 /** 阈值结算来源：事件值达到当前阈值才解释（低于阈值说明口径已变，不再冒认）。 */
-const THRESHOLD_SOURCES = new Set(["sireader", "siplayer", "weread"]);
+const THRESHOLD_SOURCES = new Set(["weread"]);
 
 function reasonFor(event: RecordTrustEventInput, context: RecordTrustContext): {reasonKey: string; reasonParams: Record<string, string | number>} | undefined {
     const ref = typeof event.externalRef === "string" ? event.externalRef : "";
@@ -54,6 +54,9 @@ function reasonFor(event: RecordTrustEventInput, context: RecordTrustContext): {
     }
     if (ref.startsWith("health:") && value !== undefined) {
         return {reasonKey: "trust.reasonInbox", reasonParams: {value, unit: event.unit}};
+    }
+    if (ref.startsWith("notequery:")) {
+        return {reasonKey: "trust.reasonNoteQuery", reasonParams: {}};
     }
     if (event.source === "tomato" && value !== undefined) {
         return {reasonKey: "trust.reasonTomato", reasonParams: {value, unit: event.unit}};

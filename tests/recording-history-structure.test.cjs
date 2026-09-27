@@ -63,13 +63,13 @@ const model = loadTs(path.join(root, "model.ts"));
 const {bindTodayHandlers} = loadTs(path.join(root, "render", "bind-today.ts"));
 const pluginSource = ts.createSourceFile("index.ts", fs.readFileSync(path.join(root, "index.ts"), "utf8"), ts.ScriptTarget.Latest, true);
 const pluginClass = pluginSource.statements.find(node => ts.isClassDeclaration(node));
-const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem"].includes(node.name?.getText(pluginSource))).map(node => node.getText(pluginSource)).join("\n");
+const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem", "recordHistoryBatch"].includes(node.name?.getText(pluginSource))).map(node => node.getText(pluginSource)).join("\n");
 const hostClassOutput = ts.transpileModule(`class RecordingHost { ${methods} }`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
 /* R-18.5：recordEvent 现引用 computeStreaksValue（model-helpers）与 STREAK_MILESTONES
    （index 模块常量）——本桩以常量提供，结构测试不断言连击/里程碑值。 */
-const environment = {...model, ...shared, computeStreaksValue: () => new Map(), STREAK_MILESTONES: [], t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
+const environment = {...model, ...shared, isValidLocalDateInput: value => /^2026-09-(?:1[0-9]|20)$/.test(value), computeStreaksValue: () => new Map(), STREAK_MILESTONES: [], t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
 const RecordingHost = new Function(...Object.keys(environment), `${hostClassOutput}\nreturn RecordingHost;`)(...Object.values(environment));
 
 function fixture(kind = "binary", direction) {
@@ -199,5 +199,24 @@ function fixture(kind = "binary", direction) {
     undoFailing.host.persist = async () => { throw new Error("write failed"); };
     undoFailing.icon.click(); await undoFailing.flush();
     assert.equal(undoFailing.host.store, beforeUndoFailure, "failed lapse undo restores its record");
+    const batch = fixture();
+    batch.host.store = model.normalizeStore({version: 3, items: [
+        {...batch.host.store.items[0], id: "a"}, {...batch.host.store.items[0], id: "b"},
+    ], events: []});
+    batch.host.historyBatchSelected = new Set(["a", "b"]);
+    batch.host.enqueueMutation = async operation => operation();
+    batch.host.makeEvent = (item, value, source, unit, note, externalRef, stamp) => ({id: `batch-${item.id}`, itemId: item.id, value, source, unit, ...stamp});
+    const count = await batch.host.recordHistoryBatch("2026-09-19", ["a", "b"], "record");
+    assert.equal(count, 2, "two historical projects are persisted as one batch");
+    assert.equal(batch.host.store.events.length, 2, "each completed project has its own undoable event");
+    assert.equal(await batch.host.recordHistoryBatch("2026-09-19", ["a", "b"], "record"), 0, "replayed batch does not add duplicates");
+    const batchFailure = fixture();
+    batchFailure.host.store = model.normalizeStore({version: 3, items: [{...batchFailure.host.store.items[0], id: "a"}], events: []});
+    batchFailure.host.enqueueMutation = async operation => operation();
+    batchFailure.host.makeEvent = (item, value, source, unit, note, externalRef, stamp) => ({id: "batch-fail", itemId: item.id, value, source, unit, ...stamp});
+    batchFailure.host.persist = async () => { throw new Error("write failed"); };
+    const beforeBatchFailure = batchFailure.host.store;
+    assert.equal(await batchFailure.host.recordHistoryBatch("2026-09-19", ["a"], "skip"), 0);
+    assert.equal(batchFailure.host.store, beforeBatchFailure, "failed historical batch restores the entire store");
     console.log("Today recording bindings passed: regular/at-most binary inner, outer and icon actions; notes/photos; queued idempotency; snapshot undo; conflict and persistence protection.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

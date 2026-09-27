@@ -414,6 +414,58 @@ function assertActive(fixture, expectedId) {
         resolvedAppearanceValue: "light",
     };
     const html = exports.renderSettingsView(context);
+    const localOnly = exports.projectIntegrationStatus({enabled: true, configured: true, todayCount: 2});
+    assert.equal(localOnly.configuration, "enabled", "saved opt-in remains a configuration fact");
+    assert.equal(localOnly.runtime, "unprobed", "saved opt-in does not prove the host is available");
+    assert.equal(localOnly.activity.todayCount, 2, "today's persisted events are independent of live host state");
+    const unavailable = exports.projectIntegrationStatus({enabled: true, configured: true, hostAvailable: false});
+    assert.equal(unavailable.runtime, "missing", "a failed host probe is distinct from local opt-in");
+    assert.equal(unavailable.configuration, "enabled");
+    const failedRead = exports.projectIntegrationStatus({enabled: true, configured: true, lastReadOk: false});
+    assert.equal(failedRead.problem, "last-read-failed", "last read failure must remain visible without claiming live host status");
+    assert.equal(failedRead.runtime, "unprobed");
+    assert.equal(exports.projectIntegrationStatus({enabled: true, configured: true, lastReadOk: true, lastWriteFailed: true}).problem, "last-write-failed", "a failed write remains a separate problem even after a successful read");
+    assert.equal(exports.projectIntegrationStatus({enabled: true, configured: false}).configuration, "setup");
+    assert.equal(exports.projectIntegrationStatus({enabled: true, configured: true, targetAvailable: false}).configuration, "rebind");
+    assert.match(html, /data-source-panel="sireader"[^>]*data-source-state="setup"[\s\S]*?data-runtime-state="unprobed"/, "an unconfigured listener must show an unprobed runtime");
+    const categoryOrder = ["plugin-event", "official-pull", "shared-doc"].map((category) => html.indexOf(`data-source-category="${category}"`));
+    assert.ok(categoryOrder.every((position) => position >= 0) && categoryOrder[0] < categoryOrder[1] && categoryOrder[1] < categoryOrder[2], "external sources follow their actual trigger channels");
+    assert.ok(html.indexOf('data-source-panel="siplayer"') < categoryOrder[1] && html.indexOf('data-source-panel="weread"') < categoryOrder[2], "listener and official pull panels stay within their category");
+    assert.equal((html.match(/data-source-panel="weread"/g) || []).length, 1, "reordering must not duplicate a source panel");
+    const readingTarget = {id: "reading", name: "Reading", archived: false};
+    const sharedReading = exports.renderSettingsView({...context, store: {items: [readingTarget], events: []},
+        sireaderIntegration: {enabled: true, itemId: "reading", thresholdMinutes: 30},
+        wereadIntegration: {enabled: true, itemId: "reading", thresholdMinutes: 30, finishItemId: "", notesItemId: ""}, wereadKeySet: true});
+    assert.match(sharedReading, /data-source-conflict="reading-duration"/, "two enabled reading-minute sources sharing a target need a visible warning");
+    assert.match(sharedReading, /data-sireader-toggle checked/, "the warning must leave the original source enabled");
+    assert.match(sharedReading, /data-weread-toggle checked/, "the warning must leave the other source enabled");
+    const separateReading = exports.renderSettingsView({...context, store: {items: [readingTarget, {id: "other", name: "Other", archived: false}], events: []},
+        sireaderIntegration: {enabled: true, itemId: "reading", thresholdMinutes: 30},
+        wereadIntegration: {enabled: true, itemId: "other", thresholdMinutes: 30, finishItemId: "", notesItemId: ""}, wereadKeySet: true});
+    assert.doesNotMatch(separateReading, /data-source-conflict="reading-duration"/, "separate targets do not imply double counting");
+    const reportOnly = exports.renderSettingsView({...context, sourceIngestReports: {health: {mode: "preview", outcome: "ok", scanned: 5, matched: 2, unmatched: 1, planned: 1, written: 0, duplicate: 1, tombstoned: 0, manualConflict: 0, invalid: 1, blocked: 0, windowFull: true}}});
+    assert.match(reportOnly, /data-source-report="health" data-report-mode="preview" data-report-outcome="ok"/, "preview result is visible in its source panel");
+    assert.match(reportOnly, /data-runtime-state="unprobed"/, "a successful document read does not prove another plugin host is connected");
+    assert.match(reportOnly, /set\.sourceReportWindowFull/, "a full bounded scan warns that more rows may remain");
+    assert.match(reportOnly, /data-action="preview-source" data-source="health"/, "health source exposes read-only preview");
+    assert.match(reportOnly, /data-action="preview-source" data-source="notequery"/, "note query source exposes read-only preview");
+    assert.match(reportOnly, /data-action="preview-source" data-source="yeguif"/, "LifeLog source exposes read-only preview");
+    assert.doesNotMatch(reportOnly, /data-action="preview-source" data-source="weread"/, "official pull uses its existing pull action");
+    const ingestSource = read("src", "index.ts");
+    for (const [method, nextMethod] of [["ingestHealthInbox", "ingestNoteQuery"], ["ingestNoteQuery", "wereadGateway"], ["ingestYeguif", "recordBlockToday"]]) {
+        const start = ingestSource.indexOf(`private async ${method}(preview = false)`);
+        const end = ingestSource.indexOf(`private async ${nextMethod}(`, start);
+        assert.ok(start >= 0 && end > start, `${method} preview boundary remains identifiable`);
+        const body = ingestSource.slice(start, end);
+        assert.match(body, /report\.planned \+= 1;\s*if \(preview\) continue;[\s\S]*?enqueueMutation\(/, `${method} must leave preview before enqueueing an event mutation`);
+        assert.doesNotMatch(body.slice(0, body.indexOf("if (preview) continue;")), /enqueueMutation\(|recordExternalEvent\(/, `${method} must not write before the preview gate`);
+    }
+    const contracts = exports.renderSettingsView({...context, publicApiContract: {version: 5, capabilities: ["items.query", "events.record", "calendar.read"], taskHorizonVersion: 1},
+        dockTomatoDiagnostics: {state: "missing"}, diagnosticsCount: 2});
+    assert.match(contracts, /data-contract-center="api" data-contract-state="provided"[\s\S]*?set\.apiContractDetail/, "public API version and capability count are visible");
+    assert.match(contracts, /data-contract-center="taskhorizon" data-contract-state="waiting"/, "unconfirmed consumer is explicitly waiting");
+    assert.match(contracts, /data-contract-center="docktomato" data-contract-state="missing"/, "provider state comes from the real probe");
+    assert.match(contracts, /data-contract-center="docktomato"[\s\S]*?data-action="export-diagnostics"/, "the contract center exposes the existing diagnostic export action");
     const secondSurfaceHtml = exports.renderSettingsView(context);
     const attribute = (tag, name) => tag.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1];
     const buttonTags = [...html.matchAll(/<button\b[^>]*\bdata-settings-nav="[^"]+"[^>]*>/g)].map((match) => match[0]);
@@ -466,9 +518,9 @@ function assertActive(fixture, expectedId) {
     assert.match(pending, /小时阅读 · 2026-09-20 · 0\.5 小时<\/small>/, "pending hours use the same converted value as the eventual record");
     assert.match(pending, /分钟阅读 · 2026-09-20 · 30 分钟<\/small>/, "minute mapping remains in minutes");
     assert.match(pending, /番茄数量 · 2026-09-20 · 1 个番茄<\/small>/, "session mapping preserves its custom unit");
-    const configuredYeguif = exports.renderSettingsView({...context, store: {items: [{id: "y", name: "Yeguif target", archived: false}], events: []}, yeguifIntegration: {enabled: false, itemId: "y", notebookId: "notebook-1"}});
+    const configuredYeguif = exports.renderSettingsView({...context, store: {items: [{id: "y", name: "拉伸", unit: "分钟", archived: false}], events: []}, yeguifIntegration: {enabled: false, itemId: "", notebookId: "notebook-1", mappings: []}});
     assert.match(configuredYeguif, /data-source-panel="yeguif" data-source-state="ready"/, "叶归绑定完整但未启用时应显示待启用状态");
-    assert.match(configuredYeguif, /<select data-yeguif-item[\s\S]*?<option value="y" selected>Yeguif target<\/option>/, "叶归目标项目应保留已选值");
+    assert.match(configuredYeguif, /data-yeguif-mappings/, "叶归可按同名自动匹配并为异名项目配置显式映射");
 }
 
 // Integration lifecycle: the plugin owns one cleanup per surface and releases it before replacement and unload.
@@ -493,14 +545,15 @@ assert.match(settingsSourceT1442, /data-external-sources open/, "third-party sou
 assert.ok(settingsSourceT1442.indexOf('data-source-panel="diary"') > documentsGroupIndex && settingsSourceT1442.indexOf('data-source-panel="diary"') < externalGroupIndex, "diary writes must stay in the document-write group");
 assert.ok(settingsSourceT1442.indexOf('data-source-panel="summary"') > documentsGroupIndex && settingsSourceT1442.indexOf('data-source-panel="summary"') < externalGroupIndex, "summary writes must stay in the document-write group");
 assert.ok(settingsSourceT1442.indexOf('data-source-panel="sireader"') > externalGroupIndex, "third-party source panels must stay after the document-write group");
-for (const source of ["diary", "summary", "sireader", "health", "siplayer", "weread", "yeguif"]) {
+assert.ok(settingsSourceT1442.indexOf('data-source-panel="notequery"') > externalGroupIndex, "note-derived source panel must stay after the document-write group");
+for (const source of ["diary", "summary", "sireader", "health", "notequery", "siplayer", "weread", "yeguif"]) {
     assert.match(settingsSourceT1442, new RegExp(`data-source-panel="${source}"`), `来源 ${source} 必须有独立子面板`);
 }
-assert.equal((settingsSourceT1442.match(/<details class="lc-checkin__source-panel"/g) || []).length, 9, "来源面板必须使用可折叠 details（T-1470 新增联动总览 = 7 来源 + 总览 + 问卷日记 2 能力面板）");
+assert.equal((settingsSourceT1442.match(/<details class="lc-checkin__source-panel"/g) || []).length, 10, "来源面板必须使用可折叠 details（8 来源 + 总览 + 问卷日记 2 能力面板）");
 assert.match(settingsSourceT1442, /sourcePanelOpen\("weread"\)/, "保存联动设置时应能恢复当前展开卡片");
 assert.match(settingsSourceT1442, /data-action="clear-weread-key"/, "微信读书应提供本地 Key 清除入口");
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 9, "九个面板头部（7 来源 + 总览 + 问卷日记）");
-assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 7, "七个编号步骤列表（总览/问卷日记面板无来源步骤，属能力配置）");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 10, "十个面板头部（8 来源 + 总览 + 问卷日记）");
+assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 8, "八个编号步骤列表（总览/问卷日记面板无来源步骤，属能力配置）");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
@@ -520,6 +573,8 @@ const stepKeys = [];
 for (const source of ["Diary", "Summary", "Sireader", "Health", "Siplayer", "Weread", "Yeguif"]) {
     for (let step = 1; step <= 4; step += 1) stepKeys.push(`set.steps${source}${step}`);
 }
+for (let step = 1; step <= 3; step += 1) stepKeys.push(`set.stepsNoteQuery${step}`);
+stepKeys.push("set.noteQueryIntegration", "set.noteQueryBoundary", "set.noteQuerySave", "set.noteQueryToggle");
 stepKeys.push("set.sourceBadgeOn", "set.sourceBadgeOff", "set.groupHost", "set.groupDocuments", "set.groupExternal", "set.extSourcesListTitle", "set.extPrivacyHint", "set.docWritesTitle", "set.docWritesSetupHint", "set.docWritesListTitle", "set.docWritesSummary", "set.thirdPartySourcesTitle", "set.thirdPartySourcesSetupHint", "set.thirdPartySourcesListTitle", "set.thirdPartySourcesSummary", "set.wereadClearKey", "msg.wereadClearKeyConfirm", "msg.wereadClearKeyDone", "msg.healthNeedMapping");
 for (const key of stepKeys) {
     const occurrences = panelI18n.split(`"${key}"`).length - 1;

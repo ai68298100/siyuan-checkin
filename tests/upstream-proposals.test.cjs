@@ -61,8 +61,8 @@ for (const prefix of ["sireader", "siplayer"]) {
     assert.ok(ecosystem.includes(`prefix: "${prefix}"`), `fixture identity ${prefix}: must exist in EXTERNAL_REF_PREFIX_REGISTRY`);
 }
 assert.ok(ecosystem.includes("TASK_HORIZON_EXTERNAL_REF_PREFIX"), "taskhorizon: identity must exist in EXTERNAL_REF_PREFIX_REGISTRY (via its constant)");
-assert.ok(ecosystem.includes(`format: "sireader:<itemId>:<localDate>"`), "sireader ref format must match the registry");
-assert.ok(ecosystem.includes(`format: "siplayer:<itemId>:<localDate>"`), "siplayer ref format must match the registry");
+assert.ok(ecosystem.includes(`format: "sireader:<itemId>:<startUnixMs>:<localDate>"`), "sireader ref format must match the registry");
+assert.ok(ecosystem.includes(`format: "siplayer:<itemId>:<startUnixMs>:<localDate>"`), "siplayer ref format must match the registry");
 
 const apiContract = fs.readFileSync(path.join(root, "src", "api-contract.ts"), "utf8");
 assert.ok(apiContract.includes('"calendar.read"'), "calendar.read capability must exist in the api contract");

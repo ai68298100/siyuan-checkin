@@ -15,6 +15,8 @@ assert.match(source, /lastInsightsItemId/);
 assert.match(source, /slice\(0, 200\)/);
 /* T-106 打卡振动：偏好字段、归一化与绑定链路必须成套存在 */
 assert.match(source, /hapticFeedback: true/, "haptic feedback defaults to on");
+assert.match(source, /quickEntryNlp: true/, "quick entry recognition defaults on");
+assert.match(source, /typeof source\.quickEntryNlp === "boolean"/, "quick entry recognition is normalized from stored preferences");
 assert.match(source, /typeof source\.hapticFeedback === "boolean"/, "haptic feedback must be normalized from stored prefs");
 assert.match(source, /focusTimerProvider: "builtin"/, "focus timer provider defaults to the built-in timer");
 assert.match(source, /source\.focusTimerProvider === "plugin" \? "docktomato"/, "legacy generic plugin preference migrates to Dock Tomato");
@@ -28,6 +30,8 @@ assert.ok((bindToday.match(/host\.pulseHaptic\(\)/g) || []).length >= 3, "record
 const settingsSource2 = fs.readFileSync("src/render/settings.ts", "utf8");
 assert.match(settingsSource2, /data-setting-haptic/, "settings must expose the haptic toggle");
 assert.match(settingsSource2, /data-setting-focus-timer/, "settings must expose the focus timer provider");
+assert.match(settingsSource2, /data-setting-quick-entry-nlp/, "settings must expose the quick entry recognition toggle");
+assert.match(plugin, /data-setting-quick-entry-nlp[\s\S]*persistViewPreferences\(\)/, "the toggle persists changes");
 assert.match(plugin, /pulseHaptic\(\): void/, "the plugin must implement the haptic pulse");
 assert.match(plugin, /async onDataChanged\(\)[\s\S]*VIEW_PREFERENCES_NAME/);
 assert.match(plugin, /applyViewPreferences\(preferences\)/);
@@ -61,6 +65,12 @@ const wereadModule = loadTypeScript("src/features/weread-adapter.ts", {}, {});
 const reminderPreferencesModule = loadTypeScript("src/features/reminder-preferences.ts", {}, {});
 const firstSuccessModule = loadTypeScript("src/features/first-success.ts", {}, {});
 const viewScopeModule = loadTypeScript("src/features/view-scope.ts", {}, {"../date-keys": {addDays: (key) => key}});
+const noteQueryModule = loadTypeScript("src/features/note-query.ts", {}, {
+    "./note-anchor": {
+        validateAnchorBlockId: (value) => typeof value === "string" && /^[A-Za-z0-9_-]{10,64}$/.test(value.trim()) ? value.trim() : undefined,
+    },
+    "../date-keys": {isValidDateKey: (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)},
+});
 const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/note-anchor": {
         // T-1352：与 src/features/note-anchor.ts 同规格的块 ID 校验桩（URL 安全 10~64 位）。
@@ -72,9 +82,13 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/reminder-preferences": reminderPreferencesModule,
     "./features/first-success": firstSuccessModule,
     "./features/view-scope": viewScopeModule,
+    "./features/note-query": noteQueryModule,
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";
+assert.equal(preferences.normalizeViewPreferences({}).quickEntryNlp, true, "legacy preferences keep recognition enabled");
+assert.equal(preferences.normalizeViewPreferences({quickEntryNlp: false}).quickEntryNlp, false, "disabled recognition survives reload");
+assert.equal(preferences.normalizeViewPreferences({quickEntryNlp: "false"}).quickEntryNlp, true, "invalid persisted values fail closed to the documented default");
 assert.equal(preferences.normalizeViewPreferences({avatarImage: validAvatar}).avatarImage, validAvatar, "complete avatar data survives preference reload unchanged");
 assert.equal(preferences.normalizeViewPreferences({avatarImage: "data:image/png;base64," + "A".repeat(1_000_000)}).avatarImage, undefined, "oversized avatar data is rejected, never truncated into a broken image");
 for (const avatarImage of ["data:image/png;base64,", "data:image/png;base64,AAA", "data:image/svg+xml;base64,AAAA", "https://example.com/photo.png", "data:image/png;base64,AA!="]) {
@@ -84,13 +98,23 @@ const normalized = preferences.normalizeViewPreferences({reviewFold: [...foldIds
 assert.deepEqual(Array.from(normalized.reviewFold), foldIds, "all review section choices survive normalization without unknown or duplicate ids");
 assert.equal(normalized.reviewFoldTouched, true);
 assert.deepEqual(Array.from(preferences.normalizeViewPreferences({reviewFold: "projects"}).reviewFold), []);
+assert.deepEqual({...preferences.normalizeViewPreferences({}).noteQuery}, {
+    enabled: false, template: "frontmatter", scope: "notebook", targetId: "", itemId: "", field: "checkin", value: "done", tag: "checkin",
+}, "note-query defaults remain opt-in and bounded");
+assert.equal(preferences.normalizeViewPreferences({noteQuery: {
+    enabled: true, template: "tag", scope: "document", targetId: "20260927090000-abcd123", itemId: "walk", field: "status", value: "done", tag: "finished",
+}}).noteQuery.enabled, true, "valid note-query bindings survive preference normalization");
+assert.equal(preferences.normalizeViewPreferences({noteQuery: {
+    enabled: true, template: "sql", targetId: "unsafe", itemId: "walk",
+}}).noteQuery.enabled, false, "unsafe note-query bindings stay disabled");
 const lifelogPreference = preferences.normalizeViewPreferences({yeguifIntegration: {
     enabled: true, itemId: "legacy", notebookId: "notebook-12345",
     mappings: [{project: " 工作 ", itemId: "work"}, {project: "工作", itemId: "duplicate"}, {project: "阅读", itemId: "read"}, {project: "", itemId: "empty"}],
 }}).yeguifIntegration;
 assert.equal(lifelogPreference.enabled, true, "LifeLog may enable with mapping targets and notebook");
 assert.deepEqual(Array.from(lifelogPreference.mappings, (entry) => ({...entry})), [{project: "工作", itemId: "work"}, {project: "阅读", itemId: "read"}], "LifeLog mapping trims and deduplicates project names");
-assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {enabled: true, itemId: "", notebookId: "notebook-12345"}}).yeguifIntegration.enabled, false, "LifeLog does not enable without any project target");
+assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {enabled: true, itemId: "", notebookId: "notebook-12345"}}).yeguifIntegration.enabled, true, "LifeLog can resolve unique same-name targets at ingestion");
+assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {enabled: true, itemId: "", notebookId: ""}}).yeguifIntegration.enabled, false, "LifeLog requires a notebook");
 
 const timers = new Map();
 const animationFrames = [];

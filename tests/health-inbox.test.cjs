@@ -13,7 +13,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/template-linkage.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/note-query.ts", "src/features/weread-adapter.ts", "src/features/template-linkage.ts"].forEach(transpile);
 const inbox = require(path.join(outputRoot, "src/features/health-inbox.js"));
 const linkage = require(path.join(outputRoot, "src/features/template-linkage.js"));
 const {normalizeViewPreferences} = require(path.join(outputRoot, "src/view-preferences.js"));
@@ -67,11 +67,14 @@ assert.equal(inbox.parseHealthInboxRows([{content: "health:steps:2026-09-23 100"
 /* 宿主接线：轮询定时器、SQL 收件箱查询、api 来源写入、设置结构与偏好持久化。 */
 const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), "utf8");
 assert.ok(indexSource.includes("HEALTH_INGEST_INTERVAL_MS"), "polling interval must come from the feature module");
+assert.ok(indexSource.includes("NOTE_QUERY_INTERVAL_MS"), "note-query polling interval must come from the feature module");
 assert.ok(indexSource.includes("content LIKE 'health:%'"), "inbox query must scope to the bound document and health lines");
 assert.match(indexSource, /content LIKE 'health:%'.*ORDER BY id ASC LIMIT 500/, "health rows must have deterministic oldest-first order before first-row dedupe");
 assert.ok(indexSource.includes('source: "api", externalRef'), "health writes must use the public api source with the composed identity");
 assert.match(indexSource, /eventTombstones\.some\(\(tombstone\) => tombstone\.source === "api"[\s\S]*externalRef === externalRef\)/, "health ingest must honor deleted-identity tombstones");
 assert.match(indexSource, /bindVerifiedDocumentSave\("save-health-doc"[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");
+assert.match(indexSource, /buildNoteQuerySql\(governance\)/, "note-query ingest must use the fixed SQL builder");
+assert.match(indexSource, /source === "notequery"\) await this\.ingestNoteQuery\(\)/, "note-query refresh must reuse the bounded ingest path");
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src/render/settings.ts"), "utf8");
 assert.match(settingsSource, /data-action="refresh-source" data-source="health"/, "health source exposes a manual refresh action");
 assert.match(indexSource, /source === "health"\) await this\.ingestHealthInbox\(\)/, "health refresh reuses the bounded ingest path");
@@ -79,6 +82,9 @@ for (const hook of ["data-health-inbox", "data-health-toggle", "data-health-doc"
     assert.ok(settingsSource.includes(hook), `settings markup must include ${hook}`);
 }
 assert.ok(!settingsSource.includes("data-health-steps-item") && !settingsSource.includes("data-health-weight-item"), "retired single-mapping selects must not return");
+for (const hook of ["data-source-panel=\"notequery\"", "data-note-query-template", "data-note-query-target", "data-note-query-item", "data-note-query-toggle", "data-action=\"save-note-query\""]) {
+    assert.ok(settingsSource.includes(hook), `note-query settings markup must include ${hook}`);
+}
 
 /* —— T-1486 联动预接线模板：亲和映射、建议卡片 fail-closed、宿主接线。 —— */
 assert.equal(linkage.templateLinkageForName("步数"), "health-steps", "steps template carries health affinity");
@@ -118,7 +124,7 @@ assert.match(t1486Index, /metricBindings\.filter\(\(binding\) => binding\.metric
 
 /* i18n 双语。 */
 const i18nSource = fs.readFileSync(path.join(__dirname, "..", "src/i18n.ts"), "utf8");
-for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthBindings", "set.healthBindingsHint", "set.healthMetricSteps", "set.healthMetricWeight", "set.healthAddBinding", "set.healthBindingRemove", "set.healthBindingMetric", "set.healthBindingItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthNeedMapping", "msg.healthMappingUnavailable", "msg.healthDocSaved", "msg.healthDocInvalid", "linkage.cardTitle", "linkage.healthSteps.title", "linkage.healthSteps.hint", "linkage.healthSteps.action", "linkage.healthWeight.title", "linkage.healthWeight.hint", "linkage.healthWeight.action", "linkage.sireader.title", "linkage.sireader.hint", "linkage.sireader.action", "linkage.sireader.conflict", "linkage.journal.title", "linkage.journal.hint", "linkage.journal.action", "linkage.journal.empty", "linkage.planned", "linkage.relatedNames", "msg.linkageApplied", "tpl.weight", "tpl.surveyJournal", "tplNote.weight", "tplNote.surveyJournal"]) {
+for (const key of ["set.healthTitle", "set.healthHint", "set.healthToggle", "set.healthDoc", "set.healthDocHint", "set.healthDocPending", "set.healthSave", "set.healthBindings", "set.healthBindingsHint", "set.healthMetricSteps", "set.healthMetricWeight", "set.healthAddBinding", "set.healthBindingRemove", "set.healthBindingMetric", "set.healthBindingItem", "set.healthItemHint", "set.healthItemChoose", "msg.healthNeedDoc", "msg.healthNeedMapping", "msg.healthMappingUnavailable", "msg.healthDocSaved", "msg.healthDocInvalid", "set.noteQueryIntegration", "set.stepsNoteQuery1", "set.stepsNoteQuery2", "set.stepsNoteQuery3", "set.noteQueryBoundary", "set.noteQuerySave", "set.noteQueryToggle", "msg.noteQueryNeedConfig", "msg.noteQuerySaved", "linkage.cardTitle", "linkage.healthSteps.title", "linkage.healthSteps.hint", "linkage.healthSteps.action", "linkage.healthWeight.title", "linkage.healthWeight.hint", "linkage.healthWeight.action", "linkage.sireader.title", "linkage.sireader.hint", "linkage.sireader.action", "linkage.sireader.conflict", "linkage.journal.title", "linkage.journal.hint", "linkage.journal.action", "linkage.journal.empty", "linkage.planned", "linkage.relatedNames", "msg.linkageApplied", "tpl.weight", "tpl.surveyJournal", "tplNote.weight", "tplNote.surveyJournal"]) {
     assert.equal(i18nSource.split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);
 }
 assert.match(indexSource, /msg\.healthNeedMapping/, "health inbox must require at least one metric mapping before enabling");

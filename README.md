@@ -10,9 +10,9 @@
 
 **当前版本：18.8.0**
 
-本地开发进展（未发布）：设置搜索、问卷可视化编辑与会话草稿保护、文档目标搜索，以及联动检测和日记写入可靠性修复。安装包仍以 GitHub Latest 为准，验收记录见 [PROGRESS](PROGRESS.md)。
+当前工作区还含后续开发改动，不能将所有源码能力视为已发布。下一阶段以可信记录、规则透明、复盘行动与配置复用为主线，已列入 [15 项本地可验收功能计划](docs/product-direction-and-local-plan-2026-09-27.md)。安装包以 GitHub Latest 为准，验收记录见 [PROGRESS](PROGRESS.md)。
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.7.0 发布说明](docs/releases/release-notes-18.7.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.8.0 发布说明](docs/releases/release-notes-18.8.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -52,7 +52,7 @@
 2. 在思源中打开“设置 → 集市 → 下载安装包”，选择压缩包安装。
 3. 重载插件，从顶栏按钮、命令面板、dock 或移动端入口打开。
 
-插件清单声明的最低兼容版本：思源 v3.8.4。当前自动化真实内核验证基线为思源 v3.8.5；浏览器视觉走查覆盖桌面、移动、窄宽度和双主题，但不能替代真实 Android/iOS 客户端验收。思源 3.8.6 正式版发布后会再运行渲染块回归。
+插件清单声明的最低兼容版本：思源 v3.8.4。既有自动化真实内核验证基线为思源 v3.8.5；浏览器视觉走查覆盖桌面、移动、窄宽度和双主题，但不能替代真实 Android/iOS 客户端验收。按 D-275 不以宿主版本或真机反馈等待作为开发前置，具体兼容证据以实际验收记录为准。
 
 首次升级前建议从设置页导出 JSON。插件不会修改思源内核，也不包含 `kernel.js`、`kernels` 或 `publish.data` 声明。
 
