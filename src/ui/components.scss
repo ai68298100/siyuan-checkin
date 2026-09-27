@@ -4044,6 +4044,18 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--editor .lc-checkin__advanced[open] summary { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--lc-checkin-border); }
 .lc-checkin--editor .lc-checkin__editor-preview { background: var(--lc-checkin-accent-soft); }
 .lc-checkin--editor .lc-checkin__preview-card { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--lc-checkin-accent) 26%, var(--lc-checkin-border)); border-radius: var(--lc-checkin-radius); background: var(--lc-checkin-surface); }
+/* T-1513 未来 30 天排期预演：紧凑日格 + 配额窗口行；应做/非应做有文字冗余。 */
+.lc-checkin__schedule-preview summary { display: flex; gap: 6px; align-items: baseline; cursor: pointer; min-height: 36px; }
+.lc-checkin__schedule-preview summary span { font-size: 12px; font-weight: 600; }
+.lc-checkin__schedule-preview summary small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.editor-schedule-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 3px; margin: 8px 0 0; padding: 0; list-style: none; }
+.editor-schedule-days li { display: grid; place-items: center; gap: 1px; min-height: 34px; padding: 3px 2px; border-radius: var(--lc-checkin-radius-sm); font-size: 10px; font-variant-numeric: tabular-nums; }
+.editor-schedule-days li.is-on { border: 1px solid var(--lc-checkin-accent); color: var(--lc-checkin-accent-text); background: var(--lc-checkin-accent-soft); font-weight: 600; }
+.editor-schedule-days li.is-off { border: 1px dashed var(--lc-checkin-border); color: var(--lc-checkin-muted); }
+.editor-schedule-summary { margin: 6px 0 0; color: var(--lc-checkin-muted); font-size: 10.5px; }
+.editor-schedule-quota { margin: 6px 0 0; padding: 0; list-style: none; }
+.editor-schedule-quota li { font-size: 10.5px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.editor-schedule-invalid { margin: 6px 0 0; color: var(--lc-checkin-danger-text); font-size: 11px; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

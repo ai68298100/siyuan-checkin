@@ -14,9 +14,8 @@
   - 状态：done。
 - [x] T-1512 来源渠道细筛与计量方式筛选（P0）——done（2026-09-27，local-auto）。history-filter.ts 扩展：HistoryChannelFilter（api:health/api:notequery/api:taskhorizon/api:other 为 UI 筛选值，公开 source 枚举不变）与 HistoryMeteringFilter（session/daily/other，与 T-1510 计量描述同一证据口径）；historyEventChannel 按登记前缀派生渠道（未知/旧身份/无 ref 如实归 api:other，不猜插件名），historyMeteringBucket 派生计量分桶（思阅/思播/番茄=会话片段；微信读书时长与健康=日汇总；完读/笔记合计/手动/导入/笔记推导/Task Horizon/未知接口=其他）；"api" 保持伞选项语义匹配全部 api 渠道（既有守门抓回一处回归）。回顾记录筛选：来源下拉扩展 13 项（来源枚举 + api 细分渠道）并显示各选项命中数（其余条件不变时），新增计量方式下拉（带命中数），组合筛选/清空（clear-history-filters 与节奏日跳转重置计量维度）/翻页先过滤后分页一致性；查询零写入。新守门 tests/history-channel-filter.test.cjs 入主链。验证：check、主链、build（CSS 636319）、test:ui、test:ecosystem、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。批次 A（T-1509～T-1512）就此收官。
-- [ ] T-1513 单项目未来 30 天排期预演（P1）
-  - 范围与验收：编辑器草稿只读展开未来安排，配额不伪造执行日。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1513 单项目未来 30 天排期预演（P1）——done（2026-09-27，local-auto）。新纯模块 features/schedule-preview.ts：buildSchedulePreview 从编辑器当前草稿起逐日投影（含起始日、有界 30 天），与 rules.ts isScheduled 同一口径（daily/workdays 星期判定/weekly+custom 指定星期/interval 锚点+间隔取模/quota 恒为灵活应做）；每个应做/非应做日带原因键；配额不编造固定执行日，输出周期窗口列表（周一起始周窗/自然月窗，闰月 2/29 正确，窗口在预演边界截断如实呈现），当期窗口剩余次数扣减已用量、未来窗口为满额；非法草稿（星期空/越界、间隔非正整数、锚点缺失、配额 0/非整数）fail-closed 返回 invalidReasonKey，绝不回落默认排期。编辑器预览卡新增「未来 30 天安排预演」折叠区（data-schedule-preview）：紧凑日格（应做 accent 描边/非应做虚线+文案冗余）+ 应做计数摘要 + 配额窗口行；updateEditorPreview 内即时重算，星期勾选/锚点/间隔/配额字段变化均触发，只读零落库。新守门 tests/schedule-preview.test.cjs 入主链。验证：check、主链、build（CSS 637530）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1514 规则修改前后影响对照（P1）
   - 范围与验收：基于既有修订展示规则差异，历史事实不改写；依赖 T-1513。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

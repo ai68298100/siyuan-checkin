@@ -17,6 +17,7 @@ import {buildNameInference, inferFieldsFromName} from "../features/name-inferenc
 import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
+import {buildSchedulePreview, type SchedulePreviewDraft} from "../features/schedule-preview";
 import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate} from "../types";
 
 /* 存储名与 index.ts 保持一致（历史常量，避免跨模块导出）。 */
@@ -323,6 +324,32 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             previewRecordStep.hidden = !previewActions.detail;
         }
         if (previewProgress) previewProgress.hidden = kind === "binary" && scheduleType !== "quota";
+        /* T-1513 未来 30 天排期预演：只读使用当前草稿，改草稿即时重算且不落库；
+           非法草稿显示错误而非回落默认排期；配额展示周期窗口与剩余次数。 */
+        const schedulePreviewHost = root.querySelector<HTMLElement>("[data-schedule-preview]");
+        if (schedulePreviewHost) {
+            const weekdayInputs = [...root.querySelectorAll<HTMLInputElement>("input[name='weekday']:checked")];
+            const draft: SchedulePreviewDraft = {
+                type: scheduleType,
+                weekdays: weekdayInputs.map((input) => Number(input.value)),
+                intervalDays: Number(root.querySelector<HTMLInputElement>("input[name='intervalDays']")?.value ?? Number.NaN),
+                anchorDate: root.querySelector<HTMLInputElement>("input[name='anchorDate']")?.value || undefined,
+                quota: {
+                    period: root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.value === "month" ? "month" : "week",
+                    amount: Number(root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.value ?? Number.NaN),
+                    countMode: quotaCountMode,
+                },
+            };
+            const preview = buildSchedulePreview(draft, dateKey(currentCalendarDate()));
+            if (preview.invalidReasonKey) {
+                schedulePreviewHost.innerHTML = `<p class="editor-schedule-invalid">${escapeHtml(t(preview.invalidReasonKey))}</p>`;
+            } else {
+                const dayChips = preview.days.map((day) => `<li class="${day.scheduled ? "is-on" : "is-off"}" title="${escapeHtml(t(day.reasonKey, day.reasonParams))}"><span>${escapeHtml(day.date.slice(5).replace("-", "/"))}</span></li>`).join("");
+                const quotaLines = preview.quotaWindows.map((window) => `<li>${escapeHtml(t("editor.scheduleQuotaWindow", {start: window.startDate, end: window.endDate, remaining: window.remaining, amount: window.amount}))}</li>`).join("");
+                const scheduledCount = preview.days.filter((day) => day.scheduled).length;
+                schedulePreviewHost.innerHTML = `<ol class="editor-schedule-days">${dayChips}</ol><p class="editor-schedule-summary">${escapeHtml(t("editor.schedulePreviewSummary", {n: scheduledCount, total: preview.days.length}))}</p>${quotaLines ? `<ul class="editor-schedule-quota">${quotaLines}</ul>` : ""}`;
+            }
+        }
     };
     const applyCustomIcon = () => {
         const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
@@ -517,6 +544,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     root.querySelector<HTMLInputElement>("input[name='quotaAmount']")?.addEventListener("input", updateEditorPreview);
     root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.addEventListener("change", () => updateConditionalFields(false));
     root.querySelector<HTMLSelectElement>("select[name='quotaPeriod']")?.addEventListener("change", updateEditorPreview);
+    /* T-1513：星期/锚点变化同样即时重算排期预演。 */
+    root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => input.addEventListener("change", updateEditorPreview));
+    root.querySelector<HTMLInputElement>("input[name='anchorDate']")?.addEventListener("change", updateEditorPreview);
     root.querySelector<HTMLElement>("[data-action='anchor-today']")?.addEventListener("click", () => {
         const anchor = root.querySelector<HTMLInputElement>("input[name='anchorDate']");
         if (!anchor) return;

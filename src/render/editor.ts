@@ -243,6 +243,10 @@ export function renderEditorView(ctx: EditorViewContext): string {
                             <div class="lc-checkin__preview-body"><strong data-preview-name>${escapeHtml(item?.name || t("editor.unnamed"))}</strong><small data-preview-meta>${escapeHtml(previewMeta)}</small><small data-preview-record-step ${previewActions.detail ? "" : "hidden"}>${escapeHtml(previewActions.detail)}</small><span class="lc-checkin__preview-progress" data-preview-progress ${selectedKind === "binary" && schedule.type !== "quota" ? "hidden" : ""}><i></i></span></div>
                             <span class="lc-checkin__preview-action" data-preview-action>${escapeHtml(previewActions.label)}</span>
                         </article>
+                        <details class="lc-checkin__schedule-preview" data-schedule-preview-details>
+                            <summary><span>${t("editor.schedulePreviewTitle")}</span><small>${t("editor.schedulePreviewHint")}</small></summary>
+                            <div class="lc-checkin__schedule-preview-body" data-schedule-preview aria-live="polite"></div>
+                        </details>
                     </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
                         <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
