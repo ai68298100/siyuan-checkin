@@ -16,9 +16,8 @@
   - 状态：done。批次 A（T-1509～T-1512）就此收官。
 - [x] T-1513 单项目未来 30 天排期预演（P1）——done（2026-09-27，local-auto）。新纯模块 features/schedule-preview.ts：buildSchedulePreview 从编辑器当前草稿起逐日投影（含起始日、有界 30 天），与 rules.ts isScheduled 同一口径（daily/workdays 星期判定/weekly+custom 指定星期/interval 锚点+间隔取模/quota 恒为灵活应做）；每个应做/非应做日带原因键；配额不编造固定执行日，输出周期窗口列表（周一起始周窗/自然月窗，闰月 2/29 正确，窗口在预演边界截断如实呈现），当期窗口剩余次数扣减已用量、未来窗口为满额；非法草稿（星期空/越界、间隔非正整数、锚点缺失、配额 0/非整数）fail-closed 返回 invalidReasonKey，绝不回落默认排期。编辑器预览卡新增「未来 30 天安排预演」折叠区（data-schedule-preview）：紧凑日格（应做 accent 描边/非应做虚线+文案冗余）+ 应做计数摘要 + 配额窗口行；updateEditorPreview 内即时重算，星期勾选/锚点/间隔/配额字段变化均触发，只读零落库。新守门 tests/schedule-preview.test.cjs 入主链。验证：check、主链、build（CSS 637530）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
   - 状态：done。
-- [ ] T-1514 规则修改前后影响对照（P1）
-  - 范围与验收：基于既有修订展示规则差异，历史事实不改写；依赖 T-1513。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
-  - 状态：planned；无真实宿主、真机或上游回复前置。
+- [x] T-1514 规则修改前后影响对照（P1）——done（2026-09-27，local-auto）。新纯模块 features/rule-change-diff.ts：buildRuleChangeDiff 仅对照规则字段（类型/目标/单位/频率/同类型排期参数 canonical 比较），名称等展示字段天然不触发；未来 30 天安排差集复用 T-1513 buildSchedulePreview（旧侧=当前生效修订，新侧=表单草稿），单位 from/to 原样呈现不自动换算；任一侧排期非法 previewUnavailable（保存被既有校验拦截）。编辑器保存流：既有项目提交时先算 diff，changed 才渲染对照面板（字段行+新增/不再应做天数及代表日期+历史保留说明）并 window.confirm 摘要；取消零写入表单保留，确认走既有 saveForm 修订机制（生效日=今天，历史快照不变）；保存失败由 saveForm 既有回滚保留草稿。新守门 tests/rule-change-diff.test.cjs 入主链。验证：check、主链、build（CSS 638256）、test:ui、双主题 visual-qa、宽度走查、test:quality 全 EXIT=0。
+  - 状态：done。
 - [ ] T-1515 全项目未来一周负荷预览（P1）
   - 范围与验收：分单位展示计划，配额单列，零自动排程；依赖 T-1513。具体边界、失败夹具与 UI 验收见计划同 ID 任务卡。
   - 状态：planned；无真实宿主、真机或上游回复前置。

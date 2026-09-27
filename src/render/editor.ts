@@ -247,6 +247,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                             <summary><span>${t("editor.schedulePreviewTitle")}</span><small>${t("editor.schedulePreviewHint")}</small></summary>
                             <div class="lc-checkin__schedule-preview-body" data-schedule-preview aria-live="polite"></div>
                         </details>
+                        <div class="lc-checkin__rule-change" data-rule-change hidden></div>
                     </section>
                     <details class="lc-checkin__advanced" data-advanced ${item ? "open" : ""}>
                         <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>

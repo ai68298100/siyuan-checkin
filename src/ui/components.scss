@@ -4056,6 +4056,13 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .editor-schedule-quota { margin: 6px 0 0; padding: 0; list-style: none; }
 .editor-schedule-quota li { font-size: 10.5px; line-height: 1.6; font-variant-numeric: tabular-nums; }
 .editor-schedule-invalid { margin: 6px 0 0; color: var(--lc-checkin-danger-text); font-size: 11px; }
+/* T-1514 规则修改对照：字段级差异行 + 历史保留说明。 */
+.lc-checkin__rule-change { display: grid; gap: 5px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--lc-checkin-accent); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); }
+.lc-checkin__rule-change > strong { font-size: 12px; }
+.lc-checkin__rule-change .rule-change-row { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; font-size: 11px; line-height: 1.5; }
+.lc-checkin__rule-change .rule-change-row > span:first-child { flex: none; color: var(--lc-checkin-muted); }
+.lc-checkin__rule-change .rule-change-row > span:last-child { min-width: 0; overflow-wrap: anywhere; text-align: end; font-variant-numeric: tabular-nums; }
+.lc-checkin__rule-change > small { color: var(--lc-checkin-muted); font-size: 10px; line-height: 1.5; }
 .lc-checkin--editor .lc-checkin__editor-actions {
     position: static;
     display: flex;

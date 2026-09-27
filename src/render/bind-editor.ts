@@ -3,7 +3,7 @@
    index.ts 通过 bindEditorHandlers(root, this as unknown as BindEditorHost) 接线。 */
 import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model";
-import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
+import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, isValidLocalDateInput, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
 import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, TEMPLATE_PACKS, templateName} from "../catalog";
 import {buildTemplatePackPreview} from "../features/template-packs";
@@ -18,6 +18,7 @@ import {fetchSyncPost, showMessage} from "siyuan";
 import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anchor-picker";
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
 import {buildSchedulePreview, type SchedulePreviewDraft} from "../features/schedule-preview";
+import {buildRuleChangeDiff, type RuleChangeSide} from "../features/rule-change-diff";
 import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate} from "../types";
 
 /* 存储名与 index.ts 保持一致（历史常量，避免跨模块导出）。 */
@@ -952,6 +953,43 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (confirm && !confirm.disabled) { setLinkagePlanPlanned(root, true); return; }
         if (target.closest("[data-linkage-cancel]")) setLinkagePlanPlanned(root, false);
     });
+    /* T-1514：从表单读取规则侧数据（与 saveForm 同一归一化口径，保证对照即所存）。 */
+    const readRuleSideFromForm = (data: FormData, localDate: string): RuleChangeSide => {
+        const kind = getKind();
+        const kindOption = KIND_OPTIONS.find((option) => option.kind === kind) || KIND_OPTIONS[0];
+        const scheduleType = (String(data.get("schedule") || "daily")) as ScheduleType;
+        const checkedWeekdays = data.getAll("weekday").map((value) => Number(value));
+        const requestedInterval = Number(data.get("intervalDays"));
+        const requestedAnchor = String(data.get("anchorDate") || "");
+        const requestedQuotaPeriod = data.get("quotaPeriod") === "month" ? "month" : "week";
+        const requestedQuotaMode = data.get("quotaCountMode") === "value" ? "value" : "dates";
+        const schedule: SchedulePreviewDraft = {
+            type: scheduleType,
+            weekdays: checkedWeekdays,
+            intervalDays: Number.isFinite(requestedInterval) ? Math.max(1, Math.min(3650, Math.round(requestedInterval))) : 1,
+            anchorDate: isValidLocalDateInput(requestedAnchor) ? requestedAnchor : localDate,
+            quota: {period: requestedQuotaPeriod, amount: Number(data.get("quotaAmount")), countMode: requestedQuotaMode},
+        };
+        return {
+            kind,
+            target: kind === "binary" ? 1 : Math.max(0.1, Number(data.get("target")) || 1),
+            unit: kind === "binary" ? "次" : String(data.get("unit") || kindOption.defaultUnit).trim().slice(0, 16) || kindOption.defaultUnit,
+            schedule,
+        };
+    };
+    /* T-1514：把规则差异渲染进对照面板（只读；确认弹窗另出摘要）。 */
+    const renderRuleChangeDiff = (container: HTMLElement, diff: import("../features/rule-change-diff").RuleChangeDiff): void => {
+        const rows: string[] = [];
+        if (diff.kindChanged) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeKind"))}</span><span>${escapeHtml(t(KIND_LABELS[diff.kindChanged.from] || diff.kindChanged.from))} → ${escapeHtml(t(KIND_LABELS[diff.kindChanged.to] || diff.kindChanged.to))}</span></div>`);
+        if (diff.targetChanged) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeTarget"))}</span><span>${escapeHtml(formatNumber(diff.targetChanged.from))} → ${escapeHtml(formatNumber(diff.targetChanged.to))}</span></div>`);
+        if (diff.unitChanged) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeUnit"))}</span><span>${escapeHtml(diff.unitChanged.from)} → ${escapeHtml(diff.unitChanged.to)}</span></div>`);
+        if (diff.frequencyChanged) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeFrequency"))}</span><span>${escapeHtml(t(SCHEDULE_LABELS[diff.frequencyChanged.from] || diff.frequencyChanged.from))} → ${escapeHtml(t(SCHEDULE_LABELS[diff.frequencyChanged.to] || diff.frequencyChanged.to))}</span></div>`);
+        if (diff.detailChanged) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeFrequency"))}</span><span>${escapeHtml(t("editor.ruleChangeDetailChanged"))}</span></div>`);
+        const dates = (list: string[]) => list.slice(0, 6).join(" · ") + (list.length > 6 ? " …" : "");
+        if (diff.addedDays.length) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeAddedDays", {n: diff.addedDays.length}))}</span><span>${escapeHtml(dates(diff.addedDays))}</span></div>`);
+        if (diff.removedDays.length) rows.push(`<div class="rule-change-row"><span>${escapeHtml(t("editor.ruleChangeRemovedDays", {n: diff.removedDays.length}))}</span><span>${escapeHtml(dates(diff.removedDays))}</span></div>`);
+        container.innerHTML = `<strong>${escapeHtml(t("editor.ruleChangeTitle"))}</strong>${rows.join("")}<small>${escapeHtml(t("editor.ruleChangeNote"))}</small>`;
+    };
         root.querySelector<HTMLFormElement>("form")?.addEventListener("submit", (event) => {
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
@@ -971,6 +1009,32 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 form.dataset.submitting = "false";
                 if (submitButton) submitButton.disabled = false;
             };
+            /* T-1514 规则修改前后影响对照：既有项目的目标/单位/类型/频率变化时，
+               保存前展示差异与未来 30 天安排差集；取消零写入、表单原样保留；
+               只改名称等展示字段不触发；历史事实按既有修订机制保留，不换算单位。 */
+            const ruleChangeHost = root.querySelector<HTMLElement>("[data-rule-change]");
+            const clearRuleChange = () => { if (ruleChangeHost) { ruleChangeHost.hidden = true; ruleChangeHost.innerHTML = ""; } };
+            clearRuleChange();
+            if (editingId && ruleChangeHost) {
+                const existingItem = host.store.items.find((candidate) => candidate.id === editingId);
+                if (existingItem) {
+                    const beforeRevision = getItemRevisionForDate(existingItem, calendarDateFromKey(submittedAt.localDate));
+                    const afterSide = readRuleSideFromForm(data, submittedAt.localDate);
+                    const diff = buildRuleChangeDiff(
+                        {kind: beforeRevision.kind, target: beforeRevision.target, unit: beforeRevision.unit, schedule: JSON.parse(JSON.stringify(beforeRevision.schedule))},
+                        afterSide,
+                        submittedAt.localDate,
+                    );
+                    if (diff.changed) {
+                        renderRuleChangeDiff(ruleChangeHost, diff);
+                        ruleChangeHost.hidden = false;
+                        if (!window.confirm(t("editor.ruleChangeConfirm", {added: diff.addedDays.length, removed: diff.removedDays.length}))) {
+                            resetSubmitting();
+                            return;
+                        }
+                    }
+                }
+            }
             void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation)).then((savedId) => {
                 resetSubmitting();
                 if (continueCreation && typeof savedId === "string" && savedId) {
