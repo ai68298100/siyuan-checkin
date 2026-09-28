@@ -10,7 +10,7 @@
 
 **当前版本：18.9.0**
 
-当前工作区还含后续开发改动，不能将所有源码能力视为已发布。下一阶段以可信记录、规则透明、复盘行动与配置复用为主线，已列入 [15 项本地可验收功能计划](docs/product-direction-and-local-plan-2026-09-27.md)。安装包以 GitHub Latest 为准，验收记录见 [PROGRESS](PROGRESS.md)。
+18.9.0 交付「可信记录与复盘可解释」批次：外部失败可处理、记录事实可核对、规则变化所见即所得、配置迁移可控，并新增 5 个循证模板。后续重点是真机验收、Task Horizon 等生态联调与按实际问题立项的小步迭代；进度见 [PROGRESS](PROGRESS.md)。
 
 [最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.9.0 发布说明](docs/releases/release-notes-18.9.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
@@ -152,7 +152,7 @@ corepack pnpm run test:e2e:readonly
 ## 文档入口
 
 - [发布说明目录](docs/releases/) · [发布与回滚](docs/release-rollback.md) · [思源兼容矩阵](docs/siyuan-compatibility.md)
-- [API v5](docs/api-v5.md) · [生态集成契约](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/)
+- [API v5](docs/api-v5.md) · [生态集成契约](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [真机验收清单](docs/integration-smoke-checklist.md)
 - [架构与模块地图](docs/architecture.md) · [仓库布局规则](docs/repository-layout.md) · [导入导出格式](docs/export-formats.md)
 - [低压力呈现基线](docs/low-pressure-baseline.md) · [笔记绑定盘点](docs/note-bindings-inventory.md) · [生态调研记录](docs/benchmark-habit-apps-2026-09.md)
 - [当前路线](docs/implementation-roadmap-product-strategy-2026-09.md) · [UI 内容审查记录](docs/ui-full-content-audit-2026-09-20.md) · [UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 路线归档](docs/archive/ui-product-roadmap.md)
