@@ -12,6 +12,7 @@ import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-
 import type {NoteQueryPreference} from "../features/note-query";
 import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ingest-report";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
+import {bindingTargetLabel} from "../features/note-bindings";
 
 const AVATAR_PRESETS = [
     ["check", "set.avatarPresetCheck"],
@@ -54,6 +55,8 @@ export function projectIntegrationStatus(input: {
 
 export interface SettingsViewContext {
     store: CheckinStore;
+    /** T-1557 文档目标卡摘要的会话查询缓存（docId→名称/路径；null=查询失败退回 ID）。 */
+    targetSummaries?: Map<string, {name?: string; hpath?: string} | null>;
     /** T-1521 保存前变更清单（草稿≠已保存的分节汇总；可选：旧桩按无改动处理）。 */
     settingsChangeSections?: import("../features/settings-change-list").SettingsChangeSection[];
     /** T-1522 迁移重名冲突决策会话（可选：无会话时不渲染面板）。 */
@@ -274,6 +277,12 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     };
     const documentSourceCounts = sourceStateCounts([diaryState, summaryState]);
     const thirdPartySourceCounts = sourceStateCounts([sireaderState, healthState, noteQueryState, siplayerState, wereadState, yeguifState]);
+    /* T-1557/T-1558：文档目标卡摘要行——当前目标（会话缓存标签）+ 打开/重新检查/重新选择/清除。
+       摘要查询失败退回显示已存 ID；换绑与清除的确认与回滚在 bindSettings 侧。 */
+    const targetSummaryRow = (point: "diary" | "summary" | "health", docId: string): string => {
+        const label = docId ? bindingTargetLabel(docId, ctx.targetSummaries?.get(docId) ?? undefined) : t("set.targetNone");
+        return `<div class="lc-checkin__settings-row" data-target-summary="${point}"><span class="lc-checkin__settings-label"><span>${t("set.targetSummaryTitle")}</span><small data-target-summary-label="${escapeHtml(docId)}">${escapeHtml(label)}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(docId)}" ${docId ? "" : "disabled"}>${t("set.targetOpen")}</button><button class="lc-checkin__text-button" type="button" data-target-recheck="${point}" ${docId ? "" : "disabled"}>${t("set.targetRecheck")}</button><button class="lc-checkin__text-button" type="button" data-target-edit="${point}">${t("set.targetEdit")}</button><button class="lc-checkin__text-button" type="button" data-target-clear="${point}" ${docId ? "" : "disabled"}>${t("set.targetClear")}</button></span></div>`;
+    };
     const sourceBadge = (state: SourceState) => `<span class="lc-checkin__source-badge ${sourceStateClass(state)}" data-source-state="${state}">${sourceStateLabel(state)}</span>`;
     const statusLine = (status: IntegrationStatus) => `<div class="lc-checkin__source-status" data-config-state="${status.configuration}" data-runtime-state="${status.runtime}" data-activity-count="${status.activity.todayCount}" data-problem-state="${status.problem}"><span>${t("set.integrationRuntime")}: ${t(`set.integrationRuntime.${status.runtime}`)}</span><span>${t("set.integrationActivity")}: ${status.activity.todayCount ? t("set.sourceToday", {n: status.activity.todayCount}) : t(`set.integrationLastRead.${status.activity.lastRead}`)}</span><span>${t("set.integrationProblem")}: ${t(`set.integrationProblem.${status.problem}`)}</span></div>`;
     const integrationStatus = (state: SourceState, count: number, hostAvailable?: boolean, lastReadOk?: boolean, lastWriteFailed = false) => projectIntegrationStatus({enabled: state === "enabled", configured: state !== "setup", targetAvailable: state !== "rebind", hostAvailable, todayCount: count, lastReadOk, lastWriteFailed});
@@ -494,6 +503,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="diary" data-target-state="${diaryState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.diaryDoc")}</strong><small>${t("set.diaryDocHint")}${diary.docId && !diary.enabled ? ` · ${t("set.diaryDocPending")}` : ""}</small></div>${sourceBadge(diaryState)}</div>
                         <div class="lc-checkin__document-target-body">
+                            ${targetSummaryRow("diary", diary.docId)}
                             <div class="lc-checkin__document-target-search"><label class="lc-checkin__document-target-field"><span>${t("set.diaryDocChoose")}</span><input type="search" data-diary-search placeholder="${t("set.diaryDocChoose")}" aria-label="${t("set.diaryDocChoose")}" /></label><label class="lc-checkin__document-target-field"><span>${t("set.diaryDocChoose")}</span><select data-diary-choice aria-label="${t("set.diaryDocChoose")}"><option value="">${t("set.diaryDocChoose")}</option>${diaryChoiceOptions}</select></label></div>
                             <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.diaryDoc")}</span><input type="text" class="lc-checkin__diary-doc" data-diary-doc value="${escapeHtml(diary.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.diaryDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-diary-doc">${t("set.diarySave")}</button><button class="lc-checkin__text-button" type="button" data-action="toggle-create-diary-doc">${t("set.diaryCreate")}</button></div></div>
                             <div class="lc-checkin__diary-create" data-diary-create hidden><label><span>${t("set.diaryNotebook")}</span><select data-diary-notebook aria-label="${t("set.diaryNotebook")}" disabled><option value="">${t("set.diaryNotebookLoading")}</option></select></label><label><span>${t("set.diaryCreateTitle")}</span><input type="text" data-diary-create-title placeholder="${t("set.diaryCreateTitle")}" aria-label="${t("set.diaryCreateTitle")}" /></label><button class="lc-checkin__text-button" type="button" data-action="create-diary-doc">${t("common.confirm")}</button></div>
@@ -522,6 +532,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <small class="lc-checkin__source-boundary">${t("set.summaryBoundary")}</small>
                     <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="summary" data-target-state="${summaryState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.summaryDoc")}</strong><small>${t("set.summaryDocHint")}${summaryResident.docId && !summaryResident.enabled ? ` · ${t("set.summaryDocPending")}` : ""}</small></div>${sourceBadge(summaryState)}</div>
+                        ${targetSummaryRow("summary", summaryResident.docId)}
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.summaryDoc")}</span><input type="text" data-summary-doc value="${escapeHtml(summaryResident.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.summaryDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-summary-doc">${t("set.summarySave")}</button></div></div>
                     </div>
                     <div class="lc-checkin__settings-row" data-summary-resident><span class="lc-checkin__settings-label"><span>${t("set.summaryTitle")}</span><small>${t("set.summaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-summary-toggle ${summaryResident.enabled ? "checked" : ""} aria-label="${t("set.summaryToggle")}" /></div>
@@ -578,6 +589,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <small class="lc-checkin__source-boundary">${t("set.healthBoundary")}</small></details>
                     <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="health" data-target-state="${healthState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.healthDoc")}</strong><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></div>${sourceBadge(healthState)}</div>
+                        ${targetSummaryRow("health", healthInbox.docId)}
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.healthDoc")}</span><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></div></div>
                     </div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthBindings")}</span><small>${t("set.healthBindingsHint")} ${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="add-health-binding">${t("set.healthAddBinding")}</button></span></div>

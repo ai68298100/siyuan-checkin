@@ -379,6 +379,7 @@ function assertActive(fixture, expectedId) {
 {
     const inbox = loadTypeScriptModule("src/features/docktomato-inbox.ts", {"../model": {}}).exports;
     const anchorPicker = loadTypeScriptModule("src/features/note-anchor-picker.ts").exports;
+    const noteBindings = loadTypeScriptModule("src/features/note-bindings.ts").exports;
     const {exports} = loadTypeScriptModule("src/render/settings.ts", {
         "../i18n": {t: (key) => key},
         "../shared": {escapeHtml: (value) => String(value), formatNumber: String},
@@ -386,6 +387,7 @@ function assertActive(fixture, expectedId) {
         "../version": {PLUGIN_VERSION: "test-version"},
         "../features/docktomato-inbox": inbox,
         "../features/note-anchor-picker": anchorPicker,
+        "../features/note-bindings": noteBindings,
     });
     const context = {
         store: {items: [], events: []},
@@ -570,6 +572,23 @@ assert.equal((settingsSourceT1442.match(/data-source-advanced/g) || []).length, 
 const indexSourceT1553 = read("src", "index.ts");
 assert.ok(!indexSourceT1553.includes("set.sourceRetry"), "refresh 分发不得再引用退役键");
 assert.equal((indexSourceT1553.match(/else if \(source === "weread"\) await this\.ingestWeread\(\);/g) || []).length, 0, "refresh-source 分发移除 weread 分支");
+/* T-1557/T-1558 文档目标卡：三卡摘要行+四动作；换绑/清除确认；会话缓存不持久化。 */
+for (const point of ["diary", "summary", "health"]) {
+    assert.match(settingsSourceT1442, new RegExp(`targetSummaryRow\\("${point}"`), `${point} 目标卡必须渲染摘要行动作组`);
+}
+assert.match(settingsSourceT1442, /data-target-summary="\$\{point\}"/, "摘要行容器属性在位");
+assert.match(settingsSourceT1442, /data-target-summary-label="\$\{escapeHtml\(docId\)\}"/, "摘要标签携带已存 docId（水合锚点）");
+for (const action of ["data-target-recheck", "data-target-edit", "data-target-clear", "data-open-binding"]) {
+    assert.match(settingsSourceT1442, new RegExp(action), `目标卡动作 ${action} 在位`);
+}
+for (const key of ["set.targetSummaryTitle", "set.targetNone", "set.targetOpen", "set.targetRecheck", "set.targetEdit", "set.targetClear", "set.targetCleared", "set.rebindConfirm", "set.targetClearConfirm"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+assert.match(indexSourceT1553, /set\.rebindConfirm/, "换绑保存必须先经确认弹窗（旧/新目标+范围+保留说明）");
+assert.match(indexSourceT1553, /set\.targetClearConfirm/, "清除目标必须先经确认弹窗");
+assert.match(indexSourceT1553, /private targetSummaries = new Map/, "目标摘要为会话内存缓存（不落存储桶）");
+assert.match(indexSourceT1553, /readBindingBlocks\(docIds\)/, "摘要水合复用既有块查询单一实现");
+assert.match(indexSourceT1553, /data-target-edit="\$\{card\.point\}"\]`\)\?\.addEventListener\("click", \(\) => \{\s*root\.querySelector<HTMLElement>\(`\[\$\{card\.attribute\}\]`\)\?\.focus\(\)/s, "重新选择必须聚焦对应输入框");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");

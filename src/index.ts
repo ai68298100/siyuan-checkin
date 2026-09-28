@@ -471,6 +471,8 @@ export default class CheckinPlugin extends Plugin {
     private settingsDrafts = new Map<string, string>();
     /** T-1521 各草稿字段的已保存基线（bind 时捕获；变更清单据此对比）。 */
     private settingsSavedBaselines = new Map<string, string>();
+    /* T-1557 文档目标卡摘要会话缓存（docId→名称/路径；null=查询失败退回 ID）。只读投影，绝不持久化。 */
+    private targetSummaries = new Map<string, {name?: string; hpath?: string} | null>();
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -3373,6 +3375,7 @@ export default class CheckinPlugin extends Plugin {
     private renderSettings(openSourcePanels?: ReadonlySet<string>): string {
         return renderSettingsView({
             store: this.store,
+            targetSummaries: this.targetSummaries,
             settingsChangeSections: this.buildSettingsChangeSections(),
             importConflicts: this.importConflictSession ? {format: this.importConflictSession.format, decisions: this.importConflictSession.decisions} : undefined,
             sourceSandboxOutcomes: this.sourceSandboxOutcomes,
@@ -3730,7 +3733,7 @@ export default class CheckinPlugin extends Plugin {
             void this.persistViewPreferences();
             this.render();
         });
-        const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void) => {
+        const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void, confirmKeys?: {pointKey: string; scopeKey: string}) => {
             root.querySelector<HTMLButtonElement>(`[data-action='${action}']`)?.addEventListener("click", async event => {
                 const button = event.currentTarget as HTMLButtonElement;
                 const input = root.querySelector<HTMLInputElement>(`[${attribute}]`);
@@ -3744,6 +3747,10 @@ export default class CheckinPlugin extends Plugin {
                     const target = await this.validateBindingTarget("doc", submitted);
                     if (!button.isConnected || this.disposed || this.disposing || input.value.trim() !== submitted) return;
                     const previous = getId();
+                    /* T-1558：换绑（旧目标非空且变化）先确认——列旧/新目标、读写范围与保留说明；
+                       取消零写入，表单草稿保留。首次绑定不确认；清除走独立 data-target-clear 动作。 */
+                    if (confirmKeys && previous && previous !== target.id
+                        && !window.confirm(t("set.rebindConfirm", {point: t(confirmKeys.pointKey), old: previous, new: target.id, scope: t(confirmKeys.scopeKey)}))) return;
                     setId(target.id);
                     try { await this.persistViewPreferences(); }
                     catch { if (getId() === target.id) setId(previous); throw new Error(t("msg.prefSaveFail")); }
@@ -3760,7 +3767,7 @@ export default class CheckinPlugin extends Plugin {
             });
         };
         bindVerifiedDocumentSave("save-diary-doc", "data-diary-doc", () => this.diaryReport.docId,
-            docId => { this.diaryReport = {...this.diaryReport, docId}; }, "msg.diaryDocSaved");
+            docId => { this.diaryReport = {...this.diaryReport, docId}; }, "msg.diaryDocSaved", undefined, {pointKey: "set.diaryTitle", scopeKey: "set.diaryDocHint"});
         root.querySelector<HTMLInputElement>("[data-summary-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;
             if (checked && !this.summaryResident.docId) {
@@ -3773,7 +3780,80 @@ export default class CheckinPlugin extends Plugin {
             this.render();
         });
         bindVerifiedDocumentSave("save-summary-doc", "data-summary-doc", () => this.summaryResident.docId,
-            docId => { this.summaryResident = {...this.summaryResident, docId}; }, "msg.summaryDocSaved");
+            docId => { this.summaryResident = {...this.summaryResident, docId}; }, "msg.summaryDocSaved", undefined, {pointKey: "set.summaryTitle", scopeKey: "set.summaryDocHint"});
+        /* T-1557/T-1558：文档目标卡动作——重新选择（聚焦输入）、重新检查（validateBindingTarget
+           同源只读检查并回写会话缓存）、清除（确认后清空，persist 失败回滚）。打开复用
+           data-open-binding 既有绑定；摘要水合在 bind 尾部异步补一次查询并就地更新标签。 */
+        const targetCardPoints: Array<{point: "diary" | "summary" | "health"; attribute: string; getId: () => string; setId: (id: string) => void; titleKey: string}> = [
+            {point: "diary", attribute: "data-diary-doc", getId: () => this.diaryReport.docId, setId: docId => { this.diaryReport = {...this.diaryReport, docId}; }, titleKey: "set.diaryTitle"},
+            {point: "summary", attribute: "data-summary-doc", getId: () => this.summaryResident.docId, setId: docId => { this.summaryResident = {...this.summaryResident, docId}; }, titleKey: "set.summaryTitle"},
+            {point: "health", attribute: "data-health-doc", getId: () => this.healthInbox.docId, setId: docId => { this.healthInbox = {...this.healthInbox, docId}; }, titleKey: "set.healthTitle"},
+        ];
+        for (const card of targetCardPoints) {
+            root.querySelector<HTMLButtonElement>(`[data-target-edit="${card.point}"]`)?.addEventListener("click", () => {
+                root.querySelector<HTMLElement>(`[${card.attribute}]`)?.focus();
+            });
+            root.querySelector<HTMLButtonElement>(`[data-target-recheck="${card.point}"]`)?.addEventListener("click", async event => {
+                const button = event.currentTarget as HTMLButtonElement;
+                const docId = card.getId();
+                if (!docId || button.disabled) return;
+                button.disabled = true;
+                button.setAttribute("aria-busy", "true");
+                settingsFeedback(t("bind.checking"));
+                try {
+                    const target = await this.validateBindingTarget("doc", docId);
+                    if (!button.isConnected || this.disposed || this.disposing) return;
+                    this.targetSummaries.set(docId, {name: target.name, hpath: target.hpath});
+                    const label = bindingTargetLabel(docId, this.targetSummaries.get(docId) ?? undefined);
+                    const labelNode = root.querySelector<HTMLElement>(`[data-target-summary="${card.point}"] [data-target-summary-label]`);
+                    if (labelNode) { labelNode.textContent = label; labelNode.title = label; }
+                    settingsFeedback(t("bind.statusOk"));
+                } catch (error) {
+                    if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                } finally {
+                    button.disabled = false;
+                    button.removeAttribute("aria-busy");
+                }
+            });
+            root.querySelector<HTMLButtonElement>(`[data-target-clear="${card.point}"]`)?.addEventListener("click", async event => {
+                const button = event.currentTarget as HTMLButtonElement;
+                const docId = card.getId();
+                if (!docId || button.disabled) return;
+                if (!window.confirm(t("set.targetClearConfirm", {point: t(card.titleKey)}))) return;
+                const previous = docId;
+                button.disabled = true;
+                try {
+                    card.setId("");
+                    try { await this.persistViewPreferences(); }
+                    catch { card.setId(previous); throw new Error(t("msg.prefSaveFail")); }
+                    this.targetSummaries.delete(previous);
+                    if (button.isConnected) { settingsFeedback(t("set.targetCleared")); showMessage(t("set.targetCleared")); this.render(); }
+                } catch (error) {
+                    if (button.isConnected) settingsFeedback(error instanceof Error ? error.message : t("bind.statusError"));
+                } finally { button.disabled = false; }
+            });
+        }
+        void (async () => {
+            const docIds = [...new Set(targetCardPoints.map(card => card.getId()).filter(Boolean))].filter(id => !this.targetSummaries.has(id));
+            if (!docIds.length) return;
+            try {
+                const blocks = await this.readBindingBlocks(docIds);
+                for (const id of docIds) {
+                    const block = blocks.find(candidate => candidate.id === id);
+                    this.targetSummaries.set(id, block ? {name: block.type === "d" ? block.content : undefined, hpath: block.hpath} : null);
+                }
+            } catch {
+                for (const id of docIds) this.targetSummaries.set(id, null);
+            }
+            if (this.disposed || this.disposing || !root.isConnected) return;
+            for (const card of targetCardPoints) {
+                const docId = card.getId();
+                if (!docId) continue;
+                const label = bindingTargetLabel(docId, this.targetSummaries.get(docId) ?? undefined);
+                const labelNode = root.querySelector<HTMLElement>(`[data-target-summary="${card.point}"] [data-target-summary-label]`);
+                if (labelNode) { labelNode.textContent = label; labelNode.title = label; }
+            }
+        })();
         root.querySelector<HTMLElement>("[data-action='write-summary-now']")?.addEventListener("click", () => {
             void this.writeSummaryResidentNow();
         });
@@ -3979,7 +4059,7 @@ export default class CheckinPlugin extends Plugin {
         });
         bindVerifiedDocumentSave("save-health-doc", "data-health-doc", () => this.healthInbox.docId,
             docId => { this.healthInbox = {...this.healthInbox, docId}; }, "msg.healthDocSaved",
-            () => { if (this.healthInbox.enabled) void this.ingestHealthInbox(); });
+            () => { if (this.healthInbox.enabled) void this.ingestHealthInbox(); }, {pointKey: "set.healthTitle", scopeKey: "set.healthDocHint"});
         /* T-1486：指标→项目映射行（动态列表）。任何行变更后从 DOM 重读并归一化持久化；
             空行/重复行由 normalize 静默丢弃，单元不匹配沿用既有纪律：强制停用并提示。 */
         const applyHealthBindingsFromDom = (bindingsRoot: HTMLElement) => {
