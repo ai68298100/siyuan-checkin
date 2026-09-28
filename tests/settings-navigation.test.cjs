@@ -640,6 +640,19 @@ for (const key of ["set.scope.diary", "set.scope.summary", "set.scope.health", "
 }
 const editorSourceT1560 = read("src", "render", "editor.ts");
 assert.match(editorSourceT1560, /set\.scope\.anchor/, "编辑器锚点选择器必须携带只更新自写块的范围说明");
+/* T-1562 设置首页总览：只读聚合块 + 直达复用 goto 机制 + 入口跳转复用分组导航。 */
+assert.match(settingsSourceT1442, /data-settings-overview/, "设置页必须渲染总览块");
+assert.match(settingsSourceT1442, /data-overview-clear/, "无待处理必须显式空态");
+assert.match(settingsSourceT1442, /data-goto-binding="\$\{escapeHtml\(problem\.selector\)\}"/, "待处理项必须复用「去配置」直达机制");
+assert.match(settingsSourceT1442, /data-overview-new-item/, "总览必须提供新建项目入口");
+assert.match(settingsSourceT1442, /data-overview-jump=/, "总览必须提供分组跳转入口");
+for (const key of ["set.overviewTitle", "set.overviewAllClear", "set.overviewTargetMissing", "set.overviewWriteFailed", "set.overviewDrafts", "set.overviewEntryNew"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+const indexSourceT1562 = read("src", "index.ts");
+assert.match(indexSourceT1562, /buildSettingsOverview\(/, "总览投影必须走纯模块单一实现");
+assert.match(indexSourceT1562, /data-overview-jump/, "入口跳转处理器在位");
+assert.match(indexSourceT1562, /data-settings-nav="\$\{group\}"\]`\)\?\.click\(\)/, "分组跳转复用既有 nav 点击机制");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");

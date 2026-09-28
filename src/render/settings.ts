@@ -55,6 +55,8 @@ export function projectIntegrationStatus(input: {
 
 export interface SettingsViewContext {
     store: CheckinStore;
+    /** T-1562 设置首页总览只读投影（需要处理/最近活动；可选：旧桩不渲染总览）。 */
+    settingsOverview?: import("../features/settings-overview").SettingsOverview;
     /** T-1559 集中体检最近一次完成时间（会话态；bind 头部展示）。 */
     lastBindingCheckAt?: string;
     /** T-1557 文档目标卡摘要的会话查询缓存（docId→名称/路径；null=查询失败退回 ID）。 */
@@ -709,6 +711,21 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             <div class="lc-checkin__settings-feedback" data-settings-feedback role="status" aria-live="polite"></div>
             <label class="lc-checkin__settings-search">${t("set.search")}<input type="search" data-settings-search aria-label="${t("set.search")}" /></label>
             <div data-settings-search-status role="status" aria-live="polite"></div>
+            ${(() => {
+                const overview = ctx.settingsOverview;
+                if (!overview) return "";
+                /* T-1562 总览：只读聚合（待处理直达控件 / 最近活动 / 配置入口）；
+                   文本插值嵌套 i18n（feature/source 名走各自键）。 */
+                const problemText = (problem: NonNullable<SettingsViewContext["settingsOverview"]>["problems"][number]): string => {
+                    if (problem.labelKey === "set.overviewTargetMissing") return t(problem.labelKey, {feature: t(problem.featureKey || "", problem.featureParams)});
+                    if (problem.sourceKey) return t(problem.labelKey, {source: t(problem.sourceKey)});
+                    if (problem.labelKey === "set.overviewWriteFailed") return t(problem.labelKey, {feature: t(problem.featureKey || "")});
+                    return t(problem.labelKey, problem.featureParams as Record<string, string>);
+                };
+                const activityText = (activity: NonNullable<SettingsViewContext["settingsOverview"]>["activities"][number]): string => t(activity.labelKey, {feature: t(activity.featureKey)});
+                const entries = [["set.overviewEntryNew", "new"], ["set.overviewEntrySources", "external"], ["set.overviewEntryDocs", "documents"], ["set.overviewEntryData", "data"]] as const;
+                return `<div class="lc-checkin__external-overview" data-settings-overview><strong>${t("set.overviewTitle")}</strong>${overview.problems.length ? overview.problems.map((problem) => `<div class="lc-checkin__settings-row" data-overview-problem="${escapeHtml(problem.key)}"><span class="lc-checkin__settings-label"><span>${escapeHtml(problemText(problem))}</span></span>${problem.selector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(problem.selector)}">${t("bind.locate")}</button>` : ""}</div>`).join("") : `<small data-overview-clear>${t("set.overviewAllClear")}</small>`}<strong>${t("set.overviewRecentTitle")}</strong>${overview.activities.length ? overview.activities.map((activity) => `<small data-overview-activity="${escapeHtml(activity.key)}">${escapeHtml(activityText(activity))}</small>`).join("") : `<small data-overview-activity-empty>${t("set.writeResultNone")}</small>`}<strong>${t("set.overviewEntriesTitle")}</strong><span class="lc-checkin__settings-inline">${entries.map(([labelKey, target]) => target === "new" ? `<button class="lc-checkin__text-button" type="button" data-overview-new-item>${t(labelKey)}</button>` : `<button class="lc-checkin__text-button" type="button" data-overview-jump="${target}">${t(labelKey)}</button>`).join("")}</span></div>`;
+            })()}
             ${(() => {
                 /* T-1521 保存前变更清单：草稿≠已保存才显示；敏感值遮罩；撤回/分节恢复走草稿通道。 */
                 const sections = ctx.settingsChangeSections || [];

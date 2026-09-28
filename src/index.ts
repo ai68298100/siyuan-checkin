@@ -43,6 +43,9 @@ import {aggregateSkipContext, crossTabulateContextWeekdays} from "./features/con
 import {abstinenceMilestones, aggregateMissedWeekdays, aggregateMissedTimeSlots, interpretTargetLoad, rankStalledItems} from "./features/pace-projection";
 import {collectLifecycleFacts, projectLifecycleBatch, projectLifecycleImpact} from "./features/lifecycle-projection";
 import {planSourceDisconnect} from "./features/privacy-scope";
+import {buildSettingsOverview, OVERVIEW_CHANNEL_FEATURE} from "./features/settings-overview";
+
+const OVERVIEW_CHANNELS = new Set(Object.keys(OVERVIEW_CHANNEL_FEATURE));
 import {renderCheckinLogView, renderItemView, renderOccasionBannerView, renderRecentRecordView, renderSaveStatusView, renderSyncNoticeView, renderTodayView, renderUpcomingOccasionsView} from "./render/fragments";
 import {bindTodayHandlers, type BindTodayHost} from "./render/bind-today";
 import {bindOccasionsHandlers, type BindOccasionsHost} from "./render/bind-occasions";
@@ -3387,11 +3390,51 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* 方法体外置于 render/settings.ts（T-022）。 */
+    /* T-1562 设置首页总览投影：只聚合既有状态（绑定行/来源前置/审计/草稿计数）。
+       审计按 channel 取最新一条：失败通道进「需要处理」，最近三条成功/失败进「最近活动」。 */
+    private buildSettingsOverviewProjection() {
+        const latestByChannel = new Map<string, {ok: boolean; at: string}>();
+        for (const entry of this.auditEntries) {
+            const details = entry.details as {channel?: string; ok?: boolean};
+            if (entry.type === "anchor" && details.channel && OVERVIEW_CHANNELS.has(details.channel)) {
+                latestByChannel.set(details.channel, {ok: details.ok === true, at: entry.at});
+            }
+        }
+        const failedWriteChannels = [...latestByChannel.entries()].filter(([, write]) => !write.ok).map(([channel]) => channel);
+        const recentWrites = [...latestByChannel.entries()]
+            .sort((left, right) => right[1].at.localeCompare(left[1].at))
+            .map(([channel, write]) => ({channel, ok: write.ok, at: write.at}));
+        return buildSettingsOverview({
+            bindings: collectNoteBindings({
+                diaryReport: this.diaryReport,
+                summaryResident: this.summaryResident,
+                healthInbox: this.healthInbox,
+                noteQuery: this.noteQuery,
+                journalIntegration: this.journalIntegrationPref,
+                journalEnabled: this.store.items.some((entry) => !entry.archived && Boolean(entry.journal?.templateId)),
+                yeguifIntegration: this.yeguifIntegration,
+                anchoredItems: this.store.items.filter((entry) => entry.noteAnchor?.blockId).map((entry) => ({id: entry.id, name: entry.name, blockId: entry.noteAnchor!.blockId, archived: entry.archived})),
+            }),
+            sireader: {enabled: this.sireaderIntegration.enabled, itemId: this.sireaderIntegration.itemId},
+            siplayer: {enabled: this.siplayerIntegration.enabled, itemId: this.siplayerIntegration.itemId},
+            weread: {enabled: this.wereadIntegration.enabled, itemId: this.wereadIntegration.itemId, hasKey: Boolean(this.wereadIntegration.apiKey)},
+            healthEnabled: this.healthInbox.enabled,
+            healthBindingCount: this.healthInbox.metricBindings.length,
+            yeguifEnabled: this.yeguifIntegration.enabled,
+            yeguifNotebookId: this.yeguifIntegration.notebookId,
+            yeguifMappingCount: this.yeguifIntegration.mappings?.length ?? 0,
+            failedWriteChannels,
+            draftCount: this.settingsDrafts.size + this.journalDrafts.size,
+            recentWrites,
+        });
+    }
+
     private renderSettings(openSourcePanels?: ReadonlySet<string>): string {
         return renderSettingsView({
             store: this.store,
             targetSummaries: this.targetSummaries,
             lastBindingCheckAt: this.lastBindingCheckAt,
+            settingsOverview: this.buildSettingsOverviewProjection(),
             settingsChangeSections: this.buildSettingsChangeSections(),
             importConflicts: this.importConflictSession ? {format: this.importConflictSession.format, decisions: this.importConflictSession.decisions} : undefined,
             sourceSandboxOutcomes: this.sourceSandboxOutcomes,
@@ -3764,6 +3807,15 @@ export default class CheckinPlugin extends Plugin {
         root.querySelectorAll<HTMLElement>("[data-review-records-for]").forEach((button) => button.addEventListener("click", () => {
             this.openReviewRecordsForSource(button.dataset.reviewRecordsFor || "");
         }));
+        /* T-1562 总览直达：入口按钮复用既有分组导航（点击 nav 按钮继承滚动/aria 机制）；
+           新建项目走编辑器。问题项的「去配置」复用 data-goto-binding 既有绑定。 */
+        root.querySelectorAll<HTMLElement>("[data-overview-jump]").forEach((button) => button.addEventListener("click", () => {
+            const group = button.dataset.overviewJump || "";
+            root.querySelector<HTMLButtonElement>(`[data-settings-nav="${group}"]`)?.click();
+        }));
+        root.querySelector<HTMLElement>("[data-overview-new-item]")?.addEventListener("click", () => {
+            this.showEditor();
+        });
         root.querySelector<HTMLElement>("[data-action='probe-siplayer']")?.addEventListener("click", () => {
             const found = typeof window !== "undefined" && detectSiplayerController(window);
             showMessage(t(found ? "msg.siplayerProbeFound" : "msg.siplayerProbeMissing"));
