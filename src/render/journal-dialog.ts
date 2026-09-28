@@ -201,16 +201,22 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
     const notebookOptions = `<option value="">${t("journal.notebookLabel")}</option>` + (deps.integration.notebookId && !deps.notebooks.some(book => book.id === deps.integration.notebookId) ? `<option value="${escapeHtml(deps.integration.notebookId)}" selected>${t("bind.notebookUnavailable")} · ${escapeHtml(deps.integration.notebookId)}</option>` : "") + deps.notebooks
         .map((notebook) => `<option value="${escapeHtml(notebook.id)}"${notebook.id === deps.integration.notebookId ? " selected" : ""}>${escapeHtml(notebook.name)}</option>`)
         .join("");
-    const configMarkup = `<fieldset class="lc-checkin__journal-config"><legend>${t("journal.configTitle")}</legend>
+    /* T-1587：目标配置分层——已配置目标时折叠为摘要（答题优先），未配置时自动展开。 */
+    const targetConfigured = Boolean(deps.integration.docId || deps.integration.notebookId) || deps.alreadyWritten;
+    const targetSummaryText = deps.integration.mode === "doc"
+        ? `${t("journal.targetDoc")} · ${deps.integration.docId}`
+        : `${t("journal.targetDaily")}${deps.integration.notebookId ? ` · ${deps.integration.notebookId}` : ""}`;
+    const configMarkup = `<details class="lc-checkin__journal-config-drawer" data-journal-config-drawer ${targetConfigured ? "" : "open"}><summary><span>${t("journal.configTitle")}</span><small>${escapeHtml(targetSummaryText)}</small></summary>
+        <fieldset class="lc-checkin__journal-config"><legend>${t("journal.configTitle")}</legend>
         <label class="lc-checkin__journal-target"><input type="radio" name="journalTarget" value="daily" ${deps.integration.mode === "doc" ? "" : "checked"} /><span>${t("journal.targetDaily")}</span></label>
         <label class="lc-checkin__journal-target"><input type="radio" name="journalTarget" value="doc" ${deps.integration.mode === "doc" ? "checked" : ""} /><span>${t("journal.targetDoc")}</span></label>
         <label class="lc-checkin__journal-notebook"><span>${t("journal.notebookLabel")}</span><select name="journalNotebook" aria-label="${t("journal.notebookLabel")}">${notebookOptions}</select></label>
         <label class="lc-checkin__journal-docid"><span>${t("journal.docIdLabel")}</span><input name="journalDocId" type="text" value="${escapeHtml(deps.integration.docId)}" placeholder="20260926120000-abcdef0" /></label>
-        </fieldset>`;
+        </fieldset></details>`;
     const hostClass = deps.isMobileFrontend ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
     const dialog = new Dialog({
         title: `${template.icon} ${t("journal.dialogTitle")} · ${template.name}`,
-        content: `<div class="${hostClass}"><form class="lc-checkin__journal-form" data-journal-form>${deps.alreadyWritten ? `<p class="lc-checkin__journal-hint" role="status">${t("journal.alreadyHint")}</p>` : ""}${configMarkup}${questionsMarkup}<div class="lc-checkin__journal-actions"><button type="button" class="b3-button" data-journal-cancel>${t("journal.cancel")}</button><button type="submit" class="b3-button b3-button--text" data-journal-submit>${t("journal.submit")}</button></div></form></div>`,
+        content: `<div class="${hostClass}"><form class="lc-checkin__journal-form" data-journal-form>${deps.alreadyWritten ? `<p class="lc-checkin__journal-hint" role="status">${t("journal.alreadyHint")}</p>` : ""}${configMarkup}${questionsMarkup}<details class="lc-checkin__journal-preview" data-journal-preview-details><summary>${t("journal.answersPreview")}</summary><pre class="lc-checkin__journal-preview-body" data-journal-preview></pre></details><div class="lc-checkin__journal-results" data-journal-results role="status" aria-live="polite" hidden></div><div class="lc-checkin__journal-actions"><button type="button" class="b3-button" data-journal-cancel>${t("journal.cancel")}</button><button type="submit" class="b3-button b3-button--text" data-journal-submit>${t("journal.submit")}</button></div></form></div>`,
         width: deps.isMobileFrontend ? "92vw" : "560px",
     });
     dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("lc-checkin-dialog");
@@ -236,7 +242,21 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
     };
     form.querySelectorAll("input[name='journalTarget']").forEach(radio => radio.addEventListener("change", updateTarget));
     updateTarget();
-    form.addEventListener("input", () => deps.onDraft?.(fields.map(field => field.value)));
+    form.addEventListener("input", () => {
+        deps.onDraft?.(fields.map(field => field.value));
+        /* T-1588：提交前预览——答案列表与写入目标（写入内容由模板包裹，此处预览答案与去向）。 */
+        const previewBody = form.querySelector<HTMLElement>("[data-journal-preview]");
+        if (previewBody) {
+            const answersNow = template.questions.map((question, index) => {
+                const input = form.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-journal-answer="${index}"]`);
+                return input ? `${index + 1}. ${input.value.trim() || "（空）"}` : "";
+            }).filter(Boolean);
+            const mode = form.querySelector<HTMLInputElement>("input[name='journalTarget']:checked")?.value === "doc" ? t("journal.targetDoc") : t("journal.targetDaily");
+            const destination = form.querySelector<HTMLInputElement>("input[name='journalDocId']")?.value?.trim()
+                || form.querySelector<HTMLSelectElement>("select[name='journalNotebook']")?.value || "";
+            previewBody.textContent = `${t("journal.previewTarget", {target: mode, destination})}\n${answersNow.join("\n")}`;
+        }
+    });
     form.querySelector<HTMLElement>("[data-journal-cancel]")?.addEventListener("click", () => dialog.destroy());
     form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -276,7 +296,34 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
                 if (await deps.onSubmit(answers, integration)) {
                     deps.onDraft?.([], submittedDraft);
                     dialog.destroy();
-                } else status.textContent = t("journal.retryHint");
+                } else {
+                    /* T-1588：文档失败——页内并列双结果（事实已保存/文档未完成）+ 独立幂等补写入口。 */
+                    status.textContent = "";
+                    const results = form.querySelector<HTMLElement>("[data-journal-results]");
+                    if (results) {
+                        results.innerHTML = `<div class="lc-checkin__journal-result-row is-ok">${escapeHtml(t("journal.resultFactSaved"))}</div><div class="lc-checkin__journal-result-row is-fail">${escapeHtml(t("journal.resultDocPending"))}</div>`;
+                        results.hidden = false;
+                        const backfill = document.createElement("button");
+                        backfill.type = "button";
+                        backfill.className = "b3-button lc-checkin__journal-backfill";
+                        backfill.textContent = t("journal.resultBackfill");
+                        backfill.addEventListener("click", () => {
+                            backfill.disabled = true;
+                            void (async () => {
+                                try {
+                                    if (await deps.onSubmit(answers, integration)) {
+                                        deps.onDraft?.([], submittedDraft);
+                                        dialog.destroy();
+                                    } else {
+                                        backfill.disabled = false;
+                                    }
+                                } catch { backfill.disabled = false; }
+                            })();
+                        });
+                        results.appendChild(backfill);
+                    }
+                    showMessage(t("journal.writeFailed"));
+                }
             } catch (error) {
                 status.textContent = error instanceof Error ? error.message : t("journal.retryHint");
                 showMessage(status.textContent);
