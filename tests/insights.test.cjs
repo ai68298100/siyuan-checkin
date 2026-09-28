@@ -301,7 +301,32 @@ try {
         assert.equal(JSON.stringify(data), before);
     });
 
-    console.log(`Habit insights: ${checks} checks passed.`);
+    /* —— T-1579 单项洞察行动化：段序（日历→趋势→成熟度→教练）、双行动入口、口径解释。 —— */
+{
+    const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
+    const insightsReturn = indexSource.slice(indexSource.indexOf("lc-checkin--history lc-checkin--insights"));
+    const windowAt = insightsReturn.indexOf("lc-checkin__insight-grid-scroll");
+    const weeklyAt = insightsReturn.indexOf('"insights.weeklyTrend"');
+    const maturityAt = insightsReturn.indexOf('"insights.maturityBarTitle"');
+    assert.ok(windowAt >= 0 && windowAt < weeklyAt && weeklyAt < maturityAt, "段序：状态日历→每周趋势→成熟度");
+    assert.ok(insightsReturn.indexOf("data-insight-records") < windowAt, "行动入口位于状态日历之前（stats 后 CTA 行）");
+    assert.match(insightsReturn, /data-insight-records="\$\{escapeHtml\(item\.id\)\}"/, "查看记录入口带项目 id");
+    assert.match(insightsReturn, /data-insight-edit-rules="\$\{escapeHtml\(item\.id\)\}"/, "编辑规则入口带项目 id");
+    assert.match(insightsReturn, /insights\.denominatorNote/, "分母口径解释在位");
+    assert.match(insightsReturn, /insights\.quotaWindowNote/, "配额项目周期解释在位（仅配额排期）");
+    assert.match(insightsReturn, /day\.skipped \? `（\$\{t\("today\.skipBadge"\)\}）`/, "跳过日在日格标题标注");
+    const bindNavSource = fs.readFileSync(path.join(sourceRoot, "render", "bind-page-navigation.ts"), "utf8");
+    assert.match(bindNavSource, /data-insight-records/, "查看记录绑定在位（带项目过滤直达记录区）");
+    assert.match(bindNavSource, /data-insight-edit-rules/, "编辑规则绑定在位");
+    assert.match(bindNavSource, /host\.insightsReturnPage = "review"/, "跳记录保留洞察返回页会话态");
+    const i18nT1579 = fs.readFileSync(path.join(sourceRoot, "i18n.ts"), "utf8");
+    for (const key of ["insights.viewRecords", "insights.editRules", "insights.denominatorNote", "insights.quotaWindowNote"]) {
+        const count = i18nT1579.split(`"${key}"`).length - 1;
+        assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
+    }
+}
+
+console.log(`Habit insights: ${checks} checks passed.`);
 } finally {
     if (previousTimeZone === undefined) delete process.env.TZ;
     else process.env.TZ = previousTimeZone;

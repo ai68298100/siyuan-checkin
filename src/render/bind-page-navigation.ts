@@ -72,6 +72,8 @@ export interface BindPageNavigationHost {
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showReview(): void;
+    /** T-1579：洞察行动入口——编辑规则（保留项目身份与返回页会话态）。 */
+    showEditor(item?: import("../types").CheckinItem): void;
     jumpToHistoryDate(date: string): void;
     showToday(): void;
     showArchived(): void;
@@ -276,6 +278,25 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.insightsItemId = itemId;
         void host.persistViewPreferences();
         host.render();
+    });
+    /* T-1579：洞察行动入口——查看记录（带项目过滤直达记录区，返回页会话态保持）/
+       编辑规则（showEditor 保留 editingId 项目身份）。 */
+    root.querySelector<HTMLElement>("[data-insight-records]")?.addEventListener("click", (event) => {
+        const itemId = (event.currentTarget as HTMLElement).dataset.insightRecords || "";
+        if (!itemId || !host.store.items.some((item) => item.id === itemId && !item.archived)) return;
+        host.historyItemId = itemId;
+        host.historyPage = 0;
+        host.historyBatchPreviewOpen = false;
+        host.editingHistoryNoteId = undefined;
+        host.reviewWorkspace = "records";
+        host.insightsReturnPage = "review";
+        host.showReview();
+    });
+    root.querySelector<HTMLElement>("[data-insight-edit-rules]")?.addEventListener("click", (event) => {
+        const itemId = (event.currentTarget as HTMLElement).dataset.insightEditRules || "";
+        const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        if (!item) return;
+        host.showEditor(item);
     });
     root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
