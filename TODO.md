@@ -41,7 +41,8 @@
   - 状态：done（文档型）；剩余边界=问卷目标保存（save-journal-target）与叶归笔记本换绑的确认接线归后续切片。
 - [x] T-1559 绑定失效恢复与集中体检闭环（P1）——done（2026-09-29，local-auto）。在只读集中体检上加就地修复：①**行内「停用」**（`data-disable-binding`，仅四条自动联动 summary-resident/health-inbox/note-query/yeguif-lifelog；diary 手动/anchor 逐项/journal 不适用）——确认弹窗→停用→persist 失败快照回滚；摄取源沿用断连保留纪律（planSourceDisconnect 汇总既有事件与身份并以 sourceDisconnectRetained 提示），可随时在源卡重新启用。②**失效原因随桶提示**：missing/error 状态行 title 显修复路径（bind.reasonMissing「重新选择、打开或停用」/bind.reasonError「稍后重检」），检查时与初始未绑定态都生效。③**最近检查时间**：体检头 `data-last-binding-check` 会话态回显（检查完成就地更新，重渲染由 ctx 带出）；目标名称/路径/类型既有（targetLabel+metadata）。④恢复闭环=重新保存绑定（T-1557/1558 目标卡与确认）→再点「检测全部联动」即更新状态，历史零改动、不静默改投。i18n 新增 5 键×2。守门：settings-navigation 新增 9 断言（停用范围精确/原因提示/时间回显/映射与断连纪律/双语）。
   - 状态：done；剩余边界=「移动 vs 删除」的根变化细分（需对比旧 root_id，复杂度高）与块失效专项归后续观察；键盘/窄屏走查归 T-1608 台账。
-- [ ] T-1560 读取范围与目标所有权说明（P1）——在选择器附近用具体文案区分“写入指定文档”“读取收件箱行”“读取笔记本内当日新块”“按日记路径解析并可创建文档”“只更新插件自写块”；显示是否创建文档、是否修改正文、轮询窗口和失败行为。补齐双语、文档/笔记本/块边界测试和真实内核契约夹具。
+- [x] T-1560 读取范围与目标所有权说明（P1）——done（2026-09-29，local-auto）。`scopeLineRow` 共享助手在**七个绑定点**选择器旁声明「读写范围」行（`data-scope-line`）：diary/summary/health/yeguif 笔记本卡/journal 目标卡/notequery（设置侧六点）+ 编辑器锚点字段（set.scope.anchor 紧跟 anchorHint）。每条范围句按 T-1556 差异表与真实实现核实四事实——读写边界（写入只追加插件自写内容/读取只读不修改文档）、是否创建文档（全部不自动创建；diary 保留手动新建入口）、轮询窗口（5min×3/30min weread 已在 T-1547 触发行）、失败行为（失败仅入审计/保留既有事件/自动停用/安全关闭摄取/不回滚打卡事实可幂等补写）、块所有权（只更新自写块绝不改用户正文）。i18n 新增 8 键×2（scopeTitle+七范围句）。守门：settings-navigation 新增 9 断言（六设置点调用/双语 8 键/编辑器锚点范围说明）。
+  - 状态：done；剩余边界=「按日记路径解析并可创建文档」的 diary 手动新建入口与问卷 daily 模式已有（create-doc/load-notebooks 既有），真实内核边界 E2E 夹具归 T-1602/T-1608 现场验收（host-pending，不以模拟冒充）。
 
 ## 设置页 UI 原型与重构（2026-09-28，用户要求梳理功能作用并先加入改造步骤；研究稿见 [设置页 UI 原型与重构步骤](docs/settings-page-rearchitecture-2026-09-28.md)，口径 D-303）
 

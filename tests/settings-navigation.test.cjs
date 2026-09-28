@@ -631,6 +631,15 @@ for (const key of ["bind.lastCheck", "bind.disable", "bind.disableConfirm", "bin
 assert.match(indexSourceT1553, /disableBindingFeature/, "停用映射（字段快照+undo 回滚）必须在位");
 assert.match(indexSourceT1553, /planSourceDisconnect\(feature\.source, this\.store\.events\)/, "停用摄取源沿用断连保留纪律");
 assert.match(indexSourceT1553, /this\.lastBindingCheckAt = new Date\(\)\.toISOString\(\)/, "检查完成必须回写会话时间");
+/* T-1560 读写范围与所有权：七个绑定点（含编辑器锚点）在选择器旁显式声明范围。 */
+for (const point of ["diary", "summary", "health", "yeguif", "notequery", "journal"]) {
+    assert.match(settingsSourceT1442, new RegExp(`scopeLineRow\\("${point}"`), `${point} 绑定点必须声明读写范围`);
+}
+for (const key of ["set.scope.diary", "set.scope.summary", "set.scope.health", "set.scope.yeguif", "set.scope.notequery", "set.scope.journal", "set.scope.anchor", "set.scopeTitle"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+const editorSourceT1560 = read("src", "render", "editor.ts");
+assert.match(editorSourceT1560, /set\.scope\.anchor/, "编辑器锚点选择器必须携带只更新自写块的范围说明");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
