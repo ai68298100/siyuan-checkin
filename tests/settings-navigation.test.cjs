@@ -599,6 +599,19 @@ assert.ok(!settingsSourceT1442.includes("data-diary-toggle"), "diary 手动报�
 for (const key of ["set.writeTriggerTitle", "set.writeTriggerManual", "set.writeTriggerResident", "set.writeTriggerJournal", "set.writeResultTitle", "set.writeResultNone", "set.writeResultOk", "set.writeResultFail"]) {
     assert.ok((i18nSourceT1553.match(new RegExp(`"${key}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
 }
+/* T-1547 来源→项目闭环：六卡事实三行 + 查看记录跳转 + 思播真实探测（思阅无探测面不伪造）。 */
+for (const source of ["sireader", "siplayer", "weread", "health", "notequery", "yeguif"]) {
+    assert.match(settingsSourceT1442, new RegExp(`sourceFactsBlock\\("${source}"`), `${source} 卡必须有三行事实块`);
+}
+assert.match(settingsSourceT1442, /data-review-records-for="\$\{source\}"/, "事实块必须带查看记录跳转（六卡共用助手）");
+assert.match(settingsSourceT1442, /data-action="probe-siplayer"/, "思播卡提供真实宿主探测按钮");
+assert.ok(!settingsSourceT1442.includes("probe-sireader"), "思阅无可靠探测面，不得伪造探测按钮");
+for (const key of ["set.sourceFactProduces", "set.sourceFactProjects", "set.sourceFactTrigger", "set.sourceViewRecords", "set.siplayerProbe", "msg.siplayerProbeFound", "msg.siplayerProbeMissing", "set.sourceProduces.sireader", "set.sourceTrigger.weread"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+assert.match(indexSourceT1553, /openReviewRecordsForSource/, "回顾跳转方法必须在位");
+assert.match(indexSourceT1553, /health: "api:health"/, "health 事件用登记渠道 api:health 过滤");
+assert.match(indexSourceT1553, /detectSiplayerController\(window\)/, "思播探测走真实特征检测");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");

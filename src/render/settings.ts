@@ -301,6 +301,25 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                 : t("set.writeResultFail", {reason: last.reason || "-"});
         return `<div class="lc-checkin__settings-row" data-write-result="${point}"><span class="lc-checkin__settings-label"><span>${t("set.writeResultTitle")}</span></span><span class="lc-checkin__settings-value" role="status">${escapeHtml(text)}</span></div>`;
     };
+    /* T-1547 来源→项目闭环：每卡首屏三行事实（产生什么/写入哪些项目/何时触发）+
+       查看记录跳转（带来源筛选直达回顾）。写入项目从既有偏好实时推导，未绑定如实显示。 */
+    const sourceProjectNames = (ids: readonly string[]): string => {
+        const names: string[] = [];
+        for (const id of ids) {
+            if (!id) continue;
+            const item = ctx.store.items.find(candidate => candidate.id === id);
+            const label = item ? item.name : t("set.itemMissing");
+            if (!names.includes(label)) names.push(label);
+        }
+        return names.length ? names.join("、") : t("set.targetNone");
+    };
+    const sourceFactsBlock = (source: "sireader" | "siplayer" | "weread" | "health" | "notequery" | "yeguif", projectIds: readonly string[], extraAction = ""): string => {
+        const factRow = (attr: string, labelKey: string, value: string) => `<div class="lc-checkin__settings-row" ${attr}><span class="lc-checkin__settings-label"><span>${t(labelKey)}</span></span><span class="lc-checkin__settings-value">${escapeHtml(value)}</span></div>`;
+        return `${factRow(`data-source-fact="${source}-produces"`, "set.sourceFactProduces", t(`set.sourceProduces.${source}`))}
+                    ${factRow(`data-source-fact="${source}-projects"`, "set.sourceFactProjects", sourceProjectNames(projectIds))}
+                    ${factRow(`data-source-fact="${source}-trigger"`, "set.sourceFactTrigger", t(`set.sourceTrigger.${source}`))}
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.writeResultTitle")}</span></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-review-records-for="${source}">${t("set.sourceViewRecords")}</button>${extraAction}</span></div>`;
+    };
     const sourceBadge = (state: SourceState) => `<span class="lc-checkin__source-badge ${sourceStateClass(state)}" data-source-state="${state}">${sourceStateLabel(state)}</span>`;
     const statusLine = (status: IntegrationStatus) => `<div class="lc-checkin__source-status" data-config-state="${status.configuration}" data-runtime-state="${status.runtime}" data-activity-count="${status.activity.todayCount}" data-problem-state="${status.problem}"><span>${t("set.integrationRuntime")}: ${t(`set.integrationRuntime.${status.runtime}`)}</span><span>${t("set.integrationActivity")}: ${status.activity.todayCount ? t("set.sourceToday", {n: status.activity.todayCount}) : t(`set.integrationLastRead.${status.activity.lastRead}`)}</span><span>${t("set.integrationProblem")}: ${t(`set.integrationProblem.${status.problem}`)}</span></div>`;
     const integrationStatus = (state: SourceState, count: number, hostAvailable?: boolean, lastReadOk?: boolean, lastWriteFailed = false) => projectIntegrationStatus({enabled: state === "enabled", configured: state !== "setup", targetAvailable: state !== "rebind", hostAvailable, todayCount: count, lastReadOk, lastWriteFailed});
@@ -575,6 +594,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="sireader" data-source-state="${sireaderState}"${sourcePanelOpen("sireader")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.sireaderIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.sireader ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.sireader})}</span>` : ""}${sourceBadge(sireaderState)}</span></summary>
                     ${statusLine(integrationStatus(sireaderState, ctx.sourceTodayCounts?.sireader ?? 0))}
+                    ${sourceFactsBlock("sireader", [sireader.itemId])}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsSireader1")}</li><li>${t("set.stepsSireader2")}</li><li>${t("set.stepsSireader3")}</li><li>${t("set.stepsSireader4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.sireaderBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderItem")}</span><small>${t("set.sireaderItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-sireader-item aria-label="${t("set.sireaderItem")}"><option value="">${t("set.sireaderItemChoose")}</option>${sireaderItemOptions}</select></span></div>
@@ -583,6 +603,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="siplayer" data-source-state="${siplayerState}"${sourcePanelOpen("siplayer")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.siplayerIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.siplayer ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.siplayer})}</span>` : ""}${sourceBadge(siplayerState)}</span></summary>
                     ${statusLine(integrationStatus(siplayerState, ctx.sourceTodayCounts?.siplayer ?? 0, ctx.siplayerControllerAvailable))}
+                    ${sourceFactsBlock("siplayer", [siplayer.itemId], `<button class="lc-checkin__text-button" type="button" data-action="probe-siplayer">${t("set.siplayerProbe")}</button>`)}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsSiplayer1")}</li><li>${t("set.stepsSiplayer2")}</li><li>${t("set.stepsSiplayer3")}</li><li>${t("set.stepsSiplayer4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.siplayerBoundary")}</small></details><small class="lc-checkin__source-boundary" data-siplayer-host-state="${siplayerHostState}">${siplayerHostStatus}</small>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.siplayerItem")}</span><small>${t("set.siplayerItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-siplayer-item aria-label="${t("set.siplayerItem")}"><option value="">${t("set.siplayerItemChoose")}</option>${siplayerItemOptions}</select></span></div>
@@ -592,6 +613,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="weread" data-source-state="${wereadState}"${sourcePanelOpen("weread")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.wereadIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.weread ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.weread})}</span>` : ""}${sourceBadge(wereadState)}</span></summary>
                     ${statusLine(integrationStatus(wereadState, ctx.sourceTodayCounts?.weread ?? 0, undefined, ctx.wereadLastPull?.ok))}
+                    ${sourceFactsBlock("weread", [weread.itemId, weread.finishItemId, weread.notesItemId])}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsWeread1")}</li><li>${t("set.stepsWeread2")}</li><li>${t("set.stepsWeread3")}</li><li>${t("set.stepsWeread4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.wereadBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions(weread.itemId)}</select></span></div>
@@ -606,6 +628,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="health" data-source-state="${healthState}"${sourcePanelOpen("health")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.healthIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.health ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.health})}</span>` : ""}${sourceBadge(healthState)}</span></summary>
                     ${statusLine(integrationStatus(healthState, ctx.sourceTodayCounts?.health ?? 0, undefined, reportReadOk("health"), ctx.sourceIngestReports?.health?.outcome === "write-failed"))}
+                    ${sourceFactsBlock("health", healthInbox.metricBindings.map(binding => binding.itemId))}
                     ${sourceReportLine("health")}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsHealth1")}</li><li>${t("set.stepsHealth2")}</li><li>${t("set.stepsHealth3")}</li><li>${t("set.stepsHealth4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.healthBoundary")}</small></details>
@@ -623,6 +646,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="notequery" data-source-state="${noteQueryState}"${sourcePanelOpen("notequery")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.noteQueryIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.notequery ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.notequery})}</span>` : ""}${sourceBadge(noteQueryState)}</span></summary>
                     ${statusLine(integrationStatus(noteQueryState, ctx.sourceTodayCounts?.notequery ?? 0, undefined, reportReadOk("notequery"), ctx.sourceIngestReports?.notequery?.outcome === "write-failed"))}
+                    ${sourceFactsBlock("notequery", [noteQuery.itemId])}
                     ${sourceReportLine("notequery")}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsNoteQuery1")}</li><li>${t("set.stepsNoteQuery2")}</li><li>${t("set.stepsNoteQuery3")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.noteQueryBoundary")}</small></details>
@@ -637,6 +661,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="yeguif" data-source-state="${yeguifState}"${sourcePanelOpen("yeguif")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.yeguifIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.yeguif ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.yeguif})}</span>` : ""}${sourceBadge(yeguifState)}</span></summary>
                     ${statusLine(integrationStatus(yeguifState, ctx.sourceTodayCounts?.yeguif ?? 0, undefined, reportReadOk("yeguif"), ctx.sourceIngestReports?.yeguif?.outcome === "write-failed"))}
+                    ${sourceFactsBlock("yeguif", yeguif.mappings?.length ? yeguif.mappings.map(mapping => mapping.itemId) : [yeguif.itemId])}
                     ${sourceReportLine("yeguif")}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsYeguif1")}</li><li>${t("set.stepsYeguif2")}</li><li>${t("set.stepsYeguif3")}</li><li>${t("set.stepsYeguif4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.yeguifBoundary")}</small></details>

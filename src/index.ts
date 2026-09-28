@@ -3495,6 +3495,25 @@ export default class CheckinPlugin extends Plugin {
         this.render();
     }
 
+    /* T-1547：来源卡「查看记录」直达回顾记录区并预置来源筛选。health/notequery 事件
+       落 source="api"，用 T-1512 登记渠道 api:health/api:notequery 精确过滤；
+       其余来源直接用事件 source 值。未知来源不动筛选（不猜）。 */
+    private openReviewRecordsForSource(source: string): void {
+        const filters: Record<string, HistoryChannelFilter> = {
+            sireader: "sireader",
+            siplayer: "siplayer",
+            weread: "weread",
+            yeguif: "yeguif",
+            health: "api:health",
+            notequery: "api:notequery",
+        };
+        const filter = filters[source];
+        if (!filter) return;
+        this.historySource = filter;
+        this.reviewWorkspace = "records";
+        this.showReview();
+    }
+
     private bindSettings(root: HTMLElement) {
         for (const attribute of ["data-journal-custom", "data-journal-mode", "data-journal-notebook-id", "data-journal-target-doc", "data-diary-doc", "data-summary-doc", "data-health-doc", "data-setting-reminder-slots", "data-weread-threshold", "data-weread-key"]) {
             const field = root.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(`[${attribute}]`);
@@ -3726,6 +3745,16 @@ export default class CheckinPlugin extends Plugin {
         /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
         /* T-1552：日记报告的启停开关退役——手动报告不需要门槛；
            diaryReport.enabled 字段仅为兼容保留，读写路径都不再消费。 */
+        /* T-1547：来源卡「查看记录」与思播宿主探测——探测仅跑真实特征检测并如实反馈，
+             不产生任何状态写路径（监听型思阅无可靠探测面，不伪造按钮）。 */
+        root.querySelectorAll<HTMLElement>("[data-review-records-for]").forEach((button) => button.addEventListener("click", () => {
+            this.openReviewRecordsForSource(button.dataset.reviewRecordsFor || "");
+        }));
+        root.querySelector<HTMLElement>("[data-action='probe-siplayer']")?.addEventListener("click", () => {
+            const found = typeof window !== "undefined" && detectSiplayerController(window);
+            showMessage(t(found ? "msg.siplayerProbeFound" : "msg.siplayerProbeMissing"));
+            this.render();
+        });
         const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void, confirmKeys?: {pointKey: string; scopeKey: string}) => {
             root.querySelector<HTMLButtonElement>(`[data-action='${action}']`)?.addEventListener("click", async event => {
                 const button = event.currentTarget as HTMLButtonElement;
