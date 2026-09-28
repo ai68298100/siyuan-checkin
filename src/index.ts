@@ -3629,14 +3629,15 @@ export default class CheckinPlugin extends Plugin {
             control.addEventListener("click", () => {
                 const source = control.dataset.source;
                 runSettingsAction(control, async () => {
+                    /* T-1553：refresh-source 仅服务文档摄取型（立即读取）；微信读书拉取
+                       统一走 weread-pull（含前置校验与结果反馈），不再提供第二入口。 */
                     if (source === "health") await this.ingestHealthInbox();
                     else if (source === "notequery") await this.ingestNoteQuery();
-                    else if (source === "weread") await this.ingestWeread();
                     else if (source === "yeguif") await this.ingestYeguif();
                     else return;
                     if (control.isConnected) {
-                        const report = source === "health" || source === "notequery" || source === "yeguif" ? this.sourceIngestReports[source] : undefined;
-                        settingsFeedback(report ? t(`set.sourceReportOutcome.${report.outcome}`) : t("set.sourceRetry"));
+                        const report = this.sourceIngestReports[source];
+                        settingsFeedback(report ? t(`set.sourceReportOutcome.${report.outcome}`) : t("set.sourceReadNow"));
                         this.render();
                     }
                 });

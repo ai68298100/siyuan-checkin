@@ -554,6 +554,22 @@ assert.match(settingsSourceT1442, /sourcePanelOpen\("weread"\)/, "保存联动�
 assert.match(settingsSourceT1442, /data-action="clear-weread-key"/, "微信读书应提供本地 Key 清除入口");
 assert.equal((settingsSourceT1442.match(/lc-checkin__source-panel-head/g) || []).length, 10, "十个面板头部（8 来源 + 总览 + 问卷日记）");
 assert.equal((settingsSourceT1442.match(/lc-checkin__source-steps/g) || []).length, 8, "八个编号步骤列表（总览/问卷日记面板无来源步骤，属能力配置）");
+/* T-1553 来源卡动作语义统一：摄取型=立即读取、拉取型=立即拉取（唯一入口）、
+   含义模糊的「立即刷新」（set.sourceRetry）全量退役；步骤+边界长文折入
+   data-source-advanced（搜索过滤会自动展开命中的 details，可达性不降级）。 */
+const i18nSourceT1553 = read("src", "i18n.ts");
+assert.equal((i18nSourceT1553.match(/"set\.sourceRetry"/g) || []).length, 0, "set.sourceRetry 键必须退役（中英词典均删除）");
+for (const key of ["set.sourceReadNow", "set.sourceAdvanced"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+assert.equal((settingsSourceT1442.match(/data-action="refresh-source"/g) || []).length, 3, "refresh-source 仅剩三个摄取型来源（health/notequery/yeguif）");
+assert.ok(!settingsSourceT1442.includes('data-action="refresh-source" data-source="weread"'), "微信读书拉取统一走 weread-pull，不得保留第二入口");
+assert.equal((settingsSourceT1442.match(/data-action="weread-pull"/g) || []).length, 1, "微信读书唯一拉取动作在位");
+assert.equal((settingsSourceT1442.match(/t\("set\.sourceReadNow"\)/g) || []).length, 3, "三个摄取卡使用「立即读取」动作词");
+assert.equal((settingsSourceT1442.match(/data-source-advanced/g) || []).length, 6, "六张来源卡的步骤与边界折入高级折叠");
+const indexSourceT1553 = read("src", "index.ts");
+assert.ok(!indexSourceT1553.includes("set.sourceRetry"), "refresh 分发不得再引用退役键");
+assert.equal((indexSourceT1553.match(/else if \(source === "weread"\) await this\.ingestWeread\(\);/g) || []).length, 0, "refresh-source 分发移除 weread 分支");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
