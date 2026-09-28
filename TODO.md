@@ -51,6 +51,8 @@
 
 ## 本轮自主任务（2026-09-28：走查收口与 T-1392 本地切片）
 
+- [x] T-1533 v18.9.0 本地定版——done（2026-09-28，local-auto；用户「继续」对上轮选项①「定版→发布资产（本地）」的放行，**push 仍待用户确认**）。发布三要素就位：①版本三元组 src/version.ts PLUGIN_VERSION、package.json、plugin.json 全部升至 18.9.0（release-assets 守门从 package.json 派生 RELEASE_VERSION 自动跟随）；②README 当前版本/发布说明链接/18.9.0 重点区/变更记录链接四处切换；③release-notes-18.9.0-draft.md 转正为 release-notes-18.9.0.md（去草案框、补 SHA-256 行骨架由 sync:digest 填充实际摘要 bdac1900…）+ 新增 docs/v18.9.0-change-log.md（按批次+任务号的详细记录）。验证：build、sync:digest、check:release（资产校验+回滚演练 v18.9.0 全绿）、test:quality 全链、双主题 visual-qa、宽度走查全 EXIT=0。**发布剩余步骤（用户动作）**：确认后 push → GitHub Release 上传 package.zip（SHA 见发布说明）。
+
 - [x] T-1532 v18.9.0 发布说明草案——done（2026-09-28，local-auto）。27+ 提交体量已达一个小版本，为发布窗口备料：新增 docs/releases/release-notes-18.9.0-draft.md（顶部草案框注明发布时移除后缀/定版本/同步 SHA），按惯例分组汇总全部面向用户变更——可靠事实（待处理箱/事实详情/补记实际值/渠道细筛）、规划透明（排期预演/规则对照/周负荷/分母明细/横向比较/周复盘）、配置复用（模板分享/导入决策/设置变更清单/迁移三选）、联动与模板（样例试算台/循证模板/概览调整）、生态（契约包消费端参考层）；验证与边界节如实标注真机与上游边界。命名带 -draft 后缀 + docs/releases/ 位置均不触碰 release-assets 守门（root 过滤器与版本钉定均不受影响，已实测）。验证：release-assets、ui-docs 全 EXIT=0。
 
 - [x] T-1531 TS 死导出审计与清理——done（2026-09-28，local-auto）。词边界精确引用扫描（1379 个导出声明 × 全 src + tests，本文件自用计入存活）：运行时死导出仅 4 个，逐一全仓库核实（无动态引用、无 export * 转出、依赖不被孤立）后移除——ecosystem.ts toCalendarSyncRecord（早期日历同步草稿，被 T-1391 投影路线取代）、quota.ts normalizeQuotaSchedule（主流程走 model.normalizeSchedule，normalizeQuota 另有 model.ts 使用不受影响）、features/health-inbox.ts HEALTH_INBOX_METRICS（指标名内联匹配）、features/template-manager.ts createTemplateManagerState（宿主自管状态形状）。9 个死导出 type/interface 有意保留——编译期擦除零包体成本，且多为公共 API 契约文档面（如 api-v5.ts BatchRecordInput）。验证：check、主链、build（JS 1.22MiB 持平）、test:ui、test:quality、双主题 visual-qa、宽度走查全 EXIT=0。
