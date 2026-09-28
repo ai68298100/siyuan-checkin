@@ -2,12 +2,15 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 
-/* T-1571 排期与记录方式提入主流程守门：
-   - 主流程段序：做到多少(valueFields) → 什么时候做(when: 排期块+方向+回退警告) → 怎样产生记录(how: 问卷/完成来源/番茄)；
-   - 高级区不再含排期块/方向/完成来源/番茄（无重名 name 控件）；
-   - 显隐单点收拢：排期相关行不再渲染硬编码 hidden（bind updateConditionalFields 首跑即设）；
-   - atMost×非每日显式警告在位，save-form 静默回落行为不变；
-   - 番茄显隐收拢至 updateConditionalFields（修复手动切完成来源不联动）。 */
+/* T-1571/T-1572 编辑器主流程分段守门：
+   - T-1571 段序：做到多少(valueFields) → 什么时候做(when: 排期块+方向+回退警告) → 怎样产生记录(how: 问卷/完成来源/番茄)；
+     高级区不再含排期块/方向/完成来源/番茄（无重名 name 控件）；
+     显隐单点收拢：排期相关行不再渲染硬编码 hidden（bind updateConditionalFields 首跑即设）；
+     atMost×非每日显式警告在位，save-form 静默回落行为不变；
+     番茄显隐收拢至 updateConditionalFields（修复手动切完成来源不联动）。
+   - T-1572 高级区两小节：输出（锚点）/组织（分组/优先级/时段/自动归档/容错/Task Horizon 显示）；
+     页尾操作栏带危险区标记；问卷绑定保持主流程段6。
+   - T-1570 应用模板徽标：会话标示、两条应用路径打标、项目落盘后清除。 */
 
 const root = path.join(__dirname, "..");
 const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
@@ -15,6 +18,7 @@ const editor = read("src", "render", "editor.ts");
 const bindEditor = read("src", "render", "bind-editor.ts");
 const saveForm = read("src", "render", "save-form.ts");
 const i18nSource = read("src", "i18n.ts");
+const indexSource = read("src", "index.ts");
 
 let checks = 0;
 function check(name, run) {
@@ -49,7 +53,7 @@ try {
             assert.equal(advancedBody.indexOf(moved), -1, `高级区不得残留 ${moved}`);
         }
         for (const kept of ["data-anchor-picker", "data-taskhorizon-visible-field", "editor.autoArchiveLabel", "editor.streakToleranceLabel"]) {
-            assert.ok(advancedBody.includes(kept.split(".").pop() || kept) || advancedBody.includes(kept), "高级区保留组织与输出字段");
+            assert.ok(advancedBody.includes(kept) || advancedBody.includes(kept.split(".").pop()), "高级区保留组织与输出字段");
         }
     });
 
@@ -91,6 +95,16 @@ try {
             assert.ok((i18nSource.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
         }
         assert.ok(editor.indexOf("data-journal-field") < editor.indexOf("lc-checkin__advanced"), "问卷绑定保持在主流程段6（不回搬高级区）");
+    });
+
+    check("T-1570 applied-template badge: session note, both apply paths mark, save clears", () => {
+        assert.match(editor, /data-template-applied-note/, "编辑器必须渲染应用模板徽标容器");
+        assert.match(editor, /appliedTemplateNote\?/, "ctx 必须透传会话标示");
+        assert.equal((bindEditor.match(/markTemplateApplied\((?:templateName\(template\)|template\.name)\)/g) || []).length, 2, "目录模板与我的模板两条应用路径都必须打标");
+        assert.match(bindEditor, /host\.markTemplateApplied\?\./, "打标必须经宿主会话字段（不重渲染）");
+        assert.match(indexSource, /markTemplateApplied\(note: string\)/, "宿主实现在位");
+        assert.match(indexSource, /this\.appliedTemplateNote = undefined;/, "项目落盘后清除标示（失败路径保留）");
+        assert.ok((i18nSource.match(/"editor\.templateApplied"/g) || []).length >= 2, "editor.templateApplied 必须中英双语齐备");
     });
 
     console.log(`Editor section flow: ${checks} checks passed.`);

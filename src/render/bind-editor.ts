@@ -34,6 +34,8 @@ export interface BindEditorHost {
     customIconLibrary: string[];
     editingId?: string;
     editingFingerprint?: string;
+    /** T-1570：应用模板后会话态标示（宿主只存字段，bind 就地更新徽标，不重渲染）。 */
+    markTemplateApplied?(note: string): void;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
     suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
@@ -669,6 +671,16 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     }));
     /* T-1486/T-1487 共用：模板字段填表（含联动建议卡重置）。名称联想的「套用模板」走同一函数，
         保证两条路径填充的字段集合与条件字段刷新完全一致。 */
+    /* T-1570：应用模板后标示已回填（会话态，项目落盘后清除；bind 就地更新徽标，不重渲染）。 */
+    const markTemplateApplied = (name: string) => {
+        const note = t("editor.templateApplied", {name});
+        host.markTemplateApplied?.(note);
+        const badge = root.querySelector<HTMLElement>("[data-template-applied-note]");
+        if (badge) {
+            badge.textContent = note;
+            badge.hidden = false;
+        }
+    };
     const applyTemplateFields = (template: typeof CHECKIN_TEMPLATES[number]) => {
         const setInput = (name: string, value: string) => {
             const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
@@ -698,6 +710,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         updateConditionalFields(false);
         updateEditorPreview();
         updateAdvancedSummary();
+        markTemplateApplied(templateName(template));
         /* 亲和锚点是 zh 原名，不能用 templateName() 的译文（语言切换后译文无法命中亲和表）。 */
         renderLinkageCard(root, host, templateLinkageForName(template.name));
     };
@@ -868,6 +881,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
         root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
         selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
+        markTemplateApplied(template.name);
         collapseTemplateDisclosure();
         ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
     }));

@@ -478,6 +478,8 @@ export default class CheckinPlugin extends Plugin {
     private targetSummaries = new Map<string, {name?: string; hpath?: string} | null>();
     /* T-1559 集中体检最近一次完成时间（会话态，bind 头部展示）。 */
     private lastBindingCheckAt?: string;
+    /* T-1570 已应用模板标示（会话态；项目落盘后清除）。 */
+    private appliedTemplateNote?: string;
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -3392,6 +3394,11 @@ export default class CheckinPlugin extends Plugin {
     /* 方法体外置于 render/settings.ts（T-022）。 */
     /* T-1562 设置首页总览投影：只聚合既有状态（绑定行/来源前置/审计/草稿计数）。
        审计按 channel 取最新一条：失败通道进「需要处理」，最近三条成功/失败进「最近活动」。 */
+    markTemplateApplied(note: string): void {
+        /* T-1570：应用模板后会话态标示——不重渲染（避免丢 DOM 草稿），由 bind 就地更新徽标。 */
+        this.appliedTemplateNote = note;
+    }
+
     private buildSettingsOverviewProjection() {
         const latestByChannel = new Map<string, {ok: boolean; at: string}>();
         for (const entry of this.auditEntries) {
@@ -5349,6 +5356,7 @@ export default class CheckinPlugin extends Plugin {
     private renderEditor(): string {
         return renderEditorView({
             store: this.store,
+            appliedTemplateNote: this.appliedTemplateNote,
             userTemplates: this.userTemplates,
             templateImport: this.templateImportSession,
             customIconLibrary: this.customIconLibrary,
@@ -5975,6 +5983,8 @@ export default class CheckinPlugin extends Plugin {
             void this.clearAnchorAttrBestEffort(previousAnchor.blockId);
         }
         if (isTemplateLinkagePlan(plan)) await this.applyTemplateLinkagePlan(plan, savedItemId);
+        /* T-1570：项目落盘后清除「已应用模板」标示（草稿保留语义——失败路径不清）。 */
+        this.appliedTemplateNote = undefined;
         return savedItemId;
     }
 

@@ -63,6 +63,8 @@ export function describeEditorPreviewMeta(input: {
 
 export interface EditorViewContext {
     store: CheckinStore;
+    /** T-1570 已应用模板标示（会话态；空=隐藏徽标）。 */
+    appliedTemplateNote?: string;
     userTemplates: UserTemplate[];
     /** T-1520 模板包导入会话（可选：无会话时只显示文件选择）。 */
     templateImport?: {fileName: string; decisions: ImportDecision[]};
@@ -206,6 +208,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     <label class="lc-checkin__field lc-checkin__field--name"><span>${t("occ.name")}</span><input name="name" type="text" required maxlength="40" placeholder="${t("editor.namePlaceholder")}" value="${escapeHtml(item?.name || "")}" /></label>
                     <div class="lc-checkin__name-inference" data-name-inference hidden></div>
                     <div class="lc-checkin__linkage-card" data-linkage-card hidden></div>
+                    ${ctx.appliedTemplateNote ? `<div class="lc-checkin__name-inference" data-template-applied-note role="status">${escapeHtml(ctx.appliedTemplateNote)}</div>` : `<div class="lc-checkin__name-inference" data-template-applied-note role="status" hidden></div>`}
                     <input type="hidden" name="linkagePlan" data-linkage-plan value="" />
                     <div class="lc-checkin__field lc-checkin__field--icons">
                         <span>${t("editor.icon")}</span>
