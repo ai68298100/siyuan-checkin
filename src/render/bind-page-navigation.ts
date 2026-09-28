@@ -14,6 +14,7 @@ import {buildSuggestionChange, createSuggestionEnvelope, type AgentSuggestion} f
 import {createSuggestionWorkflow} from "../features/suggestion-workflow";
 import {Dialog, showMessage} from "siyuan";
 import {bindResponsiveCharts} from "../ui/responsive-charts";
+import {readSurfaceContext} from "./page-shell";
 
 export interface BindPageNavigationHost {
     openReviewAgent(): boolean;
@@ -313,7 +314,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.reminderUserAction(id, action);
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
-        if (host.currentPage === "insights" && host.insightsReturnPage === "review") host.showReview();
+        /* T-1576：返回路径统一走 SurfaceContext 读侧——insights 会话返回栈优先，其余按默认返回表回落 today。 */
+        const context = readSurfaceContext(host);
+        if (context.page === "insights" && context.returnTo === "review") host.showReview();
         else host.showToday();
     });
     /* Review workspace controls intentionally keep their state in the session,

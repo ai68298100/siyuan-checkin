@@ -13,6 +13,7 @@ import type {NoteQueryPreference} from "../features/note-query";
 import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ingest-report";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
 import {bindingTargetLabel} from "../features/note-bindings";
+import {renderPageShellHead} from "./page-shell";
 
 const AVATAR_PRESETS = [
     ["check", "set.avatarPresetCheck"],
@@ -701,7 +702,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         },
     ];
     return `<div class="lc-checkin lc-checkin--settings" data-appearance="${ctx.resolvedAppearanceValue}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("set.personal")}</div><h1 class="lc-checkin__title">${t("settings.title")}</h1></div></header>
+            ${renderPageShellHead({eyebrow: t("set.personal"), title: t("settings.title")})}
             <div class="lc-checkin__settings-feedback" data-settings-feedback role="status" aria-live="polite"></div>
             <label class="lc-checkin__settings-search">${t("set.search")}<input type="search" data-settings-search aria-label="${t("set.search")}" /></label>
             <div data-settings-search-status role="status" aria-live="polite"></div>

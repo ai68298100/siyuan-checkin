@@ -10,6 +10,7 @@ import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from ".
 import type {TodayGroupMode} from "../view-preferences";
 import type {CheckinItem, CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "../types";
 import {renderSaveStatusView, renderSyncNoticeView, type SaveState} from "./fragments";
+import {renderPageShellHead} from "./page-shell";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
 
 const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
@@ -197,10 +198,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
             </div>
         </details>` : "";
     return `<div class="lc-checkin lc-checkin--editor" data-appearance="${ctx.appearance}">
-            <header class="lc-checkin__editor-header">
-                <button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button>
-                <h1 class="lc-checkin__title">${item ? t("editor.edit") : t("editor.create")}</h1>
-            </header>
+            ${renderPageShellHead({title: item ? t("editor.edit") : t("editor.create")})}
             <form class="lc-checkin__form">
                 <div class="lc-checkin__editor-columns">
                 <div class="lc-checkin__form-scroll">

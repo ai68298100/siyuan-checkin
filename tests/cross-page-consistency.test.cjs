@@ -23,6 +23,9 @@ const reviewBind = read("src", "render", "bind-page-navigation.ts");
 const occasionsBind = read("src", "render", "bind-occasions.ts");
 const navigation = read("src", "navigation.ts");
 const editorBind = read("src", "render", "bind-editor.ts");
+const pageShell = read("src", "render", "page-shell.ts");
+const occasions = read("src", "render", "occasions.ts");
+const indexSrc = read("src", "index.ts");
 
 let checks = 0;
 function check(name, run) {
@@ -54,6 +57,27 @@ try {
         assert.match(settingsNav, /searchSessionState/, "设置搜索会话恢复（WeakMap）");
         assert.match(reviewBind, /renderReviewPreservingView\("/, "回顾视图保持焦点/选择恢复");
         assert.match(navigation, /insightsReturnPage/, "洞察返回页会话态");
+    });
+
+    check("shared page shell prototype covers every detail page (T-1576)", () => {
+        assert.match(pageShell, /export function renderPageShellHead/, "页面壳头部单一构造点");
+        assert.match(pageShell, /export function defaultReturnPage/, "契约 3 默认返回表");
+        assert.match(pageShell, /export interface SurfaceContext/, "契约 1 SurfaceContext 形状");
+        assert.match(pageShell, /export function readSurfaceContext/, "SurfaceContext 读侧");
+        for (const [name, source] of [["editor", editor], ["archived", archived], ["occasions", occasions], ["settings", settings]]) {
+            assert.ok(source.includes("renderPageShellHead("), `${name} 头部走共享壳`);
+            assert.doesNotMatch(source, /<header class="lc-checkin__editor-header">/, `${name} 无内联头部残留`);
+        }
+        assert.ok(indexSrc.includes("renderPageShellHead("), "洞察两处头部走共享壳（index.ts）");
+        assert.doesNotMatch(indexSrc, /lc-checkin__editor-header"><button class="lc-checkin__back-button"/, "洞察无内联头部残留");
+        /* 兼容映射：DOM 钩子与类名保持原名，绑定与样式零改动（契约 4）。 */
+        assert.match(pageShell, /data-action="back"/, "返回键钩子原名");
+        assert.match(pageShell, /lc-checkin__back-button/, "返回键类名原名");
+        assert.match(pageShell, /lc-checkin__eyebrow/, "上下文行类名原名");
+        assert.match(pageShell, /lc-checkin__title/, "标题类名原名");
+        /* 返回路径分派统一走 SurfaceContext 读侧。 */
+        assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "通用返回分派走读侧");
+        assert.match(reviewBind, /context\.page === "insights" && context\.returnTo === "review"/, "insights 会话返回栈优先");
     });
 
     check("navigation entry points stay on the shared showXxxFor single path", () => {

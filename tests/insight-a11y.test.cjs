@@ -29,6 +29,7 @@ function loadTs(filename) {
 }
 const {escapeHtml, renderIconMarkup} = loadTs(path.resolve("src/shared.ts"));
 const {t, setPluginLanguage} = loadTs(path.resolve("src/i18n.ts"));
+const {renderPageShellHead} = loadTs(path.resolve("src/render/page-shell.ts"));
 const sourceFile = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true);
 let method;
 function findRenderer(node) {
@@ -44,8 +45,8 @@ const report = {
     weeklyTrend: [{label: "empty week", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
     days: [], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
-const View = new Function("getActiveItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", `${compiled}; return InsightView;`)(
-    (store, id) => store.items.find(item => item.id === id), () => report, () => new Map(), () => [], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t,
+const View = new Function("getActiveItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", `${compiled}; return InsightView;`)(
+    (store, id) => store.items.find(item => item.id === id), () => report, () => new Map(), () => [], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t, renderPageShellHead,
 );
 const view = new View();
 const imageIcon = "data:image/png;base64,aGVsbG8=";

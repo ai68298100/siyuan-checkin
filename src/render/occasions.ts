@@ -4,6 +4,7 @@ import {dateKey} from "../model";
 import {daysBetweenHalfOpen} from "../date-keys";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
+import {renderPageShellHead} from "./page-shell";
 import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
@@ -134,7 +135,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
     const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
     return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${ctx.appearance}">
-            <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">+</button></header>
+            ${renderPageShellHead({eyebrow: t("occasions.eyebrow"), title: t("occasions.title"), actionsHtml: `<button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">+</button>`})}
             <div class="lc-checkin__occasion-manager">
                 <details class="lc-checkin__occasion-form-drawer" data-occasion-form-drawer ${editing ? "open" : ""}>
                     <summary><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>

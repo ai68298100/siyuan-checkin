@@ -73,6 +73,8 @@ for (const key of ["archived.detailsSummary", "archived.ruleLabel", "archived.li
         if (specifier === "../i18n") return {t: (key, params) => params ? `${key}:${JSON.stringify(params)}` : key};
         if (specifier === "../shared") return {escapeHtml: (value) => String(value), formatScheduleLabel: () => "每日", renderIconMarkup: () => ""};
         if (specifier === "../model") return require(path.join(dir, "src", "model.js"));
+        /* T-1576：页面壳头部构造点——行为测试不触及头部，桩给最小形状即可。 */
+        if (specifier === "./page-shell") return {renderPageShellHead: () => "<header></header>"};
         throw new Error("unexpected dependency " + specifier);
     };
     const compiled = ts.transpileModule(fs.readFileSync(path.join(root, "src", "render", "archived.ts"), "utf8"), {compilerOptions}).outputText;
