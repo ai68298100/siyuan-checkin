@@ -771,6 +771,19 @@ for (const key of ["set.groupIntegration", "set.groupHost", "set.groupDocuments"
     assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备（小节名复用原组名键）`);
 }
 assert.match(settingsSourceT1442, /\["set\.overviewEntryDocs", "external"\]/, "总览「写入思源笔记」入口必须跳合并后的联动分区");
+/* T-1566 数据与恢复隔离：四卡片分区，两处重置收拢危险区且均有确认。 */
+for (const section of ["io", "recovery", "diagnostics", "reset"]) {
+    assert.match(settingsSourceT1442, new RegExp(`data-data-section="${section}"`), `数据分区 ${section} 在位`);
+}
+const resetSection = settingsSourceT1442.indexOf('data-data-section="reset"');
+const resetAllIndex = settingsSourceT1442.indexOf("data-action=\"reset-all-preferences\"");
+const resetViewIndex = settingsSourceT1442.indexOf("data-action=\"reset-view-preferences\"");
+assert.ok(resetAllIndex > resetSection && resetViewIndex > resetSection, "两处重置必须收拢在重置危险区");
+assert.ok(settingsSourceT1442.indexOf("data-action=\"reset-view-preferences\"", 0) === resetViewIndex, "reset-view 不得残留在外观与操作小节");
+for (const key of ["set.dataSectionIO", "set.dataSectionRecovery", "set.dataSectionDiagnostics", "set.dataSectionReset", "msg.viewPrefsResetConfirm"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+assert.match(indexSourceT1553, /msg\.viewPrefsResetConfirm/, "重置视图偏好必须先经确认弹窗");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
