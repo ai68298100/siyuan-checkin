@@ -6,7 +6,7 @@ import {buildReviewComparison, getPreviousReviewRange, type ReviewComparison} fr
 import {buildReviewPrompt, type ReviewAssistantGoal} from "../features/review-assistant";
 import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
-import {dateKey, getActiveItemById, getEventById, getItemById, removeEvents, updateEventNote} from "../model";
+import {dateKey, getActiveItemById, getEventById, getItemById, isScheduledToday, removeEvents, updateEventNote} from "../model";
 import {currentCalendarDate, captureActionMoment, isValidLocalDateInput} from "../shared";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {renderAgentPreviewContent} from "./agent-preview";
@@ -858,12 +858,24 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     };
     root.querySelectorAll<HTMLButtonElement>("[data-restore-id]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.restoreId || "";
-        if (id) runArchivedAction(button, () => host.restoreItem(id));
+        if (!id) return;
+        /* T-1594：恢复前预览——重进今日排期与否先告知；取消零写入。 */
+        if (!confirmArchivedRestore([id])) return;
+        runArchivedAction(button, () => host.restoreItem(id));
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-archived-delete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.archivedDelete || "";
         if (id) runArchivedAction(button, () => host.deleteArchivedItem(id));
     }));
+    /* T-1594：恢复预览确认——统计选中项中恢复后将重进今日排期的数量。 */
+    const confirmArchivedRestore = (ids: readonly string[]): boolean => {
+        const today = currentCalendarDate();
+        const resumeToday = ids.filter((id) => {
+            const item = host.store.items.find((candidate) => candidate.id === id);
+            return Boolean(item?.archived && isScheduledToday(item, today));
+        }).length;
+        return window.confirm(t("msg.archivedRestoreConfirm", {count: ids.length, resumeToday}));
+    };
     const archivedSelections = () => [...root.querySelectorAll<HTMLInputElement>("[data-archived-select]:checked")].map((input) => input.dataset.archivedSelect || "").filter(Boolean);
     const bulkToolbar = root.querySelector<HTMLElement>("[data-archived-bulk-toolbar]");
     const selectAll = root.querySelector<HTMLInputElement>("[data-archived-select-all]");
@@ -873,6 +885,8 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const selected = inputs.filter((input) => input.checked).length;
         if (selectedCount) selectedCount.textContent = String(selected);
         if (bulkToolbar) bulkToolbar.hidden = selected === 0;
+        const dangerZone = root.querySelector<HTMLElement>("[data-archived-danger]");
+        if (dangerZone) dangerZone.hidden = selected === 0;
         if (selectAll) {
             selectAll.checked = inputs.length > 0 && selected === inputs.length;
             selectAll.indeterminate = selected > 0 && selected < inputs.length;
@@ -887,6 +901,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const button = event.currentTarget as HTMLButtonElement;
         const ids = archivedSelections();
         if (!ids.length) return;
+        if (!confirmArchivedRestore(ids)) return;
         runArchivedAction(button, () => host.restoreArchivedItems(ids));
     });
     root.querySelector<HTMLButtonElement>("[data-action='bulk-delete-archived']")?.addEventListener("click", (event) => {

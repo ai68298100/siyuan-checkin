@@ -81,7 +81,7 @@ import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFoc
 import {canStartWithAdapter, findFocusAdapterFor, releaseFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
-import {buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
+import {buildArchivedItemDetails, buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {buildReminderDigest, isBannerCoveredReminder} from "./features/reminder-digest";
 import {renderOccasionsView} from "./render/occasions";
@@ -5321,7 +5321,7 @@ export default class CheckinPlugin extends Plugin {
 
     /* 方法体外置于 render/archived.ts（15.0-A 模块化）；壳保持类内 API 与存储字段稳定。 */
     private renderArchived(): string {
-        return renderArchivedView({items: this.store.items, summaries: buildArchivedItemSummaries(this.store.items, this.store.events, (item) => countCompletedDays(this.store, item, currentCalendarDate())), query: this.archivedQuery, appearance: this.resolvedAppearance()});
+        return renderArchivedView({items: this.store.items, summaries: buildArchivedItemSummaries(this.store.items, this.store.events, (item) => countCompletedDays(this.store, item, currentCalendarDate())), details: buildArchivedItemDetails(this.store.items, new Map(this.occasionStore.occasions.map((occasion) => [occasion.id, occasion.name])), this.store.events, currentCalendarDate()), query: this.archivedQuery, appearance: this.resolvedAppearance()});
     }
 
     /* 方法体外置于 render/occasions.ts（T-022）。 */
