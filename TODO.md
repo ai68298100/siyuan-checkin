@@ -84,8 +84,10 @@
 - [ ] T-1600 页面级无障碍、IME 与响应式走查（P1）——逐页覆盖键盘焦点、中文输入法、过期异步响应、失败保留草稿、`aria`/文字冗余、44px 触控目标、320px、宽 dock、双主题和 reduced-motion；补齐空态/加载/权限/无数据/撤销路径。
 - [ ] T-1601 全页面隔离内核回归（P1）——以确定性夹具验证新建、今日记录、提醒动作、问卷双结果、专注结算、回顾钻取、事项补标/改期、归档恢复/删除和重载；统计口径、日期算法、来源身份、文档旁路失败不回滚事实。
 - [ ] T-1602 宿主现场与发布验收台账（P1）——分别记录自动浏览器证据和思源真实宿主证据，覆盖文档/笔记本目标、第三方来源、Dock Tomato、页签/dock、移动安全区和双主题；未具备现场条件时标明 host-pending，不以模拟通过冒充实测。
-- [ ] T-1603 跨页面路由与深链接状态契约（P1）——为 Today/Review/Insights/Occasions/Archive/Settings/Editor/Journal/Reminder 定义页面上下文、返回栈、日期/范围/项目/筛选参数和会话态边界；刷新、页签、dock、渲染块打开后可恢复或明确降级，不靠隐式全局变量猜上下文。
-- [ ] T-1604 统一异步状态与错误恢复（P1）——建立 loading/empty/unprobed/unsupported/failed/retryable/saved/draft 的跨页状态契约；按 T-1561 字段表补即时异步设置保存失败/回滚与显式草稿的区别，替换 `index.ts` 初始化 `renderInto` 的硬编码 loading/failed 文案；过期响应丢弃、失败保留输入和焦点、重试不重复写入，错误带具体修复动作和诊断入口。
+- [x] T-1603 跨页面路由与深链接状态契约（P1）——done（2026-09-28，local-auto）。契约文档 [surface-routing-contract-2026-09-28.md](docs/surface-routing-contract-2026-09-28.md)：SurfaceContext 参考形状（page/returnTo/params=date·range·workspace·itemId·query·filters）；**会话态全清单**按宿主级/每-root/页面归属逐字段登记（含行号）；返回栈规则=单级 returnTo+默认值表，不做通用历史栈（多 root 下栈语义不可靠）；打开路径×恢复矩阵（页签固定 today、dock 顶部、快速弹窗会话保留、渲染块只读、页内跳转携带）——「持久偏好跨重载恢复、会话态 root 生命周期内恢复」二分，禁止隐式残留。兼容映射：data-action/data-mobile-nav/data.page/渲染块回调签名不变。验收门 5 条移交 T-1576/1599 实施对账。纯文档轮。
+  - 状态：done。
+- [x] T-1604 统一异步状态与错误恢复（P1）——done（2026-09-28，local-auto）。两部分交付：①契约文档 [async-status-contract-2026-09-28.md](docs/async-status-contract-2026-09-28.md)——八态词表对齐 ui-state-ledger 八族（台账管呈现、契约管状态机），三类写路径状态规则（显式草稿/即时异步/动作类），**登记 B 类「失败时内存/存储不一致」口子并定收口规则**（改 savePreference 包装或失败回滚内存值，逐字段迁移）；过期响应代际规则（既有 summaryRequestId 实现核实：index.ts:5570 发起递增/5592 完成校验丢弃）；failed 呈现最低四要素（具体原因/修复动作/role=alert/保留输入焦点）。②代码落地：`renderInto` 初始化屏硬编码中文替换为双语状态键（init.loading/failed/failedHint），加载 role=status、失败 role=alert+修复动作，补主题属性消除深色宿主白闪；ui-state-ledger 加载族新增六条断言（双语/role/主题/无硬编码）。B 类逐字段收口为后续切片验收门，不在本任务展开。验证：check、主链、build、test:ui（含 i18n-parity）、双主题 visual-qa、宽度走查全 EXIT=0。
+  - 状态：done；剩余边界=B 类字段逐个收口（契约验收门 1）。
 - [ ] T-1605 响应式宿主壳与安全区（P1）——统一桌面、页签、dock、移动 WebView、渲染块的内外边距、底部安全区、固定操作栏和滚动容器；整理多轮 `components.scss` 宿主层叠，验证 320px～宽 dock 无横向溢出、菜单不被底栏遮挡、打开完整页面入口可达。
 - [ ] T-1606 键盘、IME、读屏与触控基线（P1）——跨页面统一焦点恢复、焦点可见、中文输入法组合态、`aria-current/expanded/live`、44px 目标和 reduced-motion；为设置/模板/图标/文档目标/事项搜索、筛选、图表日期格、折叠、批量和弹窗补键盘路径。
 - [ ] T-1607 渲染性能与长数据分层（P2）——对 Today 大项目量、Review 大事件量、Insights 图表/热图、Settings 长联动卡和 Occasion 模板做分段/懒渲染测量；同时测 dock+tab+quick-dialog 多 root 与 10k/100k 事件切页重绘，观察 teardown 和局部刷新回退；只优化已证实热点，不截断事实或改变分页/统计口径，重绘保持滚动和焦点。

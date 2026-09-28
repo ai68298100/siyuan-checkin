@@ -3208,8 +3208,12 @@ export default class CheckinPlugin extends Plugin {
             this.settingsNavigationCleanups.delete(root);
         }
         if (this.initializationState !== "ready") {
-            const message = this.initializationState === "failed" ? "打卡数据读取失败" : "正在加载打卡数据…";
-            root.innerHTML = `<div class="lc-checkin"><div class="lc-checkin__empty"><div class="lc-checkin__empty-title">${message}</div></div></div>`;
+            /* T-1604：初始化屏走双语状态键与状态语义（加载=role status、失败=role alert
+               +可执行修复动作），主题属性与正常渲染一致，避免深色宿主白闪；
+               失败文案与 msg.dataLoadFail 同口径声明「已停止写入」。 */
+            const loading = this.initializationState === "loading";
+            const stateAttrs = loading ? 'role="status"' : 'role="alert"';
+            root.innerHTML = `<div class="lc-checkin" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><div class="lc-checkin__empty" ${stateAttrs}><div class="lc-checkin__empty-mark">▱</div><div class="lc-checkin__empty-title">${loading ? t("init.loading") : t("init.failed")}</div>${loading ? "" : `<div class="lc-checkin__empty-description">${t("init.failedHint")}</div>`}</div></div>`;
             return;
         }
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——

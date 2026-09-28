@@ -52,7 +52,20 @@ for (const marker of ["emptyActiveTitle", "emptyOnboardTitle", "emptyScheduledTi
 assert.match(interactionStates, /\.lc-checkin__empty-actions \{ flex-wrap: wrap;/, "空态动作按钮窄宽换行");
 
 /* —— 族 5：加载（R-18.4 退役 lc-checkin__loading；T-1526 核查 skeleton 家族亦零
-   TS 消费方，随 D-242 预算清理一并退役，加载反馈仍由既有通道承担） —— */
+   TS 消费方，随 D-242 预算清理一并退役，加载反馈仍由既有通道承担）
+   T-1604：初始化屏（renderInto 非 ready 分支）是加载/失败两态的唯一全屏实例——
+   双语状态键 + 加载 role=status / 失败 role=alert + 修复动作提示 + 主题属性。 —— */
+const indexSource = read("src", "index.ts");
+assert.match(indexSource, /t\("init\.loading"\)/, "初始化加载文案必须走 i18n（不得硬编码中文）");
+assert.match(indexSource, /t\("init\.failed"\)/, "初始化失败文案必须走 i18n");
+assert.match(indexSource, /t\("init\.failedHint"\)/, "初始化失败必须携带可执行修复动作提示");
+assert.ok(!indexSource.includes("正在加载打卡数据…"), "renderInto 不得保留硬编码加载文案");
+assert.ok(!indexSource.includes('"打卡数据读取失败"'), "renderInto 不得保留硬编码失败文案");
+assert.match(indexSource, /loading \? 'role="status"' : 'role="alert"'/, "初始化屏加载/失败分别用 status/alert 语义");
+assert.match(indexSource, /data-appearance="\$\{this\.resolvedAppearance\(\)\}" data-palette="\$\{this\.palette\}"><div class="lc-checkin__empty"/, "初始化屏必须携带主题属性（深色宿主不白闪）");
+bilingual("init.loading", "初始化加载屏");
+bilingual("init.failed", "初始化失败屏");
+bilingual("init.failedHint", "初始化失败修复动作");
 
 /* —— 族 6：禁用 —— */
 assert.match(
