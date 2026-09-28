@@ -124,7 +124,7 @@
 | 诊断/数据组 | 诊断行+导出（settings.ts:449；features/diagnostics.ts 5 类、上限 20）；审计 450-451（auditEmpty）；快照恢复 444-448；导入 JSON/CSV/Loop/Obsidian 443-454 | 已有（卡片隔离 → T-1566 需调整） |
 | 状态/空态 | sourceState 三态+rebind（247-249）；运行态三态（39-53）；摄取报告 outcome（284-288）；siplayer 宿主三态（223-228）；项目下拉缺失/归档/保留（201-216）；思阅/微信读书同项目冲突提示（263-265） | 已有（六类统一 → T-1554 需调整） |
 | 宿主能力 | 思源 kernel API（SQL/filetree/notebook/notification）；外部来源五件套；契约行 api/taskhorizon/docktomato（463-473，taskhorizon 恒 waiting） | 已有 + 外部待验（真实宿主） |
-| 证据 | settings-change-list/settings-navigation/external-pending/health-inbox/source-framework/source-sandbox/source-lifecycle-matrix/各 adapter/note-bindings/note-query/note-anchor*/diagnostics/import-conflicts/import-preview/backup/restore-audit/preferences-docs/dependency-status/i18n-parity/i18n-hygiene/ui-state-ledger | 自动证据已有 |
+| 证据 | settings-change-list/settings-navigation/external-pending/health-inbox/source-framework/source-sandbox/source-lifecycle-matrix/各 adapter/note-bindings/note-query/note-anchor*/diagnostics/import-conflicts/import-preview/backup/restore-audit/preferences-docs/dependency-status/i18n-parity/i18n-hygiene/ui-state-ledger；T-1567 迁移验收：settings-migration（逐字段三面对账/四组结构/存储键/双语）+ settings-overview（总览投影）+ today-fact（行动台口径） | 自动证据已有；T-1565~1566 已落地（分区合并+数据隔离，迁移守门在位）；真实内核 host-pending |
 | 缺口 | 首页总览投影（T-1562）、字段级搜索导航（T-1563）、分区重组（T-1564/1565）、迁移与切片验收（T-1567） | 需调整 |
 
 ## 8. 问卷日记 Journal
