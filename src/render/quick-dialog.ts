@@ -68,6 +68,16 @@ export function toggleQuickDialogFor(host: QuickDialogHost): void {
     openQuickDialogFor(host);
 }
 
+/* T-1597：快速弹窗会话页签——关闭时记录当前页（编辑页降级为今日：表单草稿仅存 DOM），
+   重开时回放；同窗口会话内有效，不跨重载。 */
+type QuickPage = QuickDialogHost["currentPage"];
+let lastQuickPage: QuickPage = "today";
+const QUICK_PRESERVED_PAGES: ReadonlySet<QuickPage> = new Set(["today", "review", "insights", "archived", "occasions", "settings"]);
+
+function rememberQuickPage(page: QuickPage): void {
+    lastQuickPage = QUICK_PRESERVED_PAGES.has(page) ? page : "today";
+}
+
 export function openQuickDialogFor(host: QuickDialogHost): void {
     if (host.disposed || host.disposing) return;
     if (host.quickDialog) {
@@ -78,7 +88,7 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
         return;
     }
 
-    host.currentPage = "today";
+    host.currentPage = QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
     let dialog: Dialog | undefined;
@@ -114,6 +124,16 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     host.quickDialogFullscreen = false;
     bindQuickDialogViewportFor(host, dialog);
     bindQuickDialogFrameFor(host, dialog);
+    /* T-1597：编辑页未保存先提示——捕获阶段拦截 SiYuan 关闭按钮（祖先 capture 先于
+       目标监听器触发），确认后才真正销毁；取消则弹窗与表单草稿原样保留。 */
+    dialog.element.addEventListener("click", (event) => {
+        if (host.currentPage !== "editor") return;
+        const target = event.target as HTMLElement | null;
+        if (!target || !target.closest(".b3-dialog__close")) return;
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        if (window.confirm(t("msg.quickCloseEditingConfirm"))) dialog.destroy();
+    }, true);
     host.renderInto(root);
 }
 
@@ -277,8 +297,10 @@ export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dia
     host.quickDialog = undefined;
     host.quickDialogElement = undefined;
     host.quickDialogFullscreen = false;
+    /* T-1597：记录会话页签——编辑页降级为今日（表单草稿仅存 DOM，随窗口销毁）。 */
+    rememberQuickPage(host.currentPage);
     if (host.disposed || host.disposing) return;
-    host.currentPage = "today";
+    host.currentPage = lastQuickPage;
     host.editingId = undefined;
     host.editingFingerprint = undefined;
     host.render();

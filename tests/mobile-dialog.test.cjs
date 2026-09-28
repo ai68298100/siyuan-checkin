@@ -24,7 +24,8 @@ assert.match(quickDialogSource, /dialog\.destroy\(\);[\s\S]*handleQuickDialogDes
 
 const cleanup = quickDialogSource.match(/export function handleQuickDialogDestroyedFor\(host: QuickDialogHost, dialog: Dialog\): void \{([\s\S]*?)\n\}/)?.[1] || "";
 assert.match(cleanup, /if \(host\.quickDialog !== dialog\) return;/, "dialog cleanup must be idempotent");
-assert.match(cleanup, /host\.currentPage = "today";/, "closing the dialog must restore the shared view");
+assert.match(cleanup, /rememberQuickPage\(host\.currentPage\);/, "closing saves the session page (T-1597)");
+assert.match(cleanup, /host\.currentPage = lastQuickPage;/, "reopening replays the session page on the shared surface (T-1597)");
 assert.match(cleanup, /void host\.reconcileStore\(\);/, "closing the dialog must reconcile persisted data");
 assert.match(source, /data-action=\\?"close-dialog\\?"/,
     "the dialog content must expose an explicit close action");

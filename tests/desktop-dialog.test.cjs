@@ -296,4 +296,16 @@ assert.match(read("src", "render", "bind-today.ts"), /host\.pendingFocusItemId =
 assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false\)/,
     "the catch-up toast must offer an undo that rolls back the mark");
 
+/* —— T-1597 快速弹窗会话：页签保留（编辑降级）、编辑关闭先提示。 —— */
+const quickDialogT1597 = read("src", "render", "quick-dialog.ts");
+assert.match(quickDialogT1597, /QUICK_PRESERVED_PAGES/, "会话保留页集合在位（六页，编辑降级今日）");
+assert.match(quickDialogT1597, /rememberQuickPage\(host\.currentPage\)/, "关闭时记录当前页");
+assert.match(quickDialogT1597, /host\.currentPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"/, "重开时回放会话页签");
+assert.match(quickDialogT1597, /msg.quickCloseEditingConfirm/, "编辑页关闭先经确认提示");
+assert.match(quickDialogT1597, /stopImmediatePropagation/, "捕获拦截 SiYuan 关闭按钮监听");
+for (const key of ["msg.quickCloseEditingConfirm"]) {
+    const count = i18n.split(`"${key}"`).length - 1;
+    assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
+}
+
 console.log("Desktop dialog structure checks passed.");
