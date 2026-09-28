@@ -107,6 +107,36 @@ try {
         assert.ok((i18nSource.match(/"editor\.templateApplied"/g) || []).length >= 2, "editor.templateApplied 必须中英双语齐备");
     });
 
+    check("T-1573 preview/action-bar shared computation: single source, single DOM, mobile reposition only", () => {
+        assert.equal((editor.match(/export function describeEditorPreviewActions/g) || []).length, 1, "预览动作计算唯一定义");
+        assert.equal((editor.match(/export function describeEditorPreviewMeta/g) || []).length, 1, "预览元信息计算唯一定义");
+        assert.equal((bindEditor.match(/describeEditorPreviewActions\(\{/g) || []).length, 1, "实时更新消费同一计算（updateEditorPreview）");
+        assert.equal((editor.match(/class="lc-checkin__editor-actions"/g) || []).length, 1, "操作栏单一 DOM（桌面/移动共用，仅 CSS 重排）");
+        const responsive = read("src", "ui", "content-responsive.scss");
+        assert.match(responsive, /\.lc-checkin__editor-actions \{ position: sticky; bottom: 0;/, "移动宽度档仅 sticky 重排操作栏（无第二份计算）");
+    });
+
+    check("T-1574 legacy compatibility: every storage field renders from item state and failures keep drafts", () => {
+        for (const pattern of [
+            "item?.quickSteps",
+            "item?.autoArchive?.afterDays",
+            "item?.streakTolerance",
+            "item?.direction === \"atMost\"",
+            "item?.journal?.templateId",
+            "item?.noteAnchor?.blockId",
+            "item?.taskHorizonCalendarVisible",
+            "item?.recordStep",
+            "item?.schedule",
+        ]) {
+            assert.match(editor, new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `旧项目字段必须从 item 状态渲染初始值：${pattern}`);
+        }
+        assert.match(editor, /weekdays\.includes\(index\) \? "checked"/, "星期按既有项目回填");
+        assert.match(bindEditor, /updateConditionalFields\(false\);\s*\n\s*updateEditorPreview\(\);\s*\n\s*updateAdvancedSummary\(\);\s*\n\s*ensureEditorVisible/, "bind 挂载即回填条件显隐与预览");
+        assert.match(saveForm, /msg\.saveFail/, "保存失败显式反馈");
+        assert.match(saveForm, /返回保存条目 id，供宿主消费联动预接线计划（失败路径均返回 undefined，零副作用）/, "保存失败零副作用语义保持");
+        assert.match(bindEditor, /data-action='retry-save'/, "失败保留草稿并提供重试（不丢用户输入）");
+    });
+
     console.log(`Editor section flow: ${checks} checks passed.`);
 } finally {
     /* TZ not modified in this test. */

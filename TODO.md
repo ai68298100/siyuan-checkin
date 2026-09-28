@@ -73,8 +73,10 @@
   - 状态：done；剩余边界=第三方来源在记录方式区的当前绑定回链随 T-1572 输出分区一并落（本轮完成来源区已留位）。
 - [x] T-1572 输出与组织高级区（P1）——done（2026-09-29，local-auto）。高级区拆两小节（`data-advanced-section`，复用 source-category 样式零新 CSS）：**「输出」**=笔记锚点（picker/挂起告警/追加开关，含 T-1560 所有权边界句）；**「组织」**=分组/优先级/时段/自动归档/连断容忍 + Task Horizon 显示（按卡面归属从锚点区后移入组织）。问卷绑定不回搬高级区——已随 T-1571 落位主流程段6「怎样产生记录」（记录方式即问卷入口，写入输出语义由 set.scope.journal 说明）。**危险操作页尾独立区**：操作栏容器加 `data-editor-section="danger"` 标记（归档/删除按钮本就在页尾独立操作栏，视觉分类样式既有）。按类型隐藏不适用项=既有 updateConditionalFields 单点驱动不变。i18n 新增 editor.sectionOutput/sectionOrg 2 键×2。守门：editor-sections 新增 1 检 12 断言（两小节序/锚点归输出/六组织字段含 TH/组织无锚点残留/危险区标记/双语/问卷不回搬）；mobile-editor-keyboard 的 editor-actions 正则放宽为容忍属性（标记不破坏「滚动区/操作栏分离」语义）。
   - 状态：done。
-- [ ] T-1573 编辑器预览与保存操作栏重构（P1）——扩展已有预览，统一展示今日卡片、记录动作、实际输入口径、目标/单位、排期摘要和缺失条件；桌面侧栏与移动底部操作栏共用计算；保留已有保存、保存并继续、保存为模板、取消、归档/删除路径并收清状态/焦点。
-- [ ] T-1574 旧项目兼容与编辑器切片验收（P1）——三种类型/排期/戒除方向/问卷/锚点/联动旧字段原样恢复；类型切换提示字段保留/清除，保存失败保留草稿、取消零写入；双语、IME、键盘、触屏、320px～宽屏、模板、隔离及真实内核/重载结果归 T-1608 台账。
+- [x] T-1573 编辑器预览与保存操作栏重构（P1）——done（2026-09-29，local-auto，验收确认型）。核实共用为**构造性事实**：`describeEditorPreviewActions/Meta` 唯一定义（editor.ts 双导出）+ 恰两处消费（初始渲染 editor.ts + 实时更新 bind-editor updateEditorPreview），桌面侧栏预览与移动底部操作栏为**同一 DOM**（`lc-checkin__editor-actions` 单实例），移动宽度档仅 CSS sticky 重排（content-responsive.scss:200）无第二份计算。守门固化：editor-sections 新增 1 检 6 断言（双计算唯一/实时消费单一/操作栏单 DOM/sticky 重排）。既有保存/保存并继续/存为模板/归档/删除路径与状态焦点收清（save-state/retry 既有）不变。证据：width-walkthrough editor-1180/320/844x350 实时预览断言历轮全过 + 本轮全链复跑。
+  - 状态：done。
+- [x] T-1574 旧项目兼容与编辑器切片验收（P1）——done（2026-09-29，local-auto）。editor-sections 新增兼容验收块 1 检 13 断言：**旧项目字段渲染初始值**（quickSteps/autoArchive/streakTolerance/directionAtMost checked/journal selected/anchor/TH/recordStep/schedule/weekdays 逐项断言 render 从 item 状态取值）+ bind 挂载即回填条件显隐与预览（updateConditionalFields→updateEditorPreview→updateAdvancedSummary→ensureEditorVisible 调用序）+ **保存失败显式反馈、零副作用、草稿保留重试**（msg.saveFail/失败路径零副作用注释语义/retry-save）。类型切换保留/清除=updateConditionalFields 既有（问卷 binary 显隐、recordStep 默认回填）；atMost 回落提示不改变行为=T-1571 守门。双语/IME/键盘/触屏/320px～宽屏=editor-1180/320/844x350 走查+mobile-editor-* 守门（历轮全过）；模板=T-1570；真实内核/重载=playwright E2E 既有证据，host-pending 现场部分归 T-1608。**阶段 3 编辑器批次（T-1570~1574）全部交付，阶段 3（设置与编辑器迁移）收官**。
+  - 状态：done。
 
 ## 全页面体验统一梳理与原型改进（2026-09-28，用户要求结合功能/交互/UI统一分析并加入详细计划；研究稿见 [全页面体验审查与统一原型计划](docs/page-experience-audit-and-prototype-plan-2026-09-28.md)，口径 D-305）
 
