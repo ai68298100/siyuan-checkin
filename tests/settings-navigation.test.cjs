@@ -265,7 +265,7 @@ function assertActive(fixture, expectedId) {
 {
     const scheduler = createFrameScheduler();
     const {FakeIntersectionObserver, FakeResizeObserver} = observerHarness();
-    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {}, {
+    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {"../i18n": {t: (key, params) => params ? key + ":" + JSON.stringify(params) : key}}, {
         Element: FakeElement,
         IntersectionObserver: FakeIntersectionObserver,
         ResizeObserver: FakeResizeObserver,
@@ -324,10 +324,102 @@ function assertActive(fixture, expectedId) {
     cleanup(); // idempotent during both rerender and final unload paths
 }
 
+// T-1563 字段级搜索导航：匹配行集合、↑/↓ 环选与播报、IME 组合态、Esc 清空、会话恢复。
+{
+    const scheduler = createFrameScheduler();
+    const {FakeIntersectionObserver, FakeResizeObserver} = observerHarness();
+    const docStub = {activeElement: null};
+    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {"../i18n": {t: (key, params) => params ? key + ":" + JSON.stringify(params) : key}}, {
+        Element: FakeElement,
+        IntersectionObserver: FakeIntersectionObserver,
+        ResizeObserver: FakeResizeObserver,
+        requestAnimationFrame: scheduler.requestAnimationFrame,
+        cancelAnimationFrame: scheduler.cancelAnimationFrame,
+        window: {getComputedStyle: (element) => ({flexDirection: element.flexDirection, flexWrap: element.flexWrap})},
+        document: docStub,
+    });
+    const fixture = createNavigationFixture();
+    const rows = [];
+    fixture.groups.forEach((group, gi) => {
+        const groupRows = [0, 1].map((ri) => {
+            const row = new FakeElement("row-" + gi + "-" + ri);
+            row.hidden = false;
+            row.textContent = gi === 0 && ri === 0 ? "主题 appearance 深色" : "组" + gi + "行" + ri;
+            row.parent = group;
+            row.scrollIntoViewCalls = [];
+            row.scrollIntoView = (options) => { row.scrollIntoViewCalls.push(options); };
+            return row;
+        });
+        group.setQuery(".lc-checkin__settings-row", groupRows);
+        rows.push(...groupRows);
+    });
+    const search = new FakeElement("settings-search");
+    search.value = "";
+    search.focusCalls = 0;
+    search.focus = () => { search.focusCalls += 1; };
+    const status = new FakeElement("settings-search-status");
+    fixture.root.setQuery("[data-settings-search]", search);
+    fixture.root.setQuery("[data-settings-search-status]", status);
+    let cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root);
+    scheduler.flush();
+
+    // 过滤重建匹配行集合并播报当前项（第 1/5）。
+    search.value = "行";
+    search.emit("input");
+    assert.equal(rows[0].hidden, true, "不匹配行隐藏");
+    assert.equal(rows[1].hidden, false, "匹配行保留");
+    assert.match(status.textContent, /set\.searchActive/, "状态播报当前项");
+    assert.ok(status.textContent.includes('"index":1') && status.textContent.includes('"total":5'), "从第 1/5 项开始");
+
+    // ↑/↓ 环选：上移环回末项、下移环回首项，并滚动到当前行；Enter 落在当前项。
+    search.emit("keydown", {preventDefault: () => undefined, key: "ArrowUp"});
+    assert.ok(status.textContent.includes('"index":5'), "上移从首项环回末项");
+    search.emit("keydown", {preventDefault: () => undefined, key: "ArrowDown"});
+    assert.ok(status.textContent.includes('"index":1'), "下移从末项环回首项");
+    assert.ok(rows[1].scrollIntoViewCalls.length >= 1, "当前行滚动进入视野");
+    search.emit("keydown", {preventDefault: () => undefined, key: "ArrowDown"});
+    assert.ok(status.textContent.includes('"index":2'), "下移到第 2 项");
+    search.emit("keydown", {preventDefault: () => undefined, key: "ArrowDown"});
+    assert.ok(status.textContent.includes('"index":3'), "下移到第 3 项");
+    search.emit("keydown", {preventDefault: () => undefined, key: "Enter"});
+    assert.ok(rows[3].scrollIntoViewCalls.length >= 1, "Enter 落在当前项所在行");
+
+    // IME 组合态：组合中的输入不过滤，compositionend 后一次应用。
+    search.emit("compositionstart");
+    search.value = "主题";
+    search.emit("input");
+    assert.equal(rows[0].hidden, true, "组合态冻结既有过滤（rows[0] 仍隐藏）");
+    assert.equal(rows[1].hidden, false, "组合态冻结既有过滤（rows[1] 仍可见）");
+    search.emit("compositionend");
+    assert.equal(rows[0].hidden, false, "组合结束后应用新过滤（主题命中）");
+    assert.equal(rows[1].hidden, true, "组合结束后其余行隐藏");
+
+    // Esc 清空并恢复全部行。
+    search.value = "主题";
+    search.emit("input");
+    search.emit("keydown", {key: "Escape"});
+    assert.equal(search.value, "", "Esc 清空查询");
+    assert.equal(rows[1].hidden, false, "清空后恢复全部行");
+    assert.equal(status.textContent, "", "清空后状态复位");
+
+    // 会话恢复：焦点在搜索框时重绘（cleanup→重新绑定同一 root），查询、过滤与焦点回放。
+    search.value = "行";
+    search.emit("input");
+    docStub.activeElement = search;
+    cleanup();
+    search.value = "";
+    cleanup(); // 二次清理必须幂等（真实重渲染会连续 dispose/bind）
+    const cleanup2 = loaded.exports.bindSettingsNavigationFor(fixture.root);
+    assert.equal(search.value, "行", "重绑后回放会话查询");
+    assert.equal(rows[0].hidden, true, "重绑后回放过滤结果");
+    assert.ok(search.focusCalls >= 1, "此前焦点在搜索框则物归原主");
+    cleanup2();
+}
+
 // Older embedded WebViews: no observers and no scrollTo(options), but click and scroll sync still work.
 {
     const scheduler = createFrameScheduler();
-    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {}, {
+    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {"../i18n": {t: (key, params) => params ? key + ":" + JSON.stringify(params) : key}}, {
         Element: FakeElement,
         IntersectionObserver: undefined,
         ResizeObserver: undefined,
@@ -356,7 +448,7 @@ function assertActive(fixture, expectedId) {
 // Wrapped mobile rail: active group can be on a lower row, so reveal it vertically.
 {
     const scheduler = createFrameScheduler();
-    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {}, {
+    const loaded = loadTypeScriptModule("src/render/settings-navigation.ts", {"../i18n": {t: (key, params) => params ? key + ":" + JSON.stringify(params) : key}}, {
         Element: FakeElement,
         IntersectionObserver: undefined,
         ResizeObserver: undefined,

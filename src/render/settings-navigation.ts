@@ -1,11 +1,25 @@
 /* 设置页分类导航：让侧栏/横向分类栏随着右侧滚动内容保持同步。
-   绑定只持有当前 root 的引用，并返回清理函数，重渲染时不会留下全局监听器。 */
+   绑定只持有当前 root 的引用，并返回清理函数，重渲染时不会留下全局监听器。
+   T-1563 字段级搜索导航：在既有行过滤之上增加匹配行集合的 ↑/↓ 选择、
+   组名+字段名播报、Enter 聚焦当前项、Esc 清空、IME 组合态不打断，
+   并按 root 记忆查询与焦点（重绘后恢复），不重做既有行搜索。 */
+
+import {t} from "../i18n";
 
 export interface SettingsNavigationOptions {
     reducedMotion?: boolean;
 }
 
 type SettingsNavigationBinding = () => void;
+
+interface SettingsSearchSession {
+    query: string;
+    activeIndex: number;
+    hadFocus: boolean;
+}
+
+/* 会话态按 root 记忆：root 在重渲染间复用，WeakMap 随表面销毁释放。 */
+const searchSessionState = new WeakMap<HTMLElement, SettingsSearchSession>();
 
 const asElement = (target: EventTarget | null): Element | undefined =>
     typeof Element !== "undefined" && target instanceof Element ? target : undefined;
@@ -37,9 +51,54 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     const searchStatus = root.querySelector<HTMLElement>("[data-settings-search-status]");
     const panelStates = new Map<HTMLDetailsElement, boolean>();
     const rowStates = new Map<HTMLElement, boolean>();
+    /* T-1563：匹配行集合与当前选择（onSearch 重建；↑/↓ 移动；Enter 聚焦当前项）。 */
+    const searchSession = searchSessionState.get(root) || {query: "", activeIndex: 0, hadFocus: false};
+    searchSessionState.set(root, searchSession);
+    let composing = false;
+    let matchedRows: HTMLElement[] = [];
+    let activeIndex = searchSession.activeIndex;
+    let lastMatchCount = 0;
+
+    const rowLabel = (row: HTMLElement): string => {
+        const label = row.querySelector<HTMLElement>(".lc-checkin__settings-label span") || row.querySelector<HTMLElement>(".lc-checkin__settings-label");
+        const text = (label?.textContent || row.textContent || "").trim().replace(/\s+/g, " ");
+        return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+    };
+    const groupLabel = (row: HTMLElement): string => {
+        const id = row.closest<HTMLElement>("[data-settings-group]")?.dataset.settingsGroup || "";
+        return buttons.find(button => button.dataset.settingsNav === id)?.textContent?.trim() || id;
+    };
+    const highlightActive = () => {
+        matchedRows.forEach((row, index) => row.classList.toggle("is-search-active", index === activeIndex));
+    };
+    const announceActive = () => {
+        if (!searchStatus) return;
+        if (!lastMatchCount) {
+            searchStatus.textContent = search?.value.trim() ? `${matchesLabel()}` : "";
+            return;
+        }
+        const current = matchedRows[activeIndex];
+        searchStatus.textContent = current
+            ? `${matchesLabel()} · ${t("set.searchActive", {index: activeIndex + 1, total: matchedRows.length, group: groupLabel(current), label: rowLabel(current)})}`
+            : matchesLabel();
+    };
+    const matchesLabel = (): string => `${lastMatchCount} / ${groups.length}`;
+    const scrollRowIntoView = (row: HTMLElement) => {
+        row.scrollIntoView?.({block: "center", behavior: options.reducedMotion ? "auto" : "smooth"});
+    };
+    const focusActiveRow = () => {
+        const row = matchedRows[activeIndex];
+        if (!row) return;
+        scrollRowIntoView(row);
+        const focusable = row.querySelector<HTMLElement>("input, select, textarea, button, [tabindex]");
+        focusable?.focus({preventScroll: true});
+    };
     const onSearch = () => {
         const query = (search?.value || "").trim().toLocaleLowerCase();
+        searchSession.query = query;
+        searchSession.activeIndex = activeIndex;
         let matches = 0;
+        matchedRows = [];
         groups.forEach(group => {
             const rows = [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row")];
             rows.forEach(row => {
@@ -49,6 +108,7 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
                 }
                 if (!rowStates.has(row)) rowStates.set(row, row.hidden);
                 row.hidden = !(row.textContent || "").toLocaleLowerCase().includes(query);
+                if (!row.hidden) matchedRows.push(row);
             });
             const match = !query || rows.some(row => !row.hidden) || (!rows.length && (group.textContent || "").toLocaleLowerCase().includes(query));
             group.hidden = !match;
@@ -65,19 +125,55 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
             panelStates.clear();
             rowStates.clear();
         }
-        if (searchStatus) searchStatus.textContent = query ? `${matches} / ${groups.length}` : "";
+        lastMatchCount = matches;
+        if (activeIndex >= matchedRows.length) activeIndex = 0;
+        searchSession.activeIndex = activeIndex;
+        highlightActive();
+        if (searchStatus) {
+            searchStatus.textContent = query
+                ? (matchedRows.length
+                    ? `${matchesLabel()} · ${t("set.searchActive", {index: activeIndex + 1, total: matchedRows.length, group: groupLabel(matchedRows[activeIndex]), label: rowLabel(matchedRows[activeIndex])})}`
+                    : matchesLabel())
+                : "";
+        }
         scheduleSync();
     };
-    search?.addEventListener("input", onSearch);
-    search?.addEventListener("keydown", event => {
-        if (event.key !== "Enter" || !search.value.trim()) return;
-        const first = groups.flatMap(group => [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row")]).find(row => !row.hidden && !groupById.get(row.closest<HTMLElement>("[data-settings-group]")?.dataset.settingsGroup || "")?.hidden);
-        if (!first) return;
+    const onSearchKeyDown = (event: KeyboardEvent) => {
+        if (composing) return;
+        if (event.key === "Escape" && search?.value) {
+            search.value = "";
+            activeIndex = 0;
+            searchSession.activeIndex = 0;
+            onSearch();
+            return;
+        }
+        const isDown = event.key === "ArrowDown";
+        const isUp = event.key === "ArrowUp";
+        if ((isDown || isUp) && matchedRows.length) {
+            event.preventDefault();
+            activeIndex = isDown ? (activeIndex + 1) % matchedRows.length : (activeIndex - 1 + matchedRows.length) % matchedRows.length;
+            searchSession.activeIndex = activeIndex;
+            highlightActive();
+            announceActive();
+            scrollRowIntoView(matchedRows[activeIndex]);
+            return;
+        }
+        if (event.key !== "Enter" || !search?.value.trim()) return;
         event.preventDefault();
-        first.scrollIntoView({block: "center", behavior: options.reducedMotion ? "auto" : "smooth"});
-        const focusable = first.querySelector<HTMLElement>("input, select, textarea, button, [tabindex]");
-        focusable?.focus({preventScroll: true});
-    });
+        focusActiveRow();
+    };
+    const onCompositionStart = () => { composing = true; };
+    const onCompositionEnd = () => {
+        composing = false;
+        onSearch();
+    };
+    const onSearchInput = () => {
+        if (!composing) onSearch();
+    };
+    search?.addEventListener("input", onSearchInput);
+    search?.addEventListener("keydown", onSearchKeyDown);
+    search?.addEventListener("compositionstart", onCompositionStart);
+    search?.addEventListener("compositionend", onCompositionEnd);
 
     let disposed = false;
     let frame = 0;
@@ -214,10 +310,25 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
        pass to the next frame and read the final geometry. */
     scheduleSync();
 
+    /* T-1563：重绘恢复——root 复用时回放查询与过滤；此前焦点在搜索框则物归原主。
+       必须在 scheduleSync 定义之后（onSearch 内部会调度同步）。 */
+    if (search && searchSession.query) {
+        search.value = searchSession.query;
+        onSearch();
+        if (searchSession.hadFocus) search.focus({preventScroll: true});
+    }
+
     return () => {
         if (disposed) return;
         disposed = true;
-        search?.removeEventListener("input", onSearch);
+        /* T-1563：离开前保存查询与焦点位置（root 复用时恢复）。 */
+        searchSession.query = search?.value || "";
+        searchSession.activeIndex = activeIndex;
+        searchSession.hadFocus = Boolean(search && typeof document !== "undefined" && document.activeElement === search);
+        search?.removeEventListener("input", onSearchInput);
+        search?.removeEventListener("keydown", onSearchKeyDown);
+        search?.removeEventListener("compositionstart", onCompositionStart);
+        search?.removeEventListener("compositionend", onCompositionEnd);
         scroller.removeEventListener("scroll", onScroll);
         nav.removeEventListener("click", onNavClick);
         if (frame) {
