@@ -74,7 +74,7 @@ import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buil
 import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
 import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
-import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
+import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusMiniStripFor, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
@@ -2862,7 +2862,7 @@ this.scheduleMidnightRefresh();
         showSettingsFor(this as unknown as NavigationHost);
     }
 
-    private showEditor(item?: CheckinItem) {
+    private showEditor(item?: CheckinItem, returnTo?: "insights") {
         /* 新建/编辑是一段新的表单会话，必须从标题和模板入口开始；表单内部
            的普通重渲染仍由 pageScrollTops 保留当前位置。 */
         [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
@@ -2871,7 +2871,12 @@ this.scheduleMidnightRefresh();
             tops.set("editor", 0);
             this.pageScrollTops.set(root, tops);
         });
-        showEditorFor(this as unknown as NavigationHost, item);
+        showEditorFor(this as unknown as NavigationHost, item, returnTo);
+    }
+
+    /** T-1599：编辑器返回——回放 editorReturnPage（洞察「编辑规则」回放同一项目）。 */
+    private showEditorReturn() {
+        showEditorReturnFor(this as unknown as NavigationHost);
     }
 
     private openTabPage() {

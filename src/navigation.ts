@@ -16,6 +16,8 @@ export interface NavigationHost {
     editingFingerprint?: string;
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
+    /** T-1599：编辑器单级返回栈——从洞察「编辑规则」等入口进入时记录来源页。 */
+    editorReturnPage?: "today" | "review" | "insights";
     summaryRequestId: number;
     summaryRefreshing?: boolean;
     getTabId(): string;
@@ -65,12 +67,23 @@ export function showSettingsFor(host: NavigationHost): void {
     host.render();
 }
 
-export function showEditorFor(host: NavigationHost, item?: CheckinItem): void {
+export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo?: NavigationHost["editorReturnPage"]): void {
     host.summaryRefreshing = false;
     host.currentPage = "editor";
     host.editingId = item?.id;
     host.editingFingerprint = item ? host.itemFingerprint(item) : undefined;
+    /* T-1599：单级返回栈——记录来源页（白名单校验，未知/未传回落 today），编辑器返回时回放。 */
+    host.editorReturnPage = returnTo === "review" || returnTo === "insights" ? returnTo : "today";
     host.render();
+}
+
+/** T-1599：编辑器返回——回放 editorReturnPage（洞察入口回放同一项目），回放后清除。 */
+export function showEditorReturnFor(host: NavigationHost): void {
+    const returnPage = host.editorReturnPage ?? "today";
+    host.editorReturnPage = undefined;
+    if (returnPage === "insights") { showInsightsFor(host); return; }
+    if (returnPage === "review") { showReviewFor(host); return; }
+    showTodayFor(host);
 }
 
 export function showInsightsFor(host: NavigationHost, item?: CheckinItem): void {

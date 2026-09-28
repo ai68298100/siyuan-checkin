@@ -22,6 +22,7 @@ const settingsNav = read("src", "render", "settings-navigation.ts");
 const reviewBind = read("src", "render", "bind-page-navigation.ts");
 const occasionsBind = read("src", "render", "bind-occasions.ts");
 const navigation = read("src", "navigation.ts");
+const editorBind = read("src", "render", "bind-editor.ts");
 
 let checks = 0;
 function check(name, run) {
@@ -56,6 +57,11 @@ try {
     });
 
     check("navigation entry points stay on the shared showXxxFor single path", () => {
+        assert.match(navigation, /editorReturnPage\?: "today" \| "review" \| "insights"/, "编辑器单级返回栈字段在位（T-1599）");
+        assert.match(navigation, /showEditorReturnFor/, "返回回放函数在位");
+        assert.match(navigation, /returnTo === "review" \|\| returnTo === "insights" \? returnTo : "today"/, "返回页白名单校验（未知回落 today）");
+        assert.match(editorBind, /host\.showEditorReturn\(\)/, "编辑器返回走返回栈（不再固定 showToday）");
+        assert.match(reviewBind, /host\.showEditor\(item, "insights"\)/, "洞察编辑规则 CTA 携带返回页");
         for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {
             assert.match(navigation, new RegExp(`export function ${fn}`), `导航单一路径 ${fn} 在 navigation.ts`);
         }

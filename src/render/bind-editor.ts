@@ -46,6 +46,8 @@ export interface BindEditorHost {
     bindDialogClose(root: HTMLElement): void;
     retrySave(): Promise<void> | void;
     showToday(): void;
+    /** T-1599：返回编辑器来源页（editorReturnPage 单级返回栈，回放后清除）。 */
+    showEditorReturn(): void;
     archiveEditingItem(): Promise<void> | void;
     deleteEditingItem(): Promise<boolean> | void;
     saveData(name: string, value: unknown): Promise<void>;
@@ -223,7 +225,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         applyIconFilter();
     }));
-    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showToday());
+    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn());
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
     root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");

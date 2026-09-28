@@ -73,7 +73,7 @@ export interface BindPageNavigationHost {
     bindMobileNav(root: HTMLElement): void;
     showReview(): void;
     /** T-1579：洞察行动入口——编辑规则（保留项目身份与返回页会话态）。 */
-    showEditor(item?: import("../types").CheckinItem): void;
+    showEditor(item?: import("../types").CheckinItem, returnTo?: "insights"): void;
     jumpToHistoryDate(date: string): void;
     showToday(): void;
     showArchived(): void;
@@ -296,7 +296,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const itemId = (event.currentTarget as HTMLElement).dataset.insightEditRules || "";
         const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) return;
-        host.showEditor(item);
+        host.showEditor(item, "insights");
     });
     root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
