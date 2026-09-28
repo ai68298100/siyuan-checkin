@@ -55,6 +55,8 @@ export function projectIntegrationStatus(input: {
 
 export interface SettingsViewContext {
     store: CheckinStore;
+    /** T-1559 集中体检最近一次完成时间（会话态；bind 头部展示）。 */
+    lastBindingCheckAt?: string;
     /** T-1557 文档目标卡摘要的会话查询缓存（docId→名称/路径；null=查询失败退回 ID）。 */
     targetSummaries?: Map<string, {name?: string; hpath?: string} | null>;
     /** T-1521 保存前变更清单（草稿≠已保存的分节汇总；可选：旧桩按无改动处理）。 */
@@ -183,13 +185,17 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         : "";
     /* T-1352：日记集成缺省值——旧调用方/测试未传该字段时按「未启用」渲染。 */
     const diary = ctx.diaryReport || {enabled: false, docId: ""};
-    /* T-1470 笔记联动总览：行渲染（状态列由「检测全部联动」会话内填充）。 */
+    /* T-1470 笔记联动总览：行渲染（状态列由「检测全部联动」会话内填充）。
+       T-1559：可停用的自动联动行内「停用」就地修复动作（diary 手动/anchor 逐项/journal 不适用）。 */
+    const DISABLEABLE_BINDING_KEYS = new Set(["summary-resident", "health-inbox", "note-query", "yeguif-lifelog"]);
     const noteBindings = ctx.noteBindings ?? [];
     const bindingRows = noteBindings.map((row) => {
         const targetLabel = row.targetId ? `${t(`bind.target.${row.targetKind}`)} · ${row.targetId}` : t("bind.targetNone");
         const statusLabel = row.enabled && row.required && !row.targetId ? t("bind.statusMissing") : t("bind.statusUnknown");
-        const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.itemId ? `<button class="lc-checkin__text-button" type="button" data-edit-binding="${escapeHtml(row.itemId)}">${t("bind.locate")}</button>` : row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}`;
-        return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}<span data-binding-target-label title="${escapeHtml(targetLabel)}">${escapeHtml(targetLabel)}</span></span><span class="lc-checkin__binding-status" data-binding-status>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
+        const statusReason = row.enabled && row.required && !row.targetId ? t("bind.reasonMissing") : "";
+        const disableAction = row.enabled && DISABLEABLE_BINDING_KEYS.has(row.key) ? `<button class="lc-checkin__text-button" type="button" data-disable-binding="${escapeHtml(row.key)}">${t("bind.disable")}</button>` : "";
+        const actions = `${row.targetId && row.targetKind !== "notebook" ? `<button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(row.targetId)}">${t("bind.open")}</button>` : ""}${row.itemId ? `<button class="lc-checkin__text-button" type="button" data-edit-binding="${escapeHtml(row.itemId)}">${t("bind.locate")}</button>` : row.sourceSelector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(row.sourceSelector)}">${t("bind.locate")}</button>` : ""}${disableAction}`;
+        return `<div class="lc-checkin__binding-row" data-binding-row="${escapeHtml(row.key)}"><span class="lc-checkin__binding-feature">${escapeHtml(t(row.featureKey, row.featureParams))}</span><span class="lc-checkin__binding-target">${row.enabled ? "" : `<em class="lc-checkin__binding-off">${t("bind.off")}</em>`}<span data-binding-target-label title="${escapeHtml(targetLabel)}">${escapeHtml(targetLabel)}</span></span><span class="lc-checkin__binding-status" data-binding-status${statusReason ? ` title="${escapeHtml(statusReason)}"` : ""}>${statusLabel}</span><span class="lc-checkin__binding-actions">${actions}</span></div>`;
     }).join("");
     /* T-1465（D-273）：问卷日记自建模板缺省值。 */
     const journalCustomText = typeof ctx.journalCustomText === "string" ? ctx.journalCustomText : "";
@@ -528,7 +534,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__source-category" data-source-category="document-output">${t("set.sourceCategory.documentOutput")}</div>
                     <details class="lc-checkin__source-panel" data-source-panel="bindings"${sourcePanelOpen("bindings")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("bind.panelTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("bind.panelHint")}</small></span></summary>
-                    <div class="lc-checkin__binding-head"><button class="lc-checkin__text-button" type="button" data-action="check-note-bindings">${t("bind.checkAll")}</button></div>
+                    <div class="lc-checkin__binding-head"><button class="lc-checkin__text-button" type="button" data-action="check-note-bindings">${t("bind.checkAll")}</button>${ctx.lastBindingCheckAt ? `<small class="lc-checkin__dependency-recovery" data-last-binding-check>${escapeHtml(t("bind.lastCheck", {time: formatHistoryDate(ctx.lastBindingCheckAt)}))}</small>` : ""}</div>
                     <div class="lc-checkin__binding-list" role="list">${bindingRows || `<div class="lc-checkin__history-empty">${t("bind.empty")}</div>`}</div>
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="diary" data-source-state="${diaryState}"${sourcePanelOpen("diary")}>

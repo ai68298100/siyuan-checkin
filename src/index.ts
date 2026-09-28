@@ -20,7 +20,7 @@ import {formatLunar, solarToLunar} from "./lunar";
 import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
-import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, getRecordStep, type ActionMoment} from "./shared";
+import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, getRecordStep, formatHistoryDate, type ActionMoment} from "./shared";
 import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
@@ -473,6 +473,8 @@ export default class CheckinPlugin extends Plugin {
     private settingsSavedBaselines = new Map<string, string>();
     /* T-1557 文档目标卡摘要会话缓存（docId→名称/路径；null=查询失败退回 ID）。只读投影，绝不持久化。 */
     private targetSummaries = new Map<string, {name?: string; hpath?: string} | null>();
+    /* T-1559 集中体检最近一次完成时间（会话态，bind 头部展示）。 */
+    private lastBindingCheckAt?: string;
     private readonly summaryResidentWritten = new Set<string>();
     /* T-1359 智能体项目草案（预览→编辑器检查→手动保存；不经建议工作流写 store）。 */
     private projectDrafts: ProjectDraft[] = [];
@@ -3389,6 +3391,7 @@ export default class CheckinPlugin extends Plugin {
         return renderSettingsView({
             store: this.store,
             targetSummaries: this.targetSummaries,
+            lastBindingCheckAt: this.lastBindingCheckAt,
             settingsChangeSections: this.buildSettingsChangeSections(),
             importConflicts: this.importConflictSession ? {format: this.importConflictSession.format, decisions: this.importConflictSession.decisions} : undefined,
             sourceSandboxOutcomes: this.sourceSandboxOutcomes,
@@ -3984,10 +3987,18 @@ export default class CheckinPlugin extends Plugin {
                     if (!statusNode) return;
                     const status = health[rowNode.dataset.bindingRow || ""] || "unchecked";
                     statusNode.textContent = t(status === "ok" ? "bind.statusOk" : status === "missing" ? "bind.statusMissing" : status === "error" ? "bind.statusError" : "bind.statusUnknown");
+                    /* T-1559：失效原因随桶显示（title 提示修复路径），恢复后重新检查即更新。 */
+                    statusNode.title = status === "missing" ? t("bind.reasonMissing") : status === "error" ? t("bind.reasonError") : "";
                     statusNode.classList.toggle("is-ok", status === "ok");
                     statusNode.classList.toggle("is-missing", status === "missing");
                     statusNode.setAttribute("role", "status");
                 });
+                /* T-1559：记录本次检查时间并就地回填（会话态，重渲染由 ctx 带出）。 */
+                this.lastBindingCheckAt = new Date().toISOString();
+                const checkTimeNode = root.querySelector<HTMLElement>("[data-last-binding-check]");
+                if (checkTimeNode) {
+                    checkTimeNode.textContent = t("bind.lastCheck", {time: formatHistoryDate(this.lastBindingCheckAt)});
+                }
             })().finally(() => {
                 button.disabled = false;
                 button.removeAttribute("aria-busy");
@@ -4010,6 +4021,48 @@ export default class CheckinPlugin extends Plugin {
             }
             input?.scrollIntoView({block: "center"});
             input?.focus({preventScroll: true});
+        }));
+        /* T-1559：集中体检就地停用——确认后停用对应自动联动；摄取源沿用断连纪律
+           （既有事件与文档保留，planSourceDisconnect 汇总保留量），persist 失败回滚。 */
+        const disableBindingFeature = (key: string): {disable: () => void; undo: () => void; source?: string; name: string} | undefined => {
+            switch (key) {
+                case "summary-resident": {
+                    const previous = this.summaryResident;
+                    return {disable: () => { this.summaryResident = {...this.summaryResident, enabled: false}; }, undo: () => { this.summaryResident = previous; }, name: t("bind.feature.summaryResident")};
+                }
+                case "health-inbox": {
+                    const previous = this.healthInbox;
+                    return {disable: () => { this.healthInbox = {...this.healthInbox, enabled: false}; }, undo: () => { this.healthInbox = previous; }, source: "health", name: t("bind.feature.healthInbox")};
+                }
+                case "note-query": {
+                    const previous = this.noteQuery;
+                    return {disable: () => { this.noteQuery = {...this.noteQuery, enabled: false}; }, undo: () => { this.noteQuery = previous; }, source: "notequery", name: t("bind.feature.noteQuery")};
+                }
+                case "yeguif-lifelog": {
+                    const previous = this.yeguifIntegration;
+                    return {disable: () => { this.yeguifIntegration = {...this.yeguifIntegration, enabled: false}; }, undo: () => { this.yeguifIntegration = previous; }, source: "yeguif", name: t("bind.feature.yeguif")};
+                }
+                default: return undefined;
+            }
+        };
+        root.querySelectorAll<HTMLElement>("[data-disable-binding]").forEach((button) => button.addEventListener("click", () => {
+            const feature = disableBindingFeature(button.dataset.disableBinding || "");
+            if (!feature || button.getAttribute("aria-busy") === "true") return;
+            if (!window.confirm(t("bind.disableConfirm", {feature: feature.name}))) return;
+            button.setAttribute("aria-busy", "true");
+            feature.disable();
+            void this.persistViewPreferences().then(() => {
+                if (feature.source) {
+                    const disconnectPlan = planSourceDisconnect(feature.source, this.store.events);
+                    if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: feature.name, events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
+                }
+                if (button.isConnected) this.render();
+            }).catch(() => {
+                feature.undo();
+                if (button.isConnected) showMessage(t("msg.prefSaveFail"));
+            }).finally(() => {
+                button.removeAttribute("aria-busy");
+            });
         }));
         root.querySelector<HTMLInputElement>("[data-sireader-toggle]")?.addEventListener("change", (event) => {
             const checked = (event.currentTarget as HTMLInputElement).checked;

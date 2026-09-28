@@ -620,6 +620,17 @@ for (const channel of ["diary", "summary"]) {
 assert.ok((i18nSourceT1553.match(/"set\.outputPreview"/g) || []).length >= 2, "set.outputPreview 必须中英双语齐备");
 assert.match(indexSourceT1553, /previewOutputMarkdown\(channel/, "预览经单一入口生成");
 assert.match(indexSourceT1553, /const markdown = this\.buildSummaryResidentMarkdown\(localDate\);/, "驻留写入与预览共用同一构建方法（零分歧）");
+/* T-1559 集中体检就地修复：停用动作（四条自动联动）、失效原因提示、检查时间回显。 */
+assert.match(settingsSourceT1442, /data-disable-binding="\$\{escapeHtml\(row\.key\)\}"/, "体检行必须携带停用动作");
+assert.match(settingsSourceT1442, /DISABLEABLE_BINDING_KEYS = new Set\(\["summary-resident", "health-inbox", "note-query", "yeguif-lifelog"\]\)/, "停用范围仅限四条自动联动（diary 手动/anchor 逐项/journal 不适用）");
+assert.match(settingsSourceT1442, /data-last-binding-check/, "体检头必须展示最近检查时间");
+assert.match(settingsSourceT1442, /bind\.reasonMissing/, "缺失状态必须携带修复路径提示");
+for (const key of ["bind.lastCheck", "bind.disable", "bind.disableConfirm", "bind.reasonMissing", "bind.reasonError"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
+assert.match(indexSourceT1553, /disableBindingFeature/, "停用映射（字段快照+undo 回滚）必须在位");
+assert.match(indexSourceT1553, /planSourceDisconnect\(feature\.source, this\.store\.events\)/, "停用摄取源沿用断连保留纪律");
+assert.match(indexSourceT1553, /this\.lastBindingCheckAt = new Date\(\)\.toISOString\(\)/, "检查完成必须回写会话时间");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
