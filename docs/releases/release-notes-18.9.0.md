@@ -49,4 +49,4 @@
 
 本地开发说明：下方摘要由质量链同步为当前工作树构建包，并非已上传的发布包。GitHub v18.9.0 正式资产摘要以 Release 页面标注为准。
 
-- SHA-256：`dabc7d86d1aed1d59f0cac4c3d2aebc9361699a0ba1b6d780edfeaa5eb60dfc3`
+- SHA-256：`54dc22365370f2d7be3e185b70c7167596b104a7bd06c66f549b717a26869f99`

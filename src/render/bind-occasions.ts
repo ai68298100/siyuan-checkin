@@ -10,6 +10,8 @@ import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasio
 
 export interface BindOccasionsHost {
     occasionStore: OccasionStore;
+    /** T-1583：reduced-motion 与设置页同源，滚动降级 instant。 */
+    reducedMotion?: boolean;
     editingOccasionId?: string;
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
@@ -38,7 +40,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     host.bindMobileNav(root);
     root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday());
     /* 手机端列表在前、表单在后（order 交换）：新建/编辑后把表单滚进视口；桌面端表单常驻可见，滚动是无害空操作。 */
-    const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: "smooth"}); };
+    const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: host.reducedMotion ? "instant" : "smooth"}); };
     root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); revealOccasionForm(); }));
     root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); });
     root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {

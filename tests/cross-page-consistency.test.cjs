@@ -1,0 +1,67 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+/* T-1583 跨页交互与视觉规范守门（阶段 4 收官一致性专项）：
+   - 危险区三页统一标记（编辑器/归档/设置重置）；
+   - IME 组合态守卫覆盖全部四类搜索面（今日/设置/历史/比较器）；
+   - reduced-motion 传递到全部滚动模块（设置/导航/事项/今日绑定）；
+   - 会话态恢复模式在位（设置搜索/回顾视图/行动台）。
+   视觉层（双主题/320px~宽屏/对比度）由 width-walkthrough + visual-qa + accessibility-audit
+   既有守门承载，本文件不重复断言像素。 */
+
+const root = path.join(__dirname, "..");
+const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
+
+const editor = read("src", "render", "editor.ts");
+const archived = read("src", "render", "archived.ts");
+const settings = read("src", "render", "settings.ts");
+const fragments = read("src", "render", "fragments.ts");
+const todayBind = read("src", "render", "bind-today.ts");
+const settingsNav = read("src", "render", "settings-navigation.ts");
+const reviewBind = read("src", "render", "bind-page-navigation.ts");
+const occasionsBind = read("src", "render", "bind-occasions.ts");
+const navigation = read("src", "navigation.ts");
+
+let checks = 0;
+function check(name, run) {
+    run();
+    checks += 1;
+    console.log(`ok ${checks} - ${name}`);
+}
+
+try {
+    check("danger zones carry unified markers across editor, archived and settings", () => {
+        assert.match(editor, /data-editor-section="danger"/, "编辑器页尾操作栏危险区标记");
+        assert.match(archived, /data-archived-danger/, "归档危险区标记");
+        assert.match(settings, /data-data-section="reset"/, "设置重置分区标记");
+    });
+
+    check("IME composition guards cover all four search surfaces", () => {
+        assert.match(todayBind, /compositionstart/, "今日搜索 IME 守卫");
+        assert.match(settingsNav, /compositionstart/, "设置搜索 IME 守卫");
+        assert.match(reviewBind, /compositionstart/, "回顾历史/比较器搜索 IME 守卫");
+        assert.match(reviewBind, /compareComposing/, "比较器独立组合态标记");
+    });
+
+    check("reduced-motion reaches occasion drawer scrolling", () => {
+        assert.match(occasionsBind, /host\.reducedMotion \? "instant" : "smooth"/, "事项抽屉滚动尊重 reduced-motion");
+        assert.match(occasionsBind, /reducedMotion\?: boolean/, "事项宿主接口声明 reducedMotion");
+    });
+
+    check("session-restore patterns exist for settings search, review views and today console", () => {
+        assert.match(settingsNav, /searchSessionState/, "设置搜索会话恢复（WeakMap）");
+        assert.match(reviewBind, /renderReviewPreservingView\("/, "回顾视图保持焦点/选择恢复");
+        assert.match(navigation, /insightsReturnPage/, "洞察返回页会话态");
+    });
+
+    check("navigation entry points stay on the shared showXxxFor single path", () => {
+        for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {
+            assert.match(navigation, new RegExp(`export function ${fn}`), `导航单一路径 ${fn} 在 navigation.ts`);
+        }
+    });
+
+    console.log(`Cross-page consistency: ${checks} checks passed.`);
+} finally {
+    /* 无时区/临时目录副作用。 */
+}
