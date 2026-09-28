@@ -33,4 +33,25 @@ for (const key of ["set.tomatoRecovery", "set.agentRecovery", "set.thTitle", "se
 assert.match(settings, /\$\{t\("set\.thStatus"\)\}/, "taskhorizon status must come from the static provider-ready key");
 assert.ok(!settings.includes("thConnected"), "must not claim a runtime consumer connection that does not exist");
 
+/* T-1551/T-1549 host 组职责拆分：我的专注工具（可操作）与给其他工具使用（只读状态）
+   两节各自归位；Tomato 诊断双行合一、Task Horizon 双行合一（契约等待+提供方就绪同行共存）。 */
+const zhDictT1551 = i18nSource.slice(i18nSource.indexOf("const zhCN"), i18nSource.indexOf("const enUS"));
+const enDictT1551 = i18nSource.slice(i18nSource.indexOf("const enUS"));
+for (const key of ["set.hostMine", "set.hostForOthers"]) {
+    assert.ok(zhDictT1551.includes(`"${key}"`), `zh dict missing ${key}`);
+    assert.ok(enDictT1551.includes(`"${key}"`), `en dict missing ${key}`);
+}
+assert.match(settings, /data-host-section="mine"/, "我的专注工具分节在位（提供方选择/回退/待处理）");
+assert.match(settings, /data-host-section="others"/, "给其他工具使用分节在位（API/Task Horizon/Agent 只读状态）");
+assert.equal((settings.match(/data-contract-center="docktomato"/g) || []).length, 1, "Tomato 诊断与运行状态必须同行呈现（T-1549 去重）");
+assert.equal((settings.match(/data-contract-center="taskhorizon"/g) || []).length, 1, "Task Horizon 契约与依赖必须同行呈现（T-1549 去重）");
+assert.match(settings, /data-contract-center="taskhorizon" data-contract-state="waiting" data-dependency="taskhorizon" data-dependency-state="healthy"/, "同一行同时表达「消费端等待接入」与「我方提供方契约就绪」");
+assert.ok(!settings.includes('data-source-category="external-contract"'), "旧 host 单一类别标签退役");
+const hostSectionMine = settings.indexOf('data-host-section="mine"');
+const hostSectionOthers = settings.indexOf('data-host-section="others"');
+const providerSelectIndex = settings.indexOf("data-setting-focus-timer");
+const apiRowIndex = settings.indexOf('data-contract-center="api"');
+assert.ok(providerSelectIndex > hostSectionMine && providerSelectIndex < hostSectionOthers, "专注提供方选择必须归入「我的专注工具」");
+assert.ok(apiRowIndex > hostSectionOthers, "公开 API 契约必须归入「给其他工具使用」");
+
 console.log("dependency status gates passed: 3 deps unified, buckets explicit, recovery hints bilingual");
