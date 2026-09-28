@@ -1351,6 +1351,8 @@ const cases = [
                 await note.locator('summary').click();
                 assert.equal(await note.locator('.lc-checkin__occasion-row-note').isVisible(), true, 'long notes remain fully accessible');
                 assert.match(await note.locator('.lc-checkin__occasion-row-note').textContent(), /long-reference-/);
+                /* T-1580：表单收进抽屉——走查前展开抽屉再试点提交按钮。 */
+                await page.locator('[data-occasion-form-drawer]').evaluate((drawer) => { drawer.open = true; });
                 await page.locator('[data-occasion-form] button[type="submit"]').click({trial: true});
             }
             await assertLayout(label);

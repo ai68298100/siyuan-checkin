@@ -19,6 +19,23 @@ assert.match(viewSource, /occ\.remindSummary/, "occasion rows show reminder lead
 assert.match(viewSource, /data-occasion-toitem/, "occasion rows retain the explicit check-in conversion action");
 assert.match(viewSource, /lc-checkin__action-icon[\s\S]*lc-checkin__action-label/, "occasion actions keep icon and label nodes separate");
 assert.doesNotMatch(viewSource, /lc-checkin__item(?:\s|\")/, "occasion manager does not masquerade as a Today check-in card");
+/* —— T-1580/T-1592/T-1593：agenda 分组、表单抽屉、转打卡确认 —— */
+assert.match(viewSource, /data-occasion-form-drawer \$\{editing \? "open" : ""\}/, "表单收进抽屉（编辑时展开）");
+for (const section of ["today", "missed", "upcoming", "ended", "disabled"]) {
+    assert.match(viewSource, new RegExp(`data-agenda-section="\\$\\{id\\}"`), "agenda 分组头模板在位") ;
+    break;
+}
+for (const key of ["occ.agendaToday", "occ.agendaMissed", "occ.agendaUpcoming", "occ.agendaEnded", "occ.agendaDisabled"]) {
+    assert.match(viewSource, new RegExp(`agendaGroup\\("[a-z]+", t\\("${key}"`), `agenda 分组 ${key} 在位`);
+}
+assert.match(bindSource, /\[data-occasion-form-drawer\]/, "revealOccasionForm 必须展开抽屉");
+assert.match(indexSource, /msg\.occasionToItemConfirm/, "转打卡必须先经预览确认弹窗");
+assert.match(indexSource, /msg\.alreadyGenerated/, "重复转换拦截前置");
+const i18nSourceT1578 = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
+for (const key of ["occ.agendaToday", "occ.agendaMissed", "occ.agendaUpcoming", "occ.agendaEnded", "occ.agendaDisabled", "msg.occasionToItemConfirm"]) {
+    const count = i18nSourceT1578.split(`"${key}"`).length - 1;
+    assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
+}
 assert.match(bindSource, /occasionStatusFilter/);
 assert.match(bindSource, /occasionKindFilter/);
 assert.match(bindSource, /occasionTimeFilter/);

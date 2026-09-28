@@ -44,8 +44,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const hasActiveFilters = Boolean(occasionQuery || ctx.occasionStatusFilter !== "all" || ctx.occasionKindFilter !== "all" || ctx.occasionTimeFilter !== "all");
     const activeFilterCount = Number(ctx.occasionStatusFilter !== "all") + Number(ctx.occasionKindFilter !== "all") + Number(ctx.occasionTimeFilter !== "all");
     const filterSelect = (key: string, label: string, value: string, options: Array<[string, string]>): string => `<label class="lc-checkin__occasion-filter"><span>${label}</span><select data-occasion-filter="${key}" aria-label="${label}">${options.map(([optionValue, text]) => `<option value="${optionValue}"${optionValue === value ? " selected" : ""}>${text}</option>`).join("")}</select></label>`;
-    const rows = filteredOccasions.length ? filteredOccasions.map(({item, next}) => {
-        const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : uiIcon("calendar");
+    const rowMarkup = filteredOccasions.map(({item, next}) => {        const icon = item.kind === "birthday" ? "🎂" : item.kind === "anniversary" ? "💍" : uiIcon("calendar");
         const kind = item.kind === "birthday" ? t("occ.kindBirthday") : item.kind === "anniversary" ? t("occ.kindAnniversary") : t("occ.kindScheduled");
         const days = next ? Math.max(0, daysBetweenHalfOpen(todayKey, next) ?? 0) : undefined;
         const countdown = next ? t("occ.daysAway", {n: days ?? 0}) : t("occ.ended");
@@ -85,7 +84,28 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
            normalization update only the glyph on re-render. */
         const action = (attr: string, value: string, aria: string, title: string, content: string, extra = "") => `<button class="lc-checkin__small-button${extra ? ` ${escapeHtml(extra)}` : ""}" type="button" ${attr}="${escapeHtml(value)}" aria-label="${escapeHtml(aria)}" title="${escapeHtml(title)}"><span class="lc-checkin__action-icon" aria-hidden="true">${content}</span><span class="lc-checkin__action-label">${escapeHtml(title)}</span></button>`;
         return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}${lateMarkup}${moveMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span></div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "check" : "circle"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
-    }).join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</div>`;
+    });
+    const rows = rowMarkup.length ? rowMarkup.join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</div>`;
+    /* T-1580/T-1592：agenda 分组优先——今日→已错过→即将→已结束→已停用，组头计数；
+       过滤先行，分组只重排不改成员。 */
+    const agendaGroup = (id: string, label: string, groupRows: string[]): string => groupRows.length ? `<div class="lc-checkin__source-category" data-agenda-section="${id}">${label} · ${groupRows.length}</div>${groupRows.join("")}` : "";
+    const agendaBuckets: Record<string, string[]> = {today: [], missed: [], upcoming: [], ended: [], disabled: []};
+    for (const {item, next} of filteredOccasions) {
+        const row = rowMarkup[filteredOccasions.findIndex((entry) => entry.item.id === item.id)];
+        if (!row) continue;
+        if (!item.enabled) agendaBuckets.disabled.push(row);
+        else if (next === todayKey) agendaBuckets.today.push(row);
+        else if (getMissedOccurrence(item, todayKey)) agendaBuckets.missed.push(row);
+        else if (next) agendaBuckets.upcoming.push(row);
+        else agendaBuckets.ended.push(row);
+    }
+    const agendaRows = [
+        agendaGroup("today", t("occ.agendaToday"), agendaBuckets.today),
+        agendaGroup("missed", t("occ.agendaMissed"), agendaBuckets.missed),
+        agendaGroup("upcoming", t("occ.agendaUpcoming"), agendaBuckets.upcoming),
+        agendaGroup("ended", t("occ.agendaEnded"), agendaBuckets.ended),
+        agendaGroup("disabled", t("occ.agendaDisabled"), agendaBuckets.disabled),
+    ].filter(Boolean).join("");
     const date = editing?.date || dateKey(currentCalendarDate());
     const editLabel = editing ? t("occ.edit") : t("occ.create");
     const kind: OccasionKind = editing?.kind || "scheduled";
@@ -116,6 +136,8 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${ctx.appearance}">
             <header class="lc-checkin__editor-header"><button class="lc-checkin__back-button" type="button" data-action="back" aria-label="${t("common.back")}">‹</button><div><div class="lc-checkin__eyebrow">${t("occasions.eyebrow")}</div><h1 class="lc-checkin__title">${t("occasions.title")}</h1></div><button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">+</button></header>
             <div class="lc-checkin__occasion-manager">
+                <details class="lc-checkin__occasion-form-drawer" data-occasion-form-drawer ${editing ? "open" : ""}>
+                    <summary><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                 <section class="lc-checkin__occasion-form-panel">
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><small class="lc-checkin__occasion-form-hint">${t("occ.formHint")}</small></div><details class="lc-checkin__occasion-help"><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span>${t("occ.templatesHint")}</span><span>${t("occ.newAria")}</span></div></details></div>
                     <details class="lc-checkin__occasion-templates-fold" ${ctx.occasionTemplatesOpen ? "open" : ""}>
@@ -164,6 +186,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                         <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>
                 </section>
+                </details>
                 <section class="lc-checkin__occasion-list-panel">
                     <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${t("occ.listKicker")}</span><strong>${t("occ.listHeading")}</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${ctx.occasionStore.occasions.length}</span><details class="lc-checkin__occasion-actions-help"><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span><strong>＋ ${t("occ.toItem")}</strong> — ${t("occ.toItemDesc")}</span><span><strong>✎ ${t("occ.editBtn")}</strong> — ${t("occ.editDesc")}</span><span><strong>✓/○ ${t("occ.enable")}/${t("occ.disable")}</strong> — ${t("occ.toggleDesc")}</span><span><strong>× ${t("common.delete")}</strong> — ${t("occ.deleteDesc")}</span><span><strong>📅 ${t("occ.autoAppearTitle")}</strong> — ${t("occ.autoAppearDesc")}</span></div></details></div>
                     <div class="lc-checkin__occasion-stats"><span><strong>${ctx.occasionStore.occasions.length}</strong><small>${t("occ.filterAll")}</small></span><span><strong>${enabledCount}</strong><small>${t("occ.filterEnabled")}</small></span><span><strong>${todayCount}</strong><small>${t("occ.filterToday")}</small></span></div>
@@ -172,7 +195,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                         <summary><span>${t("occ.filters")}</span>${activeFilterCount ? `<em>${activeFilterCount}</em>` : ""}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     </details>
-                    <div class="lc-checkin__occasion-manager-list">${rows}</div>
+                    <div class="lc-checkin__occasion-manager-list" data-occasion-agenda>${agendaRows}</div>
                 </section>
             </div>
         </div>`;

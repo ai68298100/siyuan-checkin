@@ -6711,6 +6711,12 @@ export default class CheckinPlugin extends Plugin {
         const today = dateKey(currentCalendarDate());
         const occurrence = getOccurrenceDate(occasion, today) ?? occasion.date;
         if (!isValidLocalDateInput(occurrence)) return false;
+        /* T-1593：重复拦截前置 + 转打卡预览确认（项目/排期/遮蔽先告知），取消零写入。 */
+        if (this.store.items.some((candidate) => candidate.linkedOccasionId === occasion.id && !candidate.archived)) {
+            showMessage(t("msg.alreadyGenerated"));
+            return false;
+        }
+        if (!window.confirm(t("msg.occasionToItemConfirm", {name: occasion.name, date: occurrence}))) return false;
         const dayAfter = dateKey(new Date(calendarDateFromKey(occurrence).getFullYear(), calendarDateFromKey(occurrence).getMonth(), calendarDateFromKey(occurrence).getDate() + 1));
         const now = new Date().toISOString();
         const created = normalizeCheckinItem({
@@ -6728,10 +6734,6 @@ export default class CheckinPlugin extends Plugin {
             linkedOccasionId: occasion.id,
         });
         if (!created) { showMessage(t("msg.createFail")); return false; }
-        if (this.store.items.some((candidate) => candidate.linkedOccasionId === occasion.id && !candidate.archived)) {
-            showMessage(t("msg.alreadyGenerated"));
-            return false;
-        }
         const previous = this.store;
         this.store = {...this.store, items: [...this.store.items, created]};
         try {
