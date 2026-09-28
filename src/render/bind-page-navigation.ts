@@ -1093,6 +1093,33 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const button = event.currentTarget as HTMLElement;
         runReviewTool(button, () => host.downloadReportMarkdown(buildCurrentReport()));
     });
+    /* 移动端固定底栏会盖住 in-flow 下拉菜单的底缘：details 打开后若菜单底部
+       落入底栏区域，按遮挡量滚动最近的可滚动祖先（兜底 window）让出空间；
+       桌面无底栏，测得高度 0 不触发。 */
+    root.addEventListener("toggle", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLDetailsElement) || !target.open) return;
+        const menu = target.querySelector<HTMLElement>(".lc-checkin__review-more-menu");
+        if (!menu) return;
+        const doc = root.ownerDocument;
+        const nav = doc.querySelector(".lc-checkin__mobile-nav");
+        const navHeight = nav instanceof HTMLElement && nav.offsetHeight > 0 ? nav.offsetHeight : 0;
+        if (navHeight === 0) return;
+        const view = doc.defaultView;
+        if (!view) return;
+        const rect = menu.getBoundingClientRect();
+        const limit = view.innerHeight - navHeight - 8;
+        const overflow = Math.ceil(rect.bottom - limit);
+        if (overflow <= 0) return;
+        let scroller: HTMLElement | null = menu.parentElement;
+        while (scroller && scroller !== doc.body) {
+            const style = view.getComputedStyle(scroller);
+            if (/(auto|scroll)/.test(style.overflowY) && scroller.scrollHeight > scroller.clientHeight) break;
+            scroller = scroller.parentElement;
+        }
+        if (scroller && scroller !== doc.body) scroller.scrollTop += overflow;
+        else view.scrollBy({top: overflow});
+    }, true);
     /* 报告设置：改动即写回视图偏好；不触发重渲染（复选框自身状态就是真值）。 */
     root.querySelectorAll<HTMLInputElement>("[data-report-option]").forEach((input) => {
         input.addEventListener("change", () => {

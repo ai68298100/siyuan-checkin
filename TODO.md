@@ -51,6 +51,8 @@
 
 ## 本轮自主任务（2026-09-28：走查收口与 T-1392 本地切片）
 
+- [x] T-1535 真实内核 E2E 全量跑通与两项修复——done（2026-09-28，local-auto）。本会话首次对 v18.9.0 构建跑 `test:e2e`（隔离真实内核 3.8.5 + Playwright，17 spec 23 例）：首轮 20 过/2 挂/1 flaky，全部查明并修复——①**mobile-review-ui**（真实产品缺陷）：移动布局下「报告设置/更多工具」in-flow 下拉展开时底部伸进固定底栏（z-index 8）约 12px，最底部菜单项点不到；用 Playwright 探针定位命中元素为底栏按钮后，在 bind-page-navigation 新增 toggle 捕获监听——details 打开后按遮挡量滚动最近可滚动祖先（兜底 window），桌面无底栏不触发；②**yeguif spec 过期**（非产品缺陷）：5a31de6（v18.8.0 时代）收紧叶归语义——时长归属当前记录（10:00 运动 60 分钟）、无映射仅同名匹配——spec 未跟随仍断言旧语义（归属 09:00 阅读+无映射），已按现行语义更新映射/备注/externalRef 断言。复跑全量 E2E **23/23 全绿**（含此前 flaky 的 review-suggestion）。发布说明与 change-log 补移动端修正条目并重同步 SHA（c000a8b9…）；check:release 复验通过。**这轮证明：v18.8.0 发布时未跑全量 E2E 的债，在 v18.9.0 里还清了**——发布说明「验证与边界」已如实升级为 E2E 全量 23/23。
+
 - [x] T-1534 v18.9.0 真机验收清单——done（2026-09-28，local-auto）。docs/integration-smoke-checklist.md 新增「可信记录批次（v18.9.0 真机验收）」一节：13 个小节覆盖 D-291 全部交互与收尾任务，按**设备才能验证的行为**编写（真实来源事件的渠道归类、整树重启后周复盘草稿恢复、Android WebView 下载通道、移动端文件选择器、触屏粘贴、320px 面板溢出、两主题概览回归），并写明每轮前置整树重启（规避 reloadUI 不刷新 JS 缓存的既有陷阱）；待处理箱真机不可构造的存储故障场景如实标注替代验证口径。守门 ui-docs/check 实测 EXIT=0。
 
 - [x] T-1533 v18.9.0 本地定版——done（2026-09-28，local-auto；用户「继续」对上轮选项①「定版→发布资产（本地）」的放行，**push 仍待用户确认**）。发布三要素就位：①版本三元组 src/version.ts PLUGIN_VERSION、package.json、plugin.json 全部升至 18.9.0（release-assets 守门从 package.json 派生 RELEASE_VERSION 自动跟随）；②README 当前版本/发布说明链接/18.9.0 重点区/变更记录链接四处切换；③release-notes-18.9.0-draft.md 转正为 release-notes-18.9.0.md（去草案框、补 SHA-256 行骨架由 sync:digest 填充实际摘要 bdac1900…）+ 新增 docs/v18.9.0-change-log.md（按批次+任务号的详细记录）。验证：build、sync:digest、check:release（资产校验+回滚演练 v18.9.0 全绿）、test:quality 全链、双主题 visual-qa、宽度走查全 EXIT=0。**发布剩余步骤（用户动作）**：确认后 push → GitHub Release 上传 package.zip（SHA 见发布说明）。
