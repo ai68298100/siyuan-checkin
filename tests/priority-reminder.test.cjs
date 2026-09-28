@@ -47,6 +47,18 @@ assert.match(stylesSource, /priority-reminder-row-mark/);
 assert.match(i18nSource, /"today\.priorityTitle"/);
 assert.match(i18nSource, /"today\.priorityActionAria"/);
 assert.match(i18nSource, /"today\.priorityMoreAria"/);
+/* —— T-1585/T-1586 提醒中心统一：行内原定日期、查看全部入口、动作作用域说明 —— */
+assert.match(fragmentsSource, /formatHistoryDate\(item\.dueDate\)/, "今日横幅行内必须显示原定日期");
+assert.match(fragmentsSource, /data-action="summary"/, "今日横幅必须提供查看全部入口（跳回顾提醒中心）");
+assert.ok(!fragmentsSource.includes("data-reminder-action"), "今日横幅不得复制第二套提醒动作（动作归回顾提醒中心）");
+const reviewSource = fs.readFileSync(path.join(sourceRoot, "render", "review.ts"), "utf8");
+for (const key of ["review.reminderSnoozeScope", "review.reminderDeferScope", "review.reminderSkipScope", "review.reminderRestoreScope"]) {
+    assert.match(reviewSource, new RegExp(key.replace(/\./g, "\\.") + '"'), `回顾动作 ${key} 作用域说明在位`);
+}
+for (const key of ["today.priorityViewAll", "review.reminderSnoozeScope", "review.reminderDeferScope", "review.reminderSkipScope", "review.reminderRestoreScope"]) {
+    const count = i18nSource.split(`"${key}"`).length - 1;
+    assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
+}
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-checkin-priority-reminder-"));
 const source = fs.readFileSync(path.join(sourceRoot, "features", "priority-reminder.ts"), "utf8");
 fs.mkdirSync(path.join(outputRoot, "features"), {recursive: true});
