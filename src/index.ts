@@ -77,7 +77,7 @@ import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from 
 import {openTabPageFor, showArchivedFor, showEditorFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
-import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
+import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusMiniStripFor, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
 import {canStartWithAdapter, findFocusAdapterFor, releaseFocusAdapterFor, startFocusFor, stopAdapterSilently, stopFocusFor, type FocusAdapterHost} from "./render/focus-adapter";
 import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
@@ -2025,7 +2025,15 @@ export default class CheckinPlugin extends Plugin {
            所以存储读取失败时也要把入口注册上，别让「读数据失败」伪装成「宿主不支持智能体」。 */
         this.registerSiYuanAgentCapability();
         this.render();
-        this.scheduleMidnightRefresh();
+        /* T-1596：重载后明确失效——上次专注会话标记仍在（sessionStorage 存活于本窗口），
+           如实告知中断未入账，不静默丢失。 */
+        try {
+            if (window.sessionStorage?.getItem("lc-focus-session")) {
+                showMessage(t("msg.focusReloadLost"));
+                window.sessionStorage.removeItem("lc-focus-session");
+            }
+        } catch { /* 隐私模式静默 */ }
+this.scheduleMidnightRefresh();
         /* T-1443：启动后统一发一条每日提醒通知（pushMsg 原生弹窗）。 */
         void this.maybeSendDailyReminder();
         /* T-1234：启动时渲染块可能先于存储装载渲染了空数据预览——装载完成后强制刷新；
@@ -3294,6 +3302,11 @@ export default class CheckinPlugin extends Plugin {
                桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
             if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root));
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
+            else if (this.focusTimerState) layout.insertAdjacentHTML("beforeend", renderFocusMiniStripFor(this as unknown as FocusTimerHost));
+            layout.querySelector<HTMLElement>("[data-focus-mini-back]")?.addEventListener("click", () => {
+                this.focusTimerRoot = root;
+                this.showToday();
+            });
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
            窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */

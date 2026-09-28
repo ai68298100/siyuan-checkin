@@ -40,6 +40,8 @@ export function openFocusTimerFor(host: FocusTimerHost, itemId: string): void {
     clearFocusTimerTimers(host);
     host.focusTimerState = {itemId, totalSec: host.focusTimerMinutes * 60, remainingSec: host.focusTimerMinutes * 60, running: true};
     host.focusTimerInterval = window.setInterval(() => tickFocusTimerFor(host), 1000);
+    /* T-1596：会话标记（sessionStorage）——重载后据此明确告知「上次会话中断未入账」。 */
+    try { window.sessionStorage?.setItem("lc-focus-session", itemId); } catch { /* 隐私模式等场景静默 */ }
     revealFocusTimerFor(host);
 }
 
@@ -54,6 +56,7 @@ export function stopFocusTimerFor(host: FocusTimerHost): void {
     clearFocusTimerTimers(host);
     host.focusTimerState = undefined;
     host.focusTimerRoot = undefined;
+    try { window.sessionStorage?.removeItem("lc-focus-session"); } catch { /* 静默 */ }
 }
 
 function clearFocusTimerTimers(host: FocusTimerHost): void {
@@ -68,6 +71,13 @@ export function tickFocusTimerFor(host: FocusTimerHost): void {
     state.remainingSec = Math.max(0, state.remainingSec - 1);
     const panel = document.querySelector("[data-focus-timer]");
     if (panel) paintFocusTimer(panel as HTMLElement, state);
+    /* T-1596：跨页小条剩余时间同步。 */
+    const mini = document.querySelector<HTMLElement>("[data-focus-mini-remaining]");
+    if (mini) {
+        const minutes = Math.floor(state.remainingSec / 60);
+        const seconds = state.remainingSec % 60;
+        mini.textContent = `${minutes}:${String(seconds).padStart(2, "0")}`;
+    }
     if (state.remainingSec <= 0) void finishFocusTimerFor(host, true);
 }
 
@@ -82,6 +92,17 @@ export function paintFocusTimer(panel: HTMLElement, state: {remainingSec: number
     if (bar) bar.style.width = `${Math.round(((state.totalSec - state.remainingSec) / state.totalSec) * 100)}%`;
     const toggle = panel.querySelector<HTMLButtonElement>("[data-action='focus-toggle']");
     if (toggle) toggle.textContent = t(state.running ? "focus.pause" : "focus.resume");
+}
+
+/** T-1596：跨页小条——专注进行中时，其他表面显示紧凑剩余时间与「回到专注」入口。 */
+export function renderFocusMiniStripFor(host: FocusTimerHost): string {
+    const state = host.focusTimerState;
+    if (!state) return "";
+    const item = getItemById(host.store, state.itemId);
+    const name = item ? item.name : "专注";
+    const minutes = Math.floor(state.remainingSec / 60);
+    const seconds = state.remainingSec % 60;
+    return `<div class="lc-checkin__focus-mini" data-focus-mini role="status" aria-label="${t("focus.miniAria")}"><span class="lc-checkin__focus-mini-icon" aria-hidden="true">⏱</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong><span class="lc-checkin__focus-mini-time" data-focus-mini-remaining>${minutes}:${String(seconds).padStart(2, "0")}</span>${state.running ? "" : `<small>${t("focus.pause")}</small>`}<button class="lc-checkin__text-button" type="button" data-focus-mini-back>${t("focus.miniBack")}</button></div>`;
 }
 
 export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolean): Promise<void> {
