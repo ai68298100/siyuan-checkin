@@ -84,6 +84,8 @@ export interface ReviewViewContext {
     historyBatchValues?: Readonly<Record<string, string>>;
     /** T-1517 横向比较选中的项目（会话态，2~4 个；可选：旧桩按空处理）。 */
     itemCompareSelection?: ReadonlySet<string>;
+    /** T-1578 比较器候选搜索词（会话态；可选：旧桩按无过滤处理）。 */
+    itemCompareQuery?: string;
     /** T-1518 周复盘草稿（可选：旧桩按无草稿处理）。 */
     weeklyReviewDrafts?: readonly WeeklyReviewDraft[];
     analyticsSnapshot: AnalyticsSnapshot;
@@ -592,7 +594,13 @@ export function renderReviewView(ctx: ReviewViewContext): string {
        配额项目单列；数据不足明确提示；渲染按选择顺序，不排名。 */
     const renderItemCompare = (): string => {
         const selection = ctx.itemCompareSelection;
-        const picker = ctx.store.items.filter((candidate) => !candidate.archived).slice(0, 12).map((item) => `<label class="lc-checkin__item-compare-option"><input type="checkbox" data-item-compare-toggle="${escapeHtml(item.id)}" ${selection?.has(item.id) ? "checked" : ""} ${!selection?.has(item.id) && (selection?.size ?? 0) >= 4 ? "disabled" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("");
+        /* T-1578：比较器候选升级为全量可搜索——不再截断前 12；查询过滤（已选恒显示便于取消）；
+           查询会话态由 bind 的 IME 安全防抖写入。 */
+        const compareQuery = (ctx.itemCompareQuery || "").trim().toLocaleLowerCase();
+        const candidates = ctx.store.items.filter((candidate) => !candidate.archived);
+        const pickerOptions = candidates.filter((candidate) => !compareQuery || candidate.name.toLocaleLowerCase().includes(compareQuery) || (selection?.has(candidate.id) ?? false));
+        const picker = pickerOptions.map((item) => `<label class="lc-checkin__item-compare-option"><input type="checkbox" data-item-compare-toggle="${escapeHtml(item.id)}" ${selection?.has(item.id) ? "checked" : ""} ${!selection?.has(item.id) && (selection?.size ?? 0) >= 4 ? "disabled" : ""} /><span>${escapeHtml(item.name)}</span></label>`).join("");
+        const compareSearch = candidates.length > 8 ? `<div class="review-record-tools" role="search" aria-label="${t("review.itemCompareSearchAria")}"><label class="lc-checkin__history-search lc-checkin__search-field"><span class="lc-checkin__search-symbol" aria-hidden="true">⌕</span><input data-item-compare-search type="search" value="${escapeHtml(ctx.itemCompareQuery || "")}" placeholder="${t("review.itemCompareSearchAria")}" aria-label="${t("review.itemCompareSearchAria")}" enterkeyhint="search" />${ctx.itemCompareQuery ? `<button type="button" data-action="clear-item-compare-query" aria-label="${t("review.clearSearch")}" title="${t("review.clearSearchTitle")}">×</button>` : ""}</label><span class="review-scope-note">${escapeHtml(t("review.itemCompareShowing", {n: pickerOptions.length, total: candidates.length}))}</span></div>` : "";
         const rangeDays = Math.min(31, Math.max(1, Math.round((calendarDateFromKey(summary.endDate).getTime() - calendarDateFromKey(summary.startDate).getTime()) / 86400000) + 1));
         const seriesList = (selection ? [...selection] : []).map((id) => buildItemTrendSeries(ctx.store, id, summary.startDate, rangeDays)).filter((series): series is NonNullable<typeof series> => Boolean(series));
         const comparison = groupItemTrendsByUnit(seriesList);
@@ -609,7 +617,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         }).join("");
         const quotaNotes = comparison.quotaSeries.map((series) => `<small>${escapeHtml(t("review.itemCompareQuotaNote", {name: series.name}))}</small>`).join("");
         const selectionHint = (selection?.size ?? 0) < 2 ? `<p class="review-scope-note">${escapeHtml(t("review.itemCompareHint"))}</p>` : "";
-        return `<div class="lc-checkin__item-compare"><div class="lc-checkin__item-compare-picker">${picker}</div>${selectionHint}${groups}${quotaNotes}</div>`;
+        return `<div class="lc-checkin__item-compare">${compareSearch}<div class="lc-checkin__item-compare-picker">${picker}</div>${selectionHint}${groups}${quotaNotes}</div>`;
     };
 
     /* T-1518 周复盘向导：核对事实（本地统计，无模型可用）→ 记录阻力 → 下周一项调整。

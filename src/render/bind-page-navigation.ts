@@ -59,6 +59,8 @@ export interface BindPageNavigationHost {
     historyBatchValues?: Record<string, string>;
     /** T-1517 横向比较选中的项目（会话态，2~4 个）。 */
     itemCompareSelection?: Set<string>;
+    /** T-1578 比较器候选搜索词（会话态）。 */
+    itemCompareQuery?: string;
     /** T-1518 周复盘草稿存取与导出（可选：旧桩缺省安全跳过）。 */
     saveWeeklyReviewDraft?(weekKey: string, friction: string, adjustment: string): Promise<void>;
     clearWeeklyReviewDraft?(weekKey: string): Promise<void>;
@@ -387,6 +389,36 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         } else selection.delete(id);
         renderReviewPreservingView("[data-item-compare-toggle]");
     }));
+    /* T-1578：比较器候选搜索——IME 安全防抖（镜像历史搜索模式），查询写入会话态；
+       清除按钮复位查询并保持焦点位置。 */
+    const compareSearch = root.querySelector<HTMLInputElement>("[data-item-compare-search]");
+    let compareSearchTimer: number | undefined;
+    let compareComposing = false;
+    const applyCompareSearch = () => {
+        if (!compareSearch) return;
+        if (compareSearchTimer !== undefined) window.clearTimeout(compareSearchTimer);
+        compareSearchTimer = window.setTimeout(() => {
+            compareSearchTimer = undefined;
+            const value = compareSearch.value;
+            if (compareComposing || host.disposed || host.disposing || host.currentPage !== "review" || host.reviewWorkspace !== "analysis"
+                || !compareSearch.isConnected || root.querySelector("[data-item-compare-search]") !== compareSearch) return;
+            host.itemCompareQuery = value;
+            renderReviewPreservingView("[data-item-compare-search]");
+            const nextSearch = root.querySelector<HTMLInputElement>("[data-item-compare-search]");
+            nextSearch?.setSelectionRange(value.length, value.length);
+        }, 120);
+    };
+    compareSearch?.addEventListener("compositionstart", () => { compareComposing = true; });
+    compareSearch?.addEventListener("compositionend", () => { compareComposing = false; applyCompareSearch(); });
+    compareSearch?.addEventListener("input", (event) => {
+        if (compareComposing || (event as InputEvent).isComposing) return;
+        applyCompareSearch();
+    });
+    root.querySelector<HTMLElement>("[data-action='clear-item-compare-query']")?.addEventListener("click", () => {
+        host.itemCompareQuery = "";
+        renderReviewPreservingView("[data-item-compare-search]");
+        root.querySelector<HTMLInputElement>("[data-item-compare-search]")?.focus({preventScroll: true});
+    });
     /* T-1518：周复盘向导——保存草稿（不清输入）、导出 Markdown、清除本周草稿。 */
     root.querySelector<HTMLElement>("[data-weekly-save]")?.addEventListener("click", () => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");

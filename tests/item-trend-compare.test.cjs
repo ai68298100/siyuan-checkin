@@ -90,4 +90,22 @@ for (const key of ["review.itemCompareTitle", "review.itemCompareHint", "review.
     assert.ok(count >= 2, `${key} must exist in both locales (${count})`);
 }
 
+/* —— T-1578 比较器可搜索化：全量候选不再截断前 12，IME 安全防抖，已选恒显示，归档排除有守门。 —— */
+const reviewCompareSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
+const batchBackfillSource = fs.readFileSync(path.join(root, "src", "features", "batch-backfill.ts"), "utf8");
+const compareBody = reviewCompareSource.slice(reviewSource.indexOf("renderItemCompare"));
+assert.ok(!compareBody.includes(".slice(0, 12)"), "比较器候选不得再截断前 12");
+assert.match(compareBody, /data-item-compare-search/, "比较器必须提供搜索输入");
+assert.match(compareBody, /itemCompareQuery/, "比较器查询走会话态");
+assert.match(compareBody, /selection\?\.has\(candidate\.id\) \?\? false/, "已选项目不受查询过滤（恒显示便于取消）");
+assert.match(bindSource, /data-item-compare-search/, "比较器搜索绑定在位");
+assert.match(bindSource, /compareComposing/, "搜索必须 IME 安全（组合态不打断）");
+assert.match(bindSource, /data-action='clear-item-compare-query'/, "搜索清除入口在位");
+assert.match(indexSource, /scheduled: !item.archived && isItemAvailableOnDate/, "批量补记快照排除归档/不可用项目（计划层分类前即排除）");
+assert.match(batchBackfillSource, /atMost/, "限额/戒除不批量制造成功事实的纯函数守门在位");
+for (const key of ["review.itemCompareSearchAria", "review.itemCompareShowing"]) {
+    const count = i18nSource.split(`"${key}"`).length - 1;
+    assert.ok(count >= 2, `${key} must exist in both locales (${count})`);
+}
+
 console.log("item trend compare gates passed: kernel-parity series, unit grouping, quota separation, sparse hints, 2-4 selection cap, table-chart parity and bilingual copy.");
