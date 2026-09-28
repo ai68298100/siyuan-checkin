@@ -745,6 +745,21 @@ const indexSourceT1562 = read("src", "index.ts");
 assert.match(indexSourceT1562, /buildSettingsOverview\(/, "总览投影必须走纯模块单一实现");
 assert.match(indexSourceT1562, /data-overview-jump/, "入口跳转处理器在位");
 assert.match(indexSourceT1562, /data-settings-nav="\$\{group\}"\]`\)\?\.click\(\)/, "分组跳转复用既有 nav 点击机制");
+/* T-1564 外观与操作分区重组：四组合一、五小节归类、行原样迁移（存储键零变化）。 */
+assert.ok(!settingsSourceT1442.includes('id: "today"') && !settingsSourceT1442.includes('id: "dialog"') && !settingsSourceT1442.includes('id: "shortcuts"'), "today/dialog/shortcuts 独立组必须退役（并入外观与操作）");
+for (const section of ["look", "today", "reminders", "shortcuts", "dialog"]) {
+    assert.match(settingsSourceT1442, new RegExp(`data-appearance-section="${section}"`), `外观与操作小节 ${section} 在位`);
+}
+const dialogSection = settingsSourceT1442.indexOf('data-appearance-section="dialog"');
+const todaySection = settingsSourceT1442.indexOf('data-appearance-section="today"');
+const openModeIndex = settingsSourceT1442.indexOf("data-setting-open-mode");
+const nlpIndex = settingsSourceT1442.indexOf("data-setting-quick-entry-nlp");
+assert.ok(openModeIndex > dialogSection, "openMode 归弹窗与页签小节");
+const dialogSectionForNlp = settingsSourceT1442.indexOf('data-appearance-section="dialog"');
+assert.ok(nlpIndex > todaySection && nlpIndex < dialogSectionForNlp, "NLP 速记归今日视图小节");
+for (const key of ["set.groupAppearanceOps", "set.groupReminders"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
