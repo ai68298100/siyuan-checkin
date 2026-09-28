@@ -51,6 +51,10 @@
 
 ## 本轮自主任务（2026-09-28：走查收口与 T-1392 本地切片）
 
+- [x] T-1537 v18.9.0 正式发布——done（2026-09-28，**用户授权发版**）。①README 发布前检查：横幅过期表述（15 项计划→已交付）改写为 v18.9.0 交付说明；文档入口补真机验收清单链接。②发布前最终 test:quality 首跑抓出真问题——守门桩 root 无 addEventListener 导致 toggle 绑定崩（view-preferences 桩），加存在性守卫后全绿。③发布执行（gh 未装，走 17.1.0 api.github.com 流程，token 取自 git 凭据管理器仅内存使用）：main 推送 acfceab→5248123（32 提交）、注释标签 v18.9.0 推送、API 创建 Release（id 397882046，非草稿非预发布，正文=发布说明含实际 SHA）并上传 package.zip（797,145 字节）。④回读核验：API 回读资产 797,145 字节逐字节一致（SHA-256 f41a74b1…=发布说明与本地包三方一致）；远端 main=5248123、tag=v18.9.0。**发布地址**：https://github.com/ai68298100/siyuan-checkin/releases/tag/v18.9.0
+
+- [x] T-1536 README 发布前修正——done（2026-09-28，local-auto）。横幅「15 项计划已列入」改为 v18.9.0 已交付表述+后续方向（真机验收/生态联调/小步迭代）；文档入口补 integration-smoke-checklist 链接；其余核过无需改动（安装/兼容/API/边界/文档索引各节均为当前状态）。
+
 - [x] T-1535 真实内核 E2E 全量跑通与两项修复——done（2026-09-28，local-auto）。本会话首次对 v18.9.0 构建跑 `test:e2e`（隔离真实内核 3.8.5 + Playwright，17 spec 23 例）：首轮 20 过/2 挂/1 flaky，全部查明并修复——①**mobile-review-ui**（真实产品缺陷）：移动布局下「报告设置/更多工具」in-flow 下拉展开时底部伸进固定底栏（z-index 8）约 12px，最底部菜单项点不到；用 Playwright 探针定位命中元素为底栏按钮后，在 bind-page-navigation 新增 toggle 捕获监听——details 打开后按遮挡量滚动最近可滚动祖先（兜底 window），桌面无底栏不触发；②**yeguif spec 过期**（非产品缺陷）：5a31de6（v18.8.0 时代）收紧叶归语义——时长归属当前记录（10:00 运动 60 分钟）、无映射仅同名匹配——spec 未跟随仍断言旧语义（归属 09:00 阅读+无映射），已按现行语义更新映射/备注/externalRef 断言。复跑全量 E2E **23/23 全绿**（含此前 flaky 的 review-suggestion）。发布说明与 change-log 补移动端修正条目并重同步 SHA（c000a8b9…）；check:release 复验通过。**这轮证明：v18.8.0 发布时未跑全量 E2E 的债，在 v18.9.0 里还清了**——发布说明「验证与边界」已如实升级为 E2E 全量 23/23。
 
 - [x] T-1534 v18.9.0 真机验收清单——done（2026-09-28，local-auto）。docs/integration-smoke-checklist.md 新增「可信记录批次（v18.9.0 真机验收）」一节：13 个小节覆盖 D-291 全部交互与收尾任务，按**设备才能验证的行为**编写（真实来源事件的渠道归类、整树重启后周复盘草稿恢复、Android WebView 下载通道、移动端文件选择器、触屏粘贴、320px 面板溢出、两主题概览回归），并写明每轮前置整树重启（规避 reloadUI 不刷新 JS 缓存的既有陷阱）；待处理箱真机不可构造的存储故障场景如实标注替代验证口径。守门 ui-docs/check 实测 EXIT=0。
