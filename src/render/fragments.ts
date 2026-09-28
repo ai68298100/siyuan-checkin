@@ -4,6 +4,7 @@ import {t, getPluginLocale} from "../i18n";
 import {daysBetweenHalfOpen} from "../date-keys";
 import {renderCompletionRing} from "../charts";
 import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
+import {buildTodayItemFact} from "../features/today-fact";
 import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
@@ -451,27 +452,11 @@ export function renderTodayView(ctx: TodayViewContext): string {
     const quickEntryTarget = pendingItems.find((item) => item.id === quickEntryTargetId);
     const completed = scheduledItems.filter((item) => isComplete(ctx.store, item, now)).length;
     const completionRate = scheduledItems.length ? Math.round((completed / scheduledItems.length) * 100) : 0;
-    /* T-1420 今日行动台投影：事实经 model 单一实现计算，编排排序委托投影层。 */
+    /* T-1420 今日行动台投影：事实经 model 单一实现计算，编排排序委托投影层。
+       T-1610：单项目切片经 today-fact 取当日生效修订的目标/单位/类型，不再混用 item 级现值。 */
     const dashboard = buildTodayDashboard({
         today: dateKey(now),
-        items: scheduledItems.map((item) => {
-            const revision = getItemRevisionForDate(item, now);
-            const progress = getProgress(ctx.store, item, now);
-            return {
-                itemId: item.id,
-                name: item.name,
-                icon: item.icon,
-                ...(item.group ? {group: item.group} : {}),
-                completed: isComplete(ctx.store, item, now),
-                skippedToday: getEventsForDay(ctx.store, item.id, now).some((event) => isSkipEvent(event)),
-                progress,
-                target: revision.target,
-                unit: item.unit,
-                ...(item.schedule.type === "quota" && item.schedule.quota ? {quota: {contributed: progress, amount: item.schedule.quota.amount}} : {}),
-                ...(item.direction === "atMost" ? {atMost: {breached: item.kind === "binary" ? progress > 0 : progress > revision.target}} : {}),
-                streak: ctx.currentStreaks.get(item.id),
-            };
-        }),
+        items: scheduledItems.map((item) => buildTodayItemFact({item, date: now, store: ctx.store, streak: ctx.currentStreaks.get(item.id)})),
         attention: selectTodayPriorityEntries(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || []).map((entry) => ({
             id: entry.id,
             title: entry.title,

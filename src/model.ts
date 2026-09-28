@@ -1,4 +1,4 @@
-import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
+import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeQuickSteps, normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
 import {calendarDayNumber} from "./date-keys";
@@ -744,18 +744,44 @@ export function evaluateItemRule(store: CheckinStore, item: CheckinItem, date = 
     return evaluateRule(item, getEventsForItem(store, item.id).filter((event) => !isSkipEvent(event)), date);
 }
 
+export interface DayCompletionInput {
+    /** 负向习惯方向（D-219）：atMost=戒除类（不记录即成功）；缺省=至少型。 */
+    direction?: "atMost";
+    kind: CheckinKind;
+    progress: number;
+    target: number;
+    /** 当日存在跳过事件——仅戒除类据此判未完成（跳过日不算成功）；至少型不受影响。 */
+    skipped: boolean;
+}
+
+/** T-1609：完成判定唯一公式——isComplete 与洞察投影共用，禁止另造第二套。
+    至少型：进度达到目标即完成；戒除类：跳过日不算成功，二值零真实事件即守住，
+    数值型不超过上限即守住（超额=破戒）。 */
+export function evaluateDayCompletion({direction, kind, progress, target, skipped}: DayCompletionInput): boolean {
+    if (!(target > 0)) return false;
+    if (direction === "atMost") {
+        if (skipped) return false;
+        return kind === "binary" ? progress === 0 : progress <= target;
+    }
+    return atLeastWithTolerance(progress, target);
+}
+
+function atLeastWithTolerance(progress: number, target: number): boolean {
+    const tolerance = Number.EPSILON * Math.max(Math.abs(progress), Math.abs(target)) * 8;
+    return progress >= target || target - progress <= tolerance;
+}
+
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {
     const revision = getItemRevisionForDate(item, date);
     const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || 0 : revision.target;
-    if (target <= 0) return false;
-    /* D-219：at-most（戒除类）——当日无真实事件即完成；跳过日不算成功。
-       binary：任意真实事件即破戒；数值型：不超过目标即完成。 */
-    if (item.direction === "atMost") {
-        if (getSkipDatesForItem(store, item.id).has(dateKey(date))) return false;
-        const progress = getProgress(store, item, date);
-        return revision.kind === "binary" ? progress === 0 : progress <= target;
-    }
-    return getProgress(store, item, date) >= target;
+    /* D-219：完成语义见 evaluateDayCompletion（与洞察投影共用的唯一公式）。 */
+    return evaluateDayCompletion({
+        direction: item.direction,
+        kind: revision.kind,
+        progress: getProgress(store, item, date),
+        target,
+        skipped: item.direction === "atMost" && getSkipDatesForItem(store, item.id).has(dateKey(date)),
+    });
 }
 
 /** Append several events against one warmed index and clone the event array once.

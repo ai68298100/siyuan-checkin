@@ -101,7 +101,9 @@ export function buildCoachingSuggestions(report: HabitInsights): CoachingSuggest
             detail: `距离今日目标还差 ${formatNumber(remaining)}${today.unit}，可以安排一个短时段完成。`,
             evidence: `今日进度 ${formatNumber(today.progress)}/${formatNumber(today.target)}${today.unit}`,
         });
-    } else if (today?.status === "pending") {
+    } else if (today?.status === "pending" && report.item.direction !== "atMost") {
+        /* T-1609：戒除类没有「还差多少」——今日 pending 只出现在跳过日，
+            「开始记录」对戒除目标意味着破戒，不给该建议。 */
         suggestions.push({
             id: "start-today",
             tone: "neutral",

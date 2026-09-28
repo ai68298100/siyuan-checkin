@@ -1,4 +1,4 @@
-import {dateKey, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
+import {dateKey, evaluateDayCompletion, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./habit-score";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
@@ -27,6 +27,8 @@ export interface HabitDayObservation {
     /** T-1223：仅跳过（有跳过记录且无真实进度）的计划日；streak 中性处理。 */
     skipped?: boolean;
     kind: CheckinKind;
+    /** T-1609：戒除类方向标记（与 calendar-projection 同词表），供文案与建议分支使用。 */
+    direction?: "atMost";
     progress: number;
     target: number;
     unit: string;
@@ -112,13 +114,26 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const progress = quotaProgress?.progress ?? sumValues(events.filter((event) => event.unit === unit && !isSkipEvent(event)).map((event) => event.value));
         const isToday = key === endDate;
         const effectiveTarget = quotaProgress?.quota ?? target;
-        const complete = progress > 0 && effectiveTarget > 0 && atLeast(progress, effectiveTarget);
-        const skipped = scheduled && !complete && progress === 0 && events.some((event) => isSkipEvent(event));
+        const atMost = item?.direction === "atMost";
+        const skippedToday = events.some((event) => isSkipEvent(event));
+        /* T-1609：完成判定走 model.evaluateDayCompletion 唯一公式（与 isComplete 同源）——
+           戒除类二值零事件即守住、数值不超上限即守住、跳过日不算成功。 */
+        const complete = evaluateDayCompletion({
+            direction: item?.direction,
+            kind: revision?.kind || "binary",
+            progress,
+            target: effectiveTarget,
+            skipped: skippedToday,
+        });
+        const skipped = scheduled && !complete && progress === 0 && skippedToday;
+        /* 戒除类没有「部分完成」：一旦有真实事件即破戒（含数值超限），与回顾日历
+           at-most-breach 的立即呈现一致；跳过日沿用 pending/missed + skipped 中性标记。 */
         const status: HabitDayStatus = !available ? "unavailable"
             : !scheduled ? "off"
                 : complete ? "complete"
-                    : progress > 0 ? "partial"
-                        : isToday ? "pending" : "missed";
+                    : atMost && progress > 0 ? "missed"
+                        : progress > 0 ? "partial"
+                            : isToday ? "pending" : "missed";
         days.push({
             date: key,
             status,
@@ -129,6 +144,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
             closed: key < endDate,
             ...(skipped ? {skipped: true} : {}),
             kind: revision?.kind || "binary",
+            ...(atMost ? {direction: "atMost" as const} : {}),
             progress,
             target: effectiveTarget,
             unit,
@@ -158,9 +174,10 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         break;
     }
     const records = days.flatMap((day) => day.events);
-    /* T-1240：超额日（数值型完成量 ≥ 目标 150%）。 */
+    /* T-1240：超额日（数值型完成量 ≥ 目标 150%）。戒除类的「超额」就是破戒，
+        与 achievements 的方向守卫一致，不计入超额日。 */
     const overachievedDays = days.reduce((total, day) => {
-        if (day.status !== "complete") return total;
+        if (day.status !== "complete" || day.direction === "atMost") return total;
         const progress = day.events.filter((event) => !isSkipEvent(event)).reduce((sum, event) => sum + event.value, 0);
         const target = day.target > 0 ? day.target * 1.5 : Number.POSITIVE_INFINITY;
         return total + (day.kind !== "binary" && progress >= target ? 1 : 0);
@@ -282,11 +299,6 @@ function sumValues(values: readonly number[]): number {
         total = next;
     }
     return total === 0 ? 0 : Number(total.toPrecision(15));
-}
-
-function atLeast(progress: number, target: number): boolean {
-    const tolerance = Number.EPSILON * Math.max(Math.abs(progress), Math.abs(target)) * 8;
-    return progress >= target || target - progress <= tolerance;
 }
 
 function isQuotaOpportunityDay(schedule: CheckinSchedule, date: Date, asOfKey: string): boolean {
