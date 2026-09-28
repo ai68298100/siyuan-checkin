@@ -164,12 +164,11 @@ export function renderEditorView(ctx: EditorViewContext): string {
         scheduleType: schedule.type, scheduleLabel: formatScheduleLabel(schedule), quotaAmount, quotaCountMode,
         directionAtMost: item?.direction === "atMost",
     });
+    /* T-1571：高级区摘要只覆盖留在高级的组织字段（排期/来源已提入主流程）。 */
     const advancedSummary = [
         item?.group || t("review.ungrouped"),
         PRIORITY_LABELS[initialPriority] && t(PRIORITY_LABELS[initialPriority]),
         initialTimeSlot === "any" ? "" : t(TIME_SLOT_LABELS[initialTimeSlot]),
-        initialCompletionSource === "tomato" ? t("source.tomato") : t("source.manual"),
-        formatScheduleLabel(schedule),
     ].filter(Boolean).join(" · ");
     const templates = !item ? `<details class="lc-checkin__template-section" data-template-disclosure${ctx.store.items.length ? "" : " open"}>
             <summary class="lc-checkin__template-summary"><span>${t("editor.templateHeading")}</span><em>${CHECKIN_TEMPLATES.length}</em><small>${t(ctx.store.items.length ? "editor.templateHint" : "editor.templateEmptyHint")}</small><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
@@ -246,7 +245,30 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <label class="lc-checkin__field" data-record-step-field><span>${t("editor.recordStepLabel")}</span><input name="recordStep" type="number" min="${getRecordStepInputStep(selectedKind, selectedUnit)}" step="${getRecordStepInputStep(selectedKind, selectedUnit)}" required value="${formatNumber(selectedRecordStep)}" /><small>${t("editor.recordStepHint")}</small></label>
                         <label class="lc-checkin__field" data-quick-steps-field><span>${t("editor.quickStepsLabel")}</span><input name="quickSteps" type="text" inputmode="decimal" value="${escapeHtml((item?.quickSteps ?? []).map((value) => formatNumber(value)).join(", "))}" placeholder="${t("editor.quickStepsPlaceholder")}" /><small>${t("editor.quickStepsHint")}</small></label>
                     </div>
+                    <div class="lc-checkin__field-heading" data-editor-section="when"><span>${t("editor.sectionWhen")}</span></div>
+                    <div class="lc-checkin__editor-schedule-fields">
+                    <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
+                    <div class="lc-checkin__weekdays" data-weekdays>${weekdaysFromSunday().map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
+                    <div class="lc-checkin__form-row" data-interval-schedule>
+                        <label class="lc-checkin__field"><span>${t("editor.intervalDays")}</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
+                        <label class="lc-checkin__field"><span>${t("editor.anchorDate")}</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">${t("review.tabDay")}</button></label>
+                    </div>
+                    <div class="lc-checkin__quota-schedule" data-quota-schedule>
+                        <div class="lc-checkin__form-row">
+                            <label class="lc-checkin__field"><span>${t("editor.quotaPeriodLabel")}</span><select name="quotaPeriod"><option value="week" ${quotaPeriod === "week" ? "selected" : ""}>${t("editor.quotaWeekly")}</option><option value="month" ${quotaPeriod === "month" ? "selected" : ""}>${t("editor.quotaMonthly")}</option></select></label>
+                            <label class="lc-checkin__field"><span data-quota-amount-label>${t("editor.quotaAmountLabel")}</span><input name="quotaAmount" type="number" min="1" step="1" value="${formatNumber(quotaAmount)}" /></label>
+                        </div>
+                        <label class="lc-checkin__field"><span>${t("editor.countModeLabel")}</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>${t("editor.countModeDates")}</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>${t("editor.countModeValue")}</option></select></label>
+                        <small class="lc-checkin__quota-help" data-quota-help>${t("editor.quotaHelp")}</small>
+                    </div>
+                    </div>
+                    <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--direction" data-direction-at-most-field><input name="directionAtMost" type="checkbox" ${item?.direction === "atMost" ? "checked" : ""} /><span>${t("editor.directionAtMost")}</span><small>${t("editor.directionAtMostHint")}</small></label>
+                    <p class="lc-checkin__integration-help" data-direction-warning hidden>${t("editor.directionFallbackWarn")}</p>
+                    <div class="lc-checkin__field-heading" data-editor-section="how"><span>${t("editor.sectionHow")}</span></div>
                     <label class="lc-checkin__field" data-journal-field><span>${t("journal.editorBindingLabel")}</span><select name="journalTemplateId"><option value="">${t("journal.bindingNone")}</option>${item?.journal?.templateId && !(ctx.journalTemplates ?? []).some(template => template.id === item.journal?.templateId) ? `<option value="${escapeHtml(item.journal.templateId)}" selected disabled>${t("journal.missingBindingOption")}</option>` : ""}${(ctx.journalTemplates ?? []).map((template) => `<option value="${escapeHtml(template.id)}"${item?.journal?.templateId === template.id ? " selected" : ""}>${escapeHtml(template.icon)} ${escapeHtml(template.name)}</option>`).join("")}</select><small>${t("journal.editorBindingHint")}</small></label>
+                    <label class="lc-checkin__field"><span>${t("editor.completionSource")}</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>${t("source.manual")}</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>${t("source.tomato")}</option></select></label>
+                    <label class="lc-checkin__field" data-tomato-mode-field><span>${t("editor.tomatoModeLabel")}</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>${t("editor.tomatoMinutesOpt")}</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>${t("editor.tomatoSessionsOpt")}</option></select></label>
+                    <p class="lc-checkin__integration-help" data-tomato-help>${t("editor.tomatoHelp")}</p>
                 </div>
                 <aside class="lc-checkin__editor-side">
                     <section class="lc-checkin__editor-preview" aria-label="${t("editor.previewLabel")}">
@@ -272,10 +294,6 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 <label class="lc-checkin__field"><span>${t("editor.slotLabel")}</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${t(TIME_SLOT_LABELS[slot])}</option>`).join("")}</select></label>
                                 <label class="lc-checkin__field"><span>${t("editor.autoArchiveLabel")}</span><input name="autoArchiveDays" type="number" inputmode="numeric" min="1" max="1000000" step="1" value="${item?.autoArchive?.afterDays ?? ""}" placeholder="${t("editor.autoArchiveOff")}" aria-label="${t("editor.autoArchiveLabel")}" /><small>${t("editor.autoArchiveHint")}</small></label>
                                 <label class="lc-checkin__field"><span>${t("editor.streakToleranceLabel")}</span><input name="streakToleranceDays" type="number" inputmode="numeric" min="1" max="30" step="1" value="${item?.streakTolerance ?? ""}" placeholder="${t("editor.streakToleranceOff")}" aria-label="${t("editor.streakToleranceLabel")}" /><small>${t("editor.streakToleranceHint")}</small></label>
-                                <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--direction" data-direction-at-most-field ${schedule.type === "daily" ? "" : "hidden"}><input name="directionAtMost" type="checkbox" ${item?.direction === "atMost" ? "checked" : ""} /><span>${t("editor.directionAtMost")}</span><small>${t("editor.directionAtMostHint")}</small></label>
-                                <label class="lc-checkin__field"><span>${t("editor.completionSource")}</span><select name="completionSource"><option value="manual" ${initialCompletionSource === "manual" ? "selected" : ""}>${t("source.manual")}</option><option value="tomato" ${initialCompletionSource === "tomato" ? "selected" : ""}>${t("source.tomato")}</option></select></label>
-                                <label class="lc-checkin__field" data-tomato-mode-field ${initialCompletionSource === "tomato" ? "" : "hidden"}><span>${t("editor.tomatoModeLabel")}</span><select name="tomatoMode"><option value="minutes" ${initialTomatoMode === "minutes" ? "selected" : ""}>${t("editor.tomatoMinutesOpt")}</option><option value="sessions" ${initialTomatoMode === "sessions" ? "selected" : ""}>${t("editor.tomatoSessionsOpt")}</option></select></label>
-                                <p class="lc-checkin__integration-help" data-tomato-help ${initialCompletionSource === "tomato" ? "" : "hidden"}>${t("editor.tomatoHelp")}</p>
                                 <div class="lc-checkin__field lc-checkin__anchor-field" data-anchor-picker>
                                     <span>${t("editor.anchorTitle")}</span>
                                     <div class="lc-checkin__anchor-input-row"><input name="anchorBlockId" type="text" maxlength="64" placeholder="${t("editor.anchorPlaceholder")}" value="${escapeHtml(item?.noteAnchor?.blockId || "")}" /><button type="button" class="lc-checkin__field-action" data-action="anchor-open-picker">${t("editor.anchorChoose")}</button><button type="button" class="lc-checkin__field-action" data-action="anchor-clear" aria-label="${t("editor.anchorClear")}" title="${t("editor.anchorClear")}">×</button></div>
@@ -291,22 +309,6 @@ export function renderEditorView(ctx: EditorViewContext): string {
                                 ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
                                 <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--anchor" data-anchor-append-field><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} ${item?.noteAnchor?.blockId ? "" : "disabled"} /><span>${t("editor.anchorAppend")}</span><small>${t("editor.anchorAppendHint")}</small></label>
                                 <label class="lc-checkin__field lc-checkin__field-check" data-taskhorizon-visible-field><input name="taskHorizonVisible" type="checkbox" ${item?.taskHorizonCalendarVisible !== false ? "checked" : ""} aria-label="${t("editor.thVisible")}" /><span>${t("editor.thVisible")}</span><small>${t("editor.thVisibleHint")}</small></label>
-                            </div>
-                            <div class="lc-checkin__editor-schedule-fields">
-                            <div class="lc-checkin__field"><span>${t("editor.scheduleLabel")}</span><select name="schedule" aria-label="${t("editor.scheduleLabel")}">${Object.entries(SCHEDULE_LABELS).map(([value, label]) => `<option value="${value}" ${schedule.type === value ? "selected" : ""}>${t(label)}</option>`).join("")}</select></div>
-                            <div class="lc-checkin__weekdays" data-weekdays>${weekdaysFromSunday().map((day, index) => `<label><input type="checkbox" name="weekday" value="${index}" ${weekdays.includes(index) ? "checked" : ""}/><span>${day}</span></label>`).join("")}</div>
-                            <div class="lc-checkin__form-row" data-interval-schedule hidden>
-                                <label class="lc-checkin__field"><span>${t("editor.intervalDays")}</span><input name="intervalDays" type="number" min="1" max="3650" step="1" value="${intervalDays}" /></label>
-                                <label class="lc-checkin__field"><span>${t("editor.anchorDate")}</span><input name="anchorDate" type="date" value="${escapeHtml(anchorDate)}" /><button class="lc-checkin__field-action" type="button" data-action="anchor-today">${t("review.tabDay")}</button></label>
-                            </div>
-                            <div class="lc-checkin__quota-schedule" data-quota-schedule hidden>
-                                <div class="lc-checkin__form-row">
-                                    <label class="lc-checkin__field"><span>${t("editor.quotaPeriodLabel")}</span><select name="quotaPeriod"><option value="week" ${quotaPeriod === "week" ? "selected" : ""}>${t("editor.quotaWeekly")}</option><option value="month" ${quotaPeriod === "month" ? "selected" : ""}>${t("editor.quotaMonthly")}</option></select></label>
-                                    <label class="lc-checkin__field"><span data-quota-amount-label>${t("editor.quotaAmountLabel")}</span><input name="quotaAmount" type="number" min="1" step="1" value="${formatNumber(quotaAmount)}" /></label>
-                                </div>
-                                <label class="lc-checkin__field"><span>${t("editor.countModeLabel")}</span><select name="quotaCountMode"><option value="dates" ${quotaCountMode === "dates" ? "selected" : ""}>${t("editor.countModeDates")}</option><option value="value" ${quotaCountMode === "value" ? "selected" : ""}>${t("editor.countModeValue")}</option></select></label>
-                                <small class="lc-checkin__quota-help" data-quota-help>${t("editor.quotaHelp")}</small>
-                            </div>
                             </div>
                         </div>
                     </details>

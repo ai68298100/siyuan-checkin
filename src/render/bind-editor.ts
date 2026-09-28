@@ -488,6 +488,16 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (intervalSchedule) intervalSchedule.hidden = scheduleSelect?.value !== "interval";
         if (quotaSchedule) quotaSchedule.hidden = scheduleSelect?.value !== "quota";
         if (directionField) directionField.hidden = scheduleSelect?.value !== "daily";
+        /* T-1571：戒除方向仅支持每日排期——改排期后显式提示「保存将按普通目标处理」，
+           save-form 的静默回落行为保持不变（复选框 checked 即戒除语义仍在）；
+           番茄计值随完成来源显隐（单点收拢至此，修复手动切来源不联动）。 */
+        const directionChecked = root.querySelector<HTMLInputElement>("input[name='directionAtMost']")?.checked === true;
+        const directionWarning = root.querySelector<HTMLElement>("[data-direction-warning]");
+        if (directionWarning) directionWarning.hidden = !(directionChecked && scheduleSelect?.value !== "daily");
+        const tomatoVisible = root.querySelector<HTMLSelectElement>("select[name='completionSource']")?.value === "tomato";
+        const tomatoModeField = root.querySelector<HTMLElement>("[data-tomato-mode-field]");
+        if (tomatoModeField) tomatoModeField.hidden = !tomatoVisible;
+        root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", !tomatoVisible);
         const quotaMode = root.querySelector<HTMLSelectElement>("select[name='quotaCountMode']")?.value || "dates";
         const quotaAmount = root.querySelector<HTMLInputElement>("input[name='quotaAmount']");
         const quotaAmountLabel = root.querySelector<HTMLElement>("[data-quota-amount-label]");
@@ -686,8 +696,6 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const iconGroup = ICON_GROUPS.find((group) => group.icons.includes(template.icon));
         if (iconGroup) selectIconGroup(iconGroup.id);
         updateConditionalFields(false);
-        root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
-        root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato");
         updateEditorPreview();
         updateAdvancedSummary();
         /* 亲和锚点是 zh 原名，不能用 templateName() 的译文（语言切换后译文无法命中亲和表）。 */
@@ -859,7 +867,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         setInput("name", templateName(template)); setInput("target", String(template.target)); setInput("unit", template.unit); setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep))); setInput("group", template.group); setInput("priority", template.priority); setInput("timeSlot", template.timeSlot || "any"); setInput("completionSource", template.completionSource || "manual"); setInput("tomatoMode", template.tomatoMode || "minutes"); setInput("schedule", template.schedule.type);
         const kindInput = root.querySelector<HTMLInputElement>(`input[name='kind'][value='${template.kind}']`); if (kindInput) kindInput.checked = true;
         root.querySelectorAll<HTMLInputElement>("input[name='weekday']").forEach((input) => { input.checked = (template.schedule.weekdays || []).includes(Number(input.value)); });
-        selectIcon(template.icon); updateConditionalFields(false); root.querySelector<HTMLElement>("[data-tomato-mode-field]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); root.querySelector<HTMLElement>("[data-tomato-help]")?.toggleAttribute("hidden", template.completionSource !== "tomato"); updateEditorPreview(); updateAdvancedSummary();
+        selectIcon(template.icon); updateConditionalFields(false); updateEditorPreview(); updateAdvancedSummary();
         collapseTemplateDisclosure();
         ensureEditorVisible(root.querySelector<HTMLInputElement>("input[name='name']"));
     }));
