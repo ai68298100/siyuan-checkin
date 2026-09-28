@@ -195,6 +195,12 @@
         .lc-checkin__settings-card :is(select, .lc-checkin__text-button, .lc-checkin__small-button, .lc-checkin__file-button, .lc-checkin__settings-link) { min-height: 44px; }
         .lc-checkin__settings-card .lc-checkin__file-button { display: inline-flex; align-items: center; justify-content: center; }
         .lc-checkin__settings-inbox-more > summary { min-height: 44px; }
+        /* T-1600 触控目标走查：总览入口按钮、来源沙盒与联动面板折叠头此前 30~36px。 */
+        .lc-checkin__external-overview .lc-checkin__text-button { min-height: 44px; }
+        .lc-checkin__sandbox > summary { min-height: 44px; align-items: center; }
+        .lc-checkin__source-panel-head { min-height: 44px; }
+        .lc-checkin__settings-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+        .lc-checkin__settings-inline > :is(input[type="text"], input[type="file"]) { min-height: 44px; }
         /* Keep descriptions readable below the control instead of squeezing
            import instructions into half the phone width. */
         .lc-checkin__settings-row:has(> :is(button, .lc-checkin__file-button, .lc-checkin__kbd-group)) > .lc-checkin__settings-label { display: contents; }
@@ -220,6 +226,8 @@
         .lc-checkin__occasion-filter-fold > summary,
         .lc-checkin__occasion-templates-fold > summary,
         .lc-checkin__occasion-note-fold > summary { min-height: 44px; }
+        /* T-1600 触控目标走查：新建事项抽屉头此前 21px，对齐 44px 触控准则。 */
+        .lc-checkin__occasion-form-drawer > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; }
         .lc-checkin__occasion-templates-fold[open] > .lc-checkin__occasion-template-browser { max-height: none; overflow: visible; }
         .lc-checkin__occasion-templates { max-height: 264px; overflow-y: auto; }
         .lc-checkin__occasion-form-panel .lc-checkin__editor-actions { flex-wrap: wrap; gap: 8px; }

@@ -191,6 +191,8 @@
         .lc-checkin__history-row > .lc-checkin__text-button,
         .lc-checkin__archived-bulk > button { min-width: 44px; min-height: 44px; padding-inline: 8px; font-size: 12px; }
         .lc-checkin__archived-select-all { min-height: 44px; }
+        /* T-1600 触控目标走查：详情折叠头此前 16px，对齐 44px 触控准则。 */
+        .lc-checkin__archived-details > summary { display: flex; align-items: center; min-height: 44px; }
     }
 }
 
@@ -236,6 +238,9 @@
         overflow-wrap: anywhere;
         line-height: 1.4;
     }
+    /* T-1600 触控目标走查：今日负荷与编辑器排期预演折叠头此前 36px，对齐 44px。 */
+    .lc-checkin__week-load > summary,
+    .lc-checkin__schedule-preview > summary { min-height: 44px; align-items: center; }
     .lc-checkin.lc-checkin--review {
         .lc-checkin__summary-stats { padding-block: 8px; }
         .lc-checkin__summary-stats > div { padding-inline: 10px; }

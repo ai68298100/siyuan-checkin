@@ -21,36 +21,38 @@ function loadPlaywright() {
 const {chromium} = loadPlaywright();
 const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirname, "..");
 
-(async () => {
-    const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
-    const violations = [];
-    const smallTargets = new Map();
-    let checkedPairs = 0;
+/* T-1600 走查重构：桌面/移动共用一个启动器——桌面保持原有 1280 视口 + 8px 页边距，
+   移动 320px 视口全宽（触控目标实测需要窄容器与 mobile 前端语义）；store 参数化
+   支持空态走查（无项目无事件）。 */
+const makeStore = () => {
+    const now = new Date();
+    const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 10);
+    return {
+        version: 1,
+        items: [
+            {id: "stretch", name: "晨间拉伸", icon: "☀", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, group: "健康", priority: "medium", timeSlot: "morning", createdAt: now.toISOString()},
+            {id: "reading", name: "深度阅读", icon: "📖", kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, group: "学习", priority: "high", timeSlot: "evening", createdAt: now.toISOString()},
+            {id: "walk", name: "晚间散步", icon: "🚶", kind: "quantity", target: 5000, unit: "步", schedule: {type: "daily"}, createdAt: now.toISOString(), archived: true},
+        ],
+        events: [
+            {id: "e1", itemId: "stretch", occurredAt: now.toISOString(), value: 1, unit: "次", source: "manual"},
+            {id: "e2", itemId: "reading", occurredAt: now.toISOString(), value: 25, unit: "分钟", source: "manual", note: "第四章"},
+            {id: "e3", itemId: "reading", occurredAt: previous.toISOString(), value: 30, unit: "分钟", source: "manual"},
+        ],
+    };
+};
 
-    for (const dark of [false, true]) {
-        const page = await browser.newPage({viewport: {width: 1280, height: 900}});
-        await page.setContent(`<style>:root{${dark
-            ? "--b3-theme-on-background:#dcdcdc;--b3-theme-on-surface-light:#9aa0a6;--b3-theme-background:#1e1e1e;--b3-theme-surface:#262626;--b3-theme-surface-lighter:#303030;--b3-border-color:#3a3a3a;--b3-theme-primary:#3575f0"
-            : "--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-theme-primary:#3575f0"};--b3-font-family:Arial,sans-serif}body{margin:8px;background:${dark ? "#1e1e1e" : "#fff"}}</style><main id="frame" style="width:1200px;height:820px;border:1px solid ${dark ? "#3a3a3a" : "#ddd"}"><div id="dock" style="width:100%;height:100%"></div></main>`);
-        await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
-        await page.evaluate((hostDark) => {
-            const now = new Date();
-            const previous = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 10);
-            window.__store = {
-                version: 1,
-                items: [
-                    {id: "stretch", name: "晨间拉伸", icon: "☀", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, group: "健康", priority: "medium", timeSlot: "morning", createdAt: now.toISOString()},
-                    {id: "reading", name: "深度阅读", icon: "📖", kind: "duration", target: 30, unit: "分钟", schedule: {type: "daily"}, group: "学习", priority: "high", timeSlot: "evening", createdAt: now.toISOString()},
-                    {id: "walk", name: "晚间散步", icon: "🚶", kind: "quantity", target: 5000, unit: "步", schedule: {type: "daily"}, createdAt: now.toISOString(), archived: true},
-                ],
-                events: [
-                    {id: "e1", itemId: "stretch", occurredAt: now.toISOString(), value: 1, unit: "次", source: "manual"},
-                    {id: "e2", itemId: "reading", occurredAt: now.toISOString(), value: 25, unit: "分钟", source: "manual", note: "第四章"},
-                    {id: "e3", itemId: "reading", occurredAt: previous.toISOString(), value: 30, unit: "分钟", source: "manual"},
-                ],
-            };
-            window.module = {exports: {}};
-            window.siyuan = {config: {appearance: {mode: hostDark ? 1 : 0}, system: {appDir: "", os: "windows"}}};
+async function bootHost({browser, projectRoot, dark, frontend = "desktop", width = 1280, height = 900, store = makeStore()}) {
+    const page = await browser.newPage({viewport: {width, height}, hasTouch: frontend !== "desktop"});
+    const frameWidth = width === 1280 ? 1200 : width;
+    await page.setContent(`<style>:root{${dark
+        ? "--b3-theme-on-background:#dcdcdc;--b3-theme-on-surface-light:#9aa0a6;--b3-theme-background:#1e1e1e;--b3-theme-surface:#262626;--b3-theme-surface-lighter:#303030;--b3-border-color:#3a3a3a;--b3-theme-primary:#3575f0"
+        : "--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-theme-primary:#3575f0"};--b3-font-family:Arial,sans-serif}body{margin:${width === 1280 ? 8 : 0}px;background:${dark ? "#1e1e1e" : "#fff"}}</style><main id="frame" style="width:${frameWidth}px;height:${height - 80}px;border:1px solid ${dark ? "#3a3a3a" : "#ddd"}"><div id="dock" style="width:100%;height:100%"></div></main>`);
+    await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
+    await page.evaluate(({mode, frontend, store}) => {
+        window.__store = structuredClone(store);
+        window.module = {exports: {}};
+            window.siyuan = {config: {appearance: {mode}, system: {appDir: "", os: "windows"}}};
             window.require = (name) => {
                 if (name !== "siyuan") throw new Error(`Unexpected external: ${name}`);
                 return {
@@ -63,12 +65,12 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                         loadData() { return Promise.resolve(structuredClone(window.__store)); }
                         saveData(_name, value) { return new Promise((resolve) => setTimeout(() => { window.__store = structuredClone(value); resolve(); }, 10)); }
                     },
-                    getFrontend() { return "desktop"; },
+                    getFrontend() { return frontend; },
                     openTab(options) { return Promise.resolve({close() {}}); },
                     showMessage() {},
                 };
             };
-        }, dark ? 1 : 0);
+        }, {mode: dark ? 1 : 0, frontend, store});
         await page.addScriptTag({path: path.join(projectRoot, "dist", "index.js")});
         await page.evaluate(async () => {
             const PluginClass = window.module.exports.default || window.module.exports;
@@ -80,8 +82,25 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
             await readyPromise;
         });
         await page.waitForTimeout(200);
+    return page;
+}
 
-        const surfaceName = dark ? "dark" : "light";
+(async () => {
+    const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
+    const violations = [];
+    const smallTargets = new Map();
+    let checkedPairs = 0;
+
+    /* 三遍走查：亮/暗主题全表面 + 空态（无项目无事件）全表面（T-1600 空态路径）。 */
+    const passes = [
+        {key: "light", dark: false},
+        {key: "dark", dark: true},
+        {key: "empty", dark: false, empty: true},
+    ];
+    for (const pass of passes) {
+        const page = await bootHost({browser, projectRoot, dark: pass.dark, store: pass.empty ? {version: 1, items: [], events: []} : undefined});
+
+        const surfaceName = pass.key;
         const auditName = (label) => `${surfaceName}: ${label}`;
 
         /* 收集当前 DOM 的可访问性违规。 */
@@ -186,6 +205,15 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
                         problems.push({kind: "contrast", surface: surfaceName, detail: `${ratio.toFixed(2)}:1 @${size}px ${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""} "${text.slice(0, 16)}"`});
                     }
                 }
+                /* 4. 键盘可达性（T-1600）：click 语义钩子必须落在原生可聚焦元素上；
+                   div/span 等非原生元素只有显式 role + tabindex="0" 补偿才可接受。 */
+                container.querySelectorAll("[data-action], [data-mobile-nav]").forEach((el) => {
+                    const tag = el.tagName.toLowerCase();
+                    if (["button", "a", "input", "select", "textarea", "label", "summary", "option"].includes(tag)) return;
+                    if (!visible(el)) return;
+                    if (el.getAttribute("role") && el.getAttribute("tabindex") === "0") return;
+                    problems.push({kind: "keyboard-unreachable", surface: surfaceName, detail: `${tag}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""} ${el.hasAttribute("data-action") ? `data-action=${el.getAttribute("data-action")}` : "data-mobile-nav"}`});
+                });
                 return {problems, checked, small};
             }, surfaceName).then(({problems: found, checked, small}) => {
                 checkedPairs += checked;
@@ -210,7 +238,8 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
             await page.waitForTimeout(160);
             await auditDom(target);
         }
-        /* 归档（从回顾页头部进入，T-032）与复盘（从今日卡片复盘按钮进入）纳入审计（T-111）。 */
+        /* 归档（从回顾页头部进入，T-032）与复盘（从今日卡片复盘按钮进入）纳入审计（T-111）；
+           空态下入口可能不渲染，先探测再进入（T-1600）。 */
         await clickNav("review");
         await page.waitForTimeout(120);
         await clickNav("archived");
@@ -218,15 +247,83 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
         await auditDom("archived");
         await clickNav("today");
         await page.waitForTimeout(120);
-        await page.locator("[data-action='insights']").first().evaluate((b) => b.click());
-        await page.waitForTimeout(160);
-        await auditDom("insights");
+        if (await page.locator("[data-action='insights']").count()) {
+            await page.locator("[data-action='insights']").first().evaluate((b) => b.click());
+            await page.waitForTimeout(160);
+            await auditDom("insights");
+        }
         /* 编辑器（新建） */
-        await clickNav("today");
-        await page.locator("[data-action='add']").first().evaluate((b) => b.click());
-        await page.waitForTimeout(160);
-        await auditDom("editor");
+        if (await page.locator("[data-action='add']").count()) {
+            await page.locator("[data-action='add']").first().evaluate((b) => b.click());
+            await page.waitForTimeout(160);
+            await auditDom("editor");
+        }
         await page.close();
+    }
+
+    /* T-1600 触控目标走查：320px 移动前端实测 44px 准则。本轮修复的折叠头/入口
+       逐项守门防回归；其余致密列表文本按钮（实测 28~42px，高于已强制的 24px AA
+       下限）仅报告不拦截——实测数据登记验收台账，不做像素级一刀切。 */
+    {
+        const page = await bootHost({browser, projectRoot, dark: false, frontend: "mobile", width: 320, height: 640});
+        const clickNavMobile = async (target) => {
+            const navigation = page.locator(`[data-mobile-nav="${target}"]`).first();
+            if (await navigation.count()) { await navigation.evaluate((button) => button.click()); return; }
+            const fallback = page.locator(`[data-action='${target}']`).first();
+            if (!await fallback.count()) throw new Error(`mobile navigation target ${target} missing`);
+            await fallback.evaluate((button) => button.click());
+        };
+        /* 各表面守门选择器：T-1600 前实测 16~36px 的折叠头/入口，修复后必须 ≥44px。 */
+        const surfaceGuards = [
+            {surface: "today", nav: "today", selectors: [".lc-checkin__week-load > summary"]},
+            {surface: "occasions", nav: "occasions", selectors: [".lc-checkin__occasion-form-drawer > summary"]},
+            {surface: "settings", nav: "settings", selectors: [".lc-checkin__sandbox > summary", ".lc-checkin__source-panel-head", ".lc-checkin__settings-group > summary"]},
+            {surface: "archived", nav: "archived", selectors: [".lc-checkin__archived-details > summary"]},
+            {surface: "editor", nav: "editor", selectors: [".lc-checkin__schedule-preview > summary"]},
+        ];
+        const tapShortfalls = [];
+        const tapReport = [];
+        for (const guard of surfaceGuards) {
+            if (guard.nav === "archived") { await clickNavMobile("review"); await page.waitForTimeout(120); await clickNavMobile("archived"); }
+            else if (guard.nav === "editor") { await clickNavMobile("today"); await page.waitForTimeout(120); await clickNavMobile("add"); }
+            else await clickNavMobile(guard.nav);
+            await page.waitForTimeout(180);
+            for (const selector of guard.selectors) {
+                const box = await page.evaluate((selector) => {
+                    const el = document.querySelector(selector);
+                    if (!el) return null;
+                    const rect = el.getBoundingClientRect();
+                    return {h: Math.round(rect.height), rendered: rect.width >= 2 && rect.height >= 2 && getComputedStyle(el).display !== "none"};
+                }, selector);
+                if (box && box.rendered && box.h < 44) tapShortfalls.push(`${guard.surface}: ${selector} ${box.h}px`);
+            }
+            const report = await page.evaluate(() => {
+                const container = document.querySelector(".lc-checkin");
+                if (!container) return [];
+                const out = [];
+                const seen = new Set();
+                container.querySelectorAll("button, a, input, select, textarea, summary").forEach((el) => {
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width < 2 || rect.height < 2) return;
+                    const style = getComputedStyle(el);
+                    if (style.visibility === "hidden" || style.display === "none") return;
+                    const labelBounds = el.closest("label")?.getBoundingClientRect();
+                    const w = labelBounds && labelBounds.width >= 44 ? labelBounds.width : rect.width;
+                    const h = labelBounds && labelBounds.height >= 44 ? labelBounds.height : rect.height;
+                    if (w >= 44 && h >= 44) return;
+                    const desc = `${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""}[${el.getAttribute("data-action") || el.getAttribute("data-mobile-nav") || el.getAttribute("type") || ""}]`;
+                    if (seen.has(desc)) return;
+                    seen.add(desc);
+                    out.push(`${Math.round(w)}x${Math.round(h)} <${desc}>`);
+                });
+                return out;
+            });
+            tapReport.push(...report.map((line) => `${guard.surface}: ${line}`));
+        }
+        await page.close();
+        console.log(`tap-target audit: ${tapShortfalls.length} guarded controls below 44px, ${tapReport.length} dense-list controls measured below 44px (24px AA floor enforced elsewhere)`);
+        for (const line of tapReport.slice(0, 12)) console.log(`  [tap-report] ${line}`);
+        assert.equal(tapShortfalls.length, 0, `T-1600 guarded touch targets below 44px: ${tapShortfalls.join("; ")}`);
     }
 
     await browser.close();
@@ -234,7 +331,8 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
     const missingName = violations.filter((v) => v.kind === "missing-name");
     const positiveTab = violations.filter((v) => v.kind === "positive-tabindex");
     const contrast = violations.filter((v) => v.kind === "contrast");
-    console.log(`accessibility audit: ${missingName.length} missing names, ${positiveTab.length} positive tabindex, ${contrast.length} contrast violations / ${checkedPairs} checked pairs (light+dark)`);
+    const keyboardUnreachable = violations.filter((v) => v.kind === "keyboard-unreachable");
+    console.log(`accessibility audit: ${missingName.length} missing names, ${positiveTab.length} positive tabindex, ${keyboardUnreachable.length} keyboard-unreachable, ${contrast.length} contrast violations / ${checkedPairs} checked pairs (light+dark+empty)`);
     console.log(`target-size audit: ${smallTargets.size} distinct rendered controls below 24px without an enclosing label target`);
     for (const [target, count] of [...smallTargets].slice(0, 30)) console.log(`  [target-size] ${target} x${count}`);
     assert.ok(checkedPairs > 0, "contrast audit must inspect rendered text");
@@ -250,6 +348,7 @@ const projectRoot = process.env.CHECKIN_QA_PROJECT_ROOT || path.resolve(__dirnam
     /* 名称与 tabindex 必须零违规；对比度问题允许已知豁免数量内通过由阈值控制。 */
     assert.equal(missingName.length, 0, `interactive elements without accessible names: ${missingName.length}`);
     assert.equal(positiveTab.length, 0, `positive tabindex values: ${positiveTab.length}`);
+    assert.equal(keyboardUnreachable.length, 0, `click hooks on non-focusable elements (T-1600): ${keyboardUnreachable.length}`);
     assert.equal(smallTargets.size, 0, `rendered controls below 24px without an enclosing label target: ${smallTargets.size}`);
     assert.ok(contrast.length <= Number(process.env.CHECKIN_A11Y_CONTRAST_BUDGET || 0),
         `contrast violations ${contrast.length} exceed budget`);
