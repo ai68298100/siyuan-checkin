@@ -73,3 +73,13 @@ assert.ok(compatDoc.includes(pluginJson.minAppVersion), "doc must state the decl
 assert.equal(pluginJson.minAppVersion, "3.8.4", "the declared minimum must be the actually tested baseline, not an untested historical value (T-1271/D-238)");
 
 console.log(`Block DOM-compat and compatibility-doc checks passed: ${caps.length} agent capabilities, ${coupled.length} coupled selectors confined, budgets ${drainMs}/${flushMs}ms.`);
+
+/* —— T-1598 渲染块生命周期与降级一致性（此前未守门的胶水语义）。 —— */
+assert.match(blockSource, /let disposed = false;/, "observeCheckinBlocks 必须有 disposed 短路标志");
+assert.match(blockSource, /if \(disposed\) return;/, "disposed 后 mutation 回调与防抖定时器必须短路");
+assert.match(blockSource, /observer\.disconnect\(\);/, "teardown 必须 disconnect MutationObserver");
+assert.match(blockSource, /lastRenderedConfig\.get\(block\) === configText\) continue;/, "配置未变必须跳过重渲染（防观察风暴）");
+assert.match(blockSource, /previousIsOurs && !options\?\.force/, "同源预览才可跳过/替换（相邻块互不干扰）");
+assert.match(blockSource, /previous\?\.remove\(\);/, "配置变化时仅移除自己的旧预览");
+assert.match(blockSource, /return \(\) => \{[\s\S]*?disposed = true;/, "teardown 返回断开函数并置 disposed");
+assert.match(blockSource, /role="alert"/, "局部失败（坏配置）必须出 role=alert 错误面板且不影响相邻块");
