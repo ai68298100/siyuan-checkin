@@ -10431,14 +10431,7 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__binding-status.is-missing { color: var(--lc-checkin-danger-text); font-weight: 600; }
 .lc-checkin__binding-actions { display: inline-flex; gap: 4px; }
 
-/* R-A16（2026-09-26）：轻量 SVG 视觉件。单色 accent 阶梯 + 文字冗余编码（T-1461），
-   静态呈现零动效零过渡（D-263）；完成 100% 切 success 色。 */
-.lc-checkin__completion-ring { flex: none; display: block; }
-.lc-checkin__ring-track { stroke: var(--lc-checkin-border); }
-.lc-checkin__ring-value { stroke: var(--lc-checkin-accent); }
-.lc-checkin__completion-ring.is-complete .lc-checkin__ring-value { stroke: var(--lc-checkin-success); }
-/* 摘要条内的环：负边距抵消条内边距，不增加条高（30 项密度场景首卡位置预算不受影响）。 */
-.lc-checkin__console .lc-checkin__completion-ring { height: 30px; width: 30px; margin-block: -6px; }
+/* R-A16 今日完成度环已于 T-1577 行动台收束时退役（进度唯一归 overview 大环）。 */
 .lc-checkin__renderblock-summary {
     display: grid;
     gap: 6px;

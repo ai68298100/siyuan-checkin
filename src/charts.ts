@@ -434,19 +434,5 @@ export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: numbe
     return `<svg class="lc-yearheatmap lc-yearheatmap--weekly" viewBox="0 0 ${width.toFixed(0)} ${(cell + gap * 2).toFixed(0)}" role="img" aria-label="${label}">${cells}</svg>`;
 }
 
-/* R-A16（2026-09-26）：轻量 SVG 视觉件。单色阶梯 + 文字冗余编码（T-1461 基线），
-   静态呈现零动效（D-263），零依赖纯函数、确定性输出。 */
-
-/** R-16.1 今日完成度环：wrap-around 圆环，12 点起顺时针；完成 100% 切 success 色。
-    百分比来自 today-dashboard 既有 totals.completionRate 投影，本层只做形状。 */
-export function renderCompletionRing(percent: number, options: {size?: number; ariaLabel?: string} = {}): string {
-    const size = options.size ?? 34;
-    const stroke = 4;
-    const radius = (size - stroke) / 2;
-    const center = size / 2;
-    const circumference = 2 * Math.PI * radius;
-    const clamped = Math.max(0, Math.min(100, Math.round(Number.isFinite(percent) ? percent : 0)));
-    const dash = (circumference * clamped) / 100;
-    const label = options.ariaLabel ?? `${clamped}%`;
-    return `<svg class="lc-checkin__completion-ring${clamped >= 100 ? " is-complete" : ""}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" role="img" aria-label="${escapeChartText(label)}"><circle class="lc-checkin__ring-track" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}"/><circle class="lc-checkin__ring-value" cx="${center}" cy="${center}" r="${radius}" fill="none" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${dash.toFixed(2)} ${circumference.toFixed(2)}" transform="rotate(-90 ${center} ${center})"/></svg>`;
-}
+/* R-A16 今日完成度环已于 T-1577 随今日行动台收束退役：
+   进度展示唯一归 overview 大环；本文件不再保留零消费视觉件（D-292 sparkline 同例）。 */

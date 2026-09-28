@@ -147,14 +147,18 @@ const fact = (overrides = {}) => ({
 
 /* —— 12. 接线守门：fragments 消费投影、摘要条 DOM、i18n 双语键 —— */
 const fragmentsSource = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
+/* T-1577 行动台收束：进度唯一归 overview，行动条只留下一步/跳过/专注；环视觉件退役零残留。 */
+assert.ok(!fragmentsSource.includes("renderCompletionRing"), "行动台环视觉件已退役（进度唯一归 overview）");
+assert.ok(!fragmentsSource.includes("today.consoleTotals") && !fragmentsSource.includes("today.consoleRingAria"), "重复进度文案键退役零残留");
+assert.match(fragmentsSource, /lc-checkin__overview-ring/, "overview 大环为唯一进度展示");
 assert.match(fragmentsSource, /buildTodayDashboard/, "今日视图必须消费 today-dashboard 投影");
 assert.match(fragmentsSource, /data-today-dashboard/, "今日视图必须渲染行动台摘要条容器");
 assert.match(fragmentsSource, /renderTodayDashboardStrip/, "摘要条渲染函数必须存在");
-for (const key of ["today.consoleTotals", "today.consoleNext", "today.consoleAllDone", "today.consoleFocusMissing"]) {
+for (const key of ["today.consoleNextAria", "today.consoleNext", "today.consoleAllDone", "today.consoleSkipped", "today.consoleFocusMissing"]) {
     assert.match(fragmentsSource, new RegExp(key.replace(/\./, "\\.")), `fragments 使用 ${key}`);
 }
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
-for (const key of ["today.consoleTotals", "today.consoleNext", "today.consoleAllDone", "today.consoleFocusMissing"]) {
+for (const key of ["today.consoleNextAria", "today.consoleNext", "today.consoleAllDone", "today.consoleSkipped", "today.consoleFocusMissing"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
     assert.ok(occurrences >= 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }
