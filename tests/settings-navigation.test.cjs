@@ -589,6 +589,16 @@ assert.match(indexSourceT1553, /set\.targetClearConfirm/, "清除目标必须先
 assert.match(indexSourceT1553, /private targetSummaries = new Map/, "目标摘要为会话内存缓存（不落存储桶）");
 assert.match(indexSourceT1553, /readBindingBlocks\(docIds\)/, "摘要水合复用既有块查询单一实现");
 assert.match(indexSourceT1553, /data-target-edit="\$\{card\.point\}"\]`\)\?\.addEventListener\("click", \(\) => \{\s*root\.querySelector<HTMLElement>\(`\[\$\{card\.attribute\}\]`\)\?\.focus\(\)/s, "重新选择必须聚焦对应输入框");
+/* T-1552 五段式：三张写入卡显式声明触发方式并呈现最近写入（审计单一事实）；摘要常驻开关保留。 */
+for (const point of ["diary", "summary", "journal"]) {
+    assert.match(settingsSourceT1442, new RegExp(`writeTriggerRow\\("${point}"`), `${point} 写入卡必须声明触发方式`);
+    assert.match(settingsSourceT1442, new RegExp(`writeResultRow\\("${point}"`), `${point} 写入卡必须呈现最近写入`);
+}
+assert.match(settingsSourceT1442, /data-summary-resident/, "摘要常驻开关必须保留（自动触发语义）");
+assert.ok(!settingsSourceT1442.includes("data-diary-toggle"), "diary 手动报告开关必须保持退役");
+for (const key of ["set.writeTriggerTitle", "set.writeTriggerManual", "set.writeTriggerResident", "set.writeTriggerJournal", "set.writeResultTitle", "set.writeResultNone", "set.writeResultOk", "set.writeResultFail"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+}
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");

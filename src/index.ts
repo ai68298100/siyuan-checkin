@@ -641,7 +641,9 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1352：手动把本期报告写入用户绑定的日记文档（opt-in；复用锚点通道的有界重试与审计）。 */
     async writeDiaryReport(): Promise<void> {
-        const docId = this.diaryReport.enabled ? this.diaryReport.docId : "";
+        /* T-1552：日记报告是纯手动动作——启用开关是假门槛（不存在自动路径），已移除；
+           写入仅由目标 docId 闸。存储字段 diaryReport.enabled 原样保留不迁移（旧值无害）。 */
+        const docId = this.diaryReport.docId;
         if (!docId) {
             showMessage(t("msg.diaryNotBound"));
             return;
@@ -3722,17 +3724,8 @@ export default class CheckinPlugin extends Plugin {
             this.render();
         });
         /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
-        root.querySelector<HTMLInputElement>("[data-diary-toggle]")?.addEventListener("change", (event) => {
-            const checked = (event.currentTarget as HTMLInputElement).checked;
-            if (checked && !this.diaryReport.docId) {
-                showMessage(t("msg.diaryNeedDoc"));
-                this.render();
-                return;
-            }
-            this.diaryReport = {...this.diaryReport, enabled: checked};
-            void this.persistViewPreferences();
-            this.render();
-        });
+        /* T-1552：日记报告的启停开关退役——手动报告不需要门槛；
+           diaryReport.enabled 字段仅为兼容保留，读写路径都不再消费。 */
         const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void, confirmKeys?: {pointKey: string; scopeKey: string}) => {
             root.querySelector<HTMLButtonElement>(`[data-action='${action}']`)?.addEventListener("click", async event => {
                 const button = event.currentTarget as HTMLButtonElement;

@@ -95,13 +95,17 @@ const i18nSource = fs.readFileSync("src/i18n.ts", "utf8");
 const compatibility = fs.readFileSync("docs/siyuan-compatibility.md", "utf8");
 
 assert.match(settings, /data-diary-integration/, "settings must mark the diary integration group");
-assert.match(settings, /data-diary-toggle/, "opt-in toggle must exist");
+/* T-1552：手动报告的启用开关是假门槛（不存在自动路径），已退役；
+   写入仅由目标 docId 闸，存储字段 enabled 仅为兼容保留。 */
+assert.ok(!settings.includes("data-diary-toggle"), "diary toggle must stay retired (manual write needs no on/off gate)");
+assert.match(settings, /data-action="write-diary-report" \$\{diary\.docId \? "" : "disabled"\}/, "write-now is gated by the target doc only");
+assert.match(settings, /writeTriggerRow\("diary"/, "diary card declares its trigger explicitly");
+assert.match(settings, /writeResultRow\("diary", "diary-report"\)/, "diary card surfaces the latest write outcome");
 assert.match(settings, /data-diary-doc/, "doc id input must exist");
 assert.match(settings, /data-diary-search/, "diary settings must expose a full-document search input");
 assert.match(settings, /data-diary-notebook/, "new diary documents must let the user choose an open notebook");
 assert.match(settings, /data-action="save-diary-doc"/, "doc id save action must exist");
 assert.match(settings, /data-action="write-diary-report"/, "manual write action must exist");
-assert.match(settings, /diary\.enabled && diary\.docId \? "" : "disabled"/, "write-now stays disabled until enabled with a valid doc");
 
 assert.match(indexSource, /diaryReport = \{\.\.\.DEFAULT_VIEW_PREFERENCES\.diaryReport\};/, "plugin keeps diary state");
 assert.match(indexSource, /this\.diaryReport = \{\.\.\.preferences\.diaryReport\};/, "applyViewPreferences restores diary prefs");
@@ -112,7 +116,8 @@ assert.match(indexSource, /withBoundedRetry\(\s*\(\) => appendAnchorNote/, "writ
 assert.match(indexSource, /type: "anchor", at: new Date\(\)\.toISOString\(\), details: \{channel: "diary-report"/, "write outcome must land in the audit ledger");
 assert.match(indexSource, /if \(!docId\) \{\s*showMessage\(t\("msg\.diaryNotBound"\)\)/, "write must refuse when not bound/enabled");
 assert.match(indexSource, /buildWeeklyReportMarkdown\(summary, title, this\.reportSections, comparison, \{\.\.\.sourceOptions, viewScope, contextAggregation, contextWeekdayPatterns, stalledItems, missedByWeekday, missedByTimeSlot, targetLoad, correlationInsights\}\)/, "diary report must reuse the exact review export path (incl. T-1425 scope + T-1433 context + T-1452 weekday cross + T-1436 miss-time + stalled + T-1450 target-load + R-17.1 correlation)");
-assert.match(indexSource, /data-diary-toggle/, "toggle binding must exist");
+assert.ok(!indexSource.includes("data-diary-toggle"), "toggle binding must stay retired");
+assert.match(indexSource, /const docId = this\.diaryReport\.docId;/, "write reads the target doc directly (enabled flag no longer gates)");
 assert.match(indexSource, /bindVerifiedDocumentSave\("save-diary-doc", "data-diary-doc"/, "doc save uses the shared verified binding");
 assert.match(indexSource, /bindVerifiedDocumentSave\("save-diary-doc"/, "diary document save uses the verified target path");
 assert.match(indexSource, /validateBindingTarget\("doc", submitted\)/, "doc ids must be validated against the live document index");
@@ -142,7 +147,7 @@ assert.doesNotMatch(compatibility, /选择\/搜索」默认只投影插件已经
 /* 双语文案齐备。 */
 const zhDict = i18nSource.slice(i18nSource.indexOf("const zhCN"), i18nSource.indexOf("const enUS"));
 const enDict = i18nSource.slice(i18nSource.indexOf("const enUS"));
-for (const key of ["set.diaryTitle", "set.diaryHint", "set.diaryToggle", "set.diaryDoc", "set.diaryDocHint", "set.diarySave", "set.diaryWriteNow", "set.diaryNotebook", "set.diaryNotebookLoading", "set.diaryNotebookChoose", "set.diaryNotebookFailed", "msg.diaryWritten", "msg.diaryWriteFailed", "msg.diaryNotBound", "msg.diaryDocInvalid", "msg.diaryTitleRequired", "msg.diaryNoNotebook", "msg.diaryCreateFailed", "msg.diarySaveFailed", "msg.diarySearchFailed"]) {
+for (const key of ["set.diaryTitle", "set.diaryHint", "set.writeTriggerTitle", "set.writeTriggerManual", "set.writeResultTitle", "set.writeResultOk", "set.writeResultFail", "set.writeResultNone", "set.diaryDoc", "set.diaryDocHint", "set.diarySave", "set.diaryWriteNow", "set.diaryNotebook", "set.diaryNotebookLoading", "set.diaryNotebookChoose", "set.diaryNotebookFailed", "msg.diaryWritten", "msg.diaryWriteFailed", "msg.diaryNotBound", "msg.diaryDocInvalid", "msg.diaryTitleRequired", "msg.diaryNoNotebook", "msg.diaryCreateFailed", "msg.diarySaveFailed", "msg.diarySearchFailed"]) {
     assert.ok(zhDict.includes(`"${key}"`), `zh dict missing ${key}`);
     assert.ok(enDict.includes(`"${key}"`), `en dict missing ${key}`);
 }

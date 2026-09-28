@@ -1,6 +1,6 @@
 /* 设置页视图：从 index.ts 外置；依赖以 SettingsViewContext 显式传入。 */
 import {t} from "../i18n";
-import {escapeHtml, formatNumber} from "../shared";
+import {escapeHtml, formatHistoryDate, formatNumber} from "../shared";
 import {SORT_LABELS} from "../ui/labels";
 import {PLUGIN_VERSION} from "../version";
 import type {CheckinAppearance, CheckinPalette, DialogSizeMode, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "../view-preferences";
@@ -283,6 +283,24 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         const label = docId ? bindingTargetLabel(docId, ctx.targetSummaries?.get(docId) ?? undefined) : t("set.targetNone");
         return `<div class="lc-checkin__settings-row" data-target-summary="${point}"><span class="lc-checkin__settings-label"><span>${t("set.targetSummaryTitle")}</span><small data-target-summary-label="${escapeHtml(docId)}">${escapeHtml(label)}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-open-binding="${escapeHtml(docId)}" ${docId ? "" : "disabled"}>${t("set.targetOpen")}</button><button class="lc-checkin__text-button" type="button" data-target-recheck="${point}" ${docId ? "" : "disabled"}>${t("set.targetRecheck")}</button><button class="lc-checkin__text-button" type="button" data-target-edit="${point}">${t("set.targetEdit")}</button><button class="lc-checkin__text-button" type="button" data-target-clear="${point}" ${docId ? "" : "disabled"}>${t("set.targetClear")}</button></span></div>`;
     };
+    /* T-1552 五段式之「触发方式 / 最近结果」——触发口径逐卡显式；最近结果读审计
+       单一事实（appendStoreAudit type:"anchor" 的 channel 记录），失败注明事实不受影响。 */
+    const writeTriggerRow = (point: string, textKey: string, extraAttrs = ""): string => `<div class="lc-checkin__settings-row" data-write-trigger="${point}"${extraAttrs}><span class="lc-checkin__settings-label"><span>${t("set.writeTriggerTitle")}</span></span><span class="lc-checkin__settings-value">${t(textKey)}</span></div>`;
+    const latestWriteResult = (channel: string): {ok?: boolean; reason?: string; at: string} | undefined => {
+        for (let index = ctx.auditEntries.length - 1; index >= 0; index -= 1) {
+            const entry = ctx.auditEntries[index];
+            const details = entry.details as {channel?: string; ok?: boolean; reason?: string};
+            if (entry.type === "anchor" && details.channel === channel) return {ok: details.ok, reason: details.reason, at: entry.at};
+        }
+        return undefined;
+    };
+    const writeResultRow = (point: string, channel: string): string => {
+        const last = latestWriteResult(channel);
+        const text = !last ? t("set.writeResultNone")
+            : last.ok ? t("set.writeResultOk", {time: formatHistoryDate(last.at)})
+                : t("set.writeResultFail", {reason: last.reason || "-"});
+        return `<div class="lc-checkin__settings-row" data-write-result="${point}"><span class="lc-checkin__settings-label"><span>${t("set.writeResultTitle")}</span></span><span class="lc-checkin__settings-value" role="status">${escapeHtml(text)}</span></div>`;
+    };
     const sourceBadge = (state: SourceState) => `<span class="lc-checkin__source-badge ${sourceStateClass(state)}" data-source-state="${state}">${sourceStateLabel(state)}</span>`;
     const statusLine = (status: IntegrationStatus) => `<div class="lc-checkin__source-status" data-config-state="${status.configuration}" data-runtime-state="${status.runtime}" data-activity-count="${status.activity.todayCount}" data-problem-state="${status.problem}"><span>${t("set.integrationRuntime")}: ${t(`set.integrationRuntime.${status.runtime}`)}</span><span>${t("set.integrationActivity")}: ${status.activity.todayCount ? t("set.sourceToday", {n: status.activity.todayCount}) : t(`set.integrationLastRead.${status.activity.lastRead}`)}</span><span>${t("set.integrationProblem")}: ${t(`set.integrationProblem.${status.problem}`)}</span></div>`;
     const integrationStatus = (state: SourceState, count: number, hostAvailable?: boolean, lastReadOk?: boolean, lastWriteFailed = false) => projectIntegrationStatus({enabled: state === "enabled", configured: state !== "setup", targetAvailable: state !== "rebind", hostAvailable, todayCount: count, lastReadOk, lastWriteFailed});
@@ -508,8 +526,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                             <div class="lc-checkin__diary-create" data-diary-create hidden><label><span>${t("set.diaryNotebook")}</span><select data-diary-notebook aria-label="${t("set.diaryNotebook")}" disabled><option value="">${t("set.diaryNotebookLoading")}</option></select></label><label><span>${t("set.diaryCreateTitle")}</span><input type="text" data-diary-create-title placeholder="${t("set.diaryCreateTitle")}" aria-label="${t("set.diaryCreateTitle")}" /></label><button class="lc-checkin__text-button" type="button" data-action="create-diary-doc">${t("common.confirm")}</button></div>
                         </div>
                     </div>
-                    <div class="lc-checkin__settings-row" data-diary-integration><span class="lc-checkin__settings-label"><span>${t("set.diaryTitle")}</span><small>${t("set.diaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-diary-toggle ${diary.enabled ? "checked" : ""} aria-label="${t("set.diaryToggle")}" /></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.enabled && diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></div>
+                    ${writeTriggerRow("diary", "set.writeTriggerManual", ' data-diary-integration')}
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></div>
+                    ${writeResultRow("diary", "diary-report")}
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="journal"${sourcePanelOpen("journal")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("journal.settingsTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("journal.customCount", {n: journalCustomCount})}</small></span></summary>
@@ -519,10 +538,12 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__journal-target-mode"><label class="lc-checkin__document-target-field"><span>${t("journal.configTitle")}</span><select data-journal-mode><option value="daily"${journalTarget.mode === "daily" ? " selected" : ""}>${t("journal.targetDaily")}</option><option value="doc"${journalTarget.mode === "doc" ? " selected" : ""}>${t("journal.targetDoc")}</option></select></label></div>
                         <div class="lc-checkin__journal-target-settings"><label class="lc-checkin__document-target-field" data-journal-daily-config><span>${t("journal.notebookLabel")}</span><select data-journal-notebook-id><option value="${escapeHtml(journalTarget.notebookId)}">${escapeHtml(journalTarget.notebookId || t("set.diaryNotebookLoading"))}</option></select></label><label class="lc-checkin__document-target-field" data-journal-doc-config><span>${t("journal.docIdLabel")}</span><input data-journal-target-doc value="${escapeHtml(journalTarget.docId)}" /></label><button type="button" class="lc-checkin__text-button" data-action="save-journal-target">${t("set.diarySave")}</button></div>
                     </div>
+                    ${writeTriggerRow("journal", "set.writeTriggerJournal")}
                     <div data-journal-builder></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span><small>${t("journal.customHint")}</small></span></div>
                     <div class="lc-checkin__settings-row"><textarea class="lc-checkin__journal-custom" data-journal-custom rows="6" aria-label="${t("journal.customLabel")}">${escapeHtml(journalCustomText)}</textarea></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("journal.customLabel")}</span></span><button class="lc-checkin__text-button" type="button" data-action="save-journal-custom">${t("common.confirm")}</button></div>
+                    ${writeResultRow("journal", "journal")}
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="summary" data-source-state="${summaryState}"${sourcePanelOpen("summary")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.summaryIntegration")}</strong>${sourceBadge(summaryState)}</summary>
@@ -534,8 +555,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         ${targetSummaryRow("summary", summaryResident.docId)}
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.summaryDoc")}</span><input type="text" data-summary-doc value="${escapeHtml(summaryResident.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.summaryDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-summary-doc">${t("set.summarySave")}</button></div></div>
                     </div>
+                    ${writeTriggerRow("summary", "set.writeTriggerResident")}
                     <div class="lc-checkin__settings-row" data-summary-resident><span class="lc-checkin__settings-label"><span>${t("set.summaryTitle")}</span><small>${t("set.summaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-summary-toggle ${summaryResident.enabled ? "checked" : ""} aria-label="${t("set.summaryToggle")}" /></div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryWriteNow")}</span><small>${t("set.summaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-summary-now" ${summaryResident.enabled && summaryResident.docId ? "" : "disabled"}>${t("set.summaryWriteNow")}</button></div>
+                    ${writeResultRow("summary", "summary-resident")}
                     </details>
                     </details>`,
         },
