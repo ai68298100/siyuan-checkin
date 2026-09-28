@@ -82,7 +82,7 @@
 | 校验/空态 | editor-validation.ts:19-27（name/target/unit/weekdays/quotaAmount）；模板搜索空态 editor.ts:195；图标空态 229；锚点无候选 113 | 已有 |
 | 回链/预演 | 今日卡动作预览 describeEditorPreviewActions（editor.ts:21-62，实时更新 bind-editor.ts:292-366）；30 天排期预演 schedule-preview.ts:95（fail-closed）；规则变更对照 rule-change-diff.ts:45+确认弹窗（取消零写入 bind-editor.ts:1090-1118）；联动建议卡 renderLinkageCard（bind-editor.ts:106-141）；问卷绑定（仅 binary 530）；锚点区+挂起告警 editor.ts:279-292；Task Horizon 显示开关→save-form.ts:84 | 已有（排期/方向仍在高级区 → T-1571/1572 需调整） |
 | 宿主能力 | 无直接外部依赖；问卷/锚点/番茄/Task Horizon 为预接线（需调整：项目↔来源定向回链 T-1568） | 已有 |
-| 证据 | editor-validation/schedule-preview/rule-change-diff/name-inference/project-draft/interval-editor/quick-steps/note-anchor*/template-gallery/import/manager/packs/share/templates/journal-templates/mobile-editor-*/ui-state-ledger | 自动证据已有 |
+| 证据 | editor-validation/schedule-preview/rule-change-diff/name-inference/project-draft/interval-editor/quick-steps/note-anchor*/template-gallery/import/manager/packs/share/templates/journal-templates/mobile-editor-*/ui-state-ledger；T-1571/1572 分段落地+T-1573/1574 验收：editor-sections（段序/显隐单点/atMost 回退警告/输出组织小节/应用徽标/共用计算/兼容验收 8 检，主链注册） | 自动证据已有；T-1570~1574 已落地（七段主流程+高级两小节+危险区标记）；真实内核 host-pending |
 | 缺口 | 类型驱动分区（T-1569）、模板入口统一标示（T-1570）、预览/保存操作栏共用计算（T-1573）、旧项目兼容切片验收（T-1574） | 需调整 |
 
 ## 5. 事项 Occasions
