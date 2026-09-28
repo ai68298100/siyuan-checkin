@@ -658,6 +658,12 @@ export default class CheckinPlugin extends Plugin {
         showMessage(result.ok ? t("msg.diaryWritten") : t("msg.diaryWriteFailed", {reason: result.reason || ""}));
     }
 
+    /* T-1548：输出内容预览——写入前零写入地生成将追加的 Markdown（与写入同一构建路径）。 */
+    private previewOutputMarkdown(channel: "diary" | "summary"): string | undefined {
+        if (channel === "diary") return `${this.buildCurrentReportMarkdown()}\n`;
+        return this.buildSummaryResidentMarkdown(dateKey(currentCalendarDate()));
+    }
+
     /* T-1353 摘要驻留：每日首次打卡后旁路追加当天汇总单行（opt-in 默认关）。
        幂等：写入前按 文档+日期+标记 查询既有行，命中即跳过；失败有界重试后只进审计，
        不提示不回滚（旁路纪律同锚点回写）。 */
@@ -673,23 +679,7 @@ export default class CheckinPlugin extends Plugin {
                 this.summaryResidentWritten.add(writeKey);
                 return {ok: true, duplicate: true};
             }
-            const dayStart = calendarDateFromKey(localDate);
-            const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1);
-            const summary = buildSummaryContext(this.store, "day", dayStart);
-            const sourceCounts = new Map<string, number>();
-            for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
-                sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
-            }
-            const sources = (["manual", "tomato", "api", "import", "sireader", "siplayer", "weread", "yeguif"] as const)
-                .filter((key) => (sourceCounts.get(key) || 0) > 0)
-                .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
-            const markdown = `${buildDailySummaryLine({
-                date: localDate,
-                completed: summary.completedItems,
-                scheduled: summary.scheduledItems,
-                recordsText: t("summary.residentRecords", {n: summary.totalEvents}),
-                sources,
-            })}\n`;
+            const markdown = this.buildSummaryResidentMarkdown(localDate);
             const result = await withBoundedRetry(
                 () => appendAnchorNote((url, payload) => this.kernelPost(url, payload), docId, markdown),
                 {attempts: 2, retryDelayMs: 1500, onRetryWait: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))},
@@ -701,6 +691,27 @@ export default class CheckinPlugin extends Plugin {
         } finally {
             this.summaryResidentInFlight = false;
         }
+    }
+
+    /* T-1548：驻留单行与「预览内容」共用同一构建路径（写入什么就预览什么，零分歧）。 */
+    private buildSummaryResidentMarkdown(localDate: string): string {
+        const dayStart = calendarDateFromKey(localDate);
+        const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1);
+        const summary = buildSummaryContext(this.store, "day", dayStart);
+        const sourceCounts = new Map<string, number>();
+        for (const dayEvent of getEventsInDateRange(this.store, localDate, dateKey(dayEnd))) {
+            sourceCounts.set(dayEvent.source, (sourceCounts.get(dayEvent.source) || 0) + 1);
+        }
+        const sources = (["manual", "tomato", "api", "import", "sireader", "siplayer", "weread", "yeguif"] as const)
+            .filter((key) => (sourceCounts.get(key) || 0) > 0)
+            .map((key) => ({label: t(`source.${key}`), count: sourceCounts.get(key) || 0}));
+        return `${buildDailySummaryLine({
+            date: localDate,
+            completed: summary.completedItems,
+            scheduled: summary.scheduledItems,
+            recordsText: t("summary.residentRecords", {n: summary.totalEvents}),
+            sources,
+        })}\n`;
     }
 
     /* ===== T-1465（D-273）问卷式日记打卡 =====
@@ -3755,6 +3766,16 @@ export default class CheckinPlugin extends Plugin {
             showMessage(t(found ? "msg.siplayerProbeFound" : "msg.siplayerProbeMissing"));
             this.render();
         });
+        /* T-1548：输出内容预览——零写入生成将追加的 Markdown 并就地展开；取消/重渲染即收起。 */
+        root.querySelectorAll<HTMLElement>("[data-output-preview-generate]").forEach((button) => button.addEventListener("click", () => {
+            const channel = button.dataset.outputPreviewGenerate as "diary" | "summary";
+            const markdown = this.previewOutputMarkdown(channel);
+            const body = root.querySelector<HTMLElement>(`[data-output-preview-body="${channel}"]`);
+            const container = root.querySelector<HTMLElement>(`[data-output-preview="${channel}"]`);
+            if (!body || !container) return;
+            body.textContent = markdown ?? "";
+            if (container instanceof HTMLDetailsElement) container.open = Boolean(markdown);
+        }));
         const bindVerifiedDocumentSave = (action: string, attribute: string, getId: () => string, setId: (id: string) => void, success: string, afterSave?: () => void, confirmKeys?: {pointKey: string; scopeKey: string}) => {
             root.querySelector<HTMLButtonElement>(`[data-action='${action}']`)?.addEventListener("click", async event => {
                 const button = event.currentTarget as HTMLButtonElement;

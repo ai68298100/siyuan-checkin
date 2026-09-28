@@ -612,6 +612,14 @@ for (const key of ["set.sourceFactProduces", "set.sourceFactProjects", "set.sour
 assert.match(indexSourceT1553, /openReviewRecordsForSource/, "回顾跳转方法必须在位");
 assert.match(indexSourceT1553, /health: "api:health"/, "health 事件用登记渠道 api:health 过滤");
 assert.match(indexSourceT1553, /detectSiplayerController\(window\)/, "思播探测走真实特征检测");
+/* T-1548 融合：写入前内容预览（与写入同一构建路径、零写入）。 */
+for (const channel of ["diary", "summary"]) {
+    assert.match(settingsSourceT1442, new RegExp(`data-output-preview-generate="${channel}"`), `${channel} 写入卡必须有预览按钮`);
+    assert.match(settingsSourceT1442, new RegExp(`data-output-preview-body="${channel}"`), `${channel} 必须有预览内容容器`);
+}
+assert.ok((i18nSourceT1553.match(/"set\.outputPreview"/g) || []).length >= 2, "set.outputPreview 必须中英双语齐备");
+assert.match(indexSourceT1553, /previewOutputMarkdown\(channel/, "预览经单一入口生成");
+assert.match(indexSourceT1553, /const markdown = this\.buildSummaryResidentMarkdown\(localDate\);/, "驻留写入与预览共用同一构建方法（零分歧）");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");

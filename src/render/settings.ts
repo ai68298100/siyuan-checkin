@@ -546,7 +546,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         </div>
                     </div>
                     ${writeTriggerRow("diary", "set.writeTriggerManual", ' data-diary-integration')}
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.diaryWriteNow")}</span><small>${t("set.diaryWriteNowHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-output-preview-generate="diary">${t("set.outputPreview")}</button><button class="lc-checkin__text-button" type="button" data-action="write-diary-report" ${diary.docId ? "" : "disabled"}>${t("set.diaryWriteNow")}</button></span></div>
+                    <details class="lc-checkin__settings-fold" data-output-preview="diary"><summary>${t("set.outputPreview")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><pre class="lc-checkin__share-preview" data-output-preview-body="diary"></pre></details>
                     ${writeResultRow("diary", "diary-report")}
                     </details>
                     <details class="lc-checkin__source-panel" data-source-panel="journal"${sourcePanelOpen("journal")}>
@@ -576,7 +577,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     </div>
                     ${writeTriggerRow("summary", "set.writeTriggerResident")}
                     <div class="lc-checkin__settings-row" data-summary-resident><span class="lc-checkin__settings-label"><span>${t("set.summaryTitle")}</span><small>${t("set.summaryHint")}</small></span><input type="checkbox" class="lc-checkin__switch" data-summary-toggle ${summaryResident.enabled ? "checked" : ""} aria-label="${t("set.summaryToggle")}" /></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryWriteNow")}</span><small>${t("set.summaryWriteNowHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="write-summary-now" ${summaryResident.enabled && summaryResident.docId ? "" : "disabled"}>${t("set.summaryWriteNow")}</button></div>
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.summaryWriteNow")}</span><small>${t("set.summaryWriteNowHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-output-preview-generate="summary">${t("set.outputPreview")}</button><button class="lc-checkin__text-button" type="button" data-action="write-summary-now" ${summaryResident.enabled && summaryResident.docId ? "" : "disabled"}>${t("set.summaryWriteNow")}</button></span></div>
+                    <details class="lc-checkin__settings-fold" data-output-preview="summary"><summary>${t("set.outputPreview")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><pre class="lc-checkin__share-preview" data-output-preview-body="summary"></pre></details>
                     ${writeResultRow("summary", "summary-resident")}
                     </details>
                     </details>`,
