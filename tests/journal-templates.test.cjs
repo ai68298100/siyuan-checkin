@@ -163,11 +163,12 @@ assert.match(indexSource, /data-action='save-journal-custom'/, "settings save is
 
 /* —— 8.5 T-1484 接线：弹窗按日取词、宿主传入 localDate、builder 深拷贝池数组、预览提示。 —— */
 const dialogSource = read("src/render/journal-dialog.ts");
-assert.match(dialogSource, /localDate: string;/, "dialog deps require the rotation date");
-assert.match(dialogSource, /resolveJournalQuestionText\(question, deps\.localDate\)/, "dialog picks the rotated prompt through the shared implementation");
-assert.match(dialogSource, /prompts: q\.prompts \? \[\.\.\.q\.prompts\] : undefined/, "copy-preset deep-copies pool arrays");
-assert.match(dialogSource, /prompts: template\.questions\[j\]\.prompts \? \[\.\.\.template\.questions\[j\]\.prompts\] : undefined/, "duplicate-question deep-copies pool arrays");
-assert.match(dialogSource, /journal\.poolVariants/, "builder preview surfaces the pool size hint");
+const builderDialogSource = read("src/render/journal-dialog.ts");
+assert.match(builderDialogSource, /localDate: string;/, "dialog deps require the rotation date");
+assert.match(builderDialogSource, /resolveJournalQuestionText\(question, deps\.localDate\)/, "dialog picks the rotated prompt through the shared implementation");
+assert.match(builderDialogSource, /prompts: q\.prompts \? \[\.\.\.q\.prompts\] : undefined/, "copy-preset deep-copies pool arrays");
+assert.match(builderDialogSource, /prompts: template\.questions\[j\]\.prompts \? \[\.\.\.template\.questions\[j\]\.prompts\] : undefined/, "duplicate-question deep-copies pool arrays");
+assert.match(builderDialogSource, /journal\.poolVariants/, "builder preview surfaces the pool size hint");
 assert.match(indexSource, /template,\s*\n\s*localDate,\s*\n\s*integration: this\.journalIntegrationPref/, "host passes the day key into the journal dialog");
 
 /* —— 9. i18n 双语 + 移动触控基线覆盖。 —— */
@@ -188,3 +189,15 @@ const stableRoundtrip = journal.parseCustomJournalTemplatesText(journal.serializ
 assert.equal(stableRoundtrip.templates[0].id, stableTemplate.id, "saving/renaming preserves bound template identity");
 assert.equal(stableRoundtrip.templates[0].questions[0].required, true, "text roundtrip preserves required questions");
 assert.equal(journal.parseCustomJournalTemplatesText("# Form | 📝 | blank-test\nValid | text\n | textarea | required").invalidBlocks, 1, "empty builder questions reject the whole template");
+
+/* —— T-1589 构建器可理解化：边界说明、模板计数/必答摘要、解析错误恢复既有。 —— */
+assert.match(builderDialogSource, /data-builder-boundary/, "构建器边界说明在位（更改仅确认后写入）");
+assert.match(builderDialogSource, /journal\.builderBoundary/, "边界说明走 i18n");
+assert.match(builderDialogSource, /journal\.templateSummary/, "模板摘要（题数/必答）走 i18n");
+assert.match(builderDialogSource, /templateSummary\(template\)/, "摘要按模板实时生成");
+assert.match(builderDialogSource, /journal\.customInvalid/, "解析错误恢复提示既有");
+const journalI18n = read("src/i18n.ts");
+for (const key of ["journal.builderBoundary", "journal.templateSummary"]) {
+    const count = journalI18n.split(`"${key}"`).length - 1;
+    assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
+}
