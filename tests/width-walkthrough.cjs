@@ -1316,8 +1316,8 @@ const cases = [
                 }
                 await page.locator('[data-settings-nav="data"]').click();
                 assert.equal(await page.locator('[data-settings-nav="data"]').getAttribute('aria-current'), 'true', 'settings category navigation works with long content');
-                await page.locator('[data-settings-nav="documents"]').click();
-                assert.equal(await page.locator('[data-settings-nav="documents"]').getAttribute('aria-current'), 'true', 'SiYuan document-write category remains reachable on narrow settings surfaces');
+                await page.locator('[data-settings-nav="external"]').click();
+                assert.equal(await page.locator('[data-settings-nav="external"]').getAttribute('aria-current'), 'true', 'SiYuan document-write category remains reachable inside the merged integrations group (T-1565)');
                 const documentPanel = page.locator('[data-source-panel="diary"]').first();
                 if (await documentPanel.getAttribute('open') === null) await documentPanel.locator(':scope > summary').click();
                 assert.equal(await documentPanel.getAttribute('open'), '', 'a document-write card can be opened from its dedicated group');

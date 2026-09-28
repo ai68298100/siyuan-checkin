@@ -508,9 +508,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.resetPrefs")}</span><small>${t("set.resetPrefsHint")}</small></span><button class="lc-checkin__text-button" type="button" data-action="reset-all-preferences">${t("set.resetDefaults")}</button></div>`,
         },
         {
-            id: "host",
-            label: t("set.groupHost"),
+            /* T-1565：联动与目标单一分区——原 host/documents/external 三组合一，
+               内部三小节（宿主能力/思源文档输出/第三方来源自动记录），行原样迁移；
+               来源事件、文档写入与公开 API 语义零变化，导航 6→4 项。 */
+            id: "external",
+            label: t("set.groupIntegration"),
             body: `
+                    <div class="lc-checkin__source-category" data-integration-section="host">${t("set.groupHost")}</div>
                     <div class="lc-checkin__source-category" data-host-section="mine">${t("set.hostMine")}</div>
                     <label class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.tomatoDefault")}</span><small>${t("set.tomatoDefaultHint")}</small></span><select data-setting-focus-timer aria-label="${t("set.tomatoDefault")}"><option value="builtin" ${ctx.focusTimerProvider === "builtin" ? "selected" : ""}>${t("set.tomatoBuiltin")}</option><option value="docktomato" ${ctx.focusTimerProvider === "docktomato" ? "selected" : ""}>${t("set.tomatoPlugin")}</option></select></label>
                     <div class="lc-checkin__settings-row" data-contract-center="docktomato" data-contract-state="${diagnosticState}" data-focus-provider-state="${diagnosticState}" data-dependency="docktomato" data-dependency-state="${tomatoDependencyState}"><span class="lc-checkin__settings-label"><span>${t("set.tomato")}</span><small>${t("set.tomatoHint")}</small><small>${tomatoDiagnosticDetail}</small><small>${t("set.contractDiagnostics", {n: ctx.diagnosticsCount})}</small><small class="lc-checkin__dependency-recovery">${t("set.tomatoRecovery")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${tomatoHealthy ? "is-success" : "is-muted"}" role="status">${tomatoStatus}</span><button class="lc-checkin__text-button" type="button" data-action="export-diagnostics" ${ctx.diagnosticsCount ? "" : "disabled"} aria-label="${t("set.diagnosticsExport")}">${t("set.diagnosticsExport")}</button>${tomatoFallback}</span></div>
@@ -520,12 +524,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <div class="lc-checkin__settings-row" data-contract-center="api" data-contract-state="provided"><span class="lc-checkin__settings-label"><span>${t("set.apiContractTitle")}</span><small>${t("set.apiContractDetail", {version: ctx.publicApiContract?.version ?? 5, count: ctx.publicApiContract?.capabilities.length ?? 0})}</small><small>${t("set.apiContractCapabilities")}</small></span><span class="lc-checkin__settings-value is-success" role="status">${t("set.apiContractProvided")}</span></div>
                     <div class="lc-checkin__settings-row" data-contract-center="taskhorizon" data-contract-state="waiting" data-dependency="taskhorizon" data-dependency-state="healthy" data-dependency-kind="provider-contract"><span class="lc-checkin__settings-label"><span>${t("set.thTitle")}</span><small>${t("set.thContractVersion", {version: ctx.publicApiContract?.taskHorizonVersion ?? 1})}</small><small>${t("set.thHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.thRecovery")}</small></span><span class="lc-checkin__settings-value is-muted" role="status">${t("set.thStatus")}</span></div>
                     <div class="lc-checkin__settings-row" data-agent-state="${ctx.agentCapability.state}" data-dependency="agent" data-dependency-state="${agentDependencyState}"><span class="lc-checkin__settings-label"><span>${t("set.agent")}</span><small>${t("set.agentHint")}</small><small class="lc-checkin__dependency-recovery">${t("set.agentRecovery")}</small>${agentWhere}</span><span class="lc-checkin__settings-value ${ctx.agentCapability.state === "registered" ? "is-success" : ctx.agentCapability.state === "failed" ? "is-error" : "is-muted"}" role="status">${agentStatus}</span></div>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agentAuditTitle")}</span><small>${t("set.agentAuditHint")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${ctx.suggestionWorkflowAudits ? "is-muted" : ""}">${t("set.agentAuditCount", {n: ctx.suggestionWorkflowAudits})}</span><button class="lc-checkin__text-button" type="button" data-action="export-agent-audit" ${ctx.suggestionWorkflowAudits ? "" : "disabled"} aria-label="${t("set.agentAuditExport")}">${t("set.agentAuditExport")}</button></span></div>`,
-        },
-        {
-            id: "documents",
-            label: t("set.groupDocuments"),
-            body: `
+                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.agentAuditTitle")}</span><small>${t("set.agentAuditHint")}</small></span><span class="lc-checkin__settings-inline"><span class="lc-checkin__settings-value ${ctx.suggestionWorkflowAudits ? "is-muted" : ""}">${t("set.agentAuditCount", {n: ctx.suggestionWorkflowAudits})}</span><button class="lc-checkin__text-button" type="button" data-action="export-agent-audit" ${ctx.suggestionWorkflowAudits ? "" : "disabled"} aria-label="${t("set.agentAuditExport")}">${t("set.agentAuditExport")}</button></span></div>
+                    <div class="lc-checkin__source-category" data-integration-section="doc-output">${t("set.groupDocuments")}</div>
                     <div class="lc-checkin__external-overview" data-document-overview><strong>${t("set.docWritesTitle")}</strong><span>${t("set.docWritesSummary", documentSourceCounts)}</span><small>${t("set.docWritesSetupHint")}</small><small>${t("set.extPrivacyHint")}</small><small>${t("set.sourceRetentionHint")}</small></div>
                     <details class="lc-checkin__settings-group" data-document-writes open>
                     <summary><span>${t("set.docWritesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: documentSourceCounts.enabled})}</span></summary>
@@ -589,12 +589,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__settings-fold" data-output-preview="summary"><summary>${t("set.outputPreview")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><pre class="lc-checkin__share-preview" data-output-preview-body="summary"></pre></details>
                     ${writeResultRow("summary", "summary-resident")}
                     </details>
-                    </details>`,
-        },
-        {
-            id: "external",
-            label: t("set.groupExternal"),
-            body: `
+                    </details>
+                    <div class="lc-checkin__source-category" data-integration-section="sources">${t("set.groupExternal")}</div>
                     <div class="lc-checkin__external-overview" data-external-overview><strong>${t("set.thirdPartySourcesTitle")}</strong><span>${t("set.thirdPartySourcesSummary", thirdPartySourceCounts)}</span><small>${t("set.thirdPartySourcesSetupHint")}</small><small>${t("set.extPrivacyHint")}</small><small>${t("set.sourceRetentionHint")}</small>${readingConflictItem ? `<small class="lc-checkin__source-conflict" data-source-conflict="reading-duration">${escapeHtml(t("set.sourceConflictReading", {item: readingConflictItem.name}))}</small>` : ""}</div>
                     <details class="lc-checkin__settings-group" data-external-sources open>
                     <summary><span>${t("set.thirdPartySourcesListTitle")}</span><span class="lc-checkin__settings-group-badge">${t("set.extSourcesCount", {n: thirdPartySourceCounts.enabled})}</span></summary>
@@ -717,7 +713,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     return t(problem.labelKey, problem.featureParams as Record<string, string>);
                 };
                 const activityText = (activity: NonNullable<SettingsViewContext["settingsOverview"]>["activities"][number]): string => t(activity.labelKey, {feature: t(activity.featureKey)});
-                const entries = [["set.overviewEntryNew", "new"], ["set.overviewEntrySources", "external"], ["set.overviewEntryDocs", "documents"], ["set.overviewEntryData", "data"]] as const;
+                const entries = [["set.overviewEntryNew", "new"], ["set.overviewEntrySources", "external"], ["set.overviewEntryDocs", "external"], ["set.overviewEntryData", "data"]] as const;
                 return `<div class="lc-checkin__external-overview" data-settings-overview><strong>${t("set.overviewTitle")}</strong>${overview.problems.length ? overview.problems.map((problem) => `<div class="lc-checkin__settings-row" data-overview-problem="${escapeHtml(problem.key)}"><span class="lc-checkin__settings-label"><span>${escapeHtml(problemText(problem))}</span></span>${problem.selector ? `<button class="lc-checkin__text-button" type="button" data-goto-binding="${escapeHtml(problem.selector)}">${t("bind.locate")}</button>` : ""}</div>`).join("") : `<small data-overview-clear>${t("set.overviewAllClear")}</small>`}<strong>${t("set.overviewRecentTitle")}</strong>${overview.activities.length ? overview.activities.map((activity) => `<small data-overview-activity="${escapeHtml(activity.key)}">${escapeHtml(activityText(activity))}</small>`).join("") : `<small data-overview-activity-empty>${t("set.writeResultNone")}</small>`}<strong>${t("set.overviewEntriesTitle")}</strong><span class="lc-checkin__settings-inline">${entries.map(([labelKey, target]) => target === "new" ? `<button class="lc-checkin__text-button" type="button" data-overview-new-item>${t(labelKey)}</button>` : `<button class="lc-checkin__text-button" type="button" data-overview-jump="${target}">${t(labelKey)}</button>`).join("")}</span></div>`;
             })()}
             ${(() => {

@@ -565,10 +565,12 @@ function assertActive(fixture, expectedId) {
     const buttonTags = [...html.matchAll(/<button\b[^>]*\bdata-settings-nav="[^"]+"[^>]*>/g)].map((match) => match[0]);
     const sectionMatches = [...html.matchAll(/<section\b([^>]*)>([\s\S]*?)<\/section>/g)]
         .filter((match) => /\bdata-settings-group=/.test(match[1]));
-    assert.ok(buttonTags.length >= 5, "settings should expose its category navigation");
+    assert.ok(buttonTags.length >= 4, "settings should expose its category navigation (T-1565 merged integrations)");
     assert.equal(sectionMatches.length, buttonTags.length, "each settings category must have exactly one section");
-    assert.match(html, /data-settings-nav="documents"/, "settings navigation must expose a dedicated SiYuan document-write group");
-    assert.match(html, /data-settings-nav="external"/, "settings navigation must expose a dedicated third-party-source group");
+    assert.match(html, /data-settings-nav="external"/, "settings navigation must expose the integrations group");
+    assert.doesNotMatch(html, /data-settings-nav="documents"/, "documents group must stay merged into the integrations section (T-1565)");
+    assert.doesNotMatch(html, /data-settings-nav="host"/, "host group must stay merged into the integrations section (T-1565)");
+    assert.match(html, /data-integration-section="doc-output"/, "document output keeps its own subsection marker");
 
     const buttonsByGroup = new Map(buttonTags.map((tag) => [attribute(tag, "data-settings-nav"), tag]));
     const controlledIds = new Set();
@@ -631,9 +633,10 @@ function assertActive(fixture, expectedId) {
 
 /* —— T-1442 · R-A10 来源子面板：每个外部来源独立面板（头部徽标 + 编号步骤） —— */
 const settingsSourceT1442 = read("src", "render", "settings.ts");
-const documentsGroupIndex = settingsSourceT1442.indexOf('id: "documents"');
-const externalGroupIndex = settingsSourceT1442.indexOf('id: "external"');
-assert.ok(documentsGroupIndex >= 0 && externalGroupIndex > documentsGroupIndex, "document writes must be a separate group before third-party sources");
+/* T-1565：documents/host 组并入联动与目标（id: "external"），文档输出小节在来源小节之前。 */
+const documentsGroupIndex = settingsSourceT1442.indexOf('data-integration-section="doc-output"');
+const externalGroupIndex = settingsSourceT1442.indexOf('data-integration-section="sources"');
+assert.ok(documentsGroupIndex >= 0 && externalGroupIndex > documentsGroupIndex, "document writes section must come before third-party sources inside the integrations group");
 assert.match(settingsSourceT1442, /data-document-writes open/, "document writes must have their own disclosure");
 assert.match(settingsSourceT1442, /data-external-sources open/, "third-party sources must retain their disclosure");
 assert.ok(settingsSourceT1442.indexOf('data-source-panel="diary"') > documentsGroupIndex && settingsSourceT1442.indexOf('data-source-panel="diary"') < externalGroupIndex, "diary writes must stay in the document-write group");
@@ -760,6 +763,14 @@ assert.ok(nlpIndex > todaySection && nlpIndex < dialogSectionForNlp, "NLP 速记
 for (const key of ["set.groupAppearanceOps", "set.groupReminders"]) {
     assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
 }
+/* T-1565 联动与目标分区：host/documents/external 三组合一，三小节标记，总览入口同步。 */
+assert.ok(!settingsSourceT1442.includes('id: "host"') && !settingsSourceT1442.includes('id: "documents"'), "host/documents 独立组必须退役（并入联动与目标）");
+assert.equal((settingsSourceT1442.match(/data-integration-section="/g) || []).length, 3, "联动与目标必须恰有三个小节标记（宿主/文档输出/来源）");
+assert.match(settingsSourceT1442, /label: t\("set\.groupIntegration"\)/, "合并分区标题在位");
+for (const key of ["set.groupIntegration", "set.groupHost", "set.groupDocuments", "set.groupExternal"]) {
+    assert.ok((i18nSourceT1553.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备（小节名复用原组名键）`);
+}
+assert.match(settingsSourceT1442, /\["set\.overviewEntryDocs", "external"\]/, "总览「写入思源笔记」入口必须跳合并后的联动分区");
 assert.match(settingsSourceT1442, /data-source-panel="journal"/, "问卷日记面板在位（T-1465）");
 assert.match(settingsSourceT1442, /data-journal-custom/, "问卷日记自建模板编辑区在位");
 assert.match(settingsSourceT1442, /data-source-panel="bindings"/, "笔记联动总览面板在位（T-1470）");
