@@ -73,6 +73,26 @@ try {
         }
     });
 
+    check("T-1572 output/organization subsections: anchor in output, org fields and TH in org, danger-marked actions", () => {
+        const outputHeader = editor.indexOf('data-advanced-section="output"');
+        const orgHeader = editor.indexOf('data-advanced-section="org"');
+        assert.ok(outputHeader >= 0 && orgHeader > outputHeader, "输出小节在组织小节之前");
+        const anchorPicker = editor.indexOf("data-anchor-picker");
+        const appendField = editor.indexOf("data-anchor-append-field");
+        assert.ok(anchorPicker > outputHeader && anchorPicker < orgHeader, "锚点块归输出小节");
+        assert.ok(appendField > outputHeader && appendField < orgHeader, "锚点追加归输出小节");
+        const orgBody = editor.slice(orgHeader);
+        for (const orgField of ["name=\"group\"", "name=\"priority\"", "name=\"timeSlot\"", "name=\"autoArchiveDays\"", "name=\"streakToleranceDays\"", "data-taskhorizon-visible-field"]) {
+            assert.ok(orgBody.includes(orgField), `组织小节必须包含 ${orgField}`);
+        }
+        assert.ok(orgBody.indexOf("data-anchor-picker") === -1, "组织小节不得再含锚点块");
+        assert.match(editor, /data-editor-section="danger"/, "页尾操作栏必须带危险区标记（归档/删除所在）");
+        for (const key of ["editor.sectionOutput", "editor.sectionOrg"]) {
+            assert.ok((i18nSource.match(new RegExp(`"${key.replace(/\./g, "\\.")}"`, "g")) || []).length >= 2, `${key} 必须中英双语齐备`);
+        }
+        assert.ok(editor.indexOf("data-journal-field") < editor.indexOf("lc-checkin__advanced"), "问卷绑定保持在主流程段6（不回搬高级区）");
+    });
+
     console.log(`Editor section flow: ${checks} checks passed.`);
 } finally {
     /* TZ not modified in this test. */

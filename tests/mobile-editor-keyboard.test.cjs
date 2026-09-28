@@ -11,7 +11,7 @@ const components = fs.readFileSync(path.join(root, "src", "ui", "components.scss
 const quickDialogSource = fs.readFileSync(path.join(root, "src", "render", "quick-dialog.ts"), "utf8");
 assert.match(quickDialogSource, /visualViewport[\s\S]*addEventListener\("resize", sync\)[\s\S]*addEventListener\("scroll", sync\)/,
     "keyboard and viewport changes must trigger dialog resizing");
-assert.match(editorSource, /<div class="lc-checkin__form-scroll">[\s\S]*<div class="lc-checkin__editor-actions">[\s\S]*data-action="archive"/,
+assert.match(editorSource, /<div class="lc-checkin__form-scroll">[\s\S]*<div class="lc-checkin__editor-actions"[^>]*>[\s\S]*data-action="archive"/,
     "editor must separate scrollable fields from bottom actions");
 assert.match(editorSource, /class="lc-checkin__save-button" type="submit"/,
     "save template action must remain keyboard-submit capable");

@@ -288,32 +288,34 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__advanced-content">
                             ${item ? `<div class="lc-checkin__editor-history-summary" data-editor-completed-days aria-label="${t("editor.completedDays", {n: completedDays})}"><span>${t("editor.completedDaysLabel")}</span><strong>${completedDays}</strong></div>` : ""}
+                            <div class="lc-checkin__source-category" data-advanced-section="output">${t("editor.sectionOutput")}</div>
+                            <div class="lc-checkin__field lc-checkin__anchor-field" data-anchor-picker>
+                                <span>${t("editor.anchorTitle")}</span>
+                                <div class="lc-checkin__anchor-input-row"><input name="anchorBlockId" type="text" maxlength="64" placeholder="${t("editor.anchorPlaceholder")}" value="${escapeHtml(item?.noteAnchor?.blockId || "")}" /><button type="button" class="lc-checkin__field-action" data-action="anchor-open-picker">${t("editor.anchorChoose")}</button><button type="button" class="lc-checkin__field-action" data-action="anchor-clear" aria-label="${t("editor.anchorClear")}" title="${t("editor.anchorClear")}">×</button></div>
+                                <small>${t("editor.anchorHint")}</small>
+                                <small>${t("set.scope.anchor")}</small>
+                                <div class="lc-checkin__anchor-browser" data-anchor-browser hidden>
+                                    <div class="lc-checkin__anchor-browser-tools"><input type="search" data-anchor-query placeholder="${t("editor.anchorSearch")}" aria-label="${t("editor.anchorSearch")}" /><button type="button" class="lc-checkin__field-action" data-action="anchor-create">${t("editor.anchorCreate")}</button></div>
+                                    <div class="lc-checkin__anchor-create-row" data-anchor-create-row hidden><label><span>${t("editor.anchorNotebook")}</span><select data-anchor-notebook><option value="">${t("editor.anchorNotebookLoading")}</option></select></label><label><span>${t("editor.anchorDocTitle")}</span><input type="text" data-anchor-doc-title value="${escapeHtml(item?.name || "")}" /></label><button type="button" class="lc-checkin__field-action" data-action="anchor-create-confirm">${t("common.confirm")}</button></div>
+                                    <div class="lc-checkin__anchor-options" data-anchor-options>${anchorChoiceMarkup}</div>
+                                    <p class="lc-checkin__anchor-empty" data-anchor-filter-empty hidden>${t("editor.anchorNoMatches")}</p>
+                                </div>
+                            </div>
+                            ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
+                            <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--anchor" data-anchor-append-field><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} ${item?.noteAnchor?.blockId ? "" : "disabled"} /><span>${t("editor.anchorAppend")}</span><small>${t("editor.anchorAppendHint")}</small></label>
+                            <div class="lc-checkin__source-category" data-advanced-section="org">${t("editor.sectionOrg")}</div>
                             <div class="lc-checkin__organization-fields">
                                 <label class="lc-checkin__field"><span>${t("editor.group")}</span><input name="group" type="text" maxlength="32" placeholder="${t("editor.groupPlaceholder")}" value="${escapeHtml(item?.group || "")}" /><span class="lc-checkin__group-options">${groupSuggestions.slice(0, 8).map((group) => `<button type="button" data-group-value="${escapeHtml(group)}">${escapeHtml(group)}</button>`).join("")}</span></label>
                                 <label class="lc-checkin__field"><span>${t("editor.priorityLabel")}</span><select name="priority">${(["high", "medium", "low"] as CheckinPriority[]).map((priority) => `<option value="${priority}" ${initialPriority === priority ? "selected" : ""}>${t(PRIORITY_LABELS[priority])}</option>`).join("")}</select></label>
                                 <label class="lc-checkin__field"><span>${t("editor.slotLabel")}</span><select name="timeSlot">${(["any", "morning", "afternoon", "evening"] as CheckinTimeSlot[]).map((slot) => `<option value="${slot}" ${initialTimeSlot === slot ? "selected" : ""}>${t(TIME_SLOT_LABELS[slot])}</option>`).join("")}</select></label>
                                 <label class="lc-checkin__field"><span>${t("editor.autoArchiveLabel")}</span><input name="autoArchiveDays" type="number" inputmode="numeric" min="1" max="1000000" step="1" value="${item?.autoArchive?.afterDays ?? ""}" placeholder="${t("editor.autoArchiveOff")}" aria-label="${t("editor.autoArchiveLabel")}" /><small>${t("editor.autoArchiveHint")}</small></label>
                                 <label class="lc-checkin__field"><span>${t("editor.streakToleranceLabel")}</span><input name="streakToleranceDays" type="number" inputmode="numeric" min="1" max="30" step="1" value="${item?.streakTolerance ?? ""}" placeholder="${t("editor.streakToleranceOff")}" aria-label="${t("editor.streakToleranceLabel")}" /><small>${t("editor.streakToleranceHint")}</small></label>
-                                <div class="lc-checkin__field lc-checkin__anchor-field" data-anchor-picker>
-                                    <span>${t("editor.anchorTitle")}</span>
-                                    <div class="lc-checkin__anchor-input-row"><input name="anchorBlockId" type="text" maxlength="64" placeholder="${t("editor.anchorPlaceholder")}" value="${escapeHtml(item?.noteAnchor?.blockId || "")}" /><button type="button" class="lc-checkin__field-action" data-action="anchor-open-picker">${t("editor.anchorChoose")}</button><button type="button" class="lc-checkin__field-action" data-action="anchor-clear" aria-label="${t("editor.anchorClear")}" title="${t("editor.anchorClear")}">×</button></div>
-                                    <small>${t("editor.anchorHint")}</small>
-                                    <small>${t("set.scope.anchor")}</small>
-                                    <div class="lc-checkin__anchor-browser" data-anchor-browser hidden>
-                                        <div class="lc-checkin__anchor-browser-tools"><input type="search" data-anchor-query placeholder="${t("editor.anchorSearch")}" aria-label="${t("editor.anchorSearch")}" /><button type="button" class="lc-checkin__field-action" data-action="anchor-create">${t("editor.anchorCreate")}</button></div>
-                                        <div class="lc-checkin__anchor-create-row" data-anchor-create-row hidden><label><span>${t("editor.anchorNotebook")}</span><select data-anchor-notebook><option value="">${t("editor.anchorNotebookLoading")}</option></select></label><label><span>${t("editor.anchorDocTitle")}</span><input type="text" data-anchor-doc-title value="${escapeHtml(item?.name || "")}" /></label><button type="button" class="lc-checkin__field-action" data-action="anchor-create-confirm">${t("common.confirm")}</button></div>
-                                        <div class="lc-checkin__anchor-options" data-anchor-options>${anchorChoiceMarkup}</div>
-                                        <p class="lc-checkin__anchor-empty" data-anchor-filter-empty hidden>${t("editor.anchorNoMatches")}</p>
-                                    </div>
-                                </div>
-                                ${ctx.anchorSuspended && item?.noteAnchor ? `<p class="lc-checkin__integration-help" role="alert">${t("editor.anchorSuspended")}</p>` : ""}
-                                <label class="lc-checkin__field lc-checkin__field-check lc-checkin__field-check--anchor" data-anchor-append-field><input name="anchorAppendNotes" type="checkbox" ${item?.noteAnchor?.appendNotes ? "checked" : ""} ${item?.noteAnchor?.blockId ? "" : "disabled"} /><span>${t("editor.anchorAppend")}</span><small>${t("editor.anchorAppendHint")}</small></label>
                                 <label class="lc-checkin__field lc-checkin__field-check" data-taskhorizon-visible-field><input name="taskHorizonVisible" type="checkbox" ${item?.taskHorizonCalendarVisible !== false ? "checked" : ""} aria-label="${t("editor.thVisible")}" /><span>${t("editor.thVisible")}</span><small>${t("editor.thVisibleHint")}</small></label>
                             </div>
                         </div>
                     </details>
                 </aside>
-                <div class="lc-checkin__editor-actions">
+                <div class="lc-checkin__editor-actions" data-editor-section="danger">
                     <button class="lc-checkin__save-button" type="submit">${item ? t("editor.save") : t("editor.saveNew")}</button>
                     ${!item ? `<button class="lc-checkin__text-button" type="submit" data-save-continue>${t("editor.saveContinue")}</button>` : ""}
                     <button class="lc-checkin__text-button" type="button" data-action="save-template">${t("editor.saveTemplate")}</button>
