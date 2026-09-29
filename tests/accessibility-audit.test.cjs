@@ -319,6 +319,36 @@ async function bootHost({browser, projectRoot, dark, frontend = "desktop", width
                 return out;
             });
             tapReport.push(...report.map((line) => `${guard.surface}: ${line}`));
+            /* T-1605：底栏遮挡走查——滚动可见区内的交互控件命中点不得落在固定底栏本体
+               （sticky 吸顶/侧栏覆盖属正常滚动语义，不计）。 */
+            const navRect = await page.evaluate(() => {
+                const nav = document.querySelector(".lc-checkin__mobile-nav");
+                if (!nav) return null;
+                const r = nav.getBoundingClientRect();
+                return {left: r.left, right: r.right, top: r.top};
+            });
+            if (navRect) {
+                const occluded = await page.evaluate(({navTop, navLeft, navRight}) => {
+                    const container = document.querySelector(".lc-checkin");
+                    const out = [];
+                    container.querySelectorAll("button, a, input, select, textarea, summary").forEach((el) => {
+                        const r = el.getBoundingClientRect();
+                        if (r.width < 4 || r.height < 4) return;
+                        const style = getComputedStyle(el);
+                        if (style.visibility === "hidden" || style.display === "none") return;
+                        if (r.right < navLeft || r.left > navRight) return;
+                        const cy = Math.min(r.top + r.height / 2, navTop - 2);
+                        if (cy >= navTop) return;
+                        const hit = document.elementFromPoint(r.left + r.width / 2, cy);
+                        if (hit && (hit === el || el.contains(hit))) return;
+                        if (hit && hit.closest && hit.closest(".lc-checkin__mobile-nav")) {
+                            out.push(`${el.tagName.toLowerCase()}.${typeof el.className === "string" ? el.className.split(" ")[0] : ""}[${el.getAttribute("data-action") || ""}]`);
+                        }
+                    });
+                    return out;
+                }, {navTop: navRect.top, navLeft: navRect.left, navRight: navRect.right});
+                assert.equal(occluded.length, 0, `${guard.surface}: controls covered by the fixed bottom bar (T-1605): ${occluded.slice(0, 4).join("; ")}`);
+            }
         }
         await page.close();
         console.log(`tap-target audit: ${tapShortfalls.length} guarded controls below 44px, ${tapReport.length} dense-list controls measured below 44px (24px AA floor enforced elsewhere)`);

@@ -80,3 +80,29 @@
 - 发现的问题、复现步骤与截图：
 
 每条现场记录回填到对应覆盖面表格的「真实宿主/真机」行，注明日期与执行人；发现缺陷按常规任务登记 TODO，不在本台账内修复。
+
+## 10. T-1605 宿主壳与安全区审计（2026-09-29）
+
+**层叠矩阵**（components.scss 宿主规则五层序，审计结论=方向一致的后轮收紧，无冲突覆盖证实；大规模去重风险大于收益，保持现状并注记）：
+
+| 层 | 位置（约） | 职责 |
+| --- | --- | --- |
+| 基础壳 | 271~312 | dialog-host flex 壳、padding 22/24/18、lc-dialog 容器宽度梯（760/900/1150 max-width） |
+| 移动壳 | 346~507、424~442 | mobile host 顶/底 padding+safe-area calc、底栏与 tab-host 底栏隐藏 |
+| 桌面密度 | ~1345/1554 | 桌面/平板排版与裁剪 |
+| 窄容器档 | content/maintenance-responsive（719/600/560/479/359） | 容器查询布局重排+44px 触控（T-1600） |
+| 密度终 pass | 1520~2100（1588/1623/1767/1872/1935/2020 等） | 多轮叠加的最终壳校准（后写覆盖先写） |
+
+**安全区 env() 全量枚举**：20 条规则覆盖 top/bottom/left/right 四向（editor 操作栏、mobile topbar、底栏、新建悬浮钮、周视图 scroll-padding、设置页尾 padding 等），`max()/calc()` 双形态防 env()=0 退化。
+
+**行为证实（自动浏览器，f194f31 基线 + T-1605 harness 修复）**：
+
+| 断言 | 手段 | 结果 |
+| --- | --- | --- |
+| 320~2000 无横向溢出 | width-walkthrough 既有 scrollWidth 断言 | dock×桌面/移动、tab×桌面、dialog×桌面/移动 全 EXIT=0 |
+| 菜单不被底栏遮挡 | accessibility-audit mobile 遍新增底栏遮挡检查（elementFromPoint 命中点落在固定底栏本体判据；sticky 吸顶/侧栏=正常滚动语义不计） | 五表面零命中；固化守门 |
+| 上下文菜单浮层 | 探针：z-index 60 > 底栏 20、视口钳制（today-bindings:259-264 margin 8）、首项可点击 | 通过 |
+| 完整页入口可达 | 探针：open-tab 在 dock/dialog 宿主×1280/320 可见且 elementFromPoint 命中 | 通过；移动端按 supportsCustomTab=!isMobileFrontend 构造隐藏（无页签能力=正确语义） |
+| 首卡预算作用域 | dialog 壳 22~26px 有意窗口 chrome（实测首卡 400px/820 完整可见）不适用无 chrome 整页预算 → 预算限定 dock/tab；dialog chrome 断言按前端分流（移动断 mobile-topbar） | harness 修复后 dialog×双前端 EXIT=0 |
+
+tab×mobile = 无效组合（思源移动端无自定义页签，插件不注册 addTab），不作验收路径。
