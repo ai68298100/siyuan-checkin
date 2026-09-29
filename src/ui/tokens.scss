@@ -6,6 +6,10 @@
    ============================================================ */
 
 .lc-checkin {
+    /* ---- settings typography（T-1617：设置页类型三档令牌，主题无关） ---- */
+    --lc-checkin-settings-title-weight: 720;
+    --lc-checkin-settings-strong-weight: 650;
+    --lc-checkin-settings-help-size: 11px;
     /* ---- brand & semantic ---- */
     --lc-checkin-accent: #7B85F4;
     --lc-checkin-accent-strong: #5B65E8;

@@ -13,8 +13,8 @@
     .lc-checkin__settings-nav button.is-active { border-color: transparent; box-shadow: inset 3px 0 var(--lc-checkin-accent-text); }
     .lc-checkin__settings-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 240px); gap: 12px; border-bottom: 0; font-size: 14px; }
     .lc-checkin__settings-label { gap: 4px; }
-    .lc-checkin__settings-label > span { font-weight: 600; }
-    .lc-checkin__settings-label small { font-size: 12px; line-height: 1.5; }
+    .lc-checkin__settings-label > span { font-weight: var(--lc-checkin-settings-strong-weight); }
+    .lc-checkin__settings-label small { font-size: var(--lc-checkin-settings-help-size); line-height: 1.5; }
     .lc-checkin__settings-value { font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
     .lc-checkin__kbd,
     .lc-checkin__kbd-plus { font-size: 12px; }

@@ -160,6 +160,34 @@ try {
         assert.doesNotMatch(fragments, /common\.clearFilter/, "the phantom key must stay retired");
     });
 
+    check("settings typography collapses onto shared tokens (T-1617)", () => {
+        const tokens = read("src", "ui", "tokens.scss");
+        const componentsSheet = read("src", "ui", "components.scss");
+        const maintenance = read("src", "ui", "maintenance-responsive.scss");
+        /* 三档令牌在档：标题 720 / 次级强调 650 / 帮助 11px（主题无关）。 */
+        for (const token of ["--lc-checkin-settings-title-weight: 720", "--lc-checkin-settings-strong-weight: 650", "--lc-checkin-settings-help-size: 11px"]) {
+            assert.ok(tokens.includes(token), `typography token must exist: ${token}`);
+        }
+        /* 设置面规则消费令牌（散布字重 620/640/660/700 在设置面退役）。 */
+        for (const [pattern, prop] of [
+            [/settings-card h2 \{[^}]*var\(--lc-checkin-settings-title-weight\)/, "title"],
+            [/external-overview strong \{[^}]*var\(--lc-checkin-settings-title-weight\)/, "title"],
+            [/settings-label > span \{ font-weight: var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+            [/source-panel-head > strong \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+            [/settings-value \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+            [/settings-fold > summary \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+            [/settings-link \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+        ]) {
+            assert.match(componentsSheet, pattern, `rule must consume the ${prop} token: ${pattern.source.slice(0, 60)}`);
+        }
+        assert.match(componentsSheet, /\.lc-checkin \.lc-checkin--settings \.lc-checkin__settings-label small \{ color: var\(--lc-checkin-muted\); font-size: var\(--lc-checkin-settings-help-size\);/, "label help must consume the help-size token");
+        /* 帮助字号单一来源：(0,3,0) 规则压过维护层基线，双档一致 11px。 */
+        assert.match(componentsSheet, /\.lc-checkin \.lc-checkin--settings \.lc-checkin__settings-label small/, "label help must win the cascade deterministically");
+        assert.match(maintenance, /font-size: var\(--lc-checkin-settings-help-size\)/, "maintenance baseline consumes the same token");
+        assert.doesNotMatch(maintenance, /font-weight: 6[246]0;/, "stray 620/640/660 weights must leave maintenance too");
+        /* 非设置面的 620 字重（日历/区块眉标/文件按钮等）不在本批范围。 */
+    });
+
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
         /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
         assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");
