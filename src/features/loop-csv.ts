@@ -10,6 +10,8 @@
      其余不可映射时降级为 daily 并返回降级标记。 */
 
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
+import {isValidDateKey} from "../date-keys";
+import {isComplete, isItemAvailableOnDate} from "../model";
 
 export type LoopEntryValue = "YES_MANUAL" | "YES_AUTO" | "NO" | "SKIP" | "UNKNOWN";
 
@@ -116,7 +118,8 @@ export function parseLoopCheckmarksCsv(text: string): {marks: LoopCheckmarks; in
     for (const line of lines.slice(1)) {
         const cells = splitCsvLine(line);
         const date = (cells[0] || "").trim();
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { invalidRows += 1; continue; }
+        /* T-1633：真实日历校验——2026-02-30 这类被 JS Date 归一的键必须拒绝。 */
+        if (!isValidDateKey(date)) { invalidRows += 1; continue; }
         points.push({date, values: names.map((_, index) => parseEntryValue(cells[index + 1] || ""))});
     }
     return {marks: {names, points}, invalidRows};
@@ -232,24 +235,41 @@ export function serializeLoopHabitsCsv(store: CheckinStore): string {
     return lines.join("\n");
 }
 
-/** 同构导出：组合版 Checkmarks.csv（Date,<名称...>，新→旧；有记录 YES_MANUAL，无记录 NO）。 */
+/** 同构导出：组合版 Checkmarks.csv（Date,<名称...>，新→旧）。
+    T-1633（D-321）：完成日复用主模型按**当日生效规则**判定（isComplete 唯一判据）——
+    skip 不贡献进度、部分达标/破戒=非完成日，绝不为「有事件」制造完成事实；
+    配额项目无日级完成语义，不产出 YES_MANUAL（损耗由 Habits.csv 频率近似与
+    export-formats 说明承载）。日期宇宙仍=有事件的日子+今天（atMost 零事件守住日
+    不在导出宇宙——Loop 无「守住」语义，属已文档化损耗）。 */
 export function serializeLoopCheckmarksCsv(store: CheckinStore, today = new Date()): string {
     const items = store.items;
     const byItemDay = new Map<string, Set<string>>();
     const days = new Set<string>();
     for (const event of store.events) {
         if (!items.some((item) => item.id === event.itemId)) continue;
+        days.add(event.localDate);
         const bucket = byItemDay.get(event.itemId) || new Set<string>();
         bucket.add(event.localDate);
         byItemDay.set(event.itemId, bucket);
-        days.add(event.localDate);
+    }
+    const completionDays = new Map<string, Set<string>>();
+    for (const [itemId, eventDates] of byItemDay) {
+        const item = items.find((candidate) => candidate.id === itemId);
+        if (!item) continue;
+        const done = new Set<string>();
+        for (const date of eventDates) {
+            if (!isValidDateKey(date)) continue;
+            const day = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+            if (isItemAvailableOnDate(item, day) && isComplete(store, item, day)) done.add(date);
+        }
+        completionDays.set(itemId, done);
     }
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     days.add(todayKey);
     const ordered = [...days].sort().reverse().slice(0, 3660);
     const lines = [`Date,${items.map((item) => csvCell(item.name)).join(",")}${items.length ? "," : ""}`];
     for (const date of ordered) {
-        const cells = items.map((item) => byItemDay.get(item.id)?.has(date) ? "YES_MANUAL" : "NO");
+        const cells = items.map((item) => completionDays.get(item.id)?.has(date) ? "YES_MANUAL" : "NO");
         lines.push(`${date},${cells.join(",")}${items.length ? "," : ""}`);
     }
     return lines.join("\n");

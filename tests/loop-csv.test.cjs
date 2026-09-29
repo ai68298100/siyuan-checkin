@@ -21,7 +21,8 @@ assert.match(indexSource, /buildLoopImportPlan\(habitsCsv, checkmarksCsv/, "inde
 assert.match(indexSource, /importLoopPlanInto\(this\.store, plan/, "index delegates persistence through the shared executor (T-1522 起 third arg 为可选冲突决策)");
 
 const outputRoot = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-loop-csv-"));
-for (const filename of ["features/loop-csv.ts"]) {
+/* T-1633：迁出完成判定复用主模型——转译 model 依赖树（loop-csv 现引 ../model 与 ../date-keys）。 */
+for (const filename of ["types.ts", "date-keys.ts", "record-step.ts", "quota.ts", "rules.ts", "model.ts", "features/loop-csv.ts"]) {
     const target = path.join(outputRoot, filename.replace(/\.ts$/, ".js"));
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(read(...filename.split("/")), {
@@ -112,12 +113,37 @@ const exportedMarks = loop.serializeLoopCheckmarksCsv(store, new Date(2026, 8, 1
 assert.ok(exportedMarks.startsWith(`Date,阅读,喝水,`), "aggregate header keeps habit columns and trailing delimiter");
 const markLines = exportedMarks.split("\n");
 assert.equal(markLines[1], "2026-09-18,NO,NO,", "today row pads with NO");
-assert.equal(markLines[2], "2026-09-17,YES_MANUAL,YES_MANUAL,", "recorded days export YES_MANUAL");
+assert.equal(markLines[2], "2026-09-17,YES_MANUAL,NO,", "binary completion exports YES_MANUAL; quota days have no day-level completion (T-1633/D-321)");
 assert.equal(markLines.length, 3, "only recorded days and today are written; long empty ranges are not padded");
 /* 回环：导出的两份文件再次解析得到一致的习惯与记录。 */
 const roundTrip = loop.buildLoopImportPlan(exportedHabits, exportedMarks);
 assert.deepEqual(roundTrip.habits.map((habit) => habit.name), ["阅读", "喝水"]);
 assert.equal(roundTrip.rows.filter((row) => row.name === "阅读").length, 1);
 assert.equal(roundTrip.measurableNames.length, 1, "exported quantity habits re-import as measurable catalogue");
+
+/* —— T-1633（D-321）：迁出完成日=主模型当日生效规则判定。 —— */
+const semanticStore = {
+    version: 3,
+    items: [
+        {id: "partial", name: "部分达标", icon: "✓", kind: "count", target: 2, unit: "次", schedule: {type: "daily"}, createdAt: "", createdDate: "2026-09-01", revisions: [], archivePeriods: []},
+        {id: "breach", name: "戒除", icon: "🚭", kind: "binary", target: 1, unit: "次", direction: "atMost", schedule: {type: "daily"}, createdAt: "", createdDate: "2026-09-01", revisions: [], archivePeriods: []},
+    ],
+    events: [
+        {id: "s1", itemId: "partial", occurredAt: "", localDate: "2026-09-10", value: 1, unit: "次", source: "manual"},
+        {id: "s2", itemId: "partial", occurredAt: "", localDate: "2026-09-11", value: 2, unit: "次", source: "manual"},
+        {id: "s3", itemId: "breach", occurredAt: "", localDate: "2026-09-10", value: 1, unit: "次", source: "manual"},
+    ],
+    eventTombstones: [],
+};
+const semanticCsv = loop.serializeLoopCheckmarksCsv(semanticStore, new Date(2026, 8, 12));
+const semanticRows = Object.fromEntries(semanticCsv.split("\n").slice(1).map((line) => {
+    const cells = line.split(",");
+    return [cells[0], cells.slice(1, 3).join(",")];
+}));
+assert.equal(semanticRows["2026-09-10"], "NO,NO", "partial day and atMost breach day are NOT completion days");
+assert.equal(semanticRows["2026-09-11"], "YES_MANUAL,NO", "only the model-complete day exports YES_MANUAL");
+const hostileImport = loop.parseLoopCheckmarksCsv("Date,习惯\n2026-02-30,YES_MANUAL\n2026-09-10,YES_MANUAL");
+assert.equal(hostileImport.invalidRows, 1, "non-calendar dates are rejected on Loop import");
+assert.equal(hostileImport.marks.points.length, 1);
 
 console.log("Loop CSV checks passed: parsing, frequency mapping, degraded migration boundaries, isomorphic export and round-trip.");

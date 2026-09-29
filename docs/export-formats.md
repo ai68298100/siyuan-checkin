@@ -28,14 +28,18 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 
 - 两个文件：`Habits.csv`（12 列官方格式）+ `Checkmarks.csv`（`Date,<习惯名...>` 组合格式）；
 - 迁出映射：binary → YES_NO_HABIT（1/1 频率），count/duration/quantity → MEASURABLE（含单位与目标）；quota 周 N 次 → N/7、月 N 次 → N/30（超过 7/31 钳制）；
-- 可直接被 Loop 或支持该格式的应用导入。
+- 可直接被 Loop 或支持该格式的应用导入；
+- 完成日语义（T-1633/D-321）：Checkmarks.csv 只对**当日生效规则判定的完成日**标 YES_MANUAL（isComplete 唯一判据）——skip 日、部分达标日、戒除破戒日一律 NO；配额项目无日级完成语义不产出 YES_MANUAL（频率近似见上）；戒除「零事件守住」日不在导出宇宙（Loop 无该语义，属损耗）；导入侧日期为真实日历校验（`2026-02-30` 拒绝）；
 
 ### 5. Obsidian Habit Tracker 21 迁出（设置 → 导出 Obsidian 习惯文件，T-1283）
 
 - 每个活跃项目生成一个习惯 `.md` 文件：frontmatter `title` + `entries`（YYYY-MM-DD 完成日数组，升序）；
 - 完成日 = 有真实（非跳过）事件的日期；跳过记录 H21 无对应语义，不导出；无完成日与超出上限（30 个文件）的项目计入跳过数并如实提示；
 - 文件名由项目名消毒生成（去除 `\/:*?"<>|` 等字符，冲突自动加后缀）；
-- 可直接放入 Obsidian 仓库的 Habits 目录被 Habit Tracker 21 读取。
+- 可直接放入 Obsidian 仓库的 Habits 目录被 Habit Tracker 21 读取；
+- 完成日语义（T-1633/D-321）：entries 只收**当日生效规则判定的完成日**——skip 与部分达标日不算、破戒日不算；配额项目整档不导出并计入 quotaSkipped 损耗；戒除「零事件守住」日 H21 无从表达，不产出（损耗如实在 skippedItems 体现）；
+- frontmatter `title` 转义反斜杠/双引号并剥离换行等控制字符（保证单行）；
+- 导入侧 entries 日期为真实日历校验。
 
 ## 导入通道
 

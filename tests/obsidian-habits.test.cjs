@@ -126,5 +126,30 @@ const makeItem2 = (overrides = {}) => ({
     assert.ok(named.files.slice(1).every((file) => /-\d+\.md$/.test(file.filename)), "collisions uniquified with numeric suffixes");
     assert.equal(new Set(named.files.map((file) => file.filename.toLowerCase())).size, 3, "filenames unique case-insensitively");
 
+
+    /* —— T-1633（D-321）：迁出完成日=主模型判定 + 配额整档不导出 + YAML 标题去控制字符。 —— */
+    const semanticStore = {
+        version: 3,
+        items: [
+            {id: "ok", name: "达标项", icon: "✓", kind: "count", target: 2, unit: "次", schedule: {type: "daily"}, createdAt: "", createdDate: "2026-09-01", revisions: [], archivePeriods: []},
+            {id: "q", name: "配额项", icon: "📅", kind: "count", target: 3, unit: "次", schedule: {type: "quota", quota: {period: "week", amount: 3, countMode: "dates"}}, createdAt: "", createdDate: "2026-09-01", revisions: [], archivePeriods: []},
+            {id: "nl", name: "坏标题\n第二行", icon: "✓", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, createdAt: "", createdDate: "2026-09-01", revisions: [], archivePeriods: []},
+        ],
+        events: [
+            {id: "o1", itemId: "ok", occurredAt: "", localDate: "2026-09-10", value: 2, unit: "次", source: "manual"},
+            {id: "o2", itemId: "ok", occurredAt: "", localDate: "2026-09-11", value: 1, unit: "次", source: "manual"},
+            {id: "o3", itemId: "q", occurredAt: "", localDate: "2026-09-10", value: 3, unit: "次", source: "manual"},
+            {id: "o4", itemId: "nl", occurredAt: "", localDate: "2026-09-10", value: 1, unit: "次", source: "manual"},
+        ],
+        eventTombstones: [],
+    };
+    const semanticPlan = habits.buildObsidianExportFiles(semanticStore);
+    assert.equal(semanticPlan.quotaSkipped, 1, "quota items are excluded with a dedicated loss counter");
+    assert.equal(semanticPlan.files.length, 2, "only model-complete items export");
+    const okFile = semanticPlan.files.find((file) => file.filename.startsWith("达标项"));
+    assert.equal(okFile.entryCount, 1, "partial days are not completion days");
+    assert.ok(okFile.content.includes("  - 2026-09-10"), "the model-complete day is exported");
+    const nlFile = semanticPlan.files.find((file) => file.filename.startsWith("坏标题"));
+    assert.ok(nlFile && nlFile.content.split("\n").length === 6, "YAML title newlines are stripped (frontmatter stays single-line: 5 lines + trailing)");
     console.log("Obsidian habit import checks passed.");
 })().catch((error) => { console.error(error); process.exit(1); });

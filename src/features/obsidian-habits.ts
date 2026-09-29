@@ -138,7 +138,8 @@ export function obsidianHabitName(habit: ObsidianHabitFile): string {
    完成日 = 有真实（非跳过）事件的日期；无完成日的项目不导出；
    跳过记录 H21 无对应语义，不导出。 */
 
-import type {CheckinStore} from "../types";
+import type {CheckinStore, CheckinItem} from "../types";
+import {isComplete, isItemAvailableOnDate} from "../model";
 
 export interface ObsidianExportFile {
     filename: string;
@@ -150,6 +151,8 @@ export interface ObsidianExportPlan {
     files: ObsidianExportFile[];
     /** 无完成日或超出上限而未导出的活跃项目数。 */
     skippedItems: number;
+    /** T-1633：配额项目无日级完成语义而不导出的数量（损耗在 export-formats 说明）。 */
+    quotaSkipped: number;
 }
 
 const EXPORT_MAX_FILES = 30;
@@ -161,10 +164,13 @@ function sanitizeFilename(name: string): string {
 
 export function buildObsidianExportFiles(store: CheckinStore, options: {maxFiles?: number} = {}): ObsidianExportPlan {
     const maxFiles = options.maxFiles ?? EXPORT_MAX_FILES;
-    const byItem = new Map<string, {name: string; dates: Set<string>}>();
+    const byItem = new Map<string, {item: CheckinItem; name: string; dates: Set<string>}>();
+    let quotaSkipped = 0;
     for (const item of store.items) {
         if (item.archived) continue;
-        byItem.set(item.id, {name: item.name, dates: new Set()});
+        /* T-1633：配额项目无日级完成语义——整档不导出，计入 quotaSkipped 损耗。 */
+        if (item.schedule.type === "quota") { quotaSkipped += 1; continue; }
+        byItem.set(item.id, {item, name: item.name, dates: new Set()});
     }
     for (const event of store.events) {
         if (event.kind === "skip") continue;
@@ -176,7 +182,14 @@ export function buildObsidianExportFiles(store: CheckinStore, options: {maxFiles
     let skippedItems = 0;
     const usedFilenames = new Set<string>();
     for (const target of byItem.values()) {
-        if (!target.dates.size || files.length >= maxFiles) {
+        /* T-1633（D-321）：完成日复用主模型按当日生效规则判定——skip 不贡献进度、
+           部分达标/破戒=非完成日；可用性（创建/归档期）之外的日子不产出。 */
+        const done = new Set<string>();
+        for (const date of target.dates) {
+            const day = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+            if (isItemAvailableOnDate(target.item, day) && isComplete(store, target.item, day)) done.add(date);
+        }
+        if (!done.size || files.length >= maxFiles) {
             skippedItems += 1;
             continue;
         }
@@ -188,10 +201,12 @@ export function buildObsidianExportFiles(store: CheckinStore, options: {maxFiles
             suffix += 1;
         }
         usedFilenames.add(filename.toLowerCase());
-        const dates = [...target.dates].sort();
-        const safeTitle = target.name.replace(/\\/g, "\\\\").replace(/"/g, "\"");
+        const dates = [...done].sort();
+        /* T-1633：YAML 标题转义——反斜杠/双引号转义外，剥离换行/制表等控制字符
+           （frontmatter 必须单行，换行会截断 frontmatter 注入 entries 区）。 */
+        const safeTitle = target.name.replace(/\\/g, "\\\\").replace(/"/g, "\"").replace(/[\r\n\t\u0000-\u001f]+/g, " ").trim();
         const content = `---\ntitle: "${safeTitle}"\nentries:\n${dates.map((date) => `  - ${date}`).join("\n")}\n---\n`;
         files.push({filename, content, entryCount: dates.length});
     }
-    return {files, skippedItems};
+    return {files, skippedItems, quotaSkipped};
 }
