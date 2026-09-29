@@ -104,7 +104,7 @@ assert.match(privacySource, /external\("yeguif", source\.yeguifIntegration\)/, "
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");
 assert.match(settingsSource, /data-action="refresh-source" data-source="yeguif"/, "yeguif source exposes a manual refresh action");
 assert.match(indexSource, /source === "yeguif"\) await this\.ingestYeguif\(\)/, "yeguif refresh reuses the bounded ingest path");
-for (const hook of ["data-yeguif-integration", "data-yeguif-toggle", "data-yeguif-mappings", "data-yeguif-notebook", "load-yeguif-notebooks"]) {
+for (const hook of ["data-yeguif-integration", "data-yeguif-toggle", "data-yeguif-mappings", "data-choice-search=\"yeguif-nb\"", "data-choice-list=\"yeguif-nb\""]) {
     assert.ok(settingsSource.includes(hook), `设置面板必须包含 ${hook}`);
 }
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");

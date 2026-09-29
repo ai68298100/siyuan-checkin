@@ -4596,53 +4596,65 @@ this.scheduleMidnightRefresh();
             });
             this.render();
         });
-        root.querySelector<HTMLElement>("[data-action='load-yeguif-notebooks']")?.addEventListener("click", async (event) => {
-            const button = event.currentTarget as HTMLElement;
-            const select = root.querySelector<HTMLSelectElement>("[data-yeguif-notebook]");
-            if (!select || select.dataset.loaded === "true") return;
-            button.setAttribute("disabled", "true");
-            try {
-                const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
-                const notebooks = response.code === 0 ? (response.data?.notebooks || []).filter((entry) => entry.id && !entry.closed) : [];
+        /* T-1616 批次三：叶归笔记本选择器——首次聚焦拉取 lsNotebooks 一次（会话缓存），
+           候选行渲染全部开放笔记本，搜索框客户端过滤；已存 ID 不在列表时自动停用并提示。 */
+        let yeguifNbCache: Array<{id: string; name: string}> | undefined;
+        const yeguifNbInput = root.querySelector<HTMLInputElement>("[data-choice-search=\"yeguif-nb\"]");
+        const yeguifNbList = root.querySelector<HTMLElement>("[data-choice-list=\"yeguif-nb\"]");
+        if (yeguifNbInput && yeguifNbList) {
+            const renderNbRows = (rows: ReadonlyArray<{id: string; name: string}>) => {
+                yeguifNbList.innerHTML = rows.length
+                    ? rows.map((nb) => `<button type="button" role="option" class="lc-checkin__document-choice-option${nb.id === this.yeguifIntegration.notebookId ? " is-selected" : ""}" data-nb-id="${escapeHtml(nb.id)}"><strong>${escapeHtml(nb.name)}</strong><small>${escapeHtml(nb.id)}</small></button>`).join("")
+                    : `<div class="lc-checkin__document-choice-option is-empty" role="status">${escapeHtml(t("set.documentChoiceEmpty"))}</div>`;
+                yeguifNbList.hidden = false;
+            };
+            const fetchYeguifNotebooks = async (): Promise<boolean> => {
+                if (yeguifNbCache) return true;
+                try {
+                    const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
+                    yeguifNbCache = response.code === 0 ? (response.data?.notebooks || []).filter((entry) => entry.id && !entry.closed).map((entry) => ({id: entry.id || "", name: entry.name || entry.id || ""})) : [];
+                    return yeguifNbCache.length > 0;
+                } catch { return false; }
+            };
+            const selectNotebook = (notebookId: string) => {
+                this.applyPreference(() => {
+                    this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: Boolean(notebookId) && this.yeguifIntegration.enabled};
+                });
+                this.render();
+            };
+            const populateYeguifNb = () => {
                 const savedId = this.yeguifIntegration.notebookId;
-                if (notebooks.length) {
-                    const options = [new Option(t("set.yeguifNotebookChoose"), ""), ...notebooks.map((notebook) => new Option(notebook.name || notebook.id || "", notebook.id || ""))];
-                    if (savedId && !notebooks.some((notebook) => notebook.id === savedId)) {
-                        options.push(new Option(`${savedId} · ${t("set.yeguifNotebookMissing")}`, savedId));
-                        if (this.yeguifIntegration.enabled) {
-                            this.applyPreference(() => {
-                                this.yeguifIntegration = {...this.yeguifIntegration, enabled: false};
-                            });
-                            showMessage(t("msg.yeguifNotebookMissing"));
-                            const toggle = root.querySelector<HTMLInputElement>("[data-yeguif-toggle]");
-                            if (toggle) toggle.checked = false;
-                        }
+                if (!yeguifNbCache) return;
+                const all = [...yeguifNbCache];
+                if (savedId && !yeguifNbCache.some((nb) => nb.id === savedId)) {
+                    all.push({id: savedId, name: `${savedId} · ${t("set.yeguifNotebookMissing")}`});
+                    if (this.yeguifIntegration.enabled) {
+                        this.applyPreference(() => {
+                            this.yeguifIntegration = {...this.yeguifIntegration, enabled: false};
+                        });
+                        showMessage(t("msg.yeguifNotebookMissing"));
                     }
-                    select.replaceChildren(...options);
-                    if (savedId) select.value = savedId;
-                    select.disabled = false;
-                    select.dataset.loaded = "true";
-                } else {
-                    select.replaceChildren(new Option(t("set.yeguifNotebookFailed"), ""), ...(savedId ? [new Option(`${savedId} · ${t("set.yeguifNotebookSaved")}`, savedId)] : []));
-                    if (savedId) select.value = savedId;
-                    select.disabled = !savedId;
-                    select.dataset.loaded = "error";
                 }
-            } catch {
-                const savedId = this.yeguifIntegration.notebookId;
-                select.replaceChildren(new Option(t("set.yeguifNotebookFailed"), ""), ...(savedId ? [new Option(`${savedId} · ${t("set.yeguifNotebookSaved")}`, savedId)] : []));
-                if (savedId) select.value = savedId;
-            } finally {
-                button.removeAttribute("disabled");
-            }
-        });
-        root.querySelector<HTMLSelectElement>("[data-yeguif-notebook]")?.addEventListener("change", (event) => {
-            const notebookId = (event.currentTarget as HTMLSelectElement).value;
-            this.applyPreference(() => {
-                this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: Boolean(notebookId) && this.yeguifIntegration.enabled};
+                renderNbRows(all);
+            };
+            yeguifNbInput.addEventListener("focus", async () => {
+                if (yeguifNbCache) { renderNbRows(yeguifNbCache); return; }
+                const ok = await fetchYeguifNotebooks();
+                if (ok) populateYeguifNb();
             });
-            this.render();
-        });
+            yeguifNbInput.addEventListener("input", () => {
+                if (!yeguifNbCache) return;
+                const query = yeguifNbInput.value.trim().toLowerCase();
+                const filtered = query ? yeguifNbCache.filter((nb) => nb.name.toLowerCase().includes(query) || nb.id.toLowerCase().includes(query)) : yeguifNbCache;
+                renderNbRows(filtered);
+            });
+            yeguifNbList.addEventListener("click", (event) => {
+                const option = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-nb-id]");
+                if (!option) return;
+                selectNotebook(option.dataset.nbId || "");
+                yeguifNbList.hidden = true;
+            });
+        }
         /* T-1616：统一文档选择器接线（diary/summary/health 三点共用）——防抖 + 请求代际
            + IME 组合态安全 + 候选行键盘（↓ 聚焦首项、列表内 ↑/↓ 环选、Enter 选中、Esc 收起）；
            候选经 searchBindingDocuments（searchDocs 有界 50）+ 纯投影行；失败行可重试。 */

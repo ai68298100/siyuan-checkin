@@ -42,7 +42,7 @@ const migratedSelectors = [
     "[data-setting-focus-timer]", "[data-summary-toggle]", "[data-sireader-toggle]", "[data-sireader-item]",
     "[data-siplayer-toggle]", "[data-siplayer-item]", "[data-health-toggle]", "[data-note-query-toggle]",
     "[data-weread-toggle]", "[data-weread-item]", "[data-weread-finish-item]", "[data-weread-notes-item]",
-    "[data-yeguif-toggle]", "[data-yeguif-notebook]", "[data-yeguif-mappings]",
+    "[data-yeguif-toggle]", "[data-yeguif-mappings]",
 ];
 /* 逐选择器：其处理器体内（同一段 addEventListener）不得再直接跟裸 persist。 */
 for (const selector of migratedSelectors) {
