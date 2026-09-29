@@ -69,7 +69,7 @@ import {buildTemplatePackPreview} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
-import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
+import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, settleWereadNotes, wereadFinishRefPrefix, wereadUpgradeBlocked} from "./features/weread-adapter";
 import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
 import {buildLifelogTimeline} from "./features/lifelog-timeline";
 import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
@@ -455,7 +455,7 @@ export default class CheckinPlugin extends Plugin {
     private noteQueryScanCursor = "";
     private yeguifScanCursor = "";
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
-    private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string};
+    private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string; finished?: {written: number; pending: number}; notes?: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number}};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
     private pendingRenderAfterTyping = false;
     /** T-1455：展开中的精确录入面板（itemId 列表；会话态，重渲染保持展开）。 */
@@ -1341,11 +1341,27 @@ export default class CheckinPlugin extends Plugin {
                 } else if (writeOutcome.reason === "storage-failed") storageRetryable += 1;
             }
         }
-        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(storageRetryable ? {pendingRetryable: storageRetryable} : {}), ...(outcome.upgrade ? {upgrade: outcome.upgrade} : {})};
+        if (outcome.ok) this.wereadLastPull = {ok: true, days: outcome.days.length, written, ...(storageRetryable ? {pendingRetryable: storageRetryable} : {})};
+        /* T-1630：官方升级停用口径——upgrade 出现即阻断本轮全部链路（含完读/笔记），
+           无论时长读取成功与否；lastPull 如实记录升级信息。 */
+        if (wereadUpgradeBlocked(outcome.upgrade)) {
+            this.wereadLastPull = outcome.ok
+                ? {ok: true, days: outcome.days.length, written, upgrade: outcome.upgrade}
+                : {ok: false, days: 0, written: 0, error: outcome.message || "pull failed", upgrade: outcome.upgrade};
+            return written;
+        }
         const todayKey = dateKey(currentCalendarDate());
-        if (governance.finishItemId) await this.ingestWereadFinished();
+        let finished: {written: number; pending: number} = {written: 0, pending: 0};
+        let notes: {status: "settled" | "empty" | "incomplete" | "skipped"; tally: number} | undefined;
+        if (governance.finishItemId) finished = await this.ingestWereadFinished();
         const yesterday = addDays(todayKey, -1);
-        if (governance.notesItemId && yesterday) await this.ingestWereadNotes(yesterday);
+        if (governance.notesItemId && yesterday) notes = await this.ingestWereadNotes(yesterday);
+        /* 三链路聚合（additive）：整体 ok 仍仅反映时长链路（来源卡状态行契约不变），
+           完读/笔记各自状态随结果携带，不再把局部成功说成全成功。 */
+        if (outcome.ok) {
+            const base = this.wereadLastPull && this.wereadLastPull.ok ? this.wereadLastPull : {ok: true as const, days: outcome.days.length, written};
+            this.wereadLastPull = {...base, finished, ...(notes ? {notes} : {})};
+        }
         return written;
     }
 
@@ -1353,11 +1369,12 @@ export default class CheckinPlugin extends Plugin {
        progress=100 + finishTime → 每本书幂等记一次（value=1，书名只进本地事件备注，
        不进 externalRef）。有界：每轮至多核实 10 本新书；albums 的 finish 是「系列完结」
        非个人读完，不纳入；已写入或已墓碑（前缀匹配）的书跳过；失败静默下轮重试。 */
-    private async ingestWereadFinished(): Promise<void> {
+    /** T-1630：完读链路——返回本轮写入数与仍待重试数（超 10 本上限/网关或解析失败的书）。 */
+    private async ingestWereadFinished(): Promise<{written: number; pending: number}> {
         const governance = this.wereadIntegration;
-        if (!governance.enabled || !governance.finishItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        if (!governance.enabled || !governance.finishItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return {written: 0, pending: 0};
         const item = getActiveItemById(this.store, governance.finishItemId);
-        if (!item) return;
+        if (!item) return {written: 0, pending: 0};
         const toLocalDateFromUnix = (seconds: number) => dateKey(new Date(seconds * 1000));
         const shelf = await this.wereadGateway(buildWereadShelfRequest());
         const finishedBooks = parseWereadFinishedBooks(shelf.payload).filter((book) => {
@@ -1367,9 +1384,14 @@ export default class CheckinPlugin extends Plugin {
             if (this.store.eventTombstones.some((tombstone) => tombstone.source === "weread" && typeof tombstone.externalRef === "string" && tombstone.externalRef.startsWith(prefix))) return false;
             return true;
         });
+        let written = 0;
+        /* 有界：每轮至多核实 10 本新书；网关失败（payload 缺失）或未核实完成的书计入
+           pending——身份未写即保留下一轮重试机会，不丢书、不假成功。 */
+        let pending = Math.max(0, finishedBooks.length - 10);
         for (const book of finishedBooks.slice(0, 10)) {
             const progress = await this.wereadGateway(buildWereadBookProgressRequest(book.bookId));
             const outcome = parseWereadBookProgress(progress.payload, {toLocalDateFromUnix, today: dateKey(currentCalendarDate())});
+            if (!progress.payload) { pending += 1; continue; }
             if (!outcome.finished || !outcome.localDate) continue;
             const externalRef = buildWereadFinishRef(governance.finishItemId, book.bookId, outcome.localDate);
             if (!externalRef) continue;
@@ -1377,10 +1399,12 @@ export default class CheckinPlugin extends Plugin {
             const moment = {occurredAt: new Date().toISOString(), localDate: outcome.localDate};
             const recorded = await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.finishItemId, value: 1, source: "weread", externalRef, note: book.title}, moment, fingerprint));
             if (recorded) {
+                written += 1;
                 this.invalidateSummary();
                 this.renderBackgroundUpdate();
             }
         }
+        return {written, pending};
     }
 
     /* T-1402 第三批次：笔记计数（划线 + 想法/点评）——notebooks 概览筛出最近有笔记
@@ -1388,50 +1412,67 @@ export default class CheckinPlugin extends Plugin {
        bookmarklist/review-list 按 createTime 逐日统计 → 只结算「昨天」这个完整日
        （今天未满不写，宁少记不多记）。有界：概览至多 5 页（官方 lastSort 游标），
        每轮至多核实 10 本书；已写入或已墓碑的当日身份直接跳过。 */
-    private async ingestWereadNotes(yesterdayLocalDate: string): Promise<void> {
+    /* T-1630：笔记链路——分页触顶或网关失败（payload 缺失）=未完整，tally 不可信；
+       settleWereadNotes 门：未完整不写每日身份（身份一经写入即锁定当日补算机会），
+       保留下一轮从头重算。返回结算状态供三链路聚合。 */
+    private async ingestWereadNotes(yesterdayLocalDate: string): Promise<{status: "settled" | "empty" | "incomplete" | "skipped"; tally: number}> {
         const governance = this.wereadIntegration;
-        if (!governance.enabled || !governance.notesItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return;
+        if (!governance.enabled || !governance.notesItemId || this.disposed || this.disposing || !this.acceptingOperations || !this.storageReady) return {status: "skipped", tally: 0};
         const item = getActiveItemById(this.store, governance.notesItemId);
-        if (!item) return;
+        if (!item) return {status: "skipped", tally: 0};
         const notesRef = buildWereadNotesRef(governance.notesItemId, yesterdayLocalDate);
-        if (!notesRef) return;
-        if (this.store.events.some((event) => event.source === "weread" && event.externalRef === notesRef)) return;
-        if (this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.notesItemId && tombstone.source === "weread" && tombstone.externalRef === notesRef)) return;
+        if (!notesRef) return {status: "skipped", tally: 0};
+        if (this.store.events.some((event) => event.source === "weread" && event.externalRef === notesRef)) return {status: "skipped", tally: 0};
+        if (this.store.eventTombstones.some((tombstone) => tombstone.itemId === governance.notesItemId && tombstone.source === "weread" && tombstone.externalRef === notesRef)) return {status: "skipped", tally: 0};
         const toLocalDateFromUnix = (seconds: number) => dateKey(new Date(seconds * 1000));
         const todayKey = dateKey(currentCalendarDate());
         let lastSort: number | undefined;
         const activeBooks: string[] = [];
+        let complete = true;
         for (let page = 0; page < 5; page += 1) {
             const pageResult = await this.wereadGateway(buildWereadNotebooksRequest(100, lastSort));
+            /* 网关失败（payload 缺失）≠空数据——标记未完整，tally 不可信。 */
+            if (!pageResult.payload) { complete = false; break; }
             const parsed = parseWereadNotebookPage(pageResult.payload);
             for (const entry of parsed.books) {
                 if (toLocalDateFromUnix(entry.recentSort) >= yesterdayLocalDate && !activeBooks.includes(entry.bookId)) activeBooks.push(entry.bookId);
             }
             if (!parsed.hasMore || !parsed.books.length) break;
+            if (page === 4) { complete = false; break; }
             lastSort = parsed.books[parsed.books.length - 1].recentSort;
         }
+        if (activeBooks.length > 10) complete = false;
         let tally = 0;
         for (const bookId of activeBooks.slice(0, 10)) {
+            if (!complete) break;
             /* 划线（bookmarklist 服务端已滤书签）+ 想法/点评（review/list/mine，官方
                synckey 游标，至多 3 页），同书同日合并计入。 */
             const bookmarkList = await this.wereadGateway(buildWereadBookmarkListRequest(bookId));
+            if (!bookmarkList.payload) { complete = false; break; }
             const counts = parseWereadHighlightTally(bookmarkList.payload, {toLocalDateFromUnix, today: todayKey});
             tally += counts.byDate.get(yesterdayLocalDate) || 0;
             let reviewSynckey: number | undefined;
+            let reviewSettled = false;
             for (let page = 0; page < 3; page += 1) {
                 const reviewPage = await this.wereadGateway(buildWereadReviewListRequest(bookId, reviewSynckey, 50));
+                if (!reviewPage.payload) { complete = false; break; }
                 const reviews = parseWereadReviewTally(reviewPage.payload, {toLocalDateFromUnix, today: todayKey});
                 tally += reviews.byDate.get(yesterdayLocalDate) || 0;
-                if (!reviews.hasMore || reviews.nextSynckey === undefined) break;
+                if (!reviews.hasMore || reviews.nextSynckey === undefined) { reviewSettled = true; break; }
+                if (page === 2) { complete = false; break; }
                 reviewSynckey = reviews.nextSynckey;
             }
+            if (!reviewSettled) complete = false;
         }
-        if (tally <= 0) return;
+        const scan = {complete, tally, identityExists: false};
+        const decision = settleWereadNotes(scan);
+        if (decision.action !== "write") return {status: decision.action === "retry" ? "incomplete" : "empty", tally: decision.action === "retry" ? 0 : tally};
         const fingerprint = this.revisionFingerprint(item, calendarDateFromKey(yesterdayLocalDate));
         const moment = {occurredAt: new Date().toISOString(), localDate: yesterdayLocalDate};
-        await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.notesItemId, value: tally, source: "weread", externalRef: notesRef}, moment, fingerprint));
+        await this.enqueueMutation(() => this.recordExternalEvent({itemId: governance.notesItemId, value: decision.value, source: "weread", externalRef: notesRef}, moment, fingerprint));
         this.invalidateSummary();
         this.renderBackgroundUpdate();
+        return {status: "settled", tally: decision.value};
     }
 
     /* 设置页「立即拉取」：同通道摄取并反馈结果；升级提示按官方 skill 文档要求见到即转达。 */

@@ -371,3 +371,34 @@ export function parseWereadReviewTally(
     const nextSynckey = typeof body.synckey === "number" && Number.isFinite(body.synckey) && body.synckey > 0 ? body.synckey : undefined;
     return {byDate, hasMore, ...(nextSynckey !== undefined ? {nextSynckey} : {})};
 }
+
+/* ===== T-1630（D-320）：三链路拉取完整性与笔记结算门 =====
+   纪律：时长/完读/笔记三条链路各自独立出结果，禁止把局部成功说成三指标全成功；
+   笔记「每日身份」一经写入即锁定当日补算机会——分页触顶或网关失败（payload 缺失，
+   与空数据可辨）时 tally 不可信，必须放弃本轮写入、保留整日重试机会。 */
+
+export interface WereadNotesScan {
+    /** 笔记本概览与逐书分页均读到底、无网关失败时为 true。 */
+    complete: boolean;
+    /** 昨日划线+想法合计（complete=false 时不可信）。 */
+    tally: number;
+    /** 当日身份已写入或已墓碑。 */
+    identityExists: boolean;
+}
+
+export type WereadNotesAction = "write" | "skip" | "retry";
+
+/** 笔记当日结算唯一决策门：已存在→skip；未完整→retry（不写部分 tally，身份不锁定）；
+    完整且 tally>0→write。 */
+export function settleWereadNotes(scan: WereadNotesScan): {action: WereadNotesAction; value: number} {
+    if (scan.identityExists) return {action: "skip", value: 0};
+    if (!scan.complete) return {action: "retry", value: 0};
+    if (!(scan.tally > 0)) return {action: "skip", value: 0};
+    return {action: "write", value: scan.tally};
+}
+
+/** 三链路聚合口径：整体 ok 仅反映时长链路（既有来源卡状态行契约不变），
+    upgrade（官方升级停用）出现时三链路全部阻断。 */
+export function wereadUpgradeBlocked(upgrade: unknown): boolean {
+    return typeof upgrade === "string" && upgrade.length > 0;
+}
