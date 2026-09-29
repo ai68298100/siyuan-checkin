@@ -126,3 +126,25 @@ tab×mobile = 无效组合（思源移动端无自定义页签，插件不注册
 **登记缺口（不越界）**：图表日期格/趋势点的键盘与触屏跳转属 T-1591（未实施），其实施时以本表为基线补路径；读屏（VoiceOver/TalkBack）真机走查=host 台账 H6。
 
 **探针方法论教训**：行为探针的 dispatch 目标必须与监听注册元素同层（root 级监听 dispatch 到 document 不冒泡到 root——三轮误报均源于此）；summary/details 的展开状态由浏览器原生播报，探针不应要求显式 aria-expanded。
+
+## 12. T-1607 渲染性能与长数据分层测量（2026-09-29）
+
+**先测后改，测量证实无用户可感热点 → 零优化**。测量工具=一次性探针（真实 bundle、双帧 RAF 口径、3 次取中位数；headless Chrome 1280×900）：
+
+| 场景 | median | 备注 |
+| --- | --- | --- |
+| Today 200 项目 | 2ms | 分组/折叠/仪表盘全渲染 |
+| Today 500 项目 | 3ms | 同上 |
+| Review 10k 事件（records） | 3ms | 分页 50/页=既有分层 |
+| **Review 100k 事件（records）** | **6~14ms** | 全量快照+当页渲染；内核层基线（review-performance-baseline）100k range<3s/summary<8s 既有通过 |
+| Insights 84 日格 | 1~3ms | 懒加载既有 |
+| Settings | 2ms | 分类导航按需渲染 |
+| Occasions | 2ms | 模板折叠懒展开（TEMPLATE_BATCH_SIZE 语义同类） |
+| 多 root（dock+dialog）×10k | 2~3ms | 单次 render() 双 root 同步出 |
+| recordEvent 全链 ×10k | <10ms | persist 为桩（真实思源 IPC 不在本测量内） |
+
+**既有分层机制核实（覆盖测量面）**：模板批次 24（TEMPLATE_BATCH_SIZE）、回顾分页 50/页、洞察懒加载、设置分类导航、今日折叠组、renderRafId 合并（scheduleRender 路径）——极端数据量下架构仍然流畅，无需新增分段/懒渲染。
+
+**固化守门**：kernel-regression 新增渲染层性能块（today-200/review-10k/multi-root-10k 真实 boot 双帧口径，上限 250ms——灾难回归防线而非精确断言；冷启动实测 19~67ms）。
+
+**测量方法论**：①计时点必须在 await 等待之前（首轮把 setTimeout(30) 计入样本=30ms 底噪假象）；②render() 走 RAF 合并时需双帧等待再取值（renderRafId 路径同步返回不含真实工作）；③「空 boot 后换 store」与「boot 时给定 store」内部状态不同——性能夹具用后者（前者触发 computeStreaks 状态缺口）；④头less 环境 RAF 立即回调，测得值≈同步 render 耗时。

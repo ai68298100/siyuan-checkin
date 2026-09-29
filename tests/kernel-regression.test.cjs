@@ -197,6 +197,50 @@ const makeStore = () => ({
             await page.close();
         }
 
+        /* —— ③ 渲染层性能守门（T-1607）：中等规模双帧口径上限 250ms（灾难回归防线，
+            非精确性能断言；2026-09-29 实测基线 2~14ms，见 host 台账 §12）。口径=
+            真实 boot 后 render() 同步执行+双帧提交。 —— */
+        {
+            const now = new Date();
+            const perfTargets = [
+                {label: "today-200", navigate: "today", store: {version: 1, items: Array.from({length: 200}, (_, i) => ({id: `i${i}`, name: `项目${i}`, icon: "☀", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, group: `组${i % 8}`, createdAt: now.toISOString()})), events: []}},
+                {label: "review-10k", navigate: "review", store: (() => {
+                    const items = [{id: "x", name: "长史", icon: "✓", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, createdAt: "2024-01-01T00:00:00.000Z"}];
+                    const events = Array.from({length: 10000}, (_, i) => {
+                        const d = new Date(2026, 8, 28 - Math.floor(i / 40), 12);
+                        return {id: `e${i}`, itemId: "x", occurredAt: d.toISOString(), value: 1, unit: "次", source: "manual"};
+                    });
+                    return {version: 1, items, events};
+                })()},
+                {label: "multi-root-10k", navigate: "today", store: (() => {
+                    const items = [{id: "x2", name: "多root", icon: "✓", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"}, createdAt: "2024-01-01T00:00:00.000Z"}];
+                    const events = Array.from({length: 10000}, (_, i) => {
+                        const d = new Date(2026, 8, 28 - Math.floor(i / 40), 12);
+                        return {id: `f${i}`, itemId: "x2", occurredAt: d.toISOString(), value: 1, unit: "次", source: "manual"};
+                    });
+                    return {version: 1, items, events};
+                })()},
+            ];
+            const perf = [];
+            for (const target of perfTargets) {
+                const page = await browser.newPage({viewport: {width: 1280, height: 900}});
+                await bootInto(page, {"checkin-store": JSON.parse(JSON.stringify(target.store))});
+                const ms = await page.evaluate((navigate) => {
+                    const plugin = window.__plugin;
+                    plugin.currentPage = navigate;
+                    const start = performance.now();
+                    plugin.render();
+                    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(Math.round(performance.now() - start)))));
+                }, target.navigate);
+                perf.push({label: target.label, ms});
+                await page.close();
+            }
+            for (const entry of perf) {
+                assert.ok(entry.ms < 250, `render ${entry.label} must stay under 250ms (T-1607 baseline 2~14ms): took ${entry.ms}ms`);
+            }
+            console.log(`render perf: ${perf.map((entry) => `${entry.label}=${entry.ms}ms`).join(", ")}`);
+        }
+
         await browser.close();
         console.log("kernel regression passed: journal dual-result orchestration + reload state matrix (contract 4)");
     } finally {
