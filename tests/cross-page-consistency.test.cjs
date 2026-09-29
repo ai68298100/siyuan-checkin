@@ -51,7 +51,8 @@ try {
     });
 
     check("reduced-motion reaches occasion drawer scrolling", () => {
-        assert.match(occasionsBind, /host\.reducedMotion \? "instant" : "smooth"/, "事项抽屉滚动尊重 reduced-motion");
+        /* T-1613：滚动改 instant 消除 smooth 动画感知（方案 A），reducedMotion 仍在宿主接口。 */
+        assert.match(occasionsBind, /behavior: "instant"/, "事项表单滚动使用 instant（消除 smooth 位移感知）");
         assert.match(occasionsBind, /reducedMotion\?: boolean/, "事项宿主接口声明 reducedMotion");
     });
 
