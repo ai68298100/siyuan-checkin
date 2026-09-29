@@ -252,9 +252,9 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
             </div>
             <div class="lc-checkin__item-action">
                 ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${escapeHtml(t("item.select", {name: item.name}))}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : `
-                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
+                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${escapeHtml(t("item.insightsAria", {name: item.name}))}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
                 ${item.journal?.templateId ? `<button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="journal" data-journal-template="${escapeHtml(item.journal.templateId)}" aria-label="${t("journal.recordLabel")} · ${escapeHtml(item.name)}" title="${t("journal.recordLabel")}">${uiIcon("edit")}</button>` : ""}
-                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
+                <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${escapeHtml(t("item.editAria", {name: item.name}))}" title="${escapeHtml(t("item.editAria", {name: item.name}))}">${uiIcon("edit")}</button>
                 ${canFocus
                     ? `<button class="lc-checkin__focus-button lc-checkin__focus-primary" type="button" data-action="focus" aria-label="${escapeHtml(focusLabel + " · " + item.name)}" title="${escapeHtml(focusLabel + " · " + item.name)}">${uiIcon("timer")}<span class="lc-checkin__focus-label">${focusLabel}</span><span class="lc-checkin__focus-label-short" aria-hidden="true">${focusShortLabel}</span></button>`
                     : isBinary
@@ -264,7 +264,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                     : `<button class="lc-checkin__quick-button" type="button" data-action="quick-record" data-amount="${stepText}" aria-label="${t("item.recordStep", {value: stepText, unit})}" title="${escapeHtml(t("item.recordStep", {value: stepText, unit}))}">${longStep ? t("item.record") : `+${stepText} <span>${escapeHtml(unit)}</span>`}</button>
                     ${(item.quickSteps ?? []).filter((value) => Math.abs(value - recordStep) > 1e-9).map((value) => `<button class="lc-checkin__chip-button" type="button" data-action="quick-record" data-amount="${formatNumber(value)}" aria-label="${t("item.recordStep", {value: formatNumber(value), unit})}" title="${escapeHtml(t("item.recordStep", {value: formatNumber(value), unit}))}">+${escapeHtml(formatNumber(value))}</button>`).join("")}`}
                 ${canRecordDetails ? `<button class="lc-checkin__more-button lc-checkin__entry-trigger" type="button" data-action="toggle-exact" aria-label="${exactLabel}" title="${exactLabel}" aria-expanded="${exactExpanded}">${t(canFocus ? "item.manualShort" : isBinary ? "item.noteShort" : "item.exactShort")}</button>` : ""}
-                ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${t("item.dragSort", {name: item.name})}" title="${t("item.dragSort", {name: item.name})}">${uiIcon("more")}</button>` : ""}
+                ${ctx.todaySortMode === "manual" && !complete ? `<button class="lc-checkin__drag-handle" type="button" data-drag-handle aria-label="${escapeHtml(t("item.dragSort", {name: item.name}))}" title="${escapeHtml(t("item.dragSort", {name: item.name}))}">${uiIcon("more")}</button>` : ""}
                 `}
             </div>
             ${ctx.bulkMode || !canRecordDetails ? "" : `<div class="lc-checkin__exact-entry" data-exact-entry${exactExpanded ? "" : " hidden"}>
@@ -574,7 +574,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-delete" data-bulk-selection-action ${ctx.bulkSelected.size ? "" : "disabled"}>${t("today.bulkDelete")}</button>
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
-            ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>${t("today.focusCelebration", {message: ctx.celebration.message, name: ctx.celebration.itemName})}</span></div>` : ""}
+            ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>${escapeHtml(t("today.focusCelebration", {message: ctx.celebration.message, name: ctx.celebration.itemName}))}</span></div>` : ""}
             <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
             ${recentRecord}
         </div>`;

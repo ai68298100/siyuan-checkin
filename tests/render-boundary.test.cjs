@@ -51,5 +51,33 @@ assert.match(todayBindings, /escapeHtml\(t\("item\.editAria", \{name: item\.name
 const shared = fs.readFileSync(path.join(root, "src", "shared.ts"), "utf8");
 assert.match(shared, /export function safeAttachmentUrl/, "the URL gate must live in shared.ts");
 
+
+/* —— T-1625 扫尾：审计点名文件中 t({用户参数}) 进 HTML 的插值必须整体转义。 —— */
+const sweepPatterns = [
+    ["src/render/editor.ts", [
+        String.raw`aria-label="\$\{escapeHtml\(t\("item\.useTemplate"`,
+        String.raw`aria-label="\$\{escapeHtml\(t\("item\.useMyTemplate"`,
+        String.raw`aria-label="\$\{escapeHtml\(t\("item\.deleteTemplate"`,
+        String.raw`escapeHtml\(t\("editor\.importDuplicateOf"`,
+        String.raw`escapeHtml\(t\("editor\.importMetaNew"`,
+        String.raw`escapeHtml\(t\("editor\.iconSelectAria"`,
+    ]],
+    ["src/render/archived.ts", [
+        String.raw`aria-label="\$\{escapeHtml\(t\("archived\.selectAria"`,
+        String.raw`escapeHtml\(t\("archived\.searchEmpty"`,
+    ]],
+    ["src/render/fragments.ts", [
+        String.raw`aria-label="\$\{escapeHtml\(t\("item\.insightsAria"`,
+        String.raw`aria-label="\$\{escapeHtml\(t\("item\.dragSort"`,
+        String.raw`escapeHtml\(t\("today\.focusCelebration"`,
+    ]],
+    ["src/render/review.ts", [
+        String.raw`aria-label="\$\{escapeHtml\(t\("review\.draftInspectAria"`,
+    ]],
+];
+for (const [file, patterns] of sweepPatterns) {
+    const sourceText = fs.readFileSync(path.join(root, file), "utf8");
+    for (const pattern of patterns) assert.match(sourceText, new RegExp(pattern), file + " must escape user-content t() interpolation");
+}
 fs.rmSync(dir, {recursive: true, force: true});
 console.log("Render boundary checks passed: hostile URL matrix, attachment gating, menu/aria escaping.");
