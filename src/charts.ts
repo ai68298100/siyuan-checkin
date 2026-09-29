@@ -1,7 +1,7 @@
 /* 7.0 趋势图表：纯函数聚合 + 零依赖 SVG 渲染。
    所有统计可从事件与项目配置推导，不引入第三方图表库。 */
 
-import {isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, getSkipDatesForItem, dateKey} from "./model";
+import {isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, getSkipDatesForItem, getEventDateKey, dateKey} from "./model";
 import type {CheckinStore} from "./types";
 
 export interface TrendPoint {
@@ -194,9 +194,13 @@ export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = n
     for (let index = months - 1; index >= 0; index -= 1) {
         const start = new Date(asOf.getFullYear(), asOf.getMonth() - index, 1);
         const end = new Date(asOf.getFullYear(), asOf.getMonth() - index + 1, 1);
+        /* T-1619：与日活跃同口径——记录日取持久 localDate 键直接比较，
+           仅非法日期回退 occurredAt；不再按 occurredAt 时刻切月（跨时区会归错月份）。 */
+        const startKey = dateKey(start);
+        const endKey = dateKey(end);
         const count = store.events.filter((event) => {
-            const time = new Date(event.occurredAt).getTime();
-            return time >= start.getTime() && time < end.getTime();
+            const day = getEventDateKey(event);
+            return day >= startKey && day < endKey;
         }).length;
         points.push({label: `${start.getMonth() + 1}月`, value: count});
     }
@@ -207,7 +211,8 @@ export function buildMonthlyEventTrend(store: CheckinStore, months = 6, asOf = n
 export function buildDailyActivityTrend(store: CheckinStore, days = 30, asOf = new Date()): TrendSeries {
     days = clampRange(days, 30, 366);
     const points: TrendPoint[] = [];
-    const activeDays = new Set(store.events.map((event) => event.localDate));
+    /* T-1619：与月/年趋势同一事件日期推导（localDate 优先，非法回退 occurredAt）。 */
+    const activeDays = new Set(store.events.map((event) => getEventDateKey(event)));
     for (let index = days - 1; index >= 0; index -= 1) {
         const date = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate() - index);
         const key = dateKey(date);
@@ -221,7 +226,13 @@ export function buildYearlyEventTrend(store: CheckinStore, years = 5, asOf = new
     const points: TrendPoint[] = [];
     for (let index = years - 1; index >= 0; index -= 1) {
         const year = asOf.getFullYear() - index;
-        const count = store.events.filter((event) => new Date(event.occurredAt).getFullYear() === year).length;
+        /* T-1619：按记录日键切年，与月趋势/日活跃同口径（occurredAt 时刻跨年会归错年份）。 */
+        const startKey = dateKey(new Date(year, 0, 1));
+        const endKey = dateKey(new Date(year + 1, 0, 1));
+        const count = store.events.filter((event) => {
+            const day = getEventDateKey(event);
+            return day >= startKey && day < endKey;
+        }).length;
         points.push({label: String(year), value: count});
     }
     return {title: "年度记录数", unit: "条", points};

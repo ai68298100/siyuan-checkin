@@ -134,7 +134,10 @@ export function evaluateRule(item: CheckinItem, events: readonly CheckinEvent[],
     const schedule = revision.schedule;
     const periodKey = periodKeyForSchedule(schedule, date);
     const quotaProgress = status === "scheduled" ? evaluateQuotaSchedule(schedule, events, item.id, date, schedule.type === "quota" && schedule.quota?.countMode === "value" ? unit : undefined) : undefined;
-    const progress = quotaProgress?.progress ?? (status === "scheduled" ? events.filter((event) => event.itemId === item.id && event.unit === unit && localDateKey(new Date(event.localDate || event.occurredAt)) === localDateKey(date)).reduce((total, event) => total + event.value, 0) : 0);
+    /* T-1619：记录日以持久 localDate 键直接比较（与配额路径 eventDateKey 同口径）；
+       仅 localDate 非法时才回退 occurredAt 的本地日期，禁止把合法键交给 new Date()
+       隐式按 UTC 解析（负时区会漂移到前一日）。 */
+    const progress = quotaProgress?.progress ?? (status === "scheduled" ? events.filter((event) => event.itemId === item.id && event.unit === unit && eventDateKey(event) === localDateKey(date)).reduce((total, event) => total + event.value, 0) : 0);
     const effectiveTarget = quotaProgress?.quota ?? target;
     const complete = status === "scheduled" && progress >= effectiveTarget && effectiveTarget > 0;
     return {status, periodKey, target: effectiveTarget, progress, complete, unit, remaining: status === "scheduled" ? Math.max(0, effectiveTarget - progress) : undefined};
@@ -184,9 +187,18 @@ export function getQuotaPeriodBounds(period: QuotaPeriod, date: Date): QuotaPeri
 }
 
 function eventDateKey(event: CheckinEvent): string | undefined {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(event.localDate)) return event.localDate;
+    if (isRealCalendarDay(event.localDate)) return event.localDate;
     const occurredAt = new Date(event.occurredAt);
     return Number.isNaN(occurredAt.getTime()) ? undefined : localDateKey(occurredAt);
+}
+
+/* T-1619：与 model.getEventDateKey（date-keys 的 isValidDateKey）同一日历校验——
+   格式合法但日历不存在的键（如 2026-02-30）不算合法 localDate，走 occurredAt 回退。 */
+function isRealCalendarDay(value: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 function dateFromKey(value: string): Date {
