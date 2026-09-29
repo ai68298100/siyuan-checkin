@@ -183,6 +183,8 @@ export interface CsvImportResult {
     invalid: number;
     /** T-1628：超出解析上限被截断时为 true（已解析部分照常返回，不静默丢弃标记）。 */
     truncated: boolean;
+    /** T-1628：逐行错误明细（行号从 1 起，不含表头；上限前 10 条）。 */
+    errors: Array<{line: number; reason: string}>;
 }
 
 const CSV_IMPORT_MAX_ROWS = 20000;
@@ -232,27 +234,38 @@ function parseCsvRows(text: string): {rows: string[][]; truncated: boolean} {
 
 export function parseCheckinCsv(text: string): CsvImportResult {
     const {rows: table, truncated} = parseCsvRows(text);
-    if (!table.length) return {rows: [], invalid: 0, truncated};
+    if (!table.length) return {rows: [], invalid: 0, truncated, errors: []};
     /* 表头别名：导出表头全集（T-1628）+ 既有中英文别名（旧文件不断）。 */
     const header = table[0].map((cell) => cell.toLowerCase());
     const nameIndex = header.findIndex((cell) => cell === "名称" || cell === "name" || cell === "itemname");
     const dateIndex = header.findIndex((cell) => cell === "日期" || cell === "date" || cell === "localdate");
     const valueIndex = header.findIndex((cell) => cell === "数值" || cell === "value");
     const unitIndex = header.findIndex((cell) => cell === "单位" || cell === "unit");
-    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: table.length - 1, truncated};
+    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: table.length - 1, truncated, errors: []};
     const rows: CsvImportRow[] = [];
+    const errors: Array<{line: number; reason: string}> = [];
     let invalid = 0;
-    for (const cells of table.slice(1)) {
+    for (let rowIndex = 1; rowIndex < table.length; rowIndex += 1) {
+        const cells = table[rowIndex];
         const name = cells[nameIndex] || "";
         const date = cells[dateIndex] || "";
         const rawValue = valueIndex >= 0 ? cells[valueIndex] : "";
         const unit = (unitIndex >= 0 ? cells[unitIndex] : "") || "次";
+        const line = rowIndex;
         /* 真实日历校验：2026-02-30 这类被 JS Date 归一的键必须拒绝（T-1628）。 */
-        if (!name || !isValidDateKey(date)) { invalid += 1; continue; }
+        if (!name || !isValidDateKey(date)) {
+            invalid += 1;
+            errors.push({line, reason: !name ? "名称缺失" : !isValidDateKey(date) ? "日期无效" : ""});
+            continue;
+        }
         const numeric = rawValue === "" || rawValue === undefined ? 1 : Number(rawValue);
-        if (!Number.isFinite(numeric) || numeric < 0) { invalid += 1; continue; }
+        if (!Number.isFinite(numeric) || numeric < 0) {
+            invalid += 1;
+            errors.push({line, reason: "数值无效"});
+            continue;
+        }
         const binary = numeric === 1;
         rows.push({name: name.slice(0, 40), date, value: numeric, unit: unit.slice(0, 16), binary});
     }
-    return {rows, invalid, truncated};
+    return {rows, invalid, truncated, errors: errors.slice(0, 10)};
 }
