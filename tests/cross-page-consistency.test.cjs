@@ -147,12 +147,12 @@ try {
 
     check("target cards opt out of the two-column row grid at every width (T-1615)", () => {
         const components = read("src", "ui", "components.scss");
-        /* 全档位豁免规则：(0,4,0) 特异性压过无条件两列行栅格（maintenance 层），
-           三类目标卡在任何容器宽度保持单列卡面（此前 ≥720 摘要被逐字竖排）。 */
-        assert.match(components, /\.lc-checkin\.lc-checkin--settings \.lc-checkin__settings-row:is\(\.lc-checkin__document-target-card, \.lc-checkin__journal-target-card, \.lc-checkin__notebook-target-card\)/, "card exemption rule present");
-        const exemption = components.slice(components.indexOf(".lc-checkin.lc-checkin--settings .lc-checkin__settings-row:is(.lc-checkin__document-target-card"));
-        assert.match(exemption, /grid-template-columns: minmax\(0, 1fr\);/, "exemption forces single column");
-        assert.ok(exemption.indexOf("border-bottom-width: 1px;") > -1, "row-level border leak is reset");
+        /* T-1616 批次二：卡片退役 settings-row 复用类——行栅格规则不再与卡竞争，
+           卡自有类规则在所有容器宽度天然单列（D-322 豁免规则随之退役）。 */
+        assert.doesNotMatch(settings, /lc-checkin__settings-row lc-checkin__document-target-card/, "doc cards must not reuse the settings-row class");
+        assert.doesNotMatch(settings, /lc-checkin__settings-row lc-checkin__journal-target-card/, "journal card must not reuse the settings-row class");
+        assert.doesNotMatch(settings, /lc-checkin__settings-row lc-checkin__notebook-target-card/, "notebook card must not reuse the settings-row class");
+        assert.doesNotMatch(components, /settings-row:is\(\.lc-checkin__document-target-card/, "the D-322 exemption rule stays retired");
         /* 长目标摘要附 title 全值。 */
         assert.match(settings, /data-target-summary-label="\$\{escapeHtml\(docId\)\}" title="\$\{escapeHtml\(label\)\}"/, "target summary exposes full value via title");
         /* 缺失键改接既有键：今日清除筛选复用 today.clearFilter（不再引用不存在的 common.clearFilter）。 */
@@ -194,7 +194,7 @@ try {
         /* 统一选择器：三卡各有 per-point 搜索输入 + 候选行列表（combobox/listbox 关联）。 */
         assert.match(settings, /data-choice-search="\$\{point\}"/, "per-point search input");
         assert.match(settings, /data-choice-list="\$\{point\}"/, "per-point choice list");
-        for (const point of ["diary", "summary", "health"]) {
+        for (const point of ["diary", "summary", "health", "journal"]) {
             assert.match(settings, new RegExp(`documentChoiceBlock\\("${point}"`), `${point} card exposes the unified document choice`);
         }
         /* 候选行：名称 strong + 路径 small 双行预览（escapeHtml 由 host 接线保证）。 */

@@ -386,7 +386,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     /* T-1616：统一文档选择器（D-323 设计 §1/§2）——单一搜索框 + 候选行列表
        （名称/路径双行预览，role=listbox + option，键盘 ↑/↓ + Enter，IME 组合态安全），
        候选经 searchDocs 全量查询（有界 50），取代「本地锚点下拉 + 搜索替换选项」旧双框。 */
-    const documentChoiceBlock = (point: "diary" | "summary" | "health", label: string): string => `<div class="lc-checkin__document-choice" data-document-choice="${point}"><label class="lc-checkin__document-target-field"><span>${label}</span><input type="search" data-choice-search="${point}" placeholder="${label}" aria-label="${label}" role="combobox" aria-expanded="false" aria-controls="document-choices-${point}" aria-autocomplete="list" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="${point}" id="document-choices-${point}-${++settingsViewSequence}" role="listbox" aria-label="${label}" hidden></div></div>`;
+    const documentChoiceBlock = (point: "diary" | "summary" | "health" | "journal", label: string): string => `<div class="lc-checkin__document-choice" data-document-choice="${point}"><label class="lc-checkin__document-target-field"><span>${label}</span><input type="search" data-choice-search="${point}" placeholder="${label}" aria-label="${label}" role="combobox" aria-expanded="false" aria-controls="document-choices-${point}" aria-autocomplete="list" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="${point}" id="document-choices-${point}-${++settingsViewSequence}" role="listbox" aria-label="${label}" hidden></div></div>`;
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
         "invalid-event": "set.tomatoIssueInvalidEvent",
         "unsupported-version": "set.tomatoIssueVersion",
@@ -548,7 +548,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     ${statusLine(integrationStatus(diaryState, 0))}
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsDiary1")}</li><li>${t("set.stepsDiary2")}</li><li>${t("set.stepsDiary3")}</li><li>${t("set.stepsDiary4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.diaryBoundary")}</small>
-                    <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="diary" data-target-state="${diaryState}">
+                    <div class="lc-checkin__document-target-card" data-document-target-card="diary" data-target-state="${diaryState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.diaryDoc")}</strong><small>${t("set.diaryDocHint")}${diary.docId && !diary.enabled ? ` · ${t("set.diaryDocPending")}` : ""}</small></div>${sourceBadge(diaryState)}</div>
                         <div class="lc-checkin__document-target-body">
                             ${targetSummaryRow("diary", diary.docId)}
@@ -566,10 +566,11 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <details class="lc-checkin__source-panel" data-source-panel="journal"${sourcePanelOpen("journal")}>
                     <summary class="lc-checkin__source-panel-head"><strong>${t("journal.settingsTitle")}</strong><span class="lc-checkin__settings-inline"><small>${t("journal.customCount", {n: journalCustomCount})}</small></span></summary>
                     <small class="lc-checkin__source-boundary">${t("journal.settingsHint")}</small>
-                    <div class="lc-checkin__settings-row lc-checkin__journal-target-card" data-document-target-card="journal">
+                    <div class="lc-checkin__journal-target-card" data-document-target-card="journal">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("journal.configTitle")}</strong><small>${t("journal.settingsHint")}</small></div><span class="lc-checkin__document-target-kind">${t(journalTarget.mode === "doc" ? "journal.targetDoc" : "journal.targetDaily")}</span></div>
                         <div class="lc-checkin__journal-target-mode"><label class="lc-checkin__document-target-field"><span>${t("journal.configTitle")}</span><select data-journal-mode><option value="daily"${journalTarget.mode === "daily" ? " selected" : ""}>${t("journal.targetDaily")}</option><option value="doc"${journalTarget.mode === "doc" ? " selected" : ""}>${t("journal.targetDoc")}</option></select></label></div>
                         ${scopeLineRow("journal", "set.scope.journal")}
+                        ${documentChoiceBlock("journal", t("journal.docIdLabel"))}
                         <div class="lc-checkin__journal-target-settings"><label class="lc-checkin__document-target-field" data-journal-daily-config><span>${t("journal.notebookLabel")}</span><select data-journal-notebook-id><option value="${escapeHtml(journalTarget.notebookId)}">${escapeHtml(journalTarget.notebookId || t("set.diaryNotebookLoading"))}</option></select></label><label class="lc-checkin__document-target-field" data-journal-doc-config><span>${t("journal.docIdLabel")}</span><input data-journal-target-doc value="${escapeHtml(journalTarget.docId)}" /></label><button type="button" class="lc-checkin__text-button" data-action="save-journal-target">${t("set.diarySave")}</button></div>
                     </div>
                     ${writeTriggerRow("journal", "set.writeTriggerJournal")}
@@ -584,7 +585,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     ${statusLine(integrationStatus(summaryState, 0))}
                     <ol class="lc-checkin__source-steps"><li>${t("set.stepsSummary1")}</li><li>${t("set.stepsSummary2")}</li><li>${t("set.stepsSummary3")}</li><li>${t("set.stepsSummary4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.summaryBoundary")}</small>
-                    <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="summary" data-target-state="${summaryState}">
+                    <div class="lc-checkin__document-target-card" data-document-target-card="summary" data-target-state="${summaryState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.summaryDoc")}</strong><small>${t("set.summaryDocHint")}${summaryResident.docId && !summaryResident.enabled ? ` · ${t("set.summaryDocPending")}` : ""}</small></div>${sourceBadge(summaryState)}</div>
                         ${targetSummaryRow("summary", summaryResident.docId)}
                         ${scopeLineRow("summary", "set.scope.summary")}
@@ -646,7 +647,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     ${sourceReportLine("health")}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsHealth1")}</li><li>${t("set.stepsHealth2")}</li><li>${t("set.stepsHealth3")}</li><li>${t("set.stepsHealth4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.healthBoundary")}</small></details>
-                    <div class="lc-checkin__settings-row lc-checkin__document-target-card" data-document-target-card="health" data-target-state="${healthState}">
+                    <div class="lc-checkin__document-target-card" data-document-target-card="health" data-target-state="${healthState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.healthDoc")}</strong><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></div>${sourceBadge(healthState)}</div>
                         ${targetSummaryRow("health", healthInbox.docId)}
                         ${scopeLineRow("health", "set.scope.health")}
@@ -687,7 +688,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         const names = target ? ctx.store.items.filter((item) => !item.archived && item.name === target.name) : [];
                         return `${escapeHtml(mapping.project)} = ${escapeHtml(target && names.length === 1 ? target.name : mapping.itemId)}`;
                     }).join("\n")}</textarea></div>
-                    <div class="lc-checkin__settings-row lc-checkin__notebook-target-card" data-document-target-card="yeguif" data-target-state="${yeguifState}">
+                    <div class="lc-checkin__notebook-target-card" data-document-target-card="yeguif" data-target-state="${yeguifState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.yeguifNotebook")}</strong><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></div>${sourceBadge(yeguifState)}</div>
                         ${scopeLineRow("yeguif", "set.scope.yeguif")}
                         <div class="lc-checkin__document-target-actions"><select data-yeguif-notebook aria-label="${t("set.yeguifNotebook")}"${yeguifNotebookDisabled}>${yeguifNotebookOption}</select><button class="lc-checkin__text-button" type="button" data-action="load-yeguif-notebooks">${t("set.yeguifNotebookLoad")}</button></div>

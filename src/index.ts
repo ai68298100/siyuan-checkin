@@ -4646,10 +4646,10 @@ this.scheduleMidnightRefresh();
         /* T-1616：统一文档选择器接线（diary/summary/health 三点共用）——防抖 + 请求代际
            + IME 组合态安全 + 候选行键盘（↓ 聚焦首项、列表内 ↑/↓ 环选、Enter 选中、Esc 收起）；
            候选经 searchBindingDocuments（searchDocs 有界 50）+ 纯投影行；失败行可重试。 */
-        for (const point of ["diary", "summary", "health"] as const) {
+        for (const point of ["diary", "summary", "health", "journal"] as const) {
             const searchInput = root.querySelector<HTMLInputElement>(`[data-choice-search="${point}"]`);
             const listBox = root.querySelector<HTMLElement>(`[data-choice-list="${point}"]`);
-            const docInput = root.querySelector<HTMLInputElement>(`[data-${point}-doc]`);
+            const docInput = root.querySelector<HTMLInputElement>(point === "journal" ? "[data-journal-target-doc]" : `[data--doc]`);
             if (!searchInput || !listBox || !docInput) continue;
             const hideList = () => {
                 listBox.hidden = true;
