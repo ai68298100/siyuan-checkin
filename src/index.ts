@@ -5008,8 +5008,11 @@ this.scheduleMidnightRefresh();
                 if (!parsed.rows.length) { showMessage(t("msg.csvEmpty")); return; }
                 const skip = parsed.invalid;
                 if (parsed.truncated) showMessage(t("msg.csvTruncated"), 4200);
+                if (parsed.errors.length) {
+                    const detail = parsed.errors.slice(0, 5).map((e) => `行 ${e.line}: ${e.reason}`).join("；");
+                    settingsFeedback(t("msg.csvErrorDetail", {count: parsed.errors.length, detail}) + (parsed.errors.length > 5 ? "…" : ""));
+                }
                 if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
-                if (parsed.truncated) showMessage(t("msg.csvTruncated"), 4200);
                 const report = this.importCsvRows(parsed.rows);
                 await this.persist();
                 showMessage(t("msg.csvDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
