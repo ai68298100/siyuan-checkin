@@ -2096,3 +2096,7 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-29 T-1607 渲染性能与长数据分层（阶段 5，P2）：先测后改——一次性测量探针（真实 bundle、双帧 RAF 口径、3 次中位数）九场景全部 1~14ms，远低于 16ms 帧预算：Today 200/500 项目=2/3ms、Review 10k/100k=3/6~14ms、Insights=1~3ms、Settings/Occasions=2ms、多 root×10k=2~3ms、recordEvent<10ms；内核层 100k 基线（review-performance-baseline）既有通过。既有分层机制（模板批次/回顾分页/洞察懒加载/设置导航/今日折叠/RAF 合并）覆盖全部测量面——**测量证实无热点，零优化**（「只优化已证实热点」的直接结论）。固化：kernel-regression 新增渲染层性能块（三场景真实 boot 双帧口径上限 250ms 灾难防线；冷启动 19~67ms）。**测量方法论四条**（台账 §12）：计时点必须在 await 前（首轮 30ms 底噪假象）；RAF 合并需双帧等待；性能夹具用 boot 时给定 store（空 boot 换 store 触发 computeStreaks 状态缺口）；headless RAF 立即回调≈同步耗时。
 验证：kernel-regression EXIT=0（含性能块）、test:quality 全链 EXIT=0（CSS 631568 不变）、双主题 visual-qa EXIT=0、width-walkthrough 桌面+mobile EXIT=0。未 push。
+
+2026-09-29 T-1608 统一验收台账与全表面回归（阶段 5 收官，**D-307 全部收官**）：交付 docs/d307-final-ledger-2026-09-29.md 收官索引——六阶段对账表（49 项任务逐条「任务ID|提交|守门|台账节」映射 44 提交）、最终全表面回归记录（全绿）、遗留缺口如实分列（未排期 P1 增量 5 项 T-1550/1555/1582/1590/1591+候选观察 7 项 T-1538~1544+实施边界注记——**不宣称 64 条全部完成**，计划原文允许小批次交付）、H1~H8 host-pending 维持不核销。四台账就绪：phase4（T-1584 九批）/phase5（T-1600 走查+T-1601 覆盖矩阵）/host（T-1602 六覆盖面+§10 宿主壳+§11 键盘读屏+§12 性能基线）/本索引。
+验证（收官全表面回归）：test:quality 全链 EXIT=0、accessibility-audit EXIT=0（1204 对文本零违规）、双主题 visual-qa EXIT=0、width-walkthrough 五组合（dock×桌面/移动+tab×桌面+dialog×桌面/移动）全 EXIT=0、kernel-regression EXIT=0。未 push。
+**D-307 收官**：自 2026-09-28 计划登记（d2a1cb3）至本日，阶段 0 真值修复（T-1609/1610）→阶段 1 契约（T-1603/1604 等 6 项）→阶段 2 联动切片（6 项）→阶段 3 设置与编辑器迁移（14 项）→阶段 4 日常页面（16 项）→阶段 5 多表面与质量收口（11 项）全部交付。
