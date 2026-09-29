@@ -2084,3 +2084,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-29 T-1601 全页面隔离内核回归（阶段 5，P1）：先盘点后补缺——13 项要求场景（新建/今日记录/提醒动作/问卷双结果/专注结算/回顾钻取/事项补标改期/归档恢复删除/重载/统计口径/日期算法/来源身份/文档旁路失败不回滚）逐一映射既有内核夹具与行为测试，登记为台账覆盖矩阵（acceptance-ledger-phase5 §0）；确认缺口两条，新增 tests/kernel-regression.test.cjs（入 test:ui）以真实 bundle+桩宿主补齐：问卷双结果编排（事实先落/文档失败不回滚/重试只补文档不重复记账/事实层失败零写入+草稿保留）与重载状态矩阵（契约 4：持久偏好跨重启恢复、会话态回默认）。**桩方法论沉淀**：行为级内核桩要按「语句形状」分流 sql（content LIKE=问卷标记查询、WHERE id IN=目标校验且须回显被查 id——id 归一化前后都要成立）、失败注入按调用类别收窄（写入类 vs 校验类——提交前 onPersistIntegration 校验先于事实写入，全局注入命中错误路径）、消息断言用译文子串、调用计数用增量切片。调试节奏：三轮失败注入口径修正（全局→写入类→增量切片）+一次 docId 格式修正（^\d{14}-[a-z0-9]{7}$）+一次会话态断言位置修正（默认 overview 下历史搜索框不渲染）。
 验证：kernel-regression EXIT=0、test:quality 全链 EXIT=0（CSS 631568 不变）、双主题 visual-qa EXIT=0、width-walkthrough desktop+mobile EXIT=0。未 push。
+
+2026-09-29 T-1602 宿主现场与发布验收台账（阶段 5，P1）：新建 docs/host-acceptance-ledger-2026-09-29.md（T-1608 宿主分栏）——证据四层定义下六覆盖面（文档/笔记本目标、第三方来源、Dock Tomato、页签/dock/移动 WebView、移动安全区、双主题）逐面「自动证据（测试名+通过链）/真实宿主（host-pending+取得条件）」分列；发布验收分栏（自动链通过+GitHub v18.9.0 资产核实+集市 host-pending+Task Horizon 恒 waiting）；**Host-pending 单一清单 §8 H1~H8** 吸收 phase5 台账 §4（原节保留指向本表核销）；现场操作模板沿用 integration-smoke-checklist。纪律要点：引用的测试名逐一核实存在后才写入台账；所有现场行为一律 host-pending，零编造。docs-only 变更。
+验证：pnpm run check EXIT=0、test:quality 全链 EXIT=0（工作树与 f194f31 轮同基线，CSS 631568 不变）、双主题 visual-qa EXIT=0、width-walkthrough desktop+mobile EXIT=0。未 push。
