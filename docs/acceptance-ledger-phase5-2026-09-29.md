@@ -2,6 +2,28 @@
 
 定位：T-1608 统一验收台账的阶段 5 切片证据之一。分栏遵守 D-307 总纲：**自动浏览器证据**与**思源真实宿主/真机证据**分开登记，模拟通过不冒充实测。本轮走查基线 = commit 743c64a 构建包（v18.9.0 工作树）。
 
+## 0. T-1601 全页面隔离内核回归——场景 × 覆盖矩阵（2026-09-29 增补）
+
+要求场景逐项登记（层级：内核夹具=node 转译桩映射 / 捆绑行为=真实 dist bundle + 桩宿主浏览器）：
+
+| 场景 | 层级 | 覆盖 |
+| --- | --- | --- |
+| 新建 | 内核夹具 | editor 校验/模板/项目草稿（project-draft、template-gallery、import-conflicts） |
+| 今日记录 | 内核夹具 | model.test（isComplete/完成公式 T-1609）、at-most、quota、midnight-boundary、record-trust |
+| 提醒动作 | 内核夹具 | reminder-actions/reminder-tolerance/reminder-projection/quiet/digest |
+| **问卷双结果** | **捆绑行为（本轮新增 kernel-regression）** | 事实先落→文档旁路失败不回滚事实→重试只补文档不重复记账→事实层失败零写入类调用+草稿保留 |
+| 专注结算 | 内核夹具 | midnight-boundary（双日归账幂等）、record-trust（阈值结算原因）、focus-lifecycle（重载失效明示） |
+| 回顾钻取 | 源守门+捆绑 | cross-page-consistency（insights→records 携 historyItemId/returnTo）、review-workspace |
+| 事项补标/改期 | 内核夹具 | occasions.test（里程碑/表单保存）、batch-backfill |
+| 归档恢复/删除 | 内核夹具 | archived-search（恢复预览确认/批量影响确认/墓碑/tombstone-concurrency） |
+| **重载** | **捆绑行为（本轮新增 kernel-regression）** | 契约 4 矩阵：持久偏好（外观/分组）跨重启恢复、会话态（回顾工作区/历史搜索）回默认；快速弹窗重开今日=mobile-dialog 既有 |
+| 统计口径 | 内核夹具 | analytics-snapshot、stat-denominators、review-analytics-projection |
+| 日期算法 | 内核夹具 | date-keys、date-range-index、midnight-boundary |
+| 来源身份 | 内核夹具 | external-ref、source-framework、tombstone-index、各适配器测试 |
+| 文档旁路失败不回滚事实 | 内核夹具+捆绑行为 | journal-experience（writeJournalEntry 失败语义/失败查询不追加不建档）+ kernel-regression（编排层） |
+
+本轮新增：tests/kernel-regression.test.cjs（入 test:ui 链）——真实 bundle + 桩宿主（Dialog/fetchSyncPost 可编程、存储 Map 跨重启）。**测试桩三层教训**：①showMessage 收到的是翻译后文案非键名；②journal 目标 docId 必须满足 `^\d{14}-[a-z0-9]{7}$`；③提交前的目标校验（onPersistIntegration→validateBindingTarget）先于事实写入——失败注入必须收窄到写入类调用（append/updateBlock）才能精确命中「事实已落、文档失败」路径；④sql 桩按语句形状分流（content LIKE=问卷标记 / WHERE id IN=目标校验回显 id / WHERE id ==文档存在）。
+
 ## 1. 走查范围与结论总表
 
 | 走查项 | 结论 | 证据（自动浏览器） | 宿主/真机栏 |
