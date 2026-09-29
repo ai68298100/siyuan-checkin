@@ -106,3 +106,23 @@
 | 首卡预算作用域 | dialog 壳 22~26px 有意窗口 chrome（实测首卡 400px/820 完整可见）不适用无 chrome 整页预算 → 预算限定 dock/tab；dialog chrome 断言按前端分流（移动断 mobile-topbar） | harness 修复后 dialog×双前端 EXIT=0 |
 
 tab×mobile = 无效组合（思源移动端无自定义页签，插件不注册 addTab），不作验收路径。
+
+## 11. T-1606 键盘、IME、读屏与触控基线审计（2026-09-29）
+
+**逐项核实结论（探针+源守门，全部在位，产品层零缺陷）**：
+
+| 基线项 | 证据 | 固化 |
+| --- | --- | --- |
+| 焦点恢复 | 回顾 preserving view / 设置搜索会话 / 设置动作失败回焦 focusSelector（既有源守门）；j/k 通道探针：dispatch 到 .lc-checkin 冒泡至宿主监听（today-bindings:94），焦点落卡片主操作按钮 | audit 桌面遍新增 j/k 行为检查 |
+| 焦点可见 | :focus-visible 规则 86 条+:focus 17 条；探针实测 outline 2px solid+boxShadow | css-hygiene 既有 |
+| 中文输入法组合态 | 四搜索面 compositionstart 守卫（today/settings/history/compare） | cross-page-consistency 块 2 既有 |
+| aria-current | 底栏/rail/topnav 三形态同构 `aria-current="${currentPage===page?"page":"false"}"`；探针四页导航与 is-selected 零失配 | cross-page-consistency T-1606 块 |
+| aria-expanded | 14 渲染点+绑定侧同步；探针 8 个 button 点击全翻转（false→true）；summary/details 原生语义不需显式属性 | cross-page-consistency T-1606 块（折叠两渲染点） |
+| aria-live/status | role=status/alert 40 处（结果行/搜索状态/危险区提示等，逐面清单见源码 grep） | 既有（i18n-hygiene/audit 名称检查） |
+| 44px 触控 | T-1600 audit（24px AA 零违规+八类 44px 守门+致密列表实测报告） | T-1600 既有 |
+| reduced-motion | 四模块断言 | cross-page-consistency 块 3 既有 |
+| 弹层键盘路径 | 上下文菜单：Escape 收口+归焦触发器（closeMenus(true)）+方向键/Home/End/Tab（探针 closed:true）；quick 弹窗/页面级键盘=bindQuickKeyboardFor/bindPageKeyboardFor | audit 桌面遍新增 Escape 行为检查+T-1606 源守门块 |
+
+**登记缺口（不越界）**：图表日期格/趋势点的键盘与触屏跳转属 T-1591（未实施），其实施时以本表为基线补路径；读屏（VoiceOver/TalkBack）真机走查=host 台账 H6。
+
+**探针方法论教训**：行为探针的 dispatch 目标必须与监听注册元素同层（root 级监听 dispatch 到 document 不冒泡到 root——三轮误报均源于此）；summary/details 的展开状态由浏览器原生播报，探针不应要求显式 aria-expanded。

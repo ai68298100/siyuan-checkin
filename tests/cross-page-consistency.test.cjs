@@ -18,6 +18,7 @@ const archived = read("src", "render", "archived.ts");
 const settings = read("src", "render", "settings.ts");
 const fragments = read("src", "render", "fragments.ts");
 const todayBind = read("src", "render", "bind-today.ts");
+const todayBindings = read("src", "render", "today-bindings.ts");
 const settingsNav = read("src", "render", "settings-navigation.ts");
 const reviewBind = read("src", "render", "bind-page-navigation.ts");
 const occasionsBind = read("src", "render", "bind-occasions.ts");
@@ -78,6 +79,23 @@ try {
         /* 返回路径分派统一走 SurfaceContext 读侧。 */
         assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "通用返回分派走读侧");
         assert.match(reviewBind, /context\.page === "insights" && context\.returnTo === "review"/, "insights 会话返回栈优先");
+    });
+
+    check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
+        /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
+        assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");
+        assert.match(todayBindings, /target\?\.matches\("input, textarea, select, \[contenteditable='true'\]"\)/, "输入聚焦时 j/k 不劫持");
+        assert.match(todayBindings, /\.lc-checkin__item\[data-item-id\]/, "j/k 在可见卡片间移动");
+        assert.match(todayBindings, /visiblePrimaryAction\(cards\[next\], host\.bulkMode\) \?\? cards\[next\]\)\.focus\(\)/, "j/k 聚焦主操作按钮");
+        /* 上下文菜单：Escape 收口并归还触发器焦点；菜单内方向键/Home/End/Tab 全路径。 */
+        assert.match(todayBindings, /event\.key === "Escape" && root\.querySelector\("\.lc-checkin__item-context-menu"\)/, "Escape 关闭上下文菜单");
+        assert.match(todayBindings, /if \(restoreFocus && trigger\?\.isConnected\) trigger\.focus\(\)/, "菜单收口归还触发器焦点");
+        assert.match(todayBindings, /"ArrowDown", "ArrowUp"\]\.includes\(event\.key\)/, "菜单内方向键移动");
+        /* 读屏状态：导航 aria-current 与选中态绑定（底栏/rail/topnav 三形态同构）、折叠 aria-expanded 渲染在位。 */
+        assert.match(indexSrc, /aria-current="\$\{this\.currentPage === page \? "page" : "false"\}"/, "导航 aria-current 绑定");
+        assert.match(fragments, /aria-expanded="\$\{!collapsed\}"/, "分组折叠 aria-expanded");
+        assert.match(fragments, /aria-expanded="\$\{!ctx\.completedCollapsed\}"/, "已完成折叠 aria-expanded");
+        /* IME 组合态四搜索面与 reduced-motion=既有块 2/3 承载，此处不重复。 */
     });
 
     check("navigation entry points stay on the shared showXxxFor single path", () => {

@@ -258,6 +258,30 @@ async function bootHost({browser, projectRoot, dark, frontend = "desktop", width
             await page.waitForTimeout(160);
             await auditDom("editor");
         }
+        /* T-1606 键盘行为基线（仅桌面遍）：j/k 落焦卡片主操作、上下文菜单 Escape 收口。 */
+        if (!pass.empty) {
+            await clickNav("today");
+            await page.waitForTimeout(150);
+            const keyboard = await page.evaluate(async () => {
+                const rootEl = document.querySelector(".lc-checkin");
+                const cards = () => [...rootEl.querySelectorAll(".lc-checkin__item[data-item-id]")].filter((card) => card.offsetParent !== null);
+                if (!cards().length) return {skipped: "no cards"};
+                rootEl.dispatchEvent(new KeyboardEvent("keydown", {key: "j", bubbles: true, cancelable: true}));
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                const jkLands = !!(document.activeElement?.closest?.(".lc-checkin__item[data-item-id]"));
+                const card = cards()[0];
+                card.dispatchEvent(new MouseEvent("contextmenu", {bubbles: true, cancelable: true, clientX: 400, clientY: 300}));
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                const menu = document.querySelector(".lc-checkin__item-context-menu");
+                if (!menu) return {jkLands, menuOpened: false};
+                const focusTarget = menu.querySelector("[data-menu-action]") || menu;
+                focusTarget.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape", bubbles: true, cancelable: true}));
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                return {jkLands, menuOpened: true, menuClosed: !document.querySelector(".lc-checkin__item-context-menu")};
+            });
+            assert.ok(keyboard.jkLands, `j/k must focus a card's primary action (T-1606): ${JSON.stringify(keyboard)}`);
+            if (keyboard.menuOpened) assert.ok(keyboard.menuClosed, `context menu must close on Escape (T-1606)`);
+        }
         await page.close();
     }
 
