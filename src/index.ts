@@ -71,6 +71,7 @@ import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, 
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
 import {WEREAD_GATEWAY_URL, WEREAD_INGEST_INTERVAL_MS, buildWereadBookmarkListRequest, buildWereadBookProgressRequest, buildWereadExternalRef, buildWereadFinishRef, buildWereadNotesRef, buildWereadNotebooksRequest, buildWereadReadDetailRequest, buildWereadReviewListRequest, buildWereadShelfRequest, ingestWereadReadDetail, isWereadApiKey, parseWereadBookProgress, parseWereadFinishedBooks, parseWereadHighlightTally, parseWereadNotebookPage, parseWereadReviewTally, wereadFinishRefPrefix} from "./features/weread-adapter";
 import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buildYeguifExternalRef, parseYeguifMarker, resolveYeguifItemId, settleYeguifEntries} from "./features/yeguif-adapter";
+import {buildLifelogTimeline} from "./features/lifelog-timeline";
 import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
 import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
@@ -5324,6 +5325,13 @@ this.scheduleMidnightRefresh();
             trustThresholds: ([
                 {source: "weread", itemId: this.wereadIntegration?.itemId, value: this.wereadIntegration?.thresholdMinutes},
             ] as Array<{source: string; itemId?: string; value?: number}>).filter((entry): entry is {source: string; itemId: string; value: number} => Boolean(entry.itemId) && typeof entry.value === "number" && entry.value > 0),
+            /* T-1541 LifeLog 时间轴投影：区间内 yeguif 事件（时长已在 value），解析排序在纯函数。 */
+            lifelogTimeline: buildLifelogTimeline(
+                getEventsInDateRange(this.store, context.startDate, dateKey(new Date(calendarDateFromKey(context.endDate).getTime() + 86_400_000)))
+                    .filter((event) => event.source === "yeguif")
+                    .map((event) => ({occurredAt: event.occurredAt, value: event.value, note: event.note, itemId: event.itemId})),
+                new Map(this.store.items.map((entry) => [entry.id, entry.name])),
+            ),
             analyticsSnapshot,
         });
     }

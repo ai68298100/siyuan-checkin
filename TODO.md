@@ -123,7 +123,7 @@
 
 ## 调研产出待办（2026-09-28：轻迹 QingTrail LifeLog 调研——按用户指示列入待办，先不开发；调研记录见 benchmark 文档第二十三节，结论 D-299）
 
-- [ ] T-1541 回顾页 LifeLog 时间轴视图（低成本中感知，下批候选）——当日/区间 lifelog 事件纵向时间轴串联，相邻间隔=时长可视化，类型着色区分；数据源=既有 yeguif 事件 note 字段（type:text）解析，纯渲染零写入。参考：轻迹「时间轴串联·类型区分」。
+- [x] T-1541 回顾页 LifeLog 时间轴视图（低成本中感知，下批候选）——done（2026-09-29，local-auto）。①**纯函数投影** src/features/lifelog-timeline.ts：buildLifelogTimeline（yeguif 事件→时间轴行：note 冒号拆类型/备注、HH:MM 本地读数取自事件 ISO 自身=无时钟、分钟取整非正归零、ISO 升序稳定排序、itemName 映射缺失安全回退）+lifelogTypeColorIndex（31 进制哈希→6 色板，同类型恒同色、空类型 -1 中性）。②**渲染**：回顾页 analysis 工作区新折叠区 fold("lifelog")（提醒/即将事项之后）——纵向时间轴（左时间线+类型色点 data-lifelog-color+时长徽标），空区间显式提示不空白；数据由宿主 renderReview 注入（区间 yeguif 事件过滤 source==="yeguif"，时长已在 value 零新解析器），review.ts 仅渲染零新依赖。**纯渲染零写入**：不新增事件/不修改结算，仅投影既有 yeguif 事件。③i18n 3 键×2（lifelogTitle/Empty/Minutes，parity 2494 对）。守门：新 tests/lifelog-timeline.test.cjs 入 test:ui（解析/排序/色板/无时钟/渲染面 14+ 断言，TZ=Asia/Shanghai 固定）；**测试坑**：断言索引按 ISO 升序重排（首轮按字面顺序排错）；review-assistant 的 SummaryHarness 方法切片沙箱补 buildLifelogTimeline 真实现透传（renderReview 新依赖连带）。CSS 633672（+1.9KB，预算内）。验证：check、lifelog-timeline/review-assistant、test:quality 全链 EXIT=0、双主题 visual-qa EXIT=0、width-walkthrough 桌面+mobile EXIT=0。真实叶归数据的现场观感=host-pending（H2 范畴）。
 - [ ] T-1542 LifeLog 类型筛选与聚合（中成本）——按 Marker 类型做筛选与当日/区间时长聚合。前置：note 解析口径确认（type 长度上限/多语言/重命名跟随边界）。
 - [ ] T-1543 日历 LifeLog 徽标叠加（观察）——日历上叠加每日 lifelog 条数/总时长；评估与完成态着色的冗余。
 - [ ] T-1544 叶归段落修订检测（观察项，纪律敏感）——源文档段落被手改后，同 blockId 幂等身份挡住重结算、事件停留旧值；候选方案=重摄取时对比内容指纹，变化则旧事件墓碑+新事件。中高复杂度，触发条件=用户真实反馈。

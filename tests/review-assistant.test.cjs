@@ -130,6 +130,8 @@ const Harness = vm.runInNewContext(`${code}\nSummaryHarness`, {
     buildSummaryContext: (...args) => { renderCalls.summary++; return renderedSummary = analytics.buildSummaryContext(...args); },
     buildReviewAnalysisKey: (...args) => { renderCalls.digest++; return assistant.buildReviewAnalysisKey(...args); },
     renderReviewView: context => context,
+    /* T-1541：renderReview 的 LifeLog 投影依赖——透传真实现（纯函数）。 */
+    buildLifelogTimeline: load("features/lifelog-timeline.ts").buildLifelogTimeline,
     currentCalendarDate: () => new Date(clock), structuredClone, t, Error,
     createSuggestionWorkflow: envelope => ({envelope}),
     withTimeout: value => Promise.resolve(value), SUMMARY_TIMEOUT_MS: 1000,

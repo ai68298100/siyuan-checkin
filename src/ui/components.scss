@@ -10795,6 +10795,22 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 /* T-1511 批量补记预览：逐项分类 + 实际值输入。 */
 .review-batch-preview { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); }
 .review-batch-preview .review-scope-note { margin: 0; }
+/* T-1541 LifeLog 时间轴：左时间线+类型色点（0~5 色板/-1 中性）+时长徽标；纯渲染零写入。 */
+.lc-checkin__lifelog-timeline { margin: 0; padding: 0 0 0 14px; list-style: none; border-left: 2px solid var(--lc-checkin-border); display: grid; gap: 8px; }
+.lc-checkin__lifelog-row { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.lc-checkin__lifelog-row::before { content: ""; position: absolute; left: -20px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--lc-checkin-muted); }
+.lc-checkin__lifelog-row[data-lifelog-color="0"]::before { background: var(--lc-checkin-accent); }
+.lc-checkin__lifelog-row[data-lifelog-color="1"]::before { background: var(--lc-checkin-success); }
+.lc-checkin__lifelog-row[data-lifelog-color="2"]::before { background: var(--lc-checkin-warning); }
+.lc-checkin__lifelog-row[data-lifelog-color="3"]::before { background: color-mix(in srgb, var(--lc-checkin-accent) 55%, var(--lc-checkin-success)); }
+.lc-checkin__lifelog-row[data-lifelog-color="4"]::before { background: color-mix(in srgb, var(--lc-checkin-warning) 55%, var(--lc-checkin-accent)); }
+.lc-checkin__lifelog-row[data-lifelog-color="5"]::before { background: color-mix(in srgb, var(--lc-checkin-success) 55%, var(--lc-checkin-accent-text)); }
+.lc-checkin__lifelog-row time { color: var(--lc-checkin-muted); font-size: 11px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.lc-checkin__lifelog-row div { display: grid; gap: 2px; min-width: 0; }
+.lc-checkin__lifelog-row strong { color: var(--lc-checkin-text); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc-checkin__lifelog-row span { color: var(--lc-checkin-muted); font-size: 11px; overflow-wrap: anywhere; }
+.lc-checkin__lifelog-row small { color: var(--lc-checkin-muted); font-size: 10.5px; }
+.lc-checkin__lifelog-duration { align-self: start; padding: 1px 7px; border-radius: 999px; background: var(--lc-checkin-muted-surface); color: var(--lc-checkin-accent-text); font-size: 10.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .review-batch-entry { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; }
 .review-batch-entry > strong { min-width: 0; flex: 1 1 40%; font-size: 12px; overflow-wrap: anywhere; }
 .review-batch-entry input[type="number"] { width: 120px; max-width: 40%; min-height: 36px; padding: 4px 8px; border: 1px solid var(--lc-checkin-border-strong); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); color: inherit; font: inherit; }

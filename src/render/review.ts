@@ -88,6 +88,8 @@ export interface ReviewViewContext {
     itemCompareQuery?: string;
     /** T-1518 周复盘草稿（可选：旧桩按无草稿处理）。 */
     weeklyReviewDrafts?: readonly WeeklyReviewDraft[];
+    /** T-1541 LifeLog 时间轴投影（可选：旧桩/无 yeguif 事件按空处理；宿主已解析排序）。 */
+    lifelogTimeline?: import("../features/lifelog-timeline").LifelogTimelineEntry[];
     analyticsSnapshot: AnalyticsSnapshot;
 }
 
@@ -634,6 +636,15 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<div class="lc-checkin__weekly-review" data-weekly-key="${escapeHtml(weekKey)}">${facts}<label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepFriction"))}</span><textarea data-weekly-friction rows="2" placeholder="${escapeHtml(t("review.weeklyFrictionPlaceholder"))}">${escapeHtml(draft?.friction || "")}</textarea></label><label class="lc-checkin__weekly-field"><span>${escapeHtml(t("review.weeklyStepAdjust"))}</span><textarea data-weekly-adjustment rows="2" placeholder="${escapeHtml(t("review.weeklyAdjustPlaceholder"))}">${escapeHtml(draft?.adjustment || "")}</textarea><small>${escapeHtml(t("review.weeklyAdjustHint"))}</small></label><div class="lc-checkin__weekly-actions"><button class="lc-checkin__text-button" type="button" data-weekly-save>${t("review.weeklySave")}</button><button class="lc-checkin__text-button" type="button" data-weekly-export>${t("review.weeklyExport")}</button><button class="lc-checkin__text-button" type="button" data-weekly-ai-copy aria-label="${escapeHtml(t("review.weeklyAiCopyAria"))}" title="${escapeHtml(t("review.weeklyAiCopy"))}">${t("review.weeklyAiCopy")}</button><button class="lc-checkin__text-button" type="button" data-weekly-clear>${t("review.weeklyClear")}</button><span class="lc-checkin__weekly-status" data-weekly-status role="status"></span></div></div>`;
     };
 
+    /* T-1541 LifeLog 时间轴：yeguif 事件纵向串联（类型色点+时长），纯渲染零写入；
+       无 yeguif 事件时显示空说明（不隐藏折叠区，保持入口可发现）。 */
+    const renderLifelog = (): string => {
+        const entries = ctx.lifelogTimeline || [];
+        if (!entries.length) return `<p class="review-scope-note">${escapeHtml(t("review.lifelogEmpty"))}</p>`;
+        const rows = entries.map((entry) => `<li class="lc-checkin__lifelog-row" data-lifelog-color="${entry.colorIndex}"><time>${escapeHtml(entry.time)}</time><div><strong>${escapeHtml(entry.type || entry.itemName)}</strong>${entry.text ? `<span>${escapeHtml(entry.text)}</span>` : ""}${entry.itemName ? `<small>${escapeHtml(entry.itemName)}</small>` : ""}</div><span class="lc-checkin__lifelog-duration">${escapeHtml(t("review.lifelogMinutes", {n: entry.minutes}))}</span></li>`).join("");
+        return `<ol class="lc-checkin__lifelog-timeline" role="list">${rows}</ol>`;
+    };
+
     const content = workspace === "records" ? renderRecords() : workspace === "analysis"
         ? `<p class="review-scope-note">${t("review.analysisScope")}</p><div class="lc-checkin__review-sections">
             ${fold("trend", t("review.foldTrend"), renderTrends)}
@@ -646,6 +657,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             <h2 class="review-section-heading">${t("review.supportingContent")}</h2>
             ${fold("reminders", t("review.foldReminders"), renderReminders)}
             ${fold("upcoming", t("review.foldUpcoming"), () => renderUpcomingOccasionsView(ctx.occasionStore))}
+            ${fold("lifelog", t("review.lifelogTitle"), renderLifelog)}
           </div>`
         : `<section class="lc-checkin__summary-stats" aria-label="${t("review.summaryStatsAria")}" title="${escapeHtml(t("review.coverageHint"))}"><div><strong>${summary.totalEvents}</strong><span>${t("review.statEvents")}</span></div><div><strong>${completedItemCount}</strong><span>${t("review.completedCoverage")}</span></div><div><strong>${scheduledItemCount}</strong><span>${t("review.statScheduled")}</span></div>${analyticsSummary ? `<span class="lc-checkin__analytics-badge" data-analytics-as-of="${escapeHtml(analyticsSummary.asOf)}" aria-label="${escapeHtml(t("review.analyticsBadgeAria", {weekly: analyticsSummary.weeklyCurrent, monthly: analyticsSummary.monthlyCurrent, yearly: analyticsSummary.yearlyCurrent, days: analyticsSummary.activeDays}))}">${analyticsSummary.weeklyCurrent}% · ${analyticsSummary.monthlyCurrent} · ${analyticsSummary.yearlyCurrent} · ${analyticsSummary.activeDays}</span>` : ""}</section>
             ${renderRhythm()}<div class="lc-checkin__review-sections">
