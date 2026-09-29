@@ -249,6 +249,13 @@ try {
         assert.equal(report(data, new Date(2026, 8, 7), NaN).days.length, 84);
         assert.equal(buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 7)}).days.length, 84);
         assert.throws(() => report(data, new Date("invalid")), RangeError);
+        /* T-1590：自定义范围结束日——窗口落在 endDate 收尾；非法/缺省回落 asOf 当日。 */
+        const custom = buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), days: 28, endDate: "2026-08-31"});
+        assert.equal(custom.endDate, "2026-08-31");
+        assert.equal(custom.days.length, 28);
+        assert.equal(custom.days[custom.days.length - 1].date, "2026-08-31");
+        assert.equal(custom.days[0].date, "2026-08-04");
+        assert.equal(buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), days: 28, endDate: "not-a-date"}).endDate, "2026-09-28", "invalid custom end falls back to asOf");
     });
 
     check("empty data and a just-created item report no rate until an opportunity closes", () => {

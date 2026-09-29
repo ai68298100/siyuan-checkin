@@ -748,6 +748,12 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-grid span,
 .lc-checkin__insight-grid .lc-checkin__insight-day { aspect-ratio:1; min-width:0; padding:0; border:0; border-radius:3px; background:var(--lc-checkin-muted-surface); cursor:pointer; }
 .lc-checkin__insight-row { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:44px; padding:0; border:0; border-bottom:1px solid var(--lc-checkin-border); color:var(--lc-checkin-muted); font-size:11px; text-align:left; background:transparent; cursor:pointer; }
+/* T-1590 洞察范围与项目筛选：range-tabs 复用回顾页既有类；picker 容器化承接搜索框。 */
+.lc-checkin__insight-picker { display:grid; gap:6px; margin-bottom:12px; }
+.lc-checkin__insight-item-search { min-height:38px; padding:0 10px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-surface); color:var(--lc-checkin-text); font-size:12px; }
+.lc-checkin__insight-custom-range { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.lc-checkin__insight-custom-range label { display:grid; gap:3px; color:var(--lc-checkin-muted); font-size:11px; }
+.lc-checkin__insight-custom-range input { min-height:38px; padding:0 8px; border:1px solid var(--lc-checkin-border); border-radius:8px; background:var(--lc-checkin-surface); color:var(--lc-checkin-text); font-size:12px; }
 .lc-checkin__coaching-actions { display:flex; flex-wrap:wrap; gap:6px; }
 .lc-checkin__insight-grid .is-complete { background:var(--lc-checkin-success); }
 .lc-checkin__insight-grid .is-partial { background:var(--lc-checkin-warning); }

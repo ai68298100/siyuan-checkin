@@ -8,6 +8,8 @@ export type HabitDayStatus = "complete" | "partial" | "missed" | "pending" | "of
 export interface HabitInsightOptions {
     asOf?: Date;
     days?: number;
+    /** T-1590 自定义范围结束日（dateKey）；非法/缺省回落 asOf 当日。跨度仍受 7~366 天钳制。 */
+    endDate?: string;
 }
 
 export interface HabitUnitTotal {
@@ -86,7 +88,11 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
     if (!Number.isFinite(asOf.getTime())) throw new RangeError("asOf must be a valid date");
     const requestedDays = options.days === undefined || !Number.isFinite(options.days) ? 84 : Math.trunc(options.days);
     const windowDays = Math.max(7, Math.min(366, requestedDays));
-    const end = localCalendarDate(asOf);
+    /* T-1590：自定义范围结束日——仅接受合法 dateKey，否则回落 asOf 当日（fail-closed）。
+       key→本地日解析与 shared.calendarDateFromKey 同语义；内联以避免拖入 i18n 依赖链（纯核心模块纪律）。 */
+    const customEnd = typeof options.endDate === "string" && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(options.endDate) && !Number.isNaN(new Date(options.endDate).getTime())
+        ? parseDateKeyToLocal(options.endDate) : localCalendarDate(asOf);
+    const end = customEnd;
     const start = shiftDay(end, 1 - windowDays);
     const startDate = dateKey(start);
     const endDate = dateKey(end);
@@ -311,6 +317,11 @@ function isQuotaOpportunityDay(schedule: CheckinSchedule, date: Date, asOfKey: s
 
 function localCalendarDate(date: Date): Date {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
+}
+
+function parseDateKeyToLocal(value: string): Date {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 12);
 }
 
 function shiftDay(date: Date, days: number): Date {

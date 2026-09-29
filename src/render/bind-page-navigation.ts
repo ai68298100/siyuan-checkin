@@ -22,6 +22,10 @@ export interface BindPageNavigationHost {
     currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     insightsItemId?: string;
     insightsReturnPage: "today" | "review";
+    /** T-1590 洞察范围会话态与项目搜索词（可选：旧桩按默认 84/空处理）。 */
+    insightsRange?: "28" | "84" | "365" | "custom";
+    insightsCustomRange?: {startDate: string; endDate: string};
+    insightsItemQuery?: string;
     historyQuery: string;
     historySource: import("../features/history-filter").HistoryChannelFilter;
     /** T-1512 计量方式筛选（可选：旧桩缺省按 all 处理）。 */
@@ -275,10 +279,66 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
         const itemId = (event.currentTarget as HTMLSelectElement).value;
-        if (!host.store.items.some((item) => item.id === itemId && !item.archived)) return;
+        /* T-1590：归档项目可选中回看（只读洞察，动作区提供「在归档中查看」）。 */
+        if (!host.store.items.some((item) => item.id === itemId)) return;
         host.insightsItemId = itemId;
         void host.persistViewPreferences();
         host.render();
+    });
+    /* T-1590 洞察范围切换：会话态字段，切换只重渲染（项目/滚动由既有机制保持）。 */
+    root.querySelectorAll<HTMLElement>("[data-insight-range]").forEach((button) => button.addEventListener("click", () => {
+        const range = button.dataset.insightRange || "";
+        if (range !== "28" && range !== "84" && range !== "365" && range !== "custom") return;
+        host.insightsRange = range;
+        host.render();
+    }));
+    /* T-1590 自定义起止：日期合法、结束不晚于今日、起不晚于终——通过才写入会话态。 */
+    for (const attribute of ["data-insight-range-start", "data-insight-range-end"] as const) {
+        root.querySelector<HTMLInputElement>(`[${attribute}]`)?.addEventListener("change", (event) => {
+            const input = event.currentTarget as HTMLInputElement;
+            const value = input.value || "";
+            if (!isValidLocalDateInput(value) || value > dateKey(currentCalendarDate())) {
+                input.value = host.insightsCustomRange?.[attribute === "data-insight-range-start" ? "startDate" : "endDate"] || "";
+                return;
+            }
+            const current = host.insightsCustomRange || {startDate: value, endDate: value};
+            const next = attribute === "data-insight-range-start"
+                ? {startDate: value, endDate: value > current.endDate ? value : current.endDate}
+                : {startDate: value < current.startDate ? value : current.startDate, endDate: value};
+            host.insightsCustomRange = next;
+            host.insightsRange = "custom";
+            host.render();
+        });
+    }
+    /* T-1590 项目搜索：IME 组合态不打断（compareComposing 同款守卫），DOM 过滤 option 不重渲染。 */
+    {
+        let insightSearchComposing = false;
+        const insightSearch = root.querySelector<HTMLInputElement>("[data-insight-item-search]");
+        insightSearch?.addEventListener("compositionstart", () => { insightSearchComposing = true; });
+        insightSearch?.addEventListener("compositionend", () => {
+            insightSearchComposing = false;
+            host.insightsItemQuery = insightSearch.value;
+            const query = host.insightsItemQuery.toLocaleLowerCase();
+            root.querySelectorAll<HTMLElement>("[data-insight-item] option").forEach((option) => {
+                option.hidden = Boolean(query) && !option.textContent?.toLocaleLowerCase().includes(query);
+            });
+        });
+        insightSearch?.addEventListener("input", () => {
+            if (insightSearchComposing || host.disposed || host.disposing) return;
+            host.insightsItemQuery = insightSearch.value;
+            const query = host.insightsItemQuery.toLocaleLowerCase();
+            root.querySelectorAll<HTMLElement>("[data-insight-item] option").forEach((option) => {
+                option.hidden = Boolean(query) && !option.textContent?.toLocaleLowerCase().includes(query);
+            });
+        });
+    }
+    /* T-1590 归档项目动作：跳归档页并预填该项目名（恢复动作留在归档页——那里有重进排期预览确认）。 */
+    root.querySelector<HTMLElement>("[data-insight-archived]")?.addEventListener("click", (event) => {
+        const itemId = (event.currentTarget as HTMLElement).dataset.insightArchived || "";
+        const item = host.store.items.find((candidate) => candidate.id === itemId);
+        if (!item) return;
+        host.archivedQuery = item.name;
+        host.showArchived();
     });
     /* T-1579：洞察行动入口——查看记录（带项目过滤直达记录区，返回页会话态保持）/
        编辑规则（showEditor 保留 editingId 项目身份）。 */

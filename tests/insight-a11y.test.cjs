@@ -22,6 +22,19 @@ assert.match(source, /data-insight-records="\$\{escapeHtml\(item\.id\)\}">\$\{t\
 assert.match(source, /data-insight-edit-rules="\$\{escapeHtml\(item\.id\)\}">\$\{t\("insights\.coachingAdjust"\)\}/);
 assert.match(i18n, /"insights\.dayJumpHint": "点击查看当日记录"/);
 assert.match(i18n, /"insights\.coachingEvidence": "查看证据"/);
+/* T-1590：范围切换/可搜索选择器/归档动作。 */
+assert.match(source, /data-insight-range="\$\{range\}" aria-pressed="\$\{this\.insightsRange === range\}"/, "range tabs must bind the session range with aria-pressed");
+assert.match(source, /data-insight-range-start value="\$\{escapeHtml\(this\.insightsCustomRange\?\.startDate \|\| ""\)\}"/, "custom range inputs carry the session values");
+assert.match(source, /data-insight-item-search value="\$\{escapeHtml\(this\.insightsItemQuery\)\}"/, "item search keeps the session query");
+assert.match(source, /entry\.archived \? escapeHtml\(archivedSuffix\)/, "archived items must be labelled in the picker");
+assert.match(source, /data-insight-archived="\$\{escapeHtml\(item\.id\)\}"/, "archived items must offer the archive-page jump");
+const insightsCore = fs.readFileSync("src/features/insights.ts", "utf8");
+assert.match(insightsCore, /const customEnd = typeof options\.endDate === "string"/, "custom end date must be an explicit option (fail-closed fallback)");
+assert.match(insightsCore, /endDate\?: string;/, "the option must be declared");
+const nav = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
+assert.match(nav, /insightSearchComposing/, "item search must guard IME composition");
+assert.match(nav, /host\.archivedQuery = item\.name;\s*\n\s*host\.showArchived\(\);/, "archived jump must prefill the archive search");
+assert.match(nav, /value > dateKey\(currentCalendarDate\(\)\)/, "custom range must reject future dates");
 
 // Execute the production renderer with a report containing empty and scheduled
 // weeks. The view must not repeat the denominator or expose image URLs as text.

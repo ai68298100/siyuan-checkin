@@ -2109,3 +2109,6 @@ T-1301 摘要回填后全链 exit 0。
 
 2026-09-29 T-1541 回顾页 LifeLog 时间轴视图（新批次第三任务）：纯函数投影 features/lifelog-timeline.ts（note 冒号拆类型备注/事件 ISO 自身读数=无时钟/分钟取整/升序稳定/色板哈希确定性）+回顾页 analysis 折叠区 fold("lifelog") 纵向时间轴（色点+时长徽标，空区间显式提示）；宿主注入区间 yeguif 事件（时长已在 value，零新解析器）、review.ts 仅渲染零新依赖；纯渲染零写入。i18n 3 键×2（parity 2494 对）。新守门 tests/lifelog-timeline.test.cjs 入 test:ui。**测试坑两枚**：断言索引须按 ISO 升序重排（首轮按夹具字面顺序排错）；review-assistant 的 SummaryHarness（renderReview 方法切片 eval）沙箱需透传新依赖 buildLifelogTimeline 真实现——**凡 renderReview/renderInsights 等被方法切片测试的渲染方法，其新自由标识符都要同步沙箱参数表**（与 insight-a11y 同类坑第三踩）。
 验证：check、lifelog-timeline/review-assistant 定向守门、parity 2494 对、test:quality 全链 EXIT=0（CSS 633672 +1.9KB 预算内）、双主题 visual-qa EXIT=0、width-walkthrough 桌面+mobile EXIT=0。未 push。
+
+2026-09-29 T-1590 单项洞察范围与项目选择（新批次第四任务）：范围会话态（28/84/365/custom）+内核 endDate 选项（内联 key→Date 解析避免 i18n 依赖链——insights.test 转译落盘无法解析 shared 的相对上级 require，第一版补 shared.ts 转译是错解、内核内联是正解）+可搜索含归档选择器（IME 守卫+DOM 过滤）+归档项「在归档中查看」（预填 archivedQuery+showArchived，恢复留归档页不绕过预览确认）。切换只重渲染项目/滚动保持。i18n 11 键×2（parity 2504 对）；CSS 634351（+679B）。守门：insight-a11y +8 断言、insights.test 内核窗口断言（endDate 边界/非法回落）。
+验证：check、insight-a11y/insights.test 定向守门、parity 2504 对、test:quality 全链 EXIT=0、双主题 visual-qa EXIT=0、width-walkthrough 桌面+mobile EXIT=0。未 push。**本轮起进入 v18.10.0 发版准备**（用户批准：收尾 T-1590 后发版）。
