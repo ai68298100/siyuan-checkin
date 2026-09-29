@@ -69,7 +69,8 @@ const indexSource = fs.readFileSync(path.join(__dirname, "..", "src/index.ts"), 
 assert.ok(indexSource.includes("HEALTH_INGEST_INTERVAL_MS"), "polling interval must come from the feature module");
 assert.ok(indexSource.includes("NOTE_QUERY_INTERVAL_MS"), "note-query polling interval must come from the feature module");
 assert.ok(indexSource.includes("content LIKE 'health:%'"), "inbox query must scope to the bound document and health lines");
-assert.match(indexSource, /content LIKE 'health:%'.*ORDER BY id ASC LIMIT 500/, "health rows must have deterministic oldest-first order before first-row dedupe");
+/* T-1629：有界分页扫描——LIMIT 走 HEALTH_INBOX_MAX_ROWS 常量，游标子句由白名单助手拼接，排序保持最旧优先。 */
+assert.match(indexSource, /content LIKE 'health:%'\$\{blockIdCursorClause\(cursor\)\} ORDER BY id ASC LIMIT \$\{HEALTH_INBOX_MAX_ROWS\}/, "health rows must have deterministic oldest-first order before first-row dedupe");
 assert.ok(indexSource.includes('source: "api", externalRef'), "health writes must use the public api source with the composed identity");
 assert.match(indexSource, /eventTombstones\.some\(\(tombstone\) => tombstone\.source === "api"[\s\S]*externalRef === externalRef\)/, "health ingest must honor deleted-identity tombstones");
 assert.match(indexSource, /bindVerifiedDocumentSave\("save-health-doc"[\s\S]*ingestHealthInbox\(\)/, "saving an enabled inbox must trigger an immediate ingest");

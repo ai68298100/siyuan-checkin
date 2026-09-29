@@ -74,6 +74,7 @@ import {YEGUIF_INGEST_INTERVAL_MS, YEGUIF_MAX_BLOCKS, buildYeguifEventNote, buil
 import {buildLifelogTimeline} from "./features/lifelog-timeline";
 import {NOTE_QUERY_INTERVAL_MS, NOTE_QUERY_MAX_ROWS, buildNoteQuerySql, isNoteQueryPreferenceReady, normalizeNoteQueryPreference, noteQueryCursorFromRows, noteQueryIngestDecision, parseNoteQueryRows, type NoteQueryPreference, type NoteQueryRow} from "./features/note-query";
 import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestReport} from "./features/source-ingest-report";
+import {SOURCE_SCAN_MAX_PAGES, blockIdCursorClause, scanBoundedPages} from "./features/scan-cursor";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
@@ -448,6 +449,11 @@ export default class CheckinPlugin extends Plugin {
     yeguifIntegration = {...DEFAULT_VIEW_PREFERENCES.yeguifIntegration};
     private yeguifTimer?: number;
     private sourceIngestReports: Partial<Record<DocumentSourceKey, SourceIngestReport>> = {};
+    /* T-1629：三类文档来源的会话扫描游标（块 ID）——整页读满时推进续读，短页复位。
+       仅会话态：重载后从头幂等重扫（externalRef/墓碑/手动优先去重，不丢不重）。 */
+    private healthScanCursor = "";
+    private noteQueryScanCursor = "";
+    private yeguifScanCursor = "";
     /** 最近一次拉取结果（内存态，供设置页状态行；Key 永不出现在消息/导出里）。 */
     private wereadLastPull?: {ok: boolean; days: number; written: number; pendingRetryable?: number; error?: string; upgrade?: string};
     /** T-1455：今日页输入聚焦期间被挂起的后台渲染标记。 */
@@ -1159,11 +1165,21 @@ export default class CheckinPlugin extends Plugin {
         this.sourceIngestReports.health = report;
         if (!governance.metricBindings.length) { report.outcome = "not-configured"; return; }
         try {
-        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%' ORDER BY id ASC LIMIT 500`}) as {code?: number; data?: unknown};
-        if (response?.code !== 0 || !Array.isArray(response.data)) { report.outcome = "read-failed"; return; }
-        const rows = response.data as Array<{content?: string}>;
+        /* T-1629：有界分页扫描——整页读满推进游标续读，短页收尾复位；多页行累积后一次解析。 */
+        const scan = await scanBoundedPages({
+            cursor: this.healthScanCursor,
+            windowSize: HEALTH_INBOX_MAX_ROWS,
+            maxPages: SOURCE_SCAN_MAX_PAGES,
+            fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: `SELECT id, content FROM blocks WHERE root_id = '${governance.docId}' AND content LIKE 'health:%'${blockIdCursorClause(cursor)} ORDER BY id ASC LIMIT ${HEALTH_INBOX_MAX_ROWS}`}).then((response) => {
+                if ((response as {code?: number})?.code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("health-scan-read-failed");
+                return (response as {data: Array<{id?: string; content?: string}>}).data;
+            }),
+            rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
+        });
+        this.healthScanCursor = scan.cursor;
+        const rows = scan.rows;
         report.scanned = rows.length;
-        report.windowFull = rows.length >= HEALTH_INBOX_MAX_ROWS;
+        report.windowFull = scan.advanced;
         const validRows = rows.filter((row) => Boolean(parseHealthInboxLine(row?.content))).length;
         const entries = parseHealthInboxRows(rows);
         report.matched = entries.length;
@@ -1213,11 +1229,23 @@ export default class CheckinPlugin extends Plugin {
         this.sourceIngestReports.notequery = report;
         const statement = buildNoteQuerySql(governance);
         if (!statement) { report.outcome = "not-configured"; return; }
-        const response = await this.kernelPost("/api/query/sql", {stmt: statement}).catch(() => undefined) as {code?: number; data?: unknown} | undefined;
-        if (!response || response.code !== 0 || !Array.isArray(response.data)) { report.outcome = "read-failed"; return; }
-        report.scanned = response.data.length;
-        report.windowFull = report.scanned >= NOTE_QUERY_MAX_ROWS;
-        const entries = parseNoteQueryRows(response.data, governance);
+        /* T-1629：有界分页扫描——buildNoteQuerySql 原生游标参数（afterBlockId）首次接线。 */
+        const scan = await scanBoundedPages({
+            cursor: this.noteQueryScanCursor,
+            windowSize: NOTE_QUERY_MAX_ROWS,
+            maxPages: SOURCE_SCAN_MAX_PAGES,
+            fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: buildNoteQuerySql(governance, cursor)}).then((response) => {
+                if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("notequery-scan-read-failed");
+                return (response as {data: NoteQueryRow[]}).data;
+            }),
+            rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
+        }).catch(() => undefined);
+        if (!scan) { report.outcome = "read-failed"; return; }
+        this.noteQueryScanCursor = scan.cursor;
+        const scanRows = scan.rows;
+        report.scanned = scanRows.length;
+        report.windowFull = scan.advanced;
+        const entries = parseNoteQueryRows(scanRows, governance);
         report.matched = entries.length;
         report.unmatched = Math.max(0, report.scanned - entries.length);
         const todayKey = dateKey(currentCalendarDate());
@@ -1436,11 +1464,23 @@ export default class CheckinPlugin extends Plugin {
         if (!governance.notebookId || (!fallbackItem && !governance.mappings?.some((mapping) => getActiveItemById(this.store, mapping.itemId)))) { report.outcome = "not-configured"; return; }
         const today = dateKey(currentCalendarDate());
         const createdFloor = `${today.replace(/-/g, "")}000000`;
-        const response = await this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND (content GLOB '[0-9]:[0-9][0-9]*' OR content GLOB '[0-9][0-9]:[0-9][0-9]*') ORDER BY id ASC LIMIT ${YEGUIF_MAX_BLOCKS}`}).catch(() => undefined);
-        if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) { report.outcome = "read-failed"; return; }
-        const rows = (response as {data: Array<{id?: string; content?: string; root_id?: string}>}).data;
+        /* T-1629：有界分页扫描——多页行累积后一次分组解析，跨页的同文档相邻 Marker
+           前置段不因分页丢失（时长归属依赖文档内序列完整）。 */
+        const scan = await scanBoundedPages({
+            cursor: this.yeguifScanCursor,
+            windowSize: YEGUIF_MAX_BLOCKS,
+            maxPages: SOURCE_SCAN_MAX_PAGES,
+            fetchPage: (cursor) => this.kernelPost("/api/query/sql", {stmt: `SELECT id, content, root_id FROM blocks WHERE type = 'p' AND box = '${governance.notebookId}' AND created >= '${createdFloor}' AND (content GLOB '[0-9]:[0-9][0-9]*' OR content GLOB '[0-9][0-9]:[0-9][0-9]*')${blockIdCursorClause(cursor)} ORDER BY id ASC LIMIT ${YEGUIF_MAX_BLOCKS}`}).then((response) => {
+                if (!response || (response as {code?: number}).code !== 0 || !Array.isArray((response as {data?: unknown}).data)) throw new Error("yeguif-scan-read-failed");
+                return (response as {data: Array<{id?: string; content?: string; root_id?: string}>}).data;
+            }),
+            rowId: (row) => (typeof row?.id === "string" ? row.id : undefined),
+        }).catch(() => undefined);
+        if (!scan) { report.outcome = "read-failed"; return; }
+        this.yeguifScanCursor = scan.cursor;
+        const rows = scan.rows;
         report.scanned = rows.length;
-        report.windowFull = rows.length >= YEGUIF_MAX_BLOCKS;
+        report.windowFull = scan.advanced;
         /* 按文档分组解析 → 当前记录吸收上一条到当前的时长 → 过滤已写/墓碑 → 写入。 */
         const grouped = new Map<string, Array<NonNullable<ReturnType<typeof parseYeguifMarker>>>>();
         for (const row of rows) {
