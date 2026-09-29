@@ -20,6 +20,42 @@ export function buildReviewPrompt(context: Pick<SummaryContext, "startDate" | "e
     ].join("\n\n");
 }
 
+export interface AiReviewPromptInput {
+    startDate: string;
+    endDate: string;
+    totalEvents: number;
+    completedItems: number;
+    scheduledItems: number;
+    /** 每项目一行的事实摘要（调用方已本地化，如「晨跑 · 5/7 天」）。 */
+    itemLines: ReadonlyArray<string>;
+    friction: string;
+    adjustment: string;
+    /** 区块标题复用周复盘向导的既有文案键值，保持两处口径一致。 */
+    headings: {facts: string; friction: string; adjustment: string};
+}
+
+/** T-1539：AI 复盘自足提示词——本地统计事实与用户草稿直接嵌入文本，粘贴到任意外部 AI
+    无需数据访问。与 buildReviewPrompt 的「指令词」定位不同：那个只给读取指引（要求 AI
+    端能读本插件数据），本函数自带全部事实。确定性纯函数；零网络、零模型依赖、不写事件；
+    仅包含用户显式要求复制的范围内数据（事实摘要+两段草稿），不夹带其他本地数据。 */
+export function buildAiReviewPrompt(input: AiReviewPromptInput): string {
+    const friction = input.friction.trim();
+    const adjustment = input.adjustment.trim();
+    return [
+        t("review.aiPromptIntro", {start: input.startDate, end: input.endDate}),
+        `[${input.headings.facts}]`,
+        t("review.aiPromptFacts", {n: input.totalEvents, completed: input.completedItems, scheduled: input.scheduledItems}),
+        ...input.itemLines.map((line) => `- ${line}`),
+        `[${input.headings.friction}]`,
+        friction || t("review.aiPromptEmpty"),
+        `[${input.headings.adjustment}]`,
+        adjustment || t("review.aiPromptEmpty"),
+        t("review.aiPromptRequestBody"),
+        t("review.aiPromptResponseFormat"),
+        t("review.aiPromptPrivacy"),
+    ].join("\n\n");
+}
+
 const analysisKeys = new WeakMap<CheckinStore, Map<string, string>>();
 
 /** Cache identity includes the precise period and the inputs visible to a

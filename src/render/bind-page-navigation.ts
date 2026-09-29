@@ -3,7 +3,7 @@
 import {t} from "../i18n";
 import {buildWeeklyReportMarkdown} from "../features/report";
 import {buildReviewComparison, getPreviousReviewRange, type ReviewComparison} from "../features/review-comparison";
-import {buildReviewPrompt, type ReviewAssistantGoal} from "../features/review-assistant";
+import {buildAiReviewPrompt, buildReviewPrompt, type ReviewAssistantGoal} from "../features/review-assistant";
 import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {dateKey, getActiveItemById, getEventById, getItemById, isScheduledToday, removeEvents, updateEventNote} from "../model";
@@ -462,6 +462,37 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
         const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
         host.exportWeeklyReviewMarkdown?.(weekKey, friction, adjustment);
+    });
+    /* T-1539：复制 AI 复盘提示词——本地统计事实+草稿现值组装自足提示词写剪贴板；
+       零网络、零模型依赖、不写事件；草稿未保存也可复制（取输入框现值）。 */
+    root.querySelector<HTMLElement>("[data-weekly-ai-copy]")?.addEventListener("click", (event) => {
+        const button = event.currentTarget as HTMLElement;
+        const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
+        const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
+        void (async () => {
+            const asOf = currentCalendarDate();
+            const summary = host.summaryCustomRange ? buildCustomSummaryContext(host.store, host.summaryCustomRange, asOf) : buildSummaryContext(host.store, host.summaryRange, asOf);
+            const prompt = buildAiReviewPrompt({
+                startDate: summary.startDate,
+                endDate: summary.endDate,
+                totalEvents: summary.totalEvents,
+                completedItems: summary.completedItems,
+                scheduledItems: summary.scheduledItems,
+                itemLines: summary.items.slice(0, 5).map((entry) => `${entry.name} · ${entry.completedDays}/${entry.scheduledDays} ${t("review.weeklyDays")}`),
+                friction,
+                adjustment,
+                headings: {facts: t("review.weeklyStepFacts"), friction: t("review.weeklyStepFriction"), adjustment: t("review.weeklyStepAdjust")},
+            });
+            try {
+                await navigator.clipboard.writeText(prompt);
+                showMessage(t("review.aiCopied"));
+            } catch {
+                showMessage(t("msg.clipboardFail"));
+            }
+            if (button.isConnected) {
+                button.removeAttribute("aria-busy");
+            }
+        })();
     });
     root.querySelector<HTMLElement>("[data-weekly-clear]")?.addEventListener("click", () => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");

@@ -55,8 +55,33 @@ for (const language of ["zh-CN", "en-US"]) {
         assert.doesNotMatch(prompt, /Private project name|Private record note|review\.assistantPrompt/,
             "handoff text contains instructions and dates, no raw private records or missing dictionary keys");
     }
+    /* T-1539：AI 复盘自足提示词——事实嵌入+草稿嵌入+确定性（语言无关断言；文案断言在循环外 zh 轮）。 */
+    const aiInput = {
+        startDate: context.startDate, endDate: context.endDate,
+        totalEvents: context.totalEvents, completedItems: context.completedItems, scheduledItems: context.scheduledItems,
+        itemLines: context.items.slice(0, 3).map(entry => `${entry.name} · ${entry.completedDays}/${entry.scheduledDays}`),
+        friction: "  晚间时段经常被打断  ", adjustment: "", 
+        headings: {facts: "本周事实", friction: "本周阻力", adjustment: "下周一项调整"},
+    };
+    const aiPrompt = assistant.buildAiReviewPrompt(aiInput);
+    assert.ok(aiPrompt.includes("2026-09-14"), "range start must be embedded");
+    assert.ok(aiPrompt.includes(String(context.totalEvents)), "total event count must be embedded");
+    assert.ok(aiPrompt.includes("[本周事实]") && aiPrompt.includes("[本周阻力]") && aiPrompt.includes("[下周一项调整]"), "section headings reused from the weekly wizard");
+    assert.ok(aiPrompt.includes("晚间时段经常被打断"), "friction draft must be trimmed and embedded verbatim");
+    assert.doesNotMatch(aiPrompt, /review\.aiPrompt|undefined|\[object/, "no missing dictionary keys or raw placeholders");
+    assert.equal(assistant.buildAiReviewPrompt(aiInput), aiPrompt, "the prompt must be deterministic");
 }
 setPluginLanguage("zh-CN");
+{
+    const aiPrompt = assistant.buildAiReviewPrompt({
+        startDate: "2026-09-14", endDate: "2026-09-20", totalEvents: 12, completedItems: 3, scheduledItems: 5,
+        itemLines: ["晨跑 · 5/7"], friction: "  ", adjustment: "",
+        headings: {facts: "本周事实", friction: "本周阻力", adjustment: "下周一项调整"},
+    });
+    assert.ok(aiPrompt.includes("（本周未填写）"), "empty drafts must fall back to the explicit placeholder");
+    assert.ok(aiPrompt.includes("请勿假设你有其他本地数据访问能力"), "privacy boundary must be stated in the copied text");
+    assert.ok(!aiPrompt.includes("  "), "blank-only drafts must not leak raw whitespace");
+}
 assert.equal(assistant.selectReviewAnalysis([legacy, snapshot], context, key).snapshot, snapshot);
 assert.equal(assistant.selectReviewAnalysis([], context, key).state, "none");
 assert.equal(assistant.selectReviewAnalysis([legacy], context, key).state, "stale", "unscoped old caches remain history only");

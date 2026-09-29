@@ -130,7 +130,7 @@
 
 ## 调研产出待办（2026-09-28：源时记经验吸收——按用户指示列入待办，先不开发；调研记录见 benchmark 文档第二十二节，结论 D-298）
 
-- [ ] T-1539 AI 复盘「复制提示词」免 API 模式（低成本，下批优先候选）——周复盘向导新增一键复制：确定性纯函数把本地统计事实+用户草稿组装成结构化分析提示词，粘贴到任意外部 AI。零网络、零模型依赖、不写事件，契合智能体默认只读边界。触发条件：下一批开工。
+- [x] T-1539 AI 复盘「复制提示词」免 API 模式——done（2026-09-29，local-auto）。①**与既有 buildReviewPrompt 差异先行核对**：既有=「指令词」（要求 AI 端能读插件数据，嵌 checkin-summary-context 机器标记）；本任务=「自足提示词」（本地统计事实+用户草稿直接内嵌，粘贴到任意外部 AI 无需数据访问）——定位互补不重复，二者并存。②**纯函数** buildAiReviewPrompt（features/review-assistant.ts，确定性、零网络、零模型依赖、不写事件）：事实区块（总事件/完成覆盖/前 5 项目行——与周复盘向导 itemLines 同口径）+两段草稿（trim，空稿显式占位「（本周未填写）」不泄空白）+分析请求+输出格式约束+**隐私边界声明**（「请勿假设你有其他本地数据访问能力」）收尾；区块标题复用周复盘向导既有键值（headings 参数注入）保持两处口径一致。③**UI 接线**：周复盘向导动作行新增「复制 AI 提示词」按钮（data-weekly-ai-copy+aria-label/title），bind-page-navigation 取草稿输入框**现值**（未保存也可复制）+当期 summary 组装→navigator.clipboard（复用 copy-weekly-report 通道语义），成功 review.aiCopied/失败 msg.clipboardFail 复用既有键。④i18n 新增 8 键×2（weeklyAiCopy/AiCopyAria/aiCopied/aiPromptIntro/Facts/Empty/RequestBody/ResponseFormat/Privacy——实 9 键，parity 2484 对）。守门：review-assistant.test.cjs 新增双语言轮 7 断言（范围/计数/标题/草稿 verbatim+trim/无键名泄漏/确定性）+zh 轮 3 断言（空稿占位/隐私声明/空白不泄）。验证：pnpm run check、review-assistant/cross-page-consistency/i18n-hygiene 定向守门、parity 2484 对、test:quality 全链 EXIT=0（CSS 631568 不变）、双主题 visual-qa EXIT=0、width-walkthrough 桌面+mobile EXIT=0。真实外部 AI 粘贴效果=用户现场（host-pending，非模拟可证）。
 - [ ] T-1538 内置专注计时闲置暂停与净时长口径（条件批次，用户拍板）——专注/番茄计时监听输入闲置超阈值自动暂停累计，呈现区分「净时长/闲置扣除」双口径；opt-in、阈值显式。前置：WebView 输入事件可用性真机验证 + 产品口径确认（番茄承诺制 vs 净时长的张力，参考源时记语义）。
 - [ ] T-1540 源时记数据源适配评估（观察项）——若上游提供导出/API，按叶归本地读取模式接入为「文档专注时长」来源（跨窗口会话归属与 T-1508 同款边界，需单采集窗口+失效接管设计前置）；不自建被动追踪（第十一轮红线延续）。触发条件：上游数据面确认 + 用户需求。
 
