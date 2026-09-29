@@ -5,11 +5,23 @@ const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 assert.match(source, /lc-checkin lc-checkin--history lc-checkin--insights[\s\S]*t\("insights\.empty"\)/);
 assert.match(i18n, /"insights\.empty": "没有可复盘的打卡项"/);
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.window"\)\}"/);
-assert.match(source, /role="listitem" tabindex="0"/);
+/* T-1591：日历格 button 化——原生可聚焦（无需 tabindex），aria-label 携完整状态读数+钻取提示。 */
+assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\}" type="button" data-insight-day="\$\{escapeHtml\(day\.date\)\}" role="listitem"/);
+assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" role="listitem" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"/);
 assert.match(source, /day\.status === "complete"/);
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
 assert.match(i18n, /"insights\.partial": "部分完成"/);
 assert.match(i18n, /"insights\.missed": "未完成"/);
+/* T-1591：周行钻取 + 口径行 + 教练 CTA（复用 records/editor 既有 data 通道）。 */
+assert.match(source, /data-insight-week="\$\{escapeHtml\(week\.startDate\)\}"/);
+assert.match(source, /insights\.scopeNotePrefix/);
+assert.match(source, /insights\.scopeNoteQuota/);
+assert.match(source, /insights\.scopeNoteAtMost/);
+assert.match(source, /insights\.scopeNoteScheduled/);
+assert.match(source, /data-insight-records="\$\{escapeHtml\(item\.id\)\}">\$\{t\("insights\.coachingEvidence"\)\}/);
+assert.match(source, /data-insight-edit-rules="\$\{escapeHtml\(item\.id\)\}">\$\{t\("insights\.coachingAdjust"\)\}/);
+assert.match(i18n, /"insights\.dayJumpHint": "点击查看当日记录"/);
+assert.match(i18n, /"insights\.coachingEvidence": "查看证据"/);
 
 // Execute the production renderer with a report containing empty and scheduled
 // weeks. The view must not repeat the denominator or expose image URLs as text.
@@ -42,7 +54,7 @@ const compiled = ts.transpileModule(`class InsightView { ${method} }`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
 const report = {
-    weeklyTrend: [{label: "empty week", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
+    weeklyTrend: [{label: "empty week", startDate: "2026-08-31", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", startDate: "2026-09-07", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
     days: [], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
 const View = new Function("getActiveItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", `${compiled}; return InsightView;`)(

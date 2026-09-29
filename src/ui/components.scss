@@ -744,13 +744,16 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-section { margin-top:16px; }
 .lc-checkin__insight-section h2 { margin:0 0 8px; color:var(--lc-checkin-text); font-size:13px; font-weight:600; }
 .lc-checkin__insight-grid { display:grid; grid-template-columns:repeat(14,minmax(0,1fr)); gap:4px; }
-.lc-checkin__insight-grid span { aspect-ratio:1; min-width:0; border-radius:3px; background:var(--lc-checkin-muted-surface); }
+/* T-1591：日历格/周行 button 化——重置按钮默认外观承接原 span/div 视觉，焦点环走全局 :focus-visible。 */
+.lc-checkin__insight-grid span,
+.lc-checkin__insight-grid .lc-checkin__insight-day { aspect-ratio:1; min-width:0; padding:0; border:0; border-radius:3px; background:var(--lc-checkin-muted-surface); cursor:pointer; }
+.lc-checkin__insight-row { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:44px; padding:0; border:0; border-bottom:1px solid var(--lc-checkin-border); color:var(--lc-checkin-muted); font-size:11px; text-align:left; background:transparent; cursor:pointer; }
+.lc-checkin__coaching-actions { display:flex; flex-wrap:wrap; gap:6px; }
 .lc-checkin__insight-grid .is-complete { background:var(--lc-checkin-success); }
 .lc-checkin__insight-grid .is-partial { background:var(--lc-checkin-warning); }
 .lc-checkin__insight-grid .is-missed { background:color-mix(in srgb,var(--lc-checkin-accent) 52%,var(--lc-checkin-muted-surface)); }
 .lc-checkin__insight-grid .is-pending { outline:1px solid var(--lc-checkin-accent); outline-offset:-1px; }
 .lc-checkin__insight-grid .is-off,.lc-checkin__insight-grid .is-unavailable { opacity:.45; }
-.lc-checkin__insight-row { display:flex; align-items:center; justify-content:space-between; min-height:32px; border-bottom:1px solid var(--lc-checkin-border); color:var(--lc-checkin-muted); font-size:11px; }
 .lc-checkin__insight-row strong { color:var(--lc-checkin-text); font-weight:550; }
 @container lc5 (min-width: 720px) {
  .lc-checkin__topnav { min-height: 52px; }

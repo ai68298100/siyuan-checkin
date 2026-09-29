@@ -299,6 +299,19 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (!item) return;
         host.showEditor(item, "insights");
     });
+    /* T-1591：洞察日历格/周行钻取——同步项目过滤后跳记录页对应日期（周行落该周起始日，
+       周视图由用户在记录页切换；selectedHistoryDate/historyScope 由 jumpToHistoryDate 统一处理）。 */
+    for (const attribute of ["data-insight-day", "data-insight-week"]) {
+        root.querySelectorAll<HTMLElement>(`[${attribute}]`).forEach((button) => button.addEventListener("click", () => {
+            const date = button.dataset.insightDay || button.dataset.insightWeek || "";
+            if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;
+            host.historyItemId = host.insightsItemId || "";
+            host.historyPage = 0;
+            host.historyBatchPreviewOpen = false;
+            host.editingHistoryNoteId = undefined;
+            host.jumpToHistoryDate(date);
+        }));
+    }
     root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
         if (value === "all" || value === "overdue" || value === "today" || value === "upcoming" || value === "completed") {
