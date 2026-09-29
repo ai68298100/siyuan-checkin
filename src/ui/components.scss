@@ -10738,11 +10738,9 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
         font-size: 10px; font-weight: 650; white-space: nowrap;
     }
     .lc-checkin__document-target-body,
-    .lc-checkin__document-target-search,
     .lc-checkin__document-target-id,
     .lc-checkin__journal-target-mode,
     .lc-checkin__journal-target-settings { display: grid; gap: 8px; min-width: 0; }
-    .lc-checkin__document-target-search,
     .lc-checkin__document-target-id,
     .lc-checkin__journal-target-settings,
     .lc-checkin__notebook-target-card .lc-checkin__document-target-actions,
@@ -10750,6 +10748,19 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
     .lc-checkin__document-target-id { align-items: stretch; }
     .lc-checkin__document-target-field { display: grid; gap: 5px; min-width: 0; color: var(--lc-checkin-muted); font-size: var(--lc-checkin-settings-help-size); line-height: 1.35; }
     .lc-checkin__document-target-field > span { overflow-wrap: anywhere; }
+    /* T-1616：统一文档选择器候选列表——名称/路径双行预览行，键盘焦点环与失败/空态。 */
+    .lc-checkin__document-choices { display: grid; gap: 4px; max-height: 210px; overflow: auto; min-width: 0; }
+    .lc-checkin__document-choice-option {
+        display: grid; gap: 1px; min-width: 0; padding: 7px 9px; border: 1px solid var(--lc-checkin-border);
+        border-radius: 8px; background: var(--lc-checkin-surface); color: var(--lc-checkin-text);
+        text-align: left; cursor: pointer; font-size: 12px; line-height: 1.4;
+    }
+    .lc-checkin__document-choice-option > strong { font-weight: var(--lc-checkin-settings-strong-weight); overflow-wrap: anywhere; }
+    .lc-checkin__document-choice-option > small { color: var(--lc-checkin-muted); font-size: var(--lc-checkin-settings-help-size); overflow-wrap: anywhere; }
+    .lc-checkin__document-choice-option:hover,
+    .lc-checkin__document-choice-option:focus-visible { border-color: color-mix(in srgb, var(--lc-checkin-accent) 45%, var(--lc-checkin-border)); background: color-mix(in srgb, var(--lc-checkin-accent) 6%, var(--lc-checkin-surface)); }
+    .lc-checkin__document-choice-option.is-failed,
+    .lc-checkin__document-choice-option.is-empty { color: var(--lc-checkin-muted); cursor: default; }
     .lc-checkin__document-target-field :is(input, select),
     .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > select {
         width: 100%; min-width: 0; max-width: 100%; min-height: 44px; box-sizing: border-box;
@@ -10769,7 +10780,6 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
     .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > select { min-width: 0; }
     .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > button { min-height: 44px; }
     @container lc5 (min-width: 720px) {
-        .lc-checkin__document-target-search { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .lc-checkin__document-target-id,
         .lc-checkin__journal-target-settings,
         .lc-checkin__notebook-target-card .lc-checkin__document-target-actions,
@@ -10780,7 +10790,6 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
         .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > button { width: auto; }
     }
     @container lc-dock (min-width: 720px) {
-        .lc-checkin__document-target-search { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .lc-checkin__document-target-id,
         .lc-checkin__journal-target-settings,
         .lc-checkin__notebook-target-card .lc-checkin__document-target-actions,

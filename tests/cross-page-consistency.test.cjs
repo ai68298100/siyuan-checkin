@@ -189,6 +189,25 @@ try {
         /* 非设置面的 620 字重（日历/区块眉标/文件按钮等）不在本批范围。 */
     });
 
+    check("unified document choice replaces the old dual boxes on all three target cards (T-1616)", () => {
+        const indexSource = read("src", "index.ts");
+        /* 统一选择器：三卡各有 per-point 搜索输入 + 候选行列表（combobox/listbox 关联）。 */
+        assert.match(settings, /data-choice-search="\$\{point\}"/, "per-point search input");
+        assert.match(settings, /data-choice-list="\$\{point\}"/, "per-point choice list");
+        for (const point of ["diary", "summary", "health"]) {
+            assert.match(settings, new RegExp(`documentChoiceBlock\\("${point}"`), `${point} card exposes the unified document choice`);
+        }
+        /* 候选行：名称 strong + 路径 small 双行预览（escapeHtml 由 host 接线保证）。 */
+        assert.match(indexSource, /<strong>\$\{escapeHtml\(row\.name\)\}<\/strong><small>\$\{escapeHtml\(row\.path \|\| row\.id\)\}<\/small>/, "choice rows carry two-line metadata preview");
+        /* 键盘与 IME：↓ 聚焦首项、列表内 ↑/↓ 环选、组合态冻结输入。 */
+        assert.match(indexSource, /if \(event\.key !== "ArrowDown"\) return;/, "search input ArrowDown focuses the first option");
+        assert.match(indexSource, /event\.key !== "ArrowDown" && event\.key !== "ArrowUp"\) return;/, "list ArrowUp/Down cycle is wired");
+        assert.match(indexSource, /choiceComposing/, "IME composition guard is wired");
+        /* 旧双框退役反向断言。 */
+        assert.doesNotMatch(settings, /data-diary-search|data-diary-choice/, "old dual boxes stay retired");
+        assert.doesNotMatch(indexSource, /runDiarySearchRequest/, "the select-filling request flow stays retired");
+    });
+
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
         /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
         assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");

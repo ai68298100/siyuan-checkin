@@ -115,7 +115,7 @@ import {planBatchRecord, type BatchEntryResult} from "./features/api-v5";
 import {buildObsidianImportPlan, obsidianHabitName, parseObsidianHabitFile, type ObsidianImportPlan} from "./features/obsidian-habits";
 import {planImportConflicts, type ImportConflictDecision} from "./features/import-conflicts";
 import {sandboxYeguifSample, sandboxHealthSample, sandboxNoteQuerySample, type SandboxOutcome, type SandboxSource} from "./features/source-sandbox";
-import {runDiarySearchRequest} from "./features/diary-search";
+import {toDocumentChoiceRows} from "./features/diary-search";
 import {CHECKIN_BATCH_RECORD_LIMITS} from "./api-contract";
 import {isTaskHorizonExternalRef, TASK_HORIZON_CONTRACT} from "./ecosystem";
 
@@ -4643,33 +4643,86 @@ this.scheduleMidnightRefresh();
             });
             this.render();
         });
-        root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
-            const value = (event.currentTarget as HTMLSelectElement).value;
-            const input = root.querySelector<HTMLInputElement>("[data-diary-doc]");
-            if (value && input) input.value = value;
-        });
-        let diarySearchTimer: ReturnType<typeof setTimeout> | undefined;
-        let diarySearchRequest = 0;
-        root.querySelector<HTMLInputElement>("[data-diary-search]")?.addEventListener("input", (event) => {
-            const query = (event.currentTarget as HTMLInputElement).value.trim();
-            if (diarySearchTimer) clearTimeout(diarySearchTimer);
-            const request = ++diarySearchRequest;
-            diarySearchTimer = setTimeout(async () => {
-                const select = root.querySelector<HTMLSelectElement>("[data-diary-choice]");
-                if (!select || !query) return;
-                await runDiarySearchRequest({
-                    query,
-                    request,
-                    isCurrent: (currentRequest) => currentRequest === diarySearchRequest,
-                    getSelect: () => select,
-                    post: (url, payload) => fetchSyncPost(url, payload) as unknown as Promise<{code?: number; data?: Array<{id?: string; content?: string; hPath?: string}> | {blocks?: Array<{id?: string; content?: string; hPath?: string}>}}>,
-                    render: (currentSelect, blocks) => {
-                        currentSelect.innerHTML = `<option value="">${escapeHtml(t("set.diaryDocChoose"))}</option>` + blocks.filter((block) => block.id).map((block) => `<option value="${escapeHtml(block.id || "")}">${escapeHtml(block.hPath || block.content || block.id || "")}</option>`).join("");
-                    },
-                    onFailure: () => showMessage(t("msg.diarySearchFailed")),
-                });
-            }, 180);
-        });
+        /* T-1616：统一文档选择器接线（diary/summary/health 三点共用）——防抖 + 请求代际
+           + IME 组合态安全 + 候选行键盘（↓ 聚焦首项、列表内 ↑/↓ 环选、Enter 选中、Esc 收起）；
+           候选经 searchBindingDocuments（searchDocs 有界 50）+ 纯投影行；失败行可重试。 */
+        for (const point of ["diary", "summary", "health"] as const) {
+            const searchInput = root.querySelector<HTMLInputElement>(`[data-choice-search="${point}"]`);
+            const listBox = root.querySelector<HTMLElement>(`[data-choice-list="${point}"]`);
+            const docInput = root.querySelector<HTMLInputElement>(`[data-${point}-doc]`);
+            if (!searchInput || !listBox || !docInput) continue;
+            const hideList = () => {
+                listBox.hidden = true;
+                searchInput.setAttribute("aria-expanded", "false");
+            };
+            const optionButtons = () => [...listBox.querySelectorAll<HTMLButtonElement>("[data-choice-id]")];
+            const renderRows = (rows: ReadonlyArray<{id: string; name: string; path: string}>) => {
+                if (!rows.length) {
+                    listBox.innerHTML = `<div class="lc-checkin__document-choice-option is-empty" role="status">${escapeHtml(t("set.documentChoiceEmpty"))}</div>`;
+                    return;
+                }
+                listBox.innerHTML = rows.map((row) => `<button type="button" role="option" class="lc-checkin__document-choice-option" data-choice-id="${escapeHtml(row.id)}" aria-selected="false"><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.path || row.id)}</small></button>`).join("");
+                listBox.hidden = false;
+                searchInput.setAttribute("aria-expanded", "true");
+            };
+            const renderFailure = () => {
+                listBox.innerHTML = `<div class="lc-checkin__document-choice-option is-failed" role="alert">${escapeHtml(t("msg.diarySearchFailed"))}</div>`;
+                listBox.hidden = false;
+                searchInput.setAttribute("aria-expanded", "true");
+            };
+            let choiceTimer: ReturnType<typeof setTimeout> | undefined;
+            let choiceRequest = 0;
+            let choiceComposing = false;
+            const runChoiceSearch = async (query: string, request: number) => {
+                try {
+                    const blocks = await this.searchBindingDocuments(query);
+                    if (!listBox.isConnected || request !== choiceRequest) return;
+                    renderRows(toDocumentChoiceRows(blocks));
+                } catch {
+                    if (listBox.isConnected && request === choiceRequest) renderFailure();
+                }
+            };
+            searchInput.addEventListener("compositionstart", () => { choiceComposing = true; });
+            searchInput.addEventListener("compositionend", () => {
+                choiceComposing = false;
+                void runChoiceSearch(searchInput.value.trim(), ++choiceRequest);
+            });
+            searchInput.addEventListener("input", (event) => {
+                if (choiceComposing || (event as InputEvent).isComposing) return;
+                const query = (event.currentTarget as HTMLInputElement).value.trim();
+                if (choiceTimer) clearTimeout(choiceTimer);
+                if (!query) { hideList(); listBox.innerHTML = ""; return; }
+                const request = ++choiceRequest;
+                choiceTimer = setTimeout(async () => {
+                    if (!listBox.isConnected || request !== choiceRequest) return;
+                    await runChoiceSearch(query, request);
+                }, 180);
+            });
+            searchInput.addEventListener("keydown", (event) => {
+                if (event.key !== "ArrowDown") return;
+                const first = optionButtons()[0];
+                if (first) { event.preventDefault(); first.focus(); }
+            });
+            listBox.addEventListener("keydown", (event) => {
+                if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                const options = optionButtons();
+                const index = options.indexOf(document.activeElement as HTMLButtonElement);
+                if (index < 0) return;
+                event.preventDefault();
+                const next = event.key === "ArrowDown" ? (index + 1) % options.length : (index - 1 + options.length) % options.length;
+                options[next].focus();
+            });
+            listBox.addEventListener("click", (event) => {
+                const option = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-choice-id]");
+                if (!option) return;
+                docInput.value = option.dataset.choiceId || "";
+                hideList();
+                docInput.focus({preventScroll: true});
+            });
+            searchInput.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && !listBox.hidden) { hideList(); }
+            });
+        }
         let diaryNotebookRequest = 0;
         const loadDiaryNotebooks = async () => {
             const select = root.querySelector<HTMLSelectElement>("[data-diary-notebook]");

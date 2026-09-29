@@ -11,7 +11,6 @@ import type {ExternalPendingEntryView} from "../features/external-pending";
 import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import type {NoteQueryPreference} from "../features/note-query";
 import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ingest-report";
-import {collectAnchorChoices} from "../features/note-anchor-picker";
 import {bindingTargetLabel} from "../features/note-bindings";
 import {renderPageShellHead} from "./page-shell";
 
@@ -384,8 +383,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         ? `<option value="${escapeHtml(yeguif.notebookId)}" selected>${escapeHtml(yeguif.notebookId)} · ${t("set.yeguifNotebookSaved")}</option>`
         : `<option value="">${t("set.yeguifNotebookLoading")}</option>`;
     const yeguifNotebookDisabled = yeguif.notebookId ? "" : " disabled";
-    const diaryChoices = collectAnchorChoices(ctx.store.items);
-    const diaryChoiceOptions = diaryChoices.map((choice) => `<option value="${escapeHtml(choice.blockId)}">${escapeHtml(choice.labels.join("、") || choice.blockId)}</option>`).join("");
+    /* T-1616：统一文档选择器（D-323 设计 §1/§2）——单一搜索框 + 候选行列表
+       （名称/路径双行预览，role=listbox + option，键盘 ↑/↓ + Enter，IME 组合态安全），
+       候选经 searchDocs 全量查询（有界 50），取代「本地锚点下拉 + 搜索替换选项」旧双框。 */
+    const documentChoiceBlock = (point: "diary" | "summary" | "health", label: string): string => `<div class="lc-checkin__document-choice" data-document-choice="${point}"><label class="lc-checkin__document-target-field"><span>${label}</span><input type="search" data-choice-search="${point}" placeholder="${label}" aria-label="${label}" role="combobox" aria-expanded="false" aria-controls="document-choices-${point}" aria-autocomplete="list" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="${point}" id="document-choices-${point}-${++settingsViewSequence}" role="listbox" aria-label="${label}" hidden></div></div>`;
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
         "invalid-event": "set.tomatoIssueInvalidEvent",
         "unsupported-version": "set.tomatoIssueVersion",
@@ -552,7 +553,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-body">
                             ${targetSummaryRow("diary", diary.docId)}
                             ${scopeLineRow("diary", "set.scope.diary")}
-                            <div class="lc-checkin__document-target-search"><label class="lc-checkin__document-target-field"><span>${t("set.diaryDocChoose")}</span><input type="search" data-diary-search placeholder="${t("set.diaryDocChoose")}" aria-label="${t("set.diaryDocChoose")}" /></label><label class="lc-checkin__document-target-field"><span>${t("set.diaryDocChoose")}</span><select data-diary-choice aria-label="${t("set.diaryDocChoose")}"><option value="">${t("set.diaryDocChoose")}</option>${diaryChoiceOptions}</select></label></div>
+                            ${documentChoiceBlock("diary", t("set.documentChoiceSearch"))}
                             <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.diaryDoc")}</span><input type="text" class="lc-checkin__diary-doc" data-diary-doc value="${escapeHtml(diary.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.diaryDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-diary-doc">${t("set.diarySave")}</button><button class="lc-checkin__text-button" type="button" data-action="toggle-create-diary-doc">${t("set.diaryCreate")}</button></div></div>
                             <div class="lc-checkin__diary-create" data-diary-create hidden><label><span>${t("set.diaryNotebook")}</span><select data-diary-notebook aria-label="${t("set.diaryNotebook")}" disabled><option value="">${t("set.diaryNotebookLoading")}</option></select></label><label><span>${t("set.diaryCreateTitle")}</span><input type="text" data-diary-create-title placeholder="${t("set.diaryCreateTitle")}" aria-label="${t("set.diaryCreateTitle")}" /></label><button class="lc-checkin__text-button" type="button" data-action="create-diary-doc">${t("common.confirm")}</button></div>
                         </div>
@@ -587,6 +588,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.summaryDoc")}</strong><small>${t("set.summaryDocHint")}${summaryResident.docId && !summaryResident.enabled ? ` · ${t("set.summaryDocPending")}` : ""}</small></div>${sourceBadge(summaryState)}</div>
                         ${targetSummaryRow("summary", summaryResident.docId)}
                         ${scopeLineRow("summary", "set.scope.summary")}
+                        ${documentChoiceBlock("summary", t("set.documentChoiceSearch"))}
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.summaryDoc")}</span><input type="text" data-summary-doc value="${escapeHtml(summaryResident.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.summaryDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-summary-doc">${t("set.summarySave")}</button></div></div>
                     </div>
                     ${writeTriggerRow("summary", "set.writeTriggerResident")}
@@ -648,6 +650,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.healthDoc")}</strong><small>${t("set.healthDocHint")}${healthInbox.docId && !healthInbox.enabled ? ` · ${t("set.healthDocPending")}` : ""}</small></div>${sourceBadge(healthState)}</div>
                         ${targetSummaryRow("health", healthInbox.docId)}
                         ${scopeLineRow("health", "set.scope.health")}
+                        ${documentChoiceBlock("health", t("set.documentChoiceSearch"))}
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.healthDoc")}</span><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></div></div>
                     </div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthBindings")}</span><small>${t("set.healthBindingsHint")} ${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="add-health-binding">${t("set.healthAddBinding")}</button></span></div>

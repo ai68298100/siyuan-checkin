@@ -1,5 +1,12 @@
 # 决策
 
+## D-323：文档目标选择器统一为「单搜索框 + 候选行列表」，旧双框退役（2026-09-30）
+
+- T-1616 第一批实施口径：三张文档目标卡（日记/摘要/健康）统一 `documentChoiceBlock`——单一搜索框（role=combobox）+ 候选行列表（role=listbox，名称/路径双行预览行，键盘 ↓ 聚焦首项、列表内 ↑/↓ 环选、Enter 选中、Esc 收起，IME 组合态安全），候选经既有 `searchBindingDocuments`（searchDocs 有界 50）+ 纯投影 `toDocumentChoiceRows`（id 去重、名称回落块 ID、路径裁剪）。
+- 旧「搜索框 + 本地锚点下拉」双框退役：搜索框不再被 searchDocs 结果**替换**本地锚点选项（旧语义两源互相覆盖），候选列表只呈现当前查询结果，选中回填 ID 输入框（保存仍走 bindVerifiedDocumentSave 校验+确认，历史不变）；`runDiarySearchRequest`（select 填充流）随之退役，其异步边界语义（防抖/代际/包装形态容忍/上限 50）由宿主请求代际模式与纯投影分别承载，diary-report 守门改锁纯投影与路由契约位置。
+- 多 root id 唯一性：候选列表 id 用 settingsViewSequence 序列化（settings-navigation 双表面守门覆盖）。
+- 第二批：问卷/叶归笔记本/编辑器锚点入口接同一组件；笔记本浏览与「新建文档」入口整合；退役 settings-row 复用类。
+
 ## D-322：目标卡样式豁免用「顶层绝对选择器 + (0,4,0)」，不迁移 SCSS 嵌套块（2026-09-30）
 
 - T-1615 实施口径：目标卡（document/journal/notebook-target-card）在 ≥720 容器被无条件两列行栅格压成 240px 窄列的修复，选择**新增两条顶层绝对选择器豁免规则**（卡本体 + 卡内后代行，(0,4,0) 压过 maintenance 层 (0,3,0)），而非把 ≤719 容器块内的卡样式整体迁移或修改 maintenance 规则本身——迁移大块样式会同时改变 ≤719 档已验收形态，改 maintenance 规则则波及全部普通行。
