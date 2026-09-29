@@ -259,6 +259,20 @@ export function clearReminderUserActions(actions: readonly ReminderUserAction[],
     return actions.filter((entry) => entry.id !== id);
 }
 
+/* T-1622 跨窗口合并：动作记录按 (id,action,at) 身份并集——两个窗口的动作互不覆盖，
+    同身份视为同一动作去重。纯集合并集，不做时效剪枝（仍归 normalize 的写路径）。 */
+export function mergeReminderUserActions(local: readonly ReminderUserAction[], remote: readonly ReminderUserAction[]): ReminderUserAction[] {
+    const seen = new Set<string>();
+    const merged: ReminderUserAction[] = [];
+    for (const entry of [...local, ...remote]) {
+        const key = entry.id + "|" + entry.action + "|" + entry.at;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(entry);
+    }
+    return merged.sort((left, right) => left.at.localeCompare(right.at) || left.id.localeCompare(right.id) || left.action.localeCompare(right.action));
+}
+
 /** 应用用户动作。now 为显式 ISO 时间（由调用方从投影日期取得），用于防抖到期判定；
     缺省空串时仅当日语义生效（与旧调用兼容）。 */
 export function applyReminderActions(entries: readonly ReminderEntry[], actions: readonly ReminderUserAction[], today: string, now = ""): ReminderEntry[] {

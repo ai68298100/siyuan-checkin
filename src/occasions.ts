@@ -539,6 +539,24 @@ export function deleteOccasion(store: OccasionStore, id: string): OccasionStore 
     return {version: OCCASIONS_STORE_VERSION, occasions: store.occasions.filter((item) => item.id !== id)};
 }
 
+/* T-1622 跨窗口合并：按事项 id 取双方 completedDates 并集（排序去重，沿用 120 上限）。
+    只合并共享 id——不采用远端独有事项（无时间戳可区分「他窗新建」与「本窗已删除」，
+    避免复活删除）；本地独有事项原样保留。确定性输出，无时钟。 */
+export function mergeOccasionCompletions(local: OccasionStore, remote: OccasionStore): OccasionStore {
+    const remoteById = new Map(remote.occasions.map((item) => [item.id, item]));
+    let changed = false;
+    const occasions = local.occasions.map((item) => {
+        const counterpart = remoteById.get(item.id);
+        if (!counterpart) return item;
+        const dates = new Set([...item.completedDates, ...counterpart.completedDates]);
+        const nextDates = [...dates].sort().slice(-120);
+        if (nextDates.join("|") === item.completedDates.join("|")) return item;
+        changed = true;
+        return {...item, completedDates: nextDates};
+    });
+    return changed ? {version: local.version, occasions} : local;
+}
+
 export function isValidOccasionDate(value: string): boolean {
     return isValidLocalDate(value);
 }

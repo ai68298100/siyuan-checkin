@@ -134,6 +134,13 @@ export function serializeExternalPendingBox(box: ExternalPendingBox): {schemaVer
     return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items: box.items.map((entry) => ({...entry}))};
 }
 
+/* T-1622 跨窗口合并：按条目身份并集（normalize 保留先入=本地载荷优先），远端独有条目采用，
+    容量与保留期仍由 normalize 强制。调用方必须在「变更前」同步（采用远端新增），
+    不能在删除类变更之后调用——箱的丢弃无墓碑，先删后并会复活本窗已丢弃条目。 */
+export function mergeExternalPendingBoxes(local: ExternalPendingBox, remote: ExternalPendingBox): ExternalPendingBox {
+    return normalizeExternalPendingBox({items: [...local.items, ...remote.items]});
+}
+
 export type ExternalPendingEnqueueOutcome = "added" | "merged" | "full";
 
 /** 同身份条目已存在则原样保留（不覆盖首次失败数据）；满员显式拒绝，不静默覆盖。 */

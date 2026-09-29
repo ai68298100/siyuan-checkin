@@ -83,7 +83,7 @@ import {canStartWithAdapter, findFocusAdapterFor, releaseFocusAdapterFor, startF
 import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
 import {buildArchivedItemDetails, buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
-import {clearReminderUserActions, deserializeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
+import {clearReminderUserActions, deserializeReminderUserActions, mergeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
 import {buildReminderDigest, isBannerCoveredReminder} from "./features/reminder-digest";
 import {renderOccasionsView} from "./render/occasions";
 import {renderSettingsView} from "./render/settings";
@@ -98,14 +98,14 @@ import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserialize
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
 import type {CheckinAppearance, FocusTimerProvider, PluginLanguageSetting, TodayGroupMode} from "./view-preferences";
-import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, setOccasionOverride, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
+import {applyOccasionTemplate, createDefaultOccasionStore, deleteOccasion, describeRecurrence, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, markOccasionCompleted, mergeOccasionCompletions, normalizeOccasion, normalizeOccasionStore, OCCASIONS_STORAGE_NAME, OCCASION_TEMPLATES, occasionTemplateName, setOccasionOverride, upsertOccasion, weekdayName, type MonthlySubtype} from "./occasions";
 import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleOccasion} from "./occasions";
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
 import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
-import {buildExternalPendingEntry, enqueueExternalPending, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
+import {buildExternalPendingEntry, enqueueExternalPending, mergeExternalPendingBoxes, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
 import {normalizeWeeklyReviewDrafts, upsertWeeklyReviewDraft, buildWeeklyReviewMarkdown, type WeeklyReviewDraft} from "./features/weekly-review";
 import {planImportDecisions, type ImportDecision} from "./features/template-import";
@@ -2731,6 +2731,7 @@ this.scheduleMidnightRefresh();
     /** 对单条待处理记录执行一次完整重试：拒绝给出可见原因；再失败记一次尝试；成功/重复移除。 */
     private async retryExternalPendingEntry(id: string): Promise<boolean> {
         if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return false;
+        await this.mergeExternalPendingFromRemote();
         const entry = this.externalPendingBox.items.find((item) => item.id === id);
         if (!entry) return false;
         const plan = this.externalPendingRetryPlan(entry);
@@ -2763,7 +2764,23 @@ this.scheduleMidnightRefresh();
     }
 
     /** 丢弃：只移除箱条目，不写墓碑、不改事件。 */
+    /** T-1622：变更前同步——并入其他窗口已写回的箱条目（按身份并集，本地载荷优先）。
+        只能在删除类变更之前调用：箱的丢弃无墓碑，先删后并会复活本窗已丢弃条目。 */
+    private async mergeExternalPendingFromRemote(): Promise<void> {
+        if (this.disposed || this.disposing || !this.storageReady) return;
+        try {
+            const stored = await this.loadData(EXTERNAL_PENDING_STORAGE_NAME);
+            if (!stored) return;
+            const remote = normalizeExternalPendingBox(stored);
+            if (!remote.items.length) return;
+            this.externalPendingBox = mergeExternalPendingBoxes(this.externalPendingBox, remote);
+        } catch {
+            /* 远端读取失败不阻断本动作 */
+        }
+    }
+
     private async discardExternalPendingEntry(id: string): Promise<boolean> {
+        await this.mergeExternalPendingFromRemote();
         const next = removeExternalPendingEntry(this.externalPendingBox, id);
         if (next === this.externalPendingBox) return false;
         this.externalPendingBox = next;
@@ -6628,9 +6645,19 @@ this.scheduleMidnightRefresh();
         return write;
     }
 
-    private persistOccasions(store: OccasionStore = this.occasionStore): Promise<void> {
+    private async persistOccasions(store: OccasionStore = this.occasionStore): Promise<void> {
         if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
-        const snapshot: OccasionStore = {version: 1, occasions: store.occasions.map((item) => ({...item, completedDates: [...item.completedDates]}))};
+        /* T-1622：写前重读合并——共享 id 的完成日期取双方并集，两个窗口的完成互不覆盖；
+           不采用远端独有事项（避免复活本窗口已删除的事项，D-314），远端读取失败按本地写入。 */
+        let merged = store;
+        try {
+            const stored = await this.loadData(OCCASIONS_STORAGE_NAME);
+            if (stored) merged = mergeOccasionCompletions(store, normalizeOccasionStore(stored));
+        } catch {
+            /* 远端读取失败不阻断本窗口写入 */
+        }
+        if (merged !== store && store === this.occasionStore) this.occasionStore = merged;
+        const snapshot: OccasionStore = {version: 1, occasions: merged.occasions.map((item) => ({...item, completedDates: [...item.completedDates]}))};
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
         this.saveQueue = write.catch((error) => showMessage(t("msg.occasionPersistFail", {error: String(error)})));
         return write;
@@ -6880,29 +6907,41 @@ this.scheduleMidnightRefresh();
     /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void {
         if (!id) return;
-        const previous = this.reminderUserActions;
-        /* T-1421 防抖：defer = 带 2 小时 expiresAt 的 snooze，窗口内该实例只呈现为已延期。 */
-        const nowMs = Date.now();
-        const actionRecord = action === "restore"
-            ? undefined
-            : action === "defer"
-                ? {id, action: "snooze" as const, at: new Date(nowMs).toISOString(), expiresAt: new Date(nowMs + 2 * 3600000).toISOString()}
-                : {id, action, at: new Date(nowMs).toISOString()};
-        this.reminderUserActions = action === "restore"
-            ? clearReminderUserActions(this.reminderUserActions, id)
-            : normalizeReminderUserActions([...this.reminderUserActions, actionRecord]);
-        const serialized = serializeReminderUserActions(this.reminderUserActions);
-        void this.saveData(REMINDER_ACTIONS_NAME, serialized).then(() => {
-            this.render();
-        }).catch(() => {
-            // Keep the reminder center consistent with durable state when the
-            // independent action store is unavailable.
-            this.reminderUserActions = previous;
-            showMessage(t("msg.saveFailedShort"));
-            this.render();
-        });
-        const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions, {advanceOnce: this.occasionRemindOnce}).find((entry) => entry.id === id)?.title;
-        if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
+        void (async () => {
+            /* T-1622：动作前重读并入其他窗口已写回的记录（按 (id,action,at) 并集），
+               本窗口写回不再覆盖对方动作；远端读取失败按本窗口记忆继续。 */
+            try {
+                const storedActions = await this.loadData(REMINDER_ACTIONS_NAME);
+                if (typeof storedActions === "string" && storedActions) {
+                    this.reminderUserActions = mergeReminderUserActions(this.reminderUserActions, deserializeReminderUserActions(storedActions));
+                }
+            } catch {
+                /* 远端读取失败不阻断本动作 */
+            }
+            const previous = this.reminderUserActions;
+            /* T-1421 防抖：defer = 带 2 小时 expiresAt 的 snooze，窗口内该实例只呈现为已延期。 */
+            const nowMs = Date.now();
+            const actionRecord = action === "restore"
+                ? undefined
+                : action === "defer"
+                    ? {id, action: "snooze" as const, at: new Date(nowMs).toISOString(), expiresAt: new Date(nowMs + 2 * 3600000).toISOString()}
+                    : {id, action, at: new Date(nowMs).toISOString()};
+            this.reminderUserActions = action === "restore"
+                ? clearReminderUserActions(this.reminderUserActions, id)
+                : normalizeReminderUserActions([...this.reminderUserActions, actionRecord]);
+            const serialized = serializeReminderUserActions(this.reminderUserActions);
+            void this.saveData(REMINDER_ACTIONS_NAME, serialized).then(() => {
+                this.render();
+            }).catch(() => {
+                // Keep the reminder center consistent with durable state when the
+                // independent action store is unavailable.
+                this.reminderUserActions = previous;
+                showMessage(t("msg.saveFailedShort"));
+                this.render();
+            });
+            const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions, {advanceOnce: this.occasionRemindOnce}).find((entry) => entry.id === id)?.title;
+            if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
+        })();
     }
 
     private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {

@@ -1,5 +1,11 @@
 # 决策
 
+## D-314：跨窗口合并按桶分层——「并集合并」与「删除后写者胜」边界（2026-09-30）
+
+- T-1622 三桶切片的合并口径：提醒动作按 (id,action,at) 身份并集（追加型，无删除语义冲突——restore 的清除只作用于本窗口写入时刻，跨窗 restore+动作并发是已知残留）；事项只对共享 id 并集 completedDates、不采用远端独有事项（Occasion 无 createdAt/updatedAt，无法区分「他窗新建」与「本窗已删除」，宁少采不复活）；失败箱在**变更前**同步（mergeExternalPendingBoxes 身份并集、本地载荷优先、normalize 强制容量/保留期）。
+- 删除类操作（事项删除、失败箱丢弃、提醒 restore）跨窗口仍是后写者胜：确定性解决需删除标记（tombstone/removal record）=存储形状变更+迁移，涉及「箱的丢弃不写墓碑」既有纪律的修订，另立决策不搭车。事项写入先序下删除仍获胜（远端独有条目不被采用），失败箱靠「先同步后删」把复活窗口压到真并发竞态。
+- 现有机制的复用边界：persistViewPreferences 的跨窗口防线=T-1620 applyPreference 快照回滚（写失败回内存），桶间合并留后续；主 Store 导入/快照恢复与 enqueueMutation 的锁内重读是另一批（事件层已有墓碑与幂等身份，不适用本条并集口径）。Dock Tomato 收件箱的锁内合并是既有范例，本轮未动。
+
 ## D-313：B 类即时偏好统一走快照回滚包装，note-query 七字段文档化保存边界（2026-09-29）
 
 - T-1620 实施口径：按 T-1604 契约 2 的「逐字段迁移」落地为**统一包装 + 逐处理器接入**——applyPreference 以 collectViewPreferences 全量快照为回滚源（与 persist 序列化同源，杜绝双份清单漂移），失败恢复走 applyViewPreferences 原路映射（含 syncPluginLanguage 钩子），不做整页状态机改造。纪律：改值必须发生在 mutate 回调内，外层先行赋值会污染快照使回滚失效（守门含两条反断言）。
