@@ -8,11 +8,11 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.14.0**
+**当前版本：18.15.0**
 
-18.14.0 交付「代码健康」微批：CSV 导入超行数上限时确认前显示双语截断警告；`reminder-projection` 消除最后两处 `as any` 类型断言。后续重点是真机验收、Task Horizon 等生态联调与按实际问题立项的小步迭代；进度见 [PROGRESS](PROGRESS.md)。
+18.15.0 交付「导入体验与小驴系列」微批：CSV 导入错误行逐行明细（行号+原因）；小驴系列四款插件加一句话定位表格。后续重点是真机验收、Task Horizon 等生态联调与按实际问题立项的小步迭代；进度见 [PROGRESS](PROGRESS.md)。
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.14.0 发布说明](docs/releases/release-notes-18.14.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.15.0 发布说明](docs/releases/release-notes-18.15.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
