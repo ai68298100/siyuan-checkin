@@ -29,9 +29,14 @@ function indexOrEcosystemHasTaskhorizon() {
 const headerMatch = exportSource.match(/\["eventId", "itemId", "itemName", "occurredAt", "localDate", "value", "unit", "source", "note", "externalRef"\]/);
 assert.ok(headerMatch, "serializeCsv header unchanged");
 assert.ok(formatsDoc.includes("eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef"), "documented CSV header matches implementation");
-for (const channel of ["JSON 全量备份", "CSV 记录导出", "Markdown 报告", "Loop Habit Tracker CSV 迁出"]) {
+for (const channel of ["JSON 主档备份", "CSV 记录导出", "Markdown 报告", "Loop Habit Tracker CSV 迁出"]) {
     assert.ok(formatsDoc.includes(channel), `export channel documented: ${channel}`);
 }
+/* T-1627（D-318）：JSON 备份=主档口径——文档不得再宣称「全量」或包含 templates 字段，
+   必须显式声明独立配置桶不在备份范围内。 */
+assert.ok(!formatsDoc.includes("JSON 全量备份"), "the full-backup claim must stay retired");
+assert.ok(formatsDoc.includes("不在 JSON 备份/恢复范围内"), "the scope boundary must be explicit");
+assert.ok(formatsDoc.includes("`eventTombstones`"), "master-store fields documented");
 for (const docTest of ["tests/backup.test.cjs", "tests/loop-csv.test.cjs", "tests/report-sections.test.cjs", "tests/api-contract.test.cjs"]) {
     assert.ok(fs.existsSync(path.join(root, docTest)), `referenced test exists: ${docTest}`);
 }

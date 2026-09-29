@@ -146,7 +146,7 @@ export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", s
     host.lastExportAt = new Date().toISOString();
     void host.persistViewPreferences();
     const cloned = host.cloneStore();
-    /* T-1436 · R-A8：范围导出——CSV 可选相对天数窗口；JSON 恒为全量备份语义。 */
+    /* T-1436 · R-A8：范围导出——CSV 可选相对天数窗口；JSON 恒为主档备份语义（仅主 Store：项目/事件/墓碑；独立配置桶不在内，T-1627/D-318）。 */
     if (format === "csv" && Number.isFinite(scopeDays) && (scopeDays as number) >= 1) {
         const days = Math.min(730, Math.floor(scopeDays as number));
         const today = dateKey(new Date());

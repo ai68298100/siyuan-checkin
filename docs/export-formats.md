@@ -4,9 +4,10 @@
 
 ## 导出通道三件套 + Loop / Obsidian 迁出
 
-### 1. JSON 全量备份（设置 → 导出 JSON；回顾页更多菜单同入口）
+### 1. JSON 主档备份（设置 → 导出 JSON；回顾页更多菜单同入口）
 
-- `serializeJson` 输出完整 `CheckinStore`（version 3）：`items` / `events` / `eventTombstones` / `templates`；
+- `serializeJson` 输出主 Store（version 3）：`items` / `events` / `eventTombstones`；
+- **范围边界（T-1627，D-318）**：JSON 备份只覆盖**主档**——打卡项目、事件与墓碑。个人模板、问卷配置、图标库、事项、提醒动作、视图偏好与外部失败箱保存在独立存储桶，**不在 JSON 备份/恢复范围内**（跨设备迁移这些配置需在插件内各自重建；模板另有编辑器内的脱敏分享/导入通道）；
 - 含恢复点语义：导入/恢复前自动生成快照（写前快照管线）；
 - 导入：设置 → 导入 JSON；接受 v2/v3 数据并自动迁移（`parseJsonBackup`，其他版本给出警告）。
 
@@ -48,7 +49,7 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 ## 第三方接入说明
 
 1. **把你们的打卡数据导入小驴打卡**：产出我们 CSV 导入格式（表头 `名称,日期[,数值,单位]`，日期 `YYYY-MM-DD`）即可，或直接产出 JSON 备份结构；
-2. **从小驴打卡迁出**：JSON（全量）/CSV（事件级）/Loop CSV（习惯语义级）/Obsidian H21（习惯语义级）任选；
+2. **从小驴打卡迁出**：JSON（主档：项目/事件/墓碑）/CSV（事件级）/Loop CSV（习惯语义级）/Obsidian H21（习惯语义级）任选；
 3. **运行时集成**不走文件：使用 `window.siyuanCheckin` API（`events.read` / `events.record` / `analytics.read` / `suggestions.read` 等能力）与 externalRef 幂等约定，见 `docs/identity-and-merge.md`；
 4. 格式行为由测试锁定（`tests/backup.test.cjs`、`tests/insight-records.test.cjs`、`tests/loop-csv.test.cjs`、`tests/obsidian-habits.test.cjs`、`tests/report-sections.test.cjs`、`tests/api-contract.test.cjs`）；破坏性变更有迁移期与版本警告。
 
