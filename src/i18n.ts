@@ -358,6 +358,23 @@ const zhCN: Dict = {
     "review.weeklyAdjustHint": "调整只是草案；确认请打开对应项目编辑，不会自动写入。",
     "review.weeklySave": "保存草稿",
     "review.weeklySaved": "草稿已保存",
+    "focus.defaultItemName": "专注",
+    "focus.noteMinutes": "专注 {n} 分钟",
+    "today.focusCelebration": "专注 {message} 已完成 · {name}",
+    "editor.quotaDatesLabel": "周期天数",
+    "editor.quotaValueLabel": "周期{target}",
+    "editor.quotaDatesHelp": "同一自然日多次记录只计 1 天，适合“每周运动 3 天”。",
+    "editor.quotaValueHelp": "按当前单位累加周期内记录值，适合“每月阅读 600 分钟”。",
+    "common.emptyValue": "（空）",
+    "quick.openCheckin": "打卡",
+    "msg.recordedToast": "已记录 {name} +{value} {unit}",
+    "review.reminderTimes": "{n} 次",
+    "charts.weeklyTitle": "近12周完成率",
+    "charts.monthlyTitle": "近6个月记录数",
+    "charts.dailyTitle": "近{n}天活跃",
+    "charts.yearlyTitle": "年度记录数",
+    "charts.unitRecords": "条",
+    "charts.unitDays": "天",
     "review.weeklySaveFail": "保存失败：输入已保留在本页，可重试",
     "review.weeklyClearFail": "清除失败：本周草稿仍保留",
     "review.weeklyExport": "导出 Markdown",
@@ -2868,6 +2885,23 @@ const enUS: Dict = {
     "review.weeklyAdjustHint": "The adjustment is a draft; apply it in the item editor. Nothing is written automatically.",
     "review.weeklySave": "Save draft",
     "review.weeklySaved": "Draft saved",
+    "focus.defaultItemName": "Focus",
+    "focus.noteMinutes": "Focus {n} min",
+    "today.focusCelebration": "Focus {message} completed · {name}",
+    "editor.quotaDatesLabel": "Days per period",
+    "editor.quotaValueLabel": "Per period {target}",
+    "editor.quotaDatesHelp": "Multiple records on the same day count as one day — fits “work out 3 days a week”.",
+    "editor.quotaValueHelp": "Accumulate recorded values per period in the current unit — fits “read 600 minutes a month”.",
+    "common.emptyValue": "(empty)",
+    "quick.openCheckin": "Check in",
+    "msg.recordedToast": "Recorded {name} +{value} {unit}",
+    "review.reminderTimes": "{n} times",
+    "charts.weeklyTitle": "12-week completion rate",
+    "charts.monthlyTitle": "6-month records",
+    "charts.dailyTitle": "Active in {n} days",
+    "charts.yearlyTitle": "Yearly records",
+    "charts.unitRecords": "rec",
+    "charts.unitDays": "days",
     "review.weeklySaveFail": "Save failed: your input is kept on this page — try again",
     "review.weeklyClearFail": "Clear failed: this week's draft is kept",
     "review.weeklyExport": "Export Markdown",
@@ -5040,7 +5074,8 @@ export function t(key: string, params?: Record<string, string | number>): string
     const dict = DICTS[current] || zhCN;
     let text = dict[key] ?? zhCN[key] ?? key;
     if (params) {
-        for (const [name, value] of Object.entries(params)) text = text.replace(`{${name}}`, String(value));
+        /* T-1623：全量替换——同一占位符在值中出现多次时全部替换（如 trust.reasonThreshold 的双 {unit}）。 */
+        for (const [name, value] of Object.entries(params)) text = text.split(`{${name}}`).join(String(value));
     }
     return text;
 }

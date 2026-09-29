@@ -13,9 +13,12 @@ assert.doesNotMatch(reviewSource, /buildWeeklyCompletionTrend|buildMonthlyEventT
     "Review must not rebuild trends already carried by the analytics snapshot");
 assert.match(reviewSource, /summarizeAnalyticsSnapshot\(ctx\.analyticsSnapshot\)/,
     "analytics badge must derive from the same snapshot as trend cards");
-assert.match(reviewSource, /weeklyTrend = ctx\.analyticsSnapshot\.weekly/,
+/* T-1623：呈现层 presentTrend 只做标题/单位本地化投影，数据源仍是同一快照（不重建）。 */
+assert.match(reviewSource, /const presentTrend = \(key: "weekly" \| "monthly" \| "daily" \| "yearly"\)[\s\S]*?ctx\.analyticsSnapshot\[key\]/,
+    "trend presentation must project the analytics snapshot, not rebuild it");
+assert.match(reviewSource, /weeklyTrend = presentTrend\("weekly"\)/,
     "weekly chart must reuse the snapshot projection");
-assert.match(reviewSource, /monthlyTrend = ctx\.analyticsSnapshot\.monthly/,
+assert.match(reviewSource, /monthlyTrend = presentTrend\("monthly"\)/,
     "monthly chart must reuse the snapshot projection");
 assert.match(reviewSource, /heatmapYear = Number\(ctx\.analyticsSnapshot\.asOf\.slice\(0, 4\)\) \+ ctx\.heatmapYearOffset/,
     "heatmap navigation must use the same captured base year");

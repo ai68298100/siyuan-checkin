@@ -99,7 +99,7 @@ export function renderFocusMiniStripFor(host: FocusTimerHost): string {
     const state = host.focusTimerState;
     if (!state) return "";
     const item = getItemById(host.store, state.itemId);
-    const name = item ? item.name : "专注";
+    const name = item ? item.name : t("focus.defaultItemName");
     const minutes = Math.floor(state.remainingSec / 60);
     const seconds = state.remainingSec % 60;
     return `<div class="lc-checkin__focus-mini" data-focus-mini role="status" aria-label="${t("focus.miniAria")}"><span class="lc-checkin__focus-mini-icon" aria-hidden="true">⏱</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong><span class="lc-checkin__focus-mini-time" data-focus-mini-remaining>${minutes}:${String(seconds).padStart(2, "0")}</span>${state.running ? "" : `<small>${t("focus.pause")}</small>`}<button class="lc-checkin__text-button" type="button" data-focus-mini-back>${t("focus.miniBack")}</button></div>`;
@@ -119,8 +119,11 @@ export async function finishFocusTimerFor(host: FocusTimerHost, complete: boolea
             let unit = item.unit || "分钟";
             let value = elapsedMinutes;
             if (unit === "小时") { value = Math.round(elapsedMinutes / 6) / 10; unit = "小时"; }
-            void host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint, `专注 ${elapsedMinutes} 分钟`));
-            host.celebration = {message: `专注 ${elapsedMinutes} 分钟`, itemName: item.name};
+            /* T-1623：备注与庆祝文案走 t()；事件备注仍是写入时刻的快照文本（既有行为）。
+               unit 的「分钟/小时」回退是数据单位（与持久化 unit 值比较），非 UI 文案。 */
+            const focusNote = t("focus.noteMinutes", {n: elapsedMinutes});
+            void host.enqueueMutation(() => host.recordEvent(item, value, moment, fingerprint, focusNote));
+            host.celebration = {message: focusNote, itemName: item.name};
             if (host.focusCelebrationTimer !== undefined) window.clearTimeout(host.focusCelebrationTimer);
             host.focusCelebrationTimer = window.setTimeout(() => {
                 host.focusCelebrationTimer = undefined;
@@ -139,7 +142,7 @@ export function renderFocusTimerPanelFor(host: FocusTimerHost): string {
     const state = host.focusTimerState;
     if (!state) return "";
     const item = getItemById(host.store, state.itemId);
-    const name = item ? item.name : "专注";
+    const name = item ? item.name : t("focus.defaultItemName");
     const icon = item ? item.icon : "⏱";
     const presets = [15, 25, 45, 60].map((minutes) => `<button type="button" data-focus-timer-minutes="${minutes}" aria-label="${t("focus.presetMinutes", {n: minutes})}" aria-pressed="${state.totalSec === minutes * 60}" class="${state.totalSec === minutes * 60 ? "is-selected" : ""}">${minutes}</button>`).join("");
     const minutes = Math.floor(state.remainingSec / 60);

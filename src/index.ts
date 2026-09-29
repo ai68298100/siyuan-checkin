@@ -5716,7 +5716,7 @@ this.scheduleMidnightRefresh();
                 this.setRecentRecord({
                     eventId: last.event.id,
                     itemId: last.item.id,
-                    message: `已记录 ${last.item.name} +${formatNumber(last.value)} ${last.revision.unit || "次"}`,
+                    message: t("msg.recordedToast", {name: last.item.name, value: formatNumber(last.value), unit: last.revision.unit || "次"}),
                     progress: getProgress(this.store, last.item, actionDate),
                     target,
                     unit: last.revision.unit || "次",
@@ -6493,7 +6493,7 @@ this.scheduleMidnightRefresh();
         this.setRecentRecord({
             eventId: event.id,
             itemId: current.id,
-            message: `已记录 ${current.name} +${formatNumber(value)} ${revision.unit || "次"}`,
+            message: t("msg.recordedToast", {name: current.name, value: formatNumber(value), unit: revision.unit || "次"}),
             progress: getProgress(this.store, current, actionDate),
             target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
             unit: revision.unit || "次",

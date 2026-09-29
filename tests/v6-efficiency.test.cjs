@@ -25,7 +25,8 @@ assert.match(components, /\.lc-checkin__item\.is-dragging \{/, "dragged row gets
 assert.match(source, /private openFocusTimer\(/, "built-in focus timer panel exists");
 assert.match(focusTimer, /data-focus-timer-minutes/, "focus timer duration is adjustable");
 assert.match(source, /private tickFocusTimer()/, "focus timer ticks without full re-render");
-assert.match(focusTimer, /recordEvent\(item, value, moment, fingerprint, `专注 \$\{elapsedMinutes\} 分钟`\)/,
+assert.match(focusTimer, /const focusNote = t\("focus\.noteMinutes", \{n: elapsedMinutes\}\);/, "focus completion note is localized (T-1623)");
+assert.match(focusTimer, /recordEvent\(item, value, moment, fingerprint, focusNote\)/,
     "focus completion records a labelled duration note");
 assert.match(source, /registerFocusAdapter/, "external focus adapters remain available for the configured plugin timer");
 const bindToday = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");

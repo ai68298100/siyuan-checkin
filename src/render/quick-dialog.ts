@@ -366,7 +366,7 @@ export function ensureSpeedSwitchQuickActionsFor(host: QuickDialogHost): void {
         return;
     }
     const actions: Array<{id: string; label: string; value: string; handler: () => void}> = [
-        {id: "xiaolv-checkin-open", label: "打卡", value: "open", handler: () => openQuickDialogFor(host)},
+        {id: "xiaolv-checkin-open", label: t("quick.openCheckin"), value: "open", handler: () => openQuickDialogFor(host)},
     ];
     actions.forEach((action) => {
         const dispose = speedSwitch.registerQuickAction({

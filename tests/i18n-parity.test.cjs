@@ -39,4 +39,16 @@ for (const [key, zhText] of zh) {
 }
 assert.equal(mismatches, 0, `${mismatches} keys have mismatched placeholders`);
 
+
+/* T-1623：t() 全量替换契约——同一占位符出现多次时全部替换，不得残留字面占位符。 */
+const os = require("node:os");
+const path = require("node:path");
+const ts = require("typescript");
+const i18nDir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-i18n-parity-"));
+fs.writeFileSync(path.join(i18nDir, "i18n.js"), ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText);
+const {t: translate, setPluginLanguage} = require(path.join(i18nDir, "i18n.js"));
+setPluginLanguage("zh-CN");
+assert.equal(translate("trust.reasonThreshold", {value: 30, threshold: 30, unit: "分钟"}), "30分钟 ≥ 阈值 30分钟", "repeated {unit} placeholders are all replaced");
+assert.ok(!translate("trust.reasonThreshold", {value: 1, threshold: 2, unit: "次"}).includes("{"), "no literal placeholder survives substitution");
+fs.rmSync(i18nDir, {recursive: true, force: true});
 console.log(`i18n parity checks passed: ${zh.size} zh keys, ${en.size} en keys, placeholders aligned`);

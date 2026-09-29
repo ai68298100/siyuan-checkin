@@ -510,8 +510,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             quotaAmount.min = quotaMode === "dates" ? "1" : String(getEditorStep(kind, unitInput?.value || kindOption.defaultUnit));
             quotaAmount.step = quotaMode === "dates" ? "1" : String(getEditorStep(kind, unitInput?.value || kindOption.defaultUnit));
         }
-        if (quotaAmountLabel) quotaAmountLabel.textContent = quotaMode === "dates" ? "周期天数" : `周期${getTargetLabel(kind).replace(/^目标/, "")}`;
-        if (quotaHelp) quotaHelp.textContent = quotaMode === "dates" ? "同一自然日多次记录只计 1 天，适合“每周运动 3 天”。" : "按当前单位累加周期内记录值，适合“每月阅读 600 分钟”。";
+        /* T-1623：配额标签/帮助走 t()；getTargetLabel 剥「目标」前缀的展示适配保持既有行为。 */
+        if (quotaAmountLabel) quotaAmountLabel.textContent = quotaMode === "dates" ? t("editor.quotaDatesLabel") : t("editor.quotaValueLabel", {target: getTargetLabel(kind).replace(/^目标/, "")});
+        if (quotaHelp) quotaHelp.textContent = quotaMode === "dates" ? t("editor.quotaDatesHelp") : t("editor.quotaValueHelp");
         const help = root.querySelector<HTMLElement>("[data-kind-help]");
         if (help) help.textContent = t(`kindDesc.${kind}`);
         const targetLabel = root.querySelector<HTMLElement>("[data-target-label]");

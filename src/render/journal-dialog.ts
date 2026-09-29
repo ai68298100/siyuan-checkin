@@ -254,7 +254,7 @@ export function openJournalDialogFor(deps: JournalDialogDeps): void {
         if (previewBody) {
             const answersNow = template.questions.map((question, index) => {
                 const input = form.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-journal-answer="${index}"]`);
-                return input ? `${index + 1}. ${input.value.trim() || "（空）"}` : "";
+                return input ? `${index + 1}. ${input.value.trim() || t("common.emptyValue")}` : "";
             }).filter(Boolean);
             const mode = form.querySelector<HTMLInputElement>("input[name='journalTarget']:checked")?.value === "doc" ? t("journal.targetDoc") : t("journal.targetDaily");
             const destination = form.querySelector<HTMLInputElement>("input[name='journalDocId']")?.value?.trim()

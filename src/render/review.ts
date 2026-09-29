@@ -453,10 +453,23 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         return `<section class="lc-checkin__year-heatmap"><div class="lc-checkin__heatmap-nav" role="group"><button type="button" data-heatmap-year="-1" aria-label="${t("review.prevYear")}">‹</button><strong>${heatmapYear}</strong><button type="button" data-heatmap-year="1" aria-label="${t("review.nextYear")}"${ctx.heatmapYearOffset >= 0 ? " disabled" : ""}>›</button></div><div class="lc-checkin__yearheatmap-scroll">${renderYearHeatmap(heatmap)}</div><div class="lc-checkin__yearheatmap-meta"><small>${t("review.heatmapHint")}</small><span class="lc-checkin__yearheatmap-legend" aria-label="${t("review.heatmapLegend")}"><em>${t("review.heatmapLess")}</em>${[0,1,2,3,4].map(level => `<i class="is-level-${level}" aria-hidden="true"></i>`).join("")}<em>${t("review.heatmapMore")}</em><i class="is-skip"></i><em>${t("review.heatmapSkip")}</em></span><small>${t("review.heatmapTotal", {year: heatmapYear, n: heatmap.total})}</small></div><details class="lc-checkin__heatmap-weekly"><summary>${t("review.heatmapWeeklyTitle")}</summary><div class="lc-checkin__yearheatmap-scroll">${renderWeeklyHeatmap(heatmap, {ariaLabel: t("review.heatmapWeeklyLabel")})}</div><small>${t("review.heatmapWeeklyHint")}</small></details></section>`;
     };
     const renderTrends = (): string => {
-    const weeklyTrend = ctx.analyticsSnapshot.weekly;
-    const monthlyTrend = ctx.analyticsSnapshot.monthly;
-    const dailyTrend = ctx.analyticsSnapshot.daily;
-    const yearlyTrend = ctx.analyticsSnapshot.yearly;
+    /* T-1623：趋势标题/单位是持久化快照数据（写入时的语言），呈现层按系列键本地化；
+       存储标题不识别时原样回退（向前兼容），charts.ts 纯函数与其守门夹具零改动。 */
+    const presentTrend = (key: "weekly" | "monthly" | "daily" | "yearly"): typeof ctx.analyticsSnapshot.weekly => {
+        const series = ctx.analyticsSnapshot[key];
+        const dailyDays = /^近(\d+)天活跃$/.exec(series.title);
+        const title = dailyDays ? t("charts.dailyTitle", {n: Number(dailyDays[1])})
+            : series.title === "近12周完成率" ? t("charts.weeklyTitle")
+            : series.title === "近6个月记录数" ? t("charts.monthlyTitle")
+            : series.title === "年度记录数" ? t("charts.yearlyTitle")
+            : series.title;
+        const unit = series.unit === "条" ? t("charts.unitRecords") : series.unit === "天" ? t("charts.unitDays") : series.unit;
+        return {...series, title, unit};
+    };
+    const weeklyTrend = presentTrend("weekly");
+    const monthlyTrend = presentTrend("monthly");
+    const dailyTrend = presentTrend("daily");
+    const yearlyTrend = presentTrend("yearly");
     const trendCard = (series: typeof weeklyTrend, chart: string, helper = t("review.trendCompared")) => {
         const stats = summarizeTrend(series);
         const direction = stats.delta > 0 ? "↑" : stats.delta < 0 ? "↓" : "→";
@@ -467,7 +480,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const series = {weekly: weeklyTrend, monthly: monthlyTrend, daily: dailyTrend, yearly: yearlyTrend}[key];
         const chart = key === "weekly" || key === "daily" ? renderLineChart(series, {labelStride: key === "daily" ? 7 : 3}) : renderBarChart(series);
         const dataTable = `<details class="review-chart-data"><summary>${t("review.chartData")}</summary><div class="review-chart-table"><table><caption>${escapeHtml(series.title)}</caption><thead><tr><th scope="col">${t("review.chartDate")}</th><th scope="col">${t("review.chartValue")} (${escapeHtml(series.unit)})</th></tr></thead><tbody>${series.points.map(point => `<tr><th scope="row">${escapeHtml(point.label)}</th><td>${escapeHtml(formatNumber(point.value))}</td></tr>`).join("")}</tbody></table></div></details>`;
-        return `<label class="review-analysis-trend">${t("review.trendMetric")}<select data-review-trend>${(["weekly", "monthly", "daily", "yearly"] as const).map(name => `<option value="${name}" ${key === name ? "selected" : ""}>${escapeHtml(ctx.analyticsSnapshot[name].title)}</option>`).join("")}</select></label><p class="review-scope-note">${t("review.trendScope")}</p><div class="lc-checkin__trend-grid">${trendCard(series, chart, key === "daily" ? t("review.trendDailyHint") : t("review.trendCompared"))}</div>${dataTable}`;
+        return `<label class="review-analysis-trend">${t("review.trendMetric")}<select data-review-trend>${(["weekly", "monthly", "daily", "yearly"] as const).map(name => `<option value="${name}" ${key === name ? "selected" : ""}>${escapeHtml(presentTrend(name).title)}</option>`).join("")}</select></label><p class="review-scope-note">${t("review.trendScope")}</p><div class="lc-checkin__trend-grid">${trendCard(series, chart, key === "daily" ? t("review.trendDailyHint") : t("review.trendCompared"))}</div>${dataTable}`;
     };
     const renderReminders = (): string => {
     const rawReminders = filterReminderEntries(projectReminderCenter(ctx.store, ctx.occasionStore, asOf, ctx.reminderUserActions, {advanceOnce: ctx.reminderAdvanceOnce === true}), ctx.reminderFilter);
@@ -500,7 +513,7 @@ export function renderReviewView(ctx: ReviewViewContext): string {
             : entry.status === "skipped" ? `${t("review.remindersSkipped")} · ${dueLabel}`
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
-        const count = (entry.occurrenceCount ?? 1) > 1 ? ` · ${(entry.occurrenceCount ?? 1)} 次` : "";
+        const count = (entry.occurrenceCount ?? 1) > 1 ? ` · ${t("review.reminderTimes", {n: entry.occurrenceCount ?? 1})}` : "";
         return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}${count}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
     /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */

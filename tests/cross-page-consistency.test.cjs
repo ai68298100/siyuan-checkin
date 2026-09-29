@@ -115,6 +115,36 @@ try {
         assert.match(occasions, /datalist id="lc-occasion-remind-presets-\$\{remindPresetsSequence\}"/, "datalist id 与 list 同源");
     });
 
+    check("visible copy goes through t() at the audit-named sites (T-1623)", () => {
+        const i18nSource = read("src", "i18n.ts");
+        /* t() 全量替换：split/join 而非单次 replace（重复占位符全替换）。 */
+        assert.match(i18nSource, /text = text\.split\(`\{\$\{name\}\}`\)\.join\(String\(value\)\)/, "t() 必须全量替换占位符");
+        assert.doesNotMatch(i18nSource, /text = text\.replace\(`\{\$\{name\}\}`/, "单次替换必须退役");
+        /* 审计定位的硬编码点全部键化。 */
+        assert.match(fragments, /t\("today\.focusCelebration"/, "专注庆祝走 t()");
+        assert.doesNotMatch(fragments, /已完成 · \$\{ctx\.celebration/, "庆祝串无中文残留");
+        const focusTimer = read("src", "render", "focus-timer.ts");
+        assert.match(focusTimer, /t\("focus\.defaultItemName"\)/, "专注默认名走 t()");
+        assert.match(focusTimer, /t\("focus\.noteMinutes"/, "专注备注走 t()");
+        assert.doesNotMatch(focusTimer, /`专注 \$\{/, "专注备注无中文字面量残留");
+        const editorBind = read("src", "render", "bind-editor.ts");
+        assert.match(editorBind, /t\("editor\.quotaDatesLabel"\)/, "配额天数标签走 t()");
+        assert.match(editorBind, /t\("editor\.quotaValueLabel"/, "配额数值标签走 t()");
+        assert.match(editorBind, /t\("editor\.quotaDatesHelp"\)/, "配额天数帮助走 t()");
+        assert.match(editorBind, /t\("editor\.quotaValueHelp"\)/, "配额数值帮助走 t()");
+        const journalDialog = read("src", "render", "journal-dialog.ts");
+        assert.match(journalDialog, /t\("common\.emptyValue"\)/, "问卷空值走 t()");
+        const quickDialog = read("src", "render", "quick-dialog.ts");
+        assert.match(quickDialog, /t\("quick\.openCheckin"\)/, "快捷动作打卡走 t()");
+        assert.match(indexSrc, /t\("msg\.recordedToast"/, "已记录提示走 t()");
+        assert.equal((indexSrc.match(/已记录 \$\{/g) || []).length, 0, "已记录无中文字面量残留");
+        assert.match(review, /t\("review\.reminderTimes"/, "提醒次数摘要走 t()");
+        /* 趋势标题/单位是持久化快照数据：呈现层映射本地化，存储标题原样回退。 */
+        assert.match(review, /const presentTrend = \(key: "weekly" \| "monthly" \| "daily" \| "yearly"\)/, "趋势呈现层映射在位");
+        assert.match(review, /近12周完成率/, "存储标题识别表覆盖周趋势");
+        assert.match(review, /charts\.unitRecords/, "单位条/天映射本地化");
+    });
+
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
         /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
         assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");
