@@ -177,6 +177,7 @@ try {
             [/settings-value \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
             [/settings-fold > summary \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
             [/settings-link \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
+            [/settings-group > summary \{[^}]*var\(--lc-checkin-settings-strong-weight\)/, "strong"],
         ]) {
             assert.match(componentsSheet, pattern, `rule must consume the ${prop} token: ${pattern.source.slice(0, 60)}`);
         }

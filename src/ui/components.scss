@@ -4222,7 +4222,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__settings-group { border: 1px solid var(--lc-checkin-border); border-radius: 8px; overflow: hidden; }
 .lc-checkin__settings-group > summary {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 8px 10px; cursor: pointer; font-weight: 640; font-size: 12px;
+    padding: 8px 10px; cursor: pointer; font-weight: var(--lc-checkin-settings-strong-weight); font-size: 12px;
     color: var(--lc-checkin-text); background: color-mix(in srgb, var(--lc-checkin-accent) 6%, var(--lc-checkin-surface));
     list-style: none;
 }
