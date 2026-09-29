@@ -516,7 +516,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         renderReviewPreservingView("[data-item-compare-search]");
         root.querySelector<HTMLInputElement>("[data-item-compare-search]")?.focus({preventScroll: true});
     });
-    /* T-1518：周复盘向导——保存草稿（不清输入）、导出 Markdown、清除本周草稿。 */
+    /* T-1518：周复盘向导——保存草稿（不清输入）、导出 Markdown、清除本周草稿。
+       T-1620：保存/清除失败在状态行给出可见反馈（宿主侧已回滚内存草稿），
+       输入框内容原样保留作为可重试草稿，不静默。 */
     root.querySelector<HTMLElement>("[data-weekly-save]")?.addEventListener("click", () => {
         const container = root.querySelector<HTMLElement>("[data-weekly-key]");
         const weekKey = container?.dataset.weeklyKey || "";
@@ -526,6 +528,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         void host.saveWeeklyReviewDraft?.(weekKey, friction, adjustment).then(() => {
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklySaved");
+        }).catch(() => {
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = t("review.weeklySaveFail");
         });
     });
     root.querySelector<HTMLElement>("[data-weekly-export]")?.addEventListener("click", () => {
@@ -578,6 +583,9 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             if (adjustment) adjustment.value = "";
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = "";
+        }).catch(() => {
+            const status = root.querySelector<HTMLElement>("[data-weekly-status]");
+            if (status) status.textContent = t("review.weeklyClearFail");
         });
     });
     root.querySelectorAll<HTMLElement>("[data-denominator-date]").forEach((button) => button.addEventListener("click", () => {

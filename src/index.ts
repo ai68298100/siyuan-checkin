@@ -1633,15 +1633,28 @@ export default class CheckinPlugin extends Plugin {
     private focusAdapters = new Map<string, FocusAdapter>();
     private disposeDockTomatoBridge?: () => void;
     private summaryProviders = new Map<string, SummaryProvider>();
-    /** T-1518 周复盘草稿：保存/清除（持久化到偏好存储，可跨重载恢复）；导出 Markdown。 */
+    /** T-1518 周复盘草稿：保存/清除（持久化到偏好存储，可跨重载恢复）；导出 Markdown。
+        T-1620：持久化失败回滚内存草稿数组并向上抛出——UI 保留输入框内容作为可重试草稿。 */
     async saveWeeklyReviewDraft(weekKey: string, friction: string, adjustment: string): Promise<void> {
+        const previous = this.weeklyReviewDrafts;
         this.weeklyReviewDrafts = upsertWeeklyReviewDraft(this.weeklyReviewDrafts, {weekKey, friction, adjustment, updatedAt: new Date().toISOString()});
-        await this.persistViewPreferences();
+        try {
+            await this.persistViewPreferences();
+        } catch (error) {
+            this.weeklyReviewDrafts = previous;
+            throw error;
+        }
     }
 
     async clearWeeklyReviewDraft(weekKey: string): Promise<void> {
+        const previous = this.weeklyReviewDrafts;
         this.weeklyReviewDrafts = this.weeklyReviewDrafts.filter((entry) => entry.weekKey !== weekKey);
-        await this.persistViewPreferences();
+        try {
+            await this.persistViewPreferences();
+        } catch (error) {
+            this.weeklyReviewDrafts = previous;
+            throw error;
+        }
     }
 
     /** T-1518 导出周复盘 Markdown：事实来自本地统计（无模型可用），与用户解释分开标注。 */
@@ -3736,7 +3749,7 @@ this.scheduleMidnightRefresh();
                 } else root.querySelector<HTMLElement>(focusSelector)?.focus();
             });
         };
-        const savePreference = () => { void this.persistViewPreferences().then(() => showMessage(t("msg.prefSaved"))).catch(() => showMessage(t("msg.prefSaveFail"))); };
+        /* T-1620：B 类字段统一走 applyPreference（快照回滚），裸 persist 包装退役。 */
         root.querySelectorAll<HTMLElement>("[data-action='refresh-source']").forEach((control) => {
             control.addEventListener("click", () => {
                 const source = control.dataset.source;
@@ -3767,33 +3780,36 @@ this.scheduleMidnightRefresh();
                 });
             });
         });
-        root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "none" || value === "group" || value === "time" || value === "priority") { this.todayGroupMode = value; void this.persistViewPreferences(); } });
-        root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.todaySortMode = value as CheckinItemSortMode; void this.persistViewPreferences(); } });
-        root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
-        root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; savePreference(); this.render(); });
-        root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.appearance = value; void this.persistViewPreferences(); this.render(); } });
-        root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.pluginLanguageSetting = value; this.syncPluginLanguage(); void this.persistViewPreferences(); this.render(); } });
-        root.querySelector<HTMLSelectElement>("[data-setting-open-mode]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "quick" || value === "tab") { this.defaultOpenMode = value; void this.persistViewPreferences(); } });
-        root.querySelector<HTMLInputElement>("[data-setting-quick-entry-nlp]")?.addEventListener("change", (event) => { this.quickEntryNlp = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
-        root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); this.render(); });
-        root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; void this.persistViewPreferences(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-group]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "none" || value === "group" || value === "time" || value === "priority") { this.applyPreference(() => { this.todayGroupMode = value; }); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-sort]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (SORT_LABELS[value as CheckinItemSortMode]) { this.applyPreference(() => { this.todaySortMode = value as CheckinItemSortMode; }); } });
+        root.querySelector<HTMLInputElement>("[data-setting-completed]")?.addEventListener("change", (event) => { this.applyPreference(() => { this.completedCollapsed = !(event.currentTarget as HTMLInputElement).checked; }); });
+        root.querySelector<HTMLInputElement>("[data-setting-weekstrip]")?.addEventListener("change", (event) => { this.applyPreference(() => { this.weekStripVisible = (event.currentTarget as HTMLInputElement).checked; }); this.render(); });
+        root.querySelector<HTMLSelectElement>("[data-setting-appearance]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "system" || value === "light" || value === "dark") { this.applyPreference(() => { this.appearance = value; }); this.render(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-language]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "zh-CN" || value === "en-US" || value === "follow") { this.applyPreference(() => { this.pluginLanguageSetting = value; this.syncPluginLanguage(); }); this.render(); } });
+        root.querySelector<HTMLSelectElement>("[data-setting-open-mode]")?.addEventListener("change", (event) => { const value = (event.currentTarget as HTMLSelectElement).value; if (value === "quick" || value === "tab") { this.applyPreference(() => { this.defaultOpenMode = value; }); } });
+        root.querySelector<HTMLInputElement>("[data-setting-quick-entry-nlp]")?.addEventListener("change", (event) => { this.applyPreference(() => { this.quickEntryNlp = (event.currentTarget as HTMLInputElement).checked; }); this.render(); });
+        root.querySelector<HTMLInputElement>("[data-setting-motion]")?.addEventListener("change", (event) => { this.applyPreference(() => { this.reducedMotion = (event.currentTarget as HTMLInputElement).checked; }); this.render(); });
+        root.querySelector<HTMLInputElement>("[data-setting-haptic]")?.addEventListener("change", (event) => { this.applyPreference(() => { this.hapticFeedback = (event.currentTarget as HTMLInputElement).checked; }); });
         /* T-1421 提醒安静时段：开关与起止时间；非法时间输入由归一化回落默认值。 */
         root.querySelector<HTMLInputElement>("[data-setting-quiet]")?.addEventListener("change", (event) => {
-            this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, enabled: (event.currentTarget as HTMLInputElement).checked});
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, enabled: (event.currentTarget as HTMLInputElement).checked});
+            });
         });
         for (const bound of ["start", "end"] as const) {
             root.querySelector<HTMLInputElement>(`[data-setting-quiet-${bound}]`)?.addEventListener("change", (event) => {
                 const value = (event.currentTarget as HTMLInputElement).value;
-                this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, [bound]: value});
-                void this.persistViewPreferences();
+                this.applyPreference(() => {
+                    this.reminderQuietHours = normalizeReminderQuietHours({...this.reminderQuietHours, [bound]: value});
+                });
                 this.render();
             });
         }
         /* T-1451 每日提醒调度：启用开关 + 时刻槽（逗号/空格分隔，归一化去重升序封顶 4）。 */
         root.querySelector<HTMLInputElement>("[data-setting-reminder-toggle]")?.addEventListener("change", (event) => {
-            this.dailyReminder = {...this.dailyReminder, enabled: (event.currentTarget as HTMLInputElement).checked};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.dailyReminder = {...this.dailyReminder, enabled: (event.currentTarget as HTMLInputElement).checked};
+            });
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='save-reminder-slots']")?.addEventListener("click", async () => {
@@ -3814,20 +3830,23 @@ this.scheduleMidnightRefresh();
         });
         /* T-1495 事项提前提醒「仅一次」：开关即存即生效（默认关 = 原逐日提醒）。 */
         root.querySelector<HTMLInputElement>("[data-setting-occasion-once]")?.addEventListener("change", (event) => {
-            this.occasionRemindOnce = (event.currentTarget as HTMLInputElement).checked;
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.occasionRemindOnce = (event.currentTarget as HTMLInputElement).checked;
+            });
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-setting-focus-timer]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "builtin" || value === "docktomato") {
-                this.focusTimerProvider = value;
-                savePreference();
+                this.applyPreference(() => {
+                    this.focusTimerProvider = value;
+                });
             }
         });
         root.querySelector<HTMLElement>("[data-action='use-builtin-focus']")?.addEventListener("click", () => {
-            this.focusTimerProvider = "builtin";
-            void this.persistViewPreferences().then(() => showMessage(t("set.tomatoFallbackSaved"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.applyPreference(() => {
+                this.focusTimerProvider = "builtin";
+            }, () => showMessage(t("set.tomatoFallbackSaved")));
             this.render();
         });
         /* T-1352 日记集成：开关即存即生效；docId 保存时校验；未启用时写入入口禁用。 */
@@ -3904,8 +3923,9 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.summaryResident = {...this.summaryResident, enabled: checked};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.summaryResident = {...this.summaryResident, enabled: checked};
+            });
             this.render();
         });
         bindVerifiedDocumentSave("save-summary-doc", "data-summary-doc", () => this.summaryResident.docId,
@@ -4159,21 +4179,23 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.sireaderIntegration = {...this.sireaderIntegration, enabled: checked};
+            this.applyPreference(() => {
+                this.sireaderIntegration = {...this.sireaderIntegration, enabled: checked};
+            });
             if (!checked) {
                 this.resetSireaderTracker();
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("sireader", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思阅", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-sireader-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
             if (itemId !== this.sireaderIntegration.itemId) this.resetSireaderTracker();
-            this.sireaderIntegration = {...this.sireaderIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.sireaderIntegration.enabled : false};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.sireaderIntegration = {...this.sireaderIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.sireaderIntegration.enabled : false};
+            });
             this.render();
         });
         root.querySelector<HTMLInputElement>("[data-siplayer-toggle]")?.addEventListener("change", (event) => {
@@ -4188,21 +4210,23 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.siplayerIntegration = {...this.siplayerIntegration, enabled: checked};
+            this.applyPreference(() => {
+                this.siplayerIntegration = {...this.siplayerIntegration, enabled: checked};
+            });
             if (!checked) {
                 this.resetSiplayerTracker();
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("siplayer", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "思播", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-siplayer-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
             if (itemId !== this.siplayerIntegration.itemId) this.resetSiplayerTracker();
-            this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.siplayerIntegration.enabled : false};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.siplayerIntegration = {...this.siplayerIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) ? this.siplayerIntegration.enabled : false};
+            });
             this.render();
         });
         root.querySelector<HTMLInputElement>("[data-health-toggle]")?.addEventListener("change", (event) => {
@@ -4227,13 +4251,14 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.healthInbox = {...this.healthInbox, enabled: checked};
+            this.applyPreference(() => {
+                this.healthInbox = {...this.healthInbox, enabled: checked};
+            });
             if (!checked) {
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("health", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "健康", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             this.render();
         });
         bindVerifiedDocumentSave("save-health-doc", "data-health-doc", () => this.healthInbox.docId,
@@ -4246,13 +4271,14 @@ this.scheduleMidnightRefresh();
                 metric: (row.querySelector<HTMLSelectElement>("[data-health-binding-metric]")?.value || "steps") as HealthInboxMetric,
                 itemId: row.querySelector<HTMLSelectElement>("[data-health-binding-item]")?.value || "",
             }));
-            const wasEnabled = this.healthInbox.enabled;
-            const unitInvalid = rows.some((row) => Boolean(row.itemId) && !this.hasHealthTarget(row.itemId, row.metric));
-            const targetsMissing = rows.some((row) => Boolean(row.itemId) && !getActiveItemById(this.store, row.itemId));
-            const next = normalizeHealthInboxPreference({...this.healthInbox, metricBindings: rows});
-            this.healthInbox = unitInvalid || targetsMissing ? {...next, enabled: false} : next;
-            if (wasEnabled && unitInvalid) showMessage(t("msg.healthItemUnitInvalid"));
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                const wasEnabled = this.healthInbox.enabled;
+                const unitInvalid = rows.some((row) => Boolean(row.itemId) && !this.hasHealthTarget(row.itemId, row.metric));
+                const targetsMissing = rows.some((row) => Boolean(row.itemId) && !getActiveItemById(this.store, row.itemId));
+                const next = normalizeHealthInboxPreference({...this.healthInbox, metricBindings: rows});
+                this.healthInbox = unitInvalid || targetsMissing ? {...next, enabled: false} : next;
+                if (wasEnabled && unitInvalid) showMessage(t("msg.healthItemUnitInvalid"));
+            });
             if (this.healthInbox.enabled) void this.ingestHealthInbox();
             this.render();
         };
@@ -4319,12 +4345,13 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.noteQuery = next;
+            this.applyPreference(() => {
+                this.noteQuery = next;
+            });
             if (!checked) {
                 const disconnectPlan = planSourceDisconnect("notequery", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "笔记推导", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             if (checked) void this.ingestNoteQuery();
             this.render();
         });
@@ -4340,33 +4367,37 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.wereadIntegration = {...this.wereadIntegration, enabled: checked};
+            this.applyPreference(() => {
+                this.wereadIntegration = {...this.wereadIntegration, enabled: checked};
+            });
             if (!checked) {
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("weread", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "微信读书", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-weread-item]")?.addEventListener("change", (event) => {
             const itemId = (event.currentTarget as HTMLSelectElement).value;
-            this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) && isWereadApiKey(this.wereadIntegration.apiKey) ? this.wereadIntegration.enabled : false};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.wereadIntegration = {...this.wereadIntegration, itemId, enabled: itemId && getActiveItemById(this.store, itemId) && this.hasMinuteTarget(itemId) && isWereadApiKey(this.wereadIntegration.apiKey) ? this.wereadIntegration.enabled : false};
+            });
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-weread-finish-item]")?.addEventListener("change", (event) => {
             const finishItemId = (event.currentTarget as HTMLSelectElement).value;
             /* 完读绑定可选（空 = 关闭完读事件）；不影响时长联动与开关状态。 */
-            this.wereadIntegration = {...this.wereadIntegration, finishItemId};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.wereadIntegration = {...this.wereadIntegration, finishItemId};
+            });
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-weread-notes-item]")?.addEventListener("change", (event) => {
             const notesItemId = (event.currentTarget as HTMLSelectElement).value;
             /* 划线计数绑定可选（空 = 关闭）；每日结算昨日完整数据，宁少记不多记。 */
-            this.wereadIntegration = {...this.wereadIntegration, notesItemId};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.wereadIntegration = {...this.wereadIntegration, notesItemId};
+            });
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='save-weread']")?.addEventListener("click", async () => {
@@ -4393,8 +4424,9 @@ this.scheduleMidnightRefresh();
         });
         root.querySelector<HTMLElement>("[data-action='clear-weread-key']")?.addEventListener("click", () => {
             if (!this.wereadIntegration.apiKey || !window.confirm(t("msg.wereadClearKeyConfirm"))) return;
-            this.wereadIntegration = {...this.wereadIntegration, apiKey: "", enabled: false};
-            void this.persistViewPreferences().then(() => showMessage(t("msg.wereadClearKeyDone"))).catch(() => showMessage(t("msg.prefSaveFail")));
+            this.applyPreference(() => {
+                this.wereadIntegration = {...this.wereadIntegration, apiKey: "", enabled: false};
+            }, () => showMessage(t("msg.wereadClearKeyDone")));
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='weread-pull']")?.addEventListener("click", () => {
@@ -4412,13 +4444,14 @@ this.scheduleMidnightRefresh();
                 this.render();
                 return;
             }
-            this.yeguifIntegration = {...this.yeguifIntegration, enabled: checked};
+            this.applyPreference(() => {
+                this.yeguifIntegration = {...this.yeguifIntegration, enabled: checked};
+            });
             if (!checked) {
                 /* T-1430 · R-A10：断开只停止采集，已落盘事件与幂等身份全部保留。 */
                 const disconnectPlan = planSourceDisconnect("yeguif", this.store.events);
                 if (disconnectPlan.retainedEvents) showMessage(t("msg.sourceDisconnectRetained", {source: "叶归 LifeLog", events: disconnectPlan.retainedEvents, identities: disconnectPlan.retainedIdentities}), 3200);
             }
-            void this.persistViewPreferences();
             this.render();
         });
         root.querySelector<HTMLTextAreaElement>("[data-yeguif-mappings]")?.addEventListener("change", (event) => {
@@ -4435,13 +4468,14 @@ this.scheduleMidnightRefresh();
             }).filter((entry): entry is {project: string; itemId: string} => Boolean(entry)).slice(0, 50);
             if (invalid) { showMessage(t("msg.yeguifMappingInvalid")); this.render(); return; }
             const seen = new Set<string>();
-            this.yeguifIntegration = {...this.yeguifIntegration, mappings: mappings.filter((entry) => {
-                const key = entry.project.toLocaleLowerCase();
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-            })};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.yeguifIntegration = {...this.yeguifIntegration, mappings: mappings.filter((entry) => {
+                    const key = entry.project.toLocaleLowerCase();
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })};
+            });
             this.render();
         });
         root.querySelector<HTMLElement>("[data-action='load-yeguif-notebooks']")?.addEventListener("click", async (event) => {
@@ -4458,8 +4492,9 @@ this.scheduleMidnightRefresh();
                     if (savedId && !notebooks.some((notebook) => notebook.id === savedId)) {
                         options.push(new Option(`${savedId} · ${t("set.yeguifNotebookMissing")}`, savedId));
                         if (this.yeguifIntegration.enabled) {
-                            this.yeguifIntegration = {...this.yeguifIntegration, enabled: false};
-                            void this.persistViewPreferences();
+                            this.applyPreference(() => {
+                                this.yeguifIntegration = {...this.yeguifIntegration, enabled: false};
+                            });
                             showMessage(t("msg.yeguifNotebookMissing"));
                             const toggle = root.querySelector<HTMLInputElement>("[data-yeguif-toggle]");
                             if (toggle) toggle.checked = false;
@@ -4485,8 +4520,9 @@ this.scheduleMidnightRefresh();
         });
         root.querySelector<HTMLSelectElement>("[data-yeguif-notebook]")?.addEventListener("change", (event) => {
             const notebookId = (event.currentTarget as HTMLSelectElement).value;
-            this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: Boolean(notebookId) && this.yeguifIntegration.enabled};
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.yeguifIntegration = {...this.yeguifIntegration, notebookId, enabled: Boolean(notebookId) && this.yeguifIntegration.enabled};
+            });
             this.render();
         });
         root.querySelector<HTMLSelectElement>("[data-diary-choice]")?.addEventListener("change", (event) => {
@@ -4644,11 +4680,11 @@ this.scheduleMidnightRefresh();
         });
         root.querySelector<HTMLSelectElement>("[data-setting-avatar]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
-            if (["check", "star", "horse", "leaf", "sun", "target"].includes(value)) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
+            if (["check", "star", "horse", "leaf", "sun", "target"].includes(value)) { this.applyPreference(() => { this.avatar = value; }); this.render(); }
         });
         root.querySelector<HTMLInputElement>("[data-setting-avatar-custom]")?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLInputElement).value.trim().slice(0, 8);
-            if (value) { this.avatar = value; void this.persistViewPreferences(); this.render(); }
+            if (value) { this.applyPreference(() => { this.avatar = value; }); this.render(); }
         });
         root.querySelector<HTMLInputElement>("[data-setting-avatar-file]")?.addEventListener("change", (event) => {
             const input = event.currentTarget as HTMLInputElement;
@@ -4667,7 +4703,7 @@ this.scheduleMidnightRefresh();
             void this.saveAvatarImage(undefined).catch(() => showMessage(t("set.avatarEditorSaveFailed")));
         });
         /* T-1566：重置视图偏好入重置危险区——确认显示影响范围（显示设置回默认，打卡数据不受影响）。 */
-        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); void this.persistViewPreferences(); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); }); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", (event) => runSettingsAction(event.currentTarget as HTMLElement, () => this.restoreLatestBackup()));
@@ -4912,28 +4948,31 @@ this.scheduleMidnightRefresh();
         modeSelect?.addEventListener("change", (event) => {
             const value = (event.currentTarget as HTMLSelectElement).value;
             if (value === "auto" || value === "percent" || value === "fullscreen" || value === "fixed") {
-                this.dialogSizeMode = value;
+                this.applyPreference(() => {
+                    this.dialogSizeMode = value;
+                });
                 syncDialogRows();
-                savePreference();
                 this.render();
             }
         });
         root.querySelector<HTMLElement>("[data-action='reset-dialog-frame']")?.addEventListener("click", () => {
-            this.dialogRect = undefined;
-            this.dialogOffset = undefined;
-            savePreference();
+            this.applyPreference(() => {
+                this.dialogRect = undefined;
+                this.dialogOffset = undefined;
+            });
             this.render();
         });
         root.querySelector<HTMLInputElement>("[data-setting-dialog-scale]")?.addEventListener("change", (event) => {
             const value = Number((event.currentTarget as HTMLInputElement).value);
-            if (Number.isFinite(value)) { this.dialogScale = Math.min(100, Math.max(50, Math.round(value))); savePreference(); this.render(); }
+            if (Number.isFinite(value)) { this.applyPreference(() => { this.dialogScale = Math.min(100, Math.max(50, Math.round(value))); }); this.render(); }
         });
         const bindFixedInput = (selector: string, key: "width" | "height") => {
             root.querySelector<HTMLInputElement>(selector)?.addEventListener("change", (event) => {
                 const value = Number((event.currentTarget as HTMLInputElement).value);
                 if (Number.isFinite(value)) {
-                    this.dialogFixedSize = {...this.dialogFixedSize, [key]: key === "width" ? Math.min(2560, Math.max(320, Math.round(value))) : Math.min(2048, Math.max(240, Math.round(value)))};
-                    savePreference();
+                    this.applyPreference(() => {
+                        this.dialogFixedSize = {...this.dialogFixedSize, [key]: key === "width" ? Math.min(2560, Math.max(320, Math.round(value))) : Math.min(2048, Math.max(240, Math.round(value)))};
+                    });
                 }
             });
         };
@@ -5072,8 +5111,9 @@ this.scheduleMidnightRefresh();
     private advanceFirstSuccess(event: "item-created" | "record-done" | "feedback-shown" | "review-visited" | "skip-guidance"): void {
         const next = transitionFirstSuccess(this.firstSuccessState, event);
         if (next === this.firstSuccessState) return;
-        this.firstSuccessState = next;
-        void this.persistViewPreferences();
+        this.applyPreference(() => {
+            this.firstSuccessState = next;
+        });
     }
 
     firstSuccessSkipGuidance(): void {
@@ -5085,22 +5125,24 @@ this.scheduleMidnightRefresh();
     applySavedView(id: string): void {
         const view = this.savedViews.find((entry) => entry.id === id);
         if (!id || !view) {
-            this.summaryCustomRange = undefined;
-            this.reportSource = "";
-            void this.persistViewPreferences();
+            this.applyPreference(() => {
+                this.summaryCustomRange = undefined;
+                this.reportSource = "";
+            });
             this.render();
             return;
         }
-        this.activeSavedViewId = view.id;
-        if (view.scope.range.kind === "relative-days") {
-            const today = dateKey(new Date());
-            const start = addDays(today, -(view.scope.range.days - 1));
-            this.summaryCustomRange = start ? {startDate: start, endDate: today} : undefined;
-        } else {
-            this.summaryCustomRange = undefined;
-        }
-        this.reportSource = view.scope.sources[0] || "";
-        void this.persistViewPreferences();
+        this.applyPreference(() => {
+            this.activeSavedViewId = view.id;
+            if (view.scope.range.kind === "relative-days") {
+                const today = dateKey(new Date());
+                const start = addDays(today, -(view.scope.range.days - 1));
+                this.summaryCustomRange = start ? {startDate: start, endDate: today} : undefined;
+            } else {
+                this.summaryCustomRange = undefined;
+            }
+            this.reportSource = view.scope.sources[0] || "";
+        });
         this.render();
     }
 
@@ -5119,17 +5161,18 @@ this.scheduleMidnightRefresh();
         }
         const scope = normalizeViewScope({version: 1, range: {kind: "relative-days", days}, itemIds: [], groups: [], sources: this.reportSource ? [this.reportSource] : [], status: "all"}).scope;
         const view = {id: makeId("view"), name, scope};
-        this.savedViews = [...this.savedViews, view];
-        this.activeSavedViewId = view.id;
-        void this.persistViewPreferences();
-        showMessage(t("msg.savedViewSaved", {name}), 2200);
+        this.applyPreference(() => {
+            this.savedViews = [...this.savedViews, view];
+            this.activeSavedViewId = view.id;
+        }, () => showMessage(t("msg.savedViewSaved", {name}), 2200));
         this.render();
     }
 
     deleteSavedView(id: string): void {
-        this.savedViews = this.savedViews.filter((entry) => entry.id !== id);
-        if (this.activeSavedViewId === id) this.activeSavedViewId = undefined;
-        void this.persistViewPreferences();
+        this.applyPreference(() => {
+            this.savedViews = this.savedViews.filter((entry) => entry.id !== id);
+            if (this.activeSavedViewId === id) this.activeSavedViewId = undefined;
+        });
         this.render();
     }
 
@@ -6971,8 +7014,9 @@ this.scheduleMidnightRefresh();
 
     /* T-1349：模板套用后更新「最近使用」并随界面偏好持久化。 */
     recordRecentTemplateUse(name: string): void {
-        this.recentTemplates = recordRecentTemplate(this.recentTemplates, name);
-        void this.persistViewPreferences();
+        this.applyPreference(() => {
+            this.recentTemplates = recordRecentTemplate(this.recentTemplates, name);
+        });
     }
 
     /* 手机端打卡成功的短振动（仅移动前端 + 用户未关闭；无振动能力的环境静默跳过）。 */
@@ -6990,9 +7034,22 @@ this.scheduleMidnightRefresh();
         this.render();
     }
 
-    private persistViewPreferences(avatarOverride?: {avatarImage: string | undefined}): Promise<void> {
-        if (this.disposed || !this.storageReady) return Promise.resolve();
-        const preferences: CheckinViewPreferences = {
+    /** T-1620（D-313）：B 类即时偏好的统一收口——内存先行改值；持久化失败时用
+        改值前的完整偏好快照经 applyViewPreferences 原路恢复（含语言同步钩子）、
+        重绘并提示，界面值与持久值不再静默分叉。快照仅服务失败路径，成功零额外开销。 */
+    private applyPreference(mutate: () => void, success?: () => void): void {
+        const snapshot = this.collectViewPreferences();
+        mutate();
+        void this.persistViewPreferences().then(() => { success?.(); }).catch(() => {
+            if (this.disposed || this.disposing) return;
+            this.applyViewPreferences(snapshot);
+            this.render();
+            showMessage(t("msg.prefSaveFail"));
+        });
+    }
+
+    private collectViewPreferences(avatarOverride?: {avatarImage: string | undefined}): CheckinViewPreferences {
+        return {
             groupMode: this.todayGroupMode,
             sortMode: this.todaySortMode,
             completedCollapsed: this.completedCollapsed,
@@ -7037,6 +7094,11 @@ this.scheduleMidnightRefresh();
             quickEntryNlp: this.quickEntryNlp,
             recentTemplates: [...this.recentTemplates],
         };
+    }
+
+    private persistViewPreferences(avatarOverride?: {avatarImage: string | undefined}): Promise<void> {
+        if (this.disposed || !this.storageReady) return Promise.resolve();
+        const preferences = this.collectViewPreferences(avatarOverride);
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(VIEW_PREFERENCES_NAME, preferences).then(() => undefined));
         this.saveQueue = write.catch((error) => {
             showMessage(t("msg.prefPersistFail", {error: String(error)}));

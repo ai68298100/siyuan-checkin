@@ -7,7 +7,7 @@
 
 ## 保存语义四分类（全文引用）
 
-- **A 显式保存**（变更清单 10 字段，`SETTINGS_FIELD_REGISTRY`）：有基线/草稿/单项撤回（`revertSettingDraft` index.ts:3476）/分节恢复（3482）；保存成功清草稿+toast，失败回滚 previous。**注意：`save-note-query`（index.ts:4026）也是显式保存但不在变更清单**——重构时须决定是否补登记，不得静默改变。
+- **A 显式保存**（变更清单 10 字段，`SETTINGS_FIELD_REGISTRY`）：有基线/草稿/单项撤回（`revertSettingDraft` index.ts:3476）/分节恢复（3482）；保存成功清草稿+toast，失败回滚 previous。**注意：`save-note-query` 也是显式保存但不在变更清单**——T-1620 决策（D-313）：文档化「整体表单即保存边界」——七字段由 save-note-query 一次性收集、校验、保存，失败整表回滚（既有 previous 恢复）；草稿跟踪待 T-1616 分区重建时随新表单一并实现，不在旧标记上打补丁。
 - **B 即时异步持久化**（change 即存 → `persistViewPreferences()` → `checkin-view-preferences` 单桶）：多数无独立失败提示（裸 `void` promise）；走 `savePreference` 包装（index.ts:3623）的有 `msg.prefSaved/prefSaveFail` toast；强调色有专用 `msg.accentSaved/accentSaveFail`（4377）。失败时内存值已改、存储为旧值——**重绘显示内存值，重载回到存储值**，两者可能短暂不一致（T-1604 状态契约要覆盖的口子）。
 - **C 动作类**：执行操作（导入/恢复/探测/拉取/体检/重置），本身不持久化字段；各自 confirm/busy 防重入（`runSettingsAction` 3609-3622）与失败回滚。
 - **D 只读状态行**：契约、依赖状态、统计量、快捷键说明、版本。
@@ -146,7 +146,7 @@
 ## 变更清单覆盖核对（T-1561 验收点）
 
 - 变更清单 10 字段（settings-change-list.ts:15-26）：journal-custom/journal-mode/journal-notebook-id/journal-target-doc/diary-doc/summary-doc/health-doc/reminder-slots/weread-threshold/weread-key——与上表 A 类一一对应，无遗漏。
-- **缺口一处**：note-query 七字段显式保存（save-note-query）未入清单。迁移决策：补登记（推荐，用户可感知草稿）或文档化「整体表单即保存边界」；不得静默保持现状。
+- **缺口一处（已决策，D-313）**：note-query 七字段（template/scope/targetId/itemId/field/value/tag，data-note-query-*）显式保存未入清单——选文档化「整体表单即保存边界」（保存原子+失败回滚已具备）；草稿化（入 settingsDrafts+SETTINGS_FIELD_REGISTRY）留 T-1616 分区重建随新表单实现。
 - 深链/书签：设置页无 URL 深链；外部锚点=source-panel 展开态（`data-source-panel`×8 + `sourcePanelOpen`）与 `data-settings-search` 文本过滤（settings-navigation.ts:40-80）。迁移时旧面板 id 需别名映射到新分区（研究稿步骤 4），展开态与搜索词进 T-1603 会话态契约。
 
 ## 迁移规则（源自研究稿步骤 1/4/5，本表为其输入）

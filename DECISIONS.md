@@ -1,5 +1,12 @@
 # 决策
 
+## D-313：B 类即时偏好统一走快照回滚包装，note-query 七字段文档化保存边界（2026-09-29）
+
+- T-1620 实施口径：按 T-1604 契约 2 的「逐字段迁移」落地为**统一包装 + 逐处理器接入**——applyPreference 以 collectViewPreferences 全量快照为回滚源（与 persist 序列化同源，杜绝双份清单漂移），失败恢复走 applyViewPreferences 原路映射（含 syncPluginLanguage 钩子），不做整页状态机改造。纪律：改值必须发生在 mutate 回调内，外层先行赋值会污染快照使回滚失效（守门含两条反断言）。
+- 回滚的已知边界，接受并记录：applyViewPreferences 会重置 quickEntryCancelled/activeSavedViewId 等会话瞬态、应用启用守卫重算（同一 store 下结果不变）——失败是罕见路径，与「重载后恢复已存值」的语义一致；断连保留提示与来源 ingest 在包装外按既有时序执行，持久化失败时可能出现「提示已显示但设置已回滚」（极窄场景，不产生数据错误）。
+- save-note-query 七字段（template/scope/targetId/itemId/field/value/tag）：登记决策=**文档化「整体表单即保存边界」**——原子收集+同源校验+失败整表回滚已具备，用户感知的失败反馈由 msg.prefSaveFail 承担；草稿化（settingsDrafts+变更清单注册）留 T-1616 分区重建随新表单实现，不在旧 DOM 标记上打补丁。注册表文档两处已同步，不再静默。
+- 剩余边界：报告选项/来源筛选与回顾折叠等页面级视图偏好（plugin-ops 的裸 void host.persistViewPreferences）不在本任务字段清单；接入统一包装需扩 PluginOpsHost 接口并同步四个严格依赖桩，留后续批次评估。
+
 ## D-312：设置页「乱码」定性为伪乱码主因 + 键名泄漏次因，修复分层排期（2026-09-29）
 
 - T-1615 排查口径：先区分真实编码缺陷与布局伪乱码，再定修复顺序。实测 i18n 语料（2504 对）零 mojibake、零控制字符；竖排/挤压主因是三类目标卡（文档/问卷/笔记本）专属样式只写 ≤719px 容器档、≥720px 全档被通用 settings-row 两列栅格把整个卡体塞进 240~260px 窄列（maintenance 无条件规则以 (0,3,0) 特异性压过卡片自有 (0,2,0)）；次因是 5 个缺失键（6 处调用）经 `t()` 缺键回退泄漏原始键名——i18n-parity 只查词典内部一致，不查代码引用完整性。
