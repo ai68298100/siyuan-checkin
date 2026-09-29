@@ -5,7 +5,10 @@ import {CHECKIN_EVENTS_READ_LIMITS, CHECKIN_ITEMS_QUERY_LIMITS} from "../api-con
 import type {CheckinEvent, CheckinItem, CheckinKind} from "../types";
 
 const CHECKIN_KINDS: readonly CheckinKind[] = ["binary", "count", "duration", "quantity", "custom"];
-const VALID_SOURCES: readonly CheckinEvent["source"][] = ["manual", "tomato", "import", "api"];
+/* T-1631：读侧来源过滤接受全部八种持久化来源（与 types.ts CheckinEvent["source"] 对齐）——
+   内部适配器写入的事件（sireader/siplayer/weread/yeguif）同样可被公开读取过滤；
+   写侧防伪造边界独立生效：events.record.batch 仍只接受 source: "api"（planBatchRecord）。 */
+const VALID_SOURCES: readonly CheckinEvent["source"][] = ["manual", "tomato", "import", "api", "sireader", "siplayer", "weread", "yeguif"];
 
 export function isValidEventSource(value: unknown): value is CheckinEvent["source"] {
     return (VALID_SOURCES as readonly string[]).includes(value as string);

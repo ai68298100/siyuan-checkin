@@ -79,7 +79,7 @@ getEventsInRange(
     range: {startDate: string; endDateExclusive: string},   // 半开区间 [start, end)，本地日期 YYYY-MM-DD
     options?: {
         itemIds?: string[];        // ≤ 200 个
-        source?: CheckinEvent["source"];
+        source?: CheckinEvent["source"];  // 八种持久化来源之一：manual / tomato / import / api / sireader / siplayer / weread / yeguif（T-1631：读取可过滤全部来源；写入仍仅接受 "api"）
         includeSkips?: boolean;    // 默认 true；false 排除 kind==="skip"
         limit?: number;            // 默认 1000，上限 5000
     }

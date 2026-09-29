@@ -158,7 +158,7 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
             }
             if (range.startDate > range.endDateExclusive) throw new TypeError("range.startDate 不得晚于 endDateExclusive");
             if (options?.itemIds !== undefined && !Array.isArray(options.itemIds)) throw new TypeError("itemIds 必须是字符串数组");
-            if (options?.source !== undefined && !isValidEventSource(options.source)) throw new TypeError("source 必须是 manual、tomato、import 或 api");
+            if (options?.source !== undefined && !isValidEventSource(options.source)) throw new TypeError("source 必须是 manual、tomato、import、api、sireader、siplayer、weread 或 yeguif");
             if (range.startDate === range.endDateExclusive) return {events: [], truncated: false};
             const inRange = getEventsInDateRange(host.store, range.startDate, range.endDateExclusive);
             const filtered = filterEventsInRange(inRange, options ?? {});

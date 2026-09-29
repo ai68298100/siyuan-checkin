@@ -53,6 +53,18 @@ const makeItem = (overrides = {}) => ({
     assert.equal(projectItems(items, {kinds: []}).length, 2, "empty kinds array means no filter");
     assert.equal(isValidEventSource("tomato"), true);
     assert.equal(isValidEventSource("nope"), false);
+    /* T-1631：读侧来源过滤与类型全集对齐——八种持久化来源都可过滤，内部适配器来源不再被拒。 */
+    const integrationSources = [event({source: "sireader"}), event({source: "siplayer"}), event({source: "weread"}), event({source: "yeguif"}), event({source: "api"})];
+    assert.deepEqual(filterEventsInRange(integrationSources, {source: "weread"}).events.map((entry) => entry.source), ["weread"],
+        "weread events are filterable (previously TypeError / silently unfiltered)");
+    assert.equal(filterEventsInRange(integrationSources, {source: "yeguif"}).events.length, 1, "yeguif filter works");
+    assert.equal(filterEventsInRange(integrationSources, {source: "sireader"}).events.length, 1, "sireader filter works");
+    assert.equal(filterEventsInRange(integrationSources, {source: "siplayer"}).events.length, 1, "siplayer filter works");
+    assert.equal(filterEventsInRange(integrationSources, {source: "tomato"}).events.length, 0, "filter with absent source returns empty, never unfiltered");
+    assert.equal(isValidEventSource("weread"), true);
+    assert.equal(isValidEventSource("yeguif"), true);
+    assert.equal(isValidEventSource("sireader"), true);
+    assert.equal(isValidEventSource("siplayer"), true);
 
     /* ===== v5-2 幂等批量写 ===== */
     const store = model.createDefaultStore();
@@ -81,9 +93,10 @@ const makeItem = (overrides = {}) => ({
         {itemId: "read", occurredAt: "not-a-date"},
         {itemId: "read", occurredAt: "2026-09-18T22:30:00.000Z"},
         {itemId: "read", externalRef: "ext://existing"},
+        {itemId: "read", source: "weread"},
     ], nowIso);
     const results = plan.results;
-    assert.equal(results.length, 15, "results stay 1:1 with inputs");
+    assert.equal(results.length, 16, "results stay 1:1 with inputs");
     assert.equal(results[0], plan.results[0]);
     assert.equal(results[0].kind, "recorded");
     assert.equal(results[0].usedFallbackTime, true, "missing occurredAt falls back to now with flag");
@@ -99,6 +112,7 @@ const makeItem = (overrides = {}) => ({
     assert.equal(results[8].reason, "invalid-input");
     assert.equal(results[9].reason, "invalid-item-id");
     assert.equal(results[10].reason, "invalid-source");
+    assert.equal(results[15].reason, "invalid-source", "forged integration source stays rejected on the write side (T-1631: read widened, write unchanged)");
     assert.equal(results[11].reason, "invalid-value");
     assert.equal(results[12].reason, "invalid-occurred-at", "invalid occurredAt must not silently fall back to now");
     assert.equal(results[13].kind, "recorded");
