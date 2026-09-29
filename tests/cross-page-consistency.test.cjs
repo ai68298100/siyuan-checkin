@@ -26,6 +26,7 @@ const navigation = read("src", "navigation.ts");
 const editorBind = read("src", "render", "bind-editor.ts");
 const pageShell = read("src", "render", "page-shell.ts");
 const occasions = read("src", "render", "occasions.ts");
+const review = read("src", "render", "review.ts");
 const indexSrc = read("src", "index.ts");
 
 let checks = 0;
@@ -79,6 +80,39 @@ try {
         /* 返回路径分派统一走 SurfaceContext 读侧。 */
         assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "通用返回分派走读侧");
         assert.match(reviewBind, /context\.page === "insights" && context\.returnTo === "review"/, "insights 会话返回栈优先");
+    });
+
+    check("SurfaceContext read side aggregates the full contract-1 param shape (T-1621 slice)", () => {
+        /* 读侧扩参：只聚合既有会话态，字段可增不可改义（契约 1）。 */
+        assert.match(pageShell, /export interface SurfaceContextParams/, "params 形状独立导出");
+        for (const key of ["itemId", "date", "range", "workspace", "query", "filters"]) {
+            assert.match(pageShell, new RegExp(key + "\\?:"), `params.${key} 在读侧形状内`);
+        }
+        for (const field of ["selectedHistoryDate", "summaryRange", "summaryCustomRange", "reviewWorkspace",
+            "todayQuery", "historyQuery", "archivedQuery", "historyScope", "historySource", "historyOrder",
+            "historyPage", "reminderFilter"]) {
+            assert.match(pageShell, new RegExp(field + "\\?:"), `snapshot 聚合 ${field}`);
+        }
+        /* 聚合纪律：日期仅在 review day 钻取携带；过滤器默认值（all/newest/0）不进上下文。 */
+        assert.match(pageShell, /historyScope === "day" && snapshot\.selectedHistoryDate/, "date 仅 day 钻取携带");
+        assert.match(pageShell, /historySource !== "all"/, "source 默认值不进上下文");
+        assert.match(pageShell, /historyOrder !== "newest"/, "order 默认值不进上下文");
+        assert.match(pageShell, /snapshot\.historyPage\) filters\.page/, "page 0 不进上下文");
+        /* 既有消费方（返回分派）不受扩参影响。 */
+        assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "读侧仍是返回分派单一入口");
+    });
+
+    check("fixed DOM ids are uniquified per render for multi-root isolation (T-1621 slice)", () => {
+        /* 提醒中心标题：id 与 aria-labelledby 同源变量，按渲染次序唯一（settings settingsViewId 同法）。 */
+        assert.doesNotMatch(review, /id="lc-reminder-center-title"/, "提醒中心标题不再使用固定 id");
+        assert.match(review, /let reminderCenterSequence = 0;/, "渲染次序计数器在位");
+        assert.match(review, /const reminderTitleId = `lc-reminder-center-title-\$\{\+\+reminderCenterSequence\}`;/, "标题 id 按次序生成");
+        assert.match(review, /aria-labelledby="\$\{reminderTitleId\}"[\s\S]*?id="\$\{reminderTitleId\}"/, "aria 关联与 id 同源");
+        /* 事项提醒预设：datalist id 与 input[list] 同源变量。 */
+        assert.doesNotMatch(occasions, /list="lc-occasion-remind-presets"/, "事项预设不再引用固定 datalist id");
+        assert.match(occasions, /let remindPresetsSequence = 0;/, "预设计数器在位");
+        assert.match(occasions, /list="lc-occasion-remind-presets-\$\{\+\+remindPresetsSequence\}"/, "input[list] 按次序生成");
+        assert.match(occasions, /datalist id="lc-occasion-remind-presets-\$\{remindPresetsSequence\}"/, "datalist id 与 list 同源");
     });
 
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {

@@ -8,6 +8,10 @@ import {renderPageShellHead} from "./page-shell";
 import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
+/* T-1621：提醒天数预设 datalist id 按渲染次序唯一化（settings settingsViewId 同法）——
+   多 root 同屏时 input[list] 不再绑到其他表面的同名 datalist。 */
+let remindPresetsSequence = 0;
+
 export interface OccasionsViewContext {
     occasionStore: OccasionStore;
     editingOccasionId?: string;
@@ -182,7 +186,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                             <label class="lc-checkin__field"><span>${t("occ.intervalCount")}</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${editing?.intervalCount ?? 1}" /></label>
                             <label class="lc-checkin__field"><span>${t("occ.unit")}</span><select name="intervalUnit"><option value="day"${sel("day", editing?.intervalUnit)}>${t("occ.unitDay")}</option><option value="month"${sel("month", editing?.intervalUnit || "month")}>${t("occ.unitMonth")}</option><option value="year"${sel("year", editing?.intervalUnit)}>${t("occ.unitYear")}</option></select></label>
                         </div>
-                        <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
+                        <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets-${++remindPresetsSequence}" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets-${remindPresetsSequence}"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
                         <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(editing?.note || "")}</textarea></label>
                         <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>

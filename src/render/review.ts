@@ -27,6 +27,10 @@ import {buildReviewPrompt} from "../features/review-assistant";
 
 const calendarWeekdays = (): string[] => [1, 2, 3, 4, 5, 6, 0].map((index) => t(`date.wd${index}`));
 
+/* T-1621：提醒中心标题 id 按渲染次序唯一化（settings settingsViewId 同法）——
+   多 root（dock+页签+弹窗）同屏时 aria-labelledby 不再跨表面交叉命中。 */
+let reminderCenterSequence = 0;
+
 export interface ReviewViewContext {
     reviewWorkspace?: "overview" | "records" | "analysis";
     historyScope?: "day" | "period";
@@ -508,7 +512,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
     const overdueMoreRows = overdueHistory.slice(OVERDUE_VISIBLE).map(overdueRow).join("");
     const overdueHistorySection = overdueHistory.length ? `<div class="lc-checkin__overdue-history"><h3>${t("review.overdueHistory")} · ${overdueHistory.length}</h3>${overdueVisibleRows}${overdueMoreRows ? `<div data-overdue-more hidden>${overdueMoreRows}</div><button class="lc-checkin__text-button" type="button" data-overdue-expand>${t("review.expandAll", {n: overdueHistory.length})}</button>` : ""}</div>` : "";
 
-        return `<section class="lc-checkin__reminder-center" aria-labelledby="lc-reminder-center-title"><div class="lc-checkin__reminder-heading"><h2 id="lc-reminder-center-title">${t("review.remindersTitle")}</h2><select data-reminder-filter aria-label="${t("review.remindersTitle")}"><option value="all" ${ctx.reminderFilter === "all" ? "selected" : ""}>${t("review.remindersTitle")}</option><option value="overdue" ${ctx.reminderFilter === "overdue" ? "selected" : ""}>${t("review.remindersOverdue")}</option><option value="today" ${ctx.reminderFilter === "today" ? "selected" : ""}>${t("review.remindersToday")}</option><option value="upcoming" ${ctx.reminderFilter === "upcoming" ? "selected" : ""}>${t("review.remindersUpcoming", {n: 1})}</option><option value="completed" ${ctx.reminderFilter === "completed" ? "selected" : ""}>${t("review.remindersCompleted")}</option></select></div><div class="lc-checkin__reminder-list">${reminderRows}</div>${overdueHistorySection}</section>`;
+        const reminderTitleId = `lc-reminder-center-title-${++reminderCenterSequence}`;
+        return `<section class="lc-checkin__reminder-center" aria-labelledby="${reminderTitleId}"><div class="lc-checkin__reminder-heading"><h2 id="${reminderTitleId}">${t("review.remindersTitle")}</h2><select data-reminder-filter aria-label="${t("review.remindersTitle")}"><option value="all" ${ctx.reminderFilter === "all" ? "selected" : ""}>${t("review.remindersTitle")}</option><option value="overdue" ${ctx.reminderFilter === "overdue" ? "selected" : ""}>${t("review.remindersOverdue")}</option><option value="today" ${ctx.reminderFilter === "today" ? "selected" : ""}>${t("review.remindersToday")}</option><option value="upcoming" ${ctx.reminderFilter === "upcoming" ? "selected" : ""}>${t("review.remindersUpcoming", {n: 1})}</option><option value="completed" ${ctx.reminderFilter === "completed" ? "selected" : ""}>${t("review.remindersCompleted")}</option></select></div><div class="lc-checkin__reminder-list">${reminderRows}</div>${overdueHistorySection}</section>`;
     };
     const renderAwards = (): string => {
         const achievements = buildAchievements(ctx.store, asOf);

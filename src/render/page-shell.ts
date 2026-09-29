@@ -37,12 +37,32 @@ export function defaultReturnPage(_page: PageId): "today" {
     return "today";
 }
 
-/** 契约 1 SurfaceContext 读侧：把宿主会话态聚合为只读上下文。params 仅登记已落地键；
-    日期/范围/滚动/焦点的全量序列化按 T-1599 边界随后续切片迁入（字段可增不可改义）。 */
+/** 契约 1 SurfaceContext 读侧：把宿主会话态聚合为只读上下文。
+    T-1621 第一切片：params 扩到契约 1 全形状（date/range/workspace/query/filters）——
+    只聚合既有会话态、不新增真值，失败与重载策略仍归各页会话态；按 root 的全量
+    序列化（多 root 独立 currentPage）是后续切片，字段可增不可改义。 */
+export interface SurfaceContextParams {
+    itemId?: string;
+    /** review 记录日视图的钻取日（selectedHistoryDate，仅 day 范围携带）。 */
+    date?: string;
+    /** review 概览范围（summaryRange 或自定义区间）。 */
+    range?: "day" | "week" | "month" | {startDate: string; endDate: string};
+    workspace?: "overview" | "records" | "analysis";
+    /** today 搜索 / review 记录查询 / archived 查询（按当前页取用）。 */
+    query?: string;
+    filters?: {
+        scope?: "day" | "period";
+        source?: string;
+        order?: string;
+        page?: number;
+        reminder?: string;
+    };
+}
+
 export interface SurfaceContext {
     page: PageId;
     returnTo?: PageId;
-    params: {itemId?: string};
+    params: SurfaceContextParams;
 }
 
 export function readSurfaceContext(snapshot: {
@@ -51,6 +71,18 @@ export function readSurfaceContext(snapshot: {
     insightsReturnPage: "today" | "review";
     editingId?: string;
     insightsItemId?: string;
+    selectedHistoryDate?: string;
+    summaryRange?: "day" | "week" | "month";
+    summaryCustomRange?: {startDate: string; endDate: string};
+    reviewWorkspace?: "overview" | "records" | "analysis";
+    todayQuery?: string;
+    historyQuery?: string;
+    archivedQuery?: string;
+    historyScope?: "day" | "period";
+    historySource?: string;
+    historyOrder?: string;
+    historyPage?: number;
+    reminderFilter?: string;
 }): SurfaceContext {
     const page = snapshot.currentPage;
     const returnTo = page === "editor"
@@ -58,5 +90,24 @@ export function readSurfaceContext(snapshot: {
         : page === "insights" ? snapshot.insightsReturnPage : undefined;
     const itemId = page === "editor" ? snapshot.editingId
         : page === "insights" ? snapshot.insightsItemId : undefined;
-    return {page, returnTo, params: itemId ? {itemId} : {}};
+    const params: SurfaceContextParams = itemId ? {itemId} : {};
+    if (page === "review") {
+        if (snapshot.historyScope === "day" && snapshot.selectedHistoryDate) params.date = snapshot.selectedHistoryDate;
+        if (snapshot.reviewWorkspace) params.workspace = snapshot.reviewWorkspace;
+        const range = snapshot.summaryCustomRange
+            ? {startDate: snapshot.summaryCustomRange.startDate, endDate: snapshot.summaryCustomRange.endDate}
+            : snapshot.summaryRange;
+        if (range) params.range = range;
+        if (snapshot.historyQuery) params.query = snapshot.historyQuery;
+        const filters: SurfaceContextParams["filters"] = {};
+        if (snapshot.historyScope) filters.scope = snapshot.historyScope;
+        if (snapshot.historySource && snapshot.historySource !== "all") filters.source = snapshot.historySource;
+        if (snapshot.historyOrder && snapshot.historyOrder !== "newest") filters.order = snapshot.historyOrder;
+        if (snapshot.historyPage) filters.page = snapshot.historyPage;
+        if (snapshot.reminderFilter && snapshot.reminderFilter !== "all") filters.reminder = snapshot.reminderFilter;
+        params.filters = filters;
+    }
+    if (page === "today" && snapshot.todayQuery) params.query = snapshot.todayQuery;
+    if (page === "archived" && snapshot.archivedQuery) params.query = snapshot.archivedQuery;
+    return {page, returnTo, params};
 }

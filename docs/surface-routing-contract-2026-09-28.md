@@ -26,6 +26,7 @@ interface SurfaceContext {
 ```
 
 - **编辑器上下文**=`editingId + editingFingerprint`（冲突守卫，save-form.ts:57-61）；无 item 时为新建。编辑完成/取消的落点见契约 3。
+- **T-1621 第一切片（2026-09-30）已落地**：readSurfaceContext 读侧扩参到契约 1 全形状（date=review day 钻取 selectedHistoryDate/range=summaryRange|CustomRange/workspace/query/filters=scope|source|order|page|reminder，默认值 all/newest/0 不进上下文）——只聚合既有会话态，无消费方破坏（返回分派照旧）；提醒中心标题与事项预设 datalist 两处固定 DOM id 改按渲染次序唯一化（settingsViewId 同法），多 root 同屏 aria/list 关联不再交叉。**剩余边界**：按 root 独立 currentPage 与全量序列化（多 root 打开不同页互不覆盖）仍未实施，宿主级共享语义保持现状。
 - **Journal（问卷弹窗）/Reminder（提醒区）不是页面**：journal 是今日页弹层（journal-dialog），reminder 是 review 折叠区 + 今日横幅（registry §8/§9）——契约只覆盖它们的**打开来源回链**，不为其设 PageId。
 
 ## 契约 2：会话态归属（现状清单，实施时逐项迁入 context）
