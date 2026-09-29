@@ -1,5 +1,11 @@
 # 决策
 
+## D-315：偏好桶不做跨窗口合并，维持后写者胜 + 写失败回滚（2026-09-30）
+
+- T-1622 剩余切片评估定案：偏好桶（checkin-view-preferences，全部 B 类视图偏好与周复盘草稿）不引入 D-314 式并集合并。理由：①整桶 ~40 个异构字段（枚举/嵌套对象/数组）没有逐字段变更清单，确定性合并需要每次写携带变更键集=存储形状级改造；②无清单的「重读+合并」会复活撤销语义——reset-view/reset-all 写入默认值，字段级合并会保留他窗旧值、破坏重置；③危害面有限：偏好只影响本机 UI 呈现、不涉事实数据，双窗口同用户。
+- 失败半边已由 T-1620 applyPreference 快照回滚守住；跨窗口后写者胜是本决策明示的接受边界。真需求出现（多窗口重度并行定制）时先做 per-field change manifest 再评估，独立批次不搭车。决策已同步 settings-field-registry 文档。
+- 同批核对：onDataChanged 是远端变更通知路径，整桶采纳偏好/事项/模板/动作属正确语义（非静默覆盖）；会话草稿（settingsDrafts/journalDrafts）不入桶、不受影响。Agent createItem/createOccasion 已改经 enqueueMutation 写入（主 Store 锁内 reconcile 合并生效）+ persist 失败回滚重抛。
+
 ## D-314：跨窗口合并按桶分层——「并集合并」与「删除后写者胜」边界（2026-09-30）
 
 - T-1622 三桶切片的合并口径：提醒动作按 (id,action,at) 身份并集（追加型，无删除语义冲突——restore 的清除只作用于本窗口写入时刻，跨窗 restore+动作并发是已知残留）；事项只对共享 id 并集 completedDates、不采用远端独有事项（Occasion 无 createdAt/updatedAt，无法区分「他窗新建」与「本窗已删除」，宁少采不复活）；失败箱在**变更前**同步（mergeExternalPendingBoxes 身份并集、本地载荷优先、normalize 强制容量/保留期）。

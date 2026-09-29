@@ -99,5 +99,18 @@ assert.equal((pluginSource.match(/await this\.mergeExternalPendingFromRemote\(\)
 assert.match(pluginSource, /mergeExternalPendingBoxes\(this\.externalPendingBox, remote\)/,
     "the pending sync must use the union helper");
 
+/* —— Agent 创建口：入队 + 失败回滚（T-1622 剩余切片） —— */
+const agentCreateBlock = pluginSource.slice(pluginSource.indexOf("createItem: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {"));
+assert.match(agentCreateBlock, /await this\.enqueueMutation\(async \(\) => \{/, "Agent createItem must go through enqueueMutation (main-store reconcile applies)");
+assert.match(agentCreateBlock, /const previous = this\.store;/, "Agent createItem must snapshot the store");
+assert.match(agentCreateBlock, /this\.store = previous;\s*\r?\n\s*throw error;/, "Agent createItem must roll back on persist failure and rethrow");
+assert.match(pluginSource.slice(pluginSource.indexOf("createOccasion: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {") + 700),
+    /const previous = this\.occasionStore;[\s\S]*?this\.occasionStore = previous;\s*\r?\n\s*throw error;/,
+    "Agent createOccasion must roll back on persist failure and rethrow");
+/* 偏好桶决策（D-315）：不做跨窗口合并——注册表文档必须记录该决策而非静默。 */
+const registryDoc = fs.readFileSync(path.join(__dirname, "..", "docs", "settings-field-registry-2026-09-28.md"), "utf8");
+assert.match(registryDoc, /D-315/, "the preference-bucket decision must be recorded in the field registry doc");
+assert.match(registryDoc, /后写者胜/, "the decision must name the last-writer-wins policy");
+
 fs.rmSync(dir, {recursive: true, force: true});
 console.log("Cross-window merge checks passed: reminder union, occasion completion union (no resurrection), pending box union, wire-up signatures.");

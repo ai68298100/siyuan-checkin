@@ -3027,13 +3027,33 @@ this.scheduleMidnightRefresh();
                 recordEvent: (item, value, moment, fingerprint, note) => this.recordEvent(item, value, moment, fingerprint, note),
                 setOccasionCompleted: (id, date, completed) => this.setOccasionCompleted(id, date, completed),
                 createItem: async (created) => {
-                    this.store = {...this.store, items: [...this.store.items, created]};
-                    await this.persist();
+                    /* T-1622：经 enqueueMutation 写入——主 Store 的锁内重读合并（reconcile）
+                       在此生效，Agent 创建不再绕过跨窗口合并；persist 失败回滚内存，
+                       异常向 Agent 调用方传播（不得报告成功）。 */
+                    await this.enqueueMutation(async () => {
+                        const previous = this.store;
+                        this.store = {...this.store, items: [...this.store.items, created]};
+                        try {
+                            await this.persist();
+                        } catch (error) {
+                            this.store = previous;
+                            throw error;
+                        }
+                    });
                     this.render();
                 },
                 createOccasion: async (created) => {
-                    this.occasionStore = {...this.occasionStore, occasions: [...this.occasionStore.occasions, created]};
-                    await this.persistOccasions();
+                    /* T-1622：同上入队；persistOccasions 自带写前合并（D-314），失败回滚内存。 */
+                    await this.enqueueMutation(async () => {
+                        const previous = this.occasionStore;
+                        this.occasionStore = {...this.occasionStore, occasions: [...this.occasionStore.occasions, created]};
+                        try {
+                            await this.persistOccasions();
+                        } catch (error) {
+                            this.occasionStore = previous;
+                            throw error;
+                        }
+                    });
                     this.render();
                 },
             });
