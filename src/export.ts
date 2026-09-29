@@ -1,4 +1,5 @@
 import type {CheckinStore} from "./types";
+import {isValidDateKey} from "./date-keys";
 
 export interface JsonBackupResult {
     store: CheckinStore;
@@ -136,6 +137,12 @@ export function serializeJsonMigrationReport(report: JsonMigrationReport): strin
 }
 
 
+/* T-1628：电子表格公式中和——与 insight-records.spreadsheetText 同一策略：
+   以 = + - @ 或控制字符开头的文本列加前导 `'`，防止被电子表格当公式执行。 */
+function spreadsheetText(value: string): string {
+    return /^\s*[=+\-@\u0000-\u001f\u007f-\u009f]/.test(value) ? `'${value}` : value;
+}
+
 export function serializeCsv(store: CheckinStore): string {
     const rows = [["eventId", "itemId", "itemName", "occurredAt", "localDate", "value", "unit", "source", "note", "externalRef"]];
     const names = new Map(store.items.map((item) => [item.id, item.name]));
@@ -151,15 +158,18 @@ export function serializeCsv(store: CheckinStore): string {
         event.note || "",
         event.externalRef || "",
     ]));
-    return "\uFEFF" + rows.map((row) => row.map(csvCell).join(",")).join("\n");
+    /* T-1628：公式中和只作用于自由文本列（itemName/note）——数值列可能是负数
+       （如记录详情对比值），全列中和会篡改数据（insight-records 守门抓住）。 */
+    const textColumns = new Set([2, 8]);
+    return "\uFEFF" + rows.map((row) => row.map((cell, index) => csvCell(textColumns.has(index) ? spreadsheetText(cell) : cell)).join(",")).join("\n");
 }
 
 function csvCell(value: string): string {
     return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, "\"\"")}"` : value;
 }
 
-/* 7.0 CSV 导入解析：表头须含 名称/日期（数值、单位可选）。
-   数值为空视为一次二值打卡；返回无效行数便于导入报告。 */
+/* ===== T-1628 CSV 导入：与导出同一 RFC 4180 语义（引号/换行字段跨物理行），
+   表头识别导出表头全集并兼容既有中英文别名；日期走 date-keys 真实日历校验。 ===== */
 export interface CsvImportRow {
     name: string;
     date: string;
@@ -171,49 +181,78 @@ export interface CsvImportRow {
 export interface CsvImportResult {
     rows: CsvImportRow[];
     invalid: number;
+    /** T-1628：超出解析上限被截断时为 true（已解析部分照常返回，不静默丢弃标记）。 */
+    truncated: boolean;
 }
 
-function splitCsvLine(line: string): string[] {
-    const cells: string[] = [];
-    let current = "";
+const CSV_IMPORT_MAX_ROWS = 20000;
+const CSV_IMPORT_MAX_CHARS = 2_000_000;
+
+/** RFC 4180 状态机：整段文本解析（引号字段可含逗号/换行/双写引号），物理换行才结束一行；
+    空行跳过；超行数/超字符上限停止并标记 truncated。带引号单元格保留原文，不带引号的裁剪首尾空白。 */
+function parseCsvRows(text: string): {rows: string[][]; truncated: boolean} {
+    const source = text.replace(/^\uFEFF/, "");
+    let truncated = source.length > CSV_IMPORT_MAX_CHARS;
+    const limit = Math.min(source.length, CSV_IMPORT_MAX_CHARS);
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = "";
     let quoted = false;
-    for (let index = 0; index < line.length; index += 1) {
-        const char = line[index];
+    let cellQuoted = false;
+    for (let index = 0; index < limit; index += 1) {
+        const char = source[index];
         if (quoted) {
-            if (char === "\"" && line[index + 1] === "\"") { current += "\""; index += 1; }
-            else if (char === "\"") quoted = false;
-            else current += char;
-        } else if (char === "\"") quoted = true;
-        else if (char === ",") { cells.push(current); current = ""; }
-        else current += char;
+            if (char === "\"") {
+                if (source[index + 1] === "\"") { cell += "\""; index += 1; }
+                else quoted = false;
+            } else cell += char;
+        } else if (char === "\"") {
+            quoted = true;
+            cellQuoted = true;
+        } else if (char === ",") {
+            row.push(cellQuoted ? cell : cell.trim());
+            cell = "";
+            cellQuoted = false;
+        } else if (char === "\n" || char === "\r") {
+            if (char === "\r" && source[index + 1] === "\n") index += 1;
+            row.push(cellQuoted ? cell : cell.trim());
+            cell = "";
+            cellQuoted = false;
+            if (row.some((value) => value !== "")) rows.push(row);
+            row = [];
+            if (rows.length > CSV_IMPORT_MAX_ROWS) { truncated = true; break; }
+        } else cell += char;
     }
-    cells.push(current);
-    return cells.map((cell) => cell.trim());
+    if (rows.length <= CSV_IMPORT_MAX_ROWS) {
+        row.push(cellQuoted ? cell : cell.trim());
+        if (row.some((value) => value !== "")) rows.push(row);
+    }
+    return {rows, truncated};
 }
 
 export function parseCheckinCsv(text: string): CsvImportResult {
-    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
-    if (!lines.length) return {rows: [], invalid: 0};
-    const header = splitCsvLine(lines[0]).map((cell) => cell.toLowerCase());
-    const nameIndex = header.findIndex((cell) => cell === "名称" || cell === "name");
+    const {rows: table, truncated} = parseCsvRows(text);
+    if (!table.length) return {rows: [], invalid: 0, truncated};
+    /* 表头别名：导出表头全集（T-1628）+ 既有中英文别名（旧文件不断）。 */
+    const header = table[0].map((cell) => cell.toLowerCase());
+    const nameIndex = header.findIndex((cell) => cell === "名称" || cell === "name" || cell === "itemname");
     const dateIndex = header.findIndex((cell) => cell === "日期" || cell === "date" || cell === "localdate");
     const valueIndex = header.findIndex((cell) => cell === "数值" || cell === "value");
     const unitIndex = header.findIndex((cell) => cell === "单位" || cell === "unit");
-    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: lines.length - 1};
+    if (nameIndex < 0 || dateIndex < 0) return {rows: [], invalid: table.length - 1, truncated};
     const rows: CsvImportRow[] = [];
     let invalid = 0;
-    for (const line of lines.slice(1)) {
-        const cells = splitCsvLine(line);
+    for (const cells of table.slice(1)) {
         const name = cells[nameIndex] || "";
         const date = cells[dateIndex] || "";
         const rawValue = valueIndex >= 0 ? cells[valueIndex] : "";
         const unit = (unitIndex >= 0 ? cells[unitIndex] : "") || "次";
-        const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))).getTime());
-        if (!name || !validDate) { invalid += 1; continue; }
+        /* 真实日历校验：2026-02-30 这类被 JS Date 归一的键必须拒绝（T-1628）。 */
+        if (!name || !isValidDateKey(date)) { invalid += 1; continue; }
         const numeric = rawValue === "" || rawValue === undefined ? 1 : Number(rawValue);
         if (!Number.isFinite(numeric) || numeric < 0) { invalid += 1; continue; }
         const binary = numeric === 1;
         rows.push({name: name.slice(0, 40), date, value: numeric, unit: unit.slice(0, 16), binary});
     }
-    return {rows, invalid};
+    return {rows, invalid, truncated};
 }

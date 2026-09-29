@@ -13,7 +13,7 @@
 
 ### 2. CSV 记录导出（设置 → 导出 CSV）
 
-一行一条打卡事件，UTF-8 带 BOM，RFC 风格引号转义。表头（与 `serializeCsv` 逐字段一致）：
+一行一条打卡事件，UTF-8 带 BOM，RFC 4180 风格引号转义（引号/逗号/换行字段双写引号包裹）。文本列做电子表格公式中和：以 `=` `+` `-` `@` 或控制字符开头的值加前导 `'`（与记录详情 CSV 同策略，T-1628）。表头（与 `serializeCsv` 逐字段一致）：
 
 ```csv
 eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
@@ -42,7 +42,7 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 | 通道 | 入口 | 格式要点 | 幂等与安全 |
 | --- | --- | --- | --- |
 | JSON 备份恢复 | 设置 → 导入 JSON | 本插件导出的 JSON（v2/v3） | 恢复点先行；恢复审计 |
-| CSV 记录导入 | 设置 → 导入 CSV | 表头需含 `名称`、`日期`；可选 `数值`、`单位` | `source=import`；按 项目+日期+值+单位 去重；确认框先行 |
+| CSV 记录导入 | 设置 → 导入 CSV | 表头需含 `名称`/`itemName`、`日期`/`date`/`localDate`（兼容本插件导出表头全集）；可选 `数值`、`单位`；日期为真实日历校验（`2026-02-30` 拒绝）；引号字段可跨行；单文件 ≤ 20000 行 | `source=import`；按 项目+日期+值+单位 去重（重复导入幂等）；无效行计数进确认框；确认框先行 |
 | Loop CSV | 设置 → 从 Loop 导入 | Habits.csv +/或 Checkmarks.csv（可多选） | YES_NO 完成日导入；数值习惯仅建项目；SKIP 日不迁移（见降级说明）；确认框先行 |
 | Obsidian 习惯文件 | 设置 → 从 Obsidian 导入 | Habit Tracker 21 习惯 `.md`（frontmatter `entries` 完成日数组，可多选） | 每日二值项目 + `source=import` 事件；`externalRef=obsidian21:<文件名>:<日期>` 幂等；外部身份与同日双重去重；确认框先行；颜色与 maxGap 容忍不迁移 |
 
