@@ -8,11 +8,11 @@
 
 把一次行动记录下来，再用同一份可追溯数据完成统计、提醒、复盘和笔记联动。
 
-**当前版本：18.15.0**
+**当前版本：18.16.0**
 
-18.15.0 交付「导入体验与小驴系列」微批：CSV 导入错误行逐行明细（行号+原因）；小驴系列四款插件加一句话定位表格。后续重点是真机验收、Task Horizon 等生态联调与按实际问题立项的小步迭代；进度见 [PROGRESS](PROGRESS.md)。
+18.16.0 交付「事项页体验修复」微批：事项页表单抽屉滚动改为仅移动端定位 + instant 行为（消除点击「+」后 smooth 滚动引发的纵向位移感知）；统一文档选择器扩展至问卷卡 doc 模式与叶归笔记本卡；五张目标卡退役 settings-row 复用类。后续重点是真机验收、Task Horizon 等生态联调与按实际问题立项的小步迭代；进度见 [PROGRESS](PROGRESS.md)。
 
-[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.15.0 发布说明](docs/releases/release-notes-18.15.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
+[最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.16.0 发布说明](docs/releases/release-notes-18.16.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
 
@@ -50,10 +50,19 @@
 | **归档** | 搜索、恢复或删除不再参与今日计划的项目；归档不会删除历史事件。 |
 | **设置** | 管理主题、语言、减少动效、默认打开方式、日记/笔记联动、第三方来源、备份恢复、诊断、审计和显示偏好。 |
 
-### 18.14.0 重点
+### 18.16.0 重点
+
+- **事项页表单滚动修复**：表单抽屉滚动改为仅移动端定位 + instant 行为，消除点击「+」后 smooth 滚动引发的纵向位移感知。
+- **统一文档选择器扩展**：问卷卡 doc 模式与叶归笔记本卡接入统一选择器；五张目标卡退役 `settings-row` 复用类。
+- **CSV 导入错误明细**：导入时无效行返回行号与原因（名称缺失/日期无效/数值无效），上限前 10 条。
+- **设置页字体层级**：分组折叠头字重归一（640→650 strong 档）；三档探针留档确认跨档一致。
+
+<details>
+<summary>18.14.0 重点</summary>
 
 - **CSV 截断警告**：导入超 20000 行上限的文件时确认前显示双语截断警告，不再静默丢弃。
 - **类型安全**：`reminder-projection` 消除最后两处 `as any` 类型断言（改用 Record 类型安全断言）。
+</details>
 
 <details>
 <summary>18.13.0 重点</summary>
