@@ -40,6 +40,22 @@ for (const [key, zhText] of zh) {
 assert.equal(mismatches, 0, `${mismatches} keys have mismatched placeholders`);
 
 
+/* T-1615：代码引用键 ∈ 词典——src 全部 t("字面量") 必须存在于双语词典，
+   杜绝缺键回退泄漏原始键名（i18n-parity 既有职责只查词典内部，此处补代码侧）。 */
+const dictKeys = new Set([...zh.keys(), ...en.keys()]);
+const missingRefs = [];
+const nodePath = require("node:path");
+const srcRoot = nodePath.resolve(__dirname, "..", "src");
+const tCallPattern = /\bt\(\s*["']([a-zA-Z][\w]*(?:\.[\w]+)+)["']/g;
+for (const entry of fs.readdirSync(srcRoot, {recursive: true})) {
+    const file = String(entry).replace(/\\/g, "/");
+    if (!file.endsWith(".ts") || file === "i18n.ts") continue;
+    const text = fs.readFileSync(nodePath.join(srcRoot, file), "utf8");
+    for (const match of text.matchAll(tCallPattern)) {
+        if (!dictKeys.has(match[1])) missingRefs.push(file + ": " + match[1]);
+    }
+}
+assert.equal(missingRefs.length, 0, missingRefs.length ? "code-referenced keys missing from dict: " + missingRefs.slice(0, 8).join("; ") : "all code-referenced keys exist");
 /* T-1623：t() 全量替换契约——同一占位符出现多次时全部替换，不得残留字面占位符。 */
 const os = require("node:os");
 const path = require("node:path");

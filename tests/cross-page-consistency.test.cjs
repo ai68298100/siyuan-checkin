@@ -145,6 +145,21 @@ try {
         assert.match(review, /charts\.unitRecords/, "单位条/天映射本地化");
     });
 
+    check("target cards opt out of the two-column row grid at every width (T-1615)", () => {
+        const components = read("src", "ui", "components.scss");
+        /* 全档位豁免规则：(0,4,0) 特异性压过无条件两列行栅格（maintenance 层），
+           三类目标卡在任何容器宽度保持单列卡面（此前 ≥720 摘要被逐字竖排）。 */
+        assert.match(components, /\.lc-checkin\.lc-checkin--settings \.lc-checkin__settings-row:is\(\.lc-checkin__document-target-card, \.lc-checkin__journal-target-card, \.lc-checkin__notebook-target-card\)/, "card exemption rule present");
+        const exemption = components.slice(components.indexOf(".lc-checkin.lc-checkin--settings .lc-checkin__settings-row:is(.lc-checkin__document-target-card"));
+        assert.match(exemption, /grid-template-columns: minmax\(0, 1fr\);/, "exemption forces single column");
+        assert.ok(exemption.indexOf("border-bottom-width: 1px;") > -1, "row-level border leak is reset");
+        /* 长目标摘要附 title 全值。 */
+        assert.match(settings, /data-target-summary-label="\$\{escapeHtml\(docId\)\}" title="\$\{escapeHtml\(label\)\}"/, "target summary exposes full value via title");
+        /* 缺失键改接既有键：今日清除筛选复用 today.clearFilter（不再引用不存在的 common.clearFilter）。 */
+        assert.match(fragments, /t\("today\.clearFilter"\)/, "today clear-search reuses the existing key");
+        assert.doesNotMatch(fragments, /common\.clearFilter/, "the phantom key must stay retired");
+    });
+
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
         /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
         assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");

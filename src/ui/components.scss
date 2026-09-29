@@ -10791,6 +10791,30 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
         .lc-checkin__notebook-target-card .lc-checkin__document-target-actions > button { width: auto; }
     }
 }
+
+/* T-1615（D-322）：目标卡全档位豁免「标签|控件」两列行栅格——无条件行规则
+   （maintenance 层 (0,3,0)）曾把整卡与其后代行塞进 240px 窄列致摘要逐字竖排。
+   两条规则必须保持顶层绝对形态（不得嵌套进 .lc-checkin--settings 块——卡/行元素
+   本身没有 lc-checkin/--settings 类，嵌套会前置祖先条件导致永不匹配）：
+   (0,4,0) 在所有容器宽度压回单列。卡片本体复位卡面间隙/字号/下边距；
+   后代行只复位栅格与分隔线（padding 沿用行基线，不吃卡面 12px）。 */
+.lc-checkin.lc-checkin--settings .lc-checkin__settings-row:is(.lc-checkin__document-target-card, .lc-checkin__journal-target-card, .lc-checkin__notebook-target-card) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    border-bottom-width: 1px;
+    font-size: 12.5px;
+}
+.lc-checkin.lc-checkin--settings :is(.lc-checkin__document-target-card, .lc-checkin__journal-target-card, .lc-checkin__notebook-target-card) .lc-checkin__settings-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 10px;
+    border-bottom-width: 1px;
+    font-size: 12.5px;
+}
 .review-batch-tools { display: grid; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--lc-checkin-border-strong); }
 .review-batch-tools > strong { font-size: 13px; }
 .review-batch-items { display: flex; flex-wrap: wrap; gap: 6px 12px; max-height: 148px; overflow: auto; }

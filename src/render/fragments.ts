@@ -512,7 +512,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
             </div>` : !visibleItems.length ? `
             <div class="lc-checkin__today-search-empty">
                 <span>⌕</span><strong>${t("today.searchEmpty")}</strong><small>${t("today.searchEmptyHint")}</small>
-                <button class="lc-checkin__text-button" type="button" data-action="clear-search">${t("common.clearFilter")}</button>
+                <button class="lc-checkin__text-button" type="button" data-action="clear-search">${t("today.clearFilter")}</button>
             </div>` : `${pendingItems.length
             ? renderTodayGroupsView(pendingItems, now, ctx)
             : `<div class="lc-checkin__all-done"><span>✓</span><strong>${emptyProgressTitle}</strong></div>`}
