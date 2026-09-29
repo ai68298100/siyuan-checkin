@@ -5007,7 +5007,9 @@ this.scheduleMidnightRefresh();
                 const names = [...new Set(parsed.rows.map((row) => row.name))];
                 if (!parsed.rows.length) { showMessage(t("msg.csvEmpty")); return; }
                 const skip = parsed.invalid;
+                if (parsed.truncated) showMessage(t("msg.csvTruncated"), 4200);
                 if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
+                if (parsed.truncated) showMessage(t("msg.csvTruncated"), 4200);
                 const report = this.importCsvRows(parsed.rows);
                 await this.persist();
                 showMessage(t("msg.csvDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
