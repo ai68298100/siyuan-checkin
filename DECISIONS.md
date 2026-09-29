@@ -1,5 +1,12 @@
 # 决策
 
+## D-324：多 root 独立页面采用「RootContext Map + 宿主 currentPage 代理层」渐进策略（2026-09-30）
+
+- T-1621 剩余的架构设计定稿：引入 per-root RootContext Map（HTMLElement→{page,returnTo}），renderInto 按 root 取页面；宿主 currentPage 保留为最后活跃 root 的代理层（现有代码零改动）；导航函数加可选 root 参数（有 root 只改该 root，无 root 改所有）。
+- 会话态三层分表：宿主级（editingId/store/preferences）不动；Root 级（page/scroll/renderedPages）已按 root 隔离；会话级（todayQuery/collapsedGroups 等）首批不迁（改动大/收益低）。
+- 三步渐进：步骤一引入核心 Map+代理→步骤二评估折叠态迁移→步骤三滚动复合键。风险：双写不一致（代理层缓解）、dock 不存在（纯页签行为不变）。设计稿 docs/multi-root-page-design-2026-09-30.md。
+
+
 ## D-323：文档目标选择器统一为「单搜索框 + 候选行列表」，旧双框退役（2026-09-30）
 
 - T-1616 第一批实施口径：三张文档目标卡（日记/摘要/健康）统一 `documentChoiceBlock`——单一搜索框（role=combobox）+ 候选行列表（role=listbox，名称/路径双行预览行，键盘 ↓ 聚焦首项、列表内 ↑/↓ 环选、Enter 选中、Esc 收起，IME 组合态安全），候选经既有 `searchBindingDocuments`（searchDocs 有界 50）+ 纯投影 `toDocumentChoiceRows`（id 去重、名称回落块 ID、路径裁剪）。
