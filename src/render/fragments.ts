@@ -6,7 +6,7 @@ import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashbo
 import {buildTodayItemFact} from "../features/today-fact";
 import {abstinenceMilestones} from "../features/pace-projection";
 import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
-import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel} from "../shared";
+import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel, safeAttachmentUrl} from "../shared";
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {buildThisDayHistory} from "../features/this-day-history";
 import {buildWeekLoadPreview} from "../features/week-load";
@@ -251,7 +251,7 @@ export function renderItemView(item: CheckinItem, date: Date, ctx: TodayItemCont
                 ${isBinary ? "" : `<div class="lc-checkin__item-progress"><span style="width: ${percent}%"></span></div>`}
             </div>
             <div class="lc-checkin__item-action">
-                ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${t("item.select", {name: item.name})}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : `
+                ${ctx.bulkMode ? `<button class="lc-checkin__bulk-check${ctx.bulkSelected.has(item.id) ? " is-selected" : ""}" type="button" data-bulk-check="${escapeHtml(item.id)}" aria-pressed="${ctx.bulkSelected.has(item.id)}" aria-label="${escapeHtml(t("item.select", {name: item.name}))}">${ctx.bulkSelected.has(item.id) ? "✓" : ""}</button>` : `
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="insights" aria-label="${t("item.insightsAria", {name: item.name})}" title="${t("item.insightsTitle")}">${uiIcon("insight")}</button>
                 ${item.journal?.templateId ? `<button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="journal" data-journal-template="${escapeHtml(item.journal.templateId)}" aria-label="${t("journal.recordLabel")} · ${escapeHtml(item.name)}" title="${t("journal.recordLabel")}">${uiIcon("edit")}</button>` : ""}
                 <button class="lc-checkin__small-button lc-checkin__item-secondary-action" type="button" data-action="edit" aria-label="${t("item.editAria", {name: item.name})}" title="${t("item.editAria", {name: item.name})}">${uiIcon("edit")}</button>
@@ -342,13 +342,14 @@ export function renderCheckinLogView(events: readonly CheckinEvent[], items: rea
             const time = (event: CheckinEvent) => new Date(event.occurredAt).toLocaleTimeString(getPluginLocale(), {hour: "2-digit", minute: "2-digit"});
             if (events.length === 1) {
                 const event = first;
-                const thumb = event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
+                /* T-1625：附件 URL 经安全门（协议白名单+转义），不通过则不渲染缩略图。 */
+                const thumb = safeAttachmentUrl(event.attachment) ? `<img class="lc-checkin__log-thumb" src="${safeAttachmentUrl(event.attachment)}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
                 /* T-1490 信任层：自动完成在日志行呈现来源徽标（原因与撤销在回顾页历史行）。 */
                 const trust = buildRecordTrust(event);
                 const badge = trust.auto ? ` · <span class="lc-checkin__source-badge">${escapeHtml(t(trust.sourceKey))}</span>` : "";
                 return `<div class="lc-checkin__log-row${event.attachment ? " has-thumb" : ""}">${thumb}<span class="lc-checkin__log-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><div class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${time(event)}${badge}${event.note ? " · " + escapeHtml(event.note) : ""}</small></div><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span></div>`;
             }
-            const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${event.attachment ? `<img class="lc-checkin__log-thumb" src="${event.attachment}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`);
+            const eventRows = events.map((event) => `<div class="lc-checkin__log-subrow${event.attachment ? " has-thumb" : ""}">${safeAttachmentUrl(event.attachment) ? `<img class="lc-checkin__log-thumb" src="${safeAttachmentUrl(event.attachment)}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : ""}<time>${time(event)}</time><span>${event.note ? escapeHtml(event.note) : t("review.logNoNote")}</span><strong>${escapeHtml(formatNumber(event.value))}${escapeHtml(event.unit)}</strong></div>`);
             return `<details class="lc-checkin__log-group"><summary><span class="lc-checkin__log-icon" aria-hidden="true">${renderIconMarkup(icon)}</span><span class="lc-checkin__log-main"><strong>${escapeHtml(name)}</strong><small>${t("review.logEntries", {n: events.length})} · ${time(events[0])}–${time(events[events.length - 1])}</small></span><span class="lc-checkin__log-value">${escapeHtml(formatNumber(total))}${escapeHtml(first.unit)}</span><i aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-group-events">${renderRowBatches(eventRows, "review.logMoreEntries")}</div></details>`;
         });
         return `<details class="lc-checkin__log-day is-folded"${open ? " open" : ""}><summary><h3>${escapeHtml(formatHistoryDate(day))}<span class="lc-checkin__log-day-count">${t("review.logDayCount", {n: eventsForDay.length})}</span></h3><i class="lc-checkin__fold-chevron" aria-hidden="true">⌄</i></summary><div class="lc-checkin__log-day-body">${renderRowBatches(rows, "review.logMoreItems")}</div></details>`;

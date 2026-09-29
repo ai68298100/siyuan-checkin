@@ -87,6 +87,8 @@ const dependencies = {
         calendarDateFromKey: key => new Date(key), currentCalendarDate: () => new Date("2026-09-20T12:00:00"),
         captureActionMoment: () => ({occurredAt: "2026-09-20T04:00:00Z", localDate: "2026-09-20"}),
         getRecordStep: (_kind, _unit, step) => step,
+        /* T-1625：菜单项 t() 输出转义所需。 */
+        escapeHtml: value => String(value).replace(/[&<>'"]/g, character => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"})[character]),
     },
 };
 const bindings = {};

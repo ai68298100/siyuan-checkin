@@ -1,5 +1,10 @@
 # 决策
 
+## D-317：动态内容安全渲染四类边界——转义归转义、URL 校验归校验（2026-09-30）
+
+- T-1625 第一批确立的边界契约：①HTML 文本节点与属性/ARIA 值——用户内容（item/event/attachment 名等）进 HTML 前必须 `escapeHtml`，含经 `t()` 中转的场景（t() 只做纯文本替换、永不转义，调用方对含用户参数的结果自行转义）；纯字典文本的 t() 输出按既有形态保持。②URL 值（src/href）——转义不等于校验：`safeAttachmentUrl`（shared，与 renderIconMarkup 同一协议白名单：data:image/、blob:、https:、http:、无协议相对路径）先做协议门再转义，不通过返回空串不渲染；`javascript:`/`data:text/html` 等永不进入属性。③附件 URL 的摄取侧白名单（normalizeStore 仍接受任意 data:image/ 字符串）与渲染侧门是两层防线，渲染门已立，摄取收紧留后续评估。④`renderRecordNote` 的块链接 span 富文本路径保持既有（URL/label 均已转义）。
+- 覆盖范围：本批修复审计点名的 fragments 附件缩略图×2（src 注入实锤）、bulk-check aria、today-bindings 上下文菜单（innerHTML 注入实锤）；editor/archived/review 点名点位复核均为已转义形态。**全量 t({name}) 类扫尾与敌意 fixture 的全表面扩展是 T-1625 的剩余切片**，按页推进不一次铺开。
+
 ## D-316：template-manager 为未接线遗留原型，本轮不接不删、退役另立清理批（2026-09-30）
 
 - T-1623 复核结论：`src/features/template-manager.ts` 整块硬编码中文，但**生产零导入**（全仓无任何模块引用；现行「我的模板」能力在编辑器区且已双语），仅样式（components.scss 遗留类）与 3 处测试引用（template-manager/legacy-style-audit/ui-theme）存在。定性=未接线遗留原型。

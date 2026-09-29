@@ -4,7 +4,7 @@
 import {t} from "../i18n";
 import {getItemRevisionForDate, getEventsForDay, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, dateKey} from "../model";
 import {getQuickTodayItems} from "../plugin-ops";
-import {calendarDateFromKey, captureActionMoment, currentCalendarDate, getRecordStep} from "../shared";
+import {calendarDateFromKey, captureActionMoment, currentCalendarDate, escapeHtml, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
 import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
 import {getActiveItemById, getItemById} from "../model";
@@ -240,8 +240,9 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         const skippedToday = scheduledToday && !completeToday
             && getEventsForDay(host.store, item.id, actionDate).some((event) => isSkipEvent(event));
         const menuItems = [
-            `<button type="button" role="menuitem" data-menu-action="edit">${t("item.editAria", {name: item.name})}</button>`,
-            `<button type="button" role="menuitem" data-menu-action="insights">${t("item.insightsTitle")}</button>`,
+            /* T-1625：item.name 是用户内容，经 t() 拼进 HTML 前必须转义（t() 只做纯文本替换）。 */
+            `<button type="button" role="menuitem" data-menu-action="edit">${escapeHtml(t("item.editAria", {name: item.name}))}</button>`,
+            `<button type="button" role="menuitem" data-menu-action="insights">${escapeHtml(t("item.insightsTitle"))}</button>`,
             ...(scheduledToday && !completeToday ? [skippedToday
                 ? `<button type="button" role="menuitem" data-menu-action="unskip">${t("today.unskipToday")}</button>`
                 : `<button type="button" role="menuitem" data-menu-action="skip">${t("today.skipToday")}</button>`] : []),

@@ -78,6 +78,18 @@ export function renderIconMarkup(value: string): string {
     return escapeHtml(value);
 }
 
+/* T-1625：附件/外链 URL 的渲染侧安全门（与 renderIconMarkup 同一协议白名单）——
+   仅放行 data:image/、blob:、https:、http: 与无协议相对路径，其余（javascript:、
+   data:text/html 等）返回空串不渲染；放行值经 escapeHtml 防属性逃逸。
+   本函数只负责 URL 值本身；同标签的其他属性仍须调用方自行 escapeHtml。 */
+export function safeAttachmentUrl(url: string | undefined): string {
+    const value = typeof url === "string" ? url.trim() : "";
+    if (!value) return "";
+    if (/^(?:data:image\/|blob:|https:\/\/|http:\/\/)/i.test(value)) return escapeHtml(value);
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return escapeHtml(value);
+    return "";
+}
+
 export function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     return new Promise<T>((resolve, reject) => {
         const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
