@@ -68,14 +68,28 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionToggle || "";
-        const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
-        if (item) void host.enqueueMutation(() => host.updateOccasion({...item, enabled: !item.enabled}));
+        /* T-1707（D-353）：锁内重读——点击只捕获 id，执行时取最新条目做字段级翻转，
+           队列等待期间其他入口/远端的改名改期不会被点击时的陈旧快照整对象覆盖。 */
+        if (!host.occasionStore.occasions.some((candidate) => candidate.id === id)) return;
+        void host.enqueueMutation(async () => {
+            const latest = host.occasionStore.occasions.find((candidate) => candidate.id === id);
+            if (!latest) return;
+            await host.updateOccasion({...latest, enabled: !latest.enabled});
+        });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionDelete || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
         if (!item || !window.confirm(t("msg.occasionDeleteConfirm"))) return;
-        void host.enqueueMutation(async () => { const previous = host.occasionStore; host.occasionStore = deleteOccasion(previous, id); try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); } if (host.editingOccasionId === id) host.editingOccasionId = undefined; host.render(); });
+        void host.enqueueMutation(async () => {
+            /* T-1707：锁内重读存在性（已删除则跳过）；删除冲突语义归 T-1721 墓碑方案。 */
+            const previous = host.occasionStore;
+            if (!previous.occasions.some((candidate) => candidate.id === id)) return;
+            host.occasionStore = deleteOccasion(previous, id);
+            try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); }
+            if (host.editingOccasionId === id) host.editingOccasionId = undefined;
+            host.render();
+        });
     }));
 
     /* T-1494：错过补标记（沿用既有按日期完成通道）+ 单次改期（内联日期行，确认后走宿主覆盖通道）。 */

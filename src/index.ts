@@ -7169,10 +7169,13 @@ this.scheduleMidnightRefresh();
         this.renderBackgroundUpdate();
     }
 
-    /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。 */
+    /* 11.0-C 延期/跳过/恢复：动作落独立存储（与打卡、事项数据隔离），低干扰提示后重渲染。
+       T-1707（D-353）：卸载门（disposed/disposing 不再发起写入）+ 写入挂 mutation 队列
+       等待完成——不再与事项持久化无序交错，拆卸期静默丢弃动作。 */
     reminderUserAction(id: string, action: "snooze" | "skip" | "restore" | "defer"): void {
-        if (!id) return;
+        if (!id || this.disposed || this.disposing) return;
         void (async () => {
+            await this.enqueueMutation(async () => {
             /* T-1622：动作前重读并入其他窗口已写回的记录（按 (id,action,at) 并集），
                本窗口写回不再覆盖对方动作；远端读取失败按本窗口记忆继续。 */
             try {
@@ -7195,17 +7198,19 @@ this.scheduleMidnightRefresh();
                 ? clearReminderUserActions(this.reminderUserActions, id)
                 : normalizeReminderUserActions([...this.reminderUserActions, actionRecord]);
             const serialized = serializeReminderUserActions(this.reminderUserActions);
-            void this.saveData(REMINDER_ACTIONS_NAME, serialized).then(() => {
+            try {
+                await this.saveData(REMINDER_ACTIONS_NAME, serialized);
                 this.render();
-            }).catch(() => {
+            } catch {
                 // Keep the reminder center consistent with durable state when the
                 // independent action store is unavailable.
                 this.reminderUserActions = previous;
                 showMessage(t("msg.saveFailedShort"));
                 this.render();
-            });
+            }
             const name = projectReminderCenter(this.store, this.occasionStore, new Date(), this.reminderUserActions, {advanceOnce: this.occasionRemindOnce}).find((entry) => entry.id === id)?.title;
             if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
+            });
         })();
     }
 
@@ -7222,14 +7227,16 @@ this.scheduleMidnightRefresh();
     /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
         持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
     private saveOccasionOverride(id: string, originalDate: string, newDate: string): void {
-        const previous = this.occasionStore;
-        const next = setOccasionOverride(previous, id, originalDate, newDate);
-        if (next === previous) {
-            showMessage(t("occ.moveInvalid"));
-            return;
-        }
-        this.occasionStore = next;
+        /* T-1707（D-353）：内存应用与持久化全程入锁、基于锁内最新 store 计算 next——
+           不再先改内存再入队（与队列中其他写入交错时避免基于陈旧引用的回滚覆盖）。 */
         void this.enqueueMutation(async () => {
+            const previous = this.occasionStore;
+            const next = setOccasionOverride(previous, id, originalDate, newDate);
+            if (next === previous) {
+                showMessage(t("occ.moveInvalid"));
+                return;
+            }
+            this.occasionStore = next;
             try {
                 await this.persistOccasions();
                 showMessage(t("occ.moveDone", {date: newDate}));
