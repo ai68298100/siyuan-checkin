@@ -20,6 +20,8 @@ export interface BindOccasionsHost {
         绑定期恢复（值/编辑目标匹配时）；baseUpdatedAt 用于检测远端更新同事项的
         冲突（confirm：保留草稿继续编辑 / 载入远端数据）。不跨插件重载保留。 */
     occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
+    /** T-1714：搜索渲染的卸载门（拆卸期不再重绘）。 */
+    disposing?: boolean;
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
@@ -52,11 +54,29 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = undefined; host.occasionDraft = undefined; host.render(); revealOccasionForm(); }));
     /* T-1708：取消=显式放弃草稿。 */
     root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { host.editingOccasionId = undefined; host.occasionDraft = undefined; host.render(); });
-    root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {
-        host.occasionSearchQuery = (event.currentTarget as HTMLInputElement).value;
+    /* T-1714（D-357）：事项搜索 IME 与光标保护——组合期间不重绘（吞组合态），
+       组合结束才应用；非组合输入保留光标位（旧实现强制跳末尾）；
+       旧节点/卸载不渲染。query 本就宿主字段，往返自动恢复。 */
+    const occasionSearch = root.querySelector<HTMLInputElement>("[data-occasion-search]");
+    let occasionComposing = false;
+    const applyOccasionSearch = (input: HTMLInputElement) => {
+        if (!input.isConnected || host.disposing) return;
+        host.occasionSearchQuery = input.value;
+        const caret = input.selectionStart;
         host.render();
-        const searchInput = root.querySelector<HTMLInputElement>("[data-occasion-search]");
-        if (searchInput) { searchInput.focus(); searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length); }
+        const next = root.querySelector<HTMLInputElement>("[data-occasion-search]");
+        if (next) {
+            next.focus();
+            const position = caret === null ? next.value.length : Math.min(caret, next.value.length);
+            next.setSelectionRange(position, position);
+        }
+    };
+    occasionSearch?.addEventListener("compositionstart", () => { occasionComposing = true; });
+    occasionSearch?.addEventListener("compositionend", () => { occasionComposing = false; applyOccasionSearch(occasionSearch); });
+    occasionSearch?.addEventListener("input", (event) => {
+        const input = event.currentTarget as HTMLInputElement;
+        if (occasionComposing || (event as InputEvent).isComposing) return;
+        applyOccasionSearch(input);
     });
     root.querySelectorAll<HTMLSelectElement>("[data-occasion-filter]").forEach((select) => select.addEventListener("change", () => {
         const key = select.dataset.occasionFilter;
