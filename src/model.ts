@@ -2,9 +2,9 @@ import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinI
 import {normalizeQuickSteps, normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
 import {calendarDayNumber} from "./date-keys";
-import {deriveQuotaAutoDays, evaluateQuotaSchedule, evaluateRule, getItemRevisionForDate, type RuleProgress} from "./rules";
+import {deriveQuotaAutoDays, evaluateQuotaSchedule, evaluateRule, getItemDirectionForDate, getItemRevisionForDate, type RuleDirection, type RuleProgress} from "./rules";
 
-export {getItemRevisionForDate} from "./rules";
+export {getItemDirectionForDate, getItemRevisionForDate} from "./rules";
 
 /* D-216：v3 引入跳过事件（CheckinEvent.kind）。normalizeStore 读入时重打当前
    版本号，v2 数据在「加载→归一→下次持久化」中自动升级，无需独立迁移器。 */
@@ -545,32 +545,11 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
         const tolerance = streakToleranceFor(item, todayDate);
         const skipDays = getSkipDatesForItem(store, item.id);
         /* T-1239（D-219）：at-most 被动戒除——连续 = 连续无破戒日；
-           破戒日断链、跳过日桥接、回溯止于项目创建日；无事件不等于中断。 */
-        if (item.direction === "atMost") {
-            const createdDate = item.createdDate;
-            let lapseStreak = 0;
-            let guard = 0;
-            const check = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate(), 12);
-            while (guard < 36500) {
-                guard += 1;
-                const key = dateKey(check);
-                if (key < createdDate) break;
-                const dayEvents = getEventsForDay(store, item.id, check);
-                const hasLapse = dayEvents.some((event) => !isSkipEvent(event));
-                if (hasLapse) break;
-                const skipped = dayEvents.some((event) => isSkipEvent(event));
-                if (!skipped) lapseStreak += 1;
-                check.setDate(check.getDate() - 1);
-            }
-            streaks.set(item.id, lapseStreak);
-            continue;
-        }
+           破戒日断链、跳过日桥接、回溯止于项目创建日；无事件不等于中断。
+           T-1766：方向按当日修订取值；方向纪元切换（普通↔戒除）重置连击，
+           不以另一纪元的规则解读对方的历史。锚点规则不变：至少型的今日未记录
+           不算断链（今日尚在进行中），戒除型从今日直接回溯。 */
         const days = getEventDatesForItem(store, item.id);
-        if (!days.size && !skipDays.size) {
-            streaks.set(item.id, 0);
-            continue;
-        }
-        /* eventDates 含跳过日，真实完成日需剔除跳过日（同日并存按完成计）。 */
         const realDays = new Set([...days].filter((key) => !skipDays.has(key)));
         const autoCache = new Map<string, boolean>();
         const isAuto = (key: string): boolean => {
@@ -584,23 +563,34 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
             autoCache.set(key, result);
             return result;
         };
-        /* 锚点从「今天有完成/跳过/自动补全」开始；全部为空的链条 streak 为 0。 */
-        const startKey = realDays.has(today) || skipDays.has(today) || isAuto(today) ? today : yesterday;
-        if (!realDays.has(startKey) && !skipDays.has(startKey) && !isAuto(startKey)) {
+        const todayAtMost = getItemDirectionForDate(item, todayDate) === "atMost";
+        const startKey = todayAtMost || realDays.has(today) || skipDays.has(today) || isAuto(today) ? today : yesterday;
+        if (!todayAtMost && !realDays.has(startKey) && !skipDays.has(startKey) && !isAuto(startKey)) {
             streaks.set(item.id, 0);
             continue;
         }
         let streak = 0;
         let gap = 0;
         let guard = 0;
+        let eraDirection: RuleDirection | undefined;
         const check = new Date(Number(startKey.slice(0, 4)), Number(startKey.slice(5, 7)) - 1, Number(startKey.slice(8, 10)), 12);
         while (guard < 36500) {
             guard += 1;
             const key = dateKey(check);
-            if (realDays.has(key)) {
+            if (key < item.createdDate) break;
+            const direction = getItemDirectionForDate(item, check);
+            if (eraDirection !== undefined && direction !== eraDirection) break;
+            eraDirection = direction;
+            const dayEvents = getEventsForDay(store, item.id, check);
+            const hasReal = dayEvents.some((event) => !isSkipEvent(event));
+            const skipped = dayEvents.some((event) => isSkipEvent(event));
+            if (direction === "atMost") {
+                if (hasReal) break;
+                if (!skipped) streak += 1;
+            } else if (hasReal) {
                 streak += 1;
                 gap = 0;
-            } else if (skipDays.has(key)) {
+            } else if (skipped) {
                 /* 跳过日中性桥接：不加成、不断链，也不消耗容错缺口。 */
             } else if (isAuto(key)) {
                 streak += 1;
@@ -620,7 +610,8 @@ export function computeEventStreaks(store: CheckinStore, asOf = new Date()): Map
 /** T-1409 容错连续：每项目 opt-in 的漏打容错天数（1~30）；at-most 与 quota 排期沿用
     各自现有口径（无破戒日/周期派生），不叠加容错。缺省/0 = 严格断链（历史行为）。 */
 function streakToleranceFor(item: CheckinItem, asOf: Date): number {
-    if (item.direction === "atMost") return 0;
+    /* T-1766：方向按当日修订取值。 */
+    if (getItemDirectionForDate(item, asOf) === "atMost") return 0;
     if (getItemRevisionForDate(item, asOf).schedule.type === "quota") return 0;
     const tolerance = Math.floor(Number(item.streakTolerance));
     return Number.isFinite(tolerance) && tolerance >= 1 ? Math.min(30, tolerance) : 0;
@@ -639,28 +630,6 @@ export function computeLongestStreaks(store: CheckinStore, asOf = new Date()): M
             continue;
         }
         const skipDays = getSkipDatesForItem(store, item.id);
-        if (item.direction === "atMost") {
-            let run = 0;
-            let max = 0;
-            let guard = 0;
-            const check = new Date(Number(item.createdDate.slice(0, 4)), Number(item.createdDate.slice(5, 7)) - 1, Number(item.createdDate.slice(8, 10)), 12);
-            while (guard < 36500) {
-                guard += 1;
-                const key = dateKey(check);
-                if (key > today) break;
-                const dayEvents = getEventsForDay(store, item.id, check);
-                const hasLapse = dayEvents.some((event) => !isSkipEvent(event));
-                if (hasLapse) {
-                    run = 0;
-                } else if (!dayEvents.some((event) => isSkipEvent(event))) {
-                    run += 1;
-                    max = Math.max(max, run);
-                }
-                check.setDate(check.getDate() + 1);
-            }
-            longest.set(item.id, max);
-            continue;
-        }
         const days = getEventDatesForItem(store, item.id);
         const realDays = new Set([...days].filter((key) => !skipDays.has(key)));
         const autoCache = new Map<string, boolean>();
@@ -683,17 +652,36 @@ export function computeLongestStreaks(store: CheckinStore, asOf = new Date()): M
         let max = 0;
         let gap = 0;
         let guard = 0;
+        let eraDirection: RuleDirection | undefined;
         const tolerance = streakToleranceFor(item, todayDate);
         const check = new Date(Number(item.createdDate.slice(0, 4)), Number(item.createdDate.slice(5, 7)) - 1, Number(item.createdDate.slice(8, 10)), 12);
         while (guard < 36500) {
             guard += 1;
             const key = dateKey(check);
             if (key > today) break;
-            if (realDays.has(key)) {
+            /* T-1766：方向按当日修订取值；方向纪元切换清零当前段（各纪元只按自己的规则计链）。 */
+            const direction = getItemDirectionForDate(item, check);
+            if (eraDirection !== undefined && direction !== eraDirection) {
+                run = 0;
+                gap = 0;
+            }
+            eraDirection = direction;
+            const dayEvents = getEventsForDay(store, item.id, check);
+            const hasReal = dayEvents.some((event) => !isSkipEvent(event));
+            const skipped = dayEvents.some((event) => isSkipEvent(event));
+            if (direction === "atMost") {
+                if (hasReal) {
+                    run = 0;
+                    gap = 0;
+                } else if (!skipped) {
+                    run += 1;
+                    max = Math.max(max, run);
+                }
+            } else if (realDays.has(key)) {
                 run += 1;
                 gap = 0;
                 max = Math.max(max, run);
-            } else if (skipDays.has(key)) {
+            } else if (skipped) {
                 /* 跳过日中性桥接:不加成、不断链。 */
             } else if (isAuto(key)) {
                 run += 1;
@@ -789,13 +777,15 @@ function atLeastWithTolerance(progress: number, target: number): boolean {
 export function isComplete(store: CheckinStore, item: CheckinItem, date = new Date()): boolean {
     const revision = getItemRevisionForDate(item, date);
     const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || 0 : revision.target;
+    /* T-1766：方向取当日修订（getItemDirectionForDate），普通↔戒除切换不追溯改写旧日。 */
+    const direction = getItemDirectionForDate(item, date);
     /* D-219：完成语义见 evaluateDayCompletion（与洞察投影共用的唯一公式）。 */
     return evaluateDayCompletion({
-        direction: item.direction,
+        direction: direction === "atMost" ? "atMost" : undefined,
         kind: revision.kind,
         progress: getProgress(store, item, date),
         target,
-        skipped: item.direction === "atMost" && getSkipDatesForItem(store, item.id).has(dateKey(date)),
+        skipped: direction === "atMost" && getSkipDatesForItem(store, item.id).has(dateKey(date)),
     });
 }
 
@@ -918,7 +908,7 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
     const recordStep = normalizeRecordStep(kind, value.recordStep);
     /* T-1462 数值快捷增量：仅数值/时长项目物化（≤4 个正数升序）；缺省不写字段。 */
     const quickSteps = normalizeQuickSteps(kind, value.quickSteps);
-    const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, ...(recordStep ? {recordStep} : {}), schedule: cloneSchedule(schedule)};
+    const fallbackRevision: CheckinItemRevision = {effectiveDate: createdDate, kind, target, unit, ...(recordStep ? {recordStep} : {}), direction: direction === "atMost" ? "atMost" : "atLeast", schedule: cloneSchedule(schedule)};
     const archivePeriods = normalizeArchivePeriods(value.archivePeriods);
     archivePeriods.sort((left, right) => compareText(left.startDate, right.startDate)
         || compareText(left.endDate || "", right.endDate || ""));
@@ -1135,6 +1125,9 @@ function normalizeRevisions(value: unknown, fallback: CheckinItemRevision): Chec
                 target,
                 unit,
                 ...(recordStep ? {recordStep} : {}),
+                /* T-1766：修订级方向全物化——历史修订缺 direction 时按项目顶层方向回填
+                   （旧数据"历史按当前方向判定"的语义零迁移）；显式值原样保留。 */
+                direction: candidate.direction === "atMost" || candidate.direction === "atLeast" ? candidate.direction : fallback.direction,
                 schedule: normalizeSchedule(candidate.schedule),
             };
             const existing = revisions.get(revision.effectiveDate);

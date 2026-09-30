@@ -12,7 +12,7 @@
    collectHabitScoreDays 是有界窗口的 store 投影器，供 UI 复用同一入口
    （计分单一代码路径，T-1226/T-1227 消费同一实现）。 */
 
-import {dateKey, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
+import {dateKey, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
 import type {CheckinItem, CheckinSchedule, CheckinStore} from "../types";
 
 export interface HabitScoreFrequency {
@@ -115,10 +115,11 @@ export function collectHabitScoreDays(store: CheckinStore, item: CheckinItem, st
         const target = revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target;
         const complete = isComplete(store, item, cursor);
         const progress = getProgress(store, item, cursor);
-        /* D-219：at-most 完成日 1 分、破戒日 0 分（无部分完成概念）。 */
+        /* D-219：at-most 完成日 1 分、破戒日 0 分（无部分完成概念）。
+           T-1766：方向按当日修订取值，切换方向不追溯改写旧日得分。 */
         const completion = complete
             ? 1
-            : item.direction === "atMost" || target <= 0
+            : getItemDirectionForDate(item, cursor) === "atMost" || target <= 0
                 ? 0
                 : Math.min(1, Math.max(0, progress / target));
         days.push({

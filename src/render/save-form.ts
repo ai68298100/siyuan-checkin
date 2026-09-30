@@ -95,6 +95,9 @@ export async function saveEditorForm(
         target,
         unit,
         ...(recordStep ? {recordStep} : {}),
+        /* T-1766：方向显式进修订——本次保存起的方向变更只从生效日起算，不追溯旧日。
+           表单未勾选戒除（或排期非每日回落）时物化为 atLeast，与 normalize 的规范形逐键一致。 */
+        direction: direction === "atMost" ? "atMost" : "atLeast",
         schedule: {...schedule, weekdays: schedule.weekdays ? [...schedule.weekdays] : undefined},
     };
     const revisions: CheckinItemRevision[] = existing?.revisions.map((entry) => ({

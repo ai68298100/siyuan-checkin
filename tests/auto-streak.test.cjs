@@ -10,7 +10,7 @@ const read = (...parts) => fs.readFileSync(path.join(sourceRoot, ...parts), "utf
 /* 结构守门：连击走统一状态序列，AUTO 惰性推导仅对 quota 项。 */
 const modelSource = read("model.ts");
 assert.match(modelSource, /deriveQuotaAutoDays\(schedule, store\.events, item\.id, key, key, \{asOf: today\}\)/, "streak walk derives AUTO lazily per break day");
-assert.match(modelSource, /else if \(skipDays\.has\(key\)\)/, "skip days remain neutral bridges in the unified walk");
+assert.match(modelSource, /else if \(skipped\) \{/, "skip days remain neutral bridges in the unified walk (T-1766 per-day direction)");
 const achievementsSource = read("features", "achievements.ts");
 assert.match(achievementsSource, /getSkipDatesForItem\(store, item\.id\)\.has\(dateKey\(date\)\)/, "perfect-day denominator excludes skipped items");
 

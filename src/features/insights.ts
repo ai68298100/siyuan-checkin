@@ -1,4 +1,4 @@
-import {dateKey, evaluateDayCompletion, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
+import {dateKey, evaluateDayCompletion, getEventDateKey, getItemDirectionForDate, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./habit-score";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
@@ -120,12 +120,13 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const progress = quotaProgress?.progress ?? sumValues(events.filter((event) => event.unit === unit && !isSkipEvent(event)).map((event) => event.value));
         const isToday = key === endDate;
         const effectiveTarget = quotaProgress?.quota ?? target;
-        const atMost = item?.direction === "atMost";
+        /* T-1766：方向按当日修订取值，普通↔戒除切换后旧日格保持当时的口径。 */
+        const dayAtMost = item ? getItemDirectionForDate(item, date) === "atMost" : false;
         const skippedToday = events.some((event) => isSkipEvent(event));
         /* T-1609：完成判定走 model.evaluateDayCompletion 唯一公式（与 isComplete 同源）——
            戒除类二值零事件即守住、数值不超上限即守住、跳过日不算成功。 */
         const complete = evaluateDayCompletion({
-            direction: item?.direction,
+            direction: dayAtMost ? "atMost" : undefined,
             kind: revision?.kind || "binary",
             progress,
             target: effectiveTarget,
@@ -137,7 +138,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
         const status: HabitDayStatus = !available ? "unavailable"
             : !scheduled ? "off"
                 : complete ? "complete"
-                    : atMost && progress > 0 ? "missed"
+                    : dayAtMost && progress > 0 ? "missed"
                         : progress > 0 ? "partial"
                             : isToday ? "pending" : "missed";
         days.push({
@@ -150,7 +151,7 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
             closed: key < endDate,
             ...(skipped ? {skipped: true} : {}),
             kind: revision?.kind || "binary",
-            ...(atMost ? {direction: "atMost" as const} : {}),
+            ...(dayAtMost ? {direction: "atMost" as const} : {}),
             progress,
             target: effectiveTarget,
             unit,

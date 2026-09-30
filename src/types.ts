@@ -38,6 +38,10 @@ export interface CheckinItemRevision {
     unit: string;
     /** Amount recorded by the quick action for this revision. */
     recordStep?: number;
+    /** T-1766：该修订生效期的方向——完成判定、连击、洞察与投影按"当日修订的方向"取值，
+        普通↔戒除切换不再追溯改写旧日统计。normalizeItem 将缺失值按项目顶层方向回填为
+        "atLeast"/"atMost"（旧数据语义零迁移）；保存路径自 T-1766 起显式写入。 */
+    direction?: "atLeast" | "atMost";
     schedule: CheckinSchedule;
 }
 

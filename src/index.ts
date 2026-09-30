@@ -26,7 +26,7 @@ import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
 import {CHECKIN_API_NAME, CHECKIN_EVENT_NAMES, DOCK_TOMATO_ADAPTER_ID, emitIntegrationEvent} from "./integrations";
-import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
+import {appendEvent, appendEvents, computeLongestStreaks, appendStoreAudit, appendStoreSnapshotHistory, createDefaultStore, createEmptyStoreSnapshotHistory, createStoreSnapshotEnvelope, countCompletedDays, dateKey, deleteItemCascade, deleteItemsCascade, evaluateItemRule, getActiveItemById, getEventById, getEventsForDay, getEventsInDateRange, getItemById, getItemDirectionForDate, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, makeId, mergeNormalizedStores, normalizeItem as normalizeCheckinItem, normalizeStore, normalizeStoreAudit, parseStoreSnapshotHistoryExport, readStoreSnapshotHistory, removeEvents, type StoreAuditEntry} from "./model";
 import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
@@ -6041,7 +6041,7 @@ this.scheduleMidnightRefresh();
                     kind: revision.kind,
                     unit: revision.unit,
                     recordStep: revision.recordStep,
-                    atMost: item.direction === "atMost",
+                    atMost: getItemDirectionForDate(item, day) === "atMost",
                     hasJournal: Boolean(item.journal?.templateId),
                 };
             });
@@ -6097,7 +6097,7 @@ this.scheduleMidnightRefresh();
             const events: CheckinEvent[] = [];
             for (const item of this.store.items) {
                 if (!requested.has(item.id) || item.archived || !isItemAvailableOnDate(item, day) || !isScheduledToday(item, day)
-                    || getEventsForDay(this.store, item.id, day).length || action === "record" && item.direction === "atMost") continue;
+                    || getEventsForDay(this.store, item.id, day).length || action === "record" && getItemDirectionForDate(item, day) === "atMost") continue;
                 const revision = getItemRevisionForDate(item, day);
                 const value = action === "skip" ? 0 : revision.kind === "binary" ? 1 : Math.max(1, revision.target);
                 const event = this.makeEvent(item, value, "manual", revision.unit, undefined, undefined, moment);
@@ -6599,7 +6599,7 @@ this.scheduleMidnightRefresh();
             return;
         }
         const revision = getItemRevisionForDate(item, actionDate);
-        const binaryAtMost = item.direction === "atMost" && revision.kind === "binary";
+        const binaryAtMost = getItemDirectionForDate(item, actionDate) === "atMost" && revision.kind === "binary";
         // For a limiting binary habit the requested toggle state describes
         // whether a lapse is recorded, while isComplete describes avoidance.
         const complete = binaryAtMost
@@ -6648,7 +6648,7 @@ this.scheduleMidnightRefresh();
         if (!current || !revision || !isItemAvailableOnDate(current, actionDate)) {
             return undefined;
         }
-        if (revision.kind === "binary" && (current.direction === "atMost"
+        if (revision.kind === "binary" && (getItemDirectionForDate(current, actionDate) === "atMost"
             ? getEventsForDay(this.store, current.id, actionDate).some((event) => !isSkipEvent(event))
             : isComplete(this.store, current, actionDate))) {
             return undefined;

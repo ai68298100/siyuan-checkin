@@ -1,5 +1,13 @@
 # 决策
 
+## D-335：戒除方向进逐日修订，方向纪元切换重置连击（T-1766，2026-10-01）
+
+- 先以 git HEAD 修复前源码复现三向追溯改写：普通→戒除后，旧纪元空日被当前顶层方向误判为"守住"、旧纪元真实完成日被当破戒清零；戒除→普通后旧纪元零事件日被降级为未完成。根因是修订只含 kind/target/unit/schedule 而完成判定读顶层 direction。
+- 方案取"修订级方向全物化"：`CheckinItemRevision.direction` 物化为 `"atLeast"|"atMost"`，normalizeItem 把缺失的历史修订按项目**当时顶层**方向回填——旧数据加载即冻结现状语义（零迁移、不引入 v4）；save-form 自本决策起对新修订显式写入。不选"留空回退顶层"方案，因为无法区分"旧数据缺失"与"显式改为普通"，回填会在每次加载重放方向切换。
+- 连击语义：新增 `getItemDirectionForDate`（rules，model 再导出）为唯一方向来源；当前/最长连击改为逐日方向判定，方向纪元切换（普通↔戒除）清零当前段——不用另一纪元的规则解读对方历史。锚点规则（至少型今日未记录不断链）、跳过日中性桥接、T-1409 容错缺口、quota AUTO 惰性推导全部保持；同质项目行为与之前逐位一致（auto-streak/at-most/skip/insights/streak-tolerance 等守门全绿佐证）。
+- 消费面收口：isComplete、computeEventStreaks、computeLongestStreaks、streakToleranceFor、洞察日格（insights）、日历投影点（calendar-projection）、习惯分（habit-score）、批量补记快照与守卫、记录器与 Agent 切换（index.ts 6044/6100/6602/6651）改按当日方向；api-v5 的 at-most-item 阻断、achievements 项目级门、dock-tomato/coaching 今日门保持项目级（当前语义），T-1768 另行收口 Agent 二值破戒。at-most/auto-streak 的结构守门正则更新为按日助手契约。
+- 守门：`tests/direction-revision.test.cjs` 7 组断言（双向切换 isComplete、纪元重置连击、旧数据回填、洞察日格、日历投影、同质项目等价）接入 pnpm test；红证以修复前源码复现留档于本轮 PROGRESS。真实宿主双窗口/真机复测 host-pending（沿 T-1602）。
+
 ## D-334：项目删除墓碑（T-1765）——删除默认胜出，删除后的真实编辑取代墓碑（2026-10-01）
 
 - 用户指示"按待办计划开发"后开工审计第 0 批的 T-1765。先以最小夹具复现（A 删除×B 旧快照合并：项目复活 1、删除后新记事件复活 1；reconcile 与 persist 写后校验同路径），再实现 `CheckinItemTombstone {itemId, deletedAt}`：`deleteItemsCascade` 在事件墓碑外同步写项目墓碑，`normalizeStore`/`mergeNormalizedStores` 按墓碑收敛项目集并连带丢弃其事件。
