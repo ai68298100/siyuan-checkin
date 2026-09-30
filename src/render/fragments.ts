@@ -500,7 +500,19 @@ export function renderTodayView(ctx: TodayViewContext): string {
         const done = dayItems.filter((item) => isComplete(ctx.store, item, day)).length;
         const status = !dayItems.length ? "empty" : done === dayItems.length ? "complete" : done ? "partial" : "pending";
         const isToday = dateKey(day) === dateKey(now);
-        return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length}))}"><small>${day.toLocaleDateString(getPluginLocale(), {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i></span>`;
+        /* T-1775：有内容的日格是可达日期入口——点击进回顾按日筛选该日记录与日级分母，
+           返回保留今日筛选与滚动；空日格保持不可交互。文字状态对齐审计口径：
+           无排期日/待记录/部分达成/全部完成 + 戒除破戒后缀。 */
+        const statusKey = `today.chipStatus.${status}`;
+        const hasLapse = status !== "empty" && dayItems.some((item) => item.direction === "atMost"
+            && getEventsForDay(ctx.store, item.id, day).some((event) => !isSkipEvent(event)));
+        const stateText = `${t(statusKey)}${hasLapse ? ` · ${t("today.chipLapse")}` : ""}`;
+        const chipTitle = `${escapeHtml(t("date.chipTitle", {date: day.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric"}), done, total: dayItems.length}))} · ${escapeHtml(stateText)}`;
+        const chipBody = `<small>${day.toLocaleDateString(getPluginLocale(), {weekday: "short"})}</small><strong>${day.getDate()}</strong><i aria-hidden="true"></i>`;
+        if (!dayItems.length) {
+            return `<span class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" title="${chipTitle}">${chipBody}</span>`;
+        }
+        return `<button class="lc-checkin__day-chip is-${status} ${isToday ? "is-today" : ""}" type="button" data-week-strip-date="${escapeHtml(dateKey(day))}" title="${chipTitle}" aria-label="${chipTitle}">${chipBody}</button>`;
     }).join("");
     const emptyProgressTitle = ctx.pendingOnly
         ? t("today.pendingEmpty")

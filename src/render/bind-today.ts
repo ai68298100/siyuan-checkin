@@ -59,6 +59,13 @@ export interface BindTodayHost {
     showEditor(item?: CheckinItem, root?: HTMLElement): void;
     /** T-1772：其他活跃项目管理行的归档动作（宿主复用批量归档管线，含确认与快照）。 */
     archiveItems(itemIds: string[]): Promise<boolean>;
+    /** T-1775：七日条日期入口——同 root 跳回顾记录区（宿主状态已按日定位）。 */
+    showReview(root?: HTMLElement): void;
+    /** T-1775：回顾按日钻取的宿主状态（与回顾日历 data-history-date 同一套）。 */
+    selectedHistoryDate: string;
+    historyScope: "day" | "period";
+    historyPage: number;
+    editingHistoryNoteId?: string;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
     firstSuccessSkipGuidance(): void;
@@ -224,6 +231,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelectorAll<HTMLElement>("[data-manage-archive]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.manageArchive || "";
         if (id && getActiveItemById(host.store, id)) void host.archiveItems([id]);
+    }));
+    /* T-1775：七日条日期入口——复用回顾的按日钻取状态（selectedHistoryDate/scope/page），
+       同 root 跳回顾记录区；返回保留今日筛选与滚动（applyNavigation/pageScrollTops）。 */
+    root.querySelectorAll<HTMLElement>("[data-week-strip-date]").forEach((button) => button.addEventListener("click", () => {
+        const value = button.dataset.weekStripDate;
+        if (!value) return;
+        host.selectedHistoryDate = value;
+        host.historyScope = "day";
+        host.historyPage = 0;
+        host.editingHistoryNoteId = undefined;
+        host.showReview(root);
     }));
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();

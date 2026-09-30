@@ -2997,6 +2997,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--today > .lc-checkin__progress span { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--lc-checkin-accent), var(--lc-checkin-lilac)); transition: width 240ms ease; }
 
 .lc-checkin--today .lc-checkin__week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin: 0 0 12px; }
+/* T-1775：有内容日格为可达日期入口（button 语义）——键盘焦点环 + 指针手型。 */
+.lc-checkin--today .lc-checkin__week-strip button.lc-checkin__day-chip { font: inherit; cursor: pointer; }
+.lc-checkin--today .lc-checkin__week-strip button.lc-checkin__day-chip:focus-visible { border-color: var(--lc-checkin-accent); outline: 2px solid var(--lc-checkin-accent); outline-offset: 1px; }
 .lc-checkin--today .lc-checkin__day-chip {
     display: grid;
     place-items: center;

@@ -1,5 +1,11 @@
 # 决策
 
+## D-346：七日条钻取复用回顾按日状态，不做第二套日期上下文（T-1775，2026-10-01）
+
+- 有内容日格 span→button 日期入口：点击写 `selectedHistoryDate/historyScope="day"/historyPage=0` 后 `showReview(root)`——与回顾日历 `data-history-date` **同一套状态与渲染管线**，不新建日期上下文或历史计算；返回经 applyNavigation 回今日，筛选/滚动由既有宿主状态与 pageScrollTops 保留。空日格保持 span（不可交互是诚实语义：无记录可看）。
+- 文字状态对齐审计口径：`today.chipStatus.empty/pending/partial/complete` 四态进 title 与 aria-label（读屏同源），戒除破戒（atMost 项当日真实事件）加 `today.chipLapse` 后缀——破戒在现有谓词下天然落入 partial/complete 之外的表达缺口，单独点名而非改 isComplete。button 变体补 `font:inherit/cursor/focus-visible` 三行样式（今日同族色板）。
+- T-1774（戒除"今日暂时守住"口径）涉及完成区表达/连击计今日/回顾 API 三处用户可见决策，登记 BLOCKERS「独立产品决策」待用户拍板；数据层 isComplete 与 D-219 底层承诺不动。
+
 ## D-345：回执直达事实走行内展开，不跨页深链（T-1776，2026-10-01）
 
 - "查看此记录"选择**toast 行内展开**而非跳转回顾：回顾列表有分页（30/页）、渠道筛选与日期窗口，事件极可能不在默认视口，跨页深链要么改写用户筛选要么找不到目标；行内面板复用 `buildRecordDetails` 单一投影与 `lc-checkin__record-details` 既有样式（零复制、零新 CSS），默认收起、本地 DOM 切换不触重渲染。
