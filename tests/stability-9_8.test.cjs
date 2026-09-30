@@ -12,7 +12,7 @@ const i18n = read("src", "i18n.ts");
 const occasions = read("src", "render", "occasions.ts");
 const packageJson = JSON.parse(read("package.json"));
 
-assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root, page\)\)/,
     "desktop top navigation must stay outside the scrolling layout");
 assert.match(settings, /set\.showOlderSnapshots/,
     "settings must disclose older restore points instead of rendering all rows expanded");
@@ -24,7 +24,7 @@ assert.match(roadmap, /9\.8\.x 稳定化清单/,
     "the stabilization window must remain documented before feature expansion");
 
 const checks = [
-    [plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/, "mobile nav is host-level"],
+    [plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page\)\)/, "mobile nav is host-level"],
     [plugin, /this\.syncRecentRecordToast\(\)/, "toast sync remains centralized"],
     [plugin, /pageScrollTops = new WeakMap/, "scroll memory is surface scoped"],
     [plugin, /pendingFocusItemId/, "focus restoration state remains available"],

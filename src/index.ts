@@ -77,6 +77,7 @@ import {createSourceIngestReport, type DocumentSourceKey, type SourceIngestRepor
 import {SOURCE_SCAN_MAX_PAGES, blockIdCursorClause, scanBoundedPages} from "./features/scan-cursor";
 import {normalizeSourceGovernance, settleSegmentsToDays, sourceDayMinutes} from "./features/source-framework";
 import {openTabPageFor, showArchivedFor, showEditorFor, showEditorReturnFor, showInsightsFor, showOccasionsFor, showReviewFor, showSettingsFor, showTodayFor, type NavigationHost} from "./navigation";
+import {createRootPageStore, type CheckinPageId, type RootPageStore} from "./features/root-page-store";
 import {bindQuickDialogViewportFor, closeQuickDialogFor, ensureMobileTopBarButtonFor, ensureSpeedSwitchQuickActionsFor, handleQuickDialogDestroyedFor, openQuickDialogFor, quickDialogSizeOf, toggleQuickDialogFor, type QuickDialogHost} from "./render/quick-dialog";
 import {bindBulkModeFor, bindItemContextMenuFor, bindItemDragFor, bindPageKeyboardFor, bindQuickKeyboardFor, type TodayBindingsHost} from "./render/today-bindings";
 import {bindFocusTimerPanelFor, finishFocusTimerFor, openFocusTimerFor, paintFocusTimer, renderFocusMiniStripFor, renderFocusTimerPanelFor, stopFocusTimerFor, tickFocusTimerFor, type FocusTimerHost} from "./render/focus-timer";
@@ -497,11 +498,10 @@ export default class CheckinPlugin extends Plugin {
         this.pendingProjectDraft = undefined;
     }
 
-    openProjectDraftEditor(draft: ProjectDraft): void {
+    openProjectDraftEditor(draft: ProjectDraft, root?: HTMLElement): void {
         this.pendingProjectDraft = draft;
         this.editingId = undefined;
-        this.currentPage = "editor";
-        this.render();
+        this.showEditor(undefined, undefined, root);
     }
     /* T-1361 会话诊断（环形容量 20，内存态不落盘；导出经设置页）。 */
     private diagnostics: CheckinDiagnostic[] = [];
@@ -542,7 +542,7 @@ export default class CheckinPlugin extends Plugin {
         return {
             getStore: () => this.store,
             getNow: () => currentCalendarDate(),
-            onJumpDate: (date: string) => this.jumpToHistoryDate(date),
+            onJumpDate: (date: string) => this.jumpToHistoryDate(date, this.primaryRoot()),
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
             onJumpItemAnchor: (blockId: string) => void this.jumpToItemAnchorDoc(blockId),
@@ -552,12 +552,11 @@ export default class CheckinPlugin extends Plugin {
         };
     }
 
-    /* T-1351：渲染块项目行跳回顾页洞察。 */
+    /* T-1351：渲染块项目行跳回顾页洞察。渲染块只有 dock 一个消费者：目标按 dock→页签 回落。 */
     private jumpToItemInsights(itemId: string) {
-        if (!getActiveItemById(this.store, itemId)) return;
-        this.insightsItemId = itemId;
-        this.currentPage = "insights";
-        this.render();
+        const item = getActiveItemById(this.store, itemId);
+        if (!item) return;
+        this.showInsights(item, this.primaryRoot());
     }
 
     /* T-1352：构建当前周期报告（与回顾页导出口径一致：来源筛选 + 区块开关 + 偏差/基线）。 */
@@ -1642,7 +1641,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* T-1235：点击渲染块日期 → 跳回顾页并定位该日（无效日期拒绝）。 */
-    private jumpToHistoryDate(date: string) {
+    private jumpToHistoryDate(date: string, root?: HTMLElement) {
         if (!isValidLocalDateInput(date)) return;
         this.selectedHistoryDate = date;
         this.reviewWorkspace = "records";
@@ -1651,7 +1650,7 @@ export default class CheckinPlugin extends Plugin {
         this.editingHistoryNoteId = undefined;
         this.reviewFoldSections.add("calendar");
         this.historyMonth = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1);
-        this.showReview();
+        this.showReview(root);
     }
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
@@ -1686,7 +1685,43 @@ export default class CheckinPlugin extends Plugin {
     private currentStreaks = new Map<string, number>();
     private bestStreakItem?: CheckinItem;
     private bestStreakValue = 0;
-    private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
+    /* T-1621 步骤一：多 root 独立页面（docs/multi-root-page-design-2026-09-30.md）。
+       每个表面（dock/页签/快速弹窗）在 renderInto 首次渲染时注册独立 RootContext；
+       下方 currentPage 访问器保留为「最后活跃 root」的读写代理——宿主级既有读写
+       零改动（读=最后活跃页，写=全局同步全部 root 与孤儿页）。 */
+    private readonly rootPages: RootPageStore = createRootPageStore();
+
+    private get currentPage(): CheckinPageId {
+        return this.rootPages.activePage();
+    }
+
+    private set currentPage(page: CheckinPageId) {
+        this.rootPages.navigate(undefined, page);
+    }
+
+    /** 导航落点：显式 root 只改该表面并标记最后活跃；无 root 的全局导航同步全部表面。 */
+    applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void {
+        this.rootPages.navigate(root, page);
+    }
+
+    pageOfRoot(root: HTMLElement): CheckinPageId {
+        return this.rootPages.pageOf(root);
+    }
+
+    /** root 销毁（弹窗关闭/页签与 dock 卸载）释放上下文；释放的是最后活跃 root 时回落 dock→页签，
+        让渲染块跳转等宿主级写入仍落在存活的表面（渲染块只有 dock 一个消费者）。 */
+    releaseRootContext(root: HTMLElement): void {
+        this.rootPages.release(root);
+        if (!this.rootPages.lastActiveRoot()) {
+            const fallback = this.dockElement ?? this.tabElement ?? null;
+            if (fallback) this.rootPages.setActiveRoot(fallback);
+        }
+    }
+
+    /** 渲染块回调等宿主级跳转的目标表面：dock 优先、页签次之。 */
+    private primaryRoot(): HTMLElement | undefined {
+        return this.dockElement ?? this.tabElement ?? this.quickDialogElement;
+    }
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
     /* T-1590 洞察范围与筛选（会话态：重载回落默认 84=契约「明确降级」非隐式残留）。 */
@@ -1937,7 +1972,10 @@ export default class CheckinPlugin extends Plugin {
                 plugin.renderBackgroundUpdate();
             },
             destroy: function () {
-                if (plugin.dockElement) disposeResponsiveCharts(plugin.dockElement);
+                if (plugin.dockElement) {
+                    disposeResponsiveCharts(plugin.dockElement);
+                    plugin.releaseRootContext(plugin.dockElement);
+                }
                 plugin.dockElement = undefined;
             },
         });
@@ -1959,6 +1997,7 @@ export default class CheckinPlugin extends Plugin {
             destroy: function (this: {element: Element; tab: {close: () => void}}) {
                 disposeResponsiveCharts(this.element as HTMLElement);
                 if (plugin.tabElement === this.element) {
+                    plugin.releaseRootContext(plugin.tabElement);
                     plugin.tabElement = undefined;
                     if (plugin.tabInstance === this.tab) {
                         plugin.tabInstance = undefined;
@@ -2905,8 +2944,8 @@ this.scheduleMidnightRefresh();
         if (this.externalPendingBox.items.length) this.renderBackgroundUpdate();
     }
 
-    private showToday() {
-        showTodayFor(this as unknown as NavigationHost);
+    private showToday(root?: HTMLElement) {
+        showTodayFor(this as unknown as NavigationHost, root);
     }
 
     /* R-18.1 · R-A18：年度分享图——本地 canvas 生成 PNG（网格+统计），经既有保存通道落地。
@@ -2948,52 +2987,53 @@ this.scheduleMidnightRefresh();
         await saveGeneratedFile({fileName: `siyuan-checkin-share-${year}.png`, content: binary, mime: "image/png"});
     }
 
-    private showReview() {
+    private showReview(root?: HTMLElement) {
         this.advanceFirstSuccess("review-visited");
-        showReviewFor(this as unknown as NavigationHost);
+        showReviewFor(this as unknown as NavigationHost, root);
     }
 
-    private showHistory() {
+    private showHistory(root?: HTMLElement) {
         this.reviewWorkspace = "records";
-        this.showReview();
+        this.showReview(root);
     }
 
-    private showSummary() {
+    private showSummary(root?: HTMLElement) {
         this.reviewWorkspace = "overview";
-        this.showReview();
+        this.showReview(root);
     }
 
-    private showInsights(item?: CheckinItem) {
-        showInsightsFor(this as unknown as NavigationHost, item);
+    private showInsights(item?: CheckinItem, root?: HTMLElement) {
+        showInsightsFor(this as unknown as NavigationHost, item, root);
     }
 
-    private showArchived() {
-        showArchivedFor(this as unknown as NavigationHost);
+    private showArchived(root?: HTMLElement) {
+        showArchivedFor(this as unknown as NavigationHost, root);
     }
 
-    private showOccasions() {
-        showOccasionsFor(this as unknown as NavigationHost);
+    private showOccasions(root?: HTMLElement) {
+        showOccasionsFor(this as unknown as NavigationHost, root);
     }
 
-    private showSettings() {
-        showSettingsFor(this as unknown as NavigationHost);
+    private showSettings(root?: HTMLElement) {
+        showSettingsFor(this as unknown as NavigationHost, root);
     }
 
-    private showEditor(item?: CheckinItem, returnTo?: "insights") {
+    private showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement) {
         /* 新建/编辑是一段新的表单会话，必须从标题和模板入口开始；表单内部
            的普通重渲染仍由 pageScrollTops 保留当前位置。 */
-        [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
-            if (!root) return;
-            const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
+        const editorRoots = root ? [root] : [this.dockElement, this.tabElement, this.quickDialogElement];
+        editorRoots.forEach((editorRoot) => {
+            if (!editorRoot) return;
+            const tops = this.pageScrollTops.get(editorRoot) ?? new Map<string, number>();
             tops.set("editor", 0);
-            this.pageScrollTops.set(root, tops);
+            this.pageScrollTops.set(editorRoot, tops);
         });
-        showEditorFor(this as unknown as NavigationHost, item, returnTo);
+        showEditorFor(this as unknown as NavigationHost, item, returnTo, root);
     }
 
     /** T-1599：编辑器返回——回放 editorReturnPage（洞察「编辑规则」回放同一项目）。 */
-    private showEditorReturn() {
-        showEditorReturnFor(this as unknown as NavigationHost);
+    private showEditorReturn(root?: HTMLElement) {
+        showEditorReturnFor(this as unknown as NavigationHost, root);
     }
 
     private openTabPage() {
@@ -3193,7 +3233,7 @@ this.scheduleMidnightRefresh();
             bulkSelected: this.bulkSelected,
             todaySortMode: this.todaySortMode,
         };
-        const cards: Array<{card: HTMLElement; next: HTMLElement; surface: HTMLElement}> = [];
+        const cards: Array<{card: HTMLElement; next: HTMLElement; surface: HTMLElement; root: HTMLElement}> = [];
         for (const root of roots) {
             const surface = root.querySelector<HTMLElement>(".lc-checkin--today");
             const card = [...(surface?.querySelectorAll<HTMLElement>("[data-item-id]") || [])]
@@ -3226,9 +3266,9 @@ this.scheduleMidnightRefresh();
                correct on every surface. */
             if (currentComplete !== complete || currentInCompleted !== nextInCompleted) return false;
             if (structuralSelectors.some((selector) => has(card, selector) !== has(next, selector))) return false;
-            cards.push({card, next, surface});
+            cards.push({card, next, surface, root});
         }
-        for (const {card, next, surface} of cards) {
+        for (const {card, next, surface, root} of cards) {
             if (card === next) continue;
             card.className = next.className;
             const style = next.getAttribute("style");
@@ -3252,7 +3292,7 @@ this.scheduleMidnightRefresh();
                     const inserted = nextStreak.cloneNode(true) as HTMLElement;
                     inserted.addEventListener("click", () => {
                         this.insightsReturnPage = "today";
-                        this.showInsights(item);
+                        this.showInsights(item, root);
                     });
                     topline.insertBefore(inserted, topline.querySelector(".lc-checkin__small-button"));
                 }
@@ -3359,13 +3399,16 @@ this.scheduleMidnightRefresh();
            导航与用户动作等显式渲染，挂起会造成「焦点在旧输入框 → 渲染被吞 → 焦点
            永不释放」的死锁（T-1455 宽度走查发现的回归）。 */
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
-        const reviewAnalyticsSnapshot = roots.length && this.currentPage === "review" && this.initializationState === "ready"
+        /* T-1621：任一表面在回顾页都需要快照——renderInto 只对回顾 root 消费它。 */
+        const reviewAnalyticsSnapshot = roots.some((root) => this.pageOfRoot(root) === "review") && this.initializationState === "ready"
             ? buildAnalyticsSnapshot(this.store, currentCalendarDate())
             : undefined;
         roots.forEach((root) => this.renderInto(root, reviewAnalyticsSnapshot));
     }
 
     private renderInto(root: HTMLElement, reviewAnalyticsSnapshot?: AnalyticsSnapshot) {
+        /* T-1621 步骤一：root 注册点——首次渲染创建独立上下文，其后每 root 按自己的页渲染。 */
+        const page = this.rootPages.ensure(root).page;
         /* A short, explicit mobile host marker keeps the final responsive
            layer deterministic without repeating long :has() selectors for
            every child rule.  Desktop docks remain on their container-query
@@ -3391,7 +3434,7 @@ this.scheduleMidnightRefresh();
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
            同页重渲染（打卡/筛选）不跳动，切页回到上次离开的位置。WeakMap 随表面销毁自动释放。 */
         const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
-        if (this.currentPage === "settings" || this.renderedPages.get(root) === "settings") {
+        if (page === "settings" || this.renderedPages.get(root) === "settings") {
             const openSourcePanels = new Set<string>();
             root.querySelectorAll<HTMLElement>("[data-source-panel][open]").forEach((panel) => {
                 if (panel.dataset.sourcePanel) openSourcePanels.add(panel.dataset.sourcePanel);
@@ -3403,12 +3446,12 @@ this.scheduleMidnightRefresh();
             tops.set(this.renderedPages.get(root) ?? "today", previousScroller.scrollTop);
             this.pageScrollTops.set(root, tops);
         }
-        root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
-            : this.currentPage === "review" ? this.renderReview(reviewAnalyticsSnapshot!)
-                : this.currentPage === "insights" ? this.renderInsights()
-            : this.currentPage === "archived" ? this.renderArchived()
-                    : this.currentPage === "occasions" ? this.renderOccasions()
-                    : this.currentPage === "settings" ? this.renderSettings(this.settingsOpenSourcePanels.get(root)) : this.renderToday();
+        root.innerHTML = page === "editor" ? this.renderEditor()
+            : page === "review" ? this.renderReview(reviewAnalyticsSnapshot ?? buildAnalyticsSnapshot(this.store, currentCalendarDate()))
+                : page === "insights" ? this.renderInsights()
+            : page === "archived" ? this.renderArchived()
+                    : page === "occasions" ? this.renderOccasions()
+                    : page === "settings" ? this.renderSettings(this.settingsOpenSourcePanels.get(root)) : this.renderToday();
         this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
@@ -3429,44 +3472,44 @@ this.scheduleMidnightRefresh();
         /* 桌面快速弹窗的 全屏/关闭 并入顶栏（renderTopNav）。页签和 dock
            的生命周期由思源宿主管理，不在内容区伪造第二枚关闭按钮。 */
         if (this.isMobileFrontend && !root.querySelector(".lc-checkin__mobile-topbar")) {
-            root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar());
+            root.insertAdjacentHTML("afterbegin", this.renderMobileTopbar(page));
         }
         /* A wide dock hides the compact bottom bar to preserve vertical space.
            Give that surface its own persistent rail instead of leaving the
            navigation unreachable (the rail is hidden again below 720px). */
         if (root === this.dockElement && !root.querySelector(".lc-checkin__rail")) {
-            root.insertAdjacentHTML("afterbegin", this.renderRail());
+            root.insertAdjacentHTML("afterbegin", this.renderRail(page));
         }
         const layout = root.querySelector<HTMLElement>(".lc-checkin__layout");
         if (layout) {
             /* 顶部导航只服务桌面宽容器；移动端顶栏自带导航 tabs（renderMobileTopbar），
                窄 dock 面板由 CSS 隐藏 —— v9.5.1 曾在窄容器裸渲染出独立导航行（用户点名）。
                桌面导航挂在宿主而不是滚动的 .lc-checkin__layout 上，切页/滚动时几何基线保持不变。 */
-            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root));
+            if (!this.isMobileFrontend) root.insertAdjacentHTML("afterbegin", this.renderTopNav(root, page));
             if (this.focusTimerState && this.focusTimerRoot === root) layout.insertAdjacentHTML("beforeend", this.renderFocusTimerPanel());
             else if (this.focusTimerState) layout.insertAdjacentHTML("beforeend", renderFocusMiniStripFor(this as unknown as FocusTimerHost));
             layout.querySelector<HTMLElement>("[data-focus-mini-back]")?.addEventListener("click", () => {
                 this.focusTimerRoot = root;
-                this.showToday();
+                this.showToday(root);
             });
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
            窄容器（手机弹窗 / 侧边栏 dock）显示 —— 侧边栏此前完全没有导航入口。 */
         if (!root.querySelector(".lc-checkin__mobile-nav")) {
-            root.insertAdjacentHTML("beforeend", this.renderMobileNav());
+            root.insertAdjacentHTML("beforeend", this.renderMobileNav(page));
         }
         /* Transient check-in feedback belongs to the plugin window, not the
            scrolling Today document. Hoist it so absolute positioning is
            bounded by the dialog, tab, or dock host on every frontend. */
         const recentRecordToast = surface?.querySelector<HTMLElement>(".lc-checkin__recent-record");
         if (recentRecordToast) root.appendChild(recentRecordToast);
-        if (this.currentPage === "editor") {
+        if (page === "editor") {
             this.bindEditor(root);
-        } else if (this.currentPage === "today") {
+        } else if (page === "today") {
             this.bindToday(root);
-        } else if (this.currentPage === "occasions") {
+        } else if (page === "occasions") {
             this.bindOccasions(root);
-        } else if (this.currentPage === "settings") {
+        } else if (page === "settings") {
             this.bindSettings(root);
         } else {
             this.bindPageNavigation(root);
@@ -3485,14 +3528,14 @@ this.scheduleMidnightRefresh();
            该卡已被过滤/消失时保持容器焦点。 */
         const focusItemId = this.pendingFocusItemId;
         this.pendingFocusItemId = undefined;
-        if (focusItemId && this.currentPage === "today") {
+        if (focusItemId && page === "today") {
             const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id='${focusItemId}']`);
             const focusTarget = card?.querySelector<HTMLElement>(".lc-checkin__item-action > :is([data-action='focus'], [data-action='record'], [data-action='quick-record'])");
             if (focusTarget) focusTarget.focus();
         }
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
-        if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;
-        this.renderedPages.set(root, this.currentPage);
+        if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(page) ?? 0;
+        this.renderedPages.set(root, page);
     }
 
     private syncHostThemeTokens(root: HTMLElement, surface: HTMLElement) {
@@ -3717,7 +3760,7 @@ this.scheduleMidnightRefresh();
     /* T-1547：来源卡「查看记录」直达回顾记录区并预置来源筛选。health/notequery 事件
        落 source="api"，用 T-1512 登记渠道 api:health/api:notequery 精确过滤；
        其余来源直接用事件 source 值。未知来源不动筛选（不猜）。 */
-    private openReviewRecordsForSource(source: string): void {
+    private openReviewRecordsForSource(source: string, root?: HTMLElement): void {
         const filters: Record<string, HistoryChannelFilter> = {
             sireader: "sireader",
             siplayer: "siplayer",
@@ -3730,7 +3773,7 @@ this.scheduleMidnightRefresh();
         if (!filter) return;
         this.historySource = filter;
         this.reviewWorkspace = "records";
-        this.showReview();
+        this.showReview(root);
     }
 
     private bindSettings(root: HTMLElement) {
@@ -3840,7 +3883,7 @@ this.scheduleMidnightRefresh();
         }
         this.bindDialogClose(root);
         this.bindMobileNav(root);
-        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday());
+        root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => this.showToday(root));
         const settingsBusy = new WeakSet<HTMLElement>();
         const settingsFeedback = (message: string) => {
             let node = root.querySelector<HTMLElement>("[data-settings-feedback]");
@@ -3973,7 +4016,7 @@ this.scheduleMidnightRefresh();
         /* T-1547：来源卡「查看记录」与思播宿主探测——探测仅跑真实特征检测并如实反馈，
              不产生任何状态写路径（监听型思阅无可靠探测面，不伪造按钮）。 */
         root.querySelectorAll<HTMLElement>("[data-review-records-for]").forEach((button) => button.addEventListener("click", () => {
-            this.openReviewRecordsForSource(button.dataset.reviewRecordsFor || "");
+            this.openReviewRecordsForSource(button.dataset.reviewRecordsFor || "", root);
         }));
         /* T-1562 总览直达：入口按钮复用既有分组导航（点击 nav 按钮继承滚动/aria 机制）；
            新建项目走编辑器。问题项的「去配置」复用 data-goto-binding 既有绑定。 */
@@ -3982,7 +4025,7 @@ this.scheduleMidnightRefresh();
             root.querySelector<HTMLButtonElement>(`[data-settings-nav="${group}"]`)?.click();
         }));
         root.querySelector<HTMLElement>("[data-overview-new-item]")?.addEventListener("click", () => {
-            this.showEditor();
+            this.showEditor(undefined, undefined, root);
         });
         root.querySelector<HTMLElement>("[data-action='probe-siplayer']")?.addEventListener("click", () => {
             const found = typeof window !== "undefined" && detectSiplayerController(window);
@@ -4231,7 +4274,7 @@ this.scheduleMidnightRefresh();
         }));
         root.querySelectorAll<HTMLElement>("[data-edit-binding]").forEach((button) => button.addEventListener("click", () => {
             const item = this.store.items.find((entry) => entry.id === button.dataset.editBinding);
-            if (item) this.showEditor(item);
+            if (item) this.showEditor(item, undefined, root);
         }));
         root.querySelectorAll<HTMLElement>("[data-goto-binding]").forEach((button) => button.addEventListener("click", () => {
             const selector = button.dataset.gotoBinding || "";
@@ -4888,7 +4931,7 @@ this.scheduleMidnightRefresh();
         /* T-1566：重置视图偏好入重置危险区——确认显示影响范围（显示设置回默认，打卡数据不受影响）。 */
         root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); }); this.render(); });
         root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
-        root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview());
+        root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview(root));
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", (event) => runSettingsAction(event.currentTarget as HTMLElement, () => this.restoreLatestBackup()));
         root.querySelectorAll<HTMLElement>("[data-restore-snapshot]").forEach((button) => button.addEventListener("click", () => {
             const index = Number(button.dataset.restoreSnapshot);
@@ -5235,27 +5278,27 @@ this.scheduleMidnightRefresh();
 
     /* 手机端顶栏（T-118 用户反馈）：导航全部归底栏（顶栏页签与底栏完全重复），
        顶栏只保留 关闭 + 页面标题 + 今日进度，单行尽量矮。 */
-    private renderMobileTopbar(): string {
-        const progress = this.currentPage === "today" ? this.todayProgressLabel() : "";
+    private renderMobileTopbar(page: CheckinPageId): string {
+        const progress = page === "today" ? this.todayProgressLabel() : "";
         /* Root pages use one close action; nested pages replace it with Back.
            Rendering both controls consumed the entire left rail on phones and
            made the centred title look offset. */
-        const contextBackAction = this.currentPage === "editor" ? "back"
-            : this.currentPage === "insights" || this.currentPage === "archived" ? "back" : "";
+        const contextBackAction = page === "editor" ? "back"
+            : page === "insights" || page === "archived" ? "back" : "";
         const leadingAction = contextBackAction
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="${contextBackAction}" aria-label="${t("common.back")}" title="${t("common.back")}">${uiIcon("back")}</button>`
             : `<button class="lc-checkin__topbar-close" type="button" data-action="close-dialog" aria-label="${t("common.close")}">${uiIcon("close")}</button>`;
-        const occasionAction = this.currentPage === "occasions"
+        const occasionAction = page === "occasions"
             ? `<button class="lc-checkin__topbar-context" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">${uiIcon("add")}</button>`
             : "";
-        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${this.currentPage}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle()}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
+        return `<div class="lc-checkin__mobile-topbar" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}" data-page="${page}"><div class="lc-checkin__topbar-leading">${leadingAction}</div><strong class="lc-checkin__topbar-title">${this.getPageTitle(page)}</strong><div class="lc-checkin__topbar-trailing">${progress ? `<span class="lc-checkin__topbar-meta" role="status" aria-label="${t("today.progressAria")}">${progress}</span>` : ""}${occasionAction}</div></div>`;
     }
 
-    private renderMobileNav(): string {
+    private renderMobileNav(page: CheckinPageId): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
-        const buttons = entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
+        const buttons = entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`);
         /* 底栏需要短标签保持五列等宽；完整动作名称继续用于辅助名称与 tooltip。 */
-        const add = `<button class="lc-checkin__mobile-nav-add ${this.currentPage === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
+        const add = `<button class="lc-checkin__mobile-nav-add ${page === "editor" ? "is-selected" : ""}" type="button" data-mobile-nav="add" aria-label="${t("nav.add")}" title="${t("nav.add")}"><span>${uiIcon("add")}</span><small>${t("common.add")}</small></button>`;
         return `<nav class="lc-checkin__mobile-nav" aria-label="${t("app.navAria")}">${buttons.slice(0, 2).join("")}${add}${buttons.slice(2).join("")}</nav>`;
     }
     /* 顶栏进度：与今日页口径一致（未归档 + 当日可用 + 当日排期）。 */
@@ -5269,14 +5312,14 @@ this.scheduleMidnightRefresh();
 
     /* Desktop-wide containers show a labelled left rail instead of the bottom bar.
        Both use data-mobile-nav so one binding covers them. */
-    private renderRail(): string {
+    private renderRail(page: CheckinPageId): string {
         const entries = [["today", "今日", "home"], ["review", "回顾", "summary"], ["occasions", "事项", "calendar"], ["settings", "设置", "settings"]] as const;
-        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
+        return `<nav class="lc-checkin__rail" aria-label="${t("app.navAria")}">${entries.map(([railPage, label, icon]) => `<button type="button" data-mobile-nav="${railPage}" class="${page === railPage ? "is-selected" : ""}" aria-current="${page === railPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</nav>`;
     }
 
     /* 桌面顶栏：左侧五个导航项，右侧 全屏/关闭 —— 正常软件的标题栏布局（T-030/T-031）。
        窄容器由 CSS 隐藏（改用底部导航）。 */
-    private renderTopNav(root: HTMLElement): string {
+    private renderTopNav(root: HTMLElement, page: CheckinPageId): string {
         const entries = [["today", t("nav.today"), "home"], ["review", t("nav.review"), "summary"], ["occasions", t("nav.occasions"), "calendar"], ["settings", t("nav.settings"), "settings"]] as const;
         const ownsDialogChrome = Boolean(this.quickDialog) && root === this.quickDialogElement && !this.isMobileFrontend;
         const fullscreen = ownsDialogChrome
@@ -5287,7 +5330,7 @@ this.scheduleMidnightRefresh();
             : "";
         const avatarPresetGlyph: Record<string, string> = {star: "★", horse: "🐴", leaf: "🌿", sun: "☀", target: "🎯"};
         const avatar = this.avatarImage ? `<img src="${escapeHtml(this.avatarImage)}" alt="" />` : this.avatar === "check" ? uiIcon("check") : escapeHtml(avatarPresetGlyph[this.avatar] || this.avatar);
-        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([page, label, icon]) => `<button type="button" data-mobile-nav="${page}" class="${this.currentPage === page ? "is-selected" : ""}" aria-current="${this.currentPage === page ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
+        return `<nav class="lc-checkin__topnav" aria-label="${t("app.navAria")}"><span class="lc-checkin__topnav-brand"><span class="lc-checkin__topnav-avatar" aria-hidden="true">${avatar}</span>${t("dock.title")}</span><div class="lc-checkin__topnav-tabs">${entries.map(([navPage, label, icon]) => `<button type="button" data-mobile-nav="${navPage}" class="${page === navPage ? "is-selected" : ""}" aria-current="${page === navPage ? "page" : "false"}"><span>${uiIcon(icon)}</span><small>${label}</small></button>`).join("")}</div>${dialogActions}</nav>`;
     }
 
     /* 8.6 连续记录：按项目统计当前连续打卡天数（自然日粒度，从事件推导）。 */
@@ -6246,12 +6289,12 @@ this.scheduleMidnightRefresh();
     }
 
     /* 方法体外置于 render/save-form.ts（T-022）。 */
-    private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined> {
+    private async saveForm(data: FormData, editingId: string | undefined, submittedAt: ActionMoment, expectedFingerprint?: string, continueCreation?: boolean, root?: HTMLElement): Promise<string | undefined> {
         /* T-1231：解绑时清除旧锚点块上的本插件属性（尽力而为，不阻断保存）。 */
         const previousAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
         /* T-1486：联动预接线计划随表单提交；仅在条目真实落盘后消费（失败路径零副作用）。 */
         const plan = String(data.get("linkagePlan") || "");
-        const savedItemId = await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint, {continueCreation});
+        const savedItemId = await saveEditorForm(this as unknown as SaveFormHost, data, editingId, submittedAt, expectedFingerprint, {continueCreation, root});
         if (!savedItemId) return undefined;
         if (!editingId) this.advanceFirstSuccess("item-created");
         const newAnchor = editingId ? getItemById(this.store, editingId)?.noteAnchor : undefined;
@@ -6950,8 +6993,8 @@ this.scheduleMidnightRefresh();
         }
     }
 
-    private getPageTitle(): string {
-        switch (this.currentPage) {
+    private getPageTitle(page: CheckinPageId): string {
+        switch (page) {
             case "review": return t("review.title");
             case "occasions": return t("occasions.title");
             case "archived": return t("archived.title");

@@ -66,11 +66,11 @@ assert.match(reviewView, /data-project-drafts/, "review must render the drafts b
 assert.match(reviewView, /data-action="edit-project-draft"/, "each draft card must expose the inspect action");
 assert.match(reviewView, /review\.draftsTitle/, "drafts heading must go through i18n");
 assert.match(bindNav, /data-action='edit-project-draft'/, "draft inspect action must be bound");
-assert.match(bindNav, /openProjectDraftEditor\(draft\)/, "inspect must open the editor with the draft");
+assert.match(bindNav, /openProjectDraftEditor\(draft, root\)/, "inspect must open the editor with the draft on the originating surface");
 assert.match(bindEditor, /host\.pendingProjectDraft/, "editor bind must consume the pending draft");
 assert.match(bindEditor, /host\.clearPendingProjectDraft\(\)/, "pending draft must be cleared once applied");
 assert.match(bindEditor, /setInput\("schedule", draft\.schedule\.type\)/, "draft prefill must apply the schedule type");
-assert.match(indexSource, /openProjectDraftEditor\(draft: ProjectDraft\): void/, "host must implement the draft editor opener");
+assert.match(indexSource, /openProjectDraftEditor\(draft: ProjectDraft, root\?: HTMLElement\): void/, "host must implement the draft editor opener");
 assert.match(indexSource, /projectDrafts: this\.projectDrafts/, "review context must carry provider drafts");
 assert.match(indexSource, /this\.projectDrafts = normalized\.drafts/, "provider result must feed the drafts list");
 assert.match(agentSource, /drafts: import\("\.\/features\/project-draft"\)\.ProjectDraft\[\]/, "provider result type must carry drafts");

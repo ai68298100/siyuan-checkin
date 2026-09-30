@@ -22,7 +22,7 @@ assert.match(bindEditorSource, /form\.dataset\.submitting = "true"[\s\S]*submitB
     "save must disable the submit button while persistence is pending");
 assert.match(bindEditorSource, /const resetSubmitting = \(\) => \{[\s\S]*form\.dataset\.submitting = "false"/,
     "save completion must release the submitting state");
-assert.match(source, /private showToday\(\)/,
+assert.match(source, /private showToday\(root\?: HTMLElement\)/,
     "save completion must have a normal-view restore path");
 
 assert.match(components, /Editor foundations[\s\S]*\.lc-checkin__editor-actions\s*\{[^}]*flex:\s*0\s+0\s+auto[^}]*box-shadow:/,

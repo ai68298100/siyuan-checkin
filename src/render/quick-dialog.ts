@@ -33,6 +33,10 @@ export interface QuickDialogHost {
     renderInto(root: HTMLElement): void;
     reconcileStore(): Promise<void>;
     persistViewPreferences(): Promise<void>;
+    /* T-1621 步骤一：弹窗页独立于 dock/页签（root-page-store 代理层）。 */
+    applyNavigation(root: HTMLElement | undefined, page: QuickDialogHost["currentPage"]): void;
+    pageOfRoot(root: HTMLElement): QuickDialogHost["currentPage"];
+    releaseRootContext(root: HTMLElement): void;
 }
 
 /** Content-driven default: a fixed reading width beats scaling blank margins with the window. */
@@ -81,14 +85,14 @@ function rememberQuickPage(page: QuickPage): void {
 export function openQuickDialogFor(host: QuickDialogHost): void {
     if (host.disposed || host.disposing) return;
     if (host.quickDialog) {
-        host.currentPage = "today";
+        /* T-1621：重置只落在弹窗自己的 root——dock/页签页面不跟随。 */
+        host.applyNavigation(host.quickDialogElement, "today");
         host.editingId = undefined;
         host.editingFingerprint = undefined;
         host.render();
         return;
     }
 
-    host.currentPage = QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today";
     host.editingId = undefined;
     host.editingFingerprint = undefined;
     let dialog: Dialog | undefined;
@@ -122,6 +126,8 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     host.quickDialog = dialog;
     host.quickDialogElement = root;
     host.quickDialogFullscreen = false;
+    /* T-1597 + T-1621：会话页只落在弹窗自己的 root——重开回放，其余表面不动。 */
+    host.applyNavigation(root, QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today");
     bindQuickDialogViewportFor(host, dialog);
     bindQuickDialogFrameFor(host, dialog);
     /* T-1597：编辑页未保存先提示——捕获阶段拦截 SiYuan 关闭按钮（祖先 capture 先于
@@ -289,20 +295,25 @@ export function closeQuickDialogFor(host: QuickDialogHost): void {
 
 export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dialog): void {
     if (host.quickDialog !== dialog) return;
+    /* T-1621：先按弹窗自己的 root 记页，再释放上下文——其余表面页面不动，
+       不再把弹窗最后页写回宿主 currentPage（旧实现会让 dock/页签跟随弹窗跳页）。 */
+    const closingPage = host.quickDialogElement ? host.pageOfRoot(host.quickDialogElement) : host.currentPage;
     if (host.quickDialogElement) disposeResponsiveCharts(host.quickDialogElement);
     host.quickDialogViewportCleanup?.();
     host.quickDialogViewportCleanup = undefined;
     host.quickDialogFrameCleanup?.();
     host.quickDialogFrameCleanup = undefined;
     host.quickDialog = undefined;
+    const dialogRoot = host.quickDialogElement;
     host.quickDialogElement = undefined;
+    if (dialogRoot) host.releaseRootContext(dialogRoot);
     host.quickDialogFullscreen = false;
-    /* T-1597：记录会话页签——编辑页降级为今日（表单草稿仅存 DOM，随窗口销毁）。 */
-    rememberQuickPage(host.currentPage);
-    if (host.disposed || host.disposing) return;
-    host.currentPage = lastQuickPage;
+    /* T-1597：记录会话页签——编辑页降级为今日（表单草稿仅存 DOM，随窗口销毁）；
+       页面记忆归弹窗 root，重开时回放（applyNavigation）。 */
+    rememberQuickPage(closingPage);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
+    if (host.disposed || host.disposing) return;
     host.render();
     void host.reconcileStore();
 }

@@ -14,7 +14,7 @@ assert.match(glueSource, /parseCheckinBlockConfig/, "glue parses configs through
 assert.match(glueSource, /escapeHtml\(parsed\.error\)/, "error output is escaped");
 assert.match(read("index.ts"), /this\.eventBus\.on\("loaded-protyle-static", this\.handleProtyleLoaded\)/, "protyle load events drive rendering");
 assert.match(read("index.ts"), /CHECKIN_EVENT_NAMES\.eventRecorded, this\.handleRenderBlocksRefresh/, "check-in events refresh render blocks");
-assert.match(read("index.ts"), /private jumpToHistoryDate\(date: string\)/, "jump callback lands on review history date");
+assert.match(read("index.ts"), /private jumpToHistoryDate\(date: string, root\?: HTMLElement\)/, "jump callback lands on review history date (T-1621 per-root)");
 assert.match(glueSource, /getAnchorIndex/, "glue must read the host anchor index synchronously (T-1292)");
 assert.match(glueSource, /resolveAnchorDocs/, "glue must delegate missing anchor resolution to the host");
 

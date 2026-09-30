@@ -33,7 +33,7 @@ assert.match(insightsCore, /const customEnd = typeof options\.endDate === "strin
 assert.match(insightsCore, /endDate\?: string;/, "the option must be declared");
 const nav = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
 assert.match(nav, /insightSearchComposing/, "item search must guard IME composition");
-assert.match(nav, /host\.archivedQuery = item\.name;\s*\n\s*host\.showArchived\(\);/, "archived jump must prefill the archive search");
+assert.match(nav, /host\.archivedQuery = item\.name;\s*\n\s*host\.showArchived\(root\);/, "archived jump must prefill the archive search (T-1621 per-root)");
 assert.match(nav, /value > dateKey\(currentCalendarDate\(\)\)/, "custom range must reject future dates");
 
 // Execute the production renderer with a report containing empty and scheduled

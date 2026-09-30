@@ -21,7 +21,7 @@ assert.match(source, /data-history-event-id/);
 assert.match(source, /getEventById\(host\.store, eventId\)/);
 assert.match(source, /data-history-date="\$\{key\}"/);
 assert.match(source, /future \? "disabled"/);
-assert.match(source, /host\.showEditor\(\)/);
+assert.match(source, /host\.showEditor\(undefined, root\)/);
 assert.match(source, /host\.saveForm\(data, editingId/);
 assert.match(source, /expectedFingerprint/);
 console.log("Recording and history editing structure checks passed.");

@@ -106,7 +106,7 @@ assert.match(reviewSource, /data-denominator-date=/, "dates jump to the day's re
 assert.match(reviewSource, /review\.denominatorNone/, "zero denominators show no-applicable-data");
 const bindSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 assert.match(bindSource, /"\[data-denominator-date\]"/, "denominator dates are bound");
-assert.match(bindSource, /host\.jumpToHistoryDate\(date\)/, "jumps reuse the records channel without clearing filters");
+assert.match(bindSource, /host\.jumpToHistoryDate\(date, root\)/, "jumps reuse the records channel without clearing filters (T-1621 per-root)");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["review.denominatorsTitle", "review.denominatorsHint", "review.denominatorEvents", "review.denominatorCompleted", "review.denominatorScheduled", "review.denominatorNone", "review.denominatorCompletedDates", "review.denominatorMissedDates", "review.denominatorSkippedDates", "review.denominatorRestDates", "review.denominatorTruncated", "review.denominatorQuotaItem", "review.denominatorQuotaCurrent", "review.denominatorQuotaNote", "review.denominatorJumpAria"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;

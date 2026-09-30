@@ -45,15 +45,15 @@ export interface BindEditorHost {
     bindMobileNav(root: HTMLElement): void;
     bindDialogClose(root: HTMLElement): void;
     retrySave(): Promise<void> | void;
-    showToday(): void;
+    showToday(root?: HTMLElement): void;
     /** T-1599：返回编辑器来源页（editorReturnPage 单级返回栈，回放后清除）。 */
-    showEditorReturn(): void;
+    showEditorReturn(root?: HTMLElement): void;
     archiveEditingItem(): Promise<void> | void;
     deleteEditingItem(): Promise<boolean> | void;
     saveData(name: string, value: unknown): Promise<void>;
     render(): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined>;
+    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean, root?: HTMLElement): Promise<string | undefined>;
     /** T-1488：空状态一键装填——按组合包批量创建全部新增条目，返回创建数量（未知 pack 返回 0）。 */
     applyTemplatePackBulk?(packId: string): Promise<number>;
     /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
@@ -225,7 +225,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         applyIconFilter();
     }));
-    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn());
+    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn(root));
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
     root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
@@ -850,7 +850,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 delete bulkButton.dataset.busy;
                 if (created > 0) {
                     showMessage(t("editor.packApplied", {n: created}));
-                    host.showToday();
+                    host.showToday(root);
                 }
             }, () => { delete bulkButton.dataset.busy; });
             return;
@@ -1142,7 +1142,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                     }
                 }
             }
-            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation)).then((savedId) => {
+            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root)).then((savedId) => {
                 resetSubmitting();
                 if (continueCreation && typeof savedId === "string" && savedId) {
                     const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");

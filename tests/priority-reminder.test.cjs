@@ -28,7 +28,7 @@ assert.match(fragmentsSource, /today\.priorityMoreAria/);
 assert.match(fragmentsSource, /today\.priorityActionAria/);
 assert.match(fragmentsSource, /aria-label="\$\{escapeHtml\(t\("today\.priorityTitle"\)\)\}"/);
 assert.match(todayBindSource, /data-priority-reminder/);
-assert.match(todayBindSource, /showOccasions\(\)/);
+assert.match(todayBindSource, /showOccasions\(root\)/);
 assert.match(todayBindSource, /scrollIntoView/);
 assert.match(todayBindSource, /CSS\.escape/);
 assert.match(todayBindSource, /querySelector<HTMLElement>\("\[data-action='record'\], \[data-action='quick-record'\], \[data-action='toggle'\]"\)/);

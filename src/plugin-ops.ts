@@ -42,13 +42,13 @@ export interface PluginOpsHost {
     renderInto(root: HTMLElement): void;
     renderBackgroundUpdate(): void;
     closeQuickDialog(): void;
-    showToday(): void;
-    showReview(): void;
-    showInsights(item?: CheckinItem): void;
-    showArchived(): void;
-    showOccasions(): void;
-    showSettings(): void;
-    showEditor(item?: CheckinItem): void;
+    showToday(root?: HTMLElement): void;
+    showReview(root?: HTMLElement): void;
+    showInsights(item?: CheckinItem, root?: HTMLElement): void;
+    showArchived(root?: HTMLElement): void;
+    showOccasions(root?: HTMLElement): void;
+    showSettings(root?: HTMLElement): void;
+    showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
     cloneStore(store?: CheckinStore): CheckinStore;
     itemFingerprint(item: CheckinItem): string;
@@ -106,13 +106,14 @@ export function bindDialogCloseFor(host: PluginOpsHost, root: HTMLElement): void
 export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {
     root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
         const page = button.dataset.mobileNav;
-        if (page === "today") host.showToday();
-        else if (page === "review" || page === "history" || page === "summary") host.showReview();
-        else if (page === "insights") host.showInsights();
-        else if (page === "archived") host.showArchived();
-        else if (page === "occasions") host.showOccasions();
-        else if (page === "settings") host.showSettings();
-        else if (page === "add") host.showEditor();
+        /* T-1621 步骤一：导航只落在发起表面——dock/页签/快速弹窗各自独立切页，互不覆盖。 */
+        if (page === "today") host.showToday(root);
+        else if (page === "review" || page === "history" || page === "summary") host.showReview(root);
+        else if (page === "insights") host.showInsights(undefined, root);
+        else if (page === "archived") host.showArchived(root);
+        else if (page === "occasions") host.showOccasions(root);
+        else if (page === "settings") host.showSettings(root);
+        else if (page === "add") host.showEditor(undefined, undefined, root);
     }));
 }
 

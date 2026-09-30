@@ -111,32 +111,32 @@ for (const threshold of [760, 900, 1100, 1300, 1560, 2000]) {
 
 // 守门：手机端固定顶/底栏：结构在滚动容器之外 + 几何 + !important 收口
 const plugin = read("src", "index.ts");
-assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobileTopbar\(\)\)/,
-    "the mobile top bar must be attached to the host, not inside the scrolling container");
+assert.match(plugin, /root\.insertAdjacentHTML\("afterbegin", this\.renderMobileTopbar\(page\)\)/,
+    "the mobile top bar must be attached to the host, not inside the scrolling container (T-1621 per-root page)");
 /* T-118 移动端顶栏再简化：导航只留在底部页签，顶栏不再重复出现，只保留 关闭+标题+进度，不做任何按钮 */
 {
-    const topbarFn = plugin.match(/private renderMobileTopbar\(\): string \{[\s\S]*?\n    \}/)[0];
+    const topbarFn = plugin.match(/private renderMobileTopbar\(page: CheckinPageId\): string \{[\s\S]*?\n    \}/)[0];
     assert.ok(!topbarFn.includes("data-mobile-nav"),
         "the mobile top bar must not embed navigation tabs (navigation lives in the bottom bar)");
-    assert.ok(topbarFn.includes("getPageTitle()"), "the mobile top bar must show the page title");
-    assert.ok(topbarFn.includes('this.currentPage === "editor" ? "back"'),
+    assert.ok(topbarFn.includes("getPageTitle(page)"), "the mobile top bar must show the page title");
+    assert.ok(topbarFn.includes('page === "editor" ? "back"'),
         "the mobile editor back action must live in the fixed top bar");
 }
 assert.match(components, /\.lc-checkin--editor \.lc-checkin__editor-header \{ display: none; \}/,
     "the mobile editor must not reserve a duplicate internal header row");
-assert.match(plugin, /renderTopNav\(root\)\);/,
+assert.match(plugin, /renderTopNav\(root, page\)\);/,
     "the desktop top nav keeps its render path");
 assert.doesNotMatch(plugin, /if \(layout\) \{\s*\/\*[^*]*\*\/\s*layout\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
     "the top nav must not render unconditionally (mobile now owns its own top bar)");
-assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root\)\)/,
+assert.match(plugin, /if \(!this\.isMobileFrontend\) root\.insertAdjacentHTML\("afterbegin", this\.renderTopNav\(root, page\)\)/,
     "the desktop top nav must be attached to the host, outside the scrolling layout");
-assert.match(plugin, /private renderTopNav\(root: HTMLElement\): string/,
+assert.match(plugin, /private renderTopNav\(root: HTMLElement, page: CheckinPageId\): string/,
     "top navigation must know which host owns dialog chrome");
 assert.match(plugin, /ownsDialogChrome = Boolean\(this\.quickDialog\) && root === this\.quickDialogElement/,
     "only the quick dialog may render fullscreen and close actions");
 assert.doesNotMatch(plugin, /root\.insertAdjacentHTML\("afterbegin", `<button class="lc-checkin__dialog-close"/,
     "tabs and docks must not receive a second floating close button");
-assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/,
+assert.match(plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page\)\)/,
     "the mobile bottom bar must be attached to the host as well");
 assert.match(plugin, /private todayProgressLabel\(\): string \{/,
     "the mobile top bar shows today progress from the same rule set as the page");
@@ -152,7 +152,7 @@ assert.match(components, /\.lc-checkin-dialog-host--mobile \.lc-checkin__mobile-
 // 守门：侧边栏面板（dock）：窄面板要有自己的导航与结构，否则进去出不来
 assert.match(plugin, /plugin\.dockElement\.classList\.add\("lc-checkin-dock-host"\)/,
     "the dock panel needs its own host class for narrow-panel layout");
-assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\);/,
+assert.match(plugin, /if \(!root\.querySelector\("\.lc-checkin__mobile-nav"\)\) \{\s*root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(page\)\);/,
     "the bottom navigation must be rendered on every surface (wide containers hide it in CSS)");
 assert.match(plugin, /size: \{width: 420, height: 0\}/, "the dock default width must fit a readable card column");
 assert.match(components, /\.lc-checkin-dock-host \{[\s\S]*?container: lc-dock \/ inline-size;[\s\S]*?display: flex;/,
@@ -272,8 +272,8 @@ assert.match(pluginSource, /tops\.set\(this\.renderedPages\.get\(root\) \?\? "to
     "each surface must capture its own previously rendered page before restoring the destination page");
 assert.match(pluginSource, /tops\.set\("editor", 0\)/,
     "opening a new editor session must start at the title and template entry point");
-assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(this\.currentPage\) \?\? 0/,
-    "the post-render scroll position must be restored for the new page");
+assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(page\) \?\? 0/,
+    "the post-render scroll position must be restored for the new page (T-1621 per-root)");
 
 // T-107 页面键盘流：j/k/e 导航（仅桌面端绑定）
 assert.match(read("src", "render", "today-bindings.ts"), /export function bindPageKeyboardFor\(host: TodayBindingsHost, root: HTMLElement\): void/,
@@ -299,8 +299,8 @@ assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catc
 /* —— T-1597 快速弹窗会话：页签保留（编辑降级）、编辑关闭先提示。 —— */
 const quickDialogT1597 = read("src", "render", "quick-dialog.ts");
 assert.match(quickDialogT1597, /QUICK_PRESERVED_PAGES/, "会话保留页集合在位（六页，编辑降级今日）");
-assert.match(quickDialogT1597, /rememberQuickPage\(host\.currentPage\)/, "关闭时记录当前页");
-assert.match(quickDialogT1597, /host\.currentPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"/, "重开时回放会话页签");
+assert.match(quickDialogT1597, /rememberQuickPage\(closingPage\)/, "关闭时按弹窗 root 记录当前页（T-1621）");
+assert.match(quickDialogT1597, /host\.applyNavigation\(root, QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"\)/, "重开时把会话页签落到弹窗 root（T-1621）");
 assert.match(quickDialogT1597, /msg.quickCloseEditingConfirm/, "编辑页关闭先经确认提示");
 assert.match(quickDialogT1597, /stopImmediatePropagation/, "捕获拦截 SiYuan 关闭按钮监听");
 for (const key of ["msg.quickCloseEditingConfirm"]) {

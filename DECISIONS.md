@@ -1,5 +1,13 @@
 # 决策
 
+## D-325：T-1621 步骤一实施口径——写代理=全局同步、弹窗页记忆归弹窗 root、释放回落 dock→页签（2026-09-30）
+
+- **currentPage 写代理=全局同步全部 root 与孤儿页**（读=最后活跃 root 页）：既有宿主级写入（渲染块跳转、命令、openTabPage 等）语义完全不变；显式 root 的导航（rail/底栏/顶栏/返回/卡片动作）只改发起表面。
+- **快速弹窗页记忆归弹窗 root**：旧实现在关闭时把弹窗最后页写回宿主 currentPage 并全量渲染，会让 dock/页签跟随弹窗跳页——属跨表面串页缺陷，本轮随 per-root 退役；会话页记取（pageOfRoot）与回放（applyNavigation 只落弹窗 root）保持 T-1597 体验。
+- **释放回落顺序 dock→页签**：最后活跃 root 销毁（弹窗关闭/页签与 dock 卸载）后，渲染块等宿主级写入仍需落在存活表面；孤儿页承接启动参数（早于首个 root 注册的 currentPage 写入），新注册 root 继承之。
+- **存储抽纯模块 features/root-page-store.ts**：Map+孤儿页+最后活跃标记收拢为可行为级测试的纯函数（tests/root-page-store.test.cjs 入主链），宿主类只持代理与接线。
+- **剩余边界（登记不阻塞）**：编辑器归档/删除后的 showToday（archiveEditingItem/deleteEditingItem 异步无 root）仍为全局导航；跨表面会话态（todayQuery/折叠态等）按 D-324 步骤二另批评估；真机多 root 同屏走查归 T-1608 台账。
+
 ## D-324：多 root 独立页面采用「RootContext Map + 宿主 currentPage 代理层」渐进策略（2026-09-30）
 
 - T-1621 剩余的架构设计定稿：引入 per-root RootContext Map（HTMLElement→{page,returnTo}），renderInto 按 root 取页面；宿主 currentPage 保留为最后活跃 root 的代理层（现有代码零改动）；导航函数加可选 root 参数（有 root 只改该 root，无 root 改所有）。
