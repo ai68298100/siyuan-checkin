@@ -2,8 +2,9 @@
    宿主成员经 BindOccasionsHost 结构化接口声明。 */
 import {t} from "../i18n";
 import {dateKey} from "../model";
-import {currentCalendarDate, isValidLocalDateInput} from "../shared";
-import {deleteOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {currentCalendarDate, escapeHtml, isValidLocalDateInput} from "../shared";
+import {deleteOccasion, normalizeOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {buildOccurrencePreview} from "../features/occasion-preview";
 import {formSignatureFromData, isEditorFormDirty} from "../features/editor-draft";
 import {formatLunar, solarToLunar} from "../lunar";
 import {showMessage} from "siyuan";
@@ -22,6 +23,8 @@ export interface BindOccasionsHost {
     occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
     /** T-1714：搜索渲染的卸载门（拆卸期不再重绘）。 */
     disposing?: boolean;
+    /** T-1716：规则预览折叠态（会话态，跨重绘保留）。 */
+    occasionPreviewOpen?: boolean;
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
@@ -285,5 +288,47 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
                 host.occasionDraft = {editingId: host.editingOccasionId, baseUpdatedAt: draftBaseUpdatedAt, values};
             } else if (host.occasionDraft) host.occasionDraft = undefined;
         });
+        /* T-1716（D-358）：规则预览实时填充——从表单值构造 normalize 输入（与
+           saveOccasionForm 同字段集合），经 buildOccurrencePreview 单一投影渲染
+           接下来发生日与提醒出现日；只读、零写入、不触发保存。 */
+        const previewBody = root.querySelector<HTMLElement>("[data-occasion-preview-body]");
+        const previewDetails = root.querySelector<HTMLDetailsElement>("[data-occasion-preview]");
+        previewDetails?.addEventListener("toggle", (event) => { host.occasionPreviewOpen = (event.currentTarget as HTMLDetailsElement).open; });
+        const updateOccurrencePreview = () => {
+            if (!previewBody) return;
+            const data = new FormData(occasionDraftForm);
+            const read = (name: string) => String(data.get(name) || "");
+            const recurrenceValue = read("recurrence");
+            const draftInput = {
+                name: read("name") || "预览",
+                kind: read("kind") || "scheduled",
+                date: read("date"),
+                recurrence: ["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"].includes(recurrenceValue) ? recurrenceValue : "annual",
+                calendar: recurrenceValue === "annual" ? read("calendar") || "solar" : "solar",
+                annualSubtype: read("annualSubtype") || "byday",
+                month: Number(read("annualMonth")) || undefined,
+                nthWeek: Number(read("annualNth")) || undefined,
+                weekday: Number(read("weekday")) || 0,
+                monthlySubtype: read("monthlySubtype") || "byday",
+                intervalUnit: read("intervalUnit") || "month",
+                intervalCount: Number(read("intervalCount")) || undefined,
+                remindBeforeDays: Math.max(0, Math.min(365, Math.round(Number(read("remindBeforeDays")) || 0))),
+                note: "",
+            };
+            const draftOccasion = normalizeOccasion(draftInput);
+            if (!draftOccasion) {
+                previewBody.innerHTML = `<small>${escapeHtml(t("occ.previewNone"))}</small>`;
+                return;
+            }
+            const preview = buildOccurrencePreview(draftOccasion, currentCalendarDate());
+            if (!preview.entries.length) {
+                previewBody.innerHTML = `<small>${escapeHtml(t(preview.reasonKey || "occ.previewNone"))}</small>`;
+                return;
+            }
+            previewBody.innerHTML = preview.entries.map((entry) => `<div class="lc-checkin__occasion-preview-row"><time datetime="${escapeHtml(entry.occurrenceDate)}">${escapeHtml(entry.occurrenceDate)}</time><small>${escapeHtml(t("occ.previewRemind", {date: entry.remindDate}))}</small></div>`).join("");
+        };
+        updateOccurrencePreview();
+        occasionDraftForm.addEventListener("input", updateOccurrencePreview);
+        occasionDraftForm.addEventListener("change", updateOccurrencePreview);
     }
 }

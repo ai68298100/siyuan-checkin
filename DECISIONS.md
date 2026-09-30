@@ -1,5 +1,11 @@
 # 决策
 
+## D-358：规则预览走 getOccurrenceDate 单一迭代，游标次日制推进（T-1716，2026-10-01）
+
+- `buildOccurrencePreview`（features/occasion-preview.ts 纯投影）= getOccurrenceDate 单一实现的迭代包装：从起始日（含）找 count 次未来发生日，**游标推进为 addDays(发生日, 1)**（次日制）——首版 cursor=发生日本身导致同日重复（夹具红出后修正）；1500 步守门。提醒出现日=发生日-remindBeforeDays（clamp 到发生日本身）。once 已过/无未来发生日返回 reason 键由渲染层 i18n，不猜测。
+- 入口：事项表单内只读 `<details data-occasion-preview>`（编辑既有事项以当前规则渲染骨架），bind 侧从表单值构造 normalize 输入（与 saveOccasionForm 同字段集合）实时填充——**内联校验=normalize 失败或零发生日如实显示**，不造第二套计算；折叠态 host.occasionPreviewOpen 跨重绘保留（先例 occasionTemplatesOpen）；零写入，失败保留输入。
+- 字段级错误解释（非法日期等）由既有保存校验承担，预览层只以"无未来发生日"如实呈现——两层职责不合并。
+
 ## D-357：事项搜索 IME 保护与光标保留（T-1714，2026-10-01）
 
 - 事项页搜索对齐 Today 搜索的既有先例（T-1599 族）：**composition 期间 input 不重绘**（compositionstart/isComposing 拦截），compositionend 应用一次；非组合输入**保留光标位**（min(caret, len)），不再强制跳末尾（中文中间插入不再错位）。旧节点（isConnected）/卸载（disposing）不渲染；query 本就宿主字段，往返自动恢复。

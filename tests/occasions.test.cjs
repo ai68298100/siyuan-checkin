@@ -61,11 +61,14 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
        与 FormData 垫片（块后恢复原值）。 */
     const editorDraftModule = {exports: {}};
     new Function("require", "module", "exports", ts.transpileModule(fs.readFileSync("src/features/editor-draft.ts", "utf8"), {compilerOptions}).outputText)(() => {}, editorDraftModule, editorDraftModule.exports);
+    const occasionPreviewModule = {exports: {}};
+    new Function("require", "module", "exports", ts.transpileModule(fs.readFileSync("src/features/occasion-preview.ts", "utf8"), {compilerOptions}).outputText)(() => {}, occasionPreviewModule, occasionPreviewModule.exports);
     const previousFormData = globalThis.FormData;
     globalThis.FormData = class { constructor(form) { this.entries = (form && form.formDataEntries) || []; } get(key) { const found = this.entries.find(([name]) => name === key); return found ? found[1] : null; } forEach(callback) { for (const [name, value] of this.entries) callback(value, name); } };
     new Function("require", "module", "exports", ts.transpileModule(bindSource, {compilerOptions}).outputText)((id) => {
         if (id === "../occasions") return occasions;
         if (id === "../features/editor-draft") return editorDraftModule.exports;
+        if (id === "../features/occasion-preview") return occasionPreviewModule.exports;
         if (["../i18n", "../model", "../shared", "../lunar", "siyuan"].includes(id)) return {};
         throw new Error(`Unexpected occasion binding dependency ${id}`);
     }, module, module.exports);

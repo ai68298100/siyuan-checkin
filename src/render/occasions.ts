@@ -6,6 +6,7 @@ import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
 import {renderPageShellHead} from "./page-shell";
 import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, isOccasionCompleted, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
+import {buildOccurrencePreview, type OccurrencePreviewEntry} from "../features/occasion-preview";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
 /* T-1621：提醒天数预设 datalist id 按渲染次序唯一化（settings settingsViewId 同法）——
@@ -23,10 +24,14 @@ export interface OccasionsViewContext {
     /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
+    /** T-1716：规则预览折叠态（会话态，跨重绘保留）。 */
+    occasionPreviewOpen?: boolean;
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const editing = ctx.editingOccasionId ? ctx.occasionStore.occasions.find((item) => item.id === ctx.editingOccasionId) : undefined;
+    /* T-1716（D-358）：规则预览折叠态（会话态，跨重绘保留；先例 occasionTemplatesOpen）。 */
+    const occasionPreviewOpen = ctx.occasionPreviewOpen === true;
     const occasionQuery = (ctx.occasionSearchQuery || "").trim().toLocaleLowerCase();
     const todayKey = dateKey(currentCalendarDate());
     const withNext = ctx.occasionStore.occasions.map((item) => ({item, next: getOccurrenceDate(item, todayKey)}));
@@ -210,6 +215,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                         </div>
                         <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets-${++remindPresetsSequence}" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets-${remindPresetsSequence}"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
                         <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(editing?.note || "")}</textarea></label>
+                        ${renderOccurrencePreviewView(editing, occasionPreviewOpen)}
                         <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>
                 </section>
@@ -229,3 +235,11 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
 }
 
 export type {Occasion};
+
+/** T-1716（D-358）：规则预览骨架——编辑既有事项时以当前规则渲染；新建时为空骨架，
+    由 bind 侧按表单值实时填充（同一 buildOccurrencePreview 投影，零第二套计算）。 */
+function renderOccurrencePreviewView(item: Occasion | undefined, open: boolean): string {
+    const entries = item ? buildOccurrencePreview(item, currentCalendarDate()).entries : [];
+    const rows = entries.map((entry: OccurrencePreviewEntry) => `<div class="lc-checkin__occasion-preview-row"><time datetime="${escapeHtml(entry.occurrenceDate)}">${escapeHtml(entry.occurrenceDate)}</time><small>${escapeHtml(t("occ.previewRemind", {date: entry.remindDate}))}</small></div>`).join("");
+    return `<details class="lc-checkin__occasion-preview" data-occasion-preview ${open ? "open" : ""}><summary>${t("occ.previewTitle")}</summary><div class="lc-checkin__occasion-preview-body" data-occasion-preview-body>${rows}</div></details>`;
+}
