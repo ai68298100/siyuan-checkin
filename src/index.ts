@@ -7131,6 +7131,10 @@ this.scheduleMidnightRefresh();
         const recurrence: OccasionRecurrence = ["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"].includes(recurrenceValue) ? recurrenceValue as OccasionRecurrence : "annual";
         const remindBeforeDays = Math.max(0, Math.min(365, Math.round(Number(data.get("remindBeforeDays")) || 0)));
         const existing = this.editingOccasionId ? this.occasionStore.occasions.find((item) => item.id === this.editingOccasionId) : undefined;
+        /* T-1701（D-348）：单次改期（overrides）绑定旧规则的基点日期——编辑名称/备注/
+           提醒天数时原样保留；日期或重复规则变更时旧覆盖随旧规则失效，显式清空并
+           提示（不静默保留死覆盖，也不静默丢弃）。无效覆盖由 normalizeOccasion 校验。 */
+        const ruleChanged = Boolean(existing) && (existing?.date !== date || existing?.recurrence !== recurrence);
         const lunar = solarToLunar(new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))));
         const normalized = normalizeOccasion({
             id: existing?.id, name, kind, date, recurrence,
@@ -7143,10 +7147,12 @@ this.scheduleMidnightRefresh();
             monthlySubtype: String(data.get("monthlySubtype") || "byday"),
             intervalUnit: String(data.get("intervalUnit") || "month"),
             intervalCount: Number(data.get("intervalCount")) || undefined,
+            overrides: ruleChanged ? undefined : existing?.overrides,
             remindBeforeDays, note: String(data.get("note") || ""),
             enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString(),
         });
         if (!normalized) { showMessage(t("msg.occasionInvalid")); return; }
+        if (ruleChanged && existing?.overrides && Object.keys(existing.overrides).length) showMessage(t("msg.occasionOverridesCleared"));
         const previous = this.occasionStore;
         this.occasionStore = upsertOccasion(previous, normalized);
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionSaveFail")); return; }
