@@ -5,12 +5,13 @@ import {daysBetweenHalfOpen} from "../date-keys";
 import {buildTodayDashboard, type TodayDashboard} from "../features/today-dashboard";
 import {buildTodayItemFact} from "../features/today-fact";
 import {abstinenceMilestones} from "../features/pace-projection";
-import {dateKey, evaluateItemRule, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
+import {dateKey, evaluateItemRule, getEventById, getEventDateKey, getEventsForDay, getItemRevisionForDate, getProgress, getSkipDatesForItem, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, sortCheckinItems} from "../model";
 import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseLocalDateKey, renderIconMarkup, getRecordStep, formatScheduleLabel, safeAttachmentUrl} from "../shared";
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {buildThisDayHistory} from "../features/this-day-history";
 import {buildWeekLoadPreview} from "../features/week-load";
 import {collectOffScheduleItems, type OffScheduleEntry} from "../features/off-schedule";
+import {buildRecordDetails} from "../features/record-details";
 import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -45,7 +46,8 @@ export interface TodayViewContext extends TodayItemContext {
     weekStripVisible: boolean;
     lastExportAt?: string;
     saveState: SaveState;
-    recentRecord?: {message: string; progress: number; target: number; unit: string};
+    /** T-1776：回执携带事件身份与来源——"查看此记录"按 eventId 行内展开事实详情。 */
+    recentRecord?: RecentRecordView;
     celebration?: {message: string; itemName: string};
     supportsCustomTab: boolean;
     appearance: "light" | "dark";
@@ -81,13 +83,31 @@ export interface RecentRecordView {
     unit: string;
     /** R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级（金标 + 加重弹跳，静态降级仍可辨）。 */
     milestone?: number;
+    /** T-1776（D-345）：回执直达所写事实——事件 id 驱动"查看此记录"行内展开；
+        来源非 manual 时标注徽章；撤销/详情都只作用于本回执对应事件。 */
+    eventId?: string;
+    source?: CheckinEvent["source"];
+    localDate?: string;
 }
 
-export function renderRecentRecordView(record: RecentRecordView | undefined, reducedMotion: boolean): string {
+export function renderRecentRecordView(record: RecentRecordView | undefined, event: CheckinEvent | undefined, reducedMotion: boolean): string {
     if (!record) return "";
+    const sourceLabel = record.source && record.source !== "manual" ? `<em class="lc-checkin__milestone-tag">${escapeHtml(t(`source.${record.source}`) || record.source)}</em>` : "";
+    let detailsPanel = "";
+    let detailsToggle = "";
+    if (record.eventId && event) {
+        const details = buildRecordDetails(event, {});
+        const rows = details.rows.map((row) => {
+            const valueText = row.isKey ? escapeHtml(t(row.text, row.params)) : row.labelKey === "review.detailsRow.time" ? escapeHtml(new Date(row.text).toLocaleString(getPluginLocale(), {year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit"})) : escapeHtml(row.text);
+            return `<div class="lc-checkin__record-details-row"><span>${escapeHtml(t(row.labelKey))}</span><span${row.unknown ? ' class="is-unknown"' : ""}>${valueText}</span></div>`;
+        }).join("");
+        detailsPanel = `<div class="lc-checkin__record-details" data-record-details-panel="${escapeHtml(record.eventId)}" hidden role="group" aria-label="${escapeHtml(t("review.detailsPanelAria"))}">${rows}</div>`;
+        detailsToggle = `<button type="button" class="lc-checkin__text-button" data-action="toggle-record-details" data-record-details-toggle="${escapeHtml(record.eventId)}" aria-expanded="false">${t("today.viewRecord")}</button>`;
+    }
     return `<div class="lc-checkin__recent-record${record.milestone ? " is-milestone" : ""}" data-reduced-motion="${reducedMotion}" role="status" aria-live="polite">
-            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong>${record.milestone ? `<em class="lc-checkin__milestone-tag">🎉 ${t("today.streakMilestone", {n: record.milestone})}</em>` : ""}<small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
-            <button type="button" data-action="undo-record">${t("today.undoRecord")}</button>
+            <span><i>✓</i><strong>${escapeHtml(record.message)}</strong>${record.milestone ? `<em class="lc-checkin__milestone-tag">🎉 ${t("today.streakMilestone", {n: record.milestone})}</em>` : ""}${sourceLabel}<small>${t("today.progressNow", {value: escapeHtml(formatNumber(record.progress)), target: escapeHtml(formatNumber(record.target)), unit: escapeHtml(record.unit)})}</small></span>
+            <span class="lc-checkin__recent-record-actions">${detailsToggle}<button type="button" data-action="undo-record">${t("today.undoRecord")}</button></span>
+            ${detailsPanel}
         </div>`;
 }
 
@@ -525,7 +545,7 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 </button>
                 <div class="lc-checkin__group-items" ${ctx.completedCollapsed ? "hidden" : ""}>${completedItems.map((item) => renderItemView(item, now, ctx)).join("")}</div>
             </section>` : ""}`;
-    const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.reducedMotion);
+    const recentRecord = renderRecentRecordView(ctx.recentRecord, ctx.recentRecord?.eventId ? getEventById(ctx.store, ctx.recentRecord.eventId) : undefined, ctx.reducedMotion);
     const saveStatus = renderSaveStatusView(ctx.saveState);
     const occasionBanner = renderOccasionBannerView(ctx.occasionStore, now);
     const priorityReminder = renderPriorityReminderView(ctx.store, ctx.occasionStore, now, ctx.reminderUserActions || [], ctx.priorityReminderExpanded === true, ctx.reminderQuiet === true);

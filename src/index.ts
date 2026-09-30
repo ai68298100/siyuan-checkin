@@ -221,6 +221,9 @@ interface RecentRecord {
     unit: string;
     /** R-18.5（D-263 收尾）：本次记录使连击命中里程碑阶梯（如 7/30/100/365）时的分级庆祝。 */
     milestone?: number;
+    /** T-1776：回执直达所写事实——来源标注与行内事实详情按事件呈现。 */
+    source?: CheckinEvent["source"];
+    localDate?: string;
 }
 
 interface LockManagerLike {
@@ -3365,7 +3368,7 @@ this.scheduleMidnightRefresh();
     }
 
     private syncRecentRecordToast() {
-        const markup = renderRecentRecordView(this.recentRecord, this.reducedMotion);
+        const markup = renderRecentRecordView(this.recentRecord, this.recentRecord ? getEventById(this.store, this.recentRecord.eventId) : undefined, this.reducedMotion);
         const roots = [this.dockElement, this.tabElement, this.quickDialogElement]
             .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
         for (const root of roots) {
@@ -6727,6 +6730,9 @@ this.scheduleMidnightRefresh();
             progress: getProgress(this.store, current, actionDate),
             target: revision.schedule.type === "quota" ? revision.schedule.quota?.amount || revision.target : revision.target,
             unit: revision.unit || "次",
+            /* T-1776：回执携带事件身份事实——来源标注与"查看此记录"按本事件呈现。 */
+            source: event.source,
+            localDate: event.localDate,
             /* R-18.5（D-263 收尾）：连击命中里程碑 → 庆祝升级为里程碑级（其余为日常轻反馈）。 */
             ...(STREAK_MILESTONES.includes(currentStreak) ? {milestone: currentStreak} : {}),
         });

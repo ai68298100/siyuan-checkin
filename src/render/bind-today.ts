@@ -185,6 +185,17 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.focusTodaySearch();
     }));
     root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => host.undoRecentRecord());
+    /* T-1776：回执"查看此记录"——行内展开该事件的事实详情（与回顾同款投影），
+       本地 DOM 切换不触重渲染；撤销仍只作用于回执对应事件（T-1795）。 */
+    root.querySelectorAll<HTMLElement>("[data-action='toggle-record-details']").forEach((button) => button.addEventListener("click", () => {
+        const eventId = button.dataset.recordDetailsToggle || "";
+        const panel = root.querySelector<HTMLElement>(`[data-record-details-panel="${CSS.escape(eventId)}"]`);
+        if (!panel) return;
+        const expanded = !panel.hidden;
+        panel.hidden = expanded;
+        button.setAttribute("aria-expanded", String(!expanded));
+        button.textContent = expanded ? t("today.viewRecord") : t("today.hideRecord");
+    }));
     root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
         void host.retrySave();
     });
