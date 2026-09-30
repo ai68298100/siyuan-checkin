@@ -246,23 +246,38 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
     /* T-1219：snooze 只在记录当日的本地日期内生效（applyReminderActions），
        超过 7 天的 snooze 已不可能再被投影到，物理清理防止历史堆积；
        skip 对该次实例持续生效，不受时效清理。
-       T-1421：expiresAt 必须不早于 at 且不超过 at+7 天，否则丢弃该字段（回落当日语义）。 */
+       T-1421：expiresAt 必须不早于 at 且不超过 at+7 天，否则丢弃该字段（回落当日语义）。
+       T-1770（D-339）：容量按动作类分账——snooze 是当日/防抖短命动作，skip 是长期决策，
+       各自独占 max 配额；snooze 噪声不再把仍会投影的旧 skip 挤出存储（旧版单一
+       slice(-200) 使 201 条较新 snooze 即可让一次性逾期事项的 skip 失效并再次提示）。
+       同类超出仍按最旧淘汰：skip 容量边界=每存储 max 条，恢复走 restore 显式清理。 */
     const snoozeCutoff = now.getTime() - 7 * 86400000;
-    return value.filter((entry): entry is ReminderUserAction => {
+    const survivors = value.filter((entry): entry is ReminderUserAction => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<ReminderUserAction>;
         return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
             && (candidate.action === "snooze" || candidate.action === "skip")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
-    }).filter((entry) => entry.action === "skip" || Date.parse(entry.at) >= snoozeCutoff)
-        .slice(-max).map((entry) => {
-            if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
-            const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
-            const issuedAt = Date.parse(entry.at);
-            const expiry = Date.parse(expiresAt);
-            if (Number.isNaN(expiry) || expiry < issuedAt || expiry - issuedAt > 7 * 86400000) return {id: entry.id, action: entry.action, at: entry.at};
-            return {id: entry.id, action: entry.action, at: entry.at, expiresAt};
+    }).filter((entry) => entry.action === "skip" || Date.parse(entry.at) >= snoozeCutoff);
+    const resolveExpiresAt = (entry: ReminderUserAction): ReminderUserAction => {
+        if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
+        const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
+        const issuedAt = Date.parse(entry.at);
+        const expiry = Date.parse(expiresAt);
+        if (Number.isNaN(expiry) || expiry < issuedAt || expiry - issuedAt > 7 * 86400000) return {id: entry.id, action: entry.action, at: entry.at};
+        return {id: entry.id, action: entry.action, at: entry.at, expiresAt};
+    };
+    if (survivors.length <= max) return survivors.map(resolveExpiresAt);
+    /* 超预算：两类各自保留最新 max 条，幸存者保持原有相对顺序。 */
+    const keptByClass = new Set<number>();
+    for (const className of ["snooze", "skip"] as const) {
+        const indexes: number[] = [];
+        survivors.forEach((entry, index) => {
+            if (entry.action === className) indexes.push(index);
         });
+        indexes.slice(-max).forEach((index) => keptByClass.add(index));
+    }
+    return survivors.filter((_, index) => keptByClass.has(index)).map(resolveExpiresAt);
 }
 
 export function serializeReminderUserActions(actions: readonly ReminderUserAction[]): string {
