@@ -136,6 +136,9 @@ export async function saveEditorForm(
         completionSource,
         tomatoMode,
         ...(direction ? {direction} : {}),
+        /* T-1769：转打卡建档时写入的 linkedOccasionId 必须跨普通编辑保留，
+           否则编辑任意字段后达成回写（index setOccasionCompleted）断链。 */
+        ...(existing?.linkedOccasionId ? {linkedOccasionId: existing.linkedOccasionId} : {}),
         ...(anchorBlockId ? {noteAnchor: {blockId: anchorBlockId, ...(anchorAppendNotes ? {appendNotes: true} : {})}} : {}),
         ...(!taskHorizonCalendarVisible ? {taskHorizonCalendarVisible: false as const} : {}),
         ...(streakTolerance >= 1 ? {streakTolerance} : {}),

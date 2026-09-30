@@ -1,5 +1,10 @@
 # 决策
 
+## D-336：转打卡关联随项目编辑保留，解绑走显式关联管理（T-1769，2026-10-01）
+
+- `linkedOccasionId` 是转打卡建档时写入的事实（指向原事项），普通编辑"改名/改组/改偏好"不构成解绑意图——save-form 重建项目时从 existing 复制该字段；唯一来源仍是转打卡建档与未来 T-1720 的关联状态管理，不在编辑器里新增解绑入口。
+- 行为夹具 `tests/occasion-link.test.cjs` 真实转译 save-form（递归闭包 + stub showMessage），覆盖转打卡建档→编辑→保存→normalize 重载→达成 isComplete、新建不带链接（不凭空物化）、持久化失败整体回滚且链接原样保留；红证（HEAD 版编辑保存后 linkedOccasionId=undefined）留档 PROGRESS。
+
 ## D-335：戒除方向进逐日修订，方向纪元切换重置连击（T-1766，2026-10-01）
 
 - 先以 git HEAD 修复前源码复现三向追溯改写：普通→戒除后，旧纪元空日被当前顶层方向误判为"守住"、旧纪元真实完成日被当破戒清零；戒除→普通后旧纪元零事件日被降级为未完成。根因是修订只含 kind/target/unit/schedule 而完成判定读顶层 direction。
