@@ -80,7 +80,7 @@
 - **SurfaceContext 读侧扩参**：日期/范围/工作区/查询/筛选全形状聚合，多 root DOM id 唯一化（提醒中心/事项预设），读屏关联不再串台。
 </details>
 
-历史版本重点见 [发布说明目录](docs/releases/) 与 [18.10.0 变更记录](docs/v18.10.0-change-log.md)。
+历史版本重点见 [发布说明目录](docs/releases/) 与 [18.14.0 变更记录](docs/v18.14.0-change-log.md)。
 
 ## 安装与兼容性
 
