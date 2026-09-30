@@ -20,6 +20,8 @@ export interface OccasionsViewContext {
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | OccasionKind;
     occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
+    /** T-1715：事项排序模式（缺省 next=既有近到远口径）。 */
+    occasionSortMode?: "next" | "name" | "updated";
     appearance: "light" | "dark";
     /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
     occasionTemplatesOpen: boolean;
@@ -35,8 +37,22 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
     const occasionQuery = (ctx.occasionSearchQuery || "").trim().toLocaleLowerCase();
     const todayKey = dateKey(currentCalendarDate());
     const withNext = ctx.occasionStore.occasions.map((item) => ({item, next: getOccurrenceDate(item, todayKey)}));
+    /* T-1715（D-361）：排序选择——next=启用优先→下次日期→名称（既有默认）；
+       name=启用优先→名称；updated=启用优先→最近修改。无下次日期排在有日期之后。 */
+    const sortMode = ctx.occasionSortMode || "next";
     const allOccasions = withNext.sort((left, right) => {
         if (left.item.enabled !== right.item.enabled) return left.item.enabled ? -1 : 1;
+        if (sortMode === "name") {
+            const byName = left.item.name.localeCompare(right.item.name, "zh-CN");
+            if (byName !== 0) return byName;
+            if (left.next !== right.next) return left.next ? (right.next ? left.next.localeCompare(right.next) : -1) : 1;
+            return left.item.id.localeCompare(right.item.id);
+        }
+        if (sortMode === "updated") {
+            const byUpdated = (right.item.updatedAt || "").localeCompare(left.item.updatedAt || "");
+            if (byUpdated !== 0) return byUpdated;
+            return left.item.name.localeCompare(right.item.name, "zh-CN");
+        }
         if (left.next !== right.next) return left.next ? (right.next ? left.next.localeCompare(right.next) : -1) : 1;
         return left.item.name.localeCompare(right.item.name);
     });
@@ -230,7 +246,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                     <label class="lc-checkin__occasion-search">${uiIcon("search")}<input type="search" data-occasion-search value="${escapeHtml(ctx.occasionSearchQuery)}" placeholder="${t("occ.searchPlaceholder")}" aria-label="${t("occ.searchAria")}" /></label>
                     <details class="lc-checkin__occasion-filter-fold" ${activeFilterCount ? "open" : ""}>
                         <summary><span>${t("occ.filters")}</span>${activeFilterCount ? `<em>${activeFilterCount}</em>` : ""}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
-                        <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["missed", t("occ.filterMissed")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
+                        <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["missed", t("occ.filterMissed")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}<select data-occasion-sort aria-label="${t("occ.sortLabel")}"><option value="next"${(ctx.occasionSortMode || "next") === "next" ? " selected" : ""}>${t("occ.sortNext")}</option><option value="name"${ctx.occasionSortMode === "name" ? " selected" : ""}>${t("occ.sortName")}</option><option value="updated"${ctx.occasionSortMode === "updated" ? " selected" : ""}>${t("occ.sortUpdated")}</option></select>${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     </details>
                     <div class="lc-checkin__occasion-manager-list" data-occasion-agenda>${agendaRows}</div>
                 </section>

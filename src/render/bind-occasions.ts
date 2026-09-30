@@ -29,6 +29,8 @@ export interface BindOccasionsHost {
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
     occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
+    /** T-1715：排序模式（缺省 next=近到远既有口径）。 */
+    occasionSortMode?: "next" | "name" | "updated";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     bindDialogClose(root: HTMLElement): void;
@@ -88,6 +90,11 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (key === "time") host.occasionTimeFilter = select.value as BindOccasionsHost["occasionTimeFilter"];
         host.render();
     }));
+    /* T-1715：排序选择（宿主字段，往返自动恢复）。 */
+    root.querySelector<HTMLSelectElement>("[data-occasion-sort]")?.addEventListener("change", (event) => {
+        host.occasionSortMode = (event.currentTarget as HTMLSelectElement).value as BindOccasionsHost["occasionSortMode"];
+        host.render();
+    });
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
         host.occasionSearchQuery = ""; host.occasionStatusFilter = "all"; host.occasionKindFilter = "all"; host.occasionTimeFilter = "all"; host.render();
     });

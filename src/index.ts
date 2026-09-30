@@ -1681,6 +1681,8 @@ export default class CheckinPlugin extends Plugin {
     private occasionStatusFilter: "all" | "enabled" | "disabled" = "all";
     private occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled" = "all";
     private occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended" = "all";
+    /* T-1715：事项排序模式（会话态）。 */
+    private occasionSortMode: "next" | "name" | "updated" = "next";
     private occasionTemplatesOpen = false;
     private occasionTemplateCategory: "recommended" | import("./occasions").OccasionTemplateCategory = "recommended";
     private celebration?: {message: string; itemName: string};
@@ -5694,6 +5696,7 @@ this.scheduleMidnightRefresh();
             occasionStatusFilter: this.occasionStatusFilter,
             occasionKindFilter: this.occasionKindFilter,
             occasionTimeFilter: this.occasionTimeFilter,
+            occasionSortMode: this.occasionSortMode,
             occasionTemplatesOpen: this.occasionTemplatesOpen,
             occasionTemplateCategory: this.occasionTemplateCategory,
             appearance: this.resolvedAppearance(),
