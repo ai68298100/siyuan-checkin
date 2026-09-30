@@ -1243,7 +1243,9 @@ const cases = [
         const reading = store.items.find(item => item.id === 'reading');
         reading.direction = 'atMost';
         reading.target = 10;
-        for (const revision of reading.revisions) revision.target = 10;
+        /* D-335 后修订 direction 物化：手工变异须与 save-form 保存结果同形（修订亦带
+           atMost），否则当日按 atLeast 判定、fixture 误入完成组。 */
+        for (const revision of reading.revisions) { revision.target = 10; revision.direction = 'atMost'; }
         plugin.store = store;
         plugin.showToday();
     });
