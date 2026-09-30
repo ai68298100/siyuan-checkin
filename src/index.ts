@@ -6763,6 +6763,9 @@ this.scheduleMidnightRefresh();
                 await this.persist();
             } catch {
                 this.store = previous;
+                /* T-1795：撤销失败恢复撤销 token（同事件仍可再次撤销，回执原样重新呈现；
+                   store 已回滚，回执内的进度/目标值仍然准确）。 */
+                this.setRecentRecord(recent);
                 showMessage(t("msg.undoFail"));
                 return;
             }

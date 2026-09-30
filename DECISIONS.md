@@ -1,5 +1,11 @@
 # 决策
 
+## D-342：记录/撤销失败保住草稿与 token，收起语义只在成功路径（T-1795，2026-10-01）
+
+- 记录侧：bind-today 的 recordWithDetails 由"先清场再异步写"改为**结果感知**——写失败把附件放回 `pendingAttachments`、itemId 加回 `expandedExactEntries` 并重渲染（备注/数值仍在输入框，用户可直接重试）；写成功才消费附件、清 attach 按钮态并收起面板/交还焦点（T-1455 的"录完即收起"语义仅在成功路径成立——失败时收起正是丢草稿的根因）。
+- 撤销侧：undoRecentRecord 的失败分支用 `setRecentRecord(recent)` 恢复撤销 token——同一事件仍可再次撤销，回执（消息/进度/目标）原样重新呈现且因 store 已回滚而数值准确；副作用 advanceFirstSuccess 幂等可重入。撤销窗口仍是 2.6 秒 toast 生命周期（超时后 token 自然消失，与既有节奏一致），不做无限期撤销队列。
+- 行为夹具 `tests/record-retry.test.cjs` 真实转译 bind-today（递归闭包+siyuan stub+DOM 桩）驱动 record 点击路径：失败保留附件/展开/重渲染、成功消费+收起+备注附件达记录器、67675fe 红证对照（旧代码失败即丢附件与面板态）、index 撤销函数 setRecentRecord 结构钉。成功回执细化归 T-1776、跨入口幂等归 T-1786。
+
 ## D-341：配额周期按生效规则分桶结算，事件归属其发生日纪元（T-1767，2026-10-01）
 
 - 红证：HEAD 版 `summarizeQuota` 用范围末日修订评估全部周期——周（≤2 次/周）→月（≤10 次/月）切换后，8 条事件全灌进单一月度 current（elapsed=0/completed=0，周纪元 3 个周期整体消失）；且周期可用性只看首日，月中创建/归档恢复的周期被整周期丢弃。

@@ -386,21 +386,31 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const recordWithDetails = (value: number): void => {
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
                     const attachment = host.pendingAttachments.get(itemId);
-                    host.pendingAttachments.delete(itemId);
                     host.pendingFocusItemId = item.id;
                     host.pulseHaptic();
-                    host.enqueueMutation(() => host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment));
-                    const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
-                    if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
-                    /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
-                       的界面刷新（Enter 保存场景），条目看起来没变。 */
-                    host.expandedExactEntries = host.expandedExactEntries.filter((id) => id !== item.id);
-                    const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
-                    if (exactEntry) exactEntry.hidden = true;
-                    const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
-                    if (trigger) trigger.setAttribute("aria-expanded", "false");
-                    const active = (element.ownerDocument?.activeElement ?? null) as HTMLElement | null;
-                    active?.blur?.();
+                    /* T-1795：写失败保留草稿现场——附件放回 pendingAttachments、精确面板
+                       保持展开（可修改后重试）；成功才消费附件并收起清场（T-1455）。 */
+                    host.enqueueMutation(async () => {
+                        const recorded = await host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment);
+                        if (!recorded) {
+                            if (attachment) host.pendingAttachments.set(itemId, attachment);
+                            if (!host.expandedExactEntries.includes(itemId)) host.expandedExactEntries = [...host.expandedExactEntries, itemId];
+                            host.render();
+                            return;
+                        }
+                        host.pendingAttachments.delete(itemId);
+                        const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
+                        if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
+                        /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
+                           的界面刷新（Enter 保存场景），条目看起来没变。 */
+                        host.expandedExactEntries = host.expandedExactEntries.filter((id) => id !== item.id);
+                        const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
+                        if (exactEntry) exactEntry.hidden = true;
+                        const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
+                        if (trigger) trigger.setAttribute("aria-expanded", "false");
+                        const active = (element.ownerDocument?.activeElement ?? null) as HTMLElement | null;
+                        active?.blur?.();
+                    });
                 };
                 if (revision.kind === "binary") {
                     /* T-1239（D-219）：at-most 反转——无破戒时点击记录破戒；已破戒时点击撤销。 */
