@@ -495,7 +495,24 @@ export function getMissedOccurrence(item: Occasion, localDate: string): string |
         default: return undefined;
     }
     if (!previous || previous >= localDate) return undefined;
-    return item.completedDates.includes(previous) ? undefined : previous;
+    /* T-1705（D-351）：改期实例的错过判定——原日被单次改期时，完成/补标都落在
+       实际发生日：原日未完成但改期日已完成则不提示（此前会误报原日漏记），
+       改期日未完成则提示**实际发生日**（补标对象与完成记录一致，避免重复完成）。
+       跟随覆盖链有界防环；无覆盖时行为与旧版逐值一致。 */
+    return resolveOverrideTarget(item, previous) === previous
+        ? (item.completedDates.includes(previous) ? undefined : previous)
+        : (item.completedDates.includes(resolveOverrideTarget(item, previous)) ? undefined : resolveOverrideTarget(item, previous));
+}
+
+/** T-1705：跟随单次改期链解析实际发生日（有界 8 步防环；无覆盖返回原日）。 */
+function resolveOverrideTarget(item: Occasion, date: string): string {
+    let current = date;
+    for (let guard = 0; guard < 8; guard += 1) {
+        const override = item.overrides?.[current];
+        if (!override || !isValidLocalDate(override.date) || override.date === current) break;
+        current = override.date;
+    }
+    return current;
 }
 
 /** T-1494 写入单次实例覆盖（改期）；newDate 为空/等于原日期时移除该覆盖。
