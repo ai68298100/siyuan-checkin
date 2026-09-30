@@ -42,7 +42,7 @@ export interface BindOccasionsHost {
     /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
-    saveOccasionOverride?(id: string, originalDate: string, newDate: string): void;
+    saveOccasionOverride?(id: string, originalDate: string, newDate?: string): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
     saveOccasionForm(data: FormData): Promise<unknown>;
 }
@@ -158,12 +158,34 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const dateInput = row.querySelector<HTMLInputElement>("[data-occasion-move-date]");
         const confirmButton = row.querySelector<HTMLButtonElement>("[data-occasion-move-confirm]");
         if (!dateInput || !confirmButton) return;
-        dateInput.addEventListener("change", () => { confirmButton.disabled = !dateInput.value; });
+        /* T-1718（D-359）：原日→新日可视核对（选日即更新标签）；撞到已完成/其他
+           覆盖实例时 confirm 反馈（允许但明确）。 */
+        const originLabel = row.querySelector<HTMLElement>("[data-occasion-move-origin-label]");
+        const originDate = confirmButton.dataset.occasionMoveOrigin || "";
+        dateInput.addEventListener("change", () => {
+            confirmButton.disabled = !dateInput.value;
+            if (originLabel && dateInput.value) originLabel.textContent = t("occ.moveTo", {from: originDate, to: dateInput.value});
+            if (originLabel && !dateInput.value) originLabel.textContent = t("occ.moveFrom", {date: originDate});
+        });
         confirmButton.addEventListener("click", () => {
             if (!dateInput.value || confirmButton.disabled) return;
+            const target = host.occasionStore.occasions.find((candidate) => candidate.id === id);
+            const clash = target && ((target.completedDates || []).includes(dateInput.value)
+                || Object.values(target.overrides || {}).some((override) => override.date === dateInput.value)
+                || Boolean(target.overrides?.[dateInput.value]));
+            if (clash && !window.confirm(t("msg.occasionMoveClash", {date: dateInput.value}))) return;
             if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value);
         });
     });
+    /* T-1718：撤销改期——只清本次覆盖（setOccasionOverride 传 undefined），恢复周期
+       规则日期；不影响其他周期或历史。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-move-undo]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionMoveUndo || "";
+        const origin = button.dataset.occasionMoveUndoOrigin || "";
+        if (!id || !origin) return;
+        if (!window.confirm(t("msg.occasionMoveUndoConfirm", {origin, next: button.dataset.occasionMoveUndoNext || ""}))) return;
+        if (host.saveOccasionOverride) host.saveOccasionOverride(id, origin, undefined);
+    }));
 
     const syncBlocks = () => {
         const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");

@@ -346,7 +346,7 @@ assert.match(viewSource, /data-occasion-move-toggle/, "recurring occasions expos
 assert.match(bindSource, /data-occasion-late-complete/, "late marks route through the shared completion channel");
 assert.match(bindSource, /saveOccasionOverride/, "reschedules go through the host override channel");
 const indexSource2 = fs.readFileSync("src/index.ts", "utf8");
-assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string\): void/, "host implements the override persistence wrapper");
+assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate\?: string\): void/, "host implements the override persistence wrapper (T-1718 undo passes undefined)");
 assert.match(indexSource2, /setOccasionOverride\(previous, id, originalDate, newDate\)/, "host delegates to the pure override writer");
 for (const key of ["occ.lateHint", "occ.lateComplete", "occ.moveOccurrence", "occ.moveConfirm", "occ.moveDone", "occ.moveInvalid"]) {
     assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);

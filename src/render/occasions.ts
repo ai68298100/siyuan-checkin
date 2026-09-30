@@ -5,7 +5,7 @@ import {daysBetweenHalfOpen} from "../date-keys";
 import {currentCalendarDate, escapeHtml, parseLocalDateKey} from "../shared";
 import {uiIcon} from "../ui/icons";
 import {renderPageShellHead} from "./page-shell";
-import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, isOccasionCompleted, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
+import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, findOverrideOriginFor, getMissedOccurrence, getOccurrenceDate, isOccasionCompleted, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import {buildOccurrencePreview, type OccurrencePreviewEntry} from "../features/occasion-preview";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
@@ -87,6 +87,9 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         /* T-1494：错过处理（中性提示+补标记）与单次改期（仅循环事项）。 */
         const missed = getMissedOccurrence(item, todayKey);
         const lateMarkup = missed ? `<div class="lc-checkin__occasion-late"><span>${t("occ.lateHint", {date: missed})}</span><button class="lc-checkin__text-button" type="button" data-occasion-late-complete data-occasion-late-id="${escapeHtml(item.id)}" data-occasion-late-date="${escapeHtml(missed)}">${t("occ.lateComplete")}</button></div>` : "";
+        /* T-1718（D-359）：改期来源解析——当前发生日被单次改期时提供撤销（只清本次覆盖，
+           不影响其他周期或历史）；原日→新日核对在 move 行内呈现。 */
+        const moveOrigin: string | undefined = next ? findOverrideOriginFor(item, next) : undefined;
         /* T-1712（D-355）：当前可处理发生日（下次发生日）的完成切换与"本次已完成"回显——
            复用 setOccasionCompleted 单一通道，撤销/补标/多表面同源；启停与完成语义分离。 */
         const doneThisTime = Boolean(next && isOccasionCompleted(item, next));
@@ -94,7 +97,8 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
             ? `<span class="lc-checkin__occasion-done${doneThisTime ? " is-done" : ""}">${doneThisTime ? t("occ.doneThisTime") : ""}<button class="lc-checkin__text-button" type="button" data-occasion-complete="${escapeHtml(item.id)}" data-occasion-complete-date="${escapeHtml(next)}" data-occasion-complete-target="${doneThisTime ? "false" : "true"}" aria-pressed="${doneThisTime}">${doneThisTime ? t("occ.undoDone") : t("occ.markDone")}</button></span>`
             : "";
         const moveAvailable = item.enabled && item.recurrence !== "once" && Boolean(next);
-        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="false">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}" hidden><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}" disabled>${t("occ.moveConfirm")}</button></div></div>` : "";
+        const moveUndoMarkup = moveAvailable && moveOrigin ? `<button class="lc-checkin__text-button" type="button" data-occasion-move-undo="${escapeHtml(item.id)}" data-occasion-move-undo-origin="${escapeHtml(moveOrigin)}" data-occasion-move-undo-next="${escapeHtml(moveOrigin)}">${t("occ.moveUndo")}</button>` : "";
+        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="false">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}" hidden><span class="lc-checkin__occasion-move-origin-label" data-occasion-move-origin-label="${escapeHtml(item.id)}">${escapeHtml(t("occ.moveFrom", {date: next}))}</span><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}" disabled>${t("occ.moveConfirm")}</button>${moveUndoMarkup}</div></div>` : "";
         /* The next date is the scanning anchor; recurrence and lead time are
            supporting detail. Only exceptional states need a visible badge. */
         const isToday = item.enabled && next === todayKey;

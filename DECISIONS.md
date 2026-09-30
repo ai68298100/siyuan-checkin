@@ -1,5 +1,11 @@
 # 决策
 
+## D-359：改期行内核对/撞实例反馈/撤销只清本次覆盖（T-1718，2026-10-01）
+
+- 改期 move 行三补：①**原日→新日可视核对**（origin 标签随选日更新 `{from} → {to}`）；②**撞实例 confirm**——新日撞已完成记录、其他覆盖目标或已有覆盖键时明确反馈（允许但知情，不静默）；③**撤销入口**——改期过的实例显"撤销改期"，`findOverrideOriginFor`（overrides 值反查键，新导出）解析撤销对象，`saveOccasionOverride(id, origin, undefined)` 走 setOccasionOverride 既有 delete 分支只清本次覆盖。
+- 边界：链式改期撤销中间环仅清该环、前后覆盖保留（夹具验证）；跨年移动允许（min=today 只挡过去，引擎原生支持跨年）；已完成的 9/20 实例完成记录不迁移（历史事实不重写——改期改的是未来发生日，已发生事实归档）。
+- 签名放宽 `saveOccasionOverride(newDate?: string)`（undefined=撤销），occasions.test 结构钉同步；提示文案分支 moveDone/moveUndone。
+
 ## D-358：规则预览走 getOccurrenceDate 单一迭代，游标次日制推进（T-1716，2026-10-01）
 
 - `buildOccurrencePreview`（features/occasion-preview.ts 纯投影）= getOccurrenceDate 单一实现的迭代包装：从起始日（含）找 count 次未来发生日，**游标推进为 addDays(发生日, 1)**（次日制）——首版 cursor=发生日本身导致同日重复（夹具红出后修正）；1500 步守门。提醒出现日=发生日-remindBeforeDays（clamp 到发生日本身）。once 已过/无未来发生日返回 reason 键由渲染层 i18n，不猜测。

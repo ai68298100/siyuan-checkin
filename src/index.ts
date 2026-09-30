@@ -7230,7 +7230,7 @@ this.scheduleMidnightRefresh();
 
     /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
         持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
-    private saveOccasionOverride(id: string, originalDate: string, newDate: string): void {
+    private saveOccasionOverride(id: string, originalDate: string, newDate?: string): void {
         /* T-1707（D-353）：内存应用与持久化全程入锁、基于锁内最新 store 计算 next——
            不再先改内存再入队（与队列中其他写入交错时避免基于陈旧引用的回滚覆盖）。 */
         void this.enqueueMutation(async () => {
@@ -7243,7 +7243,7 @@ this.scheduleMidnightRefresh();
             this.occasionStore = next;
             try {
                 await this.persistOccasions();
-                showMessage(t("occ.moveDone", {date: newDate}));
+                showMessage(t(newDate === undefined ? "occ.moveUndone" : "occ.moveDone", newDate === undefined ? {} : {date: newDate}));
             } catch {
                 this.occasionStore = previous;
                 showMessage(t("msg.occasionToggleFail"));

@@ -556,6 +556,15 @@ export function setOccasionOverride(store: OccasionStore, id: string, originalDa
     };
 }
 
+/** T-1718（D-359）：当前发生日的改期来源——overrides 中值为 next 的键（撤销对象）；
+    next 为周期规则日（无改期）返回 undefined。 */
+export function findOverrideOriginFor(item: Occasion, next: string): string | undefined {
+    for (const [origin, override] of Object.entries(item.overrides || {})) {
+        if (override.date === next) return origin;
+    }
+    return undefined;
+}
+
 export function markOccasionCompleted(store: OccasionStore, id: string, occurrenceDate: string, completed: boolean): OccasionStore {
     if (!isValidLocalDate(occurrenceDate)) return store;
     let changed = false;
