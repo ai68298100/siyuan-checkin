@@ -36,7 +36,7 @@ transpileTo("render/bind-occasions.ts");
 fs.writeFileSync(path.join(dir, "siyuan-stub.js"), "module.exports = {showMessage: () => {}};\n");
 const bindOccasions = require(path.join(dir, "render", "bind-occasions.js"));
 
-/* Node 的 FormData 不接受自造 form 元素——最小垫片（submit 校验只用 get）。 */
+/* Node 的 FormData 不接受自造 form 元素——最小垫片（submit 校验用 get，T-1708 签名用 forEach）。 */
 class StubFormData {
     constructor(form) {
         this.entries = (form && form.formDataEntries) || [];
@@ -44,6 +44,9 @@ class StubFormData {
     get(key) {
         const found = this.entries.find(([name]) => name === key);
         return found ? found[1] : null;
+    }
+    forEach(callback) {
+        for (const [name, value] of this.entries) callback(value, name);
     }
 }
 globalThis.FormData = StubFormData;

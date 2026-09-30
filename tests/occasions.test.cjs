@@ -57,8 +57,15 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
 // switching recurrence hides irrelevant blocks without dropping its value.
 {
     const module = {exports: {}};
+    /* T-1708：bind 尾部草稿层调用 formSignatureFromData + new FormData——提供 editor-draft
+       与 FormData 垫片（块后恢复原值）。 */
+    const editorDraftModule = {exports: {}};
+    new Function("require", "module", "exports", ts.transpileModule(fs.readFileSync("src/features/editor-draft.ts", "utf8"), {compilerOptions}).outputText)(() => {}, editorDraftModule, editorDraftModule.exports);
+    const previousFormData = globalThis.FormData;
+    globalThis.FormData = class { constructor(form) { this.entries = (form && form.formDataEntries) || []; } get(key) { const found = this.entries.find(([name]) => name === key); return found ? found[1] : null; } forEach(callback) { for (const [name, value] of this.entries) callback(value, name); } };
     new Function("require", "module", "exports", ts.transpileModule(bindSource, {compilerOptions}).outputText)((id) => {
         if (id === "../occasions") return occasions;
+        if (id === "../features/editor-draft") return editorDraftModule.exports;
         if (["../i18n", "../model", "../shared", "../lunar", "siyuan"].includes(id)) return {};
         throw new Error(`Unexpected occasion binding dependency ${id}`);
     }, module, module.exports);
@@ -86,6 +93,7 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
     assert.equal((viewSource.match(/name="annualNth"/g) || []).length, 1, "annual and monthly must not submit duplicate ordinal controls");
     const monthlyThirdMonday = occasions.normalizeOccasion({id: "nth-monthly", name: "月度复盘", kind: "scheduled", date: "2026-01-01", recurrence: "monthly", monthlySubtype: "nthweek", nthWeek: 3, weekday: 1, enabled: true});
     assert.equal(occasions.getOccurrenceDate(monthlyThirdMonday, "2026-09-01"), "2026-09-21", "the selected monthly third Monday maps to its actual date");
+    globalThis.FormData = previousFormData;
 }
 const annual = occasions.normalizeOccasion({id: "birthday", name: "妈妈生日", kind: "birthday", date: "2026-09-12", recurrence: "annual", remindBeforeDays: 3, enabled: true});
 assert.equal(annual.date, "2026-09-12");

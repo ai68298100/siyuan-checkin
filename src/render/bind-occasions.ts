@@ -4,6 +4,7 @@ import {t} from "../i18n";
 import {dateKey} from "../model";
 import {currentCalendarDate, isValidLocalDateInput} from "../shared";
 import {deleteOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {formSignatureFromData, isEditorFormDirty} from "../features/editor-draft";
 import {formatLunar, solarToLunar} from "../lunar";
 import {showMessage} from "siyuan";
 import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasions";
@@ -15,6 +16,10 @@ export interface BindOccasionsHost {
     /** T-1613：仅移动端在展开表单后滚动定位（桌面表单常驻可见无需滚动）。 */
     isMobileFrontend?: boolean;
     editingOccasionId?: string;
+    /** T-1708（D-354）：事项表单草稿——输入即快照进宿主态，远端重载整页重绘后由
+        绑定期恢复（值/编辑目标匹配时）；baseUpdatedAt 用于检测远端更新同事项的
+        冲突（confirm：保留草稿继续编辑 / 载入远端数据）。不跨插件重载保留。 */
+    occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
@@ -44,8 +49,9 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     /* 手机端列表在前、表单在后（order 交换）：新建/编辑后把表单滚进视口；桌面端表单常驻可见，滚动是无害空操作。 */
     /* T-1613（方案 A）：仅移动端（列表在前/表单在后）在展开表单后滚动定位；桌面表单常驻可见无需滚动。behavior 用 instant 消除 smooth 动画感知。 */
     const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; if (host.isMobileFrontend) root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: "instant"}); };
-    root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); revealOccasionForm(); }));
-    root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); });
+    root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = undefined; host.occasionDraft = undefined; host.render(); revealOccasionForm(); }));
+    /* T-1708：取消=显式放弃草稿。 */
+    root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { host.editingOccasionId = undefined; host.occasionDraft = undefined; host.render(); });
     root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {
         host.occasionSearchQuery = (event.currentTarget as HTMLInputElement).value;
         host.render();
@@ -156,6 +162,8 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
            （editingOccasionId/历史/关联）保持不变；确认取消零写入。新建路径维持原样
            （模板即新事项起点）。 */
         if (host.editingOccasionId && !window.confirm(t("msg.occasionTemplateOverwrite"))) return;
+        /* T-1708：模板程序性覆写表单后清草稿——重绘恢复不得盖回模板之前的值。 */
+        host.occasionDraft = undefined;
         const set = (name: string, value: string) => { const field = form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`); if (field) field.value = value; };
         set("name", occasionTemplateName(template));
         set("kind", template.kind);
@@ -203,4 +211,42 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             submitButton?.removeAttribute("aria-busy");
         });
     });
+
+    /* T-1708（D-354）：事项表单草稿——输入即快照进宿主态（远端 onDataChanged 整页
+       重绘不再吞未保存表单），绑定期按编辑目标匹配恢复；远端更新过同一事项
+       （updatedAt 变化）时 confirm 冲突：确定=保留草稿继续编辑，取消=载入远端数据。
+       草稿不跨插件重载保留；程序性批量写表单（模板套用等）后必须清草稿。 */
+    const occasionDraftForm = root.querySelector<HTMLFormElement>("[data-occasion-form]");
+    if (occasionDraftForm) {
+        const draft = host.occasionDraft;
+        if (draft && (draft.editingId ?? undefined) === (host.editingOccasionId ?? undefined)) {
+            const draftTarget = draft.editingId ? host.occasionStore.occasions.find((candidate) => candidate.id === draft.editingId) : undefined;
+            const remoteChanged = Boolean(draft.editingId) && draftTarget ? draftTarget.updatedAt !== draft.baseUpdatedAt : false;
+            const applyDraft = () => {
+                for (const [name, value] of draft.values) {
+                    const field = occasionDraftForm.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
+                    if (field) field.value = value;
+                }
+            };
+            if (remoteChanged && !window.confirm(t("msg.occasionDraftConflict"))) {
+                host.occasionDraft = undefined;
+            } else {
+                applyDraft();
+                showMessage(t("msg.occasionDraftRestored"));
+                host.occasionDraft = undefined;
+            }
+        }
+        const draftBaseUpdatedAt = host.editingOccasionId
+            ? host.occasionStore.occasions.find((candidate) => candidate.id === host.editingOccasionId)?.updatedAt
+            : undefined;
+        const draftBaseline = formSignatureFromData(new FormData(occasionDraftForm));
+        occasionDraftForm.addEventListener("input", () => {
+            const data = new FormData(occasionDraftForm);
+            if (isEditorFormDirty(data, draftBaseline)) {
+                const values: Array<[string, string]> = [];
+                data.forEach((value, key) => { if (typeof value === "string") values.push([key, value]); });
+                host.occasionDraft = {editingId: host.editingOccasionId, baseUpdatedAt: draftBaseUpdatedAt, values};
+            } else if (host.occasionDraft) host.occasionDraft = undefined;
+        });
+    }
 }

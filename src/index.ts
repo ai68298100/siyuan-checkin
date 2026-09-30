@@ -1930,6 +1930,8 @@ export default class CheckinPlugin extends Plugin {
     private speedSwitchQuickActionsRegistered = false;
     private speedSwitchRetryTimer?: number;
     private editingOccasionId?: string;
+    /* T-1708（D-354）：事项表单草稿（会话态；bind-occasions 输入即快照、重绘恢复）。 */
+    private occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
     private readyResolver?: (ready: boolean) => void;
     private readonly readyPromise = new Promise<boolean>((resolve) => {
         this.readyResolver = resolve;
@@ -7153,6 +7155,8 @@ this.scheduleMidnightRefresh();
         });
         if (!normalized) { showMessage(t("msg.occasionInvalid")); return; }
         if (ruleChanged && existing?.overrides && Object.keys(existing.overrides).length) showMessage(t("msg.occasionOverridesCleared"));
+        /* T-1708：保存成功即清草稿（表单事实已落库）。 */
+        this.occasionDraft = undefined;
         const previous = this.occasionStore;
         this.occasionStore = upsertOccasion(previous, normalized);
         try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionSaveFail")); return; }
