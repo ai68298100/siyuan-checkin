@@ -5056,8 +5056,16 @@ this.scheduleMidnightRefresh();
                     settingsFeedback(t("msg.csvErrorDetail", {count: parsed.errors.length, detail}) + (parsed.errors.length > 5 ? "…" : ""));
                 }
                 if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
+                const previousStore = this.store;
                 const report = this.importCsvRows(parsed.rows);
-                await this.persist();
+                try {
+                    await this.persist();
+                } catch {
+                    /* T-1798：持久化失败统一回滚导入内存——不留下内存/磁盘分叉的半成品导入。 */
+                    this.store = previousStore;
+                    showMessage(t("msg.saveFail"));
+                    return;
+                }
                 showMessage(t("msg.csvDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
@@ -5099,8 +5107,16 @@ this.scheduleMidnightRefresh();
                     return;
                 }
                 if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}) + loopWarn)) { input.value = ""; return; }
+                const previousStore = this.store;
                 const report = this.importLoopPlan(plan);
-                await this.persist();
+                try {
+                    await this.persist();
+                } catch {
+                    /* T-1798：持久化失败统一回滚导入内存——不留下内存/磁盘分叉的半成品导入。 */
+                    this.store = previousStore;
+                    showMessage(t("msg.saveFail"));
+                    return;
+                }
                 showMessage(t("msg.loopDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
@@ -5144,8 +5160,19 @@ this.scheduleMidnightRefresh();
                     return;
                 }
                 if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}) + obsidianWarn)) { input.value = ""; return; }
+                /* T-1797：无冲突路径必须接回纯函数返回的新 Store——importObsidianHabitsInto
+                   做不可变模型运算，旧写法丢弃 report.store，导入物静默丢失。 */
+                const previousStore = this.store;
                 const report = importObsidianHabitsInto(this.store, plan);
-                await this.persist();
+                this.store = report.store;
+                try {
+                    await this.persist();
+                } catch {
+                    /* T-1798：持久化失败统一回滚导入内存——不留下内存/磁盘分叉的半成品导入。 */
+                    this.store = previousStore;
+                    showMessage(t("msg.saveFail"));
+                    return;
+                }
                 showMessage(t("msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {

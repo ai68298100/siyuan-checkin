@@ -1,5 +1,11 @@
 # 决策
 
+## D-340：导入入口三统一——接回纯函数 Store，persist 失败整体回滚（T-1797/T-1798，2026-10-01）
+
+- T-1797（P0）：无冲突 Obsidian 入口丢弃 `importObsidianHabitsInto` 返回的新 Store（不可变模型运算），导入"显示完成"但项目/事件从未进入内存与持久化。修复为接回 `this.store = report.store`，与冲突会话路径既有赋值同形。守门以纯函数不可变性证明根因（入参 store JSON 零变化——丢弃返回值即丢弃导入物）+ 接线结构钉 + HEAD 红证对照。
+- T-1798：CSV/Loop/Obsidian 三入口统一为「previousStore 快照 → 导入 → persist → 失败回滚 + saveFail 提示」，持久化失败不再留下内存/磁盘分叉的半成品导入（对齐 setItemArchived 等既有回滚纪律）。远端并发的锁内重读/重基线不在本项范围（归 T-1622 跨桶总账），本项只保证单窗口原子性与可重试。
+- 守门 `tests/obsidian-entry.test.cjs` 接入 pnpm test；真实宿主三格式导入验收 host-pending。
+
 ## D-339：提醒动作容量按类分账，skip 不再被 snooze 噪声挤出（T-1770，2026-10-01）
 
 - `normalizeReminderUserActions` 的单一 `slice(-200)` 与"skip 对该次实例持续生效"的承诺自相矛盾：snooze 是当日/防抖短命动作（已有 7 天时效物理清理），skip 是长期决策；occasion 逾期条目不限龄投影（何时停止投影取决于事项完成/停用，normalize 无 store 可查），因此 skip 的存活不能按时间界定。裁决：**容量按动作类分账，两类各自独占 max（默认 200）配额**——snooze 噪声不再挤掉仍会投影的 skip；同类超限仍按最旧淘汰（容量边界如实记录：每存储每类 max 条，恢复走既有 restore 动作显式清理）。
