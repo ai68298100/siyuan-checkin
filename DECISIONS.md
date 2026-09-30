@@ -1,5 +1,11 @@
 # 决策
 
+## D-343：今日页"其他活跃项目"分节以补集投影呈现，不动今日语义（T-1772，2026-10-01）
+
+- 今日列表的排期谓词保持唯一权威（`isItemAvailableOnDate && isScheduledToday`）；管理入口=同一谓词的**补集投影**（`features/off-schedule.ts` `collectOffScheduleItems`）：原因三分类（未到开始日=createdDate 未到 / 暂停中=归档期覆盖今日 / 今日不排期），下次排期做 366 天有界扫描（归档期 endDate 当日即可用、开归档期无下次、上限 50 条）。不做"全部项目"大页面——列表式补集分节足以覆盖"项目保存后消失"的可发现性缺口，编辑/归档动作直达（showEditor 按发起 root、archiveItems 复用批量管线含确认）。
+- 分节为只读 `<details>`（默认收起），渲染在列表尾、空排期与搜索无结果态同样可见；**不进入今日进度分母、不参与搜索筛选、不改变 scheduledItems**——今日语义零变化是硬边界。回顾摘要的非配额过滤（analytics.ts:207）属回顾侧呈现，不在本项收口。
+- width-walkthrough 的既有基线失败（editor live preview 等，HEAD 与工作树失败集合一致）沿 2026-09-29 偶发先例如实记录、另立排查，不算本项验收通过依据；本项视觉证据为 visual-qa 绿 + 新增样式与今日筛选同族（同族折叠 summary/行式列表）。
+
 ## D-342：记录/撤销失败保住草稿与 token，收起语义只在成功路径（T-1795，2026-10-01）
 
 - 记录侧：bind-today 的 recordWithDetails 由"先清场再异步写"改为**结果感知**——写失败把附件放回 `pendingAttachments`、itemId 加回 `expandedExactEntries` 并重渲染（备注/数值仍在输入框，用户可直接重试）；写成功才消费附件、清 attach 按钮态并收起面板/交还焦点（T-1455 的"录完即收起"语义仅在成功路径成立——失败时收起正是丢草稿的根因）。

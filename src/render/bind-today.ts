@@ -57,6 +57,8 @@ export interface BindTodayHost {
     showSettings(root?: HTMLElement): void;
     openTabPage(): void;
     showEditor(item?: CheckinItem, root?: HTMLElement): void;
+    /** T-1772：其他活跃项目管理行的归档动作（宿主复用批量归档管线，含确认与快照）。 */
+    archiveItems(itemIds: string[]): Promise<boolean>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
     firstSuccessSkipGuidance(): void;
@@ -203,6 +205,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory(root));
     root.querySelector<HTMLElement>("[data-action='skip-onboard']")?.addEventListener("click", () => host.firstSuccessSkipGuidance());
     root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived(root));
+    /* T-1772：其他活跃项目管理行的编辑/归档动作（编辑按发起 root 打开，跨 root 返回不串页）。 */
+    root.querySelectorAll<HTMLElement>("[data-manage-edit]").forEach((button) => button.addEventListener("click", () => {
+        const item = getActiveItemById(host.store, button.dataset.manageEdit || "");
+        if (item) host.showEditor(item, root);
+    }));
+    root.querySelectorAll<HTMLElement>("[data-manage-archive]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.manageArchive || "";
+        if (id && getActiveItemById(host.store, id)) void host.archiveItems([id]);
+    }));
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         const offset = Number(button.dataset.heatmapYear);

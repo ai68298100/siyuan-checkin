@@ -10,6 +10,7 @@ import {currentCalendarDate, escapeHtml, formatHistoryDate, formatNumber, parseL
 import {describeOccasionMilestone, getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, nextOccasionMilestones} from "../occasions";
 import {buildThisDayHistory} from "../features/this-day-history";
 import {buildWeekLoadPreview} from "../features/week-load";
+import {collectOffScheduleItems, type OffScheduleEntry} from "../features/off-schedule";
 import {uiIcon} from "../ui/icons";
 import {getRecordStepInputStep} from "../record-step";
 import {KIND_LABELS, PRIORITY_LABELS, SORT_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
@@ -575,9 +576,29 @@ export function renderTodayView(ctx: TodayViewContext): string {
                 <button class="lc-checkin__text-button" type="button" data-action="bulk-exit">${t("today.bulkExit")}</button>
             </div>` : ""}
             ${ctx.celebration ? `<div class="lc-checkin__celebration" role="status"><span class="lc-checkin__celebration-icon" aria-hidden="true">🎉</span><span>${escapeHtml(t("today.focusCelebration", {message: ctx.celebration.message, name: ctx.celebration.itemName}))}</span></div>` : ""}
-            <main class="lc-checkin__list">${list}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
+            <main class="lc-checkin__list">${list}${renderOffScheduleSection(collectOffScheduleItems(ctx.store, now))}${occasionIsToday ? "" : occasionBanner}${renderThisDayHistoryView(ctx.store, ctx.occasionStore, now)}${renderWeekLoadView(ctx.store, now)}</main>
             ${recentRecord}
         </div>`;
+}
+
+/** T-1772（D-343）：今日页"其他活跃项目"管理分节——只列不在今日排期内的活跃项目，
+    附原因（未到开始日/暂停中/今日不排期）、下次排期与编辑/归档动作；不改变今日列表、
+    进度分母或筛选语义。列表为空、搜索无结果与空排期态下同样可见（正是项目"消失"
+    后唯一可发现的入口）。 */
+function renderOffScheduleSection(entries: OffScheduleEntry[]): string {
+    if (!entries.length) return "";
+    const rows = entries.map(({item, reason, nextDate}) => {
+        const reasonKey = reason === "not-started"
+            ? "today.manageReasonNotStarted"
+            : reason === "paused" ? "today.manageReasonPaused" : "today.manageReasonOffSchedule";
+        return `<div class="lc-checkin__manage-row" data-manage-item="${escapeHtml(item.id)}">
+                <span class="lc-checkin__manage-icon" aria-hidden="true">${escapeHtml(item.icon)}</span>
+                <span class="lc-checkin__manage-info"><strong>${escapeHtml(item.name)}</strong><small>${t(reasonKey)}${nextDate ? ` · ${escapeHtml(t("today.manageNext", {date: nextDate}))}` : ""}</small></span>
+                <button class="lc-checkin__small-button" type="button" data-manage-edit="${escapeHtml(item.id)}">${t("today.manageEdit")}</button>
+                <button class="lc-checkin__small-button" type="button" data-manage-archive="${escapeHtml(item.id)}">${t("today.manageArchive")}</button>
+            </div>`;
+    }).join("");
+    return `<details class="lc-checkin__manage"><summary><span>${t("today.manageTitle", {count: entries.length})}</span><span class="lc-checkin__chevron" aria-hidden="true">⌄</span></summary><div class="lc-checkin__manage-list">${rows}</div></details>`;
 }
 
 function renderQuickEntryPreview(result: QuickEntryParseResult | undefined, target?: CheckinItem): string {
