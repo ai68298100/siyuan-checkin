@@ -4526,7 +4526,9 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled { opacity: 1; border-style: dashed; background: color-mix(in srgb, var(--lc-checkin-muted-surface) 72%, var(--lc-checkin-bg)); }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body { color: var(--lc-checkin-muted); }
 .lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled .lc-checkin__occasion-row-body strong { color: var(--lc-checkin-muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { content: "已停用"; justify-self: end; color: var(--lc-checkin-muted); font-size: 10px; }
+/* T-1723（D-364）：原 ::after 写死中文"已停用"已删——停用状态由渲染层 status 徽章
+   （occ.statusDisabled，双语）承担，CSS 不再有 i18n 漏出。 */
+.lc-checkin--occasions .lc-checkin__occasion-manager-row.is-disabled::after { content: none; }
 .lc-checkin--occasions .lc-checkin__occasion-form-panel { min-width: 0; }
 .lc-checkin--occasions .lc-checkin__occasion-list-panel { min-width: 0; }
 @container lc5 (max-width: 899px) {
