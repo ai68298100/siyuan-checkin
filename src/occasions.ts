@@ -216,7 +216,20 @@ export function createDefaultOccasionStore(): OccasionStore {
 export function normalizeOccasionStore(value: unknown): OccasionStore {
     const source = value && typeof value === "object" ? value as Partial<OccasionStore> : {};
     const raw = Array.isArray(source.occasions) ? source.occasions : [];
-    return {version: OCCASIONS_STORE_VERSION, occasions: raw.map(normalizeOccasion).filter((item): item is Occasion => Boolean(item))};
+    /* T-1706（D-352）：按 id 去重隔离——损坏数据/手工编辑可能引入同 id 多条，
+       agenda 按 id 回取行与按 id 写操作会同时命中。胜者确定性：updatedAt 新者优先，
+       其次 completedDates 更多，再同则保留先出现者；去重不报错（可恢复规范形）。 */
+    const winners = new Map<string, Occasion>();
+    for (const candidate of raw) {
+        const occasion = normalizeOccasion(candidate);
+        if (!occasion) continue;
+        const existing = winners.get(occasion.id);
+        if (!existing) { winners.set(occasion.id, occasion); continue; }
+        const challengerBetter = occasion.updatedAt > existing.updatedAt
+            || (occasion.updatedAt === existing.updatedAt && occasion.completedDates.length > existing.completedDates.length);
+        if (challengerBetter) winners.set(occasion.id, occasion);
+    }
+    return {version: OCCASIONS_STORE_VERSION, occasions: [...winners.values()]};
 }
 
 const RECURRENCES = new Set<OccasionRecurrence>(["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"]);
@@ -232,7 +245,12 @@ export function normalizeOccasion(value: unknown): Occasion | undefined {
         : source.recurrence === "once" ? "once" : source.recurrence === "monthly" ? "monthly" : source.recurrence === "annual" ? "annual" : "once";
     if (!name || !isValidOccasionDate(date)) return undefined;
     const now = new Date().toISOString();
-    const completedDates = Array.isArray(source.completedDates) ? source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)).slice(-120) : [];
+    /* T-1706：完成日期唯一且升序，保留最近 120 条——重复/乱序输入归一为确定性形。 */
+    const completedDates = Array.isArray(source.completedDates)
+        ? [...new Set(source.completedDates.filter((item): item is string => typeof item === "string" && isValidLocalDate(item)))]
+            .sort((left, right) => left.localeCompare(right))
+            .slice(-120)
+        : [];
     /* T-1494 实例覆盖归一化（additive，有界 60 条）：键与改期值都必须是真实日历日且不同。 */
     const overrides: Record<string, OccasionOverride> = {};
     if (source.overrides && typeof source.overrides === "object" && !Array.isArray(source.overrides)) {

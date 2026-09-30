@@ -95,15 +95,16 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
        过滤先行，分组只重排不改成员。 */
     const agendaGroup = (id: string, label: string, groupRows: string[]): string => groupRows.length ? `<div class="lc-checkin__source-category" data-agenda-section="${id}">${label} · ${groupRows.length}</div>${groupRows.join("")}` : "";
     const agendaBuckets: Record<string, string[]> = {today: [], missed: [], upcoming: [], ended: [], disabled: []};
-    for (const {item, next} of filteredOccasions) {
-        const row = rowMarkup[filteredOccasions.findIndex((entry) => entry.item.id === item.id)];
-        if (!row) continue;
+    /* T-1706：行与条目按构建序 zip 一次映射——同 id 数据不再经 findIndex 串行错行（O(n²)→O(n)）。 */
+    filteredOccasions.forEach(({item, next}, index) => {
+        const row = rowMarkup[index];
+        if (!row) return;
         if (!item.enabled) agendaBuckets.disabled.push(row);
         else if (next === todayKey) agendaBuckets.today.push(row);
         else if (getMissedOccurrence(item, todayKey)) agendaBuckets.missed.push(row);
         else if (next) agendaBuckets.upcoming.push(row);
         else agendaBuckets.ended.push(row);
-    }
+    });
     const agendaRows = [
         agendaGroup("today", t("occ.agendaToday"), agendaBuckets.today),
         agendaGroup("missed", t("occ.agendaMissed"), agendaBuckets.missed),
