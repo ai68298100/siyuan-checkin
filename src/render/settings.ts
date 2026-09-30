@@ -226,12 +226,13 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
             return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)}${marker}</option>`;
         }).join("");
     };
-    const sireaderItemOptions = projectOptions(sireader.itemId);
+    /* T-1744（D-368）：思阅/思播只写入分钟目标——候选按分钟单位过滤（与写入校验同纪律）。 */
+    const sireaderItemOptions = wereadOptionsFor(sireader.itemId, "minutes");
     /* T-1385：思播联动缺省值，同上。 */
     const siplayer = ctx.siplayerIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
     const siplayerTodayMinutes = ctx.siplayerTodayMinutes ?? 0;
     const sireaderTodayMinutes = ctx.sireaderTodayMinutes ?? 0;
-    const siplayerItemOptions = projectOptions(siplayer.itemId);
+    const siplayerItemOptions = wereadOptionsFor(siplayer.itemId, "minutes");
     const siplayerHostState = ctx.siplayerControllerAvailable === true
         ? "available"
         : ctx.siplayerControllerAvailable === false ? "missing" : "unknown";
@@ -248,7 +249,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     /* T-1742（D-366）：三种映射的候选按指标过滤——阅读时长只候选"分钟"单位项目
        （与写入校验同纪律），完读候选二值、笔记候选数值；当前绑定项永远保留。
        候选为空时显示占位（disabled），不静默让用户以为可选。 */
-    const wereadOptionsFor = (selectedId: string, metric: "minutes" | "binary" | "numeric"): string => {
+    /* 函数声明（提升）：思阅/思播在定义点之前使用。 */
+    function wereadOptionsFor(selectedId: string, metric: "minutes" | "binary" | "numeric"): string {
         const {items, retained} = wereadCandidates(ctx.store.items, selectedId, metric);
         const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
         const missing = selectedId && !selectedItem
@@ -629,6 +631,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.sireaderIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.sireader ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.sireader})}</span>` : ""}${sourceBadge(sireaderState)}</span></summary>
                     ${statusLine(integrationStatus(sireaderState, ctx.sourceTodayCounts?.sireader ?? 0))}
                     ${sourceFactsBlock("sireader", [sireader.itemId])}
+                    <small class="lc-checkin__source-boundary" data-sireader-probe-wait>${t("set.sireaderProbeWait")}</small>
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsSireader1")}</li><li>${t("set.stepsSireader2")}</li><li>${t("set.stepsSireader3")}</li><li>${t("set.stepsSireader4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.sireaderBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.sireaderItem")}</span><small>${t("set.sireaderItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-sireader-item aria-label="${t("set.sireaderItem")}"><option value="">${t("set.sireaderItemChoose")}</option>${sireaderItemOptions}</select></span></div>
