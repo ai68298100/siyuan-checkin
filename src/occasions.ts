@@ -565,6 +565,23 @@ export function findOverrideOriginFor(item: Occasion, next: string): string | un
     return undefined;
 }
 
+/** T-1717（D-360）：新建前的重复与相似提示（防误建）——exact=同名（trim 后精确相等）；
+    similar=双向包含（大小写不敏感，如"张三生日"vs"生日"）。排除编辑目标自身与已归档；
+    只提示不合并——合法重名（不同人的生日）由用户确认后保留。上限 5 条防弹窗过长。 */
+export function findSimilarOccasions(occasions: readonly Occasion[], name: string, excludeId?: string, limit = 5): Occasion[] {
+    const needle = name.trim().toLocaleLowerCase();
+    if (!needle) return [];
+    const exact: Occasion[] = [];
+    const similar: Occasion[] = [];
+    for (const item of occasions) {
+        if (item.id === excludeId) continue;
+        const candidate = item.name.trim().toLocaleLowerCase();
+        if (candidate === needle) exact.push(item);
+        else if ((candidate.includes(needle) || needle.includes(candidate)) && candidate.length > 0) similar.push(item);
+    }
+    return [...exact, ...similar].slice(0, limit);
+}
+
 export function markOccasionCompleted(store: OccasionStore, id: string, occurrenceDate: string, completed: boolean): OccasionStore {
     if (!isValidLocalDate(occurrenceDate)) return store;
     let changed = false;

@@ -1,5 +1,11 @@
 # 决策
 
+## D-360：新建查重只提示不合并，合法重名确认后保留（T-1717，2026-10-01）
+
+- `findSimilarOccasions`（occasions.ts 新导出）：exact=同名（trim+toLocaleLowerCase 精确），similar=双向包含；排除编辑目标自身；上限 5 条防弹窗过长。**只提示不合并**——confirm 列出命中名字，用户确认后才新建（合法重名如不同人的生日明确可保留）；不自动合并事实、不改写既有事项。
+- 查重点：新建提交路径（幂等门之前、校验之后）。编辑既有事项不查（改的是自己）；模板二次应用走保存通道即被查重覆盖；转打卡已有 linkedOccasionId 拦截+名称查重经同一 helper 亦可覆盖；停用事项算重名（事项无归档概念，enabled=false 是停用，停用项重名仍值得提示）。
+- 名称比较 trim+toLocaleLowerCase——输入任意语言安全（大小写不敏感不含 CJK 影响）；不做模糊相似度（编辑距离等）——双向包含已覆盖"生日/妈妈的生日"类误建，模糊匹配误报率高不值得。
+
 ## D-359：改期行内核对/撞实例反馈/撤销只清本次覆盖（T-1718，2026-10-01）
 
 - 改期 move 行三补：①**原日→新日可视核对**（origin 标签随选日更新 `{from} → {to}`）；②**撞实例 confirm**——新日撞已完成记录、其他覆盖目标或已有覆盖键时明确反馈（允许但知情，不静默）；③**撤销入口**——改期过的实例显"撤销改期"，`findOverrideOriginFor`（overrides 值反查键，新导出）解析撤销对象，`saveOccasionOverride(id, origin, undefined)` 走 setOccasionOverride 既有 delete 分支只清本次覆盖。

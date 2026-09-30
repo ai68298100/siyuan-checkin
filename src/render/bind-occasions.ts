@@ -3,7 +3,7 @@
 import {t} from "../i18n";
 import {dateKey} from "../model";
 import {currentCalendarDate, escapeHtml, isValidLocalDateInput} from "../shared";
-import {deleteOccasion, normalizeOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
+import {deleteOccasion, findSimilarOccasions, normalizeOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occasions";
 import {buildOccurrencePreview} from "../features/occasion-preview";
 import {formSignatureFromData, isEditorFormDirty} from "../features/editor-draft";
 import {formatLunar, solarToLunar} from "../lunar";
@@ -262,6 +262,12 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
             showMessage(t("msg.occasionInvalid"));
             return;
+        }
+        /* T-1717（D-360）：新建前重复/相似提示——只提示不合并，合法重名（不同人的
+           生日）确认后保留；编辑既有事项不查（改的是自己）。 */
+        if (!host.editingOccasionId) {
+            const duplicates = findSimilarOccasions(host.occasionStore.occasions, String(data.get("name") || ""));
+            if (duplicates.length && !window.confirm(t("msg.occasionDuplicate", {names: duplicates.map((item) => item.name).join("、")}))) return;
         }
         occasionSubmitBusy = true;
         const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
