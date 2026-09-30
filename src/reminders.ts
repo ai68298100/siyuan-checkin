@@ -1,6 +1,6 @@
 import {getOccurrenceDate, getVisibleOccasions, isOccasionCompleted, type OccasionStore} from "./occasions";
 import {dateKey, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "./model";
-import {daysBetweenHalfOpen, nextLocalDay} from "./date-keys";
+import {addDays, daysBetweenHalfOpen, nextLocalDay} from "./date-keys";
 import type {CheckinStore} from "./types";
 
 export type ReminderSource = "occasion" | "checkin";
@@ -103,6 +103,10 @@ export function projectCheckinReminders(store: CheckinStore, date: Date): Remind
 
 /** T-100 逾期历史：枚举每个启用事项在过去发生、且从未补记的发生日（纯投影，只读）。
     补记走 markOccasionCompleted；跳过今天与未来，按发生日倒序返回。
+    T-1771（D-338）有界窗口：先从最早锚点整史枚举；仅当 1000 次预算耗尽仍未到今日
+    （每日等稠密长历史）时，改从「今日-1000 天」的近窗起点重投影——最近的错过永远
+    在列，旧版会停在约 1000 次发生处导致回顾拿不到近期账；稀疏/年轻事项行为不变。
+    截断语义：稠密历史的投影窗口=最近约 1000 天，更早的错过不进入该行动清单。
     注意：本模块被 tests/occasions.test.cjs、tests/reminder-actions.test.cjs 以固定模块集
     转译加载；date-keys.ts 属于该固定集，新增共享依赖须同步两处加载清单。 */
 export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date): OverdueOccurrenceEntry[] {
@@ -112,29 +116,47 @@ export function projectOverdueOccurrenceHistory(store: OccasionStore, date: Date
         if (occasion.enabled === false) continue;
         if (!/^\d{4}-\d{2}-\d{2}$/.test(occasion.date) || occasion.date >= today) continue;
         const kind = occasion.kind === "birthday" ? "birthday" : occasion.kind === "anniversary" ? "anniversary" : "scheduled";
-        let cursor = occasion.date;
-        let guard = 0;
-        while (cursor < today && guard < 1000) {
-            guard += 1;
-            if (!isOccasionCompleted(occasion, cursor)) {
-                const overdueDays = daysBetweenHalfOpen(cursor, today) ?? 0;
-                entries.push({
-                    id: `overdue:${occasion.id}:${cursor}`,
-                    occasionId: occasion.id,
-                    name: occasion.name,
-                    kind,
-                    recurrence: occasion.recurrence,
-                    occurrenceDate: cursor,
-                    overdueDays,
-                    note: occasion.note,
-                });
+        const collect = (startCursor: string): {collected: OverdueOccurrenceEntry[]; truncated: boolean} => {
+            const collected: OverdueOccurrenceEntry[] = [];
+            let cursor = startCursor;
+            let guard = 0;
+            while (cursor < today && guard < 1000) {
+                guard += 1;
+                if (!isOccasionCompleted(occasion, cursor)) {
+                    const overdueDays = daysBetweenHalfOpen(cursor, today) ?? 0;
+                    collected.push({
+                        id: `overdue:${occasion.id}:${cursor}`,
+                        occasionId: occasion.id,
+                        name: occasion.name,
+                        kind,
+                        recurrence: occasion.recurrence,
+                        occurrenceDate: cursor,
+                        overdueDays,
+                        note: occasion.note,
+                    });
+                }
+                const nextDayKey = nextLocalDay(cursor);
+                if (!nextDayKey) break;
+                const nextDate = getOccurrenceDate(occasion, nextDayKey);
+                if (!nextDate || nextDate <= cursor) break;
+                cursor = nextDate;
             }
-            const nextDayKey = nextLocalDay(cursor);
-            if (!nextDayKey) break;
-            const nextDate = getOccurrenceDate(occasion, nextDayKey);
-            if (!nextDate || nextDate <= cursor) break;
-            cursor = nextDate;
+            /* 截断仅指预算耗尽而递推未穷尽（cursor 仍停在今日之前）；到达今日或
+               发生序列自然走完（once/尾部）都算完整覆盖。 */
+            return {collected, truncated: cursor < today && guard >= 1000};
+        };
+        /* 第一遍：整史枚举——稀疏/年轻事项与旧版逐条一致。 */
+        const firstPass = collect(occasion.date);
+        if (!firstPass.truncated) {
+            entries.push(...firstPass.collected);
+            continue;
         }
+        /* 第二遍：预算耗尽仍未到今日 → 近窗重投影，保证最近错过在列；
+           起点取窗口内首个发生日（once 等窗口外单次事项自然为空，由第一遍完整覆盖）。 */
+        const windowStart = addDays(today, -1000);
+        const anchor = windowStart && windowStart > occasion.date ? getOccurrenceDate(occasion, windowStart) : occasion.date;
+        if (!anchor || anchor >= today) continue;
+        entries.push(...collect(anchor).collected);
     }
     return entries.sort((left, right) => right.occurrenceDate.localeCompare(left.occurrenceDate)
         || left.name.localeCompare(right.name, "zh-CN")
