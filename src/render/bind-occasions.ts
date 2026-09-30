@@ -23,7 +23,7 @@ export interface BindOccasionsHost {
     occasionSearchQuery: string;
     occasionStatusFilter: "all" | "enabled" | "disabled";
     occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled";
-    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
+    occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     bindDialogClose(root: HTMLElement): void;
@@ -68,6 +68,13 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
         host.occasionSearchQuery = ""; host.occasionStatusFilter = "all"; host.occasionKindFilter = "all"; host.occasionTimeFilter = "all"; host.render();
     });
+    /* T-1713（D-356）：统计即筛选——点击统计直达对应列表（status/time 组合与 agenda
+       分桶同源），激活态由渲染侧 is-active 高亮。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-stat]").forEach((button) => button.addEventListener("click", () => {
+        host.occasionStatusFilter = (button.dataset.statStatus || "all") as BindOccasionsHost["occasionStatusFilter"];
+        host.occasionTimeFilter = (button.dataset.statTime || "all") as BindOccasionsHost["occasionTimeFilter"];
+        host.render();
+    }));
     root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = button.dataset.occasionEdit; host.render(); revealOccasionForm(); }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
         void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || ""); });

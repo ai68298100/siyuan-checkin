@@ -1,5 +1,11 @@
 # 决策
 
+## D-356：统计即筛选，错过口径与 agenda 桶同源（T-1713，2026-10-01）
+
+- 事项页统计从纯文本数字改为**可点击筛选入口**（全部/启用中/今天/已错过/已结束五项）：每个统计携带 status/time 筛选组合，点击直达对应列表；`is-active`+`aria-pressed` 高亮当前筛选，`title` 明示口径（"含停用"/"启用且下次发生日为今天"/"启用且存在未处理的错过发生日"等）。
+- **错过口径与 agenda missed 桶同源**：enabled + `getMissedOccurrence` 非空（改期链解析，D-351）——时间筛选下拉补"已错过"选项，统计计数、筛选谓词、agenda 分桶三处同一函数同一谓词；"今天"计数同样与 today 桶一致（enabled && next===today）。"已处理"不另造计数（completedDates 与今日横幅/回顾同源，无独立投影）。零结果空态在有筛选时附清除按钮（可恢复路径）。
+- 实现取舍：不把统计改为独立投影层——计数谓词直接内联同函数，保证未来 agenda 口径调整时统计不会漂移。
+
 ## D-355：事项行内完成切换与启停图标消歧（T-1712/T-1711，2026-10-01）
 
 - 完成闭环：事项行新增**完成/撤销当前可处理发生日**（=下次发生日，`isOccasionCompleted(item, next)` 判定）——`data-occasion-complete[-date/-target]` 复用 `setOccasionCompleted` 单一通道（与今日横幅/回顾/补标同源，撤销同通道回滚），`aria-pressed` + "本次已完成"徽章回显；错过补标（lateMarkup）与本次完成并存不冲突。启停（`data-occasion-toggle`）保持独立语义，互不混淆。

@@ -1680,7 +1680,7 @@ export default class CheckinPlugin extends Plugin {
     private occasionSearchQuery = "";
     private occasionStatusFilter: "all" | "enabled" | "disabled" = "all";
     private occasionKindFilter: "all" | "birthday" | "anniversary" | "scheduled" = "all";
-    private occasionTimeFilter: "all" | "today" | "upcoming" | "ended" = "all";
+    private occasionTimeFilter: "all" | "today" | "missed" | "upcoming" | "ended" = "all";
     private occasionTemplatesOpen = false;
     private occasionTemplateCategory: "recommended" | import("./occasions").OccasionTemplateCategory = "recommended";
     private celebration?: {message: string; itemName: string};
