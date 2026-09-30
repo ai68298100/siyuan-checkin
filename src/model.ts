@@ -1,4 +1,4 @@
-import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
+import type {CheckinArchivePeriod, CheckinEvent, CheckinEventTombstone, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinItemTombstone, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot} from "./types";
 import {normalizeQuickSteps, normalizeRecordStep} from "./record-step";
 import {normalizeQuota} from "./quota";
 import {calendarDayNumber} from "./date-keys";
@@ -137,7 +137,7 @@ const normalizedStoreFingerprints = new WeakMap<CheckinStore, string>();
 function fingerprintNormalizedStore(store: CheckinStore): string {
     let fingerprint = normalizedStoreFingerprints.get(store);
     if (!fingerprint) {
-        fingerprint = JSON.stringify({items: store.items, events: store.events, eventTombstones: store.eventTombstones, templates: store.templates || []});
+        fingerprint = JSON.stringify({items: store.items, events: store.events, eventTombstones: store.eventTombstones, itemTombstones: store.itemTombstones || [], templates: store.templates || []});
         normalizedStoreFingerprints.set(store, fingerprint);
     }
     return fingerprint;
@@ -182,6 +182,7 @@ export function createDefaultStore(): CheckinStore {
         items: [],
         events: [],
         eventTombstones: [],
+        itemTombstones: [],
     };
 }
 
@@ -200,9 +201,13 @@ export function normalizeStore(value: unknown): CheckinStore {
         });
     }
     let items = [...itemsById.values()].sort(compareItems);
-    const itemIds = new Set(items.map((item) => item.id));
     const eventTombstones = normalizeEventTombstones(candidate.eventTombstones);
     const tombstoneLookup = buildTombstoneLookup(eventTombstones);
+    /* T-1765：先按项目删除墓碑收敛项目集，再以收敛后的项目集过滤事件——
+       旧窗口写回的已删项目与其全部事件在此统一离场。 */
+    const tombstoneApplication = applyItemTombstones(items, normalizeItemTombstones(candidate.itemTombstones));
+    items = tombstoneApplication.items;
+    const itemIds = new Set(items.map((item) => item.id));
     const eventsById = new Map<string, CheckinEvent>();
     if (Array.isArray(candidate.events)) {
         candidate.events.forEach((value) => {
@@ -219,6 +224,7 @@ export function normalizeStore(value: unknown): CheckinStore {
         items,
         events,
         eventTombstones,
+        itemTombstones: tombstoneApplication.itemTombstones,
     };
 }
 
@@ -322,6 +328,14 @@ export function mergeNormalizedStores(localStore: CheckinStore, remoteStore: Che
         const existing = itemsById.get(item.id);
         itemsById.set(item.id, existing ? selectItemWinner(existing, item) : item);
     });
+    /* T-1765：项目删除墓碑先于项目并集合并，使旧窗口写回的已删项目在并集后被收敛。 */
+    const itemTombstonesById = new Map<string, CheckinItemTombstone>();
+    [...localStore.itemTombstones || [], ...remoteStore.itemTombstones || []].forEach((tombstone) => {
+        const existing = itemTombstonesById.get(tombstone.itemId);
+        itemTombstonesById.set(tombstone.itemId, existing ? selectItemTombstoneWinner(existing, tombstone) : tombstone);
+    });
+    const tombstoneApplication = applyItemTombstones([...itemsById.values()], [...itemTombstonesById.values()].sort(compareItemTombstones));
+    const items = tombstoneApplication.items;
 
     const tombstonesByEventId = new Map<string, CheckinEventTombstone>();
     [...localStore.eventTombstones, ...remoteStore.eventTombstones].forEach((tombstone) => {
@@ -330,7 +344,7 @@ export function mergeNormalizedStores(localStore: CheckinStore, remoteStore: Che
     });
     const eventTombstones = [...tombstonesByEventId.values()].sort(compareTombstones);
     const tombstoneLookup = buildTombstoneLookup(eventTombstones);
-    const itemIds = new Set(itemsById.keys());
+    const itemIds = new Set(items.map((item) => item.id));
     const eventsById = new Map<string, CheckinEvent>();
     [...localStore.events, ...remoteStore.events].forEach((event) => {
         if (!itemIds.has(event.itemId) || isEventTombstonedByLookup(event, tombstoneLookup)) return;
@@ -340,9 +354,10 @@ export function mergeNormalizedStores(localStore: CheckinStore, remoteStore: Che
 
     return {
         version: STORE_VERSION,
-        items: [...itemsById.values()].sort(compareItems),
+        items: [...items].sort(compareItems),
         events: deduplicateExternalRefs([...eventsById.values()]).sort(compareEvents),
         eventTombstones,
+        itemTombstones: tombstoneApplication.itemTombstones,
     };
 }
 
@@ -1048,6 +1063,44 @@ function normalizeEventTombstones(value: unknown): CheckinEventTombstone[] {
     return [...tombstonesByEventId.values()].sort(compareTombstones);
 }
 
+/** T-1765：项目删除墓碑规范化——校验身份与时刻，按项目去重（删除时刻晚者优先）。 */
+function normalizeItemTombstones(value: unknown): CheckinItemTombstone[] {
+    if (!Array.isArray(value)) return [];
+    const tombstonesByItemId = new Map<string, CheckinItemTombstone>();
+    value.forEach((candidate) => {
+        if (!isRecord(candidate) || typeof candidate.itemId !== "string" || !candidate.itemId.trim()) return;
+        const deletedAt = normalizeTimestamp(candidate.deletedAt);
+        if (!deletedAt) return;
+        const tombstone: CheckinItemTombstone = {itemId: candidate.itemId.trim(), deletedAt};
+        const existing = tombstonesByItemId.get(tombstone.itemId);
+        tombstonesByItemId.set(tombstone.itemId, existing ? selectItemTombstoneWinner(existing, tombstone) : tombstone);
+    });
+    return [...tombstonesByItemId.values()].sort(compareItemTombstones);
+}
+
+function selectItemTombstoneWinner(left: CheckinItemTombstone, right: CheckinItemTombstone): CheckinItemTombstone {
+    const timestampComparison = compareText(left.deletedAt, right.deletedAt);
+    return timestampComparison === 0 ? selectCanonical(left, right) : timestampComparison > 0 ? left : right;
+}
+
+function compareItemTombstones(left: CheckinItemTombstone, right: CheckinItemTombstone): number {
+    return compareText(left.deletedAt, right.deletedAt) || compareText(left.itemId, right.itemId);
+}
+
+/** T-1765：按墓碑收敛项目集——updatedAt 晚于删除时刻的项目（删除后的真实编辑/导入）
+    胜出并取代墓碑；其余墓碑生效，项目与其事件一并离场。返回生效墓碑（被取代的已剔除，
+    保留无对应项目的悬垂墓碑以防旧快照重放复活）。 */
+function applyItemTombstones(items: CheckinItem[], itemTombstones: readonly CheckinItemTombstone[]): {items: CheckinItem[]; itemTombstones: CheckinItemTombstone[]} {
+    if (!itemTombstones.length) return {items, itemTombstones: []};
+    const tombstonesById = new Map(itemTombstones.map((tombstone) => [tombstone.itemId, tombstone]));
+    const surviving = items.filter((item) => {
+        const tombstone = tombstonesById.get(item.id);
+        return !tombstone || compareText(item.updatedAt, tombstone.deletedAt) > 0;
+    });
+    const survivingIds = new Set(surviving.map((item) => item.id));
+    return {items: surviving, itemTombstones: itemTombstones.filter((tombstone) => !survivingIds.has(tombstone.itemId))};
+}
+
 function normalizeSchedule(value: unknown): CheckinSchedule {
     const schedule = isRecord(value) ? value : {};
     const type = schedule.type === "weekly" || schedule.type === "workdays" || schedule.type === "custom" || schedule.type === "interval" || schedule.type === "quota" ? schedule.type : "daily";
@@ -1132,7 +1185,8 @@ export function deleteItemsCascade(store: CheckinStore, itemIds: readonly string
     const ids = new Set(itemIds.filter((itemId) => typeof itemId === "string" && itemId.trim()).map((itemId) => itemId.trim()));
     if (!ids.size) return store;
     const removed = store.events.filter((event) => ids.has(event.itemId));
-    if (!store.items.some((candidate) => ids.has(candidate.id)) && !removed.length) return store;
+    const removedItems = store.items.filter((candidate) => ids.has(candidate.id));
+    if (!removedItems.length && !removed.length) return store;
     return {
         ...store,
         items: store.items.filter((candidate) => !ids.has(candidate.id)),
@@ -1144,6 +1198,7 @@ export function deleteItemsCascade(store: CheckinStore, itemIds: readonly string
             source: event.source,
             ...(event.externalRef ? {externalRef: event.externalRef} : {}),
         }))],
+        itemTombstones: normalizeItemTombstones([...store.itemTombstones || [], ...removedItems.map((item) => ({itemId: item.id, deletedAt}))]),
     };
 }
 

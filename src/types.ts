@@ -122,11 +122,22 @@ export interface CheckinEventTombstone {
     externalRef?: string;
 }
 
+/** T-1765：项目删除墓碑。项目删除除事件墓碑外还记录项目身份，跨窗口并集合并
+    与写后校验据此丢弃旧窗口写回的已删项目；updatedAt 晚于 deletedAt 的项目
+    （真实编辑/导入冲突）胜出并取代墓碑。 */
+export interface CheckinItemTombstone {
+    itemId: string;
+    deletedAt: string;
+}
+
 export interface CheckinStore {
     version: 3;
     items: CheckinItem[];
     events: CheckinEvent[];
     eventTombstones: CheckinEventTombstone[];
+    /** 缺省视为空表（旧数据零迁移）；规范形由 normalizeStore/merge 维护为
+        「仅含未被存活项目取代的墓碑」。 */
+    itemTombstones?: CheckinItemTombstone[];
     templates?: UserTemplate[];
 }
 
