@@ -105,6 +105,16 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!id || !missedDate) return;
         void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true); });
     }));
+    /* T-1712（D-355）：行内完成/撤销当前可处理发生日——复用 setOccasionCompleted 单一
+       通道（与今日横幅/回顾/补标同源），撤销同通道回滚；启停走 data-occasion-toggle
+       互不混淆。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-complete]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionComplete || "";
+        const occurrenceDate = button.dataset.occasionCompleteDate || "";
+        const target = button.dataset.occasionCompleteTarget === "true";
+        if (!id || !occurrenceDate) return;
+        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target); });
+    }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionMoveToggle || "";
         const row = root.querySelector<HTMLElement>(`[data-occasion-move-row='${CSS.escape(id) || id}']`);

@@ -1,5 +1,11 @@
 # 决策
 
+## D-355：事项行内完成切换与启停图标消歧（T-1712/T-1711，2026-10-01）
+
+- 完成闭环：事项行新增**完成/撤销当前可处理发生日**（=下次发生日，`isOccasionCompleted(item, next)` 判定）——`data-occasion-complete[-date/-target]` 复用 `setOccasionCompleted` 单一通道（与今日横幅/回顾/补标同源，撤销同通道回滚），`aria-pressed` + "本次已完成"徽章回显；错过补标（lateMarkup）与本次完成并存不冲突。启停（`data-occasion-toggle`）保持独立语义，互不混淆。
+- 图标消歧（T-1711 切片）：启停图标 check/circle → **pause/play**（新 UI 图标，语义=暂停/启用而非完成）；行动作保留 action-label 文字节点与 aria+title。窄宽度更多菜单/焦点回归归 T-1778/T-1822。
+- 完成入口只挂"下次发生日"——补标走既有 missed 通道（D-351 改期链解析），已结束/停用不出完成按钮（item.enabled 与 next 双门）；不把启停或提醒已读当完成（审计红线）。
+
 ## D-354：事项表单草稿输入即快照，重绘恢复+远端冲突 confirm（T-1708，2026-10-01）
 
 - 草稿生命周期：**输入即快照**（form input 监听，相对绑定期基线 dirty 时写宿主态 `occasionDraft {editingId, baseUpdatedAt, values}`）→ 任何整页重绘（含 onDataChanged 远端重载）后绑定期按编辑目标匹配**恢复**（单次消费）→ 保存成功/取消编辑/新建/模板程序性覆写清草稿。**离开不 confirm**——草稿已自动在宿主态，切页/弹窗关闭不丢数据，比离开确认更顺；重载回来时若远端更新过同事项（baseUpdatedAt ≠ 现 updatedAt）confirm 冲突：确定=保留草稿继续编辑，取消=载入远端数据。
