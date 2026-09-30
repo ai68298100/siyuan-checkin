@@ -43,6 +43,10 @@ export interface BindOccasionsHost {
     persistOccasions(): Promise<void>;
     /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
+    /** T-1720（D-363）：关联项目徽章点击进该项目编辑器（宿主跨页编辑，返回回事项页）。 */
+    showEditorForLinkedItem?(itemId: string): void;
+    /** T-1720：关联项目上下文（宿主打卡 store 投影）。 */
+    linkedItems?: Array<{id: string; name: string; linkedOccasionId: string; archived: boolean}>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
     saveOccasionOverride?(id: string, originalDate: string, newDate?: string): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
@@ -151,6 +155,13 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const target = button.dataset.occasionCompleteTarget === "true";
         if (!id || !occurrenceDate) return;
         void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, occurrenceDate, target); });
+    }));
+    /* T-1720（D-363）：关联项目徽章点击进该项目编辑器（跨页编辑，返回回事项页）；
+       归档项目只读不可进（先启用再编辑）。 */
+    root.querySelectorAll<HTMLElement>("[data-occasion-linked-edit]").forEach((button) => button.addEventListener("click", () => {
+        const id = button.dataset.occasionLinkedEdit || "";
+        const linked = (host.linkedItems || []).find((entry) => entry.id === id);
+        if (linked && !linked.archived && host.showEditorForLinkedItem) host.showEditorForLinkedItem(id);
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionMoveToggle || "";

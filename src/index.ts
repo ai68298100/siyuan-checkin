@@ -5697,6 +5697,10 @@ this.scheduleMidnightRefresh();
             occasionKindFilter: this.occasionKindFilter,
             occasionTimeFilter: this.occasionTimeFilter,
             occasionSortMode: this.occasionSortMode,
+            /* T-1720（D-363）：转打卡关联项目上下文——事项行显示关联状态（含归档诊断）。 */
+            linkedItems: this.store.items
+                .filter((item) => Boolean(item.linkedOccasionId))
+                .map((item) => ({id: item.id, name: item.name, linkedOccasionId: item.linkedOccasionId || "", archived: item.archived === true})),
             occasionTemplatesOpen: this.occasionTemplatesOpen,
             occasionTemplateCategory: this.occasionTemplateCategory,
             appearance: this.resolvedAppearance(),
@@ -7219,6 +7223,13 @@ this.scheduleMidnightRefresh();
             if (name) showMessage(t("review.reminderActionToast", {name}), 2200);
             });
         })();
+    }
+
+    /** T-1720（D-363）：事项行关联项目徽章点击——跨页打开该项目编辑器，返回回事项页。 */
+    private showEditorForLinkedItem(itemId: string) {
+        const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
+        if (!item) { showMessage(t("msg.alreadyGenerated")); return; }
+        this.showEditor(item, undefined, this.rootPages.lastActiveRoot() ?? undefined);
     }
 
     private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {
