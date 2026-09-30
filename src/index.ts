@@ -5701,6 +5701,9 @@ this.scheduleMidnightRefresh();
             linkedItems: this.store.items
                 .filter((item) => Boolean(item.linkedOccasionId))
                 .map((item) => ({id: item.id, name: item.name, linkedOccasionId: item.linkedOccasionId || "", archived: item.archived === true})),
+            /* T-1722（D-365）：提醒处理状态进事项视图——"提醒已处理"与"事项已完成"
+               语义分离展示（提醒动作不写 completedDates，既有纪律）。 */
+            reminderUserActions: this.reminderUserActions,
             occasionTemplatesOpen: this.occasionTemplatesOpen,
             occasionTemplateCategory: this.occasionTemplateCategory,
             appearance: this.resolvedAppearance(),

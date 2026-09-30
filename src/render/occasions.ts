@@ -7,6 +7,7 @@ import {uiIcon} from "../ui/icons";
 import {renderPageShellHead} from "./page-shell";
 import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, findOverrideOriginFor, getMissedOccurrence, getOccurrenceDate, isOccasionCompleted, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import {buildOccurrencePreview, type OccurrencePreviewEntry} from "../features/occasion-preview";
+import type {ReminderUserAction} from "../reminders";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
 
 /* T-1621：提醒天数预设 datalist id 按渲染次序唯一化（settings settingsViewId 同法）——
@@ -30,6 +31,8 @@ export interface OccasionsViewContext {
     occasionPreviewOpen?: boolean;
     /** T-1720（D-363）：转打卡关联项目上下文（按 linkedOccasionId 关联的事项行诊断）。 */
     linkedItems?: Array<{id: string; name: string; linkedOccasionId: string; archived: boolean}>;
+    /** T-1722（D-365）：提醒处理状态（"提醒已处理"与"事项已完成"语义分离展示）。 */
+    reminderUserActions?: ReminderUserAction[];
 }
 
 export function renderOccasionsView(ctx: OccasionsViewContext): string {
@@ -111,6 +114,23 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         /* T-1712（D-355）：当前可处理发生日（下次发生日）的完成切换与"本次已完成"回显——
            复用 setOccasionCompleted 单一通道，撤销/补标/多表面同源；启停与完成语义分离。 */
         const doneThisTime = Boolean(next && isOccasionCompleted(item, next));
+        /* T-1722（D-365）：提醒处理状态——当前发生日的最新用户动作（snooze 未过期/
+           skip），与"事项已完成"语义分离展示；提醒动作不写 completedDates（既有纪律）。 */
+        const reminderActionsForOccurrence = (ctx.reminderUserActions || [])
+            .filter((action) => action.id === `occasion:${item.id}:${next}`)
+            .sort((left, right) => right.at.localeCompare(left.at));
+        let reminderMarkup = "";
+        if (next && !doneThisTime) {
+            const latest = reminderActionsForOccurrence[0];
+            if (latest?.action === "skip") {
+                reminderMarkup = `<span class="lc-checkin__occasion-remind-state">${t("review.remindersSkipped")}</span>`;
+            } else if (latest?.action === "snooze") {
+                const expiry = typeof latest.expiresAt === "string" && Number.isFinite(Date.parse(latest.expiresAt)) ? Date.parse(latest.expiresAt) : undefined;
+                const sameDay = latest.at.slice(0, 10) === dateKey(currentCalendarDate());
+                const stillDeferred = expiry !== undefined ? Date.now() <= expiry : sameDay;
+                if (stillDeferred) reminderMarkup = `<span class="lc-checkin__occasion-remind-state">${t("review.remindersSnoozed")}</span>`;
+            }
+        }
         const doneMarkup = item.enabled && next
             ? `<span class="lc-checkin__occasion-done${doneThisTime ? " is-done" : ""}">${doneThisTime ? t("occ.doneThisTime") : ""}<button class="lc-checkin__text-button" type="button" data-occasion-complete="${escapeHtml(item.id)}" data-occasion-complete-date="${escapeHtml(next)}" data-occasion-complete-target="${doneThisTime ? "false" : "true"}" aria-pressed="${doneThisTime}">${doneThisTime ? t("occ.undoDone") : t("occ.markDone")}</button></span>`
             : "";
@@ -148,7 +168,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
            DOM gives wide/assistive surfaces a stable fallback and lets icon
            normalization update only the glyph on re-render. */
         const action = (attr: string, value: string, aria: string, title: string, content: string, extra = "") => `<button class="lc-checkin__small-button${extra ? ` ${escapeHtml(extra)}` : ""}" type="button" ${attr}="${escapeHtml(value)}" aria-label="${escapeHtml(aria)}" title="${escapeHtml(title)}"><span class="lc-checkin__action-icon" aria-hidden="true">${content}</span><span class="lc-checkin__action-label">${escapeHtml(title)}</span></button>`;
-        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}${doneMarkup}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}${lateMarkup}${moveMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span>${historyMarkup}${linkedMarkup}</div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "pause" : "play"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
+        return `<article class="lc-checkin__occasion-manager-row ${item.enabled ? isToday ? "is-today" : "" : "is-disabled"}"><span class="lc-checkin__occasion-icon" aria-hidden="true">${icon}</span><div class="lc-checkin__occasion-row-body"><div class="lc-checkin__occasion-row-title"><strong>${escapeHtml(item.name)}</strong>${status ? `<span class="lc-checkin__occasion-status">${status}</span>` : ""}${reminderMarkup}${doneMarkup}</div><div class="lc-checkin__occasion-row-date">${dateLineWithSpan}</div>${milestoneMarkup}${cycleMarkup}${lateMarkup}${moveMarkup}<div class="lc-checkin__occasion-row-meta"><span>${escapeHtml(kind)}</span><span>${escapeHtml(recurrence)}</span><span>${t("occ.remindSummary", {n: item.remindBeforeDays})}</span>${historyMarkup}${linkedMarkup}</div>${note}</div><div class="lc-checkin__occasion-row-actions">${action("data-occasion-toitem", item.id, t("occ.toItemAria", {name: item.name}), t("occ.toItem"), uiIcon("add"))}${action("data-occasion-edit", item.id, t("occ.editAria", {name: item.name}), t("occ.editBtn"), uiIcon("edit"))}${action("data-occasion-toggle", item.id, t("occ.toggleAria", {name: item.name}), item.enabled ? t("occ.disable") : t("occ.enable"), uiIcon(item.enabled ? "pause" : "play"), item.enabled ? "is-on" : "")}${action("data-occasion-delete", item.id, t("occ.deleteAria", {name: item.name}), t("common.delete"), uiIcon("trash"))}</div></article>`;
     });
     /* T-1713：零结果给可恢复路径——有筛选时空态附清除筛选按钮。 */
     const rows = rowMarkup.length ? rowMarkup.join("") : `<div class="lc-checkin__empty-description">${hasActiveFilters ? `${t("occ.searchEmpty")}<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : t("occ.empty")}</div>`;

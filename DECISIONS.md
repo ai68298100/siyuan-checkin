@@ -1,5 +1,10 @@
 # 决策
 
+## D-365：提醒处理状态进事项页，与完成语义分离展示（T-1722 切片，2026-10-01）
+
+- 宿主把 `reminderUserActions` 传入事项视图；事项行标题区对**当前发生日**显示提醒处理徽章：skip=已跳过、snooze 未过期=已延期（expiresAt 未到或同日语义），过期/同日过后自动消退不显示；**与"本次已完成"徽章语义分离并排**——提醒已处理不等于事项已完成。完成时提醒徽章让位（doneThisTime 优先渲染顺序）。
+- 词表复用提醒中心既有 `review.remindersSkipped/Snoozed`（不新增同义键）；最新动作胜（同 id 排序取后者，与 applyReminderActions 的 latest-map 语义一致）；**提醒动作不写 completedDates** 纪律以 bind 源切片钉固化。跨午夜/安静时段/restore 跨窗清除归 T-1721/T-1662。
+
 ## D-364：CSS 不持有 i18n 文案，停用状态由渲染层双语徽章唯一承担（T-1723 切片，2026-10-01）
 
 - components.scss 停用伪元素 content 写死中文"已停用"——en-US 双语漏出，且与渲染层 status 徽章（occ.statusDisabled，双语）在同一行重复显示。裁决：**CSS 一律不持有 i18n 文案**——伪元素 `content: none` 显式中和，停用状态由渲染层双语徽章唯一承担（信息不丢失，只是去掉重复的写死第二处）。全 SCSS 五文件清点确认无其他中文 content 字面量（夹具固化防复发）。
