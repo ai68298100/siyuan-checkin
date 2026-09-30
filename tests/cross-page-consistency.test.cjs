@@ -246,7 +246,7 @@ try {
         assert.match(indexSrc, /private readonly rootPages: RootPageStore = createRootPageStore\(\);/, "宿主持有 per-root 存储");
         assert.match(indexSrc, /private get currentPage\(\): CheckinPageId \{\s*return this\.rootPages\.activePage\(\);/, "currentPage 读代理=最后活跃 root");
         assert.match(indexSrc, /private set currentPage\(page: CheckinPageId\) \{\s*this\.rootPages\.navigate\(undefined, page\);/, "currentPage 写代理=全局同步全部 root（兼容既有语义）");
-        assert.match(indexSrc, /applyNavigation\(root: HTMLElement \| undefined, page: CheckinPageId\): void \{\s*this\.rootPages\.navigate\(root, page\);/, "导航落点 host 方法");
+        assert.match(indexSrc, /applyNavigation\(root: HTMLElement \| undefined, page: CheckinPageId\): void \{[\s\S]*?this\.rootPages\.navigate\(root, page\);/, "导航落点 host 方法（T-1773 草稿守卫后仍委托 rootPages）");
         assert.match(indexSrc, /releaseRootContext\(root: HTMLElement\): void/, "root 销毁释放入口");
         assert.match(indexSrc, /const fallback = this\.dockElement \?\? this\.tabElement \?\? null;/, "最后活跃释放回落 dock→页签");
         /* renderInto 注册点与按 root 取页。 */

@@ -13,7 +13,8 @@ import {buildCustomSummaryContext, buildSummaryContext} from "./analytics";
 import {buildWeeklyReportMarkdown} from "./features/report";
 import {appendDiagnostic, CHECKIN_DIAGNOSTIC_INFO, normalizeDiagnostics, serializeDiagnostics, summarizeDiagnosticsPreview, type CheckinDiagnostic, type CheckinDiagnosticCode} from "./features/diagnostics";
 import {buildReviewComparison, getPreviousReviewRange} from "./features/review-comparison";
-import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
+import {summarizeProjectDraft, type ProjectDraft} from "./features/project-draft";import {isEditorFormDirty} from "./features/editor-draft";
+import {buildAnalyticsSnapshot, buildYearHeatmap, type AnalyticsSnapshot} from "./charts";
 import {buildShareCardModel, drawShareCard, shareCardSize, type ShareCardCanvas} from "./features/share-card";
 import {saveGeneratedFile} from "./download";
 import {formatLunar, solarToLunar} from "./lunar";
@@ -1699,8 +1700,16 @@ export default class CheckinPlugin extends Plugin {
         this.rootPages.navigate(undefined, page);
     }
 
-    /** 导航落点：显式 root 只改该表面并标记最后活跃；无 root 的全局导航同步全部表面。 */
+    /** 导航落点：显式 root 只改该表面并标记最后活跃；无 root 的全局导航同步全部表面。
+        T-1773（D-344）：离开带未保存修改的编辑器前 confirm——返回/切页/跳洞察等
+        页内切换都汇于本咽喉点；基线由 bind-editor 绑定期写入 root dataset。
+        取消=留在编辑器；离开=丢弃草稿（不跨重载保留，confirm 文案明示）。 */
     applyNavigation(root: HTMLElement | undefined, page: CheckinPageId): void {
+        if (root && page !== "editor" && this.pageOfRoot(root) === "editor") {
+            const form = root.querySelector("form");
+            const baseline = root.dataset.editorDraftBaseline;
+            if (isEditorFormDirty(form ? new FormData(form) : undefined, baseline) && !window.confirm(t("editor.dirtyLeaveConfirm"))) return;
+        }
         this.rootPages.navigate(root, page);
     }
 

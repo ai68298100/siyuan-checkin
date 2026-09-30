@@ -1,5 +1,11 @@
 # 决策
 
+## D-344：编辑器草稿离开守卫落在 applyNavigation 单一咽喉点，基线写 root dataset（T-1773，2026-10-01）
+
+- 全部页内导航（返回/切页/跳洞察/编辑器重入）汇于 `applyNavigation(root, page)` → 守卫放这一处即可覆盖所有离开路径，不在各渲染模块重复拦截。守卫条件三重：显式 root、目标页非 editor、当前页是 editor——进入编辑器与无 root 的全局导航永不拦（后者无 root 上下文可比，归 T-1805 多 root 后台重绘边界）。
+- dirty 基线=绑定期表单签名写入 `root.dataset.editorDraftBaseline`（新建与编辑同法：各自初始表单即基线；按 root 天然隔离）。签名规则：FormData 键序无关排序拼接、**文件输入跳过**（附件走独立 pending 管线，T-1795 已保证失败放回）。取消=留在编辑器；离开=丢弃——**草稿不跨重载保留**，confirm 文案明示；模板套用/联动等程序性改值同属 dirty（它们就是用户意图的修改）。编辑器内部重绑定（模板流 host.render）会重置基线，dirty 语义=「自最近一次编辑器（重）绑定以来的修改」。
+- 后台刷新与保存失败本就安全（renderBackgroundUpdateFor 对 editor 页 no-op；saveEditorForm 失败不触 DOM），本项以注释与守门钉住不另改。visual-qa/width 走查夹具补 `page.on("dialog", accept)`——走查模拟"改完离开"路径，确认框出现即守门生效；该补丁顺带解开了 visual-qa 既有 open-tab 超时卡点（确认框被默认 dismiss 吞掉流程）。width-walkthrough 既有失败族经 6d0fda6（本轮开工前提交）复跑归因为开工前已存在，另立排查不在本项。
+
 ## D-343：今日页"其他活跃项目"分节以补集投影呈现，不动今日语义（T-1772，2026-10-01）
 
 - 今日列表的排期谓词保持唯一权威（`isItemAvailableOnDate && isScheduledToday`）；管理入口=同一谓词的**补集投影**（`features/off-schedule.ts` `collectOffScheduleItems`）：原因三分类（未到开始日=createdDate 未到 / 暂停中=归档期覆盖今日 / 今日不排期），下次排期做 366 天有界扫描（归档期 endDate 当日即可用、开归档期无下次、上限 50 条）。不做"全部项目"大页面——列表式补集分节足以覆盖"项目保存后消失"的可发现性缺口，编辑/归档动作直达（showEditor 按发起 root、archiveItems 复用批量管线含确认）。

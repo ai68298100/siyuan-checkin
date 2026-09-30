@@ -39,6 +39,8 @@ const cases = [
     const pageErrors = [];
     const scenarioFailures = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
+    /* T-1773：编辑器草稿离开确认（confirm）在走查流中自动接受。 */
+    page.on("dialog", (dialog) => dialog.accept());
     await page.setContent(`<style>:root{--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb;--b3-theme-primary:#3575f0;--b3-font-family:Arial}body{margin:8px}</style><main id="frame" style="width:340px;height:720px;border:1px solid #ddd"><div id="dock" style="width:100%;height:100%"></div></main>`);
     await page.addStyleTag({path: path.join(projectRoot, "dist", "index.css")});
     await page.evaluate(({frontend, language}) => {
