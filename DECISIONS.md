@@ -1,5 +1,11 @@
 # 决策
 
+## D-347：规则时间线=相邻修订 diff 只读投影，入口在编辑器高级区（T-1777，2026-10-01）
+
+- 时间线是**相邻修订的六字段 diff 投影**（类型/目标/单位/方向/排期类型/排期细节），变化点挂在后一条修订上（"自该日起"），生效区间至下一修订前一日、末条=至今；解释键按变化字段一一映射（完成判定/进度分母按当日修订结算、方向切换不追溯改写——把 D-335/D-341 的口径讲给用户听）。createdDate 早于首个修订生效日的区间如实标"无法还原"（normalizeRevisions 的 fallback 无法表达历史真相，不猜测）。
+- 入口与形态：编辑器高级区只读 `<details>`（查看项目时最自然的消费场景；回顾/洞察的「编辑规则」跳入编辑器即达，跨页直达入口归 T-1810 root 参数族）。查看零写入零重算（纯函数+静态渲染，details 折叠）。字段标签复用 KIND_LABELS/SCHEDULE_LABELS 与 editor.ruleChange* 既有词表，新增 19 键×2。
+- 排期变化拆两层：类型变更与细节变更（weekdays/interval/quota 口径）各一行、各有解释——与既有当次 diff 的 frequency/detail 两层对齐。
+
 ## D-346：七日条钻取复用回顾按日状态，不做第二套日期上下文（T-1775，2026-10-01）
 
 - 有内容日格 span→button 日期入口：点击写 `selectedHistoryDate/historyScope="day"/historyPage=0` 后 `showReview(root)`——与回顾日历 `data-history-date` **同一套状态与渲染管线**，不新建日期上下文或历史计算；返回经 applyNavigation 回今日，筛选/滚动由既有宿主状态与 pageScrollTops 保留。空日格保持 span（不可交互是诚实语义：无记录可看）。

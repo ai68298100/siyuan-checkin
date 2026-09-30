@@ -12,6 +12,7 @@ import type {CheckinItem, CheckinKind, CheckinPriority, CheckinSchedule, Checkin
 import {renderSaveStatusView, renderSyncNoticeView, type SaveState} from "./fragments";
 import {renderPageShellHead} from "./page-shell";
 import {collectAnchorChoices} from "../features/note-anchor-picker";
+import {buildRuleTimeline, type RuleTimelineChange} from "../features/rule-timeline";
 
 const weekdaysFromSunday = (): string[] => [0, 1, 2, 3, 4, 5, 6].map((index) => t(`date.wd${index}`));
 
@@ -289,6 +290,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                         <summary><span><strong>${t("editor.advanced")}</strong><small data-advanced-summary>${escapeHtml(advancedSummary)}</small></span><span class="lc-checkin__advanced-arrow" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__advanced-content">
                             ${item ? `<div class="lc-checkin__editor-history-summary" data-editor-completed-days aria-label="${t("editor.completedDays", {n: completedDays})}"><span>${t("editor.completedDaysLabel")}</span><strong>${completedDays}</strong></div>` : ""}
+                            ${item ? renderRuleTimelineView(item) : ""}
                             <div class="lc-checkin__source-category" data-advanced-section="output">${t("editor.sectionOutput")}</div>
                             <div class="lc-checkin__field lc-checkin__anchor-field" data-anchor-picker>
                                 <span>${t("editor.anchorTitle")}</span>
@@ -326,4 +328,33 @@ export function renderEditorView(ctx: EditorViewContext): string {
                 </div>
             </form>
         </div>`;
+}
+
+/** T-1777（D-347）：规则变更历史时间线——只读展开，展示每次生效的变化点、
+    生效区间与统计口径解释；不触发重算或保存。从回顾/洞察「编辑规则」进入
+    编辑器即可达（间接满足跨页跳入）。 */
+function renderRuleTimelineView(item: CheckinItem): string {
+    const timeline = buildRuleTimeline(item);
+    const describe = (change: RuleTimelineChange): string => {
+        const label = t(`editor.timelineField.${change.field}`);
+        const readable = (field: RuleTimelineChange["field"], value: string | undefined): string => {
+            if (value === undefined) return "?";
+            if (field === "kind") return t(KIND_LABELS[value as keyof typeof KIND_LABELS] || value);
+            if (field === "scheduleType") return t(SCHEDULE_LABELS[value as keyof typeof SCHEDULE_LABELS] || value);
+            if (field === "direction") return t(value === "atMost" ? "editor.directionAtMost" : "editor.timelineDirectionAtLeast");
+            return value;
+        };
+        return `<span class="lc-checkin__rule-timeline-change"><span>${escapeHtml(label)}</span><span>${escapeHtml(readable(change.field, change.from))} → ${escapeHtml(readable(change.field, change.to))}</span></span>`;
+    };
+    const entries = timeline.entries.map((entry) => {
+        const range = entry.endDate ? `${entry.effectiveDate} ~ ${entry.endDate}` : `${entry.effectiveDate} · ${t("editor.timelineUntil")}`;
+        const changes = entry.changes.length
+            ? `<div class="lc-checkin__rule-timeline-changes">${entry.changes.map(describe).join("")}</div><ul class="lc-checkin__rule-timeline-why">${entry.explanationKeys.map((key) => `<li>${escapeHtml(t(key))}</li>`).join("")}</ul>`
+            : `<small>${escapeHtml(t("editor.timelineInitial"))}</small>`;
+        return `<div class="lc-checkin__rule-timeline-entry${entry.isCurrent ? " is-current" : ""}"><div class="lc-checkin__rule-timeline-head"><strong>${escapeHtml(range)}</strong>${entry.isCurrent ? `<em>${escapeHtml(t("editor.timelineCurrent"))}</em>` : ""}</div>${changes}</div>`;
+    }).join("");
+    const unknown = timeline.unknownBefore
+        ? `<div class="lc-checkin__rule-timeline-entry is-unknown"><div class="lc-checkin__rule-timeline-head"><strong>${escapeHtml(timeline.unknownBefore.from)} ~ ${escapeHtml(timeline.unknownBefore.until)}</strong></div><small>${escapeHtml(t("editor.timelineUnknown"))}</small></div>`
+        : "";
+    return `<details class="lc-checkin__rule-timeline" data-rule-timeline><summary>${escapeHtml(t("editor.timelineTitle"))}</summary><div class="lc-checkin__rule-timeline-body">${unknown}${entries}</div><small class="lc-checkin__rule-timeline-hint">${escapeHtml(t("editor.timelineHint"))}</small></details>`;
 }
