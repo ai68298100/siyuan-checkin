@@ -1,5 +1,11 @@
 # 决策
 
+## D-369：健康映射候选按指标过滤（T-1745 切片，2026-10-01）
+
+- `healthCandidates`（features/health-candidates.ts 纯投影）：steps 只候选**"步/步数"单位**、weight 只候选**"公斤/千克/kg"单位**的活跃项目——与写入校验 hasHealthTarget 同纪律，把"摄取时才拦截"提前到"候选层就不可选"。当前绑定项永远保留置顶（retained，与 weread-candidates 同语义）；同项目可分别绑 steps/weight（多指标语义保持，metric 逐绑定传入）。空候选渲染 disabled 占位不静默；选项内联单位标注。
+- 健康文档选择维度不动（仍经 T-1616 目标校验与用户确认，不凭标题猜文档）；本项只收口项目维度的候选过滤。
+- 与 wereadCandidates（D-366）同模式不同纪律细节（步/公斤词表 vs 分钟/二值/数值），不抽象共用基类——两投影各自显式，避免为两处过滤造抽象层。
+
 ## D-368：思阅/思播分钟候选与宿主探测诚实显示（T-1744 切片，2026-10-01）
 
 - 思阅/思播下拉候选复用 `wereadOptionsFor(id, "minutes")`（D-366 投影，wereadCandidates minutes 过滤）——与写入校验同纪律，非分钟项目在候选层不可选；wereadOptionsFor 改函数声明（提升）解决思阅定义点在前的问题。

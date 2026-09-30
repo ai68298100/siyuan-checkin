@@ -8,6 +8,7 @@ import type {CheckinItemSortMode, CheckinStore} from "../types";
 import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTomatoProviderDiagnostics, DockTomatoProviderState} from "../dock-tomato";
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
 import {wereadCandidates} from "../features/weread-candidates";
+import {healthCandidates} from "../features/health-candidates";
 import type {ExternalPendingEntryView} from "../features/external-pending";
 import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import type {NoteQueryPreference} from "../features/note-query";
@@ -399,7 +400,22 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
         return `<details class="lc-checkin__sandbox" data-sandbox-details="${source}"><summary><span>${t("today.sandboxTitle")}</span><small>${t("today.sandboxHint")}</small></summary><div class="lc-checkin__sandbox-body"><textarea class="lc-checkin__sandbox-text" data-sandbox-text="${source}" rows="4" placeholder="${t(placeholderKey)}">${escapeHtml(ctx.sourceSandboxTexts?.[source] || "")}</textarea><div class="lc-checkin__share-actions"><button class="lc-checkin__text-button" type="button" data-sandbox-run="${source}">${t("today.sandboxRun")}</button></div>${result}</div></details>`;
     };
     const sourcePanelOpen = (source: string) => ctx.openSourcePanels?.includes(source) ? " open" : "";
-    const healthItemOptions = (selectedId: string) => projectOptions(selectedId);
+    /* T-1745（D-369）：健康映射候选按指标过滤——steps 只候选"步/步数"单位、weight
+       只候选"公斤/千克/kg"单位（与写入校验 hasHealthTarget 同纪律，失败提前到候选层）；
+       当前绑定项永远保留（retained）；同项目多指标语义保持（metric 参数逐绑定传入）。 */
+    const healthItemOptions = (selectedId: string, metric: "steps" | "weight" = "steps"): string => {
+        const {items, retained} = healthCandidates(ctx.store.items, selectedId, metric);
+        const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
+        const missing = selectedId && !selectedItem
+            ? `<option value="${escapeHtml(selectedId)}" selected>${escapeHtml(selectedId)} · ${t("set.itemMissing")}</option>`
+            : "";
+        const options = items.map((item) => {
+            const marker = retained && item.id === selectedId ? ` · ${t("set.itemRetained")}` : "";
+            return `<option value="${escapeHtml(item.id)}"${item.id === selectedId ? " selected" : ""}>${escapeHtml(item.name)} · ${escapeHtml(item.unit)}${marker}</option>`;
+        }).join("");
+        const empty = items.length ? "" : `<option value="" disabled>${escapeHtml(t("set.healthNoMatching"))}</option>`;
+        return missing + empty + options;
+    };
     const yeguifNotebookOption = yeguif.notebookId
         ? `<option value="${escapeHtml(yeguif.notebookId)}" selected>${escapeHtml(yeguif.notebookId)} · ${t("set.yeguifNotebookSaved")}</option>`
         : `<option value="">${t("set.yeguifNotebookLoading")}</option>`;
@@ -678,8 +694,8 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                         <div class="lc-checkin__document-target-id"><label class="lc-checkin__document-target-field"><span>${t("set.healthDoc")}</span><input type="text" data-health-doc value="${escapeHtml(healthInbox.docId)}" placeholder="20260101120000-xxxxxxxx" aria-label="${t("set.healthDoc")}" /></label><div class="lc-checkin__document-target-actions"><button class="lc-checkin__text-button" type="button" data-action="save-health-doc">${t("set.healthSave")}</button></div></div>
                     </div>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.healthBindings")}</span><small>${t("set.healthBindingsHint")} ${t("set.healthItemHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="add-health-binding">${t("set.healthAddBinding")}</button></span></div>
-                    <div data-health-bindings>${healthInbox.metricBindings.map((binding) => `<div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps"${binding.metric === "steps" ? " selected" : ""}>${t("set.healthMetricSteps")}</option><option value="weight"${binding.metric === "weight" ? " selected" : ""}>${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(binding.itemId)}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div>`).join("")}</div>
-                    <template data-health-binding-template><div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps" selected>${t("set.healthMetricSteps")}</option><option value="weight">${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions("")}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div></template>
+                    <div data-health-bindings>${healthInbox.metricBindings.map((binding) => `<div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps"${binding.metric === "steps" ? " selected" : ""}>${t("set.healthMetricSteps")}</option><option value="weight"${binding.metric === "weight" ? " selected" : ""}>${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions(binding.itemId, binding.metric)}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div>`).join("")}</div>
+                    <template data-health-binding-template><div class="lc-checkin__settings-row" data-health-binding><span class="lc-checkin__settings-inline"><select data-health-binding-metric aria-label="${t("set.healthBindingMetric")}"><option value="steps" selected>${t("set.healthMetricSteps")}</option><option value="weight">${t("set.healthMetricWeight")}</option></select><select data-health-binding-item aria-label="${t("set.healthBindingItem")}"><option value="">${t("set.healthItemChoose")}</option>${healthItemOptions("", "steps")}</select><button class="lc-checkin__text-button" type="button" data-health-binding-remove aria-label="${t("set.healthBindingRemove")}">×</button></span></div></template>
                     <div class="lc-checkin__settings-row" data-health-inbox><span class="lc-checkin__settings-label"><span>${t("set.healthTitle")}</span><small>${t("set.healthHint")}</small></span><span class="lc-checkin__settings-inline"><button class="lc-checkin__text-button" type="button" data-action="preview-source" data-source="health">${t("set.sourcePreview")}</button><button class="lc-checkin__text-button" type="button" data-action="refresh-source" data-source="health">${t("set.sourceReadNow")}</button><input type="checkbox" class="lc-checkin__switch" data-health-toggle ${healthInbox.enabled ? "checked" : ""} aria-label="${t("set.healthToggle")}" /></span></div>
                     ${sandboxBlock("health", "today.sandboxPlaceholder.health")}
                     </details>
