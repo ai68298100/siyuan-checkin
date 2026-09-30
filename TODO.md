@@ -1,8 +1,8 @@
 # TODO
 
-## 全插件 UI 与功能二次梳理（2026-09-30；本轮只登记，不开发；现状、证据和排序见 [全插件体验与正确性复核](docs/full-plugin-audit-2026-09-30.md)，D-330/D-331/D-332）
+## 全插件 UI 与功能二次梳理（2026-09-30；本轮只登记，不开发；现状、证据和排序见 [全插件体验与正确性复核](docs/full-plugin-audit-2026-09-30.md)，D-330/D-331/D-332/D-333）
 
-本节针对 v18.16.0 源码和先前的新建、事项、设置截图，补充 D-307 已交付主切片与 T-1685～T-1764（问 AI、新建、事项、设置）专项待办之外的具体缺口。静态源码证据只证明存在风险路径；涉及用户数据结果的条目先写最小夹具复现，再修正并做真实宿主验收。收到用户明确“开始开发”前，以下全部保持待办状态。第二轮补充任务 T-1779～T-1788 延续同一规则，专门覆盖页面级偏好、计时器、多 root、异步取消、隐私边界、局部刷新、动态 SVG、跨入口幂等、备份迁移和实时状态验收；第三轮新增 T-1789～T-1812，收口监听器生命周期、日期边界、导入/恢复事实、渲染块可用性、跨 root 导航和初始化/持久化边界。
+本节针对 v18.16.0 源码和先前的新建、事项、设置截图，补充 D-307 已交付主切片与 T-1685～T-1764（问 AI、新建、事项、设置）专项待办之外的具体缺口。静态源码证据只证明存在风险路径；涉及用户数据结果的条目先写最小夹具复现，再修正并做真实宿主验收。收到用户明确“开始开发”前，以下全部保持待办状态。第二轮补充任务 T-1779～T-1788 延续同一规则，专门覆盖页面级偏好、计时器、多 root、异步取消、隐私边界、局部刷新、动态 SVG、跨入口幂等、备份迁移和实时状态验收；第三轮新增 T-1789～T-1812，收口监听器生命周期、日期边界、导入/恢复事实、渲染块可用性、跨 root 导航和初始化/持久化边界；本轮新增 T-1813～T-1829，专门登记 UI 视觉系统、质感、信息层级、响应式表面和渲染样式性能，不把 T-1778/T-1788 的验收矩阵重复当作实现任务。
 
 ### 数据事实与规则正确性
 
@@ -66,6 +66,26 @@
 - [ ] T-1810 历史/Today 导航的 root 传递一致性（P1，跨表面导航复核）——`src/render/bind-page-navigation.ts:654-657` 的 `[data-history-insights-id]` 调 `host.showInsights(item)` 未传当前 root；`src/render/today-bindings.ts:91-116,280-283` 的键盘/上下文菜单编辑与洞察入口也未传 root，而同类回顾入口 `:622` 已传 root。统一所有 `data-*` 导航 handler 的 root 参数并加源码守门，覆盖返回、失败和多 root 同屏；宿主级渲染块 `openTab` 保留例外并写清理由。
 - [ ] T-1811 排期预演/周负荷/日历共用真实日期校验（P1，日期契约扩展）——`src/features/schedule-preview.ts:54-58` 与 `src/features/week-load.ts:43-47` 仍只检查月日≤31并用 `Date.UTC`，可能接受 `2026-02-31` 后归一到三月；与 T-1793 的 calendar projection 形成同类分叉。统一 `src/date-keys.ts:isValidDateKey` 和日序号，覆盖 02-30/02-31/13-01、闰日、跨时区和边界日；T-1513/T-1515 只代表功能主体已交付，T-1619 只代表事件统计日期口径。
 - [ ] T-1812 calendar.read 数值戒除与修订单位完成口径同源（P1，公开投影正确性）——`src/features/calendar-projection.ts:108,119-120` 累加所有非 skip 事件并以 `value > 0` 判所有 atMost 项为 breach，但 `src/model.ts:731-740,760-784` 对数值 atMost 以不超过 target 判守住、日进度只计当日修订单位。公开日历可能把上限 2、记录 1 显示为破戒，或把旧单位当新单位进度。复用模型事实，明确 raw value 与规则 progress 的区别，验收 0/1/2/3、skip 混合、单位修订、quota 和非排期日；保留 v5 字段兼容，不重复 T-1609 的洞察修复或 T-1766 的方向历史迁移。
+
+### 第四轮：UI 视觉质感与表面系统专项（2026-09-30；只登记不开发）
+
+- [ ] T-1813 视觉 CSS 分层与单一来源治理（P1，UI 系统）——`src/ui/components.scss` 约 10,838 行，`components/workbench/content-responsive/maintenance` 对 item、settings-row、occasion-row、mobile-nav 等组件反复覆盖，且焦点规则在多个位置重复。盘点 tokens/base/component/layout/responsive 的加载边界，收敛同一组件的最终来源；保留计算样式快照，避免修一处导致 dock、quick、tab、移动端级联漂移。与 T-1778/T-1788 的验收矩阵分开。
+- [ ] T-1814 字体层级与窄宽可读性下限（P1，质感与可读性）——`components.scss:494-501,520-531,962-964,1328-1341` 在 dock、≤340px 和速记控件中出现 7～11px 字号。建立标题/正文/辅助/控件的最小字号、行高和 CJK/英文长词规则，覆盖 320/390px、dock、400% 缩放和双语，避免以“精致密度”牺牲阅读与触控。
+- [ ] T-1815 状态对比度与完成/禁用叠加（P1，视觉无障碍）——`components.scss:652-657` 的完成态 opacity、禁用态 opacity 以及洞察 `.is-off/.is-unavailable`、日历 `aria-disabled` 依赖透明度叠加，可能把文字降到不可读。改用语义色面、纹理、徽标和文字冗余表达状态，逐项核对浅/深主题、调色板、强制颜色和键盘焦点；不以 T-1666 的系统测试矩阵替代组件实现规则。
+- [ ] T-1816 卡片、内层表面与 elevation 层级统一（P1，视觉层级）——`components.scss:15-35,1109-1114`、`workbench.scss:91-101` 和 `maintenance-responsive.scss:60-64` 对同类卡片分别设置阴影、背景、圆角和分割线，item 内层还使用不同背景。建立 page/card/raised/selected/completed 四级 surface 及统一 radius/shadow 组合，消除 Today、回顾、事项、设置之间的观感跳变。
+- [ ] T-1817 主次操作按钮与操作栏层级（P1，交互视觉）——`components.scss:1239,1286-1320`、`workbench.scss:114-122`、`maintenance-responsive.scss:35` 对 record/quick/more/focus 和设置按钮重复定义高度、圆角、颜色。定义 primary/secondary/quiet/destructive/icon 四级动作，每张卡只突出一个主动作，长文案可换行，桌面与移动共用语义而不靠选择器堆叠。
+- [ ] T-1818 表单字段、校验和异步状态视觉规范（P1，表单质感）——`components.scss:559-563,648-650` 主要以单行省略和边框表达标签/错误/成功，移动端及设置层又各有覆盖。统一标签、帮助、必填、错误原因、成功、dirty、busy、disabled 的结构、间距和状态图标，确保错误原因可见、绿色边框不过量，覆盖编辑器、事项、设置、问 AI 草案。
+- [ ] T-1819 顶部导航、分区导航活动态与溢出指引（P2，导航视觉）——`workbench.scss:9-24` 活动态主要依赖字体和背景，`components.scss:608-618` 又隐藏 tabs/rail 滚动条。补充稳定的选中指示、滚动边缘提示、键盘焦点和窄面板方向感，统一 topnav/rail/mobile selected 的视觉语义；不改 T-1621 的 root 路由契约。
+- [ ] T-1820 空态、引导、加载、错误状态视觉语言（P1，状态设计）——`fragments.ts:489-519` 使用多组符号和不同按钮组合，`components.scss:634-636,1349-1353` 的 error/empty 仅有基础边框和文本。建立统一图标、标题、解释、主次 CTA、loading/slow/error/empty 高度与反馈节奏；失败状态必须有可识别动作，但初始化重试入口仍归 T-1808，状态验收矩阵归 T-1788。
+- [ ] T-1821 编辑器长表单分组与粘性操作栏（P1，编辑器视觉）——`workbench.scss:147-152`、`content-responsive.scss:202-203` 与 `components.scss:1356-1358` 对模板、字段、预览和 footer 有多套背景/粘性规则。重建基础字段→排期→高级→预览的信息层级，处理 sticky footer 遮挡、滚动锚点和焦点回链，覆盖 320～1400px、问 AI 草案、失败保留和双主题。
+- [ ] T-1822 设置与事项的信息架构视觉重排（P1，用户反馈延伸）——`maintenance-responsive.scss:4-35,60-107` 将设置侧栏、卡片和事项行分别改成不同层级，`components/workbench` 又叠加圆角与间距。设计“侧栏→分组→行→反馈”的统一层级，宽屏两栏、窄屏堆叠、折叠头、统计和过滤共用规范；只处理视觉组合，不重做 T-1701～T-1764 的行为任务。
+- [ ] T-1823 Review/Insights 数据可视化皮肤统一（P2，信息表达）——`components.scss:740-761`、`content-responsive.scss:122-126` 和 `workbench.scss:47-53` 分别实现统计卡、热力格和今日环形进度。统一图表色板、图例、刻度、选中/未记录/跳过纹理与数字层级，补色弱和暗色对比，避免同一状态在不同页面使用不同颜色。
+- [ ] T-1824 dock/quick/tab/mobile 密度分支收敛（P1，多表面质感）——`components.scss:410-450,478-531` 与 `workbench.scss:171-176,239-247` 反复改变底栏、dock 操作宽度、网格和字号。定义每类 host 的密度档、safe-area、虚拟键盘、滚动容器和控件下限，避免同一页面在 dock、quick、tab、移动端出现断裂的视觉形态；实现规范与 T-1788 验收矩阵分开。
+- [ ] T-1825 图标与符号系统收口（P2，视觉一致性）——`fragments.ts:482,489-519,520,558` 和 `index.ts:3574-3583` 仍混用 `⌕ × ⌄ ✓ ✦ ◷ ▱` 与 `uiIcon`。把动作/状态统一到 `icons.ts`/`uiIcon`，规定尺寸、描边、基线、RTL 和平台回退，避免字体差异造成的错位或语义不一致。
+- [ ] T-1826 动效、展开反馈与 elevation 节奏（P2，质感）——`tokens.scss:68-83` 定义 motion/shadow，但 `components.scss:15-28,535` 对卡片和所有控件再次设置 transform transition，`prefers-reduced-motion` 只清部分时长。建立 hover/focus/loading/expand 的统一时序和层级，补动画取消、滚动行为与 reduced-motion 清零，避免重绘跳动和过度阴影。
+- [ ] T-1827 双主题、调色板与强制颜色语义矩阵（P1，主题一致性）——`tokens.scss:116-223` 重复维护 light/dark/palette，components 多处硬编码 `#fff`（如 `:942,1011,1045,1060,1486,1517,1969`）并混用 `color-mix`。建立语义色矩阵，移除硬编码白，补 fallback、forced-colors 和四调色板对比截图门禁，确保 accent-contrast、成功/警告/危险色在各表面同源。
+- [ ] T-1828 长文本、截断与展开策略（P1，内容质感）——`components.scss:560,570,574,590,607` 等大量 ellipsis/overflow hidden，局部响应式才补 `overflow-wrap:anywhere`。按项目名、事项说明、来源状态、错误和操作文案分别定义换行、tooltip、展开/复制规则，覆盖长中文、英文、ID、路径和中英切换；与 T-1783 的敏感信息长度审计分开。
+- [ ] T-1829 UI 样式与大列表渲染预算（P2，性能）——`components.scss` 约 10.8k 行，item 选择器约 531 处并使用 `:has`、color-mix、阴影和多层容器查询。以 100/1k 项目、多 root、滚动和状态切换测量 style recalculation/layout/paint，确定选择器降级、批量 class 或虚拟化边界；不重复 T-1807 的存储写放大和既有大数据渲染任务。
 
 ## 当前体验改造执行索引（2026-09-28，现状复核；统一顺序与依赖见 [现状复核与统一实施计划](docs/consolidated-experience-plan-2026-09-28.md)，D-307）
 
