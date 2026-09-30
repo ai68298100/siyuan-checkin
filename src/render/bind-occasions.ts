@@ -138,6 +138,10 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         if (!template) return;
         const form = root.querySelector<HTMLFormElement>("[data-occasion-form]");
         if (!form) return;
+        /* T-1702（D-349）：编辑既有事项时套用模板=以模板覆写当前表单草案，编辑目标
+           （editingOccasionId/历史/关联）保持不变；确认取消零写入。新建路径维持原样
+           （模板即新事项起点）。 */
+        if (host.editingOccasionId && !window.confirm(t("msg.occasionTemplateOverwrite"))) return;
         const set = (name: string, value: string) => { const field = form.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`); if (field) field.value = value; };
         set("name", occasionTemplateName(template));
         set("kind", template.kind);
@@ -154,7 +158,6 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         set("intervalCount", String(template.intervalCount || 1));
         set("intervalUnit", template.intervalUnit || "month");
         set("remindBeforeDays", String(template.remindBeforeDays));
-        host.editingOccasionId = undefined;
         syncBlocks();
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template-category]").forEach((button) => button.addEventListener("click", () => {
@@ -163,14 +166,27 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         host.render();
     }));
 
+    /* T-1703（D-349）：提交幂等门——在途提交期间忽略重复 submit（快速双击/Enter 连发
+       最多产生一次变更），按钮同步 disabled+aria-busy；失败/完成后释放可重试。
+       编辑目标由 saveOccasionForm 从宿主状态在锁内复核。 */
+    let occasionSubmitBusy = false;
     root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
         event.preventDefault();
+        if (occasionSubmitBusy) return;
         const form = event.currentTarget as HTMLFormElement;
         const data = new FormData(form);
         if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
             showMessage(t("msg.occasionInvalid"));
             return;
         }
-        void host.enqueueMutation(() => host.saveOccasionForm(data));
+        occasionSubmitBusy = true;
+        const submitButton = form.querySelector<HTMLButtonElement>("button[type='submit']");
+        submitButton?.setAttribute("disabled", "true");
+        submitButton?.setAttribute("aria-busy", "true");
+        void host.enqueueMutation(() => host.saveOccasionForm(data)).finally(() => {
+            occasionSubmitBusy = false;
+            submitButton?.removeAttribute("disabled");
+            submitButton?.removeAttribute("aria-busy");
+        });
     });
 }
