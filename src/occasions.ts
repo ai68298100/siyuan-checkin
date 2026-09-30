@@ -348,10 +348,18 @@ function annualSolarOccurrence(item: Occasion, localDate: string): string | unde
     }
     const monthDay = item.date.slice(5);
     const year = Number(localDate.slice(0, 4));
-    const candidate = `${year}-${monthDay}`;
-    if (isValidLocalDate(candidate) && candidate >= localDate) return candidate;
-    const next = `${year + 1}-${monthDay}`;
-    return isValidLocalDate(next) ? next : undefined;
+    /* T-1704（D-350）：闰日（02-29）在非闰年顺延至当年 02-28——与月度/interval 的
+       月末 clamp 纪律一致。此前平年直接 undefined，闰日生日/年检会从今日与
+       即将分组中消失两个年度；闰年仍优先真实 02-29。 */
+    const resolveAnnualDay = (targetYear: number): string | undefined => {
+        const exact = `${targetYear}-${monthDay}`;
+        if (isValidLocalDate(exact)) return exact;
+        if (monthDay === "02-29" && isValidLocalDate(`${targetYear}-02-28`)) return `${targetYear}-02-28`;
+        return undefined;
+    };
+    const current = resolveAnnualDay(year);
+    if (current && current >= localDate) return current;
+    return resolveAnnualDay(year + 1);
 }
 
 function annualLunarOccurrence(item: Occasion, localDate: string): string | undefined {
