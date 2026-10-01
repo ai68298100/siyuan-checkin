@@ -1,5 +1,11 @@
 # 决策
 
+## D-371：推荐引擎纯函数核心先行，建议形状版本化（T-1735 首切片，2026-10-01）
+
+- T-1735 拆片从**引擎纯函数核心**起步（T-1736 预览确认、T-1737 应用事务为其消费端）：`features/recommendation-engine.ts`（RECOMMENDATION_VERSION=1）——首批规则限定阅读时长映射：唯一分钟单位活跃项目→推荐绑定（复用 D-366 wereadCandidates 投影）、多项→needs-choice（引擎不猜、choiceCount 如实）、无→no-candidate（rec.noMinuteItem）、已启用已绑定→不重复推荐（rec.alreadyConfigured，无建议也是结论而非静默空）；阈值建议恒为通用默认 30（evidence=general-default 如实标注非个性化）。
+- **纯函数零写入**（结构钉：模块不出现 persist/saveData/enqueueMutation/applyPreference）——建议是纯投影，启用永远走用户显式通道（沿 template-linkage 纪律）；确定性同输入同输出（夹具验证）；版本化常量使规则调整可追溯。
+- 建议形状（key/target/value/evidence/reason/preconditionMet/needsChoice）已为健康映射、视图偏好等后续规则定型；预览确认 UI（T-1736）按形状渲染，应用事务（T-1737）按 target 逐字段提交。
+
 ## D-370：30 项首卡预算重校准——occasion 横幅是功能堆叠非回归（width 排查切片二，2026-10-01）
 
 - 30-habits 首卡预算 380 系 R-18.3b 时代（aa5ebde）校准，其后 21 个布局提交（T-1577 console 改造、T-1585 today banner、T-1590 洞察等）加入使堆叠自然增长——**校准过期而非产品回归**。STACK 补全探针定位多出的堆叠：occasion 横幅（今日生日，date=今天+提前 30 天提醒，来自 walkthrough 种子 otherStores）top=265 h=104。
