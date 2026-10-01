@@ -52,8 +52,9 @@ assert.equal(configured.noRecommendation.reasonKey, "rec.alreadyConfigured", "th
 
 /* —— 夹具 5：阈值建议恒为通用默认 30。 —— */
 const threshold = engine.recommendWereadThreshold();
-assert.equal(threshold.value, 30, "the threshold recommendation is the general default");
-assert.equal(threshold.evidence, "general-default", "the evidence honestly marks it non-personalized");
+assert.equal(threshold.candidates.length, 1, "the threshold recommendation is a single-candidate batch");
+assert.equal(threshold.candidates[0].value, 30, "the threshold recommendation is the general default");
+assert.equal(threshold.candidates[0].evidence, "general-default", "the evidence honestly marks it non-personalized");
 
 /* —— 夹具 6：确定性（同输入同输出）与版本化。 —— */
 const again = engine.recommendWereadDuration(input([item("only", "阅读分钟", "分钟")], {}));

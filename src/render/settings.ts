@@ -9,6 +9,7 @@ import type {DockTomatoCompletionIssue, DockTomatoCompletionIssueReason, DockTom
 import {dockTomatoCompletionValue, type DockTomatoInboxEntryView} from "../features/docktomato-inbox";
 import {wereadCandidates} from "../features/weread-candidates";
 import {healthCandidates} from "../features/health-candidates";
+import {recommendWereadDuration, recommendWereadThreshold} from "../features/recommendation-engine";
 import type {ExternalPendingEntryView} from "../features/external-pending";
 import type {HealthInboxPreference, HealthInboxMetric} from "../features/health-inbox";
 import type {NoteQueryPreference} from "../features/note-query";
@@ -244,7 +245,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const healthInbox = ctx.healthInbox || {enabled: false, docId: "", metricBindings: [], stepsItemId: "", weightItemId: ""};
     const noteQuery = ctx.noteQuery || {enabled: false, template: "frontmatter" as const, scope: "notebook" as const, targetId: "", itemId: "", field: "checkin", value: "done", tag: "checkin"};
     /* T-1402：微信读书联动缺省值，同上；Key 只呈现「已保存」状态。 */
-    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, finishItemId: "", notesItemId: ""};
+    const weread = ctx.wereadIntegration || {enabled: false, itemId: "", thresholdMinutes: 30, apiKey: "", finishItemId: "", notesItemId: ""};
     const wereadKeySet = ctx.wereadKeySet ?? false;
     const wereadTodayMinutes = ctx.wereadTodayMinutes ?? 0;
     /* T-1742（D-366）：三种映射的候选按指标过滤——阅读时长只候选"分钟"单位项目
@@ -667,6 +668,7 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     <summary class="lc-checkin__source-panel-head"><strong>${t("set.wereadIntegration")}</strong><span class="lc-checkin__source-panel-meta">${(ctx.sourceTodayCounts?.weread ?? 0) > 0 ? `<span class="lc-checkin__source-today">${t("set.sourceToday", {n: ctx.sourceTodayCounts!.weread})}</span>` : ""}${sourceBadge(wereadState)}</span></summary>
                     ${statusLine(integrationStatus(wereadState, ctx.sourceTodayCounts?.weread ?? 0, undefined, ctx.wereadLastPull?.ok))}
                     ${sourceFactsBlock("weread", [weread.itemId, weread.finishItemId, weread.notesItemId])}
+                    ${renderWereadRecommendations(ctx.store.items, weread, recommendWereadDuration({wereadIntegration: {...weread, apiKey: wereadKeySet ? "configured" : ""}, items: ctx.store.items}), recommendWereadThreshold())}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsWeread1")}</li><li>${t("set.stepsWeread2")}</li><li>${t("set.stepsWeread3")}</li><li>${t("set.stepsWeread4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.wereadBoundary")}</small></details>
                     <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.wereadItem")}</span><small>${t("set.wereadItemHint")}</small></span><span class="lc-checkin__settings-inline"><select data-weread-item aria-label="${t("set.wereadItem")}"><option value="">${t("set.wereadItemChoose")}</option>${wereadItemOptions(weread.itemId)}</select></span></div>
@@ -795,4 +797,27 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                 <div class="lc-checkin__settings-groups">${groups.map((group) => `<section id="${settingsViewId}-group-${group.id}" class="lc-checkin__settings-card" data-settings-group="${group.id}" aria-labelledby="${settingsViewId}-heading-${group.id}"><h2 id="${settingsViewId}-heading-${group.id}">${group.label}</h2>${group.body}</section>`).join("")}</div>
             </div>
         </div>`;
+}
+
+/** T-1736（D-372）：推荐草案预览——消费 D-371 引擎（recommendWereadDuration/Threshold），
+    只读展示"已保存 → 推荐草案"差异；应用按钮由 bind 侧按 data-rec-target 分发走
+    用户显式 applyPreference 通道（建议≠启用）。已配置/无建议不渲染（无建议也是结论）。 */
+function renderWereadRecommendations(
+    items: CheckinStore["items"],
+    weread: {enabled: boolean; itemId: string; thresholdMinutes: number},
+    durationRec: {candidates: Array<{key: string; target: string; value: string | number; evidence: string; reason: string; needsChoice?: boolean; choiceCount?: number}>},
+    thresholdRec: {candidates: Array<{key: string; target: string; value: string | number; evidence: string; reason: string}>},
+): string {
+    const rows: string[] = [];
+    const durationCandidate = durationRec.candidates.find((candidate) => candidate.key === "weread.duration" && !candidate.needsChoice);
+    if (durationCandidate) {
+        const recommended = items.find((item) => item.id === durationCandidate.value);
+        rows.push(`<div class="lc-checkin__rec-row"><span class="lc-checkin__rec-label">${t("set.recDurationItem")}</span><span class="lc-checkin__rec-value">${escapeHtml(recommended?.name || String(durationCandidate.value))}</span><button class="lc-checkin__small-button" type="button" data-rec-apply="wereadIntegration.itemId" data-rec-value="${escapeHtml(String(durationCandidate.value))}">${t("set.recApply")}</button></div>`);
+    }
+    const thresholdCandidate = thresholdRec.candidates.find((candidate) => candidate.key === "weread.threshold");
+    if (thresholdCandidate && weread.thresholdMinutes !== thresholdCandidate.value) {
+        rows.push(`<div class="lc-checkin__rec-row"><span class="lc-checkin__rec-label">${t("set.recThreshold")}</span><span class="lc-checkin__rec-value">${escapeHtml(t("set.wereadThresholdValue", {n: Number(thresholdCandidate.value)}))}</span><button class="lc-checkin__small-button" type="button" data-rec-apply="wereadIntegration.thresholdMinutes" data-rec-value="${escapeHtml(String(thresholdCandidate.value))}">${t("set.recApply")}</button></div>`);
+    }
+    if (!rows.length) return "";
+    return `<div class="lc-checkin__rec-block" data-recommendations><div class="lc-checkin__rec-head">${t("set.recBlockTitle")}</div>${rows.join("")}</div>`;
 }

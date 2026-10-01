@@ -87,13 +87,16 @@ export function recommendWereadDuration(input: WereadRecommendationInput): Recom
 }
 
 /** 阈值推荐：恒为通用默认 30 分钟，evidence 如实标注 general-default（非个性化）。 */
-export function recommendWereadThreshold(): RecommendationCandidate {
+export function recommendWereadThreshold(): RecommendationBatch {
     return {
-        key: "weread.threshold",
-        target: "wereadIntegration.thresholdMinutes",
-        value: GENERAL_DEFAULT_THRESHOLD,
-        evidence: "general-default",
-        reason: "rec.generalThreshold",
-        preconditionMet: true,
+        version: RECOMMENDATION_VERSION,
+        candidates: [{
+            key: "weread.threshold",
+            target: "wereadIntegration.thresholdMinutes",
+            value: GENERAL_DEFAULT_THRESHOLD,
+            evidence: "general-default",
+            reason: "rec.generalThreshold",
+            preconditionMet: true,
+        }],
     };
 }
