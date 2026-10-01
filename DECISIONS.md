@@ -1,5 +1,11 @@
 # 决策
 
+## D-370：30 项首卡预算重校准——occasion 横幅是功能堆叠非回归（width 排查切片二，2026-10-01）
+
+- 30-habits 首卡预算 380 系 R-18.3b 时代（aa5ebde）校准，其后 21 个布局提交（T-1577 console 改造、T-1585 today banner、T-1590 洞察等）加入使堆叠自然增长——**校准过期而非产品回归**。STACK 补全探针定位多出的堆叠：occasion 横幅（今日生日，date=今天+提前 30 天提醒，来自 walkthrough 种子 otherStores）top=265 h=104。
+- 裁决：非 mobile 首卡预算**按宽度分档重校准**（640→475、360→515、320→545，覆盖实测 467/509/540），mobile 400 不变；预算仍能抓住大幅布局回归（超预算即失败）。STACK 加宽探针（含 overview/banner/save-status/filters 等块）保留为诊断资产。
+- 不把横幅从压力场景排除——横幅是真实功能堆叠，测试应反映真实页面；也不无限放宽预算——分档值贴近实测留 5~10px margin。
+
 ## D-369：健康映射候选按指标过滤（T-1745 切片，2026-10-01）
 
 - `healthCandidates`（features/health-candidates.ts 纯投影）：steps 只候选**"步/步数"单位**、weight 只候选**"公斤/千克/kg"单位**的活跃项目——与写入校验 hasHealthTarget 同纪律，把"摄取时才拦截"提前到"候选层就不可选"。当前绑定项永远保留置顶（retained，与 weread-candidates 同语义）；同项目可分别绑 steps/weight（多指标语义保持，metric 逐绑定传入）。空候选渲染 disabled 占位不静默；选项内联单位标注。
