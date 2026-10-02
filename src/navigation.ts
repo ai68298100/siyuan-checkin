@@ -2,6 +2,7 @@
 import {t} from "./i18n";
 import {openTab, showMessage} from "siyuan";
 import type {CheckinItem, CheckinStore} from "./types";
+import type {PageId} from "./render/page-shell";
 
 export interface NavigationHost {
     store: CheckinStore;
@@ -24,79 +25,87 @@ export interface NavigationHost {
     itemFingerprint(item: CheckinItem): string;
     persistViewPreferences(): Promise<void>;
     openQuickDialog(): void;
-    render(): void;
+    render(root?: HTMLElement): void;
+    setPageForRoot?(page: PageId, root?: HTMLElement): void;
+    pageForRoot?(root: HTMLElement): PageId;
 }
 
-export function showTodayFor(host: NavigationHost): void {
+function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): void {
+    if (host.setPageForRoot) host.setPageForRoot(page, root);
+    else host.currentPage = page;
+}
+
+export function showTodayFor(host: NavigationHost, root?: HTMLElement): void {
     host.summaryRequestId += 1;
     host.summaryRefreshing = false;
-    host.currentPage = "today";
+    setPage(host, "today", root);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
-export function showReviewFor(host: NavigationHost): void {
-    host.currentPage = "review";
+export function showReviewFor(host: NavigationHost, root?: HTMLElement): void {
+    setPage(host, "review", root);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
-export function showArchivedFor(host: NavigationHost): void {
+export function showArchivedFor(host: NavigationHost, root?: HTMLElement): void {
     host.summaryRefreshing = false;
-    host.currentPage = "archived";
+    setPage(host, "archived", root);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
-export function showOccasionsFor(host: NavigationHost): void {
+export function showOccasionsFor(host: NavigationHost, root?: HTMLElement): void {
     host.summaryRefreshing = false;
-    host.currentPage = "occasions";
+    setPage(host, "occasions", root);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
-export function showSettingsFor(host: NavigationHost): void {
+export function showSettingsFor(host: NavigationHost, root?: HTMLElement): void {
     host.summaryRefreshing = false;
-    host.currentPage = "settings";
+    setPage(host, "settings", root);
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
-export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo?: NavigationHost["editorReturnPage"]): void {
+export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo?: NavigationHost["editorReturnPage"], root?: HTMLElement): void {
     host.summaryRefreshing = false;
-    host.currentPage = "editor";
+    setPage(host, "editor", root);
     host.editingId = item?.id;
     host.editingFingerprint = item ? host.itemFingerprint(item) : undefined;
     /* T-1599：单级返回栈——记录来源页（白名单校验，未知/未传回落 today），编辑器返回时回放。 */
     host.editorReturnPage = returnTo === "review" || returnTo === "insights" ? returnTo : "today";
-    host.render();
+    host.render(root);
 }
 
 /** T-1599：编辑器返回——回放 editorReturnPage（洞察入口回放同一项目），回放后清除。 */
-export function showEditorReturnFor(host: NavigationHost): void {
+export function showEditorReturnFor(host: NavigationHost, root?: HTMLElement): void {
     const returnPage = host.editorReturnPage ?? "today";
     host.editorReturnPage = undefined;
-    if (returnPage === "insights") { showInsightsFor(host); return; }
-    if (returnPage === "review") { showReviewFor(host); return; }
-    showTodayFor(host);
+    if (returnPage === "insights") { showInsightsFor(host, undefined, root); return; }
+    if (returnPage === "review") { showReviewFor(host, root); return; }
+    showTodayFor(host, root);
 }
 
-export function showInsightsFor(host: NavigationHost, item?: CheckinItem): void {
+export function showInsightsFor(host: NavigationHost, item?: CheckinItem, root?: HTMLElement): void {
     const candidate = item || host.store.items.find((entry) => entry.id === host.insightsItemId && !entry.archived) || host.store.items.find((entry) => !entry.archived);
     if (!candidate) return;
     host.summaryRefreshing = false;
-    host.insightsReturnPage = host.currentPage === "review" ? "review" : "today";
-    host.currentPage = "insights";
+    const currentPage = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    host.insightsReturnPage = currentPage === "review" ? "review" : "today";
+    setPage(host, "insights", root);
     host.insightsItemId = candidate.id;
     void host.persistViewPreferences();
     host.editingId = undefined;
     host.editingFingerprint = undefined;
-    host.render();
+    host.render(root);
 }
 
 export function openTabPageFor(host: NavigationHost): void {

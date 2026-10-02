@@ -22,6 +22,9 @@ export interface QuickDialogHost {
     quickDialogFullscreen: boolean;
     quickDialogViewportCleanup?: () => void;
     quickDialogFrameCleanup?: () => void;
+    setPageForRoot?(page: QuickDialogHost["currentPage"], root?: HTMLElement): void;
+    pageForRoot?(root: HTMLElement): QuickDialogHost["currentPage"];
+    forgetSurfaceRoot?(root: HTMLElement): void;
     mobileTopBarButton?: HTMLElement;
     mobileTopBarRetryTimer?: number;
     speedSwitchQuickActionDisposers: Array<() => void>;
@@ -81,14 +84,16 @@ function rememberQuickPage(page: QuickPage): void {
 export function openQuickDialogFor(host: QuickDialogHost): void {
     if (host.disposed || host.disposing) return;
     if (host.quickDialog) {
-        host.currentPage = "today";
+        if (host.quickDialogElement && host.setPageForRoot) host.setPageForRoot("today", host.quickDialogElement);
+        else host.currentPage = "today";
         host.editingId = undefined;
         host.editingFingerprint = undefined;
         host.render();
         return;
     }
 
-    host.currentPage = QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today";
+    const nextPage = QUICK_PRESERVED_PAGES.has(lastQuickPage) ? lastQuickPage : "today";
+    host.currentPage = nextPage;
     host.editingId = undefined;
     host.editingFingerprint = undefined;
     let dialog: Dialog | undefined;
@@ -121,6 +126,7 @@ export function openQuickDialogFor(host: QuickDialogHost): void {
     }
     host.quickDialog = dialog;
     host.quickDialogElement = root;
+    host.setPageForRoot?.(nextPage, root);
     host.quickDialogFullscreen = false;
     bindQuickDialogViewportFor(host, dialog);
     bindQuickDialogFrameFor(host, dialog);
@@ -289,18 +295,20 @@ export function closeQuickDialogFor(host: QuickDialogHost): void {
 
 export function handleQuickDialogDestroyedFor(host: QuickDialogHost, dialog: Dialog): void {
     if (host.quickDialog !== dialog) return;
-    if (host.quickDialogElement) disposeResponsiveCharts(host.quickDialogElement);
+    const root = host.quickDialogElement;
+    const page = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    if (root) disposeResponsiveCharts(root);
     host.quickDialogViewportCleanup?.();
     host.quickDialogViewportCleanup = undefined;
     host.quickDialogFrameCleanup?.();
     host.quickDialogFrameCleanup = undefined;
+    if (root) host.forgetSurfaceRoot?.(root);
     host.quickDialog = undefined;
     host.quickDialogElement = undefined;
     host.quickDialogFullscreen = false;
     /* T-1597：记录会话页签——编辑页降级为今日（表单草稿仅存 DOM，随窗口销毁）。 */
-    rememberQuickPage(host.currentPage);
+    rememberQuickPage(page);
     if (host.disposed || host.disposing) return;
-    host.currentPage = lastQuickPage;
     host.editingId = undefined;
     host.editingFingerprint = undefined;
     host.render();

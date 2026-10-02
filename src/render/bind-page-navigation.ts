@@ -76,14 +76,14 @@ export interface BindPageNavigationHost {
     disposing: boolean;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
-    showReview(): void;
+    showReview(root?: HTMLElement): void;
     /** T-1579：洞察行动入口——编辑规则（保留项目身份与返回页会话态）。 */
-    showEditor(item?: import("../types").CheckinItem, returnTo?: "insights"): void;
-    jumpToHistoryDate(date: string): void;
-    showToday(): void;
-    showArchived(): void;
-    showOccasions(): void;
-    showInsights(item?: import("../types").CheckinItem): void;
+    showEditor(item?: import("../types").CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
+    jumpToHistoryDate(date: string, root?: HTMLElement): void;
+    showToday(root?: HTMLElement): void;
+    showArchived(root?: HTMLElement): void;
+    showOccasions(root?: HTMLElement): void;
+    showInsights(item?: import("../types").CheckinItem, root?: HTMLElement): void;
     render(): void;
     persistViewPreferences(): Promise<void>;
     reviewFoldSections: Set<string>;
@@ -338,7 +338,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const item = host.store.items.find((candidate) => candidate.id === itemId);
         if (!item) return;
         host.archivedQuery = item.name;
-        host.showArchived();
+        host.showArchived(root);
     });
     /* T-1579：洞察行动入口——查看记录（带项目过滤直达记录区，返回页会话态保持）/
        编辑规则（showEditor 保留 editingId 项目身份）。 */
@@ -351,13 +351,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.editingHistoryNoteId = undefined;
         host.reviewWorkspace = "records";
         host.insightsReturnPage = "review";
-        host.showReview();
+        host.showReview(root);
     });
     root.querySelector<HTMLElement>("[data-insight-edit-rules]")?.addEventListener("click", (event) => {
         const itemId = (event.currentTarget as HTMLElement).dataset.insightEditRules || "";
         const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) return;
-        host.showEditor(item, "insights");
+        host.showEditor(item, "insights", root);
     });
     /* T-1591：洞察日历格/周行钻取——同步项目过滤后跳记录页对应日期（周行落该周起始日，
        周视图由用户在记录页切换；selectedHistoryDate/historyScope 由 jumpToHistoryDate 统一处理）。 */
@@ -369,7 +369,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             host.historyPage = 0;
             host.historyBatchPreviewOpen = false;
             host.editingHistoryNoteId = undefined;
-            host.jumpToHistoryDate(date);
+            host.jumpToHistoryDate(date, root);
         }));
     }
     root.querySelector<HTMLSelectElement>("[data-reminder-filter]")?.addEventListener("change", (event) => {
@@ -389,8 +389,8 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => {
         /* T-1576：返回路径统一走 SurfaceContext 读侧——insights 会话返回栈优先，其余按默认返回表回落 today。 */
         const context = readSurfaceContext(host);
-        if (context.page === "insights" && context.returnTo === "review") host.showReview();
-        else host.showToday();
+        if (context.page === "insights" && context.returnTo === "review") host.showReview(root);
+        else host.showToday(root);
     });
     /* Review workspace controls intentionally keep their state in the session,
        while the section folds below are persisted view preferences. */
@@ -591,7 +591,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelectorAll<HTMLElement>("[data-denominator-date]").forEach((button) => button.addEventListener("click", () => {
         const date = button.dataset.denominatorDate || "";
         if (!isValidLocalDateInput(date) || date > dateKey(currentCalendarDate())) return;
-        host.jumpToHistoryDate(date);
+        host.jumpToHistoryDate(date, root);
     }));
     root.querySelectorAll<HTMLElement>("[data-review-rhythm-date]").forEach(button => button.addEventListener("click", () => {
         const date = button.dataset.reviewRhythmDate || "";
@@ -601,7 +601,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.historyMetering = "all";
         host.historyItemId = "";
         host.historyOrder = "newest";
-        host.jumpToHistoryDate(date);
+        host.jumpToHistoryDate(date, root);
         const heading = root.querySelector<HTMLElement>(".lc-checkin__history-date > strong");
         if (heading) {
             heading.tabIndex = -1;
@@ -618,11 +618,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         else return;
         renderReviewPreservingView(`[data-heatmap-year="${offset}"]`);
     }));
-    root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived());
-    root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => host.showOccasions());
+    root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived(root));
+    root.querySelector<HTMLElement>("[data-action='occasions']")?.addEventListener("click", () => host.showOccasions(root));
     root.querySelectorAll<HTMLElement>("[data-review-insights-id]").forEach((button) => button.addEventListener("click", () => {
         const item = getActiveItemById(host.store, button.dataset.reviewInsightsId);
-        if (item) host.showInsights(item);
+        if (item) host.showInsights(item, root);
     }));
     /* 跳转按 fold id 定位：区块列表里混有年度热力图 details，按下标取会整体
        错位一位（真机实测"趋势"跳到提醒）。瞬时滚动确保钉住同步立即生效。 */
@@ -653,7 +653,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     }));
     root.querySelectorAll<HTMLElement>("[data-history-insights-id]").forEach((button) => button.addEventListener("click", () => {
         const item = getActiveItemById(host.store, button.dataset.historyInsightsId);
-        if (item) host.showInsights(item);
+        if (item) host.showInsights(item, root);
     }));
     const historySearch = root.querySelector<HTMLInputElement>("[data-history-search]");
     let historySearchTimer: number | undefined;

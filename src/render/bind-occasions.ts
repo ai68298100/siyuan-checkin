@@ -23,7 +23,7 @@ export interface BindOccasionsHost {
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
-    showToday(): void;
+    showToday(root?: HTMLElement): void;
     render(): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     createOccasionLinkedItem(occasionId: string): Promise<unknown>;
@@ -40,7 +40,7 @@ export interface BindOccasionsHost {
 export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost): void {
     host.bindDialogClose(root);
     host.bindMobileNav(root);
-    root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday());
+    root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday(root));
     /* 手机端列表在前、表单在后（order 交换）：新建/编辑后把表单滚进视口；桌面端表单常驻可见，滚动是无害空操作。 */
     /* T-1613（方案 A）：仅移动端（列表在前/表单在后）在展开表单后滚动定位；桌面表单常驻可见无需滚动。behavior 用 instant 消除 smooth 动画感知。 */
     const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; if (host.isMobileFrontend) root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: "instant"}); };

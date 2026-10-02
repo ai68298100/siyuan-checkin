@@ -45,9 +45,9 @@ export interface BindEditorHost {
     bindMobileNav(root: HTMLElement): void;
     bindDialogClose(root: HTMLElement): void;
     retrySave(): Promise<void> | void;
-    showToday(): void;
+    showToday(root?: HTMLElement): void;
     /** T-1599：返回编辑器来源页（editorReturnPage 单级返回栈，回放后清除）。 */
-    showEditorReturn(): void;
+    showEditorReturn(root?: HTMLElement): void;
     archiveEditingItem(): Promise<void> | void;
     deleteEditingItem(): Promise<boolean> | void;
     saveData(name: string, value: unknown): Promise<void>;
@@ -225,7 +225,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         applyIconFilter();
     }));
-    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn());
+    root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn(root));
     root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
     root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
@@ -850,7 +850,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 delete bulkButton.dataset.busy;
                 if (created > 0) {
                     showMessage(t("editor.packApplied", {n: created}));
-                    host.showToday();
+                    host.showToday(root);
                 }
             }, () => { delete bulkButton.dataset.busy; });
             return;

@@ -92,6 +92,7 @@ import {bindSettingsNavigationFor} from "./render/settings-navigation";
 import {openAvatarEditor} from "./render/avatar-editor";
 import {renderEditorView} from "./render/editor";
 import {renderPageShellHead} from "./render/page-shell";
+import type {PageId, RootContext} from "./render/page-shell";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
 import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, appendAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
@@ -500,7 +501,7 @@ export default class CheckinPlugin extends Plugin {
     openProjectDraftEditor(draft: ProjectDraft): void {
         this.pendingProjectDraft = draft;
         this.editingId = undefined;
-        this.currentPage = "editor";
+        this.setPageForRoot("editor");
         this.render();
     }
     /* T-1361 会话诊断（环形容量 20，内存态不落盘；导出经设置页）。 */
@@ -556,7 +557,7 @@ export default class CheckinPlugin extends Plugin {
     private jumpToItemInsights(itemId: string) {
         if (!getActiveItemById(this.store, itemId)) return;
         this.insightsItemId = itemId;
-        this.currentPage = "insights";
+        this.setPageForRoot("insights");
         this.render();
     }
 
@@ -1642,7 +1643,7 @@ export default class CheckinPlugin extends Plugin {
     }
 
     /* T-1235：点击渲染块日期 → 跳回顾页并定位该日（无效日期拒绝）。 */
-    private jumpToHistoryDate(date: string) {
+    private jumpToHistoryDate(date: string, root?: HTMLElement) {
         if (!isValidLocalDateInput(date)) return;
         this.selectedHistoryDate = date;
         this.reviewWorkspace = "records";
@@ -1651,7 +1652,7 @@ export default class CheckinPlugin extends Plugin {
         this.editingHistoryNoteId = undefined;
         this.reviewFoldSections.add("calendar");
         this.historyMonth = new Date(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, 1);
-        this.showReview();
+        this.showReview(root);
     }
     private reminderFilter: ReminderFilter = "all";
     private reminderUserActions: ReminderUserAction[] = [];
@@ -1686,7 +1687,9 @@ export default class CheckinPlugin extends Plugin {
     private currentStreaks = new Map<string, number>();
     private bestStreakItem?: CheckinItem;
     private bestStreakValue = 0;
-    private currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings" = "today";
+    private currentPage: PageId = "today";
+    private rootContexts = new Map<HTMLElement, RootContext>();
+    private activeRoot?: HTMLElement;
     private insightsItemId?: string;
     private insightsReturnPage: "today" | "review" = "today";
     /* T-1590 洞察范围与筛选（会话态：重载回落默认 84=契约「明确降级」非隐式残留）。 */
@@ -2905,8 +2908,8 @@ this.scheduleMidnightRefresh();
         if (this.externalPendingBox.items.length) this.renderBackgroundUpdate();
     }
 
-    private showToday() {
-        showTodayFor(this as unknown as NavigationHost);
+    private showToday(root?: HTMLElement) {
+        showTodayFor(this as unknown as NavigationHost, root);
     }
 
     /* R-18.1 · R-A18：年度分享图——本地 canvas 生成 PNG（网格+统计），经既有保存通道落地。
@@ -2948,52 +2951,53 @@ this.scheduleMidnightRefresh();
         await saveGeneratedFile({fileName: `siyuan-checkin-share-${year}.png`, content: binary, mime: "image/png"});
     }
 
-    private showReview() {
+    private showReview(root?: HTMLElement) {
         this.advanceFirstSuccess("review-visited");
-        showReviewFor(this as unknown as NavigationHost);
+        showReviewFor(this as unknown as NavigationHost, root);
     }
 
-    private showHistory() {
+    private showHistory(root?: HTMLElement) {
         this.reviewWorkspace = "records";
-        this.showReview();
+        this.showReview(root);
     }
 
-    private showSummary() {
+    private showSummary(root?: HTMLElement) {
         this.reviewWorkspace = "overview";
-        this.showReview();
+        this.showReview(root);
     }
 
-    private showInsights(item?: CheckinItem) {
-        showInsightsFor(this as unknown as NavigationHost, item);
+    private showInsights(item?: CheckinItem, root?: HTMLElement) {
+        showInsightsFor(this as unknown as NavigationHost, item, root);
     }
 
-    private showArchived() {
-        showArchivedFor(this as unknown as NavigationHost);
+    private showArchived(root?: HTMLElement) {
+        showArchivedFor(this as unknown as NavigationHost, root);
     }
 
-    private showOccasions() {
-        showOccasionsFor(this as unknown as NavigationHost);
+    private showOccasions(root?: HTMLElement) {
+        showOccasionsFor(this as unknown as NavigationHost, root);
     }
 
-    private showSettings() {
-        showSettingsFor(this as unknown as NavigationHost);
+    private showSettings(root?: HTMLElement) {
+        showSettingsFor(this as unknown as NavigationHost, root);
     }
 
-    private showEditor(item?: CheckinItem, returnTo?: "insights") {
+    private showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement) {
         /* 新建/编辑是一段新的表单会话，必须从标题和模板入口开始；表单内部
            的普通重渲染仍由 pageScrollTops 保留当前位置。 */
-        [this.dockElement, this.tabElement, this.quickDialogElement].forEach((root) => {
-            if (!root) return;
-            const tops = this.pageScrollTops.get(root) ?? new Map<string, number>();
+        const roots = root ? [root] : [this.dockElement, this.tabElement, this.quickDialogElement];
+        roots.forEach((surface) => {
+            if (!surface) return;
+            const tops = this.pageScrollTops.get(surface) ?? new Map<string, number>();
             tops.set("editor", 0);
-            this.pageScrollTops.set(root, tops);
+            this.pageScrollTops.set(surface, tops);
         });
-        showEditorFor(this as unknown as NavigationHost, item, returnTo);
+        showEditorFor(this as unknown as NavigationHost, item, returnTo, root);
     }
 
     /** T-1599：编辑器返回——回放 editorReturnPage（洞察「编辑规则」回放同一项目）。 */
-    private showEditorReturn() {
-        showEditorReturnFor(this as unknown as NavigationHost);
+    private showEditorReturn(root?: HTMLElement) {
+        showEditorReturnFor(this as unknown as NavigationHost, root);
     }
 
     private openTabPage() {
@@ -3351,21 +3355,64 @@ this.scheduleMidnightRefresh();
             || active.dataset?.todaySearch !== undefined) && active.closest(".lc-checkin--today"));
     }
 
-    private render() {
+    private roots(): HTMLElement[] {
+        return [this.dockElement, this.tabElement, this.quickDialogElement]
+            .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+    }
+
+    private ensureRootContext(root: HTMLElement): RootContext {
+        const existing = this.rootContexts.get(root);
+        if (existing) return existing;
+        const context: RootContext = {page: this.currentPage};
+        this.rootContexts.set(root, context);
+        return context;
+    }
+
+    public pageForRoot(root: HTMLElement): PageId {
+        return this.ensureRootContext(root).page;
+    }
+
+    public setActiveRoot(root: HTMLElement): void {
+        this.activeRoot = root;
+        this.currentPage = this.pageForRoot(root);
+    }
+
+    public setPageForRoot(page: PageId, root?: HTMLElement): void {
+        if (root) {
+            this.ensureRootContext(root).page = page;
+            this.activeRoot = root;
+            this.currentPage = page;
+            return;
+        }
+        this.currentPage = page;
+        for (const surface of this.roots()) this.ensureRootContext(surface).page = page;
+    }
+
+    public forgetSurfaceRoot(root: HTMLElement): void {
+        this.rootContexts.delete(root);
+        if (this.activeRoot === root) {
+            this.activeRoot = this.roots().find((surface) => surface !== root);
+            this.currentPage = this.activeRoot ? this.pageForRoot(this.activeRoot) : "today";
+        }
+    }
+
+    private render(root?: HTMLElement) {
         if (this.disposed || this.disposing) {
             return;
         }
         /* T-1445 的输入挂起只在 renderBackgroundUpdateFor（后台源）层做——本函数承载
            导航与用户动作等显式渲染，挂起会造成「焦点在旧输入框 → 渲染被吞 → 焦点
            永不释放」的死锁（T-1455 宽度走查发现的回归）。 */
-        const roots = [this.dockElement, this.tabElement, this.quickDialogElement].filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
-        const reviewAnalyticsSnapshot = roots.length && this.currentPage === "review" && this.initializationState === "ready"
+        const roots = root ? [root] : this.roots();
+        const reviewAnalyticsSnapshot = roots.some((surface) => this.pageForRoot(surface) === "review") && this.initializationState === "ready"
             ? buildAnalyticsSnapshot(this.store, currentCalendarDate())
             : undefined;
         roots.forEach((root) => this.renderInto(root, reviewAnalyticsSnapshot));
     }
 
     private renderInto(root: HTMLElement, reviewAnalyticsSnapshot?: AnalyticsSnapshot) {
+        this.setActiveRoot(root);
+        const page = this.pageForRoot(root);
         /* A short, explicit mobile host marker keeps the final responsive
            layer deterministic without repeating long :has() selectors for
            every child rule.  Desktop docks remain on their container-query
@@ -3391,7 +3438,7 @@ this.scheduleMidnightRefresh();
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
            同页重渲染（打卡/筛选）不跳动，切页回到上次离开的位置。WeakMap 随表面销毁自动释放。 */
         const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
-        if (this.currentPage === "settings" || this.renderedPages.get(root) === "settings") {
+        if (page === "settings" || this.renderedPages.get(root) === "settings") {
             const openSourcePanels = new Set<string>();
             root.querySelectorAll<HTMLElement>("[data-source-panel][open]").forEach((panel) => {
                 if (panel.dataset.sourcePanel) openSourcePanels.add(panel.dataset.sourcePanel);
@@ -3403,12 +3450,12 @@ this.scheduleMidnightRefresh();
             tops.set(this.renderedPages.get(root) ?? "today", previousScroller.scrollTop);
             this.pageScrollTops.set(root, tops);
         }
-        root.innerHTML = this.currentPage === "editor" ? this.renderEditor()
-            : this.currentPage === "review" ? this.renderReview(reviewAnalyticsSnapshot!)
-                : this.currentPage === "insights" ? this.renderInsights()
-            : this.currentPage === "archived" ? this.renderArchived()
-                    : this.currentPage === "occasions" ? this.renderOccasions()
-                    : this.currentPage === "settings" ? this.renderSettings(this.settingsOpenSourcePanels.get(root)) : this.renderToday();
+        root.innerHTML = page === "editor" ? this.renderEditor()
+            : page === "review" ? this.renderReview(reviewAnalyticsSnapshot!)
+                : page === "insights" ? this.renderInsights()
+            : page === "archived" ? this.renderArchived()
+                    : page === "occasions" ? this.renderOccasions()
+                    : page === "settings" ? this.renderSettings(this.settingsOpenSourcePanels.get(root)) : this.renderToday();
         this.normalizeUiIcons(root);
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (surface) {
@@ -3447,7 +3494,7 @@ this.scheduleMidnightRefresh();
             else if (this.focusTimerState) layout.insertAdjacentHTML("beforeend", renderFocusMiniStripFor(this as unknown as FocusTimerHost));
             layout.querySelector<HTMLElement>("[data-focus-mini-back]")?.addEventListener("click", () => {
                 this.focusTimerRoot = root;
-                this.showToday();
+                this.showToday(root);
             });
         }
         /* 底部导航在所有表面都渲染（含桌面侧边栏面板）：宽容器由 CSS 隐藏、
@@ -3460,13 +3507,13 @@ this.scheduleMidnightRefresh();
            bounded by the dialog, tab, or dock host on every frontend. */
         const recentRecordToast = surface?.querySelector<HTMLElement>(".lc-checkin__recent-record");
         if (recentRecordToast) root.appendChild(recentRecordToast);
-        if (this.currentPage === "editor") {
+        if (page === "editor") {
             this.bindEditor(root);
-        } else if (this.currentPage === "today") {
+        } else if (page === "today") {
             this.bindToday(root);
-        } else if (this.currentPage === "occasions") {
+        } else if (page === "occasions") {
             this.bindOccasions(root);
-        } else if (this.currentPage === "settings") {
+        } else if (page === "settings") {
             this.bindSettings(root);
         } else {
             this.bindPageNavigation(root);
@@ -3485,14 +3532,14 @@ this.scheduleMidnightRefresh();
            该卡已被过滤/消失时保持容器焦点。 */
         const focusItemId = this.pendingFocusItemId;
         this.pendingFocusItemId = undefined;
-        if (focusItemId && this.currentPage === "today") {
+        if (focusItemId && page === "today") {
             const card = root.querySelector<HTMLElement>(`.lc-checkin__item[data-item-id='${focusItemId}']`);
             const focusTarget = card?.querySelector<HTMLElement>(".lc-checkin__item-action > :is([data-action='focus'], [data-action='record'], [data-action='quick-record'])");
             if (focusTarget) focusTarget.focus();
         }
         const scroller = root.querySelector<HTMLElement>(".lc-checkin");
-        if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(this.currentPage) ?? 0;
-        this.renderedPages.set(root, this.currentPage);
+        if (scroller) scroller.scrollTop = this.pageScrollTops.get(root)?.get(page) ?? 0;
+        this.renderedPages.set(root, page);
     }
 
     private syncHostThemeTokens(root: HTMLElement, surface: HTMLElement) {

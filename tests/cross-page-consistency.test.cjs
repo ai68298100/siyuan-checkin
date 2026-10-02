@@ -230,8 +230,14 @@ try {
         assert.match(navigation, /editorReturnPage\?: "today" \| "review" \| "insights"/, "编辑器单级返回栈字段在位（T-1599）");
         assert.match(navigation, /showEditorReturnFor/, "返回回放函数在位");
         assert.match(navigation, /returnTo === "review" \|\| returnTo === "insights" \? returnTo : "today"/, "返回页白名单校验（未知回落 today）");
-        assert.match(editorBind, /host\.showEditorReturn\(\)/, "编辑器返回走返回栈（不再固定 showToday）");
-        assert.match(reviewBind, /host\.showEditor\(item, "insights"\)/, "洞察编辑规则 CTA 携带返回页");
+        assert.match(editorBind, /host\.showEditorReturn\(root\)/, "编辑器返回走返回栈并保留表面上下文（不再固定 showToday）");
+        assert.match(reviewBind, /host\.showEditor\(item, "insights", root\)/, "洞察编辑规则 CTA 携带返回页与表面上下文");
+        assert.match(indexSrc, /private rootContexts = new Map<HTMLElement, RootContext>/, "宿主按 root 保存页面上下文");
+        assert.match(indexSrc, /const page = this\.pageForRoot\(root\)/, "渲染按 root 读取当前页");
+        assert.match(navigation, /host\.setPageForRoot\(page, root\)/, "导航按 root 写入当前页");
+        assert.match(navigation, /host\.render\(root\)/, "导航只重绘目标 root");
+        assert.match(todayBind, /host\.showInsights\(item, root\)/, "今日页洞察入口携带 root");
+        assert.match(reviewBind, /host\.showReview\(root\)/, "回顾页返回入口携带 root");
         for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {
             assert.match(navigation, new RegExp(`export function ${fn}`), `导航单一路径 ${fn} 在 navigation.ts`);
         }

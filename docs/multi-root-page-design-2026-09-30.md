@@ -2,7 +2,7 @@
 
 ## 定位
 
-本稿是 T-1621 剩余（按 root 独立 currentPage）的**架构设计评审件**——只设计不实施。目标：让 dock/页签/快速弹窗多个 root 同时打开时各自维护独立的当前页面，不再互相覆盖。
+本稿是 T-1621 剩余（按 root 独立 currentPage）的**架构设计与实施基线**。步骤一已落地：dock/页签/快速弹窗的页面路由按 root 保存并由绑定器传递 root；本稿继续约束后续日期、范围、筛选、焦点和滚动状态迁移，不把未完成的全量恢复误记为已完成。
 
 ## 现状根因
 
@@ -44,7 +44,7 @@ private rootContexts = new Map<HTMLElement, RootContext>();
 
 1. **步骤一**：引入 `RootContext` + `rootContexts` Map；`renderInto` 按 root 取页面；导航函数加可选 root 参数；宿主 `currentPage` 变为「最后活跃 root」的代理。
 2. **步骤二**：折叠态/展开态（reviewFoldSections、collapsedTodayGroups 等）按需评估是否迁入 per-root——首批不迁（改动大/收益低）。
-3. **步骤三**：滚动位置 `pageScrollTops` 的 key 从页面名改为 `root+页面名` 复合键（已在 WeakMap per-root 结构内，改动最小）。
+3. **步骤三**：把滚动位置、焦点和返回相关会话态纳入 root context 的恢复/清理策略；现有 `pageScrollTops` 已按 root 存储，但尚未完成契约化的全量序列化。
 
 ### 风险与缓解
 

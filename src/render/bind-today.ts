@@ -49,14 +49,14 @@ export interface BindTodayHost {
     focusTodaySearch(cursor?: number): void;
     undoRecentRecord(): void;
     retrySave(): Promise<void> | void;
-    showHistory(): void;
-    showArchived(): void;
-    showSummary(): void;
-    showInsights(item?: CheckinItem): void;
-    showOccasions(): void;
-    showSettings(): void;
+    showHistory(root?: HTMLElement): void;
+    showArchived(root?: HTMLElement): void;
+    showSummary(root?: HTMLElement): void;
+    showInsights(item?: CheckinItem, root?: HTMLElement): void;
+    showOccasions(root?: HTMLElement): void;
+    showSettings(root?: HTMLElement): void;
     openTabPage(): void;
-    showEditor(item?: CheckinItem): void;
+    showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1424 用户跳过新手引导（粘性，偏好持久化）。 */
     firstSuccessSkipGuidance(): void;
@@ -104,14 +104,14 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     host.bindFocusTimerPanel(root);
     root.querySelectorAll<HTMLElement>("[data-streak-insights]").forEach((button) => button.addEventListener("click", () => {
         const item = getActiveItemById(host.store, button.dataset.streakInsights);
-        if (item) { host.insightsReturnPage = "today"; host.showInsights(item); }
+        if (item) { host.insightsReturnPage = "today"; host.showInsights(item, root); }
     }));
     root.querySelectorAll<HTMLElement>("[data-priority-reminder-action]").forEach((button) => button.addEventListener("click", (event) => {
         const reminder = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-priority-reminder]");
         if (!reminder) return;
         const action = event.currentTarget as HTMLElement;
         if (action.dataset.prioritySource === "occasion") {
-            host.showOccasions();
+            host.showOccasions(root);
             return;
         }
         const item = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(action.dataset.priorityId || "")}"]`);
@@ -200,9 +200,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         void host.persistViewPreferences();
         host.render();
     });
-    root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory());
+    root.querySelector<HTMLElement>("[data-action='history']")?.addEventListener("click", () => host.showHistory(root));
     root.querySelector<HTMLElement>("[data-action='skip-onboard']")?.addEventListener("click", () => host.firstSuccessSkipGuidance());
-    root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived());
+    root.querySelector<HTMLElement>("[data-action='archived']")?.addEventListener("click", () => host.showArchived(root));
     root.querySelectorAll<HTMLElement>("[data-heatmap-year]").forEach((button) => button.addEventListener("click", (event) => {
         event.stopPropagation();
         const offset = Number(button.dataset.heatmapYear);
@@ -217,9 +217,9 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.reviewFoldTouched = true;
         void host.persistViewPreferences();
     }));
-    root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => host.showSummary());
-    root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => host.showInsights());
-    root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => host.showOccasions()));
+    root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => host.showSummary(root));
+    root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => host.showInsights(undefined, root));
+    root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => host.showOccasions(root)));
     /* T-1493：往年日记跳转（只读定位，找不到由宿主提示）。 */
     root.querySelectorAll<HTMLElement>("[data-action='this-day-jump']").forEach((button) => button.addEventListener("click", () => {
         const pastDate = (button as HTMLElement).dataset.thisdayDate || "";
@@ -229,10 +229,10 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     root.querySelectorAll<HTMLElement>("[data-week-load-edit]").forEach((button) => button.addEventListener("click", () => {
         const itemId = button.dataset.weekLoadEdit || "";
         const item = host.store.items.find((candidate) => candidate.id === itemId);
-        if (item) host.showEditor(item);
+        if (item) host.showEditor(item, undefined, root);
     }));
 
-    root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => host.showSettings()));
+    root.querySelectorAll<HTMLElement>("[data-action='settings']").forEach((button) => button.addEventListener("click", () => host.showSettings(root)));
     root.querySelector<HTMLElement>("[data-action='open-tab']")?.addEventListener("click", () => host.openTabPage());
     root.querySelector<HTMLSelectElement>("[data-group-mode]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
@@ -270,7 +270,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         void host.persistViewPreferences();
         host.render();
     }));
-    root.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => host.showEditor()));
+    root.querySelectorAll<HTMLElement>("[data-action='add']").forEach((element) => element.addEventListener("click", () => host.showEditor(undefined, undefined, root)));
     root.querySelectorAll<HTMLElement>("[data-item-id]").forEach((element) => {
         const itemId = element.dataset.itemId;
         if (!itemId) {
@@ -279,12 +279,12 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         element.querySelectorAll<HTMLElement>("[data-action='edit'], [data-edit-name]").forEach((button) => button.addEventListener("click", () => {
             const item = getItemById(host.store, itemId);
             if (item) {
-                host.showEditor(item);
+                host.showEditor(item, undefined, root);
             }
         }));
         element.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => {
             const item = getItemById(host.store, itemId);
-            if (item) host.showInsights(item);
+            if (item) host.showInsights(item, root);
         });
         element.querySelector<HTMLElement>("[data-action='toggle']")?.addEventListener("click", () => {
             const moment = captureActionMoment();

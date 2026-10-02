@@ -10,6 +10,11 @@ import {escapeHtml} from "../shared";
 /** 七页联合（同 navigation.ts 的 currentPage；契约 1 PageId）。 */
 export type PageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
 
+export interface RootContext {
+    page: PageId;
+    returnTo?: PageId;
+}
+
 export interface PageShellHeadInput {
     /** 返回按钮 aria（默认 common.back；archived 沿用既有专用文案）。 */
     backAria?: string;
