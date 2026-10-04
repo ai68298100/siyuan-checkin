@@ -102,12 +102,14 @@ assert.match(occasionBinding, /isCurrentOccasionFormSession\(host, root, session
 assert.match(occasionBinding, /host\.showToday\(root\)/);
 console.log("Cross-surface 12.5 occasion-state checks passed.");
 
-assert.match(typesSource, /export interface SettingsRootContext[\s\S]*targetSummaries: Map<string, \{name\?: string; hpath\?: string\} \| null>;[\s\S]*sourceSandboxOutcomes[\s\S]*sourceSandboxTexts[\s\S]*importConflictSession\?/);
+assert.match(typesSource, /export interface SettingsRootContext[\s\S]*searchSession: \{query: string; activeIndex: number; hadFocus: boolean\};[\s\S]*targetSummaries: Map<string, \{name\?: string; hpath\?: string\} \| null>;[\s\S]*sourceSandboxOutcomes[\s\S]*sourceSandboxTexts[\s\S]*importConflictSession\?/);
 assert.match(source, /private adoptLegacySettingsState\(root: HTMLElement\)/);
 assert.match(source, /this\.adoptLegacySettingsState\(root\);/);
 assert.match(source, /settings\.importConflictSession = undefined;[\s\S]*this\.render\(root\)/);
 assert.match(source, /settings\.sourceSandboxTexts\[source\] = area\.value/);
 assert.match(source, /settings\.targetSummaries\.set\(docId/);
 assert.match(source, /runSourceSandbox\(source: SandboxSource, text: string, root\?: HTMLElement\)/);
+assert.match(source, /searchSession: \{query: "", activeIndex: 0, hadFocus: false\}/, "设置 root 初始化字段搜索会话");
+assert.match(source, /bindSettingsNavigationFor\(root, \{[\s\S]*searchSession: this\.settingsStateForRoot\(root\)\.searchSession/);
 assert.match(source, /if \(root\) this\.render\(root\);/);
 console.log("Cross-surface 12.6 settings-session checks passed.");

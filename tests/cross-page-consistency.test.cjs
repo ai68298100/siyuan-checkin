@@ -58,7 +58,8 @@ try {
     });
 
     check("session-restore patterns exist for settings search, review views and today console", () => {
-        assert.match(settingsNav, /searchSessionState/, "设置搜索会话恢复（WeakMap）");
+        assert.match(settingsNav, /searchSession\?: SettingsSearchSession/, "设置搜索会话由调用方 root context 提供");
+        assert.match(indexSrc, /searchSession: this\.settingsStateForRoot\(root\)\.searchSession/, "设置搜索绑定使用所属 root 会话");
         assert.match(reviewBind, /renderReviewPreservingView\("/, "回顾视图保持焦点/选择恢复");
         assert.match(navigation, /insightsReturnPage/, "洞察返回页会话态");
     });

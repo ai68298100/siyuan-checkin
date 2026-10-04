@@ -148,6 +148,10 @@ assert.match(pluginSource, /reminderUserAction\(id: string, action: "snooze" \| 
 assert.match(pluginSource, /D-315：偏好桶明确采用后写者胜[\s\S]*?withStorageLock/, "preference writes must document and serialize the last-writer-wins boundary");
 assert.match(workflowSource, /export function mergeSuggestionWorkflows\(/, "suggestion workflow must merge concurrent audit/token updates");
 assert.match(pluginSource, /private persistSuggestionWorkflow\(\): Promise<void> \{[\s\S]*?withStorageLock\(\(\) => this\.persistSuggestionWorkflowUnlocked\(\)\)/, "suggestion persistence must reconcile remote workflow state under the lock");
+assert.match(pluginSource, /analysisHistorySaveQueue[\s\S]*?const remoteHistory = typeof this\.loadData === "function"[\s\S]*?mergeAnalysisSnapshots\(localHistory, remoteHistory\)/,
+    "analysis history writes must union the remote append-only cache before persisting");
+assert.match(pluginSource, /const lock = \(this as unknown as \{withStorageLock\?:[\s\S]*?if \(typeof lock === "function"\) await lock\.call\(this, persist\)/,
+    "analysis history persistence must use the shared storage lock when the host provides it");
 assert.match(pluginSource, /private async persistAuditBestEffort\(mergeRemote = true\): Promise<void> \{[\s\S]*?mergeStoreAudits\(/, "audit persistence must merge remote append-only diagnostics under the lock");
 assert.match(pluginSource, /data-action='clear-audit'[\s\S]*?persistAuditBestEffort\(false\)/, "explicit audit clear must retain its last-writer-wins delete boundary");
 assert.match(pluginSource, /async onDataChanged\(\)[\s\S]*?await this\.withStorageLock\(async \(\) => \{[\s\S]*?VIEW_PREFERENCES_NAME/, "external data reload must apply independent buckets inside the storage lock");

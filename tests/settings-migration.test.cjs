@@ -87,7 +87,9 @@ try {
             assert.match(settings, new RegExp(marker), `分区标记 ${marker} 在位`);
         }
         assert.match(settings, /data-settings-overview/, "T-1562 总览块保留");
-        assert.match(navigation, /searchSessionState/, "T-1563 搜索会话机制保留");
+        assert.match(navigation, /searchSession\?: SettingsSearchSession/, "T-1563 搜索会话由 root context 提供");
+        assert.match(indexSource, /searchSession: this\.settingsStateForRoot\(root\)\.searchSession/, "设置搜索绑定所属 root 会话");
+        assert.doesNotMatch(navigation, /new WeakMap<HTMLElement, SettingsSearchSession>/, "设置搜索不再以模块级 WeakMap 持有 root 会话");
         assert.match(settings, /sourcePanelOpen\(/, "来源面板展开态机制保留");
         assert.match(indexSource, /settings\.openSourcePanels\.clear\(\)/, "展开态捕获写入设置 root 会话");
         assert.match(indexSource, /this\.settingsStateForRoot\(root\)\.openSourcePanels/, "展开态恢复读取设置 root 会话");

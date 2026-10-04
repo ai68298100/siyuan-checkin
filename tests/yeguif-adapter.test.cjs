@@ -127,7 +127,9 @@ assert.match(vpCode, /yeguifIntegration: \{\s*enabled: false,\s*itemId: "",\s*no
 
 /* 宿主全触点。 */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-const settingsProjection = indexSource.slice(indexSource.indexOf('            yeguifIntegration: {...this.yeguifIntegration'), indexSource.indexOf('            openSourcePanels:'));
+const settingsProjectionStart = indexSource.indexOf('            yeguifIntegration: {...this.yeguifIntegration');
+const settingsProjectionEnd = indexSource.indexOf('            openSourcePanels:', settingsProjectionStart);
+const settingsProjection = indexSource.slice(settingsProjectionStart, settingsProjectionEnd);
 assert.ok(settingsProjection.includes('mappings:'), "settings rerender must receive the persisted project mappings");
 const projectionExpression = settingsProjection.trim().replace(/^yeguifIntegration: /, '').replace(/,$/, '');
 const configured = {enabled: true, itemId: '', notebookId: 'book', mappings: [{project: '工作', itemId: 'work'}, {project: '阅读', itemId: 'read'}]};

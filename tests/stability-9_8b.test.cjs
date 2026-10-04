@@ -13,7 +13,7 @@ const checks = [
     [plugin, /REMINDER_ACTIONS_NAME = "checkin-reminder-actions"/, "reminder actions use an isolated storage key"],
     [plugin, /deserializeReminderUserActions/, "reminder actions are normalized on load"],
     [plugin, /serializeReminderUserActions/, "reminder actions are serialized on save"],
-    [plugin, /clearReminderUserActions/, "reminder restore clears persisted action"],
+    [plugin, /const actionRecord = action === "restore"[\s\S]*?serializeReminderUserActions/, "reminder restore records a persisted removal action"],
     [plugin, /projectReminderCenter\(/, "review and today consume projected reminders"],
     [plugin, /focusTimerProvider/, "focus timer provider preference is retained"],
     [plugin, /source === "tomato"/, "tomato source remains explicit"],

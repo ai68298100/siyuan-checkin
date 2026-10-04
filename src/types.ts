@@ -195,6 +195,8 @@ export interface SettingsRootContext {
     drafts: Map<string, string>;
     savedBaselines: Map<string, string>;
     openSourcePanels: Set<string>;
+    /** 设置字段搜索的查询、当前匹配项和焦点归属属于当前设置表面。 */
+    searchSession: {query: string; activeIndex: number; hadFocus: boolean};
     targetSummaries: Map<string, {name?: string; hpath?: string} | null>;
     lastBindingCheckAt?: string;
     sourceSandboxOutcomes: Partial<Record<import("./features/source-sandbox").SandboxSource, import("./features/source-sandbox").SandboxOutcome>>;

@@ -8,18 +8,17 @@ import {t} from "../i18n";
 
 export interface SettingsNavigationOptions {
     reducedMotion?: boolean;
+    /** T-1621：搜索会话由所属 SettingsRootContext 持有。 */
+    searchSession?: SettingsSearchSession;
 }
 
 type SettingsNavigationBinding = () => void;
 
-interface SettingsSearchSession {
+export interface SettingsSearchSession {
     query: string;
     activeIndex: number;
     hadFocus: boolean;
 }
-
-/* 会话态按 root 记忆：root 在重渲染间复用，WeakMap 随表面销毁释放。 */
-const searchSessionState = new WeakMap<HTMLElement, SettingsSearchSession>();
 
 const asElement = (target: EventTarget | null): Element | undefined =>
     typeof Element !== "undefined" && target instanceof Element ? target : undefined;
@@ -52,8 +51,9 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     const panelStates = new Map<HTMLDetailsElement, boolean>();
     const rowStates = new Map<HTMLElement, boolean>();
     /* T-1563：匹配行集合与当前选择（onSearch 重建；↑/↓ 移动；Enter 聚焦当前项）。 */
-    const searchSession = searchSessionState.get(root) || {query: "", activeIndex: 0, hadFocus: false};
-    searchSessionState.set(root, searchSession);
+    /* RootContext 负责生命周期与隔离；旧测试/外部桩未传入时使用一次性会话，
+       不再在模块级 WeakMap 中保留已销毁 surface 的状态。 */
+    const searchSession = options.searchSession || {query: "", activeIndex: 0, hadFocus: false};
     let composing = false;
     let matchedRows: HTMLElement[] = [];
     let activeIndex = searchSession.activeIndex;

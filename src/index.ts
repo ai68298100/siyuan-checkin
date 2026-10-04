@@ -100,7 +100,7 @@ import type {PageId, EditorRootContext, InsightsRootContext, ReviewRootContext, 
 import {captureEditorDraft, restoreEditorDraft, restoreEditorFocus} from "./render/editor-session";
 import {validateEditorInput} from "./editor-validation";
 import {registerAgentCapabilities} from "./agent-capabilities";
-import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, saveAnalysisSnapshot, appendAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
+import {AGENT_ANALYSIS_CACHE_KEY, loadAnalysisSnapshots, mergeAnalysisSnapshots, appendAnalysisSnapshot, createAnalysisMeta, createSuggestionEnvelope, normalizeSummaryProviderResult, type AgentAnalysisSnapshot} from "./agent-suggestions";
 import {applySuggestion, createSuggestionWorkflow, decideSuggestion, deserializeSuggestionWorkflow, isWorkflowNewer, mergeSuggestionWorkflows, serializeSuggestionWorkflow, shouldRestoreSuggestionWorkflow, undoSuggestion, workflowActions, type SuggestionWorkflowState} from "./features/suggestion-workflow";
 import {createSuggestionDecisionToken} from "./agent-suggestions";
 import {mergeUserTemplates, normalizeUserTemplate, upsertUserTemplate, deleteUserTemplate, recordRecentTemplate} from "./features/templates";
@@ -3891,6 +3891,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             drafts: new Map(this.settingsDrafts),
             savedBaselines: new Map(this.settingsSavedBaselines),
             openSourcePanels: new Set(),
+            searchSession: {query: "", activeIndex: 0, hadFocus: false},
             targetSummaries: new Map(this.targetSummaries),
             lastBindingCheckAt: this.lastBindingCheckAt,
             sourceSandboxOutcomes: {...this.sourceSandboxOutcomes},
@@ -4298,9 +4299,18 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
     }
 
     private normalizeUiIcons(root: HTMLElement) {
+        /* 大列表（Today 200 条）每次完整重绘都会经过这里。渲染碎片本身
+           已直接输出目标 SVG；重复 innerHTML 会让浏览器重新解析每个卡片
+           的图标并放大同步 render 成本。仅在仍是旧文字/兼容标记时替换，
+           保留宿主旧模板的迁移能力，同时让当前 SVG 标记幂等。 */
+        const setDirectIcon = (node: HTMLElement, name: UiIconName) => {
+            if (node.firstElementChild?.matches("svg.lc-checkin__glyph")) return;
+            node.innerHTML = uiIcon(name);
+        };
         const replaceOccasionIcon = (button: HTMLElement, name: UiIconName) => {
             const icon = button.querySelector<HTMLElement>(".lc-checkin__action-icon");
             if (icon) {
+                if (icon.firstElementChild?.matches("svg.lc-checkin__glyph")) return;
                 icon.replaceChildren(this.iconNode(name));
                 return;
             }
@@ -4314,20 +4324,20 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (label) button.insertBefore(wrapper, label);
             else button.replaceChildren(wrapper);
         };
-        root.querySelectorAll<HTMLElement>(".lc-checkin__back-button").forEach((button) => { button.innerHTML = uiIcon("back"); });
+        root.querySelectorAll<HTMLElement>(".lc-checkin__back-button").forEach((button) => { setDirectIcon(button, "back"); });
         root.querySelector<HTMLElement>("[data-history-month='-1']")?.replaceChildren(this.iconNode("back"));
         root.querySelector<HTMLElement>("[data-history-month='1']")?.replaceChildren(this.iconNode("forward"));
-        root.querySelectorAll<HTMLElement>(".lc-checkin__search-symbol, .lc-checkin__today-search > span").forEach((node) => { node.innerHTML = uiIcon("search"); });
-        root.querySelectorAll<HTMLElement>("[data-action='clear-search'], [data-action='clear-history-query'], [data-action='clear-template-query'], [data-action='clear-icon-query']").forEach((button) => { button.innerHTML = uiIcon("close"); });
-        root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { button.innerHTML = uiIcon("insight"); });
-        root.querySelectorAll<HTMLElement>("[data-action='edit']").forEach((button) => { button.innerHTML = uiIcon("edit"); });
+        root.querySelectorAll<HTMLElement>(".lc-checkin__search-symbol, .lc-checkin__today-search > span").forEach((node) => { setDirectIcon(node, "search"); });
+        root.querySelectorAll<HTMLElement>("[data-action='clear-search'], [data-action='clear-history-query'], [data-action='clear-template-query'], [data-action='clear-icon-query']").forEach((button) => { setDirectIcon(button, "close"); });
+        root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { setDirectIcon(button, "insight"); });
+        root.querySelectorAll<HTMLElement>("[data-action='edit']").forEach((button) => { setDirectIcon(button, "edit"); });
         root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => replaceOccasionIcon(button, "edit"));
-        root.querySelectorAll<HTMLElement>("[data-action='focus']:not(.lc-checkin__focus-primary)").forEach((button) => { button.innerHTML = uiIcon("timer"); });
-        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']:not(.lc-checkin__entry-trigger)").forEach((button) => { button.innerHTML = uiIcon("more"); });
+        root.querySelectorAll<HTMLElement>("[data-action='focus']:not(.lc-checkin__focus-primary)").forEach((button) => { setDirectIcon(button, "timer"); });
+        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']:not(.lc-checkin__entry-trigger)").forEach((button) => { setDirectIcon(button, "more"); });
         root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => replaceOccasionIcon(button, "trash"));
         root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => replaceOccasionIcon(button, button.classList.contains("is-on") ? "check" : "circle"));
-        root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { button.innerHTML = uiIcon("add"); });
-        root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { node.innerHTML = uiIcon("calendar"); });
+        root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { setDirectIcon(button, "add"); });
+        root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { setDirectIcon(node, "calendar"); });
     }
 
     private iconNode(name: UiIconName): SVGElement {
@@ -6022,7 +6032,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
         /* 分类栏与右侧卡片双向同步：桌面纵向 rail、移动端横向 sticky
            rail 共用同一绑定，并在下次重渲染前由 renderInto 释放。 */
-        this.settingsNavigationCleanups.set(root, bindSettingsNavigationFor(root, {reducedMotion: this.reducedMotion}));
+        this.settingsNavigationCleanups.set(root, bindSettingsNavigationFor(root, {
+            reducedMotion: this.reducedMotion,
+            searchSession: this.settingsStateForRoot(root).searchSession,
+        }));
     }
 
     /* 方法体外置于 render/today-bindings.ts（T-022 可选收尾）。 */
@@ -7077,7 +7090,21 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             // Queue writes and publish the matching metadata in memory before
             // rendering, so a slow earlier save cannot replace a newer result.
             this.analysisHistorySaveQueue = this.analysisHistorySaveQueue.then(async () => {
-                await saveAnalysisSnapshot((key, value) => this.saveData(key, value), AGENT_ANALYSIS_CACHE_KEY, previousHistory, snapshot);
+                const localHistory = appendAnalysisSnapshot(previousHistory, snapshot);
+                const persist = async () => {
+                    /* T-1622：分析历史是追加型辅助桶。重读远端并集后再写，
+                       让两个窗口同时生成的报告都能保留；旧测试宿主没有 loadData/锁时
+                       退化为原来的单窗口写入，生产宿主始终走独占锁。 */
+                    const remoteHistory = typeof this.loadData === "function"
+                        ? await loadAnalysisSnapshots((key) => this.loadData(key), AGENT_ANALYSIS_CACHE_KEY)
+                        : [];
+                    const merged = mergeAnalysisSnapshots(localHistory, remoteHistory);
+                    await this.saveData(AGENT_ANALYSIS_CACHE_KEY, merged);
+                    this.analysisHistory = mergeAnalysisSnapshots(this.analysisHistory, merged);
+                };
+                const lock = (this as unknown as {withStorageLock?: <T>(operation: () => Promise<T>) => Promise<T>}).withStorageLock;
+                if (typeof lock === "function") await lock.call(this, persist);
+                else await persist();
             }).catch(() => {
                 if (!stillCurrent()) return;
                 updateSession({error: t("review.assistantCacheSaveFailed"), errorScope: scope});

@@ -29,6 +29,8 @@ const checks = [
     [plugin, /context\.scrollTops/, "scroll memory is root scoped"],
     [plugin, /pendingFocusItemId/, "focus restoration state remains available"],
     [plugin, /normalizeUiIcons\(root\)/, "icons normalize after each render"],
+    [plugin, /const setDirectIcon = \(node: HTMLElement, name: UiIconName\)/, "icon normalization uses a shared idempotent setter"],
+    [plugin, /firstElementChild\?\.matches\("svg\.lc-checkin__glyph"\)/, "already-rendered SVG icons skip DOM reparsing"],
     [settings, /snapshotLatest/, "latest snapshot label remains visible"],
     [settings, /snapshotOlder/, "older snapshot rows retain labels"],
     [settings, /data-restore-snapshot=/, "snapshot restore action remains addressable"],

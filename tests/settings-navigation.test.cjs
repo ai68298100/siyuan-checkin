@@ -360,7 +360,8 @@ function assertActive(fixture, expectedId) {
     const status = new FakeElement("settings-search-status");
     fixture.root.setQuery("[data-settings-search]", search);
     fixture.root.setQuery("[data-settings-search-status]", status);
-    let cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root);
+    const searchSession = {query: "", activeIndex: 0, hadFocus: false};
+    let cleanup = loaded.exports.bindSettingsNavigationFor(fixture.root, {searchSession});
     scheduler.flush();
 
     // 过滤重建匹配行集合并播报当前项（第 1/5）。
@@ -407,9 +408,11 @@ function assertActive(fixture, expectedId) {
     search.emit("input");
     docStub.activeElement = search;
     cleanup();
+    assert.equal(searchSession.query, "行", "cleanup writes the root-owned search query session");
+    assert.equal(searchSession.hadFocus, true, "cleanup writes root-owned search focus state");
     search.value = "";
     cleanup(); // 二次清理必须幂等（真实重渲染会连续 dispose/bind）
-    const cleanup2 = loaded.exports.bindSettingsNavigationFor(fixture.root);
+    const cleanup2 = loaded.exports.bindSettingsNavigationFor(fixture.root, {searchSession});
     assert.equal(search.value, "行", "重绑后回放会话查询");
     assert.equal(rows[0].hidden, true, "重绑后回放过滤结果");
     assert.ok(search.focusCalls >= 1, "此前焦点在搜索框则物归原主");
@@ -633,8 +636,8 @@ function assertActive(fixture, expectedId) {
         "rendering over a surface must release its previous settings navigation binding");
     assert.match(plugin, /async onunload\(\)[\s\S]*?const cleanup = this\.settingsNavigationCleanups\.get\(root\);[\s\S]*?cleanup\?\.\(\);[\s\S]*?this\.settingsNavigationCleanups\.delete\(root\);/,
         "plugin unload must release bindings for every live surface");
-    assert.match(plugin, /this\.settingsNavigationCleanups\.set\(root, bindSettingsNavigationFor\(root, \{reducedMotion: this\.reducedMotion\}\)\)/,
-        "settings binding must receive the current motion preference");
+    assert.match(plugin, /this\.settingsNavigationCleanups\.set\(root, bindSettingsNavigationFor\(root, \{[\s\S]*reducedMotion: this\.reducedMotion,[\s\S]*searchSession: this\.settingsStateForRoot\(root\)\.searchSession,[\s\S]*\}\)\)/,
+        "settings binding must receive the current motion preference and root search session");
 }
 
 /* —— T-1442 · R-A10 来源子面板：每个外部来源独立面板（头部徽标 + 编号步骤） —— */
