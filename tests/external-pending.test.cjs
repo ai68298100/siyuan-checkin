@@ -115,6 +115,8 @@ const ENTRY = {
     assert.equal(kept.items[0].lastReason, "source-disabled");
     const recovered = pending.settleExternalPendingAfterRetry(kept, id, {written: true, duplicate: true}, "2026-09-27T03:01:00.000Z");
     assert.equal(recovered.items.length, 0, "successful retry removes the entry");
+    assert.equal(recovered.tombstones.some((tombstone) => tombstone.id === id), true, "successful retry leaves a removal tombstone");
+    assert.equal(pending.mergeExternalPendingBoxes(recovered, box).items.length, 0, "a stale remote entry cannot resurrect after successful retry");
     assert.equal(pending.settleExternalPendingAfterRetry(recovered, id, {written: true, duplicate: true}, "2026-09-27T03:02:00.000Z"), recovered, "settling an absent entry is a no-op (repeat retry cannot double count)");
 }
 
@@ -137,7 +139,7 @@ assert.match(indexSource, /planExternalPendingRetry\(\{[\s\S]*?targetAvailable: 
 assert.match(indexSource, /"\[data-pending-retry\]"/, "settings bind pending retry actions");
 assert.match(indexSource, /"\[data-pending-discard\]"/, "settings bind pending discard actions");
 assert.match(indexSource, /set\.externalPendingDiscardConfirm/, "discard asks for confirmation");
-assert.ok(!/removeExternalPendingEntry\(this\.externalPendingBox, id\)[\s\S]*{[\s\S]*tombstone/i.test(indexSource.slice(indexSource.indexOf("discardExternalPendingEntry"))), "discard never writes tombstones");
+assert.match(indexSource, /removeExternalPendingEntry\(this\.externalPendingBox, id, new Date\(\)\.toISOString\(\)\)/, "discard writes an entry removal tombstone");
 
 /* 设置页投影只读且仅在相关时渲染（空箱不制造噪音）。 */
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");

@@ -2,14 +2,14 @@
    宿主成员经 BindTodayHost 结构化接口声明；index.ts 通过
    `bindTodayHandlers(root, this as unknown as BindTodayHost)` 接线。 */
 import {t} from "../i18n";
-import {dateKey, getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
+import {dateKey, getActiveItemById, getItemById, getItemRevisionForDate, getEventsForDay, isComplete, isItemAvailableOnDate, isScheduledToday, isSkipEvent, normalizeAttachmentDataUrl} from "../model";
 import type {CheckinEvent} from "../types";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, getRecordStep} from "../shared";
 import {isOccasionCompleted} from "../occasions";
 import {showMessage} from "siyuan";
 import {DOCK_TOMATO_ADAPTER_ID} from "../integrations";
 import {inspectDockTomatoProvider, type DockTomatoProviderState} from "../dock-tomato";
-import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
+import type {CheckinItem, CheckinItemSortMode, CheckinStore, TodayRootContext} from "../types";
 import type {OccasionStore} from "../occasions";
 import type {FocusTimerProvider, TodayGroupMode} from "../view-preferences";
 import {applyQuickEntryCancellations, parseQuickEntryText, resolveQuickEntryRecordTarget} from "../features/quick-entry-nlp";
@@ -18,10 +18,14 @@ export interface BindTodayHost {
     disposed?: boolean;
     disposing?: boolean;
     currentPage?: string;
+    pageForRoot?(root: HTMLElement): string;
     store: CheckinStore;
     occasionStore: OccasionStore;
     insightsReturnPage: "today" | "review";
     todayQuery: string;
+    todayQueryForRoot?(root: HTMLElement): string;
+    setTodayQueryForRoot?(root: HTMLElement, value: string): void;
+    todayStateForRoot?(root: HTMLElement): TodayRootContext;
     quickEntryNlp: boolean;
     quickEntryCancelled: Set<string>;
     pendingOnly: boolean;
@@ -44,14 +48,15 @@ export interface BindTodayHost {
     bindBulkMode(root: HTMLElement): void;
     bindFocusTimerPanel(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
-    render(): void;
+    render(root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
-    focusTodaySearch(cursor?: number): void;
+    focusTodaySearch(cursor?: number, root?: HTMLElement): void;
     undoRecentRecord(): void;
     retrySave(): Promise<void> | void;
     showHistory(root?: HTMLElement): void;
     showArchived(root?: HTMLElement): void;
     showSummary(root?: HTMLElement): void;
+    showReminderCenter?(root: HTMLElement): void;
     showInsights(item?: CheckinItem, root?: HTMLElement): void;
     showOccasions(root?: HTMLElement): void;
     showSettings(root?: HTMLElement): void;
@@ -66,8 +71,8 @@ export interface BindTodayHost {
     openPastDiary?(pastDate: string): void;
     /** 手机端打卡成功的短振动（桌面/关闭时为空操作）。 */
     pulseHaptic(): void;
-    /** 打卡后焦点归位（T-114）：记录刚操作的打卡项，重渲染后焦点还原到该卡主按钮。 */
-    pendingFocusItemId?: string;
+    /** T-1621：按所属表面登记打卡后焦点恢复目标。 */
+    setPendingFocusItem(root: HTMLElement, itemId: string): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
     toggleItem(itemId: string, moment: {occurredAt: string; localDate: string}, desiredComplete: boolean, expectedRevisionFingerprint?: string, eventsToUndo?: CheckinEvent[]): Promise<unknown>;
@@ -90,6 +95,23 @@ const DOCK_TOMATO_MESSAGE_KEYS: Record<DockTomatoProviderState, string> = {
 };
 
 export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void {
+    const todayState = host.todayStateForRoot?.(root);
+    const expandedExactEntries = () => todayState?.expandedExactEntries ?? host.expandedExactEntries;
+    const setExpandedExactEntries = (entries: string[]) => {
+        if (todayState) todayState.expandedExactEntries = entries;
+        else host.expandedExactEntries = entries;
+    };
+    const pendingAttachments = todayState?.pendingAttachments ?? host.pendingAttachments;
+    const quickEntryCancelled = todayState?.quickEntryCancelled ?? host.quickEntryCancelled;
+    const setPriorityReminderExpanded = (expanded: boolean) => {
+        if (todayState) todayState.priorityReminderExpanded = expanded;
+        else host.priorityReminderExpanded = expanded;
+    };
+    const pageForRoot = () => host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    const writeTodayQuery = (value: string) => {
+        if (host.setTodayQueryForRoot) host.setTodayQueryForRoot(root, value);
+        else host.todayQuery = value;
+    };
     root.querySelectorAll<HTMLElement>("[data-overview-focus]").forEach((button) => {
         button.addEventListener("click", () => {
             const card = [...root.querySelectorAll<HTMLElement>(".lc-checkin__item[data-item-id]")]
@@ -104,7 +126,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
     host.bindFocusTimerPanel(root);
     root.querySelectorAll<HTMLElement>("[data-streak-insights]").forEach((button) => button.addEventListener("click", () => {
         const item = getActiveItemById(host.store, button.dataset.streakInsights);
-        if (item) { host.insightsReturnPage = "today"; host.showInsights(item, root); }
+        if (item) host.showInsights(item, root);
     }));
     root.querySelectorAll<HTMLElement>("[data-priority-reminder-action]").forEach((button) => button.addEventListener("click", (event) => {
         const reminder = (event.currentTarget as HTMLElement).closest<HTMLElement>("[data-priority-reminder]");
@@ -121,7 +143,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         primaryAction?.focus();
     }));
     root.querySelector<HTMLDetailsElement>(".lc-checkin__priority-reminder-more")?.addEventListener("toggle", (event) => {
-        host.priorityReminderExpanded = (event.currentTarget as HTMLDetailsElement).open;
+        setPriorityReminderExpanded((event.currentTarget as HTMLDetailsElement).open);
     });
     host.bindMobileNav(root);
     const search = root.querySelector<HTMLInputElement>("[data-today-search]");
@@ -137,32 +159,32 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const value = search.value;
         searchTimer = window.setTimeout(() => {
             searchTimer = undefined;
-            if (composing || host.disposed || host.disposing || (host.currentPage && host.currentPage !== "today")
+            if (composing || host.disposed || host.disposing || (pageForRoot() && pageForRoot() !== "today")
                 || !search.isConnected || root.querySelector("[data-today-search]") !== search) return;
-            host.todayQuery = value;
-            host.render();
-            host.focusTodaySearch(value.length);
+            writeTodayQuery(value);
+            host.render(root);
+            host.focusTodaySearch(value.length, root);
         }, 120);
     };
     search?.addEventListener("compositionstart", () => { composing = true; cancelSearch(); });
     search?.addEventListener("compositionend", () => { composing = false; applySearch(); });
     search?.addEventListener("input", (event) => {
-        host.quickEntryCancelled.clear();
+        quickEntryCancelled.clear();
         if (composing || (event as InputEvent).isComposing) cancelSearch();
         else applySearch();
     });
     root.querySelectorAll<HTMLElement>("[data-action='cancel-quick-entry']").forEach((button) => button.addEventListener("click", () => {
         const token = button.dataset.quickEntryToken;
         if (!token) return;
-        host.quickEntryCancelled.add(token);
-        host.render();
-        host.focusTodaySearch(search?.value.length);
+        quickEntryCancelled.add(token);
+        host.render(root);
+        host.focusTodaySearch(search?.value.length, root);
     }));
     root.querySelector<HTMLElement>("[data-action='quick-entry-record']")?.addEventListener("click", (event) => {
-        if (!search || !host.quickEntryNlp || host.disposed || host.disposing || host.currentPage !== "today") return;
+        if (!search || !host.quickEntryNlp || host.disposed || host.disposing || pageForRoot() !== "today") return;
         const date = currentCalendarDate();
         const todayKey = dateKey(date);
-        const parsed = applyQuickEntryCancellations(parseQuickEntryText(search.value, todayKey), [...host.quickEntryCancelled]);
+        const parsed = applyQuickEntryCancellations(parseQuickEntryText(search.value, todayKey), [...quickEntryCancelled]);
         const candidates = host.store.items.filter((item) => !item.archived && isItemAvailableOnDate(item, date) && isScheduledToday(item, date)).map((item) => {
             const revision = getItemRevisionForDate(item, date);
             return {id: item.id, name: item.name, kind: revision.kind, unit: revision.unit, direction: item.direction};
@@ -172,15 +194,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const item = getActiveItemById(host.store, targetId);
         if (!item || isComplete(host.store, item, date) || parsed.value === undefined) return;
         const moment = captureActionMoment();
-        host.pendingFocusItemId = item.id;
+        host.setPendingFocusItem(root, item.id);
         host.pulseHaptic();
         void host.enqueueMutation(() => host.recordEvent(item, parsed.value!, moment, host.revisionFingerprint(item, date)));
     });
     root.querySelectorAll<HTMLElement>("[data-action='clear-search']").forEach((button) => button.addEventListener("click", () => {
         cancelSearch();
-        host.todayQuery = "";
-        host.render();
-        host.focusTodaySearch();
+        writeTodayQuery("");
+        host.render(root);
+        host.focusTodaySearch(undefined, root);
     }));
     root.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => host.undoRecentRecord());
     root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
@@ -191,7 +213,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         if (!item) return;
         const date = currentCalendarDate();
         const revision = getItemRevisionForDate(item, date);
-        host.pendingFocusItemId = item.id;
+        host.setPendingFocusItem(root, item.id);
         host.pulseHaptic();
         host.enqueueMutation(() => host.recordEvent(item, revision.kind === "binary" ? 1 : getRecordStep(revision.kind, revision.unit, revision.recordStep), captureActionMoment(), host.revisionFingerprint(item, date)));
     }));
@@ -217,7 +239,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         host.reviewFoldTouched = true;
         void host.persistViewPreferences();
     }));
-    root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => host.showSummary(root));
+    root.querySelector<HTMLElement>("[data-action='summary']")?.addEventListener("click", () => {
+        if (host.showReminderCenter) host.showReminderCenter(root);
+        else host.showSummary(root);
+        const center = root.querySelector<HTMLElement>(".lc-checkin__reminder-center");
+        const title = center?.querySelector<HTMLElement>("h2");
+        center?.scrollIntoView({block: "start"});
+        title?.setAttribute("tabindex", "-1");
+        title?.focus({preventScroll: true});
+    });
     root.querySelector<HTMLElement>("[data-action='insights']")?.addEventListener("click", () => host.showInsights(undefined, root));
     root.querySelectorAll<HTMLElement>("[data-action='occasions']").forEach((button) => button.addEventListener("click", () => host.showOccasions(root)));
     /* T-1493：往年日记跳转（只读定位，找不到由宿主提示）。 */
@@ -328,7 +358,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             const date = calendarDateFromKey(moment.localDate);
             const revision = getItemRevisionForDate(item, date);
             const expectedRevisionFingerprint = host.revisionFingerprint(item, date);
-            host.pendingFocusItemId = item.id;
+            host.setPendingFocusItem(root, item.id);
             host.pulseHaptic();
             /* T-1462：chips 各自携带 data-amount；主步长按钮的 data-amount 与重算值等价，缺失/非法时回落重算。 */
             const amountValue = Number((event.currentTarget as HTMLElement).dataset.amount);
@@ -349,10 +379,10 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             entry.hidden = expanded;
             button.setAttribute("aria-expanded", String(!expanded));
             /* T-1455：展开状态同步进会话态——后台/完整重渲染按同一状态重建，不再收起。 */
-            const idSet = new Set(host.expandedExactEntries);
+            const idSet = new Set(expandedExactEntries());
             if (expanded) idSet.delete(element.dataset.itemId || "");
             else if (element.dataset.itemId) idSet.add(element.dataset.itemId);
-            host.expandedExactEntries = [...idSet];
+            setExpandedExactEntries([...idSet]);
             if (!expanded) entry.querySelector<HTMLInputElement>("input")?.focus();
         });
         element.querySelector<HTMLInputElement>(".lc-checkin__amount")?.addEventListener("keydown", (event) => {
@@ -367,12 +397,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             if (file.size > 500 * 1024) { showMessage(t("msg.photoTooLarge")); input.value = ""; return; }
             const reader = new FileReader();
             reader.onload = () => {
-                if (typeof reader.result !== "string") return;
-                host.pendingAttachments.set(itemId, reader.result);
+                const attachment = normalizeAttachmentDataUrl(reader.result);
+                if (!attachment) { showMessage(t("editor.errImageRead")); input.value = ""; return; }
+                const rootAttachments = host.todayStateForRoot?.(root)?.pendingAttachments ?? host.pendingAttachments;
+                rootAttachments.set(itemId, attachment);
                 const button = element.querySelector<HTMLElement>("[data-attach-button]");
                 if (button) { button.classList.add("has-photo"); button.dataset.photo = "1"; }
                 showMessage(t("msg.photoAttached"));
             };
+            reader.onerror = () => { showMessage(t("editor.errImageRead")); input.value = ""; };
             reader.readAsDataURL(file);
         });
         element.querySelectorAll<HTMLElement>("[data-action='record']").forEach((button) => button.addEventListener("click", () => {
@@ -385,16 +418,16 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                 const expectedRevisionFingerprint = host.revisionFingerprint(item, calendarDateFromKey(moment.localDate));
                 const recordWithDetails = (value: number): void => {
                     const note = element.querySelector<HTMLInputElement>(".lc-checkin__record-note")?.value;
-                    const attachment = host.pendingAttachments.get(itemId);
-                    host.pendingAttachments.delete(itemId);
-                    host.pendingFocusItemId = item.id;
+                    const attachment = pendingAttachments.get(itemId);
+                    pendingAttachments.delete(itemId);
+                    host.setPendingFocusItem(root, item.id);
                     host.pulseHaptic();
                     host.enqueueMutation(() => host.recordEvent(item, value, moment, expectedRevisionFingerprint, note, attachment));
                     const attachButton = element.querySelector<HTMLElement>("[data-attach-button]");
                     if (attachButton) { attachButton.classList.remove("has-photo"); attachButton.dataset.photo = ""; }
                     /* T-1455：录完即收起面板并交还焦点——否则输入挂起策略会吞掉打卡后
                        的界面刷新（Enter 保存场景），条目看起来没变。 */
-                    host.expandedExactEntries = host.expandedExactEntries.filter((id) => id !== item.id);
+                    setExpandedExactEntries(expandedExactEntries().filter((id) => id !== item.id));
                     const exactEntry = element.querySelector<HTMLElement>("[data-exact-entry]");
                     if (exactEntry) exactEntry.hidden = true;
                     const trigger = element.querySelector<HTMLElement>("[data-action='toggle-exact']");
@@ -412,7 +445,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                             recordWithDetails(1);
                             return;
                         }
-                        host.pendingFocusItemId = item.id;
+                        host.setPendingFocusItem(root, item.id);
                         host.pulseHaptic();
                         host.enqueueMutation(() => host.toggleItem(item.id, moment, false, expectedRevisionFingerprint, lapseEvents));
                         return;
@@ -426,7 +459,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
                         return;
                     }
                     const eventsToUndo = desiredComplete ? [] : getEventsForDay(host.store, item.id, calendarDateFromKey(moment.localDate)).map((event) => ({...event}));
-                    host.pendingFocusItemId = item.id;
+                    host.setPendingFocusItem(root, item.id);
                     host.pulseHaptic();
                     host.enqueueMutation(() => host.toggleItem(item.id, moment, desiredComplete, expectedRevisionFingerprint, eventsToUndo));
                     return;

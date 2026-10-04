@@ -25,7 +25,7 @@ const checks = [
     [plugin, /syncHostThemeTokens\(/, "host theme tokens are synchronized"],
     [plugin, /hostThemeSignatures/, "theme synchronization is cached"],
     [plugin, /dataset\.reducedMotion/, "reduced motion state reaches the surface"],
-    [plugin, /pendingFocusItemId = item\.id/, "record actions queue focus restoration"],
+    [plugin, /setPendingFocusItem\(root, item\.id\)/, "record actions queue root-scoped focus restoration"],
     [plugin, /updateTodayWeekStrip\(/, "local updates refresh week strip"],
     [plugin, /renderTodayItemLocally\(/, "today completion has a local update path"],
     [plugin, /syncRecentRecordToast\(/, "completion feedback remains centralized"],

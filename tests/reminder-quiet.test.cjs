@@ -80,7 +80,7 @@ const normalized = reminders.normalizeReminderUserActions([
     {id: "a", action: "snooze", at: issuedAt, expiresAt},
     {id: "b", action: "snooze", at: issuedAt, expiresAt: "2026-09-24T07:00:00.000Z"},
     {id: "c", action: "snooze", at: issuedAt, expiresAt: "2026-10-05T08:00:00.000Z"},
-]);
+], 200, new Date("2026-09-24T12:00:00.000Z"));
 assert.equal(normalized.find((entry) => entry.id === "a").expiresAt, expiresAt, "合法 expiresAt 保留");
 assert.equal(normalized.find((entry) => entry.id === "b").expiresAt, undefined, "早于 at 的 expiresAt 丢弃");
 assert.equal(normalized.find((entry) => entry.id === "c").expiresAt, undefined, "超过 7 天的 expiresAt 丢弃");
@@ -128,8 +128,8 @@ assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[
     /* 宿主接线：minute 级槽位轮询 + 每槽 localDate 台账 + 启动补发合并至多一条。 */
     const indexSource3 = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
     assert.match(indexSource3, /maybeSendDailyReminder\("slot"\), 60_000/, "槽位检查必须是分钟级有界轮询");
-    assert.match(indexSource3, /reminderFireLog\[`slot:\$\{slot\}`\] !== today/, "每槽按 localDate 幂等");
-    assert.match(indexSource3, /trigger === "launch" && this\.reminderFireLog\.launch !== today/, "无槽位时保留启动一条的原行为");
+    assert.match(indexSource3, /maybeSendDailyReminderFor\(this as unknown as ReminderDeliveryHost, trigger\)/, "调度接入持久投递，槽位与默认幂等由真实行为回归覆盖");
+    assert.doesNotMatch(indexSource3, /reminderFireLog/, "不得保留重载失效的内存触发台账");
     assert.match(indexSource3, /reminderSlotTimer/, "槽位计时器必须登记并随卸载清理");
     /* 设置结构与双语。 */
     const settingsSource3 = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");

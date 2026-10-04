@@ -54,6 +54,18 @@ export async function persistStoreWithVerification(
     return persistNormalizedStoreWithVerification(normalizeStore(snapshot), load, save, maxAttempts);
 }
 
+/** Re-read and merge before the first write; callers must hold the storage lock. */
+export async function persistStoreWithReconciliation(
+    snapshot: unknown,
+    load: () => Promise<unknown>,
+    save: (store: CheckinStore) => Promise<unknown>,
+    maxAttempts = 2,
+): Promise<VerifiedStoreWrite> {
+    const local = normalizeStore(snapshot);
+    const remote = normalizeStore(await load());
+    return persistNormalizedStoreWithVerification(mergeNormalizedStores(local, remote), load, save, maxAttempts);
+}
+
 /** Fast path when the desired snapshot was produced by immutable model operations. */
 export async function persistNormalizedStoreWithVerification(
     snapshot: CheckinStore,

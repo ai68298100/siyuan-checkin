@@ -28,14 +28,24 @@ assert.equal(safeAttachmentUrl("JAVASCRIPT:alert(1)"), "", "scheme check is case
 assert.equal(safeAttachmentUrl("data:text/html,<script>alert(1)</script>"), "", "non-image data URLs are dropped");
 assert.equal(safeAttachmentUrl("vbscript:msgbox(1)"), "", "vbscript: is dropped");
 const escapedDataUrl = safeAttachmentUrl('data:image/png;base64,AAAA" onerror="alert(1)');
-assert.ok(!escapedDataUrl.includes('" onerror='), "quote breakout must be escaped inside the attribute value");
-assert.ok(escapedDataUrl.includes("&quot;"), "hostile quotes are entity-escaped");
+assert.equal(escapedDataUrl, "", "malformed data images must be rejected before attribute escaping");
 assert.equal(safeAttachmentUrl("https://example.com/x.png\" onerror=\"x"), "https://example.com/x.png&quot; onerror=&quot;x",
     "allowed-scheme URLs still get attribute-escaped");
 assert.equal(safeAttachmentUrl("  /attachments/x.png  "), "/attachments/x.png", "relative paths are trimmed and allowed");
 assert.equal(safeAttachmentUrl("blob:abc"), "blob:abc", "blob: is allowed");
 assert.equal(safeAttachmentUrl(undefined), "", "missing URL renders nothing");
 assert.equal(safeAttachmentUrl(""), "", "empty URL renders nothing");
+for (const url of ["java\nscript:alert(1)", "java\tscript:alert(1)", "data:image/svg+xml,<svg onload='alert(1)'/>", "data:image/png;base64,AAA", "file:///etc/passwd"]) {
+    assert.equal(safeAttachmentUrl(url), "", "invalid, active or obfuscated image URLs cannot pass the rendering gate");
+}
+for (const url of ["//host/photo.png", "\\\\host/photo.png", "/\\host/photo.png", "https://", "https:///host/photo.png", "https://?photo", "http://#photo", "https://@/photo.png", "https://[invalid]/photo.png", "https://host:invalid/photo.png"]) {
+    assert.equal(safeAttachmentUrl(url), "", "network-path references and malformed authorities cannot bypass explicit protocols");
+}
+for (const url of ["https://example.com/photo.png", "HTTP://example.com/photo.png", "assets/photo.png", "./photo.png", "../photo.png", "/assets/photo.png?label=a&size=1"]) {
+    assert.equal(safeAttachmentUrl(url), url.replaceAll("&", "&amp;"), "valid explicit HTTP URLs and local paths retain their attribute-safe value");
+}
+assert.equal(safeAttachmentUrl("data:image/png;base64,iVBORw0KGgo="), "data:image/png;base64,iVBORw0KGgo=",
+    "valid raster data remains unmodified by the protocol check");
 
 /* —— 接线（精确签名） —— */
 const fragments = fs.readFileSync(path.join(root, "src", "render", "fragments.ts"), "utf8");
@@ -80,4 +90,5 @@ for (const [file, patterns] of sweepPatterns) {
     for (const pattern of patterns) assert.match(sourceText, new RegExp(pattern), file + " must escape user-content t() interpolation");
 }
 fs.rmSync(dir, {recursive: true, force: true});
+require("./attachment-ingestion.cjs");
 console.log("Render boundary checks passed: hostile URL matrix, attachment gating, menu/aria escaping.");

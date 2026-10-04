@@ -7,6 +7,7 @@ import {deleteOccasion, occasionTemplateName, OCCASION_TEMPLATES} from "../occas
 import {formatLunar, solarToLunar} from "../lunar";
 import {showMessage} from "siyuan";
 import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasions";
+import {captureOccasionDraftFor, isCurrentOccasionFormSession, isOccasionsRootOpen, nextOccasionFormSession, readOccasionsRootContext, writeOccasionsRootContext, type OccasionsRootContext} from "./occasion-session";
 
 export interface BindOccasionsHost {
     occasionStore: OccasionStore;
@@ -21,61 +22,82 @@ export interface BindOccasionsHost {
     occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
     occasionTemplatesOpen: boolean;
     occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
+    occasionStateForRoot?(root: HTMLElement): OccasionsRootContext;
+    setOccasionStateForRoot?(root: HTMLElement, patch: Partial<OccasionsRootContext>): void;
+    isSurfaceRoot?(root: HTMLElement, page?: string): boolean;
+    pageForRoot?(root: HTMLElement): string;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showToday(root?: HTMLElement): void;
-    render(): void;
+    render(root?: HTMLElement): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     createOccasionLinkedItem(occasionId: string): Promise<unknown>;
-    updateOccasion(item: {enabled: boolean} & Record<string, unknown>): Promise<unknown>;
+    updateOccasion(item: {enabled: boolean} & Record<string, unknown>, root?: HTMLElement): Promise<unknown>;
     persistOccasions(): Promise<void>;
     /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
     setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
     saveOccasionOverride?(id: string, originalDate: string, newDate: string): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
-    saveOccasionForm(data: FormData): Promise<unknown>;
+    saveOccasionForm(data: FormData, root?: HTMLElement): Promise<unknown>;
 }
 
 export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost): void {
+    const state = readOccasionsRootContext(host, root);
+    const currentState = () => readOccasionsRootContext(host, root);
+    const writeState = (patch: Partial<OccasionsRootContext>) => writeOccasionsRootContext(host, root, patch);
+    const renderRoot = () => host.render(root);
     host.bindDialogClose(root);
     host.bindMobileNav(root);
     root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday(root));
     /* 手机端列表在前、表单在后（order 交换）：新建/编辑后把表单滚进视口；桌面端表单常驻可见，滚动是无害空操作。 */
     /* T-1613（方案 A）：仅移动端（列表在前/表单在后）在展开表单后滚动定位；桌面表单常驻可见无需滚动。behavior 用 instant 消除 smooth 动画感知。 */
     const revealOccasionForm = () => { const drawer = root.querySelector<HTMLDetailsElement>("[data-occasion-form-drawer]"); if (drawer) drawer.open = true; if (host.isMobileFrontend) root.querySelector<HTMLElement>(".lc-checkin__occasion-form-panel")?.scrollIntoView({block: "start", behavior: "instant"}); };
-    root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); revealOccasionForm(); }));
-    root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { host.editingOccasionId = undefined; host.render(); });
+    root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: true, submitting: false, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
+    root.querySelector<HTMLElement>("[data-action='cancel-occasion-edit']")?.addEventListener("click", () => { writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: false, submitting: false, formSession: currentState().formSession + 1}); renderRoot(); });
     root.querySelector<HTMLInputElement>("[data-occasion-search]")?.addEventListener("input", (event) => {
-        host.occasionSearchQuery = (event.currentTarget as HTMLInputElement).value;
-        host.render();
+        writeState({occasionSearchQuery: (event.currentTarget as HTMLInputElement).value});
+        renderRoot();
         const searchInput = root.querySelector<HTMLInputElement>("[data-occasion-search]");
         if (searchInput) { searchInput.focus(); searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length); }
     });
     root.querySelectorAll<HTMLSelectElement>("[data-occasion-filter]").forEach((select) => select.addEventListener("change", () => {
         const key = select.dataset.occasionFilter;
-        if (key === "status") host.occasionStatusFilter = select.value as BindOccasionsHost["occasionStatusFilter"];
-        if (key === "kind") host.occasionKindFilter = select.value as BindOccasionsHost["occasionKindFilter"];
-        if (key === "time") host.occasionTimeFilter = select.value as BindOccasionsHost["occasionTimeFilter"];
-        host.render();
+        if (key === "status") writeState({occasionStatusFilter: select.value as BindOccasionsHost["occasionStatusFilter"]});
+        if (key === "kind") writeState({occasionKindFilter: select.value as BindOccasionsHost["occasionKindFilter"]});
+        if (key === "time") writeState({occasionTimeFilter: select.value as BindOccasionsHost["occasionTimeFilter"]});
+        renderRoot();
     }));
     root.querySelector<HTMLElement>("[data-occasion-clear-filters]")?.addEventListener("click", () => {
-        host.occasionSearchQuery = ""; host.occasionStatusFilter = "all"; host.occasionKindFilter = "all"; host.occasionTimeFilter = "all"; host.render();
+        writeState({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all"}); renderRoot();
     });
-    root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { host.editingOccasionId = button.dataset.occasionEdit; host.render(); revealOccasionForm(); }));
+    root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: button.dataset.occasionEdit, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
         void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || ""); });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionToggle || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
-        if (item) void host.enqueueMutation(() => host.updateOccasion({...item, enabled: !item.enabled}));
+        if (item) void host.enqueueMutation(() => host.updateOccasion({...item, enabled: !item.enabled}, root));
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionDelete || "";
         const item = host.occasionStore.occasions.find((candidate) => candidate.id === id);
         if (!item || !window.confirm(t("msg.occasionDeleteConfirm"))) return;
-        void host.enqueueMutation(async () => { const previous = host.occasionStore; host.occasionStore = deleteOccasion(previous, id); try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); } if (host.editingOccasionId === id) host.editingOccasionId = undefined; host.render(); });
+        const current = currentState();
+        if (current.deletingOccasionIds.has(id)) return;
+        current.deletingOccasionIds.add(id);
+        writeState({deletingOccasionIds: current.deletingOccasionIds});
+        void host.enqueueMutation(async () => {
+            const previous = host.occasionStore;
+            host.occasionStore = deleteOccasion(previous, id);
+            try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); }
+            if (!isOccasionsRootOpen(host, root)) return;
+            const next = currentState();
+            next.deletingOccasionIds.delete(id);
+            if (next.editingOccasionId === id) next.editingOccasionId = undefined;
+            renderRoot();
+        });
     }));
 
     /* T-1494：错过补标记（沿用既有按日期完成通道）+ 单次改期（内联日期行，确认后走宿主覆盖通道）。 */
@@ -130,7 +152,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
 
     /* 常用模板折叠态要跨重渲染保留：原生 details 会在每次 render 时回到默认收起。 */
     root.querySelector<HTMLElement>("[data-occasion-templates-toggle]")?.parentElement?.addEventListener("toggle", (event) => {
-        host.occasionTemplatesOpen = (event.currentTarget as HTMLDetailsElement).open;
+        writeState({occasionTemplatesOpen: (event.currentTarget as HTMLDetailsElement).open});
     });
 
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template]").forEach((button) => button.addEventListener("click", () => {
@@ -154,13 +176,12 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         set("intervalCount", String(template.intervalCount || 1));
         set("intervalUnit", template.intervalUnit || "month");
         set("remindBeforeDays", String(template.remindBeforeDays));
-        host.editingOccasionId = undefined;
+        writeState({editingOccasionId: undefined, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1});
         syncBlocks();
     }));
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-template-category]").forEach((button) => button.addEventListener("click", () => {
-        host.occasionTemplateCategory = (button.dataset.occasionTemplateCategory || "recommended") as BindOccasionsHost["occasionTemplateCategory"];
-        host.occasionTemplatesOpen = true;
-        host.render();
+        writeState({occasionTemplateCategory: (button.dataset.occasionTemplateCategory || "recommended") as BindOccasionsHost["occasionTemplateCategory"], occasionTemplatesOpen: true});
+        renderRoot();
     }));
 
     root.querySelector<HTMLFormElement>("[data-occasion-form]")?.addEventListener("submit", (event) => {
@@ -171,6 +192,13 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             showMessage(t("msg.occasionInvalid"));
             return;
         }
-        void host.enqueueMutation(() => host.saveOccasionForm(data));
+        const current = currentState();
+        captureOccasionDraftFor(root, current);
+        const session = nextOccasionFormSession(current);
+        writeState({submitting: true});
+        renderRoot();
+        void host.enqueueMutation(() => host.saveOccasionForm(data, root)).catch(() => {
+            if (isCurrentOccasionFormSession(host, root, session)) writeState({submitting: false});
+        });
     });
 }

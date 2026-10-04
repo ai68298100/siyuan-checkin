@@ -6,13 +6,71 @@
    data-archived-danger / settings data-data-section="reset"），不在此重复登记。 */
 import {t} from "../i18n";
 import {escapeHtml} from "../shared";
+import type {PageId, EditorRootContext, InsightsRootContext, SettingsRootContext, TodayRootContext} from "../types";
+export type {EditorRootContext, InsightsRootContext, SettingsRootContext, TodayRootContext} from "../types";
+import type {OccasionsRootContext} from "./occasion-session";
 
 /** 七页联合（同 navigation.ts 的 currentPage；契约 1 PageId）。 */
-export type PageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+export type {PageId} from "../types";
+
+export interface ReviewSummarySession {
+    requestId: number;
+    refreshing: boolean;
+    error?: string;
+    errorScope?: string;
+}
+
+export interface ReviewRootContext {
+    summarySession?: ReviewSummarySession;
+    historyMonth: Date;
+    selectedHistoryDate: string;
+    summaryRange: "day" | "week" | "month";
+    summaryCustomRange?: {startDate: string; endDate: string};
+    reviewWorkspace: "overview" | "records" | "analysis";
+    historyItemId: string;
+    historyScope: "day" | "period";
+    historyPage: number;
+    reviewProjectPage: number;
+    historyQuery: string;
+    historySource: import("../features/history-filter").HistoryChannelFilter;
+    historyMetering: import("../features/history-filter").HistoryMeteringFilter;
+    historyOrder: "newest" | "oldest";
+    historyBatchSelected: Set<string>;
+    historyBatchPreviewOpen: boolean;
+    historyBatchValues: Record<string, string>;
+    itemCompareSelection: Set<string>;
+    itemCompareQuery: string;
+    reviewProjectOrder: "attention" | "name";
+    reviewTrend: "weekly" | "monthly" | "daily" | "yearly";
+    reviewStrengthItemId: string;
+    reviewAssistantGoal: import("../features/review-assistant").ReviewAssistantGoal;
+    heatmapYearOffset: number;
+    reviewFoldSections: Set<string>;
+    reviewFoldTouched: boolean;
+    editingHistoryNoteId: string | undefined;
+    recordDetailsExpanded: Set<string>;
+    reminderFilter: import("../reminders").ReminderFilter;
+}
 
 export interface RootContext {
     page: PageId;
     returnTo?: PageId;
+    /** Root-local view restoration state; it is released with the surface. */
+    renderedPage?: PageId;
+    scrollTops: Partial<Record<PageId, number>>;
+    pendingFocusItemId?: string;
+    /** Root-local Today filter; seeded from the compatibility preference on registration. */
+    todayQuery?: string;
+    /** Root-local Archived filter; seeded from the compatibility preference on registration. */
+    archivedQuery?: string;
+    review: ReviewRootContext;
+    insights?: InsightsRootContext;
+    editor?: EditorRootContext;
+    renderedEditor?: EditorRootContext;
+    settings?: SettingsRootContext;
+    today?: TodayRootContext;
+    occasions?: OccasionsRootContext;
+    renderedOccasions?: OccasionsRootContext;
 }
 
 export interface PageShellHeadInput {
@@ -58,6 +116,7 @@ export interface SurfaceContextParams {
     filters?: {
         scope?: "day" | "period";
         source?: string;
+        metering?: string;
         order?: string;
         page?: number;
         reminder?: string;
@@ -85,6 +144,7 @@ export function readSurfaceContext(snapshot: {
     archivedQuery?: string;
     historyScope?: "day" | "period";
     historySource?: string;
+    historyMetering?: string;
     historyOrder?: string;
     historyPage?: number;
     reminderFilter?: string;
@@ -107,6 +167,7 @@ export function readSurfaceContext(snapshot: {
         const filters: SurfaceContextParams["filters"] = {};
         if (snapshot.historyScope) filters.scope = snapshot.historyScope;
         if (snapshot.historySource && snapshot.historySource !== "all") filters.source = snapshot.historySource;
+        if (snapshot.historyMetering && snapshot.historyMetering !== "all") filters.metering = snapshot.historyMetering;
         if (snapshot.historyOrder && snapshot.historyOrder !== "newest") filters.order = snapshot.historyOrder;
         if (snapshot.historyPage) filters.page = snapshot.historyPage;
         if (snapshot.reminderFilter && snapshot.reminderFilter !== "all") filters.reminder = snapshot.reminderFilter;

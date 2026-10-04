@@ -1,7 +1,7 @@
 /* 插件内共享的纯工具函数：HTML/图标/格式化/日期/表单归一化/存储比较。
    均不依赖插件实例状态；i18n 相关的取词在调用时进行。 */
 import {t, getPluginLocale} from "./i18n";
-import {dateKey} from "./model";
+import {dateKey, normalizeAttachmentDataUrl} from "./model";
 import {extractSiyuanBlockLinkSpans} from "./features/record-notes";
 import {SCHEDULE_LABELS} from "./ui/labels";
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CheckinStore} from "./types";
@@ -78,14 +78,23 @@ export function renderIconMarkup(value: string): string {
     return escapeHtml(value);
 }
 
-/* T-1625：附件/外链 URL 的渲染侧安全门（与 renderIconMarkup 同一协议白名单）——
-   仅放行 data:image/、blob:、https:、http: 与无协议相对路径，其余（javascript:、
-   data:text/html 等）返回空串不渲染；放行值经 escapeHtml 防属性逃逸。
-   本函数只负责 URL 值本身；同标签的其他属性仍须调用方自行 escapeHtml。 */
 export function safeAttachmentUrl(url: string | undefined): string {
     const value = typeof url === "string" ? url.trim() : "";
-    if (!value) return "";
-    if (/^(?:data:image\/|blob:|https:\/\/|http:\/\/)/i.test(value)) return escapeHtml(value);
+    if (!value || /[\u0000-\u001f\u007f\\]/.test(value) || value.startsWith("//")) return "";
+    if (/^data:/i.test(value)) {
+        const attachment = normalizeAttachmentDataUrl(value);
+        return attachment ? escapeHtml(attachment) : "";
+    }
+    if (/^https?:\/\//i.test(value)) {
+        if (!/^https?:\/\/[^/?#\s]+/i.test(value)) return "";
+        try {
+            if (!new URL(value).hostname) return "";
+        } catch {
+            return "";
+        }
+        return escapeHtml(value);
+    }
+    if (/^blob:/i.test(value)) return escapeHtml(value);
     if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) return escapeHtml(value);
     return "";
 }

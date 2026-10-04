@@ -8,10 +8,10 @@ const sourceRoot = path.join(__dirname, "..", "src");
 const indexSource = fs.readFileSync(path.join(sourceRoot, "index.ts"), "utf8");
 
 /* 1. 建议工作流：与已落盘文本等值即跳过，且两条读取路径都要建立基线。 */
-const workflowBody = indexSource.slice(indexSource.indexOf("private persistSuggestionWorkflow()"));
+const workflowBody = indexSource.slice(indexSource.indexOf("private async persistSuggestionWorkflowUnlocked()"));
 const workflowSlice = workflowBody.slice(0, workflowBody.indexOf("\n    }"));
-assert.match(workflowSlice, /if \(payload === this\.lastPersistedSuggestionWorkflow\) return Promise\.resolve\(\);/, "内容与已落盘一致时必须跳过写入");
-assert.match(workflowSlice, /\.then\(\(\) => \{\s*this\.lastPersistedSuggestionWorkflow = payload;/, "只有真正写成功才推进基线");
+assert.match(workflowSlice, /if \(payload === stored\) \{\s*this\.lastPersistedSuggestionWorkflow = payload;\s*return;/, "内容与锁内重读的持久值一致时必须跳过写入");
+assert.match(workflowSlice, /await this\.saveData\(SUGGESTION_WORKFLOW_STORAGE_NAME, payload\);\s*this\.lastPersistedSuggestionWorkflow = payload;/, "只有真正写成功才推进基线");
 assert.equal([...indexSource.matchAll(/this\.rememberSuggestionWorkflowBaseline\(storedSuggestionWorkflow\);/g)].length, 2, "onLayoutReady 与 onDataChanged 两条读取路径都要建立基线");
 assert.match(indexSource, /private rememberSuggestionWorkflowBaseline\(stored: unknown\): void \{\s*this\.lastPersistedSuggestionWorkflow = typeof stored === "string" \? stored : undefined;/, "非字符串存储必须清空基线，避免吞掉真正需要的写入");
 
@@ -31,6 +31,6 @@ assert.match(unloadSlice, /this\.flushPendingAuditPersist\(\)/, "onunload 必须
 for (const hotPath of [/type: "conflict"[\s\S]{0,320}?this\.scheduleAuditPersist\(\)/, /channel: "resolve"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "write"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "append"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/]) {
     assert.match(indexSource, hotPath, "旁路诊断的自动路径必须走合并写入");
 }
-assert.match(indexSource, /\[data-action='clear-audit'\][\s\S]{0,160}?void this\.persistAuditBestEffort\(\)/, "用户主动清空审计要立即落盘");
+assert.match(indexSource, /\[data-action='clear-audit'\][\s\S]{0,160}?void this\.persistAuditBestEffort\(false\)/, "用户主动清空审计要立即落盘");
 
 console.log("Auxiliary write hygiene checks passed: workflow equality guard, baseline on both load paths, coalesced audit and teardown flush.");

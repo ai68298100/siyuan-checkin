@@ -83,7 +83,7 @@ assert.match(bindingsSource, /renderReviewPreservingView\(`\[data-record-details
 assert.match(bindingsSource, /expanded\.size >= 50/, "expanded set is bounded");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private recordDetailsExpanded = new Set<string>\(\)/, "host holds the session expanded set");
-assert.match(indexSource, /recordDetailsExpanded: this\.recordDetailsExpanded/, "host passes the expanded set into review ctx");
+assert.match(indexSource, /recordDetailsExpanded: review\.recordDetailsExpanded/, "host passes the root's expanded set into review ctx");
 const scss = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 assert.match(scss, /\.lc-checkin__record-details \{/, "details panel styles exist");
 assert.match(scss, /\.lc-checkin__record-details-row > \.is-unknown \{/, "unknown state is styled");

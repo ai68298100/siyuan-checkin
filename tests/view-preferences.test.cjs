@@ -62,6 +62,7 @@ const healthInboxModule = loadTypeScript("src/features/health-inbox.ts", {}, {
     },
 });
 const wereadModule = loadTypeScript("src/features/weread-adapter.ts", {}, {});
+const yeguifModule = loadTypeScript("src/features/yeguif-adapter.ts", {}, {});
 const reminderPreferencesModule = loadTypeScript("src/features/reminder-preferences.ts", {}, {});
 const firstSuccessModule = loadTypeScript("src/features/first-success.ts", {}, {});
 const viewScopeModule = loadTypeScript("src/features/view-scope.ts", {}, {"../date-keys": {addDays: (key) => key}});
@@ -80,6 +81,7 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/summary-resident": summaryResidentModule,
     "./features/health-inbox": healthInboxModule,
     "./features/weread-adapter": wereadModule,
+    "./features/yeguif-adapter": yeguifModule,
     "./features/reminder-preferences": reminderPreferencesModule,
     "./features/first-success": firstSuccessModule,
     "./features/view-scope": viewScopeModule,
@@ -87,6 +89,8 @@ const preferences = loadTypeScript("src/view-preferences.ts", {}, {
     "./features/weekly-review": weeklyReviewModule,
 });
 const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "achievements", "upcoming", "reminders", "report", "heatmap", "calendar"];
+const manyMappings = Array.from({length: 275}, (_, index) => ({project: `Project ${index}`, itemId: `target-${index}`}));
+assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {mappings: manyMappings}}).yeguifIntegration.mappings.length, 275, "preference reload preserves every valid mapping");
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";
 assert.equal(preferences.normalizeViewPreferences({}).quickEntryNlp, true, "legacy preferences keep recognition enabled");
 assert.equal(preferences.normalizeViewPreferences({quickEntryNlp: false}).quickEntryNlp, false, "disabled recognition survives reload");

@@ -39,13 +39,13 @@
 | 今日行动台 | queryTodayItems、进度/排期计算、bind-today.ts、today-bindings.ts、提醒投影、专注入口、摘要驻留 | 一个纯投影层，把今日事项、待处理、专注、最近漏卡、累计和笔记入口组合起来 | 不在渲染层重新实现排期和完成判断 |
 | 快捷入口/命令 | quick-dialog.ts、设置导航、既有快捷注册和各 surface 入口 | 命令描述符、能力矩阵、图标 fallback、触控安全的 dialog/sheet、首帧稳定 | 不通过删除命令解决展示问题 |
 | UI 维护 | src/ui/tokens.scss、components.scss、interaction-states.scss、响应式 SCSS、现有 UI 守门 | 状态组件台账、窄屏/双主题/键盘焦点矩阵 | 不一次性重写全部页面 |
-| 新手引导 | templates.ts、template-manager.ts、编辑器保存链、现有默认设置 | 首次成功记录路径、精选模板预览、渐进式高级设置 | 不增加云端模板市场 |
+| 新手引导 | templates.ts、render/editor.ts、render/bind-editor.ts、编辑器保存链、现有默认设置 | 首次成功记录路径、精选模板预览、渐进式高级设置 | 不增加云端模板市场 |
 | 习惯内核二期 | model.ts 的排期、配额、SKIP、容错、连续计数；habit-score.ts | 逾期率、应做节奏、恢复状态、最近稳定区间纯投影 | 第一版不改事件存储结构 |
 | 情境化记录 | 事件备注/来源和审计链、记录对话框、record-notes.ts | 可选的低摩擦上下文入口和只读分组统计 | 不把每次打卡变成问卷 |
 | 回顾 2.0 | analytics.ts、charts.ts、insights.ts、report.ts、review-presentation.ts、智能体建议 | 事实→推断→建议三层输出、证据跳转、调整效果比较 | 不让建议直接改数据 |
 | 笔记原生渲染块 | features/checkin-block.ts、render/block-renderer.ts、今日块和 API v5 | 有界数据集、白名单聚合、日期跳转、可组合卡片 | 不执行任意 JS/HTML，不复制第二份事实数据 |
 | 日记与周期报告 | summary-resident.ts、report.ts、diary-search.ts、锚点和追加审计 | 周/月报告模板、预览、追加、撤销说明 | 不启用常驻后台偷偷写入 |
-| 模板与组合 | templates.ts、template-manager.ts、编辑器 | 场景组合预览、项目/排期/默认值的可选化 | 不让模板改变数据模型 |
+| 模板与组合 | templates.ts、render/editor.ts、render/bind-editor.ts、编辑器 | 场景组合预览、项目/排期/默认值的可选化 | 不让模板改变数据模型 |
 | 外部来源平台 | source-framework.ts、思阅/思播/健康适配器、recordExternalEvent | 来源注册、能力发现、断开/重试/失败诊断、更多公开来源 | 不接私有数据库和未版本化 DOM |
 | 导入导出迁移 | loop-csv.ts、obsidian-habits.ts、export.ts、诊断包和快照 | 导入预览、语义差异、身份冲突报告、可重复导入 | 不静默丢失 SKIP、备注或排期 |
 | 公开 API 与生态 | api.ts、features/api-v5.ts、contract manifest、Task Horizon 规划 | 稳定能力协商、错误码、受限写入、至少两个真实消费方 | 不让消费者读取私有存储 |
@@ -183,7 +183,7 @@
 
 执行步骤：
 
-1. 复用已经交付的 `templates.ts`、`template-manager.ts`、`template-gallery.test.cjs` 和现有精选模板；只有缺少首次路径状态时才新增纯状态机，不重复扩充模板目录。
+1. 复用已经交付的 `templates.ts`、`render/editor.ts`、`render/bind-editor.ts`、`template-gallery.test.cjs` 和现有精选模板；未接线的 `template-manager.ts` 原型已按 T-1623 退役，`template-manager.test.cjs` 保留测试入口并转为验收现行个人模板。只有缺少首次路径状态时才新增纯状态机，不重复扩充模板目录。
 2. 设计“第一次成功记录”流程：选择模板或空白项目 → 今日记录 → 明确反馈 → 回顾入口。
 3. 高级排期、quota、at-most、来源映射和渲染块保持折叠，只有用户主动展开才加载。
 4. 增加跳过引导、恢复引导和重置示例数据路径；所有状态写入现有偏好存储并可诊断。

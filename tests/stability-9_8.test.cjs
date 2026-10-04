@@ -26,7 +26,7 @@ assert.match(roadmap, /9\.8\.x 稳定化清单/,
 const checks = [
     [plugin, /root\.insertAdjacentHTML\("beforeend", this\.renderMobileNav\(\)\)/, "mobile nav is host-level"],
     [plugin, /this\.syncRecentRecordToast\(\)/, "toast sync remains centralized"],
-    [plugin, /pageScrollTops = new WeakMap/, "scroll memory is surface scoped"],
+    [plugin, /context\.scrollTops/, "scroll memory is root scoped"],
     [plugin, /pendingFocusItemId/, "focus restoration state remains available"],
     [plugin, /normalizeUiIcons\(root\)/, "icons normalize after each render"],
     [settings, /snapshotLatest/, "latest snapshot label remains visible"],

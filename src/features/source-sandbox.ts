@@ -71,7 +71,7 @@ export function sandboxYeguifSample(text: string, mappings: ReadonlyArray<{proje
         if (!marker) return {input: line, state: "invalid" as const, reasonKey: "today.sandbox.reason.invalid"};
         const itemId = resolveYeguifItemId(marker.type, mappings, minuteCandidates);
         if (!itemId) return {input: line, state: "unmatched" as const, reasonKey: "today.sandbox.reason.unmapped"};
-        const target = items.find((item) => item.id === itemId);
+        const target = minuteCandidates.find((item) => item.id === itemId);
         return target ? {input: line, state: "matched" as const, targetName: target.name} : {input: line, state: "unmatched" as const, reasonKey: "today.sandbox.reason.unmapped"};
     });
     return summarize("yeguif", out, truncatedLines);

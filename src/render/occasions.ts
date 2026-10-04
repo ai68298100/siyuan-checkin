@@ -7,26 +7,21 @@ import {uiIcon} from "../ui/icons";
 import {renderPageShellHead} from "./page-shell";
 import {describeElapsedSpan, describeRecurrence, describeOccasionMilestone, elapsedSpanSince, getMissedOccurrence, getOccurrenceDate, nextOccasionMilestones, occasionCycleProgress, occasionTemplateName, OCCASION_TEMPLATES, weekdayName} from "../occasions";
 import type {MonthlySubtype, Occasion, OccasionKind, OccasionRecurrence, OccasionStore, OccasionTemplateCategory} from "../occasions";
+import type {OccasionsRootContext} from "./occasion-session";
 
-/* T-1621：提醒天数预设 datalist id 按渲染次序唯一化（settings settingsViewId 同法）——
+/* T-1621：提醒天数预设 datalist id 按 root 实例与渲染次序唯一化——
    多 root 同屏时 input[list] 不再绑到其他表面的同名 datalist。 */
-let remindPresetsSequence = 0;
+let occasionRenderSequence = 0;
 
-export interface OccasionsViewContext {
+export interface OccasionsViewContext extends Pick<OccasionsRootContext, "editingOccasionId" | "occasionSearchQuery" | "occasionStatusFilter" | "occasionKindFilter" | "occasionTimeFilter" | "occasionTemplatesOpen" | "occasionTemplateCategory" | "formOpen" | "filtersOpen" | "helpOpen" | "actionsHelpOpen" | "noteExpandedIds" | "occurrenceMoves" | "formDraft" | "submitting" | "deletingOccasionIds"> {
     occasionStore: OccasionStore;
-    editingOccasionId?: string;
-    occasionSearchQuery: string;
-    occasionStatusFilter: "all" | "enabled" | "disabled";
-    occasionKindFilter: "all" | OccasionKind;
-    occasionTimeFilter: "all" | "today" | "upcoming" | "ended";
     appearance: "light" | "dark";
-    /** 常用模板折叠状态（21 个胶囊摊开时在窄表单里要占 8 行，默认收起）。 */
-    occasionTemplatesOpen: boolean;
-    occasionTemplateCategory: "recommended" | OccasionTemplateCategory;
 }
 
-export function renderOccasionsView(ctx: OccasionsViewContext): string {
+export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElement): string {
+    const renderId = `${root?.dataset.occasionRootId || "surface"}-${++occasionRenderSequence}`;
     const editing = ctx.editingOccasionId ? ctx.occasionStore.occasions.find((item) => item.id === ctx.editingOccasionId) : undefined;
+    const draftValue = (name: string, fallback: string): string => ctx.formDraft?.values[name] ?? fallback;
     const occasionQuery = (ctx.occasionSearchQuery || "").trim().toLocaleLowerCase();
     const todayKey = dateKey(currentCalendarDate());
     const withNext = ctx.occasionStore.occasions.map((item) => ({item, next: getOccurrenceDate(item, todayKey)}));
@@ -111,13 +106,16 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         agendaGroup("ended", t("occ.agendaEnded"), agendaBuckets.ended),
         agendaGroup("disabled", t("occ.agendaDisabled"), agendaBuckets.disabled),
     ].filter(Boolean).join("");
-    const date = editing?.date || dateKey(currentCalendarDate());
+    const date = draftValue("date", editing?.date || dateKey(currentCalendarDate()));
     const editLabel = editing ? t("occ.edit") : t("occ.create");
-    const kind: OccasionKind = editing?.kind || "scheduled";
-    const recurrence: OccasionRecurrence = editing?.recurrence || "annual";
-    const calendar = editing?.calendar || "solar";
-    const annualSubtype = editing?.annualSubtype || "byday";
-    const monthlySubtype: MonthlySubtype = editing?.monthlySubtype || "byday";
+    const kindValue = draftValue("kind", editing?.kind || "scheduled");
+    const recurrenceValue = draftValue("recurrence", editing?.recurrence || "annual");
+    const kind: OccasionKind = ["birthday", "anniversary", "scheduled"].includes(kindValue) ? kindValue as OccasionKind : "scheduled";
+    const recurrence: OccasionRecurrence = ["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"].includes(recurrenceValue) ? recurrenceValue as OccasionRecurrence : "annual";
+    const calendar = draftValue("calendar", editing?.calendar || "solar");
+    const annualSubtype = draftValue("annualSubtype", editing?.annualSubtype || "byday");
+    const monthlySubtypeValue = draftValue("monthlySubtype", editing?.monthlySubtype || "byday");
+    const monthlySubtype: MonthlySubtype = ["byday", "nthweek", "lastday"].includes(monthlySubtypeValue) ? monthlySubtypeValue as MonthlySubtype : "byday";
     const sel = (value: string, current: string | undefined): string => value === current ? " selected" : "";
     const templateDescription = (template: typeof OCCASION_TEMPLATES[number]): string => describeRecurrence({...template, id: "", date: template.date || dateKey(currentCalendarDate()), remindBeforeDays: template.remindBeforeDays, note: template.note || "", enabled: true, completedDates: [], createdAt: "", updatedAt: ""} as Occasion);
     /* 模板量增大后不再提供「全部」视图：默认与首档为「推荐」精选分组，
@@ -135,22 +133,25 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
         const selected = value === ctx.occasionTemplateCategory;
         return `<button type="button" class="${selected ? "is-active" : ""}" data-occasion-template-category="${value}" aria-label="${escapeHtml(`${label}（${count}）`)}" aria-pressed="${selected}"><span class="lc-checkin__occasion-template-category-label">${escapeHtml(label)}</span><em aria-hidden="true">${count}</em></button>`;
     }).join("");
-    const weekdayOptions = [0, 1, 2, 3, 4, 5, 6].map((value) => `<option value="${value}"${Number(editing?.weekday ?? 0) === value ? " selected" : ""}>${weekdayName(value)}</option>`).join("");
-    const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(editing?.month ?? 1) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
-    const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(editing?.nthWeek ?? 1) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
-    return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${ctx.appearance}">
+    const weekdayOptions = [0, 1, 2, 3, 4, 5, 6].map((value) => `<option value="${value}"${Number(draftValue("annualWeekday", String(editing?.weekday ?? 0))) === value ? " selected" : ""}>${weekdayName(value)}</option>`).join("");
+    const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(draftValue("annualMonth", String(editing?.month ?? 1))) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
+    const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(draftValue("annualNth", String(editing?.nthWeek ?? 1))) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
+    const isFormOpen = ctx.formOpen ?? Boolean(editing);
+    const isFilterOpen = ctx.filtersOpen ?? Boolean(activeFilterCount);
+    const presetId = `lc-occasion-remind-presets-${renderId}`;
+    return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${ctx.appearance}" data-occasion-root-instance="${escapeHtml(renderId)}">
             ${renderPageShellHead({eyebrow: t("occasions.eyebrow"), title: t("occasions.title"), actionsHtml: `<button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">+</button>`})}
             <div class="lc-checkin__occasion-manager">
-                <details class="lc-checkin__occasion-form-drawer" data-occasion-form-drawer ${editing ? "open" : ""}>
+                <details class="lc-checkin__occasion-form-drawer" data-occasion-form-drawer ${isFormOpen ? "open" : ""}>
                     <summary><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                 <section class="lc-checkin__occasion-form-panel">
-                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><small class="lc-checkin__occasion-form-hint">${t("occ.formHint")}</small></div><details class="lc-checkin__occasion-help"><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span>${t("occ.templatesHint")}</span><span>${t("occ.newAria")}</span></div></details></div>
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${editLabel}</span><strong>${t("occ.heading")}</strong><small class="lc-checkin__occasion-form-hint">${t("occ.formHint")}</small></div><details class="lc-checkin__occasion-help" ${ctx.helpOpen ? "open" : ""}><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span>${t("occ.templatesHint")}</span><span>${t("occ.newAria")}</span></div></details></div>
                     <details class="lc-checkin__occasion-templates-fold" ${ctx.occasionTemplatesOpen ? "open" : ""}>
                         <summary data-occasion-templates-toggle aria-label="${t("occ.templatesHint")}" title="${t("occ.templatesHint")}"><span>${t("occ.templatesFold")}</span><em>${OCCASION_TEMPLATES.length}</em><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__occasion-template-browser"><div class="lc-checkin__occasion-template-browser-head"><span>${t("occ.templatesHint")}</span><em aria-live="polite">${t("occ.templatesShown", {n: visibleTemplates.length})}</em></div><div class="lc-checkin__occasion-template-categories" aria-label="${t("occ.tplCategoriesAria")}">${templateCategoryTabs}</div><div class="lc-checkin__occasion-templates" aria-label="${t("occ.templatesFold")}">${templateChips}</div></div>
                     </details>
                     <form data-occasion-form>
-                        <label class="lc-checkin__field"><span>${t("occ.name")}</span><input name="name" required maxlength="120" placeholder="${t("occ.namePlaceholder")}" value="${escapeHtml(editing?.name || "")}" /></label>
+                        <label class="lc-checkin__field"><span>${t("occ.name")}</span><input name="name" required maxlength="120" placeholder="${t("occ.namePlaceholder")}" value="${escapeHtml(draftValue("name", editing?.name || ""))}" /></label>
                         <div class="lc-checkin__form-row">
                             <label class="lc-checkin__field"><span>${t("occ.kind")}</span><select name="kind"><option value="birthday"${sel("birthday", kind)}>${t("occ.kindBirthday")}</option><option value="anniversary"${sel("anniversary", kind)}>${t("occ.kindAnniversary")}</option><option value="scheduled"${sel("scheduled", kind)}>${t("occ.kindScheduled")}</option></select></label>
                             <label class="lc-checkin__field"><span>${t("occ.date")}</span><input name="date" type="date" required value="${escapeHtml(date)}" /></label>
@@ -170,7 +171,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                         <div class="lc-checkin__form-row" data-occasion-block="annual-nthweek"${recurrence === "annual" && annualSubtype === "nthweek" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>${t("occ.month")}</span><select name="annualMonth">${monthOptions}</select></label>
                             <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="annualWeekday">${weekdayOptions}</select></label>
-                            <input type="hidden" name="annualSubtype" value="${annualSubtype}" />
+                            <input type="hidden" name="annualSubtype" value="${escapeHtml(annualSubtype)}" />
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="monthly-sub"${recurrence === "monthly" ? "" : " hidden"}>
                             <label class="lc-checkin__field"><span>${t("occ.monthlyMode")}</span><select name="monthlySubtype" data-occasion-monthly-subtype><option value="byday"${sel("byday", monthlySubtype)}>${t("occ.monthlyByday")}</option><option value="nthweek"${sel("nthweek", monthlySubtype)}>${t("occ.monthlyNthweek")}</option><option value="lastday"${sel("lastday", monthlySubtype)}>${t("occ.monthlyLastday")}</option></select></label>
@@ -183,20 +184,20 @@ export function renderOccasionsView(ctx: OccasionsViewContext): string {
                             <label class="lc-checkin__field"><span>${t("occ.weekday")}</span><select name="weeklyWeekday">${weekdayOptions}</select></label>
                         </div>
                         <div class="lc-checkin__form-row" data-occasion-block="interval"${recurrence === "interval" ? "" : " hidden"}>
-                            <label class="lc-checkin__field"><span>${t("occ.intervalCount")}</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${editing?.intervalCount ?? 1}" /></label>
-                            <label class="lc-checkin__field"><span>${t("occ.unit")}</span><select name="intervalUnit"><option value="day"${sel("day", editing?.intervalUnit)}>${t("occ.unitDay")}</option><option value="month"${sel("month", editing?.intervalUnit || "month")}>${t("occ.unitMonth")}</option><option value="year"${sel("year", editing?.intervalUnit)}>${t("occ.unitYear")}</option></select></label>
+                            <label class="lc-checkin__field"><span>${t("occ.intervalCount")}</span><input name="intervalCount" type="number" min="1" max="365" step="1" value="${escapeHtml(draftValue("intervalCount", String(editing?.intervalCount ?? 1)))}" /></label>
+                            <label class="lc-checkin__field"><span>${t("occ.unit")}</span><select name="intervalUnit"><option value="day"${sel("day", draftValue("intervalUnit", editing?.intervalUnit || "month"))}>${t("occ.unitDay")}</option><option value="month"${sel("month", draftValue("intervalUnit", editing?.intervalUnit || "month"))}>${t("occ.unitMonth")}</option><option value="year"${sel("year", draftValue("intervalUnit", editing?.intervalUnit || "month"))}>${t("occ.unitYear")}</option></select></label>
                         </div>
-                        <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="lc-occasion-remind-presets-${++remindPresetsSequence}" value="${editing?.remindBeforeDays ?? 3}" /><datalist id="lc-occasion-remind-presets-${remindPresetsSequence}"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
-                        <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(editing?.note || "")}</textarea></label>
-                        <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit">${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit">${t("occ.cancelEdit")}</button>` : ""}</div>
+                        <label class="lc-checkin__field"><span>${t("occ.remindDays")}</span><input name="remindBeforeDays" type="number" min="0" max="365" step="1" list="${presetId}" value="${escapeHtml(draftValue("remindBeforeDays", String(editing?.remindBeforeDays ?? 3)))}" /><datalist id="${presetId}"><option value="0"><option value="1"><option value="3"><option value="7"><option value="14"><option value="30"></datalist></label>
+                        <label class="lc-checkin__field"><span>${t("occ.note")}</span><textarea name="note" maxlength="500" rows="2" placeholder="${t("occ.notePlaceholder")}">${escapeHtml(draftValue("note", editing?.note || ""))}</textarea></label>
+                        <div class="lc-checkin__editor-actions"><button class="lc-checkin__primary-button" type="submit" ${ctx.submitting ? "disabled" : ""}>${editing ? t("occ.save") : t("occ.add")}</button>${editing ? `<button class="lc-checkin__text-button" type="button" data-action="cancel-occasion-edit" ${ctx.submitting ? "disabled" : ""}>${t("occ.cancelEdit")}</button>` : ""}</div>
                     </form>
                 </section>
                 </details>
                 <section class="lc-checkin__occasion-list-panel">
-                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${t("occ.listKicker")}</span><strong>${t("occ.listHeading")}</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${ctx.occasionStore.occasions.length}</span><details class="lc-checkin__occasion-actions-help"><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span><strong>＋ ${t("occ.toItem")}</strong> — ${t("occ.toItemDesc")}</span><span><strong>✎ ${t("occ.editBtn")}</strong> — ${t("occ.editDesc")}</span><span><strong>✓/○ ${t("occ.enable")}/${t("occ.disable")}</strong> — ${t("occ.toggleDesc")}</span><span><strong>× ${t("common.delete")}</strong> — ${t("occ.deleteDesc")}</span><span><strong>📅 ${t("occ.autoAppearTitle")}</strong> — ${t("occ.autoAppearDesc")}</span></div></details></div>
+                    <div class="lc-checkin__section-heading"><div><span class="lc-checkin__section-kicker">${t("occ.listKicker")}</span><strong>${t("occ.listHeading")}</strong></div><span class="lc-checkin__section-count">${filteredOccasions.length}/${ctx.occasionStore.occasions.length}</span><details class="lc-checkin__occasion-actions-help" ${ctx.actionsHelpOpen ? "open" : ""}><summary aria-label="${t("occ.helpAria")}" title="${t("occ.helpAria")}">?</summary><div role="note"><span><strong>＋ ${t("occ.toItem")}</strong> — ${t("occ.toItemDesc")}</span><span><strong>✎ ${t("occ.editBtn")}</strong> — ${t("occ.editDesc")}</span><span><strong>✓/○ ${t("occ.enable")}/${t("occ.disable")}</strong> — ${t("occ.toggleDesc")}</span><span><strong>× ${t("common.delete")}</strong> — ${t("occ.deleteDesc")}</span><span><strong>📅 ${t("occ.autoAppearTitle")}</strong> — ${t("occ.autoAppearDesc")}</span></div></details></div>
                     <div class="lc-checkin__occasion-stats"><span><strong>${ctx.occasionStore.occasions.length}</strong><small>${t("occ.filterAll")}</small></span><span><strong>${enabledCount}</strong><small>${t("occ.filterEnabled")}</small></span><span><strong>${todayCount}</strong><small>${t("occ.filterToday")}</small></span></div>
                     <label class="lc-checkin__occasion-search">${uiIcon("search")}<input type="search" data-occasion-search value="${escapeHtml(ctx.occasionSearchQuery)}" placeholder="${t("occ.searchPlaceholder")}" aria-label="${t("occ.searchAria")}" /></label>
-                    <details class="lc-checkin__occasion-filter-fold" ${activeFilterCount ? "open" : ""}>
+                    <details class="lc-checkin__occasion-filter-fold" ${isFilterOpen ? "open" : ""}>
                         <summary><span>${t("occ.filters")}</span>${activeFilterCount ? `<em>${activeFilterCount}</em>` : ""}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     </details>

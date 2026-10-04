@@ -73,7 +73,7 @@ assert.match(reviewSource, /historyChannelOptions: HistoryChannelFilter\[\] = \[
 const bindingsSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
 assert.match(bindingsSource, /"\[data-history-metering\]"/, "metering select is bound");
 assert.match(bindingsSource, /HISTORY_CHANNEL_VALUES\.has\(value\)/, "channel values are validated against the registered list");
-assert.match(bindingsSource, /host\.historyMetering = "all"/, "clearing filters resets the metering dimension");
+assert.match(bindingsSource, /writeReviewValue\("historyMetering", "all"\)/, "clearing filters resets the originating root's metering dimension");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private historyMetering: HistoryMeteringFilter = "all"/, "host holds the metering filter state");
 /* 分页一致性：记录列表先过滤再分页（filteredRecords 即分页输入）。 */

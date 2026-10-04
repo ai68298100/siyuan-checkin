@@ -73,9 +73,13 @@ assert.match(bindSource, /TEMPLATE_IMPORT_MAX_BYTES/, "file size guard uses the 
 assert.match(bindSource, /planImportDecisions\(result\.entries, host\.userTemplates\)/, "decisions plan against the current templates");
 assert.match(bindSource, /host\.templateImportSession = undefined/, "cancel clears the session (zero writes)");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-assert.match(indexSource, /async applyTemplateShareImport\(decisions: ImportDecision\[\]\): Promise<number>/, "host applies decisions in one batch");
+assert.match(indexSource, /async applyTemplateShareImport\(decisions: ImportDecision\[\], root\?: HTMLElement\): Promise<number>/, "host applies decisions in one batch");
+assert.match(indexSource, /templateImportSessionForRoot\(root: HTMLElement\)/, "template import session is root-local");
+assert.match(bindSource, /applyTemplateShareImport\?\.\(session\.decisions[\s\S]*root\)/, "confirm applies the session to its surface");
+assert.match(bindSource, /!root\.isConnected[\s\S]*isCurrentEditorSession/, "file-reader callback rejects a closed editor root");
+assert.match(indexSource, /root\.isConnected \? this\.rootContexts\.get\(root\) : undefined/, "async import completion never re-registers a closed root");
 assert.match(indexSource, /this\.userTemplates = previous/, "save failure rolls back to the previous templates");
-assert.match(indexSource, /templateImport: this\.templateImportSession/, "editor ctx exposes the session");
+assert.match(indexSource, /templateImport: editor\.templateImportSession/, "editor ctx exposes the root-local session");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["editor.importLabel", "editor.importHint", "editor.importErrorInvalid", "editor.importErrorLimit", "editor.importErrorVersion", "editor.importInvalidCount", "editor.importNew", "editor.importSkip", "editor.importReplace", "editor.importSaveAs", "editor.importDuplicateOf", "editor.importMetaNew", "editor.importConfirm", "editor.importCancel", "msg.templateImportDone", "msg.templateImportFail"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;

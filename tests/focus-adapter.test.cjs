@@ -192,6 +192,7 @@ function makeTimerAdapter() {
             "./features/record-notes": {}, "./ui/labels": {}, "./record-step": {},
         });
         const timer = loadModule("src/render/focus-timer.ts", {
+            "../focus-clock": loadModule("src/focus-clock.ts", {}),
             "../i18n": {t: key => key},
             "../model": {...modelStub, getItemById: modelStub.getActiveItemById},
             "../shared": shared,

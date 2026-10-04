@@ -118,7 +118,7 @@ const method = name => {
 const opsText = fs.readFileSync(path.join(sourceRoot, "plugin-ops.ts"), "utf8");
 const opsAst = ts.createSourceFile("plugin-ops.ts", opsText, ts.ScriptTarget.Latest, true);
 const invalidation = opsAst.statements.find(node => ts.isFunctionDeclaration(node) && node.name.text === "invalidateSummaryFor").getText(opsAst).replace(/^export /, "");
-const code = ts.transpileModule(`${invalidation}\nclass SummaryHarness {${method("generateSummary")}\n${method("invalidateSummary")}\n${method("renderReview")}}`, {
+const code = ts.transpileModule(`${invalidation}\nclass SummaryHarness {${method("generateSummary")}\n${method("cancelReviewSummary")}\n${method("invalidateSummary")}\n${method("renderReview")}}`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
 let clock = asOf;
@@ -141,7 +141,7 @@ const defer = () => { let resolve, reject; const promise = new Promise((yes, no)
 function hostFor(provider) {
     const host = new Harness();
     Object.assign(host, {store: fixture(), summaryRange: "week", summaryRequestId: 0, summaryRefreshing: false,
-        summaryProviders: new Map([[provider.id, provider]]), currentPage: "review", analysisHistory: [],
+        summaryProviders: new Map([[provider.id, provider]]), rootContexts: new Map(), currentPage: "review", analysisHistory: [],
         analysisHistorySaveQueue: Promise.resolve(), renders: [], writes: [],
         reviewWorkspace: "overview", reviewFoldSections: new Set(), agentCapabilityIds: [], resolvedAppearance: () => "light",
         cloneItem: structuredClone, persistSuggestionWorkflow: async () => {}, broadcast() {},

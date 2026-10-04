@@ -98,10 +98,11 @@ assert.match(fragmentsSource, /isBannerCoveredReminder/, "今日页必须消费�
 assert.match(fragmentsSource, /selectTodayPriorityEntries/, "优先卡与行动台必须共用同一去重选择器");
 assert.match(fragmentsSource, /attention: selectTodayPriorityEntries/, "行动台计数与优先卡同源去重");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-assert.match(indexSource, /buildReminderDigest\(actionable, \{today\}\)/, "推送必须经摘要纯函数聚合");
-assert.match(indexSource, /entry\.status === "today" && !isBannerCoveredReminder\(entry, today\)/, "推送必须排除横幅已聚合的当日事项");
-assert.match(indexSource, /projectReminderCenter\(this\.store, this\.occasionStore, now, this\.reminderUserActions, \{advanceOnce: this\.occasionRemindOnce\}\)/, "推送投影必须透传仅一次偏好");
-assert.equal((indexSource.match(/\/api\/notification\/pushMsg/g) || []).length, 1, "每日提醒仍是一条思源原生通知（calm 禁则：不新增推送通道）");
+const deliverySource = fs.readFileSync(path.join(root, "src", "render", "reminder-delivery.ts"), "utf8");
+assert.match(deliverySource, /buildReminderDigest\(actionable, \{today\}\)/, "投递必须经摘要纯函数聚合");
+assert.match(deliverySource, /entry\.status === "today" && !isBannerCoveredReminder\(entry, today\)/, "投递必须排除横幅已聚合的当日事项");
+assert.match(deliverySource, /projectReminderCenter\(host\.store, host\.occasionStore, now, host\.reminderUserActions, \{advanceOnce: host\.occasionRemindOnce\}\)/, "投递投影必须透传仅一次偏好");
+assert.equal((indexSource.match(/\/api\/notification\/pushMsg/g) || []).length, 0, "可关闭的插件通知替代原生推送，不增加第二通知通道");
 assert.match(indexSource, /data-setting-occasion-once/, "宿主必须绑定仅一次开关");
 assert.match(indexSource, /this\.occasionRemindOnce = preferences\.occasionRemindOnce/, "偏好恢复必须读仅一次字段");
 assert.match(indexSource, /occasionRemindOnce: this\.occasionRemindOnce/, "偏好持久化与设置上下文必须写出仅一次字段");

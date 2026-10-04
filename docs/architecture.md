@@ -62,7 +62,7 @@
 | `reminders.ts` | 提醒中心投影（occasion+checkin 双来源）与 11.0-C 用户动作（延期/跳过/恢复） |
 | `features/reminder-projection.ts` | 11.0 五态提醒的纯投影模型（ID/排序/迁移/确认令牌），供后续跨端协议使用 |
 | `features/insights.ts` / `coaching.ts` | 完成率/连续/趋势洞察与本地行动建议（无 AI 也可用） |
-| `features/achievements.ts` / `history-filter.ts` / `record-notes.ts` / `insight-records.ts` / `templates.ts` / `template-manager.ts` / `report.ts` | 成就墙、历史筛选、打卡备注链接净化、洞察记录、模板目录管理、报告构建 |
+| `features/achievements.ts` / `history-filter.ts` / `record-notes.ts` / `insight-records.ts` / `templates.ts` / `report.ts` | 成就墙、历史筛选、打卡备注链接净化、洞察记录、模板目录管理、报告构建；个人模板入口由 `render/editor.ts` 与 `render/bind-editor.ts` 承载 |
 | `charts.ts` | 纯函数 SVG 图表（热力图/折线/柱状），空数据安全 |
 
 ### 集成与对外契约

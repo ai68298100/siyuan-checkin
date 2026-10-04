@@ -76,7 +76,7 @@ const snapshot = (overrides = {}) => ({id: "a", name: "拉伸", hasEvent: false,
 
 /* —— 4. 宿主与渲染接线。 —— */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
-assert.match(indexSource, /async recordHistoryBatchEntries\(date: string, entries: ReadonlyArray<\{itemId: string; value: number\}>\)/, "host exposes the actual-amount submit");
+assert.match(indexSource, /async recordHistoryBatchEntries\(date: string, entries: ReadonlyArray<\{itemId: string; value: number\}>, root\?: HTMLElement\)/, "host exposes the actual-amount submit for the originating root");
 assert.match(indexSource, /planBatchBackfillSubmit\(this\.batchBackfillSnapshots\(date, requested\), values\)/, "submit re-validates against the current store inside the mutation");
 assert.match(indexSource, /historyBatchPreviewOpen = false;[\s\S]*?historyBatchValues = \{\};/, "successful submit clears preview state");
 const reviewSource = fs.readFileSync(path.join(root, "src", "render", "review.ts"), "utf8");
@@ -86,7 +86,7 @@ assert.match(reviewSource, /data-ready-count="\$\{batchPreview\.readyCount\}"/, 
 assert.match(reviewSource, /t\(entry\.reasonKey\)/, "exclusion reasons render through the module keys");
 assert.equal(backfill.BATCH_BACKFILL_UNSUPPORTED_JOURNAL, "review.batchReasonJournal", "journal exclusion has its own reason key");
 const bindingsSource = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
-assert.match(bindingsSource, /host\.historyBatchPreviewOpen = true/, "record action opens the preview instead of submitting");
+assert.match(bindingsSource, /writeReviewValue\("historyBatchPreviewOpen", true\)/, "record action opens the originating root's preview instead of submitting");
 assert.match(bindingsSource, /"\[data-batch-submit\]"/, "submit is bound");
 assert.match(bindingsSource, /"\[data-batch-cancel\]"/, "cancel is bound");
 assert.match(bindingsSource, /review\.batchSubmitConfirm/, "submit asks for confirmation with the count");

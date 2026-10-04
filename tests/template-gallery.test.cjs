@@ -117,7 +117,7 @@ assert.match(bindEditor, /hasAttribute\("data-save-continue"\)/, "submit source 
 assert.match(bindEditor, /continueCreation && typeof savedId === "string" && savedId/, "form resets only after the item actually saved");
 const saveFormSource = fs.readFileSync("src/render/save-form.ts", "utf8");
 assert.match(saveFormSource, /continueCreation\?: boolean/, "saveEditorForm carries the continue option");
-assert.match(saveFormSource, /if \(!options\?\.continueCreation\) host\.showToday\(\)/, "continue flow keeps the editor open");
+assert.match(saveFormSource, /if \(!options\?\.continueCreation && !options\?\.stayOnPage\) host\.showToday\(\)/, "continue and stay-on-page flows keep the editor open");
 
 /* ---------- 运行时断言（转译后真实模块） ---------- */
 
@@ -128,7 +128,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/record-step.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/features/weekly-review.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/note-query.ts", "src/features/weread-adapter.ts", "src/catalog.ts", "src/features/templates.ts"].forEach(transpile);
+["src/i18n.ts", "src/record-step.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/features/weekly-review.ts", "src/view-preferences.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/health-inbox.ts", "src/features/note-query.ts", "src/features/weread-adapter.ts", "src/features/yeguif-adapter.ts", "src/catalog.ts", "src/features/templates.ts"].forEach(transpile);
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {recordRecentTemplate} = require(path.join(outputRoot, "src/features/templates.js"));
 // eslint-disable-next-line @typescript-eslint/no-var-requires

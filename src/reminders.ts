@@ -215,7 +215,7 @@ function differenceInLocalDays(from: string, to: string): number {
    T-1421 防抖：snooze 可选携带 expiresAt（ISO 时间）——在到期前该实例只呈现
    为已延期（重复通知防抖），到期后自动回到计算状态；不带 expiresAt 的历史
    snooze 沿用当日语义，旧存储零迁移。 */
-export type ReminderUserActionType = "snooze" | "skip";
+export type ReminderUserActionType = "snooze" | "skip" | "restore";
 export interface ReminderUserAction { id: string; action: ReminderUserActionType; at: string; /** 可选防抖到期时间（ISO）；缺省沿用当日语义。 */ expiresAt?: string; }
 
 export function normalizeReminderUserActions(value: unknown, limit = 200, now: Date = new Date()): ReminderUserAction[] {
@@ -232,7 +232,7 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
         return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
             && (candidate.action === "snooze" || candidate.action === "skip")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
-    }).filter((entry) => entry.action === "skip" || Date.parse(entry.at) >= snoozeCutoff)
+        }).filter((entry) => entry.action === "skip" || entry.action === "restore" || Date.parse(entry.at) >= snoozeCutoff)
         .slice(-max).map((entry) => {
             if (entry.action !== "snooze" || typeof (entry as Partial<ReminderUserAction>).expiresAt !== "string") return {id: entry.id, action: entry.action, at: entry.at};
             const expiresAt = (entry as Partial<ReminderUserAction>).expiresAt as string;
@@ -281,6 +281,7 @@ export function applyReminderActions(entries: readonly ReminderEntry[], actions:
     return entries.map((entry) => {
         const action = latest.get(entry.id);
         if (!action || entry.status === "completed") return entry;
+        if (action.action === "restore") return entry;
         if (action.action === "skip") return {...entry, status: "skipped"};
         /* T-1421 防抖：带 expiresAt 的 snooze 以到期时间为准（窗口内已延期、到期回到
            计算状态，同日内亦可到期）；不带 expiresAt 的历史 snooze 沿用当日语义。 */

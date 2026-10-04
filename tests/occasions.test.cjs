@@ -20,7 +20,7 @@ assert.match(viewSource, /data-occasion-toitem/, "occasion rows retain the expli
 assert.match(viewSource, /lc-checkin__action-icon[\s\S]*lc-checkin__action-label/, "occasion actions keep icon and label nodes separate");
 assert.doesNotMatch(viewSource, /lc-checkin__item(?:\s|\")/, "occasion manager does not masquerade as a Today check-in card");
 /* —— T-1580/T-1592/T-1593：agenda 分组、表单抽屉、转打卡确认 —— */
-assert.match(viewSource, /data-occasion-form-drawer \$\{editing \? "open" : ""\}/, "表单收进抽屉（编辑时展开）");
+assert.match(viewSource, /data-occasion-form-drawer \$\{isFormOpen \? "open" : ""\}/, "表单收进抽屉（按 root 会话展开）");
 for (const section of ["today", "missed", "upcoming", "ended", "disabled"]) {
     assert.match(viewSource, new RegExp(`data-agenda-section="\\$\\{id\\}"`), "agenda 分组头模板在位") ;
     break;
@@ -36,6 +36,7 @@ for (const key of ["occ.agendaToday", "occ.agendaMissed", "occ.agendaUpcoming", 
     const count = i18nSourceT1578.split(`"${key}"`).length - 1;
     assert.ok(count >= 2, `${key} 必须中英双语齐备（当前 ${count}）`);
 }
+assert.match(bindSource, /writeState\(\{occasionTemplatesOpen:/, "template disclosure writes the owning root");
 assert.match(bindSource, /occasionStatusFilter/);
 assert.match(bindSource, /occasionKindFilter/);
 assert.match(bindSource, /occasionTimeFilter/);
@@ -59,6 +60,10 @@ const reminders = require(path.join(path.dirname(output), "reminders.js"));
     const module = {exports: {}};
     new Function("require", "module", "exports", ts.transpileModule(bindSource, {compilerOptions}).outputText)((id) => {
         if (id === "../occasions") return occasions;
+        if (id === "./occasion-session") return {
+            readOccasionsRootContext: () => ({occasionSearchQuery: "", occasionStatusFilter: "all", occasionKindFilter: "all", occasionTimeFilter: "all", occasionTemplatesOpen: false, occasionTemplateCategory: "recommended", helpOpen: false, actionsHelpOpen: false, noteExpandedIds: new Set(), occurrenceMoves: {}, formSession: 0, submitting: false, deletingOccasionIds: new Set()}),
+            writeOccasionsRootContext() {}, captureOccasionDraftFor() {}, nextOccasionFormSession: state => ++state.formSession, isCurrentOccasionFormSession: () => true,
+        };
         if (["../i18n", "../model", "../shared", "../lunar", "siyuan"].includes(id)) return {};
         throw new Error(`Unexpected occasion binding dependency ${id}`);
     }, module, module.exports);

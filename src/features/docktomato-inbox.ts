@@ -150,6 +150,61 @@ export function upsertInboxEntry(store: DockTomatoInboxStore, incoming: DockToma
     return {store: {schemaVersion: DOCKTOMATO_INBOX_SCHEMA_VERSION, items: [...store.items, {...incoming}]}, outcome: "added"};
 }
 
+function sameInboxPayload(left: DockTomatoPendingCompletion, right: DockTomatoPendingCompletion): boolean {
+    return left.itemId === right.itemId
+        && left.itemUnit === right.itemUnit
+        && left.tomatoMode === right.tomatoMode
+        && left.durationMinutes === right.durationMinutes
+        && left.occurredAt === right.occurredAt
+        && left.localDate === right.localDate;
+}
+
+function newerInboxEntry(left: DockTomatoPendingCompletion, right: DockTomatoPendingCompletion): DockTomatoPendingCompletion {
+    return Date.parse(right.updatedAt) > Date.parse(left.updatedAt) ? right : left;
+}
+
+/**
+ * 合并两个窗口的收件箱快照：身份并集、同载荷的重试状态取保守并集，
+ * 冲突载荷保留本地首接收内容。调用方仍需在独占存储锁内使用。
+ */
+export function mergeInboxStores(local: DockTomatoInboxStore, remote: DockTomatoInboxStore): DockTomatoInboxStore {
+    const localStore = normalizeInboxStore(local);
+    const remoteStore = normalizeInboxStore(remote);
+    const items = localStore.items.map((entry) => ({...entry}));
+    for (const remoteEntry of remoteStore.items) {
+        const index = items.findIndex((entry) => entry.identity === remoteEntry.identity);
+        if (index < 0) {
+            items.push({...remoteEntry});
+            continue;
+        }
+        const localEntry = items[index];
+        if (!sameInboxPayload(localEntry, remoteEntry)) {
+            const latest = newerInboxEntry(localEntry, remoteEntry);
+            items[index] = {...localEntry, lastError: "payload-conflict", updatedAt: latest.updatedAt};
+            continue;
+        }
+        const latest = newerInboxEntry(localEntry, remoteEntry);
+        const blocked = localEntry.state === "blocked" || remoteEntry.state === "blocked";
+        const pending = !blocked;
+        const nextAttemptAt = pending
+            ? (!localEntry.nextAttemptAt || !remoteEntry.nextAttemptAt
+                ? undefined
+                : Date.parse(localEntry.nextAttemptAt) <= Date.parse(remoteEntry.nextAttemptAt) ? localEntry.nextAttemptAt : remoteEntry.nextAttemptAt)
+            : undefined;
+        items[index] = {
+            ...localEntry,
+            state: blocked ? "blocked" : "pending",
+            blockedReason: blocked ? (latest.blockedReason || localEntry.blockedReason || remoteEntry.blockedReason) : undefined,
+            attempts: Math.max(localEntry.attempts, remoteEntry.attempts),
+            nextAttemptAt,
+            lastError: latest.lastError || localEntry.lastError || remoteEntry.lastError,
+            receivedAt: Date.parse(remoteEntry.receivedAt) < Date.parse(localEntry.receivedAt) ? remoteEntry.receivedAt : localEntry.receivedAt,
+            updatedAt: latest.updatedAt,
+        };
+    }
+    return normalizeInboxStore({schemaVersion: DOCKTOMATO_INBOX_SCHEMA_VERSION, items});
+}
+
 export function removeInboxEntry(store: DockTomatoInboxStore, identity: string): DockTomatoInboxStore {
     const items = store.items.filter((entry) => entry.identity !== identity);
     if (items.length === store.items.length) return store;

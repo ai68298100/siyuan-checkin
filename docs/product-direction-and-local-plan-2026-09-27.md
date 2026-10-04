@@ -18,7 +18,7 @@
 - [既有产品战略](roadmap-product-strategy-2026-09.md)、[执行路线](implementation-roadmap-product-strategy-2026-09.md)、[任务真值](../TODO.md)、[进展](../PROGRESS.md)。
 - 今日/回顾/编辑/设置：src/render/ 下的 today、review、editor、settings 与绑定模块。
 - 历史筛选/来源解释：src/features/history-filter.ts、record-trust.ts；视图与比较：view-scope.ts、review-comparison.ts。
-- 模板：template-manager.ts、template-packs.ts、template-linkage.ts；导入：import-preview.ts；排期：schedule-validate.ts 与既有统计/日期内核。
+- 模板：templates.ts、render/editor.ts、render/bind-editor.ts、template-packs.ts、template-linkage.ts；导入：import-preview.ts；排期：schedule-validate.ts 与既有统计/日期内核。未接线的 template-manager 原型已按 T-1623 退役，个人模板沿现行编辑器入口维护。
 - [外部联动总账](external-integrations-map.md)、[联动体验审查](settings-external-linkage-review-2026-09.md)、T-1508 及 D-290。
 
 ## 2. 用户目标与产品目标

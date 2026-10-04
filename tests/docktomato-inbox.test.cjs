@@ -14,7 +14,7 @@ new Function("require", "module", "exports", compiled)((id) => {
 
 const {
     completionClock, normalizeValidIsoTimestamp, normalizeInboxStore, serializeInboxStore,
-    upsertInboxEntry, removeInboxEntry, markInboxRetry, markInboxBlocked,
+    upsertInboxEntry, mergeInboxStores, removeInboxEntry, markInboxRetry, markInboxBlocked,
     inboxDueEntries, inboxNextWakeDelayMs, dockTomatoCompletionValue,
     DOCKTOMATO_INBOX_CAPACITY, INBOX_RETRY_DELAYS_MS, projectInboxEntries,
 } = moduleUnderTest.exports;
@@ -75,6 +75,16 @@ const entry = (overrides = {}) => ({
     const full = {schemaVersion: 1, items: Array.from({length: DOCKTOMATO_INBOX_CAPACITY}, (_, index) => entry({identity: `full-${index}`}))};
     assert.equal(upsertInboxEntry(full, entry({identity: "overflow"}), "t").outcome, "full");
     assert.equal(upsertInboxEntry(full, entry({identity: "full-0"}), "t").outcome, "merged", "existing identity still merges at capacity");
+
+    /* 跨窗口状态合并：同身份的重试次数不回退，阻塞态不被旧 pending 快照覆盖；远端新身份保留。 */
+    const mergedInbox = mergeInboxStores(
+        normalizeInboxStore([entry({identity: "retry", attempts: 1, nextAttemptAt: "2026-09-19T10:00:01.000Z", updatedAt: "2026-09-19T10:00:00.000Z"})]),
+        normalizeInboxStore([entry({identity: "retry", attempts: 3, state: "blocked", blockedReason: "skipped-day", nextAttemptAt: undefined, updatedAt: "2026-09-19T10:00:03.000Z"}), entry({identity: "remote-only"})]),
+    );
+    assert.equal(mergedInbox.items.length, 2, "remote-only inbox entries are preserved");
+    const mergedRetry = mergedInbox.items.find((item) => item.identity === "retry");
+    assert.equal(mergedRetry.attempts, 3, "retry attempts use the highest observed count");
+    assert.equal(mergedRetry.state, "blocked", "blocked state must not regress to pending");
 
     /* remove/mark。 */
     assert.equal(removeInboxEntry(base, "session-1").items.length, 0);

@@ -185,7 +185,7 @@ assert.match(components, /\.lc-checkin--occasions \.lc-checkin__occasion-form-pa
     "form rows must collapse to one column when the form panel is narrow");
 assert.match(components, /@container lc5 \(min-width: 900px\) \{\s*\.lc-checkin--occasions \.lc-checkin__occasion-manager \{\s*grid-template-columns: minmax\(260px, 320px\) minmax\(0, 1fr\);/,
     "the occasion form must own the remaining width (it is the work area)");
-assert.match(read("src", "render", "bind-occasions.ts"), /host\.occasionTemplatesOpen = \(event\.currentTarget as HTMLDetailsElement\)\.open;/,
+assert.match(read("src", "render", "bind-occasions.ts"), /writeState\(\{occasionTemplatesOpen: \(event\.currentTarget as HTMLDetailsElement\)\.open\}\);/,
     "the template fold state must survive re-renders");
 assert.match(read("src", "render", "occasions.ts"), /lc-checkin__occasion-row-meta/,
     "occasion rows must expose separate type, recurrence, date and countdown metadata");
@@ -264,15 +264,15 @@ assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-che
 assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-checkin--today \.lc-checkin__item-action :is\(\.lc-checkin__record-button, \.lc-checkin__quick-button\) \{ order: 3;/,
     "the check-in primary button must be the rightmost action");
 
-// T-112 页面滚动位置记忆：渲染前记录页面，重渲染后页面恢复
+// T-112/T-1621 页面滚动位置记忆：渲染前记录所属 root，重渲染后恢复该 root 页面
 const pluginSource = read("src", "index.ts");
-assert.match(pluginSource, /pageScrollTops = new WeakMap<HTMLElement, Map<string, number>>\(\)/,
-    "scroll memory must be per-surface and garbage-collected with it");
-assert.match(pluginSource, /tops\.set\(this\.renderedPages\.get\(root\) \?\? "today", previousScroller\.scrollTop\)/,
+assert.match(pluginSource, /const context: RootContext = \{[\s\S]*?page: this\.currentPage,[\s\S]*?scrollTops: \{\},[\s\S]*?todayQuery: this\.todayQuery,[\s\S]*?archivedQuery: this\.archivedQuery,/,
+    "each surface must create root-owned restoration and query state");
+assert.match(pluginSource, /context\.scrollTops\[context\.renderedPage \?\? "today"\] = previousScroller\.scrollTop/,
     "each surface must capture its own previously rendered page before restoring the destination page");
-assert.match(pluginSource, /tops\.set\("editor", 0\)/,
+assert.match(pluginSource, /this\.ensureRootContext\(surface\)\.scrollTops\.editor = 0/,
     "opening a new editor session must start at the title and template entry point");
-assert.match(pluginSource, /scroller\.scrollTop = this\.pageScrollTops\.get\(root\)\?\.get\(this\.currentPage\) \?\? 0/,
+assert.match(pluginSource, /scroller\.scrollTop = context\.scrollTops\[page\] \?\? 0/,
     "the post-render scroll position must be restored for the new page");
 
 // T-107 页面键盘流：j/k/e 导航（仅桌面端绑定）
@@ -286,11 +286,11 @@ const pluginOps = read("src", "plugin-ops.ts");
 assert.match(pluginOps, /root !== host\.quickDialogElement \|\| root\.dataset\.escCloseBound === "true"\) return;/,
     "the Esc close handler must bind once on the quick dialog surface only");
 
-// T-114 打卡后焦点复位：渲染后消费 pendingFocusItemId
-assert.match(pluginSource, /const focusItemId = this\.pendingFocusItemId;/,
-    "the pending focus item must be consumed after render");
-assert.match(read("src", "render", "bind-today.ts"), /host\.pendingFocusItemId = item\.id;/,
-    "record tap sites must queue the card for focus restore");
+// T-114/T-1621 打卡后焦点复位：渲染后消费所属 root 的 pendingFocusItemId
+assert.match(pluginSource, /const focusItemId = context\.pendingFocusItemId;/,
+    "the root-owned pending focus item must be consumed after render");
+assert.match(read("src", "render", "bind-today.ts"), /host\.setPendingFocusItem\(root, item\.id\);/,
+    "record tap sites must queue the card for focus restore on their own surface");
 
 // T-110 补记撤销条：撤销回滚已完成标记
 assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catchup-toast[\s\S]*setOccasionCompleted\(occasionId, date, false\)/,
@@ -299,8 +299,10 @@ assert.match(read("src", "render", "bind-page-navigation.ts"), /lc-checkin__catc
 /* —— T-1597 快速弹窗会话：页签保留（编辑降级）、编辑关闭先提示。 —— */
 const quickDialogT1597 = read("src", "render", "quick-dialog.ts");
 assert.match(quickDialogT1597, /QUICK_PRESERVED_PAGES/, "会话保留页集合在位（六页，编辑降级今日）");
-assert.match(quickDialogT1597, /rememberQuickPage\(host\.currentPage\)/, "关闭时记录当前页");
-assert.match(quickDialogT1597, /host\.currentPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"/, "重开时回放会话页签");
+assert.match(quickDialogT1597, /const page = root && host\.pageForRoot \? host\.pageForRoot\(root\) : host\.currentPage;/, "关闭时读取所属 root 的当前页");
+assert.match(quickDialogT1597, /rememberQuickPage\(page\)/, "关闭时记录当前页");
+assert.match(quickDialogT1597, /const nextPage = QUICK_PRESERVED_PAGES\.has\(lastQuickPage\) \? lastQuickPage : "today"/, "重开时回放会话页签");
+assert.match(quickDialogT1597, /host\.setPageForRoot\?\.\(nextPage, root\)/, "重开时把会话页写入弹窗所属 root");
 assert.match(quickDialogT1597, /msg.quickCloseEditingConfirm/, "编辑页关闭先经确认提示");
 assert.match(quickDialogT1597, /stopImmediatePropagation/, "捕获拦截 SiYuan 关闭按钮监听");
 for (const key of ["msg.quickCloseEditingConfirm"]) {

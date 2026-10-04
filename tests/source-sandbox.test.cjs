@@ -18,6 +18,7 @@ const transpileTo = (relative) => {
 };
 ["date-keys.ts", "features/note-anchor.ts", "features/yeguif-adapter.ts", "features/health-inbox.ts", "features/note-query.ts", "features/source-sandbox.ts"].forEach(transpileTo);
 const sandbox = require(path.join(dir, "features", "source-sandbox.js"));
+const {normalizeYeguifMappings} = require(path.join(dir, "features", "yeguif-adapter.js"));
 
 const TODAY = "2026-09-27";
 const items = [
@@ -42,6 +43,20 @@ const items = [
     assert.equal(outcome.lines[1].targetName, "阅读");
     assert.equal(outcome.lines[2].reasonKey, "today.sandbox.reason.unmapped");
     assert.equal(outcome.lines[3].state, "invalid");
+}
+
+{
+    const manyItems = Array.from({length: 275}, (_, index) => ({id: `target-${index}`, name: `Project ${index}`, kind: "duration", unit: "分钟"}));
+    const mappings = normalizeYeguifMappings(manyItems.map((item) => ({project: item.name, itemId: item.id})));
+    const outcome = sandbox.sandboxYeguifSample("09:00 Project 274：last target", mappings, manyItems);
+    assert.equal(outcome.matched, 1, "a mapping beyond fifty and target beyond two hundred remain visible to the production dry-run");
+    assert.equal(outcome.lines[0].targetName, "Project 274");
+    const invalidTargets = sandbox.sandboxYeguifSample("08:00 Wrong unit\n09:00 Archived\n10:00 Missing", [
+        {project: "Wrong unit", itemId: "water"}, {project: "Archived", itemId: "archived"}, {project: "Missing", itemId: "missing"},
+    ], [...items, {id: "archived", name: "Archived", kind: "duration", unit: "分钟", archived: true}]);
+    assert.equal(invalidTargets.matched, 0, "explicit mappings do not make ineligible or missing targets writable");
+    assert.equal(invalidTargets.unmatched, 3);
+    assert.ok(invalidTargets.lines.every((line) => line.reasonKey === "today.sandbox.reason.unmapped"));
 }
 
 /* —— 2. 健康试算：字段归属映射项目；单位随指标明示；未来日期拒绝。 —— */
@@ -97,7 +112,8 @@ assert.match(settingsSource, /sandboxBlock\("notequery", "today\.sandboxPlacehol
 assert.match(settingsSource, /data-sandbox-run=/, "dry-run buttons render");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private sourceSandboxOutcomes/, "host holds session-only outcomes");
-assert.match(indexSource, /runSourceSandbox\(source: SandboxSource, text: string\): void/, "host exposes the dry-run");
+assert.match(indexSource, /runSourceSandbox\(source: SandboxSource, text: string, root\?: HTMLElement\): void/, "host exposes the root-scoped dry-run");
+assert.match(indexSource, /this\.runSourceSandbox\(source, settings\.sourceSandboxTexts\[source\] \|\| "", root\)/, "settings sandbox writes and rerenders only its owning root");
 assert.ok(!/saveData\(.*sandbox/i.test(indexSource), "sandbox payloads are never persisted");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["today.sandboxTitle", "today.sandboxHint", "today.sandboxRun", "today.sandboxPlaceholder.yeguif", "today.sandboxPlaceholder.health", "today.sandboxPlaceholder.notequery", "today.sandbox.reason.invalid", "today.sandbox.reason.unmapped", "today.sandbox.reason.future", "today.sandbox.reason.unmatched", "today.sandboxSummary", "today.sandboxTruncated", "today.sandboxNote"]) {

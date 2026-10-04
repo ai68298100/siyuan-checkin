@@ -1,3 +1,5 @@
+export type PageId = "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
+
 export type CheckinKind = "binary" | "count" | "duration" | "quantity" | "custom";
 
 export type CheckinPriority = "low" | "medium" | "high";
@@ -164,3 +166,52 @@ export type SuggestionWorkflowIntegrationEvent = {
     suggestionId: string;
     suggestionStatus: "pending" | "confirmed" | "cancelled" | "failed";
 };
+
+export interface InsightsRootContext {
+    insightsItemId?: string;
+    insightsReturnPage: "today" | "review";
+    insightsRange: "28" | "84" | "365" | "custom";
+    insightsCustomRange?: {startDate: string; endDate: string};
+    insightsItemQuery: string;
+}
+
+export interface EditorRootContext {
+    editingId?: string;
+    editingFingerprint?: string;
+    editorReturnPage?: "today" | "review" | "insights";
+    appliedTemplateNote?: string;
+    /** T-1621：项目草案属于当前编辑器会话，不能由多个 surface 共享。 */
+    pendingProjectDraft?: import("./features/project-draft").ProjectDraft;
+    templateImportSession?: {fileName: string; decisions: import("./features/template-import").ImportDecision[]};
+    submitting: boolean;
+    draft?: {
+        controls: Array<{name: string; type: string; value: string; checked?: boolean}>;
+        openSections: boolean[];
+        focus?: {index: number; start: number | null; end: number | null};
+    };
+}
+
+export interface SettingsRootContext {
+    drafts: Map<string, string>;
+    savedBaselines: Map<string, string>;
+    openSourcePanels: Set<string>;
+    targetSummaries: Map<string, {name?: string; hpath?: string} | null>;
+    lastBindingCheckAt?: string;
+    sourceSandboxOutcomes: Partial<Record<import("./features/source-sandbox").SandboxSource, import("./features/source-sandbox").SandboxOutcome>>;
+    sourceSandboxTexts: Partial<Record<import("./features/source-sandbox").SandboxSource, string>>;
+    importConflictSession?: {
+        format: "loop-csv" | "obsidian-habits";
+        loopPlan?: import("./features/loop-csv").LoopImportPlan;
+        obsidianPlan?: import("./features/obsidian-habits").ObsidianImportPlan;
+        decisions: import("./features/import-conflicts").ImportConflictDecision[];
+    };
+}
+
+export interface TodayRootContext {
+    bulkMode: boolean;
+    bulkSelected: Set<string>;
+    expandedExactEntries: string[];
+    pendingAttachments: Map<string, string>;
+    quickEntryCancelled: Set<string>;
+    priorityReminderExpanded: boolean;
+}

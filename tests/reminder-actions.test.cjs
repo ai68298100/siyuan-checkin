@@ -43,6 +43,8 @@ assert.equal(apply([{id: "r1", action: "snooze", at: "2026-09-12T01:00:00.000Z"}
 assert.equal(apply([{id: "r3", action: "skip", at: `${today}T01:00:00.000Z`}])[2].status, "completed", "completed is terminal and cannot be overridden");
 assert.deepEqual(apply([{id: "zz", action: "skip", at: `${today}T01:00:00.000Z`}]).map((entry) => entry.status), ["today", "overdue", "completed"], "unknown ids are ignored");
 assert.equal(apply([{id: "r1", action: "skip", at: `${today}T01:00:00.000Z`}, {id: "r1", action: "snooze", at: `${today}T02:00:00.000Z`}])[0].status, "snoozed", "the latest action per id wins");
+assert.equal(apply([{id: "r1", action: "skip", at: `${today}T01:00:00.000Z`}, {id: "r1", action: "restore", at: `${today}T02:00:00.000Z`}])[0].status, "today", "restore removes stale actions at its timestamp");
+assert.equal(apply([{id: "r1", action: "restore", at: `${today}T01:00:00.000Z`}, {id: "r1", action: "skip", at: `${today}T02:00:00.000Z`}])[0].status, "skipped", "a later action remains effective after restore");
 
 /* —— 排序契约：已延期/已跳过不挤占待办；T-1219 起已完成不再进入「全部」待办视图 —— */
 const ranked = reminders.filterReminderEntries(apply([{id: "r1", action: "skip", at: `${today}T01:00:00.000Z`}, {id: "r2", action: "snooze", at: `${today}T01:00:00.000Z`}]), "all");

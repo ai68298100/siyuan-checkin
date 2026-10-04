@@ -90,8 +90,10 @@ assert.ok(!styles.includes("grid-template-columns: 34px minmax(0, 1fr);\n       
 assert.match(liveStyles, /Fifteenth narrow-surface pass: ultra-narrow 380px grid and history density[\s\S]*\.lc-checkin__history-event \.lc-checkin__text-button\[data-edit-history-event-id\]/,
     "ultra-narrow grid and history density belong to the component layer");
 assert.ok(!styles.includes(".lc-template-manager > header button { width: 100%; }"), "template compact rules must not return to legacy index.scss");
-assert.match(liveStyles, /Sixteenth narrow-surface pass: template manager compact mobile layout[\s\S]*\.lc-template-card__actions button \{ flex: 0 1 auto; \}/,
-    "template compact layout belongs to the component layer");
+assert.doesNotMatch(liveStyles, /\.lc-template-(?:manager|card|form)\b/,
+    "retired template prototype layout cannot return to the component layer");
+assert.match(liveStyles, /\.lc-checkin--editor \.lc-checkin__template \{ min-height: 64px; padding: 9px; \}/,
+    "live template controls retain their narrow-screen geometry");
 assert.ok(!styles.includes("@media (max-width: 380px) {\n    .lc-checkin {\n        padding-right: 12px"), "viewport fallback must not return to legacy index.scss");
 assert.match(liveStyles, /Seventeenth narrow-surface pass: viewport fallback and insight density[\s\S]*\.lc-checkin__empty-description/,
     "viewport fallback and insight density belong to the component layer");
@@ -133,10 +135,10 @@ assert.match(liveStyles, /\.lc-checkin__preview-card \{[\s\S]*\.lc-checkin__prev
 assert.ok(!styles.includes(".lc-checkin__history-event-actions {"), "history action layout must not return to legacy index.scss");
 assert.match(liveStyles, /\.lc-checkin__history-event-actions \{[\s\S]*\.lc-checkin__history-event-actions button/,
     "history action layout belongs to the component layer");
-assert.match(liveStyles, /\.lc-template-manager button \{ min-height: 32px; \}/,
-    "template manager controls retain a component-level touch baseline");
-assert.match(liveStyles, /\.lc-template-form input:focus-visible/,
-    "template form focus feedback remains in the component layer");
+assert.match(liveStyles, /\.lc-checkin__template \{[^}]*min-height:\s*58px/,
+    "live editor template controls retain a component-level touch baseline");
+assert.match(liveStyles, /\.lc-checkin button:focus-visible,[\s\S]*\.lc-checkin input:focus-visible,[\s\S]*outline: 2px solid var\(--lc-checkin-accent\)/,
+    "live template controls and editor fields retain focus feedback in the component layer");
 assert.match(liveStyles, /\.lc-checkin__item[\s\S]*box-shadow:\s*var\(--lc-checkin-shadow-sm\)/);
 /* 以下三条曾锁定 index.scss 里 @container lc-checkin 的死块（容器名被 tokens.scss 的 lc5 覆盖，从未生效）。
    现改锁 components.scss 中的现行活规则。 */

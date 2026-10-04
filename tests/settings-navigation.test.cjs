@@ -482,6 +482,10 @@ function assertActive(fixture, expectedId) {
         "../features/note-bindings": noteBindings,
         /* T-1576：页面壳头部构造点——此处断言不含头部，桩给最小形状即可。 */
         "./page-shell": {renderPageShellHead: () => "<header></header>"},
+        "./yeguif-mappings": loadTypeScriptModule("src/render/yeguif-mappings.ts", {
+            "../i18n": {t: key => key},
+            "../shared": {escapeHtml: String, matchesSearch: () => true},
+        }).exports,
     });
     const context = {
         store: {items: [], events: []},
@@ -727,7 +731,7 @@ for (const key of ["bind.lastCheck", "bind.disable", "bind.disableConfirm", "bin
 }
 assert.match(indexSourceT1553, /disableBindingFeature/, "停用映射（字段快照+undo 回滚）必须在位");
 assert.match(indexSourceT1553, /planSourceDisconnect\(feature\.source, this\.store\.events\)/, "停用摄取源沿用断连保留纪律");
-assert.match(indexSourceT1553, /this\.lastBindingCheckAt = new Date\(\)\.toISOString\(\)/, "检查完成必须回写会话时间");
+assert.match(indexSourceT1553, /settings\.lastBindingCheckAt = new Date\(\)\.toISOString\(\)/, "检查完成必须回写所属 root 会话时间");
 /* T-1560 读写范围与所有权：七个绑定点（含编辑器锚点）在选择器旁显式声明范围。 */
 for (const point of ["diary", "summary", "health", "yeguif", "notequery", "journal"]) {
     assert.match(settingsSourceT1442, new RegExp(`scopeLineRow\\("${point}"`), `${point} 绑定点必须声明读写范围`);

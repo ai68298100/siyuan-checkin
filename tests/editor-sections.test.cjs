@@ -102,7 +102,7 @@ try {
         assert.match(editor, /appliedTemplateNote\?/, "ctx 必须透传会话标示");
         assert.equal((bindEditor.match(/markTemplateApplied\((?:templateName\(template\)|template\.name)\)/g) || []).length, 2, "目录模板与我的模板两条应用路径都必须打标");
         assert.match(bindEditor, /host\.markTemplateApplied\?\./, "打标必须经宿主会话字段（不重渲染）");
-        assert.match(indexSource, /markTemplateApplied\(note: string\)/, "宿主实现在位");
+        assert.match(indexSource, /markTemplateApplied\(note: string, root\?: HTMLElement\)/, "宿主按表面记录模板状态");
         assert.match(indexSource, /this\.appliedTemplateNote = undefined;/, "项目落盘后清除标示（失败路径保留）");
         assert.ok((i18nSource.match(/"editor\.templateApplied"/g) || []).length >= 2, "editor.templateApplied 必须中英双语齐备");
     });

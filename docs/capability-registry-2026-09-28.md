@@ -136,7 +136,7 @@
 | 双结果提交 | index.ts:899-923：先 recordEvent 事实层（失败即中止不旁路 912-913）→ writeJournalEntry 842-860（SQL 幂等查重 846→updateBlock/appendBlock；返回 {ok,updated,docId,docName,reason}）；审计 channel:journal 917；结果 toast 919；失败保留答案+retryHint（journal-dialog.ts:279-282）；重填不重复记事实 910-911 | 已有内核；页内并列双结果+独立补写入口 → T-1588 新增 |
 | 模板构建器 | bindJournalBuilder（journal-dialog.ts:92-184，挂载 index.ts:3505-3509）：模板上限10/题上限20/排序/Ctrl+↑↓/撤销/预览；textarea 唯一保存边界（102-105），确认走 save-journal-custom；数据层 features/journal-templates.ts | 已有（分步化 → T-1589 需调整） |
 | 宿主能力 | 思源块 API（SQL/updateBlock/appendBlock）；写入失败不回滚打卡事实 | 已有 |
-| 证据 | journal-templates/journal-experience/template-manager 等模板系列 | 自动证据已有 |
+| 证据 | journal-templates/journal-experience 问卷系列；template-manager 测试现验收编辑器个人模板，不代表问卷构建器证据 | 自动证据已有；两类模板证据按实际入口区分 |
 | 缺口 | T-1587/1588/1589（见上）；提交前答案预览缺失 | 需调整 + 新增 |
 
 ## 9. 提醒中心 Reminder

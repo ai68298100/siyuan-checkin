@@ -325,7 +325,8 @@ try {
     const bindNavSource = fs.readFileSync(path.join(sourceRoot, "render", "bind-page-navigation.ts"), "utf8");
     assert.match(bindNavSource, /data-insight-records/, "查看记录绑定在位（带项目过滤直达记录区）");
     assert.match(bindNavSource, /data-insight-edit-rules/, "编辑规则绑定在位");
-    assert.match(bindNavSource, /host\.insightsReturnPage = "review"/, "跳记录保留洞察返回页会话态");
+    assert.match(bindNavSource, /writeInsightValue\("insightsReturnPage", "review"\)/, "跳记录按所属 root 保留洞察返回页会话态");
+    assert.doesNotMatch(bindNavSource, /host\.insightsReturnPage\s*=\s*"review"/, "跳记录不得写宿主共享洞察返回页");
     const i18nT1579 = fs.readFileSync(path.join(sourceRoot, "i18n.ts"), "utf8");
     for (const key of ["insights.viewRecords", "insights.editRules", "insights.denominatorNote", "insights.quotaWindowNote"]) {
         const count = i18nT1579.split(`"${key}"`).length - 1;

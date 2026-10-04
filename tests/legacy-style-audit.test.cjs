@@ -24,7 +24,8 @@ assert.doesNotMatch(legacy, /\.lc-checkin__section-heading\s*[,\{]/, "section he
 assert.doesNotMatch(legacy, /\.lc-checkin__form-scroll\s*>/, "editor panel foundations must stay retired from legacy layer");
 assert.doesNotMatch(legacy, /\.lc-checkin__mobile-nav\s*\{/, "mobile navigation foundations must stay retired from legacy layer");
 assert.doesNotMatch(legacy, /\.lc-template-manager\s*\{/, "template manager foundations must stay retired from legacy layer");
-assert.match(components, /\.lc-template-manager\s*\{[\s\S]*background:\s*var\(--lc-checkin-bg\)/, "template manager foundations must have a component-layer owner");
+assert.doesNotMatch(components, /\.lc-template-(?:manager|card|form)\b/, "retired template prototype selectors must not remain in the production styles");
+assert.match(components, /\.lc-checkin__template\s*\{[^}]*background:\s*var\(--lc-checkin-surface\)/, "live editor template controls must have a component-layer owner");
 assert.match(components, /\.lc-checkin__organize[\s\S]*background:\s*var\(--lc-checkin-muted-surface\)/, "organize foundations must have a component-layer owner");
 assert.match(tokens, /--lc-checkin-control-height:\s*36px/, "control geometry must have a token-layer owner");
 assert.doesNotMatch(plugin, /import "\.\/index\.scss"/, "retired legacy stylesheet must not remain in the production bundle");

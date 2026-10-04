@@ -83,6 +83,97 @@ const evidence = [];
             }, {workspace, trend});
             await settle();
         };
+        const compatibility = await page.evaluate(async () => {
+            const plugin = window.__plugin;
+            const primary = plugin.dockElement;
+            const secondary = document.createElement("div");
+            secondary.style.cssText = "width: 720px; height: 900px";
+            document.querySelector("#frame").appendChild(secondary);
+            plugin.tabElement = secondary;
+            plugin.setPageForRoot("review", secondary);
+            plugin.setReviewStateForRoot(primary, {reviewWorkspace: "overview"});
+            plugin.setReviewStateForRoot(secondary, {reviewWorkspace: "records"});
+            plugin.render(primary);
+            plugin.render(secondary);
+            const explicit = {
+                primary: primary.querySelector("[data-review-workspace-panel]").dataset.reviewWorkspacePanel,
+                secondary: secondary.querySelector("[data-review-workspace-panel]").dataset.reviewWorkspacePanel,
+            };
+            plugin.reviewWorkspace = "analysis";
+            plugin.render();
+            const legacyRender = {
+                primary: primary.querySelector("[data-review-workspace-panel]").dataset.reviewWorkspacePanel,
+                secondary: secondary.querySelector("[data-review-workspace-panel]").dataset.reviewWorkspacePanel,
+            };
+            plugin.setReviewStateForRoot(primary, {reviewWorkspace: "records", historyQuery: "喝水", historySource: "manual", historyMetering: "other", historyOrder: "oldest"});
+            plugin.setReviewStateForRoot(secondary, {reviewWorkspace: "records", historyQuery: "拉伸", historySource: "all", historyMetering: "all", historyOrder: "newest"});
+            plugin.render(primary);
+            plugin.render(secondary);
+            const readFilters = surface => Object.fromEntries(["search", "source", "metering", "order"].map(field => [field, surface.querySelector(`[data-history-${field}]`).value]));
+            const filtersBefore = {primary: readFilters(primary), secondary: readFilters(secondary)};
+            const search = primary.querySelector("[data-history-search]");
+            search.value = "饮水";
+            search.dispatchEvent(new Event("input", {bubbles: true}));
+            const order = secondary.querySelector("[data-history-order]");
+            order.value = "oldest";
+            order.dispatchEvent(new Event("change", {bubbles: true}));
+            await new Promise(resolve => setTimeout(resolve, 180));
+            plugin.render(primary);
+            plugin.render(secondary);
+            const filtersAfter = {primary: readFilters(primary), secondary: readFilters(secondary)};
+            const previousReview = plugin.reviewStateForRoot(primary);
+            const previousHistoryScope = {selectedHistoryDate: previousReview.selectedHistoryDate, historyMonth: new Date(previousReview.historyMonth), historyScope: previousReview.historyScope};
+            const targetDay = new Date();
+            targetDay.setDate(targetDay.getDate() - 120);
+            const selectedHistoryDate = `${targetDay.getFullYear()}-${String(targetDay.getMonth() + 1).padStart(2, "0")}-${String(targetDay.getDate()).padStart(2, "0")}`;
+            const batchState = {selectedHistoryDate, historyMonth: new Date(targetDay.getFullYear(), targetDay.getMonth(), 1), historyScope: "day", historyQuery: "", historySource: "all", historyMetering: "all"};
+            plugin.setReviewStateForRoot(primary, {...batchState, historyBatchSelected: new Set(["water"]), historyBatchValues: {water: "250"}, historyBatchPreviewOpen: true, reviewFoldSections: new Set(["trend"])});
+            plugin.setReviewStateForRoot(secondary, {...batchState, historyBatchSelected: new Set(), historyBatchValues: {}, historyBatchPreviewOpen: false, reviewFoldSections: new Set(["projects"])});
+            plugin.render(primary);
+            plugin.render(secondary);
+            const selected = secondary.querySelector('[data-history-batch-item="stretch"]');
+            selected.checked = true;
+            selected.dispatchEvent(new Event("change", {bubbles: true}));
+            secondary.querySelector('[data-history-batch-action="record"]').click();
+            const primaryValue = primary.querySelector('[data-batch-value="water"]');
+            primaryValue.value = "300";
+            primaryValue.dispatchEvent(new Event("input", {bubbles: true}));
+            const secondaryValue = secondary.querySelector('[data-batch-value="stretch"]');
+            secondaryValue.value = "5";
+            secondaryValue.dispatchEvent(new Event("input", {bubbles: true}));
+            plugin.render(primary);
+            plugin.render(secondary);
+            const readDrafts = surface => {
+                const review = plugin.reviewStateForRoot(surface);
+                return {selected: [...review.historyBatchSelected], values: {...review.historyBatchValues}, folds: [...review.reviewFoldSections]};
+            };
+            const draftIsolation = {primary: readDrafts(primary), secondary: readDrafts(secondary)};
+            plugin.setReviewStateForRoot(primary, {...previousHistoryScope, historyBatchSelected: new Set(), historyBatchValues: {}, historyBatchPreviewOpen: false});
+            plugin.setReviewStateForRoot(primary, {reviewWorkspace: "overview", historyQuery: "", historySource: "all", historyMetering: "all", historyOrder: "newest"});
+            plugin.showToday(secondary);
+            plugin.tabElement = undefined;
+            plugin.forgetSurfaceRoot(secondary);
+            secondary.remove();
+            plugin.setActiveRoot(primary);
+            return {explicit, legacyRender, filtersBefore, filtersAfter, draftIsolation, remaining: plugin.reviewStateForRoot(primary).reviewWorkspace};
+        });
+        assert.deepEqual(compatibility, {
+            explicit: {primary: "overview", secondary: "records"},
+            legacyRender: {primary: "overview", secondary: "analysis"},
+            filtersBefore: {
+                primary: {search: "喝水", source: "manual", metering: "other", order: "oldest"},
+                secondary: {search: "拉伸", source: "all", metering: "all", order: "newest"},
+            },
+            filtersAfter: {
+                primary: {search: "饮水", source: "manual", metering: "other", order: "oldest"},
+                secondary: {search: "拉伸", source: "all", metering: "all", order: "oldest"},
+            },
+            draftIsolation: {
+                primary: {selected: ["water"], values: {water: "300"}, folds: ["trend"]},
+                secondary: {selected: ["stretch"], values: {stretch: "5"}, folds: ["projects"]},
+            },
+            remaining: "overview",
+        }, "legacy review fields migrate to the active root without cross-root overwrite");
         const measure = label => page.evaluate(label => {
             const rect = element => element.getBoundingClientRect();
             const root = document.querySelector(".lc-checkin--review");

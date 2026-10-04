@@ -25,6 +25,7 @@ const occasionsBind = read("src", "render", "bind-occasions.ts");
 const navigation = read("src", "navigation.ts");
 const editorBind = read("src", "render", "bind-editor.ts");
 const pageShell = read("src", "render", "page-shell.ts");
+const occasionSession = read("src", "render", "occasion-session.ts");
 const occasions = read("src", "render", "occasions.ts");
 const review = read("src", "render", "review.ts");
 const indexSrc = read("src", "index.ts");
@@ -79,7 +80,7 @@ try {
         assert.match(pageShell, /lc-checkin__eyebrow/, "上下文行类名原名");
         assert.match(pageShell, /lc-checkin__title/, "标题类名原名");
         /* 返回路径分派统一走 SurfaceContext 读侧。 */
-        assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "通用返回分派走读侧");
+        assert.match(reviewBind, /const context = readSurfaceContext\(\{\.\.\.host, \.\.\.insightsState, currentPage: pageForRoot\(\)/, "通用返回分派读取目标表面上下文");
         assert.match(reviewBind, /context\.page === "insights" && context\.returnTo === "review"/, "insights 会话返回栈优先");
     });
 
@@ -100,7 +101,7 @@ try {
         assert.match(pageShell, /historyOrder !== "newest"/, "order 默认值不进上下文");
         assert.match(pageShell, /snapshot\.historyPage\) filters\.page/, "page 0 不进上下文");
         /* 既有消费方（返回分派）不受扩参影响。 */
-        assert.match(reviewBind, /const context = readSurfaceContext\(host\)/, "读侧仍是返回分派单一入口");
+        assert.match(reviewBind, /const context = readSurfaceContext\(\{\.\.\.host, \.\.\.insightsState, currentPage: pageForRoot\(\)/, "读侧仍是返回分派单一入口");
     });
 
     check("fixed DOM ids are uniquified per render for multi-root isolation (T-1621 slice)", () => {
@@ -111,9 +112,9 @@ try {
         assert.match(review, /aria-labelledby="\$\{reminderTitleId\}"[\s\S]*?id="\$\{reminderTitleId\}"/, "aria 关联与 id 同源");
         /* 事项提醒预设：datalist id 与 input[list] 同源变量。 */
         assert.doesNotMatch(occasions, /list="lc-occasion-remind-presets"/, "事项预设不再引用固定 datalist id");
-        assert.match(occasions, /let remindPresetsSequence = 0;/, "预设计数器在位");
-        assert.match(occasions, /list="lc-occasion-remind-presets-\$\{\+\+remindPresetsSequence\}"/, "input[list] 按次序生成");
-        assert.match(occasions, /datalist id="lc-occasion-remind-presets-\$\{remindPresetsSequence\}"/, "datalist id 与 list 同源");
+        assert.match(occasions, /const presetId = `lc-occasion-remind-presets-\$\{renderId\}`;/, "预设 id 绑定 root 实例");
+        assert.match(occasions, /list="\$\{presetId\}"/, "input[list] 使用 root 实例 id");
+        assert.match(occasions, /datalist id="\$\{presetId\}"/, "datalist id 与 list 同源");
     });
 
     check("visible copy goes through t() at the audit-named sites (T-1623)", () => {
@@ -211,10 +212,11 @@ try {
 
     check("keyboard and screen-reader baseline paths stay wired (T-1606)", () => {
         /* j/k/方向键页面级导航：可见卡片过滤 + 主操作聚焦 + 输入聚焦守卫（today-bindings bindPageKeyboardFor）。 */
-        assert.match(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "j/k 仅今日页生效");
+        assert.match(todayBindings, /const pageForRoot = \(\) => host\.pageForRoot \? host\.pageForRoot\(root\) : host\.currentPage;/, "键盘导航按所属 root 判断今日页");
+        assert.doesNotMatch(todayBindings, /if \(host\.currentPage !== "today"\) return;/, "键盘导航不得读取宿主共享页面");
         assert.match(todayBindings, /target\?\.matches\("input, textarea, select, \[contenteditable='true'\]"\)/, "输入聚焦时 j/k 不劫持");
         assert.match(todayBindings, /\.lc-checkin__item\[data-item-id\]/, "j/k 在可见卡片间移动");
-        assert.match(todayBindings, /visiblePrimaryAction\(cards\[next\], host\.bulkMode\) \?\? cards\[next\]\)\.focus\(\)/, "j/k 聚焦主操作按钮");
+        assert.match(todayBindings, /visiblePrimaryAction\(cards\[next\], today\.bulkMode\) \?\? cards\[next\]\)\.focus\(\)/, "j/k 聚焦主操作按钮");
         /* 上下文菜单：Escape 收口并归还触发器焦点；菜单内方向键/Home/End/Tab 全路径。 */
         assert.match(todayBindings, /event\.key === "Escape" && root\.querySelector\("\.lc-checkin__item-context-menu"\)/, "Escape 关闭上下文菜单");
         assert.match(todayBindings, /if \(restoreFocus && trigger\?\.isConnected\) trigger\.focus\(\)/, "菜单收口归还触发器焦点");
@@ -234,10 +236,34 @@ try {
         assert.match(reviewBind, /host\.showEditor\(item, "insights", root\)/, "洞察编辑规则 CTA 携带返回页与表面上下文");
         assert.match(indexSrc, /private rootContexts = new Map<HTMLElement, RootContext>/, "宿主按 root 保存页面上下文");
         assert.match(indexSrc, /const page = this\.pageForRoot\(root\)/, "渲染按 root 读取当前页");
+        assert.match(pageShell, /scrollTops: Partial<Record<PageId, number>>/, "RootContext 持有 root 级滚动槽");
+        assert.match(pageShell, /today\?: TodayRootContext/, "RootContext 持有 Today 会话态");
+        assert.match(indexSrc, /public todayStateForRoot\(root: HTMLElement\): TodayRootContext/, "Today 会话态按 root 暴露");
+        assert.match(todayBind, /host\.todayStateForRoot\?\.\(root\)/, "今日绑定器从所属 root 读取精确录入与附件会话");
+        assert.match(todayBind, /quickEntryCancelled = todayState\?\.quickEntryCancelled/, "快速录入取消令牌按 root 保存");
+        assert.match(todayBind, /setPriorityReminderExpanded/, "优先提醒展开态按 root 保存");
+        assert.match(todayBindings, /todayBulkStateFor\(host, root\)/, "批量与键盘绑定器从所属 root 读取批量会话");
+        assert.match(todayBindings, /host\.render\(root\)/, "Today 批量动作只重绘所属 root");
+        assert.match(todayBindings, /host\.showEditor\(item, undefined, root\)/, "Today 键盘/上下文编辑入口携带 root");
+        assert.match(todayBindings, /host\.showInsights\(item, root\)/, "Today 上下文洞察入口携带 root");
+        assert.doesNotMatch(todayBind, /host\.insightsReturnPage\s*=/, "Today 洞察入口不得写宿主共享返回页");
+        assert.doesNotMatch(reviewBind, /host\.insightsReturnPage\s*=\s*"review"/, "洞察记录入口不得写宿主共享返回页");
+        assert.match(indexSrc, /this\.showInsights\(item, root\)/, "局部 Today 刷新后的洞察入口保留所属 root");
+        assert.match(indexSrc, /context\.renderedPage/, "渲染页标记归 root context");
+        assert.match(indexSrc, /public setPendingFocusItem\(root: HTMLElement, itemId: string\)/, "焦点恢复登记要求显式 root");
+        assert.doesNotMatch(todayBind, /host\.pendingFocusItemId\s*=/, "今日绑定器不得再写全局焦点字段");
+        assert.match(todayBind, /host\.setPendingFocusItem\(root, item\.id\)/, "今日记录动作写入所属 root");
         assert.match(navigation, /host\.setPageForRoot\(page, root\)/, "导航按 root 写入当前页");
         assert.match(navigation, /host\.render\(root\)/, "导航只重绘目标 root");
         assert.match(todayBind, /host\.showInsights\(item, root\)/, "今日页洞察入口携带 root");
         assert.match(reviewBind, /host\.showReview\(root\)/, "回顾页返回入口携带 root");
+        assert.match(indexSrc, /public isSurfaceRoot\(root: HTMLElement, page\?: PageId\)/, "root 生命周期检查入口在位");
+        assert.match(indexSrc, /this\.rootContexts\.clear\(\);[\s\S]{0,140}this\.activeRoot = undefined;/, "重载清理旧 root 会话");
+        assert.match(indexSrc, /if \(this\.rootContexts\.get\(root\)\?\.page === "review"\) this\.cancelReviewSummary\(root\)/, "关闭 root 取消回顾异步请求");
+        assert.match(indexSrc, /if \(!this\.rootContexts\.has\(root\)\) return;/, "关闭 root 拒绝重新渲染");
+        assert.match(occasionSession, /host\.isSurfaceRoot && !host\.isSurfaceRoot\(root, "occasions"\)/, "事项异步回调不重新注册关闭 root");
+        assert.match(indexSrc, /openReviewRecordsForSource\(source: string, root\?: HTMLElement\)/, "设置来源跳转携带 root");
+        assert.match(indexSrc, /this\.showReview\(root\)/, "设置来源跳转只作用于所属 root");
         for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {
             assert.match(navigation, new RegExp(`export function ${fn}`), `导航单一路径 ${fn} 在 navigation.ts`);
         }

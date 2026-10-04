@@ -47,9 +47,16 @@ export interface OccasionOverride {
     date: string;
 }
 
+export interface OccasionTombstone {
+    occasionId: string;
+    deletedAt: string;
+}
+
 export interface OccasionStore {
     version: 1;
     occasions: Occasion[];
+    /** T-1622：删除身份跨窗口保留，防止旧窗口写回复活事项。 */
+    tombstones?: OccasionTombstone[];
 }
 
 export type OccasionStatus = "today" | "upcoming";
@@ -216,7 +223,10 @@ export function createDefaultOccasionStore(): OccasionStore {
 export function normalizeOccasionStore(value: unknown): OccasionStore {
     const source = value && typeof value === "object" ? value as Partial<OccasionStore> : {};
     const raw = Array.isArray(source.occasions) ? source.occasions : [];
-    return {version: OCCASIONS_STORE_VERSION, occasions: raw.map(normalizeOccasion).filter((item): item is Occasion => Boolean(item))};
+    const tombstones = normalizeOccasionTombstones(source.tombstones);
+    const deletedIds = new Set(tombstones.map((tombstone) => tombstone.occasionId));
+    const occasions = raw.map(normalizeOccasion).filter((item): item is Occasion => Boolean(item)).filter((item) => !deletedIds.has(item.id));
+    return {version: OCCASIONS_STORE_VERSION, occasions, ...(tombstones.length ? {tombstones} : {})};
 }
 
 const RECURRENCES = new Set<OccasionRecurrence>(["once", "annual", "monthly", "weekly", "quarterly", "halfyearly", "interval"]);
@@ -510,6 +520,7 @@ export function setOccasionOverride(store: OccasionStore, id: string, originalDa
             else delete next.overrides;
             return next;
         }),
+        ...(store.tombstones?.length ? {tombstones: store.tombstones} : {}),
     };
 }
 
@@ -524,37 +535,71 @@ export function markOccasionCompleted(store: OccasionStore, id: string, occurren
         changed = nextDates.join("|") !== item.completedDates.join("|");
         return changed ? {...item, completedDates: nextDates, updatedAt: new Date().toISOString()} : item;
     });
-    return changed ? {version: OCCASIONS_STORE_VERSION, occasions} : store;
+    return changed ? {version: OCCASIONS_STORE_VERSION, occasions, ...(store.tombstones?.length ? {tombstones: store.tombstones} : {})} : store;
 }
 
 export function upsertOccasion(store: OccasionStore, occasion: Occasion): OccasionStore {
+    if (store.tombstones?.some((tombstone) => tombstone.occasionId === occasion.id)) return store;
     const exists = store.occasions.some((item) => item.id === occasion.id);
     const occasions = exists
         ? store.occasions.map((item) => item.id === occasion.id ? occasion : item)
         : [...store.occasions, occasion];
-    return {version: OCCASIONS_STORE_VERSION, occasions};
+    return {version: OCCASIONS_STORE_VERSION, occasions, ...(store.tombstones?.length ? {tombstones: store.tombstones} : {})};
 }
 
 export function deleteOccasion(store: OccasionStore, id: string): OccasionStore {
-    return {version: OCCASIONS_STORE_VERSION, occasions: store.occasions.filter((item) => item.id !== id)};
+    if (!store.occasions.some((item) => item.id === id)) return store;
+    const tombstones = mergeOccasionTombstones(store.tombstones || [], [{occasionId: id, deletedAt: new Date().toISOString()}]);
+    return {version: OCCASIONS_STORE_VERSION, occasions: store.occasions.filter((item) => item.id !== id), tombstones};
 }
 
-/* T-1622 跨窗口合并：按事项 id 取双方 completedDates 并集（排序去重，沿用 120 上限）。
-    只合并共享 id——不采用远端独有事项（无时间戳可区分「他窗新建」与「本窗已删除」，
-    避免复活删除）；本地独有事项原样保留。确定性输出，无时钟。 */
+/* T-1622 跨窗口合并：按事项 id 取双方 completedDates 并集（排序去重，沿用 120 上限），
+    并集删除墓碑；墓碑优先于任何旧窗口事项，防止删除后旧快照写回复活。
+    远端独有事项在没有本地墓碑时可安全采用；旧窗口删除会随新格式写入墓碑。
+    本地独有事项原样保留。确定性输出，无时钟。 */
 export function mergeOccasionCompletions(local: OccasionStore, remote: OccasionStore): OccasionStore {
     const remoteById = new Map(remote.occasions.map((item) => [item.id, item]));
-    let changed = false;
-    const occasions = local.occasions.map((item) => {
+    const tombstones = mergeOccasionTombstones(local.tombstones || [], remote.tombstones || []);
+    const deletedIds = new Set(tombstones.map((tombstone) => tombstone.occasionId));
+    let changed = tombstones.length !== (local.tombstones || []).length
+        || tombstones.some((tombstone, index) => tombstone.occasionId !== local.tombstones?.[index]?.occasionId || tombstone.deletedAt !== local.tombstones?.[index]?.deletedAt);
+    const occasions = local.occasions.flatMap((item) => {
+        if (deletedIds.has(item.id)) {
+            changed = true;
+            return [];
+        }
         const counterpart = remoteById.get(item.id);
-        if (!counterpart) return item;
+        if (!counterpart) return [item];
         const dates = new Set([...item.completedDates, ...counterpart.completedDates]);
         const nextDates = [...dates].sort().slice(-120);
-        if (nextDates.join("|") === item.completedDates.join("|")) return item;
+        if (nextDates.join("|") === item.completedDates.join("|")) return [item];
         changed = true;
-        return {...item, completedDates: nextDates};
+        return [{...item, completedDates: nextDates}];
     });
-    return changed ? {version: local.version, occasions} : local;
+    for (const [id, item] of remoteById) {
+        if (deletedIds.has(id) || local.occasions.some((candidate) => candidate.id === id)) continue;
+        occasions.push(item);
+        changed = true;
+    }
+    return changed ? {version: local.version, occasions, ...(tombstones.length ? {tombstones} : {})} : local;
+}
+
+function normalizeOccasionTombstones(value: unknown): OccasionTombstone[] {
+    if (!Array.isArray(value)) return [];
+    const byId = new Map<string, OccasionTombstone>();
+    value.forEach((candidate) => {
+        if (!candidate || typeof candidate !== "object") return;
+        const entry = candidate as Partial<OccasionTombstone>;
+        if (typeof entry.occasionId !== "string" || !entry.occasionId.trim() || typeof entry.deletedAt !== "string" || Number.isNaN(Date.parse(entry.deletedAt))) return;
+        const tombstone = {occasionId: entry.occasionId.trim().slice(0, 200), deletedAt: new Date(entry.deletedAt).toISOString()};
+        const existing = byId.get(tombstone.occasionId);
+        if (!existing || tombstone.deletedAt > existing.deletedAt) byId.set(tombstone.occasionId, tombstone);
+    });
+    return [...byId.values()].sort((left, right) => left.occasionId.localeCompare(right.occasionId) || left.deletedAt.localeCompare(right.deletedAt)).slice(-240);
+}
+
+function mergeOccasionTombstones(local: readonly OccasionTombstone[], remote: readonly OccasionTombstone[]): OccasionTombstone[] {
+    return normalizeOccasionTombstones([...local, ...remote]);
 }
 
 export function isValidOccasionDate(value: string): boolean {

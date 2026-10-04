@@ -45,8 +45,8 @@ assert.match(index, /private async deleteItemsWithRecords[\s\S]*?currentItems\.l
 assert.match(index, /showMessage\(t\("msg\.itemDeleted"[\s\S]*?currentPage === "today"[\s\S]*?renderBackgroundUpdate/, "Today context deletion refreshes the removed card immediately");
 assert.match(source, /menu\.dataset\.actionBusy === "true"/, "context-menu actions ignore duplicate clicks");
 assert.match(source, /querySelectorAll<HTMLElement>\("\[data-bulk-check\]"\)[\s\S]*?syncBulkSelection\(\)/, "select-all is scoped to rendered filtered results");
-assert.match(source, /const renderedIds = new Set[\s\S]*?host\.bulkSelected\.delete\(id\)/, "filter rerenders prune selections outside the rendered result set");
-assert.doesNotMatch(source, /host\.bulkSelected\.add\(item\.id\);[\s\S]{0,80}host\.render\(\)/, "selection changes must not force a full surface render");
+assert.match(source, /const renderedIds = new Set[\s\S]*?today\.bulkSelected\.delete\(id\)/, "filter rerenders prune selections outside the rendered result set");
+assert.doesNotMatch(source, /today\.bulkSelected\.add\(item\.id\);[\s\S]{0,80}host\.render\(\)/, "selection changes must not force a full surface render");
 assert.match(fragments, /data-bulk-toolbar/, "bulk toolbar exposes a coordination boundary");
 assert.match(fragments, /data-bulk-selected-count role="status" aria-live="polite"/, "selection count is announced without rerendering");
 assert.match(fragments, /data-bulk-selection-action[\s\S]*?disabled/, "empty selection disables destructive bulk actions");

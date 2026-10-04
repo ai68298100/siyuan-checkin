@@ -22,7 +22,10 @@ function fixture() {
     const root = {search, querySelector: selector => selector === "[data-today-search]" ? root.search : null,
         querySelectorAll: selector => selector === "[data-action='clear-search']" ? [clear] : []};
     const host = {todayQuery: "", quickEntryCancelled: new Set(), currentPage: "today", renders: 0,
-        render() { this.renders++; }, focusTodaySearch(cursor) { this.cursor = cursor; }};
+        pageForRoot(target) { this.pageRoot = target; return this.currentPage; },
+        setTodayQueryForRoot(target, value) { this.queryRoot = target; this.todayQuery = value; },
+        render(target) { this.renders++; this.renderRoot = target; },
+        focusTodaySearch(cursor, target) { this.cursor = cursor; this.focusRoot = target; }};
     for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav"]) host[name] = () => {};
     exportsObject.bindTodayHandlers(root, host);
     return {root, search, clear, host};
@@ -43,6 +46,7 @@ f.search.value = "喝shui"; f.search.fire("input", {isComposing: true}); flush()
 assert.equal(f.host.renders, 0, "consecutive Chinese syllables keep the same input node");
 f.search.value = "喝水"; f.search.fire("compositionend"); flush();
 assert.equal(f.host.todayQuery, "喝水"); assert.equal(f.host.renders, 1); assert.equal(f.host.cursor, 2);
+assert.equal(f.host.renderRoot, f.root); assert.equal(f.host.focusRoot, f.root); assert.equal(f.host.queryRoot, f.root);
 for (const invalidate of [
     f => { f.search.isConnected = false; }, f => { f.root.search = element(); },
     f => { f.host.currentPage = "settings"; }, f => { f.host.disposing = true; },

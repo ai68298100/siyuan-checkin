@@ -20,7 +20,7 @@ assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "r
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "accepted"\)/);
 assert.match(source, /assessment\.requiresReview/);
 assert.match(source, /saveData\(AUDIT_STORAGE_NAME, this\.auditEntries\)/);
-assert.match(source, /private async persistAuditBestEffort\(\): Promise<void>/);
+assert.match(source, /private async persistAuditBestEffort\(mergeRemote = true\): Promise<void>/);
 assert.doesNotMatch(source, /void this\.saveData\(AUDIT_STORAGE_NAME/);
 assert.ok((source.match(/appendStoreAudit\(this\.auditEntries/g) || []).length >= 4,
     "every audit write path must use the normalized append helper");

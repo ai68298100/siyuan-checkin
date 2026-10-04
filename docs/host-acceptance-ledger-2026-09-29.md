@@ -145,6 +145,12 @@ tab×mobile = 无效组合（思源移动端无自定义页签，插件不注册
 
 **既有分层机制核实（覆盖测量面）**：模板批次 24（TEMPLATE_BATCH_SIZE）、回顾分页 50/页、洞察懒加载、设置分类导航、今日折叠组、renderRafId 合并（scheduleRender 路径）——极端数据量下架构仍然流畅，无需新增分段/懒渲染。
 
-**固化守门**：kernel-regression 新增渲染层性能块（today-200/review-10k/multi-root-10k 真实 boot 双帧口径，上限 250ms——灾难回归防线而非精确断言；冷启动实测 19~67ms）。
+**固化守门**：kernel-regression 新增渲染层性能块（today-200/review-10k/multi-root-10k 真实 boot；每次样本等待双帧确认 DOM 提交，三次中位数只断言 `render()` 同步耗时 <250ms，双帧总耗时记录为诊断值——灾难回归防线而非精确断言；冷启动实测 19~67ms）。
 
-**测量方法论**：①计时点必须在 await 等待之前（首轮把 setTimeout(30) 计入样本=30ms 底噪假象）；②render() 走 RAF 合并时需双帧等待再取值（renderRafId 路径同步返回不含真实工作）；③「空 boot 后换 store」与「boot 时给定 store」内部状态不同——性能夹具用后者（前者触发 computeStreaks 状态缺口）；④头less 环境 RAF 立即回调，测得值≈同步 render 耗时。
+**10k Today P2 门禁**：`tests/performance.test.cjs` 先预热一次，再取双帧间隔后的三次同步 `render()` 中位数，且最大单个 long-task 均须 `<150ms`，并保留 3 秒总上限、横向溢出和页面错误断言。未改动的 `HEAD 9cd512c` 基线中位数约 99ms、本轮约 94ms；旧单次冷样本 `<50ms`/零 long-task 门禁在基线也失败，不能作为 T-1621 回归证据。
+
+**T-1621 第三切片查询隔离**：`RootContext` 在 root 注册时复制既有 Today/Archived 查询作为独立种子；Today 搜索、Archived 搜索、洞察归档预填、清除动作只写目标 root，渲染与搜索框焦点也只回到目标 root。跨表面守门覆盖查询字段、root 渲染参数、局部 page guard 与 root focus 选择器；宿主查询字段仅作为无 root/持久化兼容镜像，Review 查询/筛选仍留在后续全量恢复范围。
+
+**T-1621 第四切片 Review 核心状态隔离**：`RootContext.review` 收纳 `historyMonth`、`selectedHistoryDate`、`summaryRange`/`summaryCustomRange`、`reviewWorkspace`、`historyItemId`、`historyScope`、`historyPage`、`reviewProjectPage`；Review 渲染、日期跳转、月份翻页、工作区/条目/分页动作均读取或写入触发事件所属 root，宿主字段只作为最后活跃 root 的兼容镜像。跨表面 12.2 守门覆盖接口字段、root 初始化、兼容同步、目标 root 渲染、绑定器读写和月份动作传参；Review 查询/来源/计量/排序、折叠/批量、异步摘要与完整序列化明确留待后续切片。
+
+**测量方法论**：①计时点必须在 await 等待之前（首轮把 setTimeout(30) 计入样本=30ms 底噪假象）；②render() 走 RAF 合并时需双帧等待再取值（renderRafId 路径同步返回不含真实工作）；③「空 boot 后换 store」与「boot 时给定 store」内部状态不同——性能夹具用后者（前者触发 computeStreaks 状态缺口）；④headless 环境 RAF 立即回调，但完整宿主链仍可能有调度抖动，因此直调同步 `render()` 的耗时用于断言，双帧总耗时只作诊断。

@@ -25,4 +25,14 @@ for (const name of files) {
     });
 }
 assert.deepEqual(offenders, [], `render 层存在写死中文的用户可见属性:\n${offenders.join("\n")}`);
+require("./i18n-call-audit-fixtures.cjs");
+const {auditProject} = require("./i18n-call-audit.cjs");
+const callAudit = auditProject(path.join(__dirname, ".."));
+console.log(`i18n call audit: ${callAudit.statistics.calls} direct calls, ${callAudit.statistics.complete} fully checked, ${callAudit.statistics.boundaries} explicit boundaries.`);
+const boundaryReasons = {};
+callAudit.boundaries.forEach((boundary) => boundary.reasons.forEach((reason) => {
+    boundaryReasons[reason] = (boundaryReasons[reason] || 0) + 1;
+}));
+console.log(`i18n call audit boundaries: ${JSON.stringify(boundaryReasons)}; inspect with node tests/i18n-call-audit.cjs --json.`);
+assert.equal(callAudit.issues.length, 0, `i18n 调用点键或参数不匹配:\n${callAudit.issues.map((issue) => `${issue.location} ${issue.locale} ${issue.key} ${issue.code}: ${issue.names.join(", ")}`).join("\n")}`);
 console.log(`i18n hygiene checks passed across ${files.length} render modules.`);

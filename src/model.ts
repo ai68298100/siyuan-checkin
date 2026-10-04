@@ -12,6 +12,12 @@ export const STORE_VERSION = 3 as const;
 export const STORE_SNAPSHOT_FORMAT = "siyuan-checkin-snapshot" as const;
 export const STORE_SNAPSHOT_HISTORY_FORMAT = "siyuan-checkin-snapshot-history" as const;
 
+export function normalizeAttachmentDataUrl(value: unknown): string | undefined {
+    if (typeof value !== "string" || value.length > 700000) return undefined;
+    const match = /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/]+={0,2})$/i.exec(value);
+    return match && match[1].length % 4 === 0 ? value : undefined;
+}
+
 export interface StoreSnapshotEnvelope {
     format: typeof STORE_SNAPSHOT_FORMAT;
     version: 1;
@@ -129,6 +135,19 @@ export function serializeStoreAudit(entries: readonly StoreAuditEntry[], generat
 
 export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: StoreAuditEntry, limit = 50): StoreAuditEntry[] {
     return normalizeStoreAudit([...entries, entry], limit);
+}
+
+/** 审计是追加型旁路：跨窗口取身份并集，避免一方的诊断写回覆盖另一方。 */
+export function mergeStoreAudits(local: readonly StoreAuditEntry[], remote: readonly StoreAuditEntry[], limit = 50): StoreAuditEntry[] {
+    const seen = new Set<string>();
+    const merged: StoreAuditEntry[] = [];
+    for (const entry of [...local, ...remote]) {
+        const key = JSON.stringify([entry.type, entry.at, entry.details]);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(entry);
+    }
+    return normalizeStoreAudit(merged, limit);
 }
 
 const normalizedStoreFingerprints = new WeakMap<CheckinStore, string>();
@@ -1014,7 +1033,7 @@ function normalizeEvent(value: unknown): CheckinEvent | undefined {
         source,
         note: typeof value.note === "string" ? value.note : undefined,
         externalRef: typeof value.externalRef === "string" ? value.externalRef : undefined,
-        attachment: typeof value.attachment === "string" && value.attachment.startsWith("data:image/") && value.attachment.length <= 700000 ? value.attachment : undefined,
+        attachment: normalizeAttachmentDataUrl(value.attachment),
         /* D-216：kind 只接受精确词表，缺省不物化（checkin 语义由 isSkipEvent 统一判定）。 */
         kind: value.kind === "skip" || value.kind === "checkin" ? value.kind : undefined,
     };

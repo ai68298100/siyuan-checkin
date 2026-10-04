@@ -127,7 +127,7 @@ assert.match(index, /isWorkflowNewer/);
 assert.match(index, /agent\.confirmedNotice/);
 assert.match(index, /agent\.cancelledNotice/);
 assert.match(index, /agent\.undoAccepted/);
-assert.match(index, /title: current\.envelope\.title/);
+assert.match(index, /title: outcome\.current\.envelope\.title/);
 assert.match(index, /getSuggestionWorkflowSummary/);
 assert.match(index, /suggestion-workflow-updated/);
 const integration = fs.readFileSync('src/integrations.ts', 'utf8');

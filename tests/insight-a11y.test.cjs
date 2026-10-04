@@ -23,9 +23,9 @@ assert.match(source, /data-insight-edit-rules="\$\{escapeHtml\(item\.id\)\}">\$\
 assert.match(i18n, /"insights\.dayJumpHint": "点击查看当日记录"/);
 assert.match(i18n, /"insights\.coachingEvidence": "查看证据"/);
 /* T-1590：范围切换/可搜索选择器/归档动作。 */
-assert.match(source, /data-insight-range="\$\{range\}" aria-pressed="\$\{this\.insightsRange === range\}"/, "range tabs must bind the session range with aria-pressed");
-assert.match(source, /data-insight-range-start value="\$\{escapeHtml\(this\.insightsCustomRange\?\.startDate \|\| ""\)\}"/, "custom range inputs carry the session values");
-assert.match(source, /data-insight-item-search value="\$\{escapeHtml\(this\.insightsItemQuery\)\}"/, "item search keeps the session query");
+assert.match(source, /data-insight-range="\$\{range\}" aria-pressed="\$\{insights\.insightsRange === range\}"/, "range tabs must bind the root session range with aria-pressed");
+assert.match(source, /data-insight-range-start value="\$\{escapeHtml\(insights\.insightsCustomRange\?\.startDate \|\| ""\)\}"/, "custom range inputs carry the root session values");
+assert.match(source, /data-insight-item-search value="\$\{escapeHtml\(insights\.insightsItemQuery\)\}"/, "item search keeps the root session query");
 assert.match(source, /entry\.archived \? escapeHtml\(archivedSuffix\)/, "archived items must be labelled in the picker");
 assert.match(source, /data-insight-archived="\$\{escapeHtml\(item\.id\)\}"/, "archived items must offer the archive-page jump");
 const insightsCore = fs.readFileSync("src/features/insights.ts", "utf8");
@@ -33,7 +33,7 @@ assert.match(insightsCore, /const customEnd = typeof options\.endDate === "strin
 assert.match(insightsCore, /endDate\?: string;/, "the option must be declared");
 const nav = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
 assert.match(nav, /insightSearchComposing/, "item search must guard IME composition");
-assert.match(nav, /host\.archivedQuery = item\.name;\s*\n\s*host\.showArchived\(\);/, "archived jump must prefill the archive search");
+assert.match(nav, /writeArchivedQuery\(item\.name\);\s*\n\s*host\.showArchived\(root\);/, "archived jump must prefill the archive search");
 assert.match(nav, /value > dateKey\(currentCalendarDate\(\)\)/, "custom range must reject future dates");
 
 // Execute the production renderer with a report containing empty and scheduled
@@ -70,7 +70,7 @@ const report = {
     weeklyTrend: [{label: "empty week", startDate: "2026-08-31", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", startDate: "2026-09-07", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
     days: [], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
-const View = new Function("getActiveItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", `${compiled}; return InsightView;`)(
+const View = new Function("getItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", `${compiled}; return InsightView;`)(
     (store, id) => store.items.find(item => item.id === id), () => report, () => new Map(), () => [], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t, renderPageShellHead,
 );
 const view = new View();

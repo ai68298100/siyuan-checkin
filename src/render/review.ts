@@ -1,7 +1,7 @@
 /* 回顾页视图：从 index.ts 外置；依赖以 ReviewViewContext 显式传入。 */
 import {t, getPluginLocale} from "../i18n";
 import {dateKey, getEventDateKey, getEventsInDateRange, getEventsForDate, getItemRevisionForDate, isSkipEvent, getItemById, isComplete, isItemAvailableOnDate, isScheduledToday} from "../model";
-import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup} from "../shared";
+import {calendarDateFromKey, escapeHtml, formatHistoryDate, formatNumber, renderRecordNote, renderIconMarkup, safeAttachmentUrl} from "../shared";
 import {filterHistoryRecords, type HistorySortOrder, type HistoryChannelFilter, type HistoryMeteringFilter} from "../features/history-filter";
 import {buildCustomSummaryContext, buildSummaryContext, type SummaryRange, type ItemSummary, type SummaryContext} from "../analytics";
 import {buildReviewComparison, getPreviousReviewRange} from "../features/review-comparison";
@@ -259,7 +259,8 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const time = ctx.historyScope === "day" ? clock : `${recordedDate} ${clock}`;
         const note = event.note ? `<small class="lc-checkin__history-event-note">${renderRecordNote(event.note)}</small>` : "";
         const noteEditor = ctx.editingHistoryNoteId === event.id ? `<textarea class="lc-checkin__history-note-editor" data-history-note-input="${escapeHtml(event.id)}" rows="2">${escapeHtml(event.note || "")}</textarea><button class="lc-checkin__text-button" type="button" data-save-history-note-id="${escapeHtml(event.id)}">${t("review.saveNote")}</button>` : "";
-        const photoThumb = event.attachment ? `<img class="lc-checkin__history-thumb" src="${escapeHtml(event.attachment)}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
+        const attachmentUrl = safeAttachmentUrl(event.attachment);
+        const photoThumb = attachmentUrl ? `<img class="lc-checkin__history-thumb" src="${attachmentUrl}" alt="${t("review.logPhotoAlt")}" loading="lazy" />` : "";
         const sourceLabel = t(`source.${event.source}`) || event.source;
         /* T-1490 信任层：自动完成显示来源徽标+命中原因（只读投影，派生不了不显示）；
            撤销沿用行内既有 data-history-event-id 通道（removeEvents 自动写墓碑）。 */
@@ -509,18 +510,18 @@ export function renderReviewView(ctx: ReviewViewContext): string {
         const dueLabel = formatHistoryDate(entry.dueDate);
         const timing = entry.status === "completed" ? t("review.remindersCompleted")
             : entry.status === "overdue" ? t("review.remindersOverdue")
-            : entry.status === "snoozed" ? `${t("review.remindersSnoozed")} · ${dueLabel}`
-            : entry.status === "skipped" ? `${t("review.remindersSkipped")} · ${dueLabel}`
+            : entry.status === "snoozed" ? t("review.remindersSnoozed")
+            : entry.status === "skipped" ? t("review.remindersSkipped")
             : entry.daysUntil === 0 ? t("review.remindersToday") : t("review.remindersUpcoming", {n: entry.daysUntil});
         const source = entry.source === "checkin" ? t("review.remindersCheckin") : t("review.remindersOccasion");
         const count = (entry.occurrenceCount ?? 1) > 1 ? ` · ${t("review.reminderTimes", {n: entry.occurrenceCount ?? 1})}` : "";
-        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong>${escapeHtml(entry.title)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(timing)}${count}</span>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}${reminderActionButtons(entry)}</article>`;
+        return `<article class="lc-checkin__reminder-row is-${entry.status}" data-reminder-id="${escapeHtml(entry.id)}"><div class="lc-checkin__reminder-content"><span class="lc-checkin__reminder-source">${escapeHtml(source)}</span><strong title="${escapeHtml(entry.title)}">${escapeHtml(entry.title)}</strong>${entry.note ? `<small>${escapeHtml(entry.note)}</small>` : ""}</div><span class="lc-checkin__reminder-timing"><time datetime="${escapeHtml(entry.dueDate)}">${escapeHtml(dueLabel)}</time><span>${escapeHtml(timing)}${count}</span></span>${reminderActionButtons(entry)}</article>`;
     }).join("") : `<div class="lc-checkin__empty-description">${t("review.remindersEmpty")}</div>`;
     /* 逾期历史：过去发生、从未补记的日期（T-100 投影），可一键补记。 */
     const overdueHistory = (ctx.reminderFilter === "all" || ctx.reminderFilter === "overdue" ? projectOverdueOccurrenceHistory(ctx.occasionStore, asOf) : []).slice(0, 12);
     /* 逾期历史折叠（T-117）：默认只展示前 4 条，其余折叠进「展开全部」。 */
     const OVERDUE_VISIBLE = 4;
-    const overdueRow = (entry: {occasionId: string; occurrenceDate: string; name: string; overdueDays: number}) => `<article class="lc-checkin__reminder-row is-overdue" data-overdue-occasion="${escapeHtml(entry.occasionId)}" data-overdue-date="${escapeHtml(entry.occurrenceDate)}"><span class="lc-checkin__reminder-source">${escapeHtml(t("review.remindersOccasion"))}</span><strong>${escapeHtml(entry.name)}</strong><span class="lc-checkin__reminder-timing">${escapeHtml(entry.occurrenceDate)} · ${t("review.overdueDays", {n: entry.overdueDays})}</span><button class="lc-checkin__small-button" type="button" data-occasion-complete data-occasion-id="${escapeHtml(entry.occasionId)}" data-occasion-date="${escapeHtml(entry.occurrenceDate)}" aria-label="${t("review.catchUpAria", {name: entry.name, date: entry.occurrenceDate})}">${t("review.catchUp")}</button></article>`;
+    const overdueRow = (entry: {occasionId: string; occurrenceDate: string; name: string; overdueDays: number}) => `<article class="lc-checkin__reminder-row is-overdue" data-overdue-occasion="${escapeHtml(entry.occasionId)}" data-overdue-date="${escapeHtml(entry.occurrenceDate)}"><div class="lc-checkin__reminder-content"><span class="lc-checkin__reminder-source">${escapeHtml(t("review.remindersOccasion"))}</span><strong title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</strong></div><span class="lc-checkin__reminder-timing">${escapeHtml(entry.occurrenceDate)} · ${t("review.overdueDays", {n: entry.overdueDays})}</span><button class="lc-checkin__reminder-action" type="button" data-occasion-complete data-occasion-id="${escapeHtml(entry.occasionId)}" data-occasion-date="${escapeHtml(entry.occurrenceDate)}" aria-label="${escapeHtml(t("review.catchUpAria", {name: entry.name, date: entry.occurrenceDate}))}">${t("review.catchUp")}</button></article>`;
     const overdueVisibleRows = overdueHistory.slice(0, OVERDUE_VISIBLE).map(overdueRow).join("");
     const overdueMoreRows = overdueHistory.slice(OVERDUE_VISIBLE).map(overdueRow).join("");
     const overdueHistorySection = overdueHistory.length ? `<div class="lc-checkin__overdue-history"><h3>${t("review.overdueHistory")} · ${overdueHistory.length}</h3>${overdueVisibleRows}${overdueMoreRows ? `<div data-overdue-more hidden>${overdueMoreRows}</div><button class="lc-checkin__text-button" type="button" data-overdue-expand>${t("review.expandAll", {n: overdueHistory.length})}</button>` : ""}</div>` : "";

@@ -15,6 +15,7 @@ import {currentCalendarDate, captureActionMoment} from "./shared";
 import {toggleQuickDialogFullscreenFor, type QuickDialogHost} from "./render/quick-dialog";
 import {showMessage} from "siyuan";
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
+import type {ReviewRootContext} from "./render/page-shell";
 import {serializeDockTomatoDiagnostics, type DockTomatoProviderDiagnostics} from "./dock-tomato";
 
 export interface PluginOpsHost {
@@ -33,22 +34,24 @@ export interface PluginOpsHost {
     quickDialogFullscreen: boolean;
     historyMonth: Date;
     selectedHistoryDate: string;
+    reviewStateForRoot?(root: HTMLElement): ReviewRootContext;
+    setReviewStateForRoot?(root: HTMLElement, patch: Partial<ReviewRootContext>): void;
     syncNoticeTimer?: number;
     lastExportAt?: string;
     summaryRequestId: number;
     summaryText?: string;
     readyResolver?: (ready: boolean) => void;
-    render(): void;
+    render(root?: HTMLElement): void;
     renderInto(root: HTMLElement): void;
     renderBackgroundUpdate(): void;
     closeQuickDialog(): void;
-    showToday(): void;
-    showReview(): void;
-    showInsights(item?: CheckinItem): void;
-    showArchived(): void;
-    showOccasions(): void;
-    showSettings(): void;
-    showEditor(item?: CheckinItem): void;
+    showToday(root?: HTMLElement): void;
+    showReview(root?: HTMLElement): void;
+    showInsights(item?: CheckinItem, root?: HTMLElement): void;
+    showArchived(root?: HTMLElement): void;
+    showOccasions(root?: HTMLElement): void;
+    showSettings(root?: HTMLElement): void;
+    showEditor(item?: CheckinItem, returnTo?: "insights", root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
     cloneStore(store?: CheckinStore): CheckinStore;
     itemFingerprint(item: CheckinItem): string;
@@ -106,30 +109,37 @@ export function bindDialogCloseFor(host: PluginOpsHost, root: HTMLElement): void
 export function bindMobileNavFor(host: PluginOpsHost, root: HTMLElement): void {
     root.querySelectorAll<HTMLElement>("[data-mobile-nav]").forEach((button) => button.addEventListener("click", () => {
         const page = button.dataset.mobileNav;
-        if (page === "today") host.showToday();
-        else if (page === "review" || page === "history" || page === "summary") host.showReview();
-        else if (page === "insights") host.showInsights();
-        else if (page === "archived") host.showArchived();
-        else if (page === "occasions") host.showOccasions();
-        else if (page === "settings") host.showSettings();
-        else if (page === "add") host.showEditor();
+        if (page === "today") host.showToday(root);
+        else if (page === "review" || page === "history" || page === "summary") host.showReview(root);
+        else if (page === "insights") host.showInsights(undefined, root);
+        else if (page === "archived") host.showArchived(root);
+        else if (page === "occasions") host.showOccasions(root);
+        else if (page === "settings") host.showSettings(root);
+        else if (page === "add") host.showEditor(undefined, undefined, root);
     }));
 }
 
-export function changeHistoryMonthFor(host: PluginOpsHost, offset: number): void {
+export function changeHistoryMonthFor(host: PluginOpsHost, offset: number, root?: HTMLElement): void {
     if (!Number.isInteger(offset) || !offset) {
         return;
     }
-    const candidate = new Date(host.historyMonth.getFullYear(), host.historyMonth.getMonth() + offset, 1);
+    const review = root ? host.reviewStateForRoot?.(root) : undefined;
+    const historyMonth = review?.historyMonth ?? host.historyMonth;
+    const candidate = new Date(historyMonth.getFullYear(), historyMonth.getMonth() + offset, 1);
     const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     if (candidate > currentMonth) {
         return;
     }
-    host.historyMonth = candidate;
     const prefix = `${candidate.getFullYear()}-${String(candidate.getMonth() + 1).padStart(2, "0")}-`;
     const latestRecordedDay = host.store.events.map(getEventDateKey).filter((key) => key.startsWith(prefix)).sort().reverse()[0];
-    host.selectedHistoryDate = candidate.getTime() === currentMonth.getTime() ? dateKey(new Date()) : latestRecordedDay || dateKey(candidate);
-    host.render();
+    const selectedHistoryDate = candidate.getTime() === currentMonth.getTime() ? dateKey(new Date()) : latestRecordedDay || dateKey(candidate);
+    if (root && review && host.setReviewStateForRoot) {
+        host.setReviewStateForRoot(root, {historyMonth: candidate, selectedHistoryDate});
+    } else {
+        host.historyMonth = candidate;
+        host.selectedHistoryDate = selectedHistoryDate;
+    }
+    host.render(root);
 }
 
 export async function restoreItemFor(host: PluginOpsHost, itemId: string): Promise<void> {
@@ -159,7 +169,7 @@ export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", s
     const content = format === "json" ? serializeJson(cloned) : serializeCsv(cloned);
     const audit = auditExportSensitiveFields(cloned);
     if (hasSensitiveContent(audit)) {
-        showMessage(t("msg.exportSensitiveAudit", {notes: audit.notes, attachments: audit.attachments, avatar: audit.avatarImages}), 3200);
+        showMessage(t("msg.exportSensitiveAudit", {notes: audit.notes, attachments: audit.attachments}), 3200);
     }
     void saveGeneratedFile({fileName: `siyuan-checkin-${dateKey(new Date())}.${format}`, content, mime: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
 }
@@ -212,9 +222,9 @@ export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDia
     void saveGeneratedFile({fileName: `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`, content: serializeDockTomatoDiagnostics(provider), mime: "application/json;charset=utf-8"});
 }
 
-export function focusTodaySearchFor(host: PluginOpsHost, selection?: number): void {
+export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement): void {
     window.setTimeout(() => {
-        const roots = [host.dockElement, host.tabElement, host.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
+        const roots = root ? [root] : [host.dockElement, host.tabElement, host.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
         const input = roots.map((element) => element.querySelector<HTMLInputElement>("[data-today-search]")).find((candidate): candidate is HTMLInputElement => Boolean(candidate));
         input?.focus();
         if (selection !== undefined) input?.setSelectionRange(selection, selection);

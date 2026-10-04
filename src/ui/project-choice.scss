@@ -1,0 +1,3 @@
+.lc-checkin__project-choice { display: grid; gap: 4px; min-width: 0; width: min(100%, 300px); max-width: 100%; }
+.lc-checkin__project-choice :is(input[type="search"], select) { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 44px; }
+.lc-checkin__project-choice small { color: var(--lc-checkin-muted); overflow-wrap: anywhere; }

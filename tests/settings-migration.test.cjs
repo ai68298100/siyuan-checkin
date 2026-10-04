@@ -89,7 +89,9 @@ try {
         assert.match(settings, /data-settings-overview/, "T-1562 总览块保留");
         assert.match(navigation, /searchSessionState/, "T-1563 搜索会话机制保留");
         assert.match(settings, /sourcePanelOpen\(/, "来源面板展开态机制保留");
-        assert.match(indexSource, /settingsOpenSourcePanels/, "展开态会话随重渲染恢复");
+        assert.match(indexSource, /settings\.openSourcePanels\.clear\(\)/, "展开态捕获写入设置 root 会话");
+        assert.match(indexSource, /this\.settingsStateForRoot\(root\)\.openSourcePanels/, "展开态恢复读取设置 root 会话");
+        assert.doesNotMatch(indexSource, /settingsOpenSourcePanels/, "展开态不再由独立 WeakMap 持有");
     });
 
     check("storage keys unchanged: one view-preferences bucket plus the eight named buckets", () => {

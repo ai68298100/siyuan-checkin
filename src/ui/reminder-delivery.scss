@@ -1,0 +1,71 @@
+.lc-checkin__daily-reminder-notice {
+    position: fixed;
+    z-index: 210;
+    inset: auto 16px 24px auto;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    width: min(420px, calc(100vw - 32px));
+    height: auto;
+    min-height: 0;
+    max-height: min(420px, calc(100dvh - 48px));
+    margin: 0;
+    padding: 14px;
+    overflow: auto;
+    box-sizing: border-box;
+    border: 1px solid var(--lc-checkin-border-strong);
+    border-radius: var(--lc-checkin-radius);
+    background: var(--lc-checkin-surface);
+    color: var(--lc-checkin-text);
+    box-shadow: var(--lc-checkin-shadow);
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.lc-checkin__daily-reminder-notice > p {
+    margin: 0;
+    font-size: 11px;
+    color: var(--lc-checkin-muted);
+}
+
+.lc-checkin__daily-reminder-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.lc-checkin__daily-reminder-notice .lc-checkin__daily-reminder-actions > .lc-checkin__text-button {
+    min-width: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 6px 10px;
+    font: inherit;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.lc-checkin__daily-reminder-notice button:focus-visible {
+    outline: 2px solid var(--lc-checkin-focus);
+    outline-offset: 2px;
+}
+
+.lc-checkin__daily-reminder-notice [data-daily-reminder-error] {
+    color: var(--lc-checkin-danger-text);
+}
+
+.lc-checkin__reminder-announcer {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+    .lc-checkin__daily-reminder-notice {
+        inset: auto 16px 76px 16px;
+        max-height: calc(100dvh - 100px);
+    }
+}

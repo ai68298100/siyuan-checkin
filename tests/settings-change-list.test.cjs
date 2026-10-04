@@ -52,10 +52,10 @@ const changeList = load("features/settings-change-list.ts");
 /* —— 3. 宿主与渲染接线。 —— */
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private settingsSavedBaselines = new Map<string, string>\(\)/, "host captures saved baselines");
-assert.match(indexSource, /this\.settingsSavedBaselines\.set\(attribute, saved\)/, "baseline captured before the draft is re-applied");
-assert.match(indexSource, /settingsChangeSections: this\.buildSettingsChangeSections\(\)/, "settings ctx carries the change list");
-assert.match(indexSource, /private revertSettingDraft\(attribute: string\): void/, "single revert drops the draft");
-assert.match(indexSource, /private revertSettingSection\(sectionId: string\): void/, "section revert drops all drafts of the section");
+assert.match(indexSource, /settingsSavedBaselines\.set\(attribute, saved\)/, "root baseline captured before the draft is re-applied");
+assert.match(indexSource, /settingsChangeSections: this\.buildSettingsChangeSections\(root\)/, "settings ctx carries the root-local change list");
+assert.match(indexSource, /private revertSettingDraft\(attribute: string, root\?: HTMLElement\): void/, "single root revert drops the draft");
+assert.match(indexSource, /private revertSettingSection\(sectionId: string, root\?: HTMLElement\): void/, "single root section revert drops all drafts");
 assert.match(indexSource, /set\.changeRevertConfirm/, "single revert asks for confirmation");
 assert.match(indexSource, /set\.changeSectionConfirm/, "section revert asks for confirmation");
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");

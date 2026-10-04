@@ -197,9 +197,10 @@ const makeStore = () => ({
             await page.close();
         }
 
-        /* —— ③ 渲染层性能守门（T-1607）：中等规模双帧口径上限 250ms（灾难回归防线，
-            非精确性能断言；2026-09-29 实测基线 2~14ms，见 host 台账 §12）。口径=
-            真实 boot 后 render() 同步执行+双帧提交。 —— */
+        /* —— ③ 渲染层性能守门（T-1607）：中等规模同步渲染上限 250ms（灾难回归防线，
+            非精确性能断言；按台账用预热后的三次中位数抵抗帧调度抖动）。每次样本仍等待
+            双帧确认 DOM 已提交，但断言只看 render() 同步耗时，双帧总耗时作为诊断值，
+            避免把宿主 RAF 调度抖动误判为插件渲染回归。 —— */
         {
             const now = new Date();
             const perfTargets = [
@@ -225,20 +226,30 @@ const makeStore = () => ({
             for (const target of perfTargets) {
                 const page = await browser.newPage({viewport: {width: 1280, height: 900}});
                 await bootInto(page, {"checkin-store": JSON.parse(JSON.stringify(target.store))});
-                const ms = await page.evaluate((navigate) => {
+                const measurement = await page.evaluate(async (navigate) => {
                     const plugin = window.__plugin;
                     plugin.currentPage = navigate;
-                    const start = performance.now();
                     plugin.render();
-                    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(Math.round(performance.now() - start)))));
+                    const waitForTwoFrames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                    await waitForTwoFrames();
+                    const samples = [];
+                    for (let index = 0; index < 3; index++) {
+                        const start = performance.now();
+                        plugin.render();
+                        const renderMs = Math.round(performance.now() - start);
+                        await waitForTwoFrames();
+                        samples.push({renderMs, frameMs: Math.round(performance.now() - start)});
+                    }
+                    samples.sort((left, right) => left.renderMs - right.renderMs);
+                    return {renderMs: samples[1].renderMs, samples};
                 }, target.navigate);
-                perf.push({label: target.label, ms});
+                perf.push({label: target.label, ...measurement});
                 await page.close();
             }
             for (const entry of perf) {
-                assert.ok(entry.ms < 250, `render ${entry.label} must stay under 250ms (T-1607 baseline 2~14ms): took ${entry.ms}ms`);
+                assert.ok(entry.renderMs < 250, `render ${entry.label} must stay under 250ms (T-1607 baseline 2~14ms): took ${entry.renderMs}ms`);
             }
-            console.log(`render perf: ${perf.map((entry) => `${entry.label}=${entry.ms}ms`).join(", ")}`);
+            console.log(`render perf: ${perf.map((entry) => `${entry.label}=${entry.renderMs}ms [${entry.samples.map((sample) => `${sample.renderMs}/${sample.frameMs}`).join("/")}]`).join(", ")}`);
         }
 
         await browser.close();

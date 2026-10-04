@@ -21,7 +21,7 @@ assert.match(source, /data-history-event-id/);
 assert.match(source, /getEventById\(host\.store, eventId\)/);
 assert.match(source, /data-history-date="\$\{key\}"/);
 assert.match(source, /future \? "disabled"/);
-assert.match(source, /host\.showEditor\(\)/);
+assert.match(source, /host\.showEditor\(undefined, undefined, root\)/);
 assert.match(source, /host\.saveForm\(data, editingId/);
 assert.match(source, /expectedFingerprint/);
 console.log("Recording and history editing structure checks passed.");
@@ -63,13 +63,13 @@ const model = loadTs(path.join(root, "model.ts"));
 const {bindTodayHandlers} = loadTs(path.join(root, "render", "bind-today.ts"));
 const pluginSource = ts.createSourceFile("index.ts", fs.readFileSync(path.join(root, "index.ts"), "utf8"), ts.ScriptTarget.Latest, true);
 const pluginClass = pluginSource.statements.find(node => ts.isClassDeclaration(node));
-const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem", "recordHistoryBatch"].includes(node.name?.getText(pluginSource))).map(node => node.getText(pluginSource)).join("\n");
+const methods = pluginClass.members.filter(node => ["recordEvent", "toggleItem", "recordHistoryBatch", "recordHistoryBatchEntries", "batchBackfillSnapshots"].includes(node.name?.getText(pluginSource))).map(node => node.getText(pluginSource)).join("\n");
 const hostClassOutput = ts.transpileModule(`class RecordingHost { ${methods} }`, {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
 /* R-18.5：recordEvent 现引用 computeStreaksValue（model-helpers）与 STREAK_MILESTONES
    （index 模块常量）——本桩以常量提供，结构测试不断言连击/里程碑值。 */
-const environment = {...model, ...shared, isValidLocalDateInput: value => /^2026-09-(?:1[0-9]|20)$/.test(value), computeStreaksValue: () => new Map(), STREAK_MILESTONES: [], t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
+const environment = {...model, ...shared, ...loadTs(path.join(root, "features", "batch-backfill.ts")), isValidLocalDateInput: value => /^2026-09-(?:1[0-9]|20)$/.test(value), computeStreaksValue: () => new Map(), STREAK_MILESTONES: [], t: key => key, showMessage: value => messages.push(value), document: {activeElement: null}};
 const RecordingHost = new Function(...Object.keys(environment), `${hostClassOutput}\nreturn RecordingHost;`)(...Object.values(environment));
 
 function fixture(kind = "binary", direction) {
@@ -93,6 +93,10 @@ function fixture(kind = "binary", direction) {
     host.pendingAttachments = new Map([["habit", "data:image/png;base64,proof"]]);
     host.occasionStore = {occasions: []};
     host.revisionFingerprint = () => "revision";
+    host.setPendingFocusItem = (surface, itemId) => {
+        assert.equal(surface, rootNode, "recording focus must belong to the originating surface");
+        host.pendingFocusItemId = itemId;
+    };
     host.expandedExactEntries = [];
     const queue = [];
     host.enqueueMutation = operation => { queue.push(operation); return Promise.resolve(); };
@@ -218,5 +222,41 @@ function fixture(kind = "binary", direction) {
     const beforeBatchFailure = batchFailure.host.store;
     assert.equal(await batchFailure.host.recordHistoryBatch("2026-09-19", ["a"], "skip"), 0);
     assert.equal(batchFailure.host.store, beforeBatchFailure, "failed historical batch restores the entire store");
+    const roots = fixture();
+    roots.host.store = model.normalizeStore({version: 3, items: [
+        {...roots.host.store.items[0], id: "a"}, {...roots.host.store.items[0], id: "b"},
+    ], events: []});
+    const primary = {}, secondary = {};
+    const primaryReview = {selectedHistoryDate: "2026-09-19", historyBatchSelected: new Set(["a"]), historyBatchValues: {a: "1"}, historyBatchPreviewOpen: true};
+    const secondaryReview = {selectedHistoryDate: "2026-09-18", historyBatchSelected: new Set(["b"]), historyBatchValues: {b: "2"}, historyBatchPreviewOpen: true};
+    roots.host.rootContexts = new Map([[primary, {review: primaryReview}], [secondary, {review: secondaryReview}]]);
+    roots.host.reviewStateForRoot = surface => roots.host.rootContexts.get(surface).review;
+    roots.host.setReviewStateForRoot = (surface, patch) => Object.assign(roots.host.reviewStateForRoot(surface), patch);
+    roots.host.historyBatchSelected = secondaryReview.historyBatchSelected;
+    roots.host.historyBatchValues = secondaryReview.historyBatchValues;
+    let releaseBatch;
+    const delayedBatch = new Promise(resolve => { releaseBatch = resolve; });
+    roots.host.enqueueMutation = async operation => { await delayedBatch; return operation(); };
+    const pendingBatch = roots.host.recordHistoryBatchEntries("2026-09-19", [{itemId: "a", value: 1}], primary);
+    releaseBatch();
+    assert.equal(await pendingBatch, 1);
+    assert.equal(primaryReview.historyBatchSelected.size, 0);
+    assert.equal(primaryReview.historyBatchPreviewOpen, false);
+    assert.deepEqual([...secondaryReview.historyBatchSelected], ["b"], "saving one root's historical batch must preserve another root's selection");
+    assert.deepEqual(secondaryReview.historyBatchValues, {b: "2"});
+    assert.equal(secondaryReview.historyBatchPreviewOpen, true);
+    primaryReview.historyBatchSelected = new Set(["b"]);
+    primaryReview.historyBatchValues = {b: "1"};
+    primaryReview.historyBatchPreviewOpen = true;
+    let releaseNewDraft;
+    const newerDraftBatch = new Promise(resolve => { releaseNewDraft = resolve; });
+    roots.host.enqueueMutation = async operation => { await newerDraftBatch; return operation(); };
+    const pendingNewDraft = roots.host.recordHistoryBatchEntries("2026-09-19", [{itemId: "b", value: 1}], primary);
+    primaryReview.historyBatchValues = {b: "3"};
+    releaseNewDraft();
+    assert.equal(await pendingNewDraft, 1);
+    assert.deepEqual(primaryReview.historyBatchValues, {b: "3"}, "an older asynchronous completion must retain newer root-local input");
+    assert.deepEqual([...primaryReview.historyBatchSelected], ["b"]);
+    assert.equal(primaryReview.historyBatchPreviewOpen, true);
     console.log("Today recording bindings passed: regular/at-most binary inner, outer and icon actions; notes/photos; queued idempotency; snapshot undo; conflict and persistence protection.");
 })().catch(error => { console.error(error); process.exitCode = 1; });

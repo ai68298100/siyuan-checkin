@@ -10,3 +10,4 @@ package.zip
 siyuan-checkin-v*.zip
 .workbuddy/
 .zcodeignore
+output/

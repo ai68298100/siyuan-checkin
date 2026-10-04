@@ -1,8 +1,7 @@
 /* 页面导航（surface 切换）：从 index.ts 外置（T-022）。 */
 import {t} from "./i18n";
 import {openTab, showMessage} from "siyuan";
-import type {CheckinItem, CheckinStore} from "./types";
-import type {PageId} from "./render/page-shell";
+import type {CheckinItem, CheckinStore, PageId, EditorRootContext, InsightsRootContext} from "./types";
 
 export interface NavigationHost {
     store: CheckinStore;
@@ -11,6 +10,7 @@ export interface NavigationHost {
     disposing: boolean;
     tabOpenPromise?: Promise<void>;
     tabInstance?: {close: () => void};
+    tabElement?: HTMLElement;
     app?: unknown;
     currentPage: "today" | "editor" | "review" | "archived" | "insights" | "occasions" | "settings";
     editingId?: string;
@@ -21,6 +21,7 @@ export interface NavigationHost {
     editorReturnPage?: "today" | "review" | "insights";
     summaryRequestId: number;
     summaryRefreshing?: boolean;
+    cancelReviewSummary?(root?: HTMLElement): void;
     getTabId(): string;
     itemFingerprint(item: CheckinItem): string;
     persistViewPreferences(): Promise<void>;
@@ -28,6 +29,19 @@ export interface NavigationHost {
     render(root?: HTMLElement): void;
     setPageForRoot?(page: PageId, root?: HTMLElement): void;
     pageForRoot?(root: HTMLElement): PageId;
+    insightsStateForRoot?(root: HTMLElement): InsightsRootContext;
+    setInsightsStateForRoot?(root: HTMLElement | undefined, patch: Partial<InsightsRootContext>): void;
+    editorStateForRoot?(root: HTMLElement): EditorRootContext;
+    setEditorStateForRoot?(root: HTMLElement | undefined, patch: Partial<EditorRootContext>, replace?: boolean): void;
+}
+
+function setEditor(host: NavigationHost, root: HTMLElement | undefined, patch: Partial<EditorRootContext>, replace = false): void {
+    if (host.setEditorStateForRoot) host.setEditorStateForRoot(root, patch, replace);
+    else Object.assign(host, patch);
+}
+
+function clearEditor(host: NavigationHost, root?: HTMLElement): void {
+    setEditor(host, root, {editingId: undefined, editingFingerprint: undefined, editorReturnPage: undefined, appliedTemplateNote: undefined, pendingProjectDraft: undefined, templateImportSession: undefined, submitting: false, draft: undefined}, true);
 }
 
 function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): void {
@@ -35,76 +49,81 @@ function setPage(host: NavigationHost, page: PageId, root?: HTMLElement): void {
     else host.currentPage = page;
 }
 
+function cancelSummary(host: NavigationHost, root?: HTMLElement): void {
+    if (host.cancelReviewSummary) host.cancelReviewSummary(root);
+    else {
+        host.summaryRequestId += 1;
+        host.summaryRefreshing = false;
+    }
+}
+
 export function showTodayFor(host: NavigationHost, root?: HTMLElement): void {
-    host.summaryRequestId += 1;
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     setPage(host, "today", root);
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
 export function showReviewFor(host: NavigationHost, root?: HTMLElement): void {
     setPage(host, "review", root);
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
 export function showArchivedFor(host: NavigationHost, root?: HTMLElement): void {
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     setPage(host, "archived", root);
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
 export function showOccasionsFor(host: NavigationHost, root?: HTMLElement): void {
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     setPage(host, "occasions", root);
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
 export function showSettingsFor(host: NavigationHost, root?: HTMLElement): void {
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     setPage(host, "settings", root);
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
 export function showEditorFor(host: NavigationHost, item?: CheckinItem, returnTo?: NavigationHost["editorReturnPage"], root?: HTMLElement): void {
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     setPage(host, "editor", root);
-    host.editingId = item?.id;
-    host.editingFingerprint = item ? host.itemFingerprint(item) : undefined;
     /* T-1599：单级返回栈——记录来源页（白名单校验，未知/未传回落 today），编辑器返回时回放。 */
-    host.editorReturnPage = returnTo === "review" || returnTo === "insights" ? returnTo : "today";
+    setEditor(host, root, {editingId: item?.id, editingFingerprint: item ? host.itemFingerprint(item) : undefined,
+        editorReturnPage: returnTo === "review" || returnTo === "insights" ? returnTo : "today", appliedTemplateNote: undefined, pendingProjectDraft: undefined, templateImportSession: undefined, submitting: false}, true);
     host.render(root);
 }
 
 /** T-1599：编辑器返回——回放 editorReturnPage（洞察入口回放同一项目），回放后清除。 */
 export function showEditorReturnFor(host: NavigationHost, root?: HTMLElement): void {
-    const returnPage = host.editorReturnPage ?? "today";
-    host.editorReturnPage = undefined;
+    const returnPage = (root && host.editorStateForRoot ? host.editorStateForRoot(root).editorReturnPage : host.editorReturnPage) ?? "today";
     if (returnPage === "insights") { showInsightsFor(host, undefined, root); return; }
     if (returnPage === "review") { showReviewFor(host, root); return; }
     showTodayFor(host, root);
 }
 
 export function showInsightsFor(host: NavigationHost, item?: CheckinItem, root?: HTMLElement): void {
-    const candidate = item || host.store.items.find((entry) => entry.id === host.insightsItemId && !entry.archived) || host.store.items.find((entry) => !entry.archived);
+    const insights = root ? host.insightsStateForRoot?.(root) : undefined;
+    const candidate = item || host.store.items.find((entry) => entry.id === (insights ? insights.insightsItemId : host.insightsItemId)) || host.store.items.find((entry) => !entry.archived);
     if (!candidate) return;
-    host.summaryRefreshing = false;
+    cancelSummary(host, root);
     const currentPage = root && host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
-    host.insightsReturnPage = currentPage === "review" ? "review" : "today";
+    const returnPage = currentPage === "review" ? "review"
+        : currentPage === "editor" || currentPage === "insights" ? insights?.insightsReturnPage ?? host.insightsReturnPage : "today";
+    if (host.setInsightsStateForRoot) host.setInsightsStateForRoot(root, {insightsReturnPage: returnPage, insightsItemId: candidate.id});
+    else {
+        host.insightsReturnPage = returnPage;
+        host.insightsItemId = candidate.id;
+    }
     setPage(host, "insights", root);
-    host.insightsItemId = candidate.id;
     void host.persistViewPreferences();
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    clearEditor(host, root);
     host.render(root);
 }
 
@@ -113,9 +132,12 @@ export function openTabPageFor(host: NavigationHost): void {
         if (!host.supportsCustomTab) host.openQuickDialog();
         return;
     }
-    host.currentPage = "today";
-    host.editingId = undefined;
-    host.editingFingerprint = undefined;
+    if (host.tabElement) showTodayFor(host, host.tabElement);
+    else if (!host.setPageForRoot) {
+        host.currentPage = "today";
+        host.editingId = undefined;
+        host.editingFingerprint = undefined;
+    }
     host.tabOpenPromise = openTab({
         app: host.app as never,
         custom: {

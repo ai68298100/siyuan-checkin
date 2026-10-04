@@ -14,7 +14,7 @@ const transpile = (relative) => {
     fs.mkdirSync(path.dirname(target), {recursive: true});
     fs.writeFileSync(target, ts.transpileModule(source, {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020}}).outputText);
 };
-["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/siplayer-adapter.ts", "src/features/yeguif-adapter.ts"].forEach(transpile);
+["src/i18n.ts", "src/types.ts", "src/rules.ts", "src/model.ts", "src/shared.ts", "src/record-step.ts", "src/lunar.ts", "src/catalog.ts", "src/quota.ts", "src/features/reminder-preferences.ts", "src/features/first-success.ts", "src/date-keys.ts", "src/features/view-scope.ts", "src/view-preferences.ts", "src/features/note-query.ts", "src/features/note-anchor.ts", "src/features/summary-resident.ts", "src/features/source-framework.ts", "src/features/sireader-adapter.ts", "src/features/health-inbox.ts", "src/features/weread-adapter.ts", "src/features/yeguif-adapter.ts", "src/features/siplayer-adapter.ts", "src/features/yeguif-adapter.ts"].forEach(transpile);
 const adapter = require(path.join(outputRoot, "src/features/siplayer-adapter.js"));
 const yeguif = require(path.join(outputRoot, "src/features/yeguif-adapter.js"));
 const {settleSegmentsToDays, normalizeSourceGovernance} = require(path.join(outputRoot, "src/features/source-framework.js"));
@@ -57,7 +57,7 @@ const day1Entries = yeguif.settleYeguifEntries([
     {blockId: "20260924220000", startMinutes: 22 * 60, type: "阅读", text: ""},
     {blockId: "20260924230000", startMinutes: 23 * 60, type: "工作", text: "写日报"},
 ], "2026-09-24");
-assert.deepEqual(day1Entries, [{blockId: "20260924230000", localDate: "2026-09-24", minutes: 60, type: "工作", text: "写日报"}], "the current marker receives the interval since the previous marker");
+assert.deepEqual(day1Entries, [{blockId: "20260924230000", localDate: "2026-09-24", startMinutes: 22 * 60, endMinutes: 23 * 60, minutes: 60, type: "工作", text: "写日报"}], "the current marker receives the interval since the previous marker");
 assert.equal(yeguif.settleYeguifEntries([{blockId: "20260924230000", startMinutes: 23 * 60, type: "工作", text: ""}], "2026-09-24").length, 0, "a lone marker without a previous record records nothing");
 assert.notEqual(yeguif.buildYeguifExternalRef("20260924230000", "2026-09-24"), yeguif.buildYeguifExternalRef("20260924230000", "2026-09-25"), "block identity is date-scoped: the same marker time on two days stays distinct");
 

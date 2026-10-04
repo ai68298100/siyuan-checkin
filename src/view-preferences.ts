@@ -3,6 +3,7 @@ import {validateAnchorBlockId} from "./features/note-anchor";
 import {normalizeSummaryResidentPreference} from "./features/summary-resident";
 import {normalizeHealthInboxPreference, type HealthInboxPreference} from "./features/health-inbox";
 import {normalizeWereadIntegration} from "./features/weread-adapter";
+import {normalizeYeguifMappings} from "./features/yeguif-adapter";
 import {normalizeReminderQuietHours, type ReminderQuietHours, normalizeDailyReminderPreference, type DailyReminderPreference} from "./features/reminder-preferences";
 import {normalizeFirstSuccessState, type FirstSuccessState} from "./features/first-success";
 import {normalizeViewScope, type ViewScopeV1} from "./features/view-scope";
@@ -275,11 +276,7 @@ export function normalizeViewPreferences(value: unknown): CheckinViewPreferences
     const yeguifSource = (source.yeguifIntegration && typeof source.yeguifIntegration === "object" ? source.yeguifIntegration : {}) as Record<string, unknown>;
     const yeguifItemId = typeof yeguifSource.itemId === "string" ? yeguifSource.itemId.trim().slice(0, 160) : "";
     const yeguifNotebookId = typeof yeguifSource.notebookId === "string" && /^[0-9A-Za-z-]{8,64}$/.test(yeguifSource.notebookId.trim()) ? yeguifSource.notebookId.trim() : "";
-    const yeguifMappings = Array.isArray(yeguifSource.mappings)
-        ? yeguifSource.mappings.filter((entry): entry is {project: string; itemId: string} => Boolean(entry && typeof entry === "object" && typeof (entry as Record<string, unknown>).project === "string" && typeof (entry as Record<string, unknown>).itemId === "string"))
-            .map((entry) => ({project: entry.project.trim().slice(0, 60), itemId: entry.itemId.trim().slice(0, 160)}))
-            .filter((entry, index, list) => entry.project && entry.itemId && list.findIndex((candidate) => candidate.project.toLocaleLowerCase() === entry.project.toLocaleLowerCase()) === index).slice(0, 50)
-        : [];
+    const yeguifMappings = normalizeYeguifMappings(yeguifSource.mappings);
     const yeguifIntegration = {enabled: yeguifSource.enabled === true && Boolean(yeguifNotebookId), itemId: yeguifItemId, notebookId: yeguifNotebookId, mappings: yeguifMappings};
     return {
         groupMode,

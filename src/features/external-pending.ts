@@ -31,6 +31,13 @@ export interface ExternalPendingEntry {
 export interface ExternalPendingBox {
     schemaVersion: 1;
     items: ExternalPendingEntry[];
+    /** T-1622：丢弃/成功清理后的身份标记，阻止旧窗口条目重新并回。 */
+    tombstones?: ExternalPendingTombstone[];
+}
+
+export interface ExternalPendingTombstone {
+    id: string;
+    removedAt: string;
 }
 
 /** 容量上限（显式配置常量，D-293）：满了拒绝新条目并在设置页可见，不静默覆盖。 */
@@ -113,44 +120,51 @@ export function normalizeExternalPendingBox(input: unknown): ExternalPendingBox 
     const source = typeof input === "string"
         ? (() => { try { return JSON.parse(input) as unknown; } catch { return undefined; } })()
         : input;
+    const sourceObject = source && typeof source === "object" && !Array.isArray(source) ? source as Record<string, unknown> : undefined;
     const itemsRaw = Array.isArray(source)
         ? source
-        : source && typeof source === "object" && Array.isArray((source as Record<string, unknown>).items)
-            ? (source as Record<string, unknown>).items as unknown[]
+        : sourceObject && Array.isArray(sourceObject.items)
+            ? sourceObject.items as unknown[]
             : [];
+    const tombstones = normalizeExternalPendingTombstones(sourceObject?.tombstones);
+    const removedIds = new Set(tombstones.map((tombstone) => tombstone.id));
     const items: ExternalPendingEntry[] = [];
     const seen = new Set<string>();
     for (let index = 0; index < itemsRaw.length && items.length < EXTERNAL_PENDING_CAPACITY; index += 1) {
         const entry = normalizeEntry(itemsRaw[index]);
-        if (!entry || seen.has(entry.id)) continue;
+        if (!entry || removedIds.has(entry.id) || seen.has(entry.id)) continue;
         seen.add(entry.id);
         items.push(entry);
     }
     items.sort((left, right) => Date.parse(left.failedAt) - Date.parse(right.failedAt));
-    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items};
+    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items, ...(tombstones.length ? {tombstones} : {})};
 }
 
-export function serializeExternalPendingBox(box: ExternalPendingBox): {schemaVersion: 1; items: ExternalPendingEntry[]} {
-    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items: box.items.map((entry) => ({...entry}))};
+export function serializeExternalPendingBox(box: ExternalPendingBox): {schemaVersion: 1; items: ExternalPendingEntry[]; tombstones?: ExternalPendingTombstone[]} {
+    return {
+        schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION,
+        items: box.items.map((entry) => ({...entry})),
+        ...(box.tombstones?.length ? {tombstones: box.tombstones.map((tombstone) => ({...tombstone}))} : {}),
+    };
 }
 
-/* T-1622 跨窗口合并：按条目身份并集（normalize 保留先入=本地载荷优先），远端独有条目采用，
-    容量与保留期仍由 normalize 强制。调用方必须在「变更前」同步（采用远端新增），
-    不能在删除类变更之后调用——箱的丢弃无墓碑，先删后并会复活本窗已丢弃条目。 */
+/* T-1622 跨窗口合并：按条目身份并集（normalize 保留先入=本地载荷优先），
+    删除墓碑优先于条目；容量与保留期仍由 normalize 强制。 */
 export function mergeExternalPendingBoxes(local: ExternalPendingBox, remote: ExternalPendingBox): ExternalPendingBox {
-    return normalizeExternalPendingBox({items: [...local.items, ...remote.items]});
+    return normalizeExternalPendingBox({items: [...local.items, ...remote.items], tombstones: [...(local.tombstones || []), ...(remote.tombstones || [])]});
 }
 
 export type ExternalPendingEnqueueOutcome = "added" | "merged" | "full";
 
 /** 同身份条目已存在则原样保留（不覆盖首次失败数据）；满员显式拒绝，不静默覆盖。 */
 export function enqueueExternalPending(box: ExternalPendingBox, incoming: ExternalPendingEntry): {box: ExternalPendingBox; outcome: ExternalPendingEnqueueOutcome} {
+    if (box.tombstones?.some((tombstone) => tombstone.id === incoming.id)) return {box, outcome: "merged"};
     const existing = box.items.find((entry) => entry.id === incoming.id);
     if (existing) return {box, outcome: "merged"};
     if (box.items.length >= EXTERNAL_PENDING_CAPACITY) return {box, outcome: "full"};
     const items = [...box.items, {...incoming}];
     items.sort((left, right) => Date.parse(left.failedAt) - Date.parse(right.failedAt));
-    return {box: {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items}, outcome: "added"};
+    return {box: {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items, ...(box.tombstones?.length ? {tombstones: box.tombstones} : {})}, outcome: "added"};
 }
 
 /** 保留期剪除：failedAt 距 todayKey 超过保留期的条目到期移除，返回剪除数。 */
@@ -160,13 +174,14 @@ export function pruneExternalPending(box: ExternalPendingBox, todayKey: string):
         const ageDays = Math.floor((Date.parse(`${todayKey}T00:00:00Z`) - Date.parse(`${entry.localDate}T00:00:00Z`)) / 86400000);
         return Number.isFinite(ageDays) && ageDays <= EXTERNAL_PENDING_RETENTION_DAYS;
     });
-    return {box: {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items}, expired: box.items.length - items.length};
+    return {box: {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items, ...(box.tombstones?.length ? {tombstones: box.tombstones} : {})}, expired: box.items.length - items.length};
 }
 
-export function removeExternalPendingEntry(box: ExternalPendingBox, id: string): ExternalPendingBox {
+export function removeExternalPendingEntry(box: ExternalPendingBox, id: string, removedAt = new Date().toISOString()): ExternalPendingBox {
     const items = box.items.filter((entry) => entry.id !== id);
     if (items.length === box.items.length) return box;
-    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items};
+    const tombstones = mergeExternalPendingTombstones(box.tombstones || [], [{id, removedAt}]);
+    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items, tombstones};
 }
 
 export function markExternalPendingRetry(box: ExternalPendingBox, id: string, reason: string, nowIso: string): ExternalPendingBox {
@@ -174,7 +189,7 @@ export function markExternalPendingRetry(box: ExternalPendingBox, id: string, re
     if (index < 0) return box;
     const items = [...box.items];
     items[index] = {...items[index], attempts: Math.min(999, items[index].attempts + 1), lastReason: reason.slice(0, 60) || items[index].lastReason, failedAt: validIso(nowIso) || items[index].failedAt};
-    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items};
+    return {schemaVersion: EXTERNAL_PENDING_SCHEMA_VERSION, items, ...(box.tombstones?.length ? {tombstones: box.tombstones} : {})};
 }
 
 /** 重试决策输入：全部来自重查时的当前 store/偏好快照。 */
@@ -210,9 +225,29 @@ export function planExternalPendingRetry(context: ExternalPendingRetryContext): 
 export function settleExternalPendingAfterRetry(box: ExternalPendingBox, id: string, result: {written: boolean; duplicate: boolean} | {written: false; duplicate: false; reason: string}, nowIso: string): ExternalPendingBox {
     const entry = box.items.find((item) => item.id === id);
     if (!entry) return box;
-    if ("written" in result && (result.written || result.duplicate)) return removeExternalPendingEntry(box, id);
+    if ("written" in result && (result.written || result.duplicate)) return removeExternalPendingEntry(box, id, nowIso);
     const reason = "reason" in result ? result.reason : "";
     return markExternalPendingRetry(box, id, reason, nowIso);
+}
+
+function normalizeExternalPendingTombstones(value: unknown): ExternalPendingTombstone[] {
+    if (!Array.isArray(value)) return [];
+    const byId = new Map<string, ExternalPendingTombstone>();
+    value.forEach((candidate) => {
+        if (!candidate || typeof candidate !== "object") return;
+        const entry = candidate as Partial<ExternalPendingTombstone>;
+        if (typeof entry.id !== "string" || !entry.id.trim() || entry.id.length > 600 || typeof entry.removedAt !== "string") return;
+        const timestamp = validIso(entry.removedAt);
+        if (!timestamp) return;
+        const tombstone = {id: entry.id.trim(), removedAt: timestamp};
+        const existing = byId.get(tombstone.id);
+        if (!existing || tombstone.removedAt > existing.removedAt) byId.set(tombstone.id, tombstone);
+    });
+    return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id) || left.removedAt.localeCompare(right.removedAt));
+}
+
+function mergeExternalPendingTombstones(local: readonly ExternalPendingTombstone[], remote: readonly ExternalPendingTombstone[]): ExternalPendingTombstone[] {
+    return normalizeExternalPendingTombstones([...local, ...remote]);
 }
 
 /** 设置页展示投影：只含纯数据的最新若干条（新在前），文案由渲染层走 i18n。 */

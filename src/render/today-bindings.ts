@@ -6,14 +6,16 @@ import {getItemRevisionForDate, getEventsForDay, getSkipDatesForItem, isComplete
 import {getQuickTodayItems} from "../plugin-ops";
 import {calendarDateFromKey, captureActionMoment, currentCalendarDate, escapeHtml, getRecordStep} from "../shared";
 import type {ActionMoment} from "../shared";
-import type {CheckinItem, CheckinItemSortMode, CheckinStore} from "../types";
+import type {CheckinItem, CheckinItemSortMode, CheckinStore, TodayRootContext} from "../types";
 import {getActiveItemById, getItemById} from "../model";
 
 export interface TodayBindingsHost {
     currentPage: string;
+    pageForRoot?(root: HTMLElement): string;
     store: CheckinStore;
     bulkMode: boolean;
     bulkSelected: Set<string>;
+    todayStateForRoot?(root: HTMLElement): TodayRootContext;
     todaySortMode: CheckinItemSortMode;
     itemFingerprint(item: CheckinItem): string;
     revisionFingerprint(item: CheckinItem, date: Date): string;
@@ -28,9 +30,9 @@ export interface TodayBindingsHost {
     skipItems(itemIds: string[]): Promise<boolean>;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
     recordEvent(item: CheckinItem, value: number, moment: {occurredAt: string; localDate: string}, expectedRevisionFingerprint?: string, note?: string, attachment?: string): Promise<unknown>;
-    render(): void;
-    showEditor(item?: CheckinItem): void;
-    showInsights(item?: CheckinItem): void;
+    render(root?: HTMLElement): void;
+    showEditor(item?: CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement): void;
+    showInsights(item?: CheckinItem, root?: HTMLElement): void;
 }
 
 function runExclusiveAction(button: HTMLElement | null, operation: () => Promise<unknown> | unknown): void {
@@ -58,12 +60,23 @@ function visiblePrimaryAction(card: HTMLElement, bulkMode = false): HTMLElement 
     return [...card.querySelectorAll<HTMLElement>(selector)].find((button) => button.offsetParent !== null && !button.matches(":disabled"));
 }
 
+function todayBulkStateFor(host: TodayBindingsHost, root: HTMLElement) {
+    const state = host.todayStateForRoot?.(root);
+    return {
+        get bulkMode(): boolean { return state?.bulkMode ?? host.bulkMode; },
+        set bulkMode(value: boolean) { if (state) state.bulkMode = value; else host.bulkMode = value; },
+        bulkSelected: state?.bulkSelected ?? host.bulkSelected,
+    };
+}
+
 /* Alt+1~9 follows the primary action: duration starts focus, other kinds record. */
 export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.quickKeyboardBound === "true") return;
     root.dataset.quickKeyboardBound = "true";
+    const today = todayBulkStateFor(host, root);
+    const pageForRoot = () => host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
     root.addEventListener("keydown", (event) => {
-        if (host.currentPage !== "today" || host.bulkMode) return;
+        if (pageForRoot() !== "today" || today.bulkMode) return;
         if (event.defaultPrevented || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         const target = event.target as HTMLElement | null;
         if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
@@ -91,8 +104,10 @@ export function bindQuickKeyboardFor(host: TodayBindingsHost, root: HTMLElement)
 export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.pageKeyboardBound === "true") return;
     root.dataset.pageKeyboardBound = "true";
+    const today = todayBulkStateFor(host, root);
+    const pageForRoot = () => host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
     root.addEventListener("keydown", (event) => {
-        if (host.currentPage !== "today") return;
+        if (pageForRoot() !== "today") return;
         if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
         const target = event.target as HTMLElement | null;
         if (target?.matches("input, textarea, select, [contenteditable='true']")) return;
@@ -102,41 +117,42 @@ export function bindPageKeyboardFor(host: TodayBindingsHost, root: HTMLElement):
         if (!cards.length) return;
         const activeCard = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".lc-checkin__item[data-item-id]");
         if (key === "e") {
-            if (host.bulkMode) return;
+            if (today.bulkMode) return;
             const item = getItemById(host.store, activeCard?.dataset.itemId);
             if (!item) return;
             event.preventDefault();
-            host.showEditor(item);
+            host.showEditor(item, undefined, root);
             return;
         }
         const index = activeCard ? cards.indexOf(activeCard) : -1;
         const next = index < 0 ? (key === "j" ? 0 : cards.length - 1) : (index + (key === "j" ? 1 : -1) + cards.length) % cards.length;
         event.preventDefault();
-        (visiblePrimaryAction(cards[next], host.bulkMode) ?? cards[next]).focus();
+        (visiblePrimaryAction(cards[next], today.bulkMode) ?? cards[next]).focus();
     });
 }
 
 /* 批量多选后一键完成/归档。 */
 export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): void {
+    const today = todayBulkStateFor(host, root);
     root.querySelector<HTMLElement>("[data-action='toggle-bulk']")?.addEventListener("click", () => {
-        host.bulkMode = !host.bulkMode;
-        host.bulkSelected.clear();
-        host.render();
+        today.bulkMode = !today.bulkMode;
+        today.bulkSelected.clear();
+        host.render(root);
     });
     root.querySelector<HTMLElement>("[data-action='bulk-exit']")?.addEventListener("click", () => {
-        host.bulkMode = false;
-        host.bulkSelected.clear();
-        host.render();
+        today.bulkMode = false;
+        today.bulkSelected.clear();
+        host.render(root);
     });
     const syncBulkSelection = () => {
         root.querySelectorAll<HTMLButtonElement>("[data-bulk-check]").forEach((button) => {
-            const selected = host.bulkSelected.has(button.dataset.bulkCheck || "");
+            const selected = today.bulkSelected.has(button.dataset.bulkCheck || "");
             button.classList.toggle("is-selected", selected);
             button.setAttribute("aria-pressed", String(selected));
             button.textContent = selected ? "✓" : "";
             button.closest(".lc-checkin__item")?.classList.toggle("is-selected", selected);
         });
-        const count = host.bulkSelected.size;
+        const count = today.bulkSelected.size;
         const countLabel = root.querySelector<HTMLElement>("[data-bulk-selected-count]");
         if (countLabel) countLabel.textContent = t("today.bulkSelectedCount", {n: count});
         root.querySelectorAll<HTMLButtonElement>("[data-bulk-selection-action]").forEach((button) => button.disabled = count === 0);
@@ -144,64 +160,64 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
     root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.bulkCheck || "";
         if (!id) return;
-        if (host.bulkSelected.has(id)) host.bulkSelected.delete(id);
-        else host.bulkSelected.add(id);
+        if (today.bulkSelected.has(id)) today.bulkSelected.delete(id);
+        else today.bulkSelected.add(id);
         syncBulkSelection();
     }));
     root.querySelector<HTMLElement>("[data-action='bulk-all']")?.addEventListener("click", () => {
         const date = currentCalendarDate();
         root.querySelectorAll<HTMLElement>("[data-bulk-check]").forEach((selection) => {
             const item = getActiveItemById(host.store, selection.dataset.bulkCheck || "");
-            if (item && !isComplete(host.store, item, date)) host.bulkSelected.add(item.id);
+            if (item && !isComplete(host.store, item, date)) today.bulkSelected.add(item.id);
         });
         syncBulkSelection();
     });
     /* 搜索/筛选重渲染后丢弃结果集之外的旧选择，避免批量动作影响不可见项目。 */
     const renderedIds = new Set([...root.querySelectorAll<HTMLElement>("[data-bulk-check]")].map((selection) => selection.dataset.bulkCheck || "").filter(Boolean));
-    for (const id of host.bulkSelected) if (!renderedIds.has(id)) host.bulkSelected.delete(id);
+    for (const id of today.bulkSelected) if (!renderedIds.has(id)) today.bulkSelected.delete(id);
     syncBulkSelection();
     root.querySelector<HTMLElement>("[data-action='bulk-complete']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
-        const ids = [...host.bulkSelected];
+        const ids = [...today.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
             if (!await host.completeItems(ids)) return;
-            host.bulkMode = false;
-            host.bulkSelected.clear();
-            host.render();
+            today.bulkMode = false;
+            today.bulkSelected.clear();
+            host.render(root);
         });
     });
     root.querySelector<HTMLElement>("[data-action='bulk-skip']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
-        const ids = [...host.bulkSelected];
+        const ids = [...today.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
             if (!await host.skipItems(ids)) return;
-            host.bulkMode = false;
-            host.bulkSelected.clear();
-            host.render();
+            today.bulkMode = false;
+            today.bulkSelected.clear();
+            host.render(root);
         });
     });
     root.querySelector<HTMLElement>("[data-action='bulk-archive']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
-        const ids = [...host.bulkSelected];
+        const ids = [...today.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
             if (!await host.archiveItems(ids)) return;
-            host.bulkMode = false;
-            host.bulkSelected.clear();
-            host.render();
+            today.bulkMode = false;
+            today.bulkSelected.clear();
+            host.render(root);
         });
     });
     root.querySelector<HTMLElement>("[data-action='bulk-delete']")?.addEventListener("click", (event) => {
         const button = event.currentTarget as HTMLElement;
-        const ids = [...host.bulkSelected];
+        const ids = [...today.bulkSelected];
         if (!ids.length) return;
         runExclusiveAction(button, async () => {
             if (!await host.deleteItemsWithRecords(ids)) return;
-            host.bulkMode = false;
-            host.bulkSelected.clear();
-            host.render();
+            today.bulkMode = false;
+            today.bulkSelected.clear();
+            host.render(root);
         });
     });
 }
@@ -210,6 +226,7 @@ export function bindBulkModeFor(host: TodayBindingsHost, root: HTMLElement): voi
 export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElement): void {
     if (root.dataset.itemContextMenuBound === "true") return;
     root.dataset.itemContextMenuBound = "true";
+    const today = todayBulkStateFor(host, root);
     let menuTrigger: HTMLElement | undefined;
     const closeMenus = (restoreFocus = false) => {
         root.querySelectorAll(".lc-checkin__item-context-menu").forEach((node) => node.remove());
@@ -228,7 +245,7 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
         longPressPointerId = undefined;
     };
     const openMenu = (card: HTMLElement, clientX: number, clientY: number) => {
-        if (!card || host.bulkMode) return;
+        if (!card || today.bulkMode) return;
         const item = getActiveItemById(host.store, card.dataset.itemId || "");
         if (!item) return;
         closeMenus();
@@ -278,9 +295,9 @@ export function bindItemContextMenuFor(host: TodayBindingsHost, root: HTMLElemen
             menu.setAttribute("aria-busy", "true");
             menu.querySelectorAll<HTMLButtonElement>("[data-menu-action]").forEach((button) => button.disabled = true);
             const operation = action === "edit"
-                ? () => host.showEditor(item)
+                ? () => host.showEditor(item, undefined, root)
                 : action === "insights"
-                    ? () => host.showInsights(item)
+                    ? () => host.showInsights(item, root)
                 : action === "skip"
                     ? () => host.skipItemToday(item.id, skipReason ?? undefined)
                     : action === "unskip"

@@ -13,6 +13,7 @@ import type {NoteQueryPreference} from "../features/note-query";
 import type {DocumentSourceKey, SourceIngestReport} from "../features/source-ingest-report";
 import {bindingTargetLabel} from "../features/note-bindings";
 import {renderPageShellHead} from "./page-shell";
+import {renderYeguifMappings} from "./yeguif-mappings";
 
 const AVATAR_PRESETS = [
     ["check", "set.avatarPresetCheck"],
@@ -207,11 +208,9 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     const summaryResident = ctx.summaryResident || {enabled: false, docId: ""};
     /* T-1384：思阅联动缺省值，同上。 */
     const sireader = ctx.sireaderIntegration || {enabled: false, itemId: "", thresholdMinutes: 30};
-    /* 项目列表有展示上限，但当前绑定项永远保留，避免归档或排到 200 名之外后
-       设置页丢失真实绑定；保留项会明确标记，用户可以直接重新绑定。 */
     const projectOptions = (selectedId: string): string => {
         const activeItems = ctx.store.items.filter((item) => !item.archived);
-        const visibleItems = activeItems.slice(0, 200);
+        const visibleItems = activeItems;
         const selectedItem = selectedId ? ctx.store.items.find((item) => item.id === selectedId) : undefined;
         const retained = Boolean(selectedItem && !visibleItems.some((item) => item.id === selectedItem.id));
         const items = retained && selectedItem ? [selectedItem, ...visibleItems] : visibleItems;
@@ -386,7 +385,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
     /* T-1616：统一文档选择器（D-323 设计 §1/§2）——单一搜索框 + 候选行列表
        （名称/路径双行预览，role=listbox + option，键盘 ↑/↓ + Enter，IME 组合态安全），
        候选经 searchDocs 全量查询（有界 50），取代「本地锚点下拉 + 搜索替换选项」旧双框。 */
-    const documentChoiceBlock = (point: "diary" | "summary" | "health" | "journal", label: string): string => `<div class="lc-checkin__document-choice" data-document-choice="${point}"><label class="lc-checkin__document-target-field"><span>${label}</span><input type="search" data-choice-search="${point}" placeholder="${label}" aria-label="${label}" role="combobox" aria-expanded="false" aria-controls="document-choices-${point}" aria-autocomplete="list" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="${point}" id="document-choices-${point}-${++settingsViewSequence}" role="listbox" aria-label="${label}" hidden></div></div>`;
+    const documentChoiceBlock = (point: "diary" | "summary" | "health" | "journal", label: string): string => {
+        const listId = `document-choices-${point}-${settingsViewId}`;
+        return `<div class="lc-checkin__document-choice" data-document-choice="${point}"><label class="lc-checkin__document-target-field"><span>${label}</span><input type="search" data-choice-search="${point}" placeholder="${label}" aria-label="${label}" role="combobox" aria-expanded="false" aria-controls="${listId}" aria-autocomplete="list" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="${point}" id="${listId}" role="listbox" aria-label="${label}" hidden></div></div>`;
+    };
     const completionIssueKeys: Record<DockTomatoCompletionIssueReason, string> = {
         "invalid-event": "set.tomatoIssueInvalidEvent",
         "unsupported-version": "set.tomatoIssueVersion",
@@ -683,14 +685,10 @@ export function renderSettingsView(ctx: SettingsViewContext): string {
                     ${sourceReportLine("yeguif")}
                     <details class="lc-checkin__settings-fold" data-source-advanced><summary>${t("set.sourceAdvanced")}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary><ol class="lc-checkin__source-steps"><li>${t("set.stepsYeguif1")}</li><li>${t("set.stepsYeguif2")}</li><li>${t("set.stepsYeguif3")}</li><li>${t("set.stepsYeguif4")}</li></ol>
                     <small class="lc-checkin__source-boundary">${t("set.yeguifBoundary")}</small></details>
-                    <div class="lc-checkin__settings-row"><span class="lc-checkin__settings-label"><span>${t("set.yeguifMappings")}</span><small>${t("set.yeguifMappingsHint")}</small>${yeguif.itemId && !yeguif.mappings?.length ? `<small class="is-warning">${t("set.yeguifLegacyIgnored")}</small>` : ""}</span><textarea data-yeguif-mappings rows="3" aria-label="${t("set.yeguifMappings")}" placeholder="${escapeHtml(t("set.yeguifMappingsPlaceholder"))}">${(yeguif.mappings || []).map((mapping) => {
-                        const target = ctx.store.items.find((item) => item.id === mapping.itemId);
-                        const names = target ? ctx.store.items.filter((item) => !item.archived && item.name === target.name) : [];
-                        return `${escapeHtml(mapping.project)} = ${escapeHtml(target && names.length === 1 ? target.name : mapping.itemId)}`;
-                    }).join("\n")}</textarea></div>
+                    <strong>${t("set.yeguifMappings")}</strong>${yeguif.itemId && !yeguif.mappings?.length ? `<small class="is-warning">${t("set.yeguifLegacyIgnored")}</small>` : ""}
+                    ${renderYeguifMappings()}
                     <div class="lc-checkin__notebook-target-card" data-document-target-card="yeguif" data-target-state="${yeguifState}">
                         <div class="lc-checkin__document-target-heading"><div class="lc-checkin__document-target-copy"><strong>${t("set.yeguifNotebook")}</strong><small>${t("set.yeguifNotebookHint")}${yeguif.notebookId && !yeguif.enabled ? ` · ${t("set.yeguifNotebookPending")}` : ""}</small></div>${sourceBadge(yeguifState)}</div>
-                        ${scopeLineRow("yeguif", "set.scope.yeguif")}
                         ${scopeLineRow("yeguif", "set.scope.yeguif")}
                         <div class="lc-checkin__document-choice" data-document-choice="yeguif-nb"><label class="lc-checkin__document-target-field"><span>${t("set.yeguifNotebook")}</span><input type="search" data-choice-search="yeguif-nb" placeholder="${t("set.yeguifNotebookLoad")}" aria-label="${t("set.yeguifNotebook")}" autocomplete="off" /></label><div class="lc-checkin__document-choices" data-choice-list="yeguif-nb" role="listbox" aria-label="${t("set.yeguifNotebook")}" hidden></div></div>
                     </div>

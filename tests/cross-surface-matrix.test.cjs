@@ -4,6 +4,14 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const css = fs.readFileSync(path.join(root, "src", "ui", "components.scss"), "utf8");
 const source = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+const pageShell = fs.readFileSync(path.join(root, "src", "render", "page-shell.ts"), "utf8");
+const todayBinding = fs.readFileSync(path.join(root, "src", "render", "bind-today.ts"), "utf8");
+const pageNavigationBinding = fs.readFileSync(path.join(root, "src", "render", "bind-page-navigation.ts"), "utf8");
+const pluginOps = fs.readFileSync(path.join(root, "src", "plugin-ops.ts"), "utf8");
+const occasionSession = fs.readFileSync(path.join(root, "src", "render", "occasion-session.ts"), "utf8");
+const occasionView = fs.readFileSync(path.join(root, "src", "render", "occasions.ts"), "utf8");
+const occasionBinding = fs.readFileSync(path.join(root, "src", "render", "bind-occasions.ts"), "utf8");
+const typesSource = fs.readFileSync(path.join(root, "src", "types.ts"), "utf8");
 for (const host of ["lc-checkin-dialog-host", "lc-checkin-tab-host", "lc-checkin-dock-host"]) assert.match(css, new RegExp(`\\.${host}`), `${host} must have a layout owner`);
 for (const surface of ["today", "history", "occasions", "settings", "archived"]) assert.match(css, new RegExp(`lc-checkin--${surface}`), `${surface} surface must be styled`);
 for (const width of ["320px", "340px", "360px", "380px", "719px"]) assert.match(css, new RegExp(`max-width: ${width.replace("px", "\\s*px")}`), `responsive tier ${width} must be declared`);
@@ -41,5 +49,65 @@ assert.match(css, /review \.lc-checkin__calendar-day:focus-visible,[\s\S]*histor
 assert.match(css, /occasion-list-panel,[\s\S]*occasion-form-panel \{ contain: layout paint; \}/);
 assert.match(css, /review-calendar,[\s\S]*review-detail \{ contain: layout paint; \}/);
 assert.match(css, /forced-colors: active/);
-assert.match(source, /pageScrollTops/); assert.match(source, /pendingFocusItemId/);
-console.log("Cross-surface 12.0 matrix checks passed.");
+assert.match(source, /rootContexts/); assert.match(source, /scrollTops/); assert.match(source, /pendingFocusItemId/);
+assert.match(pageShell, /todayQuery\?: string/); assert.match(pageShell, /archivedQuery\?: string/);
+assert.match(source, /todayQueryForRoot/); assert.match(source, /setTodayQueryForRoot/);
+assert.match(source, /archivedQueryForRoot/); assert.match(source, /setArchivedQueryForRoot/);
+assert.match(source, /this\.renderArchived\(root\)/); assert.match(source, /this\.renderToday\(root\)/);
+assert.match(todayBinding, /host\.setTodayQueryForRoot/); assert.match(todayBinding, /host\.render\(root\)/);
+assert.match(todayBinding, /host\.focusTodaySearch\(value\.length, root\)/);
+assert.match(pageNavigationBinding, /host\.setArchivedQueryForRoot/); assert.match(pageNavigationBinding, /pageForRoot\(\) !== "archived"/);
+assert.match(pageNavigationBinding, /host\.render\(root\)/);
+assert.match(pluginOps, /const roots = root \? \[root\]/);
+console.log("Cross-surface 12.1 matrix checks passed.");
+
+assert.match(pageShell, /export interface ReviewRootContext[\s\S]*historyMonth: Date;[\s\S]*selectedHistoryDate: string;[\s\S]*summaryRange: "day" \| "week" \| "month";[\s\S]*summaryCustomRange\?: \{startDate: string; endDate: string\};[\s\S]*reviewWorkspace: "overview" \| "records" \| "analysis";[\s\S]*historyItemId: string;[\s\S]*historyScope: "day" \| "period";[\s\S]*historyPage: number;[\s\S]*reviewProjectPage: number;/);
+assert.match(pageShell, /review: ReviewRootContext/);
+assert.match(source, /review:\s*this\.createReviewRootContext\(\)/);
+assert.match(source, /reviewStateForRoot\(root: HTMLElement\)/);
+assert.match(source, /setReviewStateForRoot\(root: HTMLElement, patch: Partial<ReviewRootContext>\)/);
+assert.match(source, /syncReviewCompatibilityForRoot\(root: HTMLElement\)/);
+assert.match(source, /this\.renderReview\(root, reviewAnalyticsSnapshot!\)/);
+assert.match(source, /private renderReview\(root: HTMLElement, analyticsSnapshot\?: AnalyticsSnapshot\)/);
+assert.match(pageNavigationBinding, /const reviewState = host\.reviewStateForRoot\?\.\(root\)/);
+assert.match(pageNavigationBinding, /const writeReviewValue =/);
+assert.match(pageNavigationBinding, /host\.changeHistoryMonth\(Number\(button\.dataset\.historyMonth\), root\)/);
+assert.match(pluginOps, /showEditor\(undefined, undefined, root\)/);
+assert.match(pluginOps, /export function changeHistoryMonthFor\(host: PluginOpsHost, offset: number, root\?: HTMLElement\)/);
+assert.match(pluginOps, /host\.setReviewStateForRoot\(root, \{historyMonth: candidate, selectedHistoryDate\}\)/);
+console.log("Cross-surface 12.2 review-state checks passed.");
+for (const field of ["historyQuery", "historySource", "historyMetering", "historyOrder"]) {
+    assert.match(pageNavigationBinding, new RegExp(`writeReviewValue\\("${field}"`));
+    assert.doesNotMatch(pageNavigationBinding, new RegExp(`host\\.${field}\\s*=`), `${field} actions must target the originating root`);
+    assert.match(source, new RegExp(`${field}: review\\.${field}`), `${field} rendering must read root state`);
+}
+assert.match(pageShell, /filters\.metering = snapshot\.historyMetering/);
+console.log("Cross-surface 12.3 review-filter checks passed.");
+for (const field of ["historyBatchSelected", "historyBatchPreviewOpen", "historyBatchValues", "itemCompareSelection", "itemCompareQuery", "reviewProjectOrder", "reviewTrend", "reviewStrengthItemId", "reviewAssistantGoal", "heatmapYearOffset", "reviewFoldSections", "reviewFoldTouched", "editingHistoryNoteId", "recordDetailsExpanded", "reminderFilter"]) {
+    assert.match(pageShell, new RegExp(`${field}:`), `${field} must belong to ReviewRootContext`);
+    assert.match(source, new RegExp(`${field}: review\\.${field}`), `${field} rendering must read root state`);
+    assert.match(pageNavigationBinding, new RegExp(`(?:reviewValue|writeReviewValue)\\("${field}"`), `${field} actions must use root state`);
+}
+console.log("Cross-surface 12.4 review-draft and disclosure checks passed.");
+
+assert.match(occasionSession, /export interface OccasionsRootContext[\s\S]*occasionSearchQuery: string;[\s\S]*occasionStatusFilter[\s\S]*occasionKindFilter[\s\S]*occasionTimeFilter[\s\S]*occasionTemplatesOpen[\s\S]*formDraft\?: OccasionFormDraft/);
+assert.match(occasionSession, /captureOccasionDraftFor\(root: HTMLElement, state: OccasionsRootContext\)/);
+assert.match(occasionSession, /isCurrentOccasionFormSession[\s\S]*isOccasionsRootOpen/);
+assert.match(occasionView, /renderOccasionsView\(ctx: OccasionsViewContext, root\?: HTMLElement\)/);
+assert.match(occasionView, /const presetId = `lc-occasion-remind-presets-\$\{renderId\}`/);
+assert.match(occasionView, /data-occasion-root-instance/);
+assert.match(occasionBinding, /const state = readOccasionsRootContext\(host, root\)/);
+assert.match(occasionBinding, /const renderRoot = \(\) => host\.render\(root\)/);
+assert.match(occasionBinding, /isCurrentOccasionFormSession\(host, root, session\)/);
+assert.match(occasionBinding, /host\.showToday\(root\)/);
+console.log("Cross-surface 12.5 occasion-state checks passed.");
+
+assert.match(typesSource, /export interface SettingsRootContext[\s\S]*targetSummaries: Map<string, \{name\?: string; hpath\?: string\} \| null>;[\s\S]*sourceSandboxOutcomes[\s\S]*sourceSandboxTexts[\s\S]*importConflictSession\?/);
+assert.match(source, /private adoptLegacySettingsState\(root: HTMLElement\)/);
+assert.match(source, /this\.adoptLegacySettingsState\(root\);/);
+assert.match(source, /settings\.importConflictSession = undefined;[\s\S]*this\.render\(root\)/);
+assert.match(source, /settings\.sourceSandboxTexts\[source\] = area\.value/);
+assert.match(source, /settings\.targetSummaries\.set\(docId/);
+assert.match(source, /runSourceSandbox\(source: SandboxSource, text: string, root\?: HTMLElement\)/);
+assert.match(source, /if \(root\) this\.render\(root\);/);
+console.log("Cross-surface 12.6 settings-session checks passed.");

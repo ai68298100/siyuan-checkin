@@ -1,11 +1,17 @@
 const assert = require("node:assert/strict"); const fs = require("node:fs"); const os = require("node:os"); const path = require("node:path"); const ts = require("typescript");
 const root = path.join(__dirname, "..", "src"); const out = fs.mkdtempSync(path.join(os.tmpdir(), "templates-"));
-for (const file of ["types.ts", "record-step.ts", "date-keys.ts", "features/weekly-review.ts", "view-preferences.ts", "features/note-query.ts", "catalog.ts", "features/reminder-preferences.ts", "features/view-scope.ts", "features/first-success.ts", "features/note-anchor.ts", "features/summary-resident.ts", "features/health-inbox.ts", "features/weread-adapter.ts", "features/templates.ts"]) { const dest = path.join(out, file.replace(/\.ts$/, ".js")); fs.mkdirSync(path.dirname(dest), {recursive:true}); fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root,file), "utf8"), {compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText); }
-const {normalizeUserTemplate, mergeTemplates, upsertUserTemplate, deleteUserTemplate} = require(path.join(out, "features/templates.js"));
+for (const file of ["types.ts", "record-step.ts", "date-keys.ts", "features/weekly-review.ts", "view-preferences.ts", "features/note-query.ts", "catalog.ts", "features/reminder-preferences.ts", "features/view-scope.ts", "features/first-success.ts", "features/note-anchor.ts", "features/summary-resident.ts", "features/health-inbox.ts", "features/weread-adapter.ts", "features/yeguif-adapter.ts", "features/templates.ts"]) { const dest = path.join(out, file.replace(/\.ts$/, ".js")); fs.mkdirSync(path.dirname(dest), {recursive:true}); fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root,file), "utf8"), {compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText); }
+const {normalizeUserTemplate, mergeTemplates, upsertUserTemplate, mergeUserTemplates, deleteUserTemplate} = require(path.join(out, "features/templates.js"));
 const builtin = [{name:"内置", icon:"✓", kind:"binary", target:1, unit:"次", schedule:{type:"daily"}, group:"", priority:"medium", note:""}];
 const user = normalizeUserTemplate({id:"u1", name:"自定义", kind:"bad", target:"x", schedule:{type:"daily"}}, "2026-01-01T00:00:00Z");
 assert.equal(user.kind, "binary"); assert.equal(user.target, 1); assert.equal(mergeTemplates(builtin, [user]).length, 2); assert.equal(mergeTemplates(builtin, [user, user]).length, 2);
 assert.equal(upsertUserTemplate([], user).length, 1); assert.equal(upsertUserTemplate([user], {...user, name:"更新"})[0].name, "更新"); assert.equal(deleteUserTemplate([user], "u1").length, 0); console.log("User template model checks passed.");
+const merged = mergeUserTemplates(
+    [{...user, updatedAt: "2026-09-01T00:00:00.000Z"}],
+    [{...user, name: "旧远端", updatedAt: "2026-08-01T00:00:00.000Z"}, {...user, id: "u2", name: "远端新增"}],
+);
+assert.equal(merged.find((entry) => entry.id === "u1").name, user.name, "older remote templates cannot overwrite local edits");
+assert.equal(merged.find((entry) => entry.id === "u2").name, "远端新增", "remote-only templates are preserved");
 const stepped = normalizeUserTemplate({id:"step", name:"喝水", kind:"quantity", target:2000, unit:"毫升", recordStep:333.333, schedule:{type:"daily"}});
 assert.equal(stepped.recordStep, 333.33);
 assert.equal(normalizeUserTemplate({...stepped, id:"huge", recordStep:Number.MAX_VALUE}).recordStep, 1_000_000_000);

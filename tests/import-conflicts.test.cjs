@@ -108,6 +108,8 @@ assert.match(settingsSource, /data-conflict-name=/, "per-conflict radios render"
 assert.match(settingsSource, /set\.importIncompatibleUnit/, "unit incompatibility reason is rendered");
 const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexSource, /private importConflictSession/, "host holds the conflict session");
+assert.match(indexSource, /settings\.importConflictSession = \{format: "loop-csv"/, "loop conflict plans are held by the owning settings root");
+assert.match(indexSource, /settings\.importConflictSession = \{format: "obsidian-habits"/, "Obsidian conflict plans are held by the owning settings root");
 assert.match(indexSource, /"\[data-import-conflict-confirm\]"/, "confirm is bound");
 assert.match(indexSource, /"\[data-import-conflict-cancel\]"/, "cancel is bound");
 assert.match(indexSource, /this\.store = previousStore/, "save failure rolls the store back");

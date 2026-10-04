@@ -19,8 +19,12 @@ fs.writeFileSync(path.join(dir, "external-pending.js"), ts.transpileModule(fs.re
 const reminders = require(path.join(dir, "reminders.js"));
 const occasions = require(path.join(dir, "occasions.js"));
 const pending = require(path.join(dir, "external-pending.js"));
+const inboxSource = fs.readFileSync(path.join(__dirname, "..", "src", "features", "docktomato-inbox.ts"), "utf8");
+const templatesSource = fs.readFileSync(path.join(__dirname, "..", "src", "features", "templates.ts"), "utf8");
+const workflowSource = fs.readFileSync(path.join(__dirname, "..", "src", "features", "suggestion-workflow.ts"), "utf8");
 
 const pluginSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
+const pageNavigationSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "bind-page-navigation.ts"), "utf8");
 
 /* —— 提醒动作并集 —— */
 const localActions = [
@@ -40,6 +44,12 @@ assert.deepEqual(reminders.mergeReminderUserActions(localActions, reminders.merg
     reminders.mergeReminderUserActions(localActions, remoteActions),
     "re-merging an already-merged set is stable");
 assert.ok(reminders.mergeReminderUserActions(remoteActions, localActions), "commutative call shape works");
+const restoredActions = reminders.mergeReminderUserActions(
+    [{id: "rem-restore", action: "restore", at: "2026-09-30T10:00:00.000Z"}],
+    [{id: "rem-restore", action: "skip", at: "2026-09-30T09:00:00.000Z"}],
+);
+assert.equal(reminders.applyReminderActions([{id: "rem-restore", source: "checkin", sourceId: "item", title: "恢复", dueDate: "2026-09-30", daysUntil: 0, status: "today", note: ""}], restoredActions, "2026-09-30")[0].status, "today",
+    "a restore removal record suppresses an older remote reminder action");
 
 /* —— 事项完成并集 —— */
 const localStore = {
@@ -57,11 +67,12 @@ const remoteStore = {
     ],
 };
 const mergedOccasions = occasions.mergeOccasionCompletions(localStore, remoteStore);
-assert.equal(mergedOccasions.occasions.length, 2, "remote-only occasions must not be adopted (no resurrection of local deletions)");
+assert.equal(mergedOccasions.occasions.length, 3, "remote-only occasions are adopted when no deletion tombstone exists");
 const mergedOcc1 = mergedOccasions.occasions.find((item) => item.id === "occ-1");
 assert.deepEqual(mergedOcc1.completedDates, ["2026-09-01", "2026-09-02", "2026-09-05"], "shared id unions completedDates sorted");
 assert.equal(mergedOcc1.name, "本地名", "local scalars win for shared ids");
 assert.deepEqual(mergedOccasions.occasions.find((item) => item.id === "occ-2").completedDates, ["2026-09-03"], "local-only occasions untouched");
+assert.ok(mergedOccasions.occasions.some((item) => item.id === "occ-9"), "a remote create survives the merge");
 assert.equal(occasions.mergeOccasionCompletions(localStore, {version: 1, occasions: []}), localStore,
     "no overlap returns the local store unchanged");
 const bothOrders = [
@@ -69,6 +80,23 @@ const bothOrders = [
     occasions.mergeOccasionCompletions(localStore, remoteStore),
 ];
 assert.deepEqual(bothOrders[0], bothOrders[1], "merge is deterministic");
+
+const deletedLocalStore = {
+    version: 1,
+    occasions: [{...localStore.occasions[1]}],
+    tombstones: [{occasionId: "occ-1", deletedAt: "2026-09-30T10:00:00.000Z"}],
+};
+const staleRemoteStore = {
+    version: 1,
+    occasions: [{...localStore.occasions[0]}, {...localStore.occasions[1]}, {id: "occ-10", name: "并发新建", kind: "once", date: "2026-09-10", recurrence: "once", enabled: true, completedDates: []}],
+};
+const tombstoneMerged = occasions.mergeOccasionCompletions(deletedLocalStore, staleRemoteStore);
+assert.equal(tombstoneMerged.occasions.some((item) => item.id === "occ-1"), false, "a local deletion tombstone suppresses a stale remote item");
+assert.equal(tombstoneMerged.occasions.some((item) => item.id === "occ-10"), true, "unrelated remote creates remain visible");
+assert.deepEqual(occasions.normalizeOccasionStore({occasions: staleRemoteStore.occasions, tombstones: deletedLocalStore.tombstones}).occasions.map((item) => item.id), ["occ-2", "occ-10"], "normalization filters tombstoned occasions before projection");
+const deleted = occasions.deleteOccasion(occasions.normalizeOccasionStore({occasions: [localStore.occasions[0]]}), "occ-1");
+assert.equal(deleted.occasions.length, 0, "delete removes the occasion from the local projection");
+assert.equal(deleted.tombstones.some((tombstone) => tombstone.occasionId === "occ-1"), true, "delete records an occasion tombstone");
 
 /* —— 失败箱并集 —— */
 const entry = (source, externalRef, itemId, value) => ({
@@ -93,11 +121,40 @@ assert.match(pluginSource, /const storedActions = await this\.loadData\(REMINDER
     "reminderUserAction must merge remote actions before applying the local action");
 assert.match(pluginSource, /const stored = await this\.loadData\(OCCASIONS_STORAGE_NAME\);[\s\S]{0,120}mergeOccasionCompletions\(store, normalizeOccasionStore\(stored\)\)/,
     "persistOccasions must merge completions before writing");
-assert.match(pluginSource, /不采用远端独有事项/, "occasion merge must document the no-adoption deletion boundary");
-assert.equal((pluginSource.match(/await this\.mergeExternalPendingFromRemote\(\)/g) || []).length, 2,
-    "discard and retry must sync the pending box before mutating");
+assert.match(pluginSource, /删除墓碑优先/, "occasion persistence must document tombstone precedence");
+assert.match(pluginSource, /const reconciledOccasions = mergeOccasionCompletions\(this\.occasionStore, remoteOccasions\)/,
+    "mutation refresh must reconcile the occasion bucket instead of replacing local state with a stale remote snapshot");
+assert.equal((pluginSource.match(/await this\.mergeExternalPendingFromRemoteUnlocked\(\)/g) || []).length >= 4, true,
+    "record failure, discard, retry and recovery must sync the pending box before mutating");
 assert.match(pluginSource, /mergeExternalPendingBoxes\(this\.externalPendingBox, remote\)/,
     "the pending sync must use the union helper");
+assert.match(pluginSource, /private async retryExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?const result = await this\.enqueueMutation\(async \(\) => \{[\s\S]*?recordExternalEvent\(/,
+    "pending retry must keep remote merge, event write and box settlement in one mutation");
+assert.match(pluginSource, /private async discardExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?return this\.withStorageLock\(async \(\) => \{/,
+    "pending discard must run under the storage lock");
+assert.match(templatesSource, /export function mergeUserTemplates\(/, "user templates must have a deterministic cross-window merge");
+assert.match(pluginSource, /private async persistUserTemplates\(next: UserTemplate\[\]\): Promise<void> \{[\s\S]*?mergeUserTemplates\(next, remote\)/,
+    "template writes must merge remote templates while holding the storage lock");
+assert.match(pluginSource, /private async persistCustomIconLibrary\(next: string\[\]\): Promise<void> \{/,
+    "custom icon writes must use a lock-held host method");
+assert.match(pluginSource, /private lastPersistedJournalTemplates: JournalTemplateDef\[\] = \[\];/,
+    "journal templates must keep a persisted baseline for concurrent saves");
+assert.match(pluginSource, /private async saveJournalData\(\): Promise<void> \{[\s\S]*?await this\.withStorageLock\(async \(\) => \{[\s\S]*?localTemplatesChanged/,
+    "journal configuration writes must reconcile remote state while holding the storage lock");
+assert.match(pluginSource, /lastPersistedJournalIntegration = \{\.\.\.this\.journalIntegrationPref\};/,
+    "journal integration baseline must be initialized after restore");
+assert.match(pluginSource, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore" \| "defer"\): void \{[\s\S]*?void this\.enqueueMutation\(async \(\) => \{/,
+    "reminder actions must write inside the mutation queue");
+assert.match(pluginSource, /D-315：偏好桶明确采用后写者胜[\s\S]*?withStorageLock/, "preference writes must document and serialize the last-writer-wins boundary");
+assert.match(workflowSource, /export function mergeSuggestionWorkflows\(/, "suggestion workflow must merge concurrent audit/token updates");
+assert.match(pluginSource, /private persistSuggestionWorkflow\(\): Promise<void> \{[\s\S]*?withStorageLock\(\(\) => this\.persistSuggestionWorkflowUnlocked\(\)\)/, "suggestion persistence must reconcile remote workflow state under the lock");
+assert.match(pluginSource, /private async persistAuditBestEffort\(mergeRemote = true\): Promise<void> \{[\s\S]*?mergeStoreAudits\(/, "audit persistence must merge remote append-only diagnostics under the lock");
+assert.match(pluginSource, /data-action='clear-audit'[\s\S]*?persistAuditBestEffort\(false\)/, "explicit audit clear must retain its last-writer-wins delete boundary");
+assert.match(pluginSource, /async onDataChanged\(\)[\s\S]*?await this\.withStorageLock\(async \(\) => \{[\s\S]*?VIEW_PREFERENCES_NAME/, "external data reload must apply independent buckets inside the storage lock");
+assert.match(pluginSource, /shouldRepairSuggestionWorkflow = true[\s\S]*?if \(shouldRepairSuggestionWorkflow\) void this\.persistSuggestionWorkflow\(\)/,
+    "onDataChanged must defer suggestion repair until after releasing the storage lock");
+assert.match(pluginSource, /private async retrySave\(\)[\s\S]*?await this\.enqueueMutation\(\(\) => this\.persist\(this\.store\)\)/,
+    "manual main-store retry must use the same mutation queue as ordinary writes");
 
 /* —— Agent 创建口：入队 + 失败回滚（T-1622 剩余切片） —— */
 const agentCreateBlock = pluginSource.slice(pluginSource.indexOf("createItem: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {"));
@@ -107,6 +164,46 @@ assert.match(agentCreateBlock, /this\.store = previous;\s*\r?\n\s*throw error;/,
 assert.match(pluginSource.slice(pluginSource.indexOf("createOccasion: async (created) => {"), pluginSource.indexOf("createOccasion: async (created) => {") + 700),
     /const previous = this\.occasionStore;[\s\S]*?this\.occasionStore = previous;\s*\r?\n\s*throw error;/,
     "Agent createOccasion must roll back on persist failure and rethrow");
+/* 主 Store 导入/恢复必须先进入同一锁内刷新，再进行替换写入；失败不能留下只在内存中的导入结果。 */
+for (const marker of ["this.importCsvRows(parsed.rows)", "this.importLoopPlan(plan)", "importObsidianHabitsInto(this.store, plan)", "this.store = backup.store", "this.store = backup"]) {
+    const markerIndex = pluginSource.indexOf(marker);
+    assert.ok(markerIndex >= 0, `store mutation marker ${marker} must remain wired`);
+    const window = pluginSource.slice(Math.max(0, markerIndex - 900), markerIndex + 900);
+    assert.match(window, /await this\.enqueueMutation\(async \(\) => \{/,
+        `${marker} must run inside the exclusive mutation queue`);
+    assert.match(window, /const (?:previous(?:Store)?|current) = this\.(?:store|cloneStore\(this\.store\));[\s\S]*?this\.store = (?:previous(?:Store)?|current);[\s\S]*?throw error;/,
+        `${marker} must restore the in-memory store when persistence fails`);
+}
+const occasionOverrideBlock = pluginSource.slice(pluginSource.indexOf("private saveOccasionOverride"), pluginSource.indexOf("private async retrySave"));
+assert.match(occasionOverrideBlock, /void this\.enqueueMutation\(async \(\) => \{[\s\S]*?const previous = this\.occasionStore;[\s\S]*?setOccasionOverride\(previous, id, originalDate, newDate\)[\s\S]*?await this\.persistOccasions\(\)/,
+    "occasion override must calculate and persist inside the mutation queue");
+
+const blockRecordBody = pluginSource.slice(pluginSource.indexOf("private async recordBlockToday"), pluginSource.indexOf("private async jumpToItemAnchorDoc"));
+assert.match(blockRecordBody, /await this\.enqueueMutation\(\(\) => this\.recordEvent\(/,
+    "render-block recording must enter the mutation queue before the main-store write");
+const journalBody = pluginSource.slice(pluginSource.indexOf("private async openJournalEntry"), pluginSource.indexOf("private async openPastDiary"));
+assert.match(journalBody, /const factReady = await this\.enqueueMutation\(async \(\) => \{[\s\S]*?await this\.recordEvent\(/,
+    "journal fact recording must enter the mutation queue before the main-store write");
+const suggestionBody = pluginSource.slice(pluginSource.indexOf("private async handleSuggestionDecision"), pluginSource.indexOf("private downloadExport"));
+assert.match(suggestionBody, /private async handleSuggestionDecision[\s\S]*?const outcome = await this\.enqueueMutation\(async \(\) => \{[\s\S]*?await this\.persist\(\)/,
+    "suggestion confirmation must reconcile and persist the main store inside the mutation queue");
+assert.match(suggestionBody, /private async undoSuggestionWorkflow[\s\S]*?const outcome = await this\.enqueueMutation\(async \(\) => \{[\s\S]*?await this\.persist\(\)/,
+    "suggestion undo must reconcile and persist the main store inside the mutation queue");
+assert.match(pageNavigationSource, /undoButton\.addEventListener\([\s\S]*?host\.enqueueMutation\(\(\) => host\.setOccasionCompleted\(/,
+    "catch-up undo must use the mutation queue");
+assert.match(pageNavigationSource, /void host\.enqueueMutation\(\(\) => host\.setOccasionCompleted\(id, occurrenceDate, true\)\)/,
+    "catch-up completion must use the mutation queue");
+const completeItemsBody = pluginSource.slice(pluginSource.indexOf("private async completeItems"), pluginSource.indexOf("/* T-1222 跳过"));
+assert.match(completeItemsBody, /void this\.enqueueMutation\(\(\) => this\.setOccasionCompleted\(/,
+    "batch completion occasion linkage must defer the auxiliary write through the mutation queue");
+assert.match(inboxSource, /export function mergeInboxStores\(/, "Dock Tomato inbox must expose deterministic cross-window merge");
+assert.match(pluginSource, /private async persistDockTomatoInboxWithLock\(\)/, "inbox side writes must have a lock-held wrapper");
+assert.match(pluginSource, /await this\.mergeDockTomatoInboxFromRemoteUnlocked\(\);[\s\S]*?const next = removeInboxEntry\(this\.dockTomatoInbox, identity\)/,
+    "manual inbox discard must merge remote state before deletion");
+assert.match(pluginSource, /private async discardDockTomatoInboxEntry\(identity: string\): Promise<boolean> \{[\s\S]*?return this\.withStorageLock\(async \(\) => \{/,
+    "manual inbox discard must run under the storage lock");
+assert.match(pluginSource, /private async undoSkipAndRecordDockTomatoInboxEntry\(identity: string\): Promise<boolean> \{[\s\S]*?await this\.mergeDockTomatoInboxFromRemoteUnlocked\(\);/,
+    "undo-skip inbox mutation must refresh remote state before removing the entry");
 /* 偏好桶决策（D-315）：不做跨窗口合并——注册表文档必须记录该决策而非静默。 */
 const registryDoc = fs.readFileSync(path.join(__dirname, "..", "docs", "settings-field-registry-2026-09-28.md"), "utf8");
 assert.match(registryDoc, /D-315/, "the preference-bucket decision must be recorded in the field registry doc");

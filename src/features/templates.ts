@@ -40,4 +40,22 @@ export function upsertUserTemplate(users: readonly UserTemplate[], value: unknow
     if (index < 0) next.push(template); else next[index] = template; return next;
 }
 
+/** 跨窗口模板合并：按 ID 并集，同 ID 取较新的 updatedAt；删除语义沿用无墓碑边界。 */
+export function mergeUserTemplates(local: readonly UserTemplate[], remote: readonly unknown[]): UserTemplate[] {
+    const next = local.map((entry) => ({...entry}));
+    for (const value of remote) {
+        const template = normalizeUserTemplate(value);
+        if (!template) continue;
+        const index = next.findIndex((entry) => entry.id === template.id);
+        if (index < 0) {
+            next.push(template);
+            continue;
+        }
+        const localUpdatedAt = Date.parse(next[index].updatedAt || "");
+        const remoteUpdatedAt = Date.parse(template.updatedAt || "");
+        if (remoteUpdatedAt > localUpdatedAt) next[index] = template;
+    }
+    return next;
+}
+
 export function deleteUserTemplate(users: readonly UserTemplate[], id: string): UserTemplate[] { return users.filter((entry) => entry.id !== id).map((entry) => ({...entry})); }

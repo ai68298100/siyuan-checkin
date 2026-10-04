@@ -134,6 +134,28 @@ export function isWorkflowNewer(candidate: SuggestionWorkflowState, current: Sug
     return Number.isFinite(candidateTime) && (!Number.isFinite(currentTime) || candidateTime > currentTime);
 }
 
+/** 同一建议的跨窗口合并：较新的状态胜出，审计与 token 取并集。 */
+export function mergeSuggestionWorkflows(local: SuggestionWorkflowState | undefined, remote: SuggestionWorkflowState | undefined): SuggestionWorkflowState | undefined {
+    if (!local) return remote ? cloneSuggestionWorkflow(remote) : undefined;
+    if (!remote) return cloneSuggestionWorkflow(local);
+    if (local.envelope.id !== remote.envelope.id) return isWorkflowNewer(remote, local) ? cloneSuggestionWorkflow(remote) : cloneSuggestionWorkflow(local);
+    const winner = local.envelope.status === "pending" && remote.envelope.status !== "pending"
+        ? remote
+        : remote.envelope.status === "pending" && local.envelope.status !== "pending"
+            ? local : isWorkflowNewer(remote, local) ? remote : local;
+    const consumedTokens = [...new Set([...local.consumedTokens, ...remote.consumedTokens])].sort().slice(-SUGGESTION_WORKFLOW_TOKEN_LIMIT);
+    const auditByIdentity = new Map<string, AgentSuggestionAudit>();
+    for (const audit of [...normalizeSuggestionAudits(local.audits), ...normalizeSuggestionAudits(remote.audits)]) {
+        auditByIdentity.set(JSON.stringify(audit), audit);
+    }
+    const lifecycleOrder: Record<AgentSuggestionAudit["action"], number> = {created: 0, confirmed: 1, cancelled: 1, applied: 2, rejected: 2};
+    const audits = normalizeSuggestionAudits([...auditByIdentity.values()].sort((left, right) =>
+        Date.parse(left.at) - Date.parse(right.at) || Number(left.reason === "revert") - Number(right.reason === "revert")
+        || lifecycleOrder[left.action] - lifecycleOrder[right.action]
+        || JSON.stringify(left).localeCompare(JSON.stringify(right))));
+    return {...cloneSuggestionWorkflow(winner), consumedTokens, audits};
+}
+
 export function canUndoSuggestion(state: SuggestionWorkflowState): boolean {
     const latestApplied = [...state.audits].reverse().find((audit) => audit.action === "applied");
     return state.envelope.status === "confirmed" && Boolean(latestApplied && (latestApplied.applied || 0) > 0 && latestApplied.reason !== "revert");

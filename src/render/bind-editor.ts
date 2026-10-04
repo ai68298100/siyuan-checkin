@@ -21,7 +21,7 @@ import {buildAnchorDocumentPath, filterAnchorChoices} from "../features/note-anc
 import {describeEditorPreviewActions, describeEditorPreviewMeta} from "./editor";
 import {buildSchedulePreview, type SchedulePreviewDraft} from "../features/schedule-preview";
 import {buildRuleChangeDiff, type RuleChangeSide} from "../features/rule-change-diff";
-import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate} from "../types";
+import type {CheckinItem, CheckinKind, CheckinSchedule, CheckinStore, ScheduleType, UserTemplate, EditorRootContext} from "../types";
 
 /* 存储名与 index.ts 保持一致（历史常量，避免跨模块导出）。 */
 const CUSTOM_ICON_LIBRARY_NAME = "checkin-custom-icon-library";
@@ -35,7 +35,9 @@ export interface BindEditorHost {
     editingId?: string;
     editingFingerprint?: string;
     /** T-1570：应用模板后会话态标示（宿主只存字段，bind 就地更新徽标，不重渲染）。 */
-    markTemplateApplied?(note: string): void;
+    markTemplateApplied?(note: string, root?: HTMLElement): void;
+    editorStateForRoot?(root: HTMLElement): EditorRootContext;
+    isCurrentEditorSession?(root: HTMLElement, editor: EditorRootContext): boolean;
     summaryCustomRange?: {startDate: string; endDate: string};
     summaryText?: string;
     suggestionWorkflow?: import("../features/suggestion-workflow").SuggestionWorkflowState;
@@ -48,12 +50,14 @@ export interface BindEditorHost {
     showToday(root?: HTMLElement): void;
     /** T-1599：返回编辑器来源页（editorReturnPage 单级返回栈，回放后清除）。 */
     showEditorReturn(root?: HTMLElement): void;
-    archiveEditingItem(): Promise<void> | void;
-    deleteEditingItem(): Promise<boolean> | void;
+    archiveEditingItem(root?: HTMLElement): Promise<void> | void;
+    deleteEditingItem(root?: HTMLElement): Promise<boolean> | void;
     saveData(name: string, value: unknown): Promise<void>;
-    render(): void;
+    persistCustomIconLibrary?(icons: string[]): Promise<void>;
+    persistUserTemplates?(templates: UserTemplate[]): Promise<void>;
+    render(root?: HTMLElement): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean): Promise<string | undefined>;
+    saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean, root?: HTMLElement): Promise<string | undefined>;
     /** T-1488：空状态一键装填——按组合包批量创建全部新增条目，返回创建数量（未知 pack 返回 0）。 */
     applyTemplatePackBulk?(packId: string): Promise<number>;
     /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
@@ -61,11 +65,14 @@ export interface BindEditorHost {
     /** T-1520 模板包导入会话（宿主持有；确认/取消后清空）。 */
     templateImportSession?: {fileName: string; decisions: ImportDecision[]};
     /** T-1520 应用导入（失败整批回滚原模板）。 */
-    applyTemplateShareImport?(decisions: ImportDecision[]): Promise<number>;
+    applyTemplateShareImport?(decisions: ImportDecision[], root?: HTMLElement): Promise<number>;
     revisionFingerprint(item: CheckinItem, date: Date): string;
     /** T-1359：待检查的智能体项目草案（存在时编辑器预填，检查后由用户手动保存）。 */
     pendingProjectDraft?: import("../features/project-draft").ProjectDraft;
-    clearPendingProjectDraft(): void;
+    pendingProjectDraftForRoot?(root: HTMLElement): import("../features/project-draft").ProjectDraft | undefined;
+    clearPendingProjectDraft(root?: HTMLElement): void;
+    templateImportSessionForRoot?(root: HTMLElement): {fileName: string; decisions: ImportDecision[]} | undefined;
+    setTemplateImportSessionForRoot?(root: HTMLElement, session: {fileName: string; decisions: ImportDecision[]} | undefined): void;
     /** T-1349：模板套用后更新「最近使用」偏好并持久化（宿主内去重置顶、容量 6）。 */
     recordRecentTemplateUse(name: string): void;
     /** T-1486：联动建议卡片的当前绑定状态投影（显示名，渲染前调用）。 */
@@ -126,6 +133,9 @@ function setLinkagePlanPlanned(root: HTMLElement, planned: boolean): void {
 }
 
 export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): void {
+    const editor = host.editorStateForRoot?.(root);
+    const isCurrentSession = () => editor && host.isCurrentEditorSession ? host.isCurrentEditorSession(root, editor) : root.isConnected;
+    if (editor?.submitting) root.querySelectorAll<HTMLButtonElement>("button[type='submit']").forEach(button => { button.disabled = true; });
     host.bindMobileNav(root);
     host.bindDialogClose(root);
     root.querySelector<HTMLElement>("[data-action='retry-save']")?.addEventListener("click", () => {
@@ -226,8 +236,8 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         applyIconFilter();
     }));
     root.querySelector<HTMLElement>("[data-action='back']")?.addEventListener("click", () => host.showEditorReturn(root));
-    root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem());
-    root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem());
+    root.querySelector<HTMLElement>("[data-action='archive']")?.addEventListener("click", () => host.archiveEditingItem(root));
+    root.querySelector<HTMLElement>("[data-action='delete-item']")?.addEventListener("click", () => host.deleteEditingItem(root));
     const scheduleSelect = root.querySelector<HTMLSelectElement>("select[name='schedule']");
     const directionField = root.querySelector<HTMLElement>("[data-direction-at-most-field]");
     const anchorInput = root.querySelector<HTMLInputElement>("input[name='anchorBlockId']");
@@ -439,8 +449,17 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             if (!added) throw new Error("图标库中没有新的图标");
             const sizeKb = Math.max(1, Math.round(merged.reduce((sum, icon) => sum + icon.length, 0) * 0.75 / 1024));
             if (!window.confirm(t("msg.iconImportConfirm", {n: added, kb: sizeKb}))) return;
-            host.customIconLibrary = merged;
-            await host.saveData(CUSTOM_ICON_LIBRARY_NAME, host.customIconLibrary);
+            const previous = host.customIconLibrary;
+            try {
+                if (host.persistCustomIconLibrary) await host.persistCustomIconLibrary(merged);
+                else {
+                    host.customIconLibrary = merged;
+                    await host.saveData(CUSTOM_ICON_LIBRARY_NAME, host.customIconLibrary);
+                }
+            } catch (error) {
+                host.customIconLibrary = previous;
+                throw error;
+            }
             showMessage(t("msg.iconImported", {n: added}));
             host.render();
         } catch (error) { showMessage(t("msg.iconImportFail", {error: String(error instanceof Error ? error.message : error)})); }
@@ -677,7 +696,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     /* T-1570：应用模板后标示已回填（会话态，项目落盘后清除；bind 就地更新徽标，不重渲染）。 */
     const markTemplateApplied = (name: string) => {
         const note = t("editor.templateApplied", {name});
-        host.markTemplateApplied?.(note);
+        host.markTemplateApplied?.(note, root);
         const badge = root.querySelector<HTMLElement>("[data-template-applied-note]");
         if (badge) {
             badge.textContent = note;
@@ -893,11 +912,11 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const template = host.userTemplates.find((candidate) => candidate.id === id);
         if (!id || !template || !window.confirm(t("msg.templateDeleteConfirm", {name: template.name}))) return;
         const nextTemplates = deleteUserTemplate(host.userTemplates, id);
-        void host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => {
-            host.userTemplates = nextTemplates;
+        const previousTemplates = host.userTemplates;
+        void (host.persistUserTemplates ? host.persistUserTemplates(nextTemplates) : host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => { host.userTemplates = nextTemplates; })).then(() => {
             showMessage(t("msg.templateDeleted"));
             host.render();
-        }).catch(() => showMessage(t("msg.templateDeleteFail")));
+        }).catch(() => { host.userTemplates = previousTemplates; showMessage(t("msg.templateDeleteFail")); });
     }));
     /* T-1519 模板脱敏分享：勾选即时刷新预览（纯函数白名单脱敏，确定性序列化）；
        导出走宿主保存通道；不修改原模板。 */
@@ -945,33 +964,39 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         }
         const reader = new FileReader();
         reader.onload = () => {
+            if (!root.isConnected || editor && host.isCurrentEditorSession && !host.isCurrentEditorSession(root, editor)) return;
             const result = parseTemplateShare(String(reader.result || ""), {rawByteLength: file.size});
             if (result.errorKey) {
                 showMessage(t(result.errorKey));
                 input.value = "";
                 return;
             }
-            host.templateImportSession = {fileName: file.name, decisions: planImportDecisions(result.entries, host.userTemplates)};
+            const session = {fileName: file.name, decisions: planImportDecisions(result.entries, host.userTemplates)};
+            if (host.setTemplateImportSessionForRoot) host.setTemplateImportSessionForRoot(root, session);
+            else if (editor) editor.templateImportSession = session;
+            else host.templateImportSession = session;
             if (result.invalidCount) showMessage(t("editor.importInvalidCount", {n: result.invalidCount}));
-            host.render();
+            host.render(root);
         };
         reader.readAsText(file);
     });
     root.querySelectorAll<HTMLInputElement>("input[data-import-disposition]").forEach((input) => input.addEventListener("change", () => {
-        const session = host.templateImportSession;
+        const session = host.templateImportSessionForRoot ? host.templateImportSessionForRoot(root) : editor ? editor.templateImportSession : host.templateImportSession;
         if (!session) return;
         const index = Number(input.dataset.importDisposition);
         const decision = session.decisions.find((entry) => entry.index === index);
         if (decision && input.checked) decision.disposition = input.value as ImportDecision["disposition"];
     }));
     root.querySelector<HTMLElement>("[data-share-import-confirm]")?.addEventListener("click", () => {
-        const session = host.templateImportSession;
+        const session = host.templateImportSessionForRoot ? host.templateImportSessionForRoot(root) : editor ? editor.templateImportSession : host.templateImportSession;
         if (!session) return;
-        void host.applyTemplateShareImport?.(session.decisions.map((decision) => ({...decision, entry: {...decision.entry, schedule: {...decision.entry.schedule}}})));
+        void host.applyTemplateShareImport?.(session.decisions.map((decision) => ({...decision, entry: {...decision.entry, schedule: {...decision.entry.schedule}}})), root);
     });
     root.querySelector<HTMLElement>("[data-share-import-cancel]")?.addEventListener("click", () => {
-        host.templateImportSession = undefined;
-        host.render();
+        if (host.setTemplateImportSessionForRoot) host.setTemplateImportSessionForRoot(root, undefined);
+        else if (editor) editor.templateImportSession = undefined;
+        else host.templateImportSession = undefined;
+        host.render(root);
     });
     root.querySelector<HTMLButtonElement>("[data-action='save-template']")?.addEventListener("click", () => {
         const form = root.querySelector<HTMLFormElement>("form");
@@ -1008,8 +1033,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             schedule, group: String(data.get("group") || "").trim(),
             priority: normalizePriorityInput(data.get("priority")), timeSlot: normalizeTimeSlotInput(data.get("timeSlot")), completionSource: data.get("completionSource") === "tomato" ? "tomato" : "manual", tomatoMode: data.get("tomatoMode") === "sessions" ? "sessions" : "minutes", note: "来自编辑器保存", createdAt: existing?.createdAt || now, updatedAt: now,
         };
-        host.userTemplates = upsertUserTemplate(host.userTemplates, template);
-        void host.saveData(USER_TEMPLATES_NAME, host.userTemplates).then(() => { showMessage(t("msg.templateSaved")); host.render(); }).catch(() => {
+        const previousTemplates = host.userTemplates;
+        const nextTemplates = upsertUserTemplate(previousTemplates, template);
+        void (host.persistUserTemplates ? host.persistUserTemplates(nextTemplates) : host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => { host.userTemplates = nextTemplates; })).then(() => { showMessage(t("msg.templateSaved")); host.render(); }).catch(() => {
+            host.userTemplates = previousTemplates;
             showMessage(t("msg.templateSaveFail"));
         });
     });
@@ -1101,12 +1128,13 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             event.preventDefault();
             const form = event.currentTarget as HTMLFormElement;
             form.dataset.submitBound = "true";
-            if (form.dataset.submitting === "true") return;
+            if (form.dataset.submitting === "true" || editor?.submitting || !isCurrentSession()) return;
             form.dataset.submitting = "true";
+            if (editor) editor.submitting = true;
             const data = new FormData(form);
-            const editingId = host.editingId;
+            const editingId = editor ? editor.editingId : host.editingId;
             const submittedAt = captureActionMoment();
-            const expectedFingerprint = editingId ? host.editingFingerprint : undefined;
+            const expectedFingerprint = editingId ? editor ? editor.editingFingerprint : host.editingFingerprint : undefined;
             /* T-1488：提交来源区分「保存并继续」（保留分组/类型上下文，清空名称继续建）。 */
             const submitter = (event as SubmitEvent).submitter instanceof HTMLElement ? (event as SubmitEvent).submitter as HTMLElement : null;
             const continueCreation = Boolean(submitter?.hasAttribute("data-save-continue")) && !editingId;
@@ -1114,7 +1142,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             if (submitButton) submitButton.disabled = true;
             const resetSubmitting = () => {
                 form.dataset.submitting = "false";
+                if (editor) editor.submitting = false;
                 if (submitButton) submitButton.disabled = false;
+                if (isCurrentSession()) root.querySelectorAll<HTMLButtonElement>("button[type='submit']").forEach(button => { button.disabled = false; });
             };
             /* T-1514 规则修改前后影响对照：既有项目的目标/单位/类型/频率变化时，
                保存前展示差异与未来 30 天安排差集；取消零写入、表单原样保留；
@@ -1142,11 +1172,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                     }
                 }
             }
-            void host.enqueueMutation(() => host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation)).then((savedId) => {
+            void host.saveForm(data, editingId, submittedAt, expectedFingerprint, continueCreation, root).then((savedId) => {
                 resetSubmitting();
-                if (continueCreation && typeof savedId === "string" && savedId) {
+                if (continueCreation && typeof savedId === "string" && savedId && isCurrentSession()) {
                     const nameInput = root.querySelector<HTMLInputElement>("input[name='name']");
-                    if (nameInput) nameInput.value = "";
+                    if (nameInput?.value !== String(data.get("name") || "")) return;
+                    nameInput.value = "";
                     renderLinkageCard(root, host, undefined);
                     const inferenceRow = root.querySelector<HTMLElement>("[data-name-inference]");
                     if (inferenceRow) { inferenceRow.hidden = true; inferenceRow.innerHTML = ""; delete inferenceRow.dataset.dismissedFor; }
@@ -1158,9 +1189,13 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
 
     /* T-1359：智能体项目草案预填——存在待检查草案时套用到新建表单，
        用户在编辑器内检查/修改后手动保存；预填不写 store，检查后即清除。 */
-    const draft = host.pendingProjectDraft;
+    const draft = host.pendingProjectDraftForRoot
+        ? host.pendingProjectDraftForRoot(root)
+        : editor
+            ? editor.pendingProjectDraft
+            : host.pendingProjectDraft;
     if (draft) {
-        host.clearPendingProjectDraft();
+        host.clearPendingProjectDraft(root);
         const setInput = (name: string, value: string) => {
             const control = root.querySelector<HTMLInputElement | HTMLSelectElement>(`[name='${name}']`);
             if (control) control.value = value;

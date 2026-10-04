@@ -85,6 +85,9 @@ assert.deepEqual(model.normalizeStoreAudit(auditInput), [
     {type: "conflict", at: "2026-09-12T01:00:00.000Z", details: {}},
 ]);
 assert.equal(model.normalizeStoreAudit(Array.from({length: 60}, (_, index) => ({type: "merge", at: new Date(index * 1000).toISOString(), details: {index}}))).length, 50);
+const localAudit = [{type: "anchor", at: "2026-09-30T00:00:00.000Z", details: {channel: "local"}}];
+const remoteAudit = [{type: "anchor", at: "2026-09-30T00:01:00.000Z", details: {channel: "remote"}}, {...localAudit[0]}];
+assert.equal(model.mergeStoreAudits(localAudit, remoteAudit).length, 2, "audit merge unions entries and deduplicates identical diagnostics");
 assert.deepEqual(JSON.parse(model.serializeStoreAudit(auditInput, "2026-09-12T02:00:00.000Z")), {
     format: "siyuan-checkin-audit",
     version: 1,

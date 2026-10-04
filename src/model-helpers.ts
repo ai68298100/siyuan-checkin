@@ -1,6 +1,6 @@
 /* 纯数据助手：从 index.ts 外置（T-022）。
    克隆/指纹/连续天数/事件构造/范围事件——均无插件实例状态依赖。 */
-import {computeEventStreaks, getItemRevisionForDate, makeId} from "./model";
+import {computeEventStreaks, getItemRevisionForDate, makeId, normalizeAttachmentDataUrl} from "./model";
 import {currentCalendarDate, captureActionMoment} from "./shared";
 import {getEventsInRange, type SummaryRange} from "./analytics";
 import type {CheckinEvent, CheckinItem, CheckinStore} from "./types";
@@ -66,7 +66,7 @@ export function makeEventValue(item: CheckinItem, value: number, source: Checkin
         source,
         note,
         externalRef,
-        attachment: typeof attachment === "string" && attachment.startsWith("data:image/") && attachment.length <= 700000 ? attachment : undefined,
+        attachment: normalizeAttachmentDataUrl(attachment),
     };
 }
 

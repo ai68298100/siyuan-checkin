@@ -70,7 +70,10 @@ assert.equal(cleanGate.resume(), false, "a teardown with no queued write owes no
     assert.match(indexSource, /private persist\(store: CheckinStore = this\.store\): Promise<void> \{\s*if \(this\.teardownWrites\.shouldIntercept\(\)\)/, "queued teardown writes must be intercepted at the top of persist");
     const flushBody = indexSource.slice(indexSource.indexOf("private async teardownFinalFlush()"));
     const flushSlice = flushBody.slice(0, flushBody.indexOf("\n    }"));
-    assert.match(flushSlice, /this\.saveData\(STORAGE_NAME, snapshot\)/, "the final flush must write the main store");
+    assert.match(flushSlice, /persistStoreWithReconciliation\(/, "the final flush must use the reconciled main-store transaction");
+    assert.match(flushSlice, /this\.loadData\(STORAGE_NAME\)/, "the final flush must re-read the main store before writing");
+    assert.match(flushSlice, /this\.saveData\(STORAGE_NAME, candidate\)/, "the final flush must write the reconciled candidate");
+    assert.ok(!flushSlice.includes("this.saveData(STORAGE_NAME, snapshot)"), "the final flush must not write a stale snapshot directly");
     assert.ok(!flushSlice.includes("BACKUP_STORAGE_NAME"), "the final flush must skip snapshot history to save IO");
     assert.match(flushSlice, /ifAvailable: true/, "the final flush must not queue behind another window's lock");
     assert.match(flushSlice, /if \(acquired === undefined\) \{[^}]*recordDiagnostic\("lock-contended"[^}]*await this\.withStorageLock\(write\);/s, "the final flush must record contention and fall back to the queued lock when busy");
