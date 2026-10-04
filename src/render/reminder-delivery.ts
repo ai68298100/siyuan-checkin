@@ -133,7 +133,12 @@ function recordDeliveryFailure(host: ReminderDeliveryHost, now: Date): void {
 }
 
 export function openReminderCenterFor(host: Pick<ReminderDeliveryHost, "openQuickDialog" | "showSummary" | "showReminderCenter" | "dockElement" | "tabElement" | "quickDialogElement">, root?: HTMLElement): void {
-    let target = root ?? [host.quickDialogElement, host.tabElement, host.dockElement].find((surface) => surface?.isConnected);
+    /* A reminder action can outlive the surface that rendered it (for example,
+       a quick dialog is closed while the notice remains mounted).  Do not send
+       navigation into that detached tree; prefer a currently connected surface
+       so the center is visible after the action completes. */
+    let target = (root?.isConnected ? root : undefined)
+        ?? [host.quickDialogElement, host.tabElement, host.dockElement].find((surface) => surface?.isConnected);
     if (!target) {
         host.openQuickDialog();
         target = host.quickDialogElement;

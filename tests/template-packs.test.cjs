@@ -13,9 +13,9 @@ fs.writeFileSync(path.join(dir, "template-packs.js"), ts.transpileModule(fs.read
 const packs = require(path.join(dir, "template-packs.js"));
 
 const catalog = [
-    {name: "喝水", icon: "💧", target: 2000, unit: "毫升"},
-    {name: "阅读", icon: "📖", target: 30, unit: "分钟"},
-    {name: "写作", icon: "✒", target: 30, unit: "分钟"},
+    {name: "喝水", icon: "💧", kind: "quantity", target: 2000, unit: "毫升"},
+    {name: "阅读", icon: "📖", kind: "duration", target: 30, unit: "分钟"},
+    {name: "写作", icon: "✒", kind: "duration", target: 30, unit: "分钟"},
 ];
 const localizeName = (name) => (name === "喝水" ? "Drink water" : name);
 
@@ -36,6 +36,22 @@ assert.equal(raw.duplicateCount, 1, "无本地化器时原名比对");
 const withUnknown = packs.buildTemplatePackPreview(["喝水", "不存在的模板"], catalog, [], {localizeName});
 assert.equal(withUnknown.entries.length, 1);
 assert.deepEqual(withUnknown.unknownNames, ["不存在的模板"]);
+
+/* T-1632：同名项目规则差异可解释，默认仅新条目可创建；计划无副作用且可在提交前重建。 */
+const plan = packs.buildTemplatePackApplicationPlan(["喝水", "阅读", "写作"], catalog, [
+    {name: "Drink water", icon: "💧", kind: "quantity", target: 2000, unit: "毫升"},
+    {name: "阅读", icon: "📖", kind: "duration", target: 45, unit: "分钟"},
+], {localizeName});
+assert.equal(plan.entries.length, 3);
+assert.equal(plan.entries[0].conflict, "same");
+assert.equal(plan.entries[0].defaultDisposition, "skip");
+assert.equal(plan.entries[1].conflict, "different");
+assert.ok(plan.entries[1].differences.some((difference) => difference.field === "target"));
+assert.equal(plan.entries[2].status, "new");
+assert.equal(plan.entries[2].defaultDisposition, "create");
+assert.equal(plan.createCount, 1);
+assert.equal(plan.sameCount, 1);
+assert.equal(plan.differentCount, 1);
 
 /* 纯度：冻结输入不改写、同输入同输出。 */
 const frozenCatalog = Object.freeze([{name: "阅读", icon: "📖"}]);
@@ -79,13 +95,19 @@ for (const key of ["editor.packs", "editor.packsHint", "editor.packCount", "edit
 assert.match(bindSource, /data-pack-apply-all/, "预览面板必须提供一键装填按钮");
 assert.match(bindSource, /host\.store\.items\.every\(\(entry\) => entry\.archived\)/, "批量按钮必须以「无活跃项目」为前提（非空库仍逐条确认）");
 assert.match(bindSource, /applyTemplatePackBulk/, "批量应用必须经宿主方法");
+assert.match(bindSource, /buildTemplatePackApplicationPlan\(/, "组合包面板必须展示同名规则差异计划");
+assert.match(bindSource, /data-pack-select/, "组合包面板必须支持逐项勾选");
+assert.match(bindSource, /applyTemplatePackSelected/, "部分应用必须经宿主方法并由宿主重核对");
+assert.match(bindSource, /data-pack-edit/, "冲突行必须提供进入编辑入口");
 assert.match(bindSource, /editor\.packApplied/, "批量创建后必须有结果反馈");
 const indexPackSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexPackSource, /private async applyTemplatePackBulk\(packId: string\): Promise<number>/, "宿主实现批量建项方法");
 assert.match(indexPackSource, /buildTemplatePackPreview\(pack\.templates/, "批量路径复用同一预览纯函数做 new/duplicate 判定");
 assert.match(indexPackSource, /normalizeCheckinItem\(\{/, "批量建项必须过模型归一化边界");
 assert.match(indexPackSource, /advanceFirstSuccess\("item-created"\)/, "批量建项推进新手旅程");
-for (const key of ["editor.packApplyAll", "editor.packApplied", "editor.saveContinue"]) {
+assert.match(indexPackSource, /private async applyTemplatePackSelected\(packId: string, templateIndexes: readonly number\[\]\)/, "宿主必须提供组合包部分应用方法");
+assert.match(indexPackSource, /selected\.has\(CHECKIN_TEMPLATES\.indexOf\(entry\.template\)\)/, "部分应用必须按最新计划过滤勾选项");
+for (const key of ["editor.packApplyAll", "editor.packApplied", "editor.packApplySelected", "editor.packConflictSame", "editor.packConflictDifferent", "editor.packEdit", "editor.packPreviewApply", "editor.saveContinue"]) {
     const occurrences = i18nSource.split(`"${key}"`).length - 1;
     assert.equal(occurrences, 2, `${key} 必须中英双语齐备（当前 ${occurrences} 处）`);
 }

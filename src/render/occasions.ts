@@ -64,7 +64,12 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
         const missed = getMissedOccurrence(item, todayKey);
         const lateMarkup = missed ? `<div class="lc-checkin__occasion-late"><span>${t("occ.lateHint", {date: missed})}</span><button class="lc-checkin__text-button" type="button" data-occasion-late-complete data-occasion-late-id="${escapeHtml(item.id)}" data-occasion-late-date="${escapeHtml(missed)}">${t("occ.lateComplete")}</button></div>` : "";
         const moveAvailable = item.enabled && item.recurrence !== "once" && Boolean(next);
-        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="false">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}" hidden><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}" disabled>${t("occ.moveConfirm")}</button></div></div>` : "";
+        /* T-1621：改期行是事项表面的 root-local 会话草稿。动作重绘或
+           过滤切换时沿用该 root 的展开态与日期，不从另一个 surface 借 DOM 状态。 */
+        const moveState = ctx.occurrenceMoves[item.id];
+        const moveDate = moveState?.date || "";
+        const moveOpen = moveState?.open === true;
+        const moveMarkup = moveAvailable && next ? `<div class="lc-checkin__occasion-move"><button class="lc-checkin__text-button" type="button" data-occasion-move-toggle="${escapeHtml(item.id)}" aria-expanded="${moveOpen ? "true" : "false"}">${t("occ.moveOccurrence")}</button><div class="lc-checkin__occasion-move-row" data-occasion-move-row="${escapeHtml(item.id)}"${moveOpen ? "" : " hidden"}><input type="date" data-occasion-move-date="${escapeHtml(item.id)}" value="${escapeHtml(moveDate)}" min="${escapeHtml(todayKey)}" aria-label="${t("occ.moveNewDate")}" /><button class="lc-checkin__text-button" type="button" data-occasion-move-confirm="${escapeHtml(item.id)}" data-occasion-move-origin="${escapeHtml(next)}"${moveDate ? "" : " disabled"}>${t("occ.moveConfirm")}</button></div></div>` : "";
         /* The next date is the scanning anchor; recurrence and lead time are
            supporting detail. Only exceptional states need a visible badge. */
         const isToday = item.enabled && next === todayKey;

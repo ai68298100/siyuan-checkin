@@ -93,6 +93,19 @@
 .lc-checkin__name-inference span { color: var(--lc-checkin-muted); overflow-wrap: anywhere; }
 /* T-1488 空状态一键装填：组合包预览面板顶部的批量应用行。 */
 .lc-checkin__pack-bulk { display: flex; justify-content: flex-end; padding: 2px 0 6px; }
+.lc-checkin__pack-bulk { gap: 8px; flex-wrap: wrap; }
+.lc-checkin__pack-entries { display: grid; gap: 6px; }
+.lc-checkin__pack-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px 8px; padding: 6px 8px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-surface); min-width: 0; }
+.lc-checkin__pack-entry.is-conflict { border-color: var(--lc-checkin-warm-text); }
+.lc-checkin__pack-select { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.lc-checkin__pack-select > input { flex: 0 0 auto; }
+.lc-checkin__pack-entry .lc-checkin__template { border: 0; padding: 0; min-width: 0; }
+.lc-checkin__pack-diff { grid-column: 1 / -1; color: var(--lc-checkin-warm-text); overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+    .lc-checkin__pack-entry { grid-template-columns: minmax(0, 1fr) auto; }
+    .lc-checkin__pack-entry > .lc-checkin__text-button { grid-column: 2; }
+    .lc-checkin__pack-diff { grid-column: 1 / -1; }
+}
 .lc-checkin__journal-config legend { font-size: 11px; color: var(--lc-checkin-muted); padding: 0 4px; }
 .lc-checkin__journal-target { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
 .lc-checkin__journal-form [hidden] { display: none !important; }

@@ -335,8 +335,12 @@ assert.match(viewSource, /occ\.cycleProgress/, "cycle bars label themselves as c
 assert.match(viewSource, /getMissedOccurrence\(item, todayKey\)/, "occasion rows surface the unmarked previous cycle");
 assert.match(viewSource, /data-occasion-late-complete/, "late occurrences expose a mark-complete action");
 assert.match(viewSource, /data-occasion-move-toggle/, "recurring occasions expose a single-instance reschedule action");
+assert.match(viewSource, /const moveState = ctx\.occurrenceMoves\[item\.id\]/, "reschedule rows read the owning root session");
+assert.match(viewSource, /value="\$\{escapeHtml\(moveDate\)\}"/, "reschedule date draft survives a root redraw");
 assert.match(bindSource, /data-occasion-late-complete/, "late marks route through the shared completion channel");
 assert.match(bindSource, /saveOccasionOverride/, "reschedules go through the host override channel");
+assert.match(bindSource, /writeState\(\{occurrenceMoves:/, "reschedule open/date changes write the owning root session");
+assert.match(bindSource, /renderRoot\(\);[\s\S]*data-occasion-move-date/, "reschedule toggle redraws only the owning root and restores focus");
 const indexSource2 = fs.readFileSync("src/index.ts", "utf8");
 assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string\): void/, "host implements the override persistence wrapper");
 assert.match(indexSource2, /setOccasionOverride\(previous, id, originalDate, newDate\)/, "host delegates to the pure override writer");

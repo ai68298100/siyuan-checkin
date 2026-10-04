@@ -212,6 +212,24 @@ const projectRoot = path.resolve(__dirname, "..");
                     const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
                     plugin.showOccasions(primary);
                     plugin.showOccasions(secondary);
+                    /* T-1621：同一事项的改期草稿必须留在触发它的 root。
+                       过滤/重绘后两个表面仍保留各自展开态和日期。 */
+                    primary.querySelector('[data-occasion-move-toggle="birthday"]').click();
+                    const primaryMoveDate = primary.querySelector('[data-occasion-move-date="birthday"]');
+                    primaryMoveDate.value = "2026-12-25";
+                    primaryMoveDate.dispatchEvent(new Event("change", {bubbles: true}));
+                    secondary.querySelector('[data-occasion-move-toggle="birthday"]').click();
+                    const secondaryMoveDate = secondary.querySelector('[data-occasion-move-date="birthday"]');
+                    secondaryMoveDate.value = "2026-12-26";
+                    secondaryMoveDate.dispatchEvent(new Event("change", {bubbles: true}));
+                    plugin.render(primary);
+                    plugin.render(secondary);
+                    const readMove = root => ({
+                        state: plugin.occasionStateForRoot(root).occurrenceMoves.birthday,
+                        date: root.querySelector('[data-occasion-move-date="birthday"]').value,
+                        open: root.querySelector('[data-occasion-move-row="birthday"]').hidden === false,
+                    });
+                    const moveSessions = {primary: readMove(primary), secondary: readMove(secondary)};
                     const firstSearch = primary.querySelector("[data-occasion-search]");
                     const secondSearch = secondary.querySelector("[data-occasion-search]");
                     firstSearch.value = "生日";
@@ -245,7 +263,7 @@ const projectRoot = path.resolve(__dirname, "..");
                         page: plugin.pageForRoot(root),
                         list: root.querySelector("[name='remindBeforeDays']")?.getAttribute("list"),
                         datalist: root.querySelector("datalist")?.id});
-                    return {primary: read(primary), secondary: read(secondary), ids: [primary.querySelector(".lc-checkin")?.dataset.occasionRootInstance, secondary.querySelector(".lc-checkin")?.dataset.occasionRootInstance]};
+                    return {primary: read(primary), secondary: read(secondary), ids: [primary.querySelector(".lc-checkin")?.dataset.occasionRootInstance, secondary.querySelector(".lc-checkin")?.dataset.occasionRootInstance], moveSessions};
                 });
                 assert.equal(occasions.primary.query, "生日");
                 assert.equal(occasions.secondary.query, "不存在");
@@ -259,6 +277,10 @@ const projectRoot = path.resolve(__dirname, "..");
                 assert.equal(occasions.secondary.list, occasions.secondary.datalist);
                 assert.notEqual(occasions.primary.list, occasions.secondary.list);
                 assert.notEqual(occasions.ids[0], occasions.ids[1]);
+                assert.deepEqual(occasions.moveSessions, {
+                    primary: {state: {open: true, date: "2026-12-25"}, date: "2026-12-25", open: true},
+                    secondary: {state: {open: true, date: "2026-12-26"}, date: "2026-12-26", open: true},
+                });
                 await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);

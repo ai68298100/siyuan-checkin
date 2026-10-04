@@ -95,6 +95,9 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             if (!isOccasionsRootOpen(host, root)) return;
             const next = currentState();
             next.deletingOccasionIds.delete(id);
+            const nextMoves = {...next.occurrenceMoves};
+            delete nextMoves[id];
+            next.occurrenceMoves = nextMoves;
             if (next.editingOccasionId === id) next.editingOccasionId = undefined;
             renderRoot();
         });
@@ -111,18 +114,33 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const id = button.dataset.occasionMoveToggle || "";
         const row = root.querySelector<HTMLElement>(`[data-occasion-move-row='${CSS.escape(id) || id}']`);
         if (!row) return;
-        row.hidden = !row.hidden;
-        button.setAttribute("aria-expanded", row.hidden ? "false" : "true");
-        if (!row.hidden) row.querySelector<HTMLInputElement>("[data-occasion-move-date]")?.focus();
+        const previous = currentState().occurrenceMoves[id];
+        const open = !Boolean(previous?.open);
+        writeState({occurrenceMoves: {...currentState().occurrenceMoves, [id]: {open, date: previous?.date || ""}}});
+        /* Re-render the owning root so a subsequent filter/action cannot lose
+           the move session.  Focus the newly rendered input after the DOM swap. */
+        renderRoot();
+        if (open) root.querySelector<HTMLElement>(`[data-occasion-move-row='${CSS.escape(id) || id}'] [data-occasion-move-date]`)?.focus();
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-row]").forEach((row) => {
         const id = row.dataset.occasionMoveRow || "";
         const dateInput = row.querySelector<HTMLInputElement>("[data-occasion-move-date]");
         const confirmButton = row.querySelector<HTMLButtonElement>("[data-occasion-move-confirm]");
         if (!dateInput || !confirmButton) return;
-        dateInput.addEventListener("change", () => { confirmButton.disabled = !dateInput.value; });
+        dateInput.addEventListener("change", () => {
+            const current = currentState();
+            writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: true, date: dateInput.value}}});
+            confirmButton.disabled = !dateInput.value;
+        });
         confirmButton.addEventListener("click", () => {
             if (!dateInput.value || confirmButton.disabled) return;
+            const current = currentState();
+            /* Close the inline editor immediately while retaining the date as
+               a retryable root-local draft if persistence later fails. */
+            writeState({occurrenceMoves: {...current.occurrenceMoves, [id]: {open: false, date: dateInput.value}}});
+            row.hidden = true;
+            const toggle = root.querySelector<HTMLElement>(`[data-occasion-move-toggle='${CSS.escape(id) || id}']`);
+            toggle?.setAttribute("aria-expanded", "false");
             if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value);
         });
     });

@@ -378,6 +378,22 @@ async function check(name, run) {
         assert.equal(fixture.document.activeElement, heading);
         assert.deepEqual(center.scrollOptions, {block: "start"});
     });
+    await check("a detached originating root falls back to a connected surface", () => {
+        const fixture = harness();
+        const host = fixture.makeHost();
+        const stale = new fixture.Element();
+        const fallback = new fixture.Element();
+        const center = new fixture.Element();
+        const heading = new fixture.Element("h2");
+        fallback.controls.set(".lc-checkin__reminder-center", center);
+        center.controls.set("h2", heading);
+        fixture.document.body.appendChild(fallback);
+        host.dockElement = fallback;
+        fixture.delivery.openReminderCenterFor(host, stale);
+        assert.equal(host.summaryRoot, fallback);
+        assert.equal(fixture.document.activeElement, heading);
+        assert.deepEqual(center.scrollOptions, {block: "start"});
+    });
     await check("a host disposed during its write rolls back the identity and never mounts a late notice", async () => {
         const fixture = harness();
         const host = fixture.makeHost();

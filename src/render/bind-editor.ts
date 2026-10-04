@@ -6,7 +6,7 @@ import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, isValidLocalDateInput, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
 import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
 import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, TEMPLATE_PACKS, templateName} from "../catalog";
-import {buildTemplatePackPreview} from "../features/template-packs";
+import {buildTemplatePackApplicationPlan, buildTemplatePackPreview} from "../features/template-packs";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {validateEditorInput} from "../editor-validation";
 import {normalizePriorityInput, normalizeTimeSlotInput} from "../shared";
@@ -60,6 +60,10 @@ export interface BindEditorHost {
     saveForm(data: FormData, editingId: string | undefined, submittedAt: {occurredAt: string; localDate: string}, expectedFingerprint?: string, continueCreation?: boolean, root?: HTMLElement): Promise<string | undefined>;
     /** T-1488：空状态一键装填——按组合包批量创建全部新增条目，返回创建数量（未知 pack 返回 0）。 */
     applyTemplatePackBulk?(packId: string): Promise<number>;
+    /** T-1632：按预览中勾选的目录索引创建新增条目；宿主会在保存前重建计划。 */
+    applyTemplatePackSelected?(packId: string, templateIndexes: readonly number[]): Promise<number>;
+    /** T-1632：冲突行进入现有项目编辑，避免静默覆盖或重复创建。 */
+    showEditor?(item?: CheckinItem, returnTo?: "today" | "review" | "insights", root?: HTMLElement): void;
     /** T-1519 模板分享导出（宿主保存通道；可选：旧桩缺省安全跳过）。 */
     downloadTemplateShare?(content: string): void;
     /** T-1520 模板包导入会话（宿主持有；确认/取消后清空）。 */
@@ -829,8 +833,8 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
 
     /* T-1349/T-1357：委托绑定——应用钩子 data-template-apply 同时命中主列表与最近使用/精选行。 */
     root.addEventListener("click", (event) => {
-        /* T-1454：场景组合包芯片——展开预览面板（解析引用+新旧标记），条目复用
-           data-template-apply 逐条填表；再次点击同一芯片收起。 */
+        /* T-1454/T-1632：场景组合包芯片——展开可选择预览；同名项目显示规则差异。
+           逐条套用仍复用 data-template-apply，批量应用只提交勾选的「新增」条目。 */
         const packChip = event.target instanceof HTMLElement ? event.target.closest<HTMLElement>("[data-pack-chip]") : null;
         if (packChip) {
             const panel = root.querySelector<HTMLElement>("[data-pack-preview]");
@@ -844,20 +848,58 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             }
             root.querySelectorAll<HTMLElement>("[data-pack-chip]").forEach((candidate) => candidate.setAttribute("aria-pressed", "false"));
             packChip.setAttribute("aria-pressed", "true");
-            const existingNames = host.store.items.filter((entry) => !entry.archived).map((entry) => entry.name);
+            const activeItems = host.store.items.filter((entry) => !entry.archived);
+            const existingNames = activeItems.map((entry) => entry.name);
             const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
-            const rows = preview.entries.map((entry) => {
+            const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name})});
+            const formatDiffValue = (value: unknown) => {
+                if (value === undefined) return "∅";
+                if (typeof value === "string") return value;
+                try { return JSON.stringify(value); } catch { return String(value); }
+            };
+            const rows = plan.entries.map((entry) => {
                 const index = CHECKIN_TEMPLATES.indexOf(entry.template);
-                const badge = entry.status === "duplicate" ? t("editor.packDuplicate") : t("editor.packNew");
-                return `<button class="lc-checkin__template" type="button" data-template-apply="${index}"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></button>`;
+                const badge = entry.status === "duplicate"
+                    ? entry.conflict === "different" ? t("editor.packConflictDifferent") : t("editor.packConflictSame")
+                    : t("editor.packNew");
+                const diff = entry.differences.length
+                    ? `<small class="lc-checkin__pack-diff">${entry.differences.map((difference) => `${escapeHtml(difference.field)}: ${escapeHtml(formatDiffValue(difference.existing))} → ${escapeHtml(formatDiffValue(difference.incoming))}`).join("；")}</small>`
+                    : "";
+                const selection = entry.status === "new" ? " checked" : "";
+                const edit = entry.existing ? `<button type="button" class="lc-checkin__text-button" data-pack-edit="${index}">${escapeHtml(t("editor.packEdit"))}</button>` : "";
+                return `<div class="lc-checkin__pack-entry${entry.conflict === "different" ? " is-conflict" : ""}" data-pack-entry="${index}"><label class="lc-checkin__pack-select"><input type="checkbox" data-pack-select="${index}"${selection} /><span class="lc-checkin__template"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></span></label>${diff}${edit}<button class="lc-checkin__text-button" type="button" data-template-apply="${index}">${escapeHtml(t("editor.packPreviewApply"))}</button></div>`;
             }).join("");
             panel.hidden = false;
-            /* T-1488：空状态一键装填——库中无活跃项目时，组合包预览提供「应用全部新增」；
-               非空库仍保持逐条确认通道。 */
+            /* T-1488 空库按钮保留；T-1632 新增任意库的部分应用按钮。 */
             const bulkApply = preview.newCount > 0 && host.store.items.every((entry) => entry.archived)
-                ? `<div class="lc-checkin__pack-bulk"><button type="button" class="lc-checkin__text-button" data-pack-apply-all="${escapeHtml(pack.id)}">${escapeHtml(t("editor.packApplyAll", {n: preview.newCount}))}</button></div>`
+                ? `<button type="button" class="lc-checkin__text-button" data-pack-apply-all="${escapeHtml(pack.id)}">${escapeHtml(t("editor.packApplyAll", {n: preview.newCount}))}</button>`
                 : "";
-            panel.innerHTML = `${bulkApply}<div class="lc-checkin__templates">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            const selectedApply = plan.createCount > 0
+                ? `<button type="button" class="lc-checkin__text-button" data-pack-apply-selected="${escapeHtml(pack.id)}">${escapeHtml(t("editor.packApplySelected", {n: plan.createCount}))}</button>`
+                : "";
+            panel.innerHTML = `${bulkApply || selectedApply ? `<div class="lc-checkin__pack-bulk">${selectedApply}${bulkApply}</div>` : ""}<div class="lc-checkin__pack-entries">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            return;
+        }
+        const editButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-edit]") : null;
+        if (editButton) {
+            const packEntry = editButton.closest<HTMLElement>("[data-pack-entry]");
+            const name = packEntry?.querySelector<HTMLElement>("strong")?.textContent || "";
+            const existing = host.store.items.find((entry) => !entry.archived && entry.name === name);
+            if (existing) host.showEditor?.(existing, undefined, root);
+            return;
+        }
+        const selectedButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-apply-selected]") : null;
+        if (selectedButton && !selectedButton.disabled) {
+            const packId = selectedButton.dataset.packApplySelected || "";
+            if (selectedButton.dataset.busy === "true") return;
+            const indexes = Array.from(root.querySelectorAll<HTMLInputElement>("[data-pack-select]:checked"))
+                .map((input) => Number(input.dataset.packSelect)).filter((index) => Number.isInteger(index));
+            if (!indexes.length) return;
+            selectedButton.dataset.busy = "true";
+            void host.enqueueMutation(() => (host.applyTemplatePackSelected ? host.applyTemplatePackSelected(packId, indexes) : Promise.resolve(0))).then((created) => {
+                delete selectedButton.dataset.busy;
+                if (created > 0) { showMessage(t("editor.packApplied", {n: created})); host.showToday(root); }
+            }, () => { delete selectedButton.dataset.busy; });
             return;
         }
         const bulkButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-apply-all]") : null;

@@ -65,7 +65,7 @@ import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBin
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName} from "./catalog";
-import {buildTemplatePackPreview} from "./features/template-packs";
+import {buildTemplatePackApplicationPlan, buildTemplatePackPreview} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
@@ -7252,6 +7252,56 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const existingNames = this.store.items.filter((entry) => !entry.archived).map((entry) => entry.name);
         const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
         const fresh = preview.entries.filter((entry) => entry.status === "new");
+        if (!fresh.length) return 0;
+        const today = dateKey(currentCalendarDate());
+        const now = new Date().toISOString();
+        const created = fresh
+            .map((entry) => normalizeCheckinItem({
+                id: makeId("item"),
+                name: templateName(entry.template),
+                icon: entry.template.icon,
+                kind: entry.template.kind,
+                target: entry.template.target,
+                unit: entry.template.unit,
+                ...(entry.template.recordStep ? {recordStep: entry.template.recordStep} : {}),
+                schedule: {...entry.template.schedule, weekdays: entry.template.schedule.weekdays ? [...entry.template.schedule.weekdays] : undefined},
+                group: entry.template.group,
+                priority: entry.template.priority,
+                ...(entry.template.timeSlot ? {timeSlot: entry.template.timeSlot} : {}),
+                ...(entry.template.completionSource ? {completionSource: entry.template.completionSource} : {}),
+                ...(entry.template.tomatoMode ? {tomatoMode: entry.template.tomatoMode} : {}),
+                ...(entry.template.direction ? {direction: entry.template.direction} : {}),
+                createdDate: today,
+                createdAt: now,
+                updatedAt: now,
+            }))
+            .filter((entry): entry is CheckinItem => Boolean(entry));
+        if (!created.length) return 0;
+        const previous = this.store;
+        this.store = {...this.store, items: [...this.store.items, ...created]};
+        try {
+            await this.persist();
+        } catch {
+            this.store = previous;
+            showMessage(t("msg.createCheckinFail"));
+            return 0;
+        }
+        for (const item of created) this.broadcast({type: "item-created", item});
+        this.invalidateSummary();
+        this.advanceFirstSuccess("item-created");
+        return created.length;
+    }
+
+    /* T-1632：组合包部分应用。调用方在 enqueueMutation 内触发，方法本身在锁内
+       以最新 store 重建计划，只有仍为「新增」且被勾选的条目进入一次保存；并发中
+       已出现的同名项目会被安全跳过，保存失败恢复整批前的内存快照。 */
+    private async applyTemplatePackSelected(packId: string, templateIndexes: readonly number[]): Promise<number> {
+        const pack = TEMPLATE_PACKS.find((candidate) => candidate.id === packId);
+        if (!pack) return 0;
+        const activeItems = this.store.items.filter((entry) => !entry.archived);
+        const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name})});
+        const selected = new Set(templateIndexes.filter((index) => Number.isInteger(index)));
+        const fresh = plan.entries.filter((entry) => selected.has(CHECKIN_TEMPLATES.indexOf(entry.template)) && entry.defaultDisposition === "create");
         if (!fresh.length) return 0;
         const today = dateKey(currentCalendarDate());
         const now = new Date().toISOString();
