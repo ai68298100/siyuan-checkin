@@ -116,6 +116,8 @@ try {
         const focusSource = read("src", "render", "focus-timer.ts");
         assert.match(focusSource, /lc-focus-session/, "会话标记键在位");
         assert.match(focusSource, /data-focus-mini-remaining/, "小条剩余时间同步在位");
+        assert.doesNotMatch(focusSource, /document\.querySelector(?:All)?\s*\(/, "计时同步不能退回全局 document 查询而漏刷其他 surface");
+        assert.match(focusSource, /function focusRootsFor[\s\S]*?host\.dockElement[\s\S]*?host\.tabElement[\s\S]*?host\.quickDialogElement/, "计时器必须按宿主 surface 收集更新范围");
         const i18nSource = read("src", "i18n.ts");
         for (const key of ["focus.miniAria", "focus.miniBack", "msg.focusReloadLost"]) {
             const count = i18nSource.split(`"${key}"`).length - 1;

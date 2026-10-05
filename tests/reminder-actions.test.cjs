@@ -19,12 +19,16 @@ assert.deepEqual(reminders.deserializeReminderUserActions("not json"), [], "brok
 assert.deepEqual(reminders.deserializeReminderUserActions(JSON.stringify({version: 2, actions: []})), [], "future versions are ignored");
 const stored = JSON.parse(reminders.serializeReminderUserActions([
     {id: "occasion:a:2026-09-14", action: "skip", at: "2026-09-14T01:00:00.000Z"},
+    {id: "occasion:a:2026-09-14", action: "restore", at: "2026-09-14T02:00:00.000Z"},
     {id: "", action: "skip", at: "2026-09-14T01:00:00.000Z"},
     {id: "x", action: "delete", at: "2026-09-14T01:00:00.000Z"},
     {id: "x", action: "snooze", at: "not-a-date"},
 ]));
 assert.equal(stored.version, 1);
-assert.deepEqual(stored.actions, [{id: "occasion:a:2026-09-14", action: "skip", at: "2026-09-14T01:00:00.000Z"}], "invalid entries are dropped");
+assert.deepEqual(stored.actions, [
+    {id: "occasion:a:2026-09-14", action: "skip", at: "2026-09-14T01:00:00.000Z"},
+    {id: "occasion:a:2026-09-14", action: "restore", at: "2026-09-14T02:00:00.000Z"},
+], "invalid entries are dropped while restore tombstones remain durable");
 /* T-1219 snooze 有 7 天物理清理：夹具用动态时间（1 小时前），固定日期会随真实时间过期。 */
 const freshIso = new Date(Date.now() - 3600000).toISOString();
 assert.equal(reminders.normalizeReminderUserActions(Array.from({length: 600}, (_, index) => ({id: `r${index}`, action: "snooze", at: freshIso}))).length, 200, "action log stays bounded");

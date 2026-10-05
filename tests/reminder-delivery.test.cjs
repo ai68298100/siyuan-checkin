@@ -139,6 +139,11 @@ async function check(name, run) {
         await first.delivery.maybeSendDailyReminderFor(host, "launch", first.now());
         assert.equal(first.notices().length, 1);
         assert.deepEqual(first.persisted().delivered, [{localDate: "2026-10-04", slot: "launch", context: "workspace"}]);
+        const notice = first.notices()[0];
+        assert.equal(notice.getAttribute("role"), "region", "页内提醒通知应作为可导航区域暴露");
+        const hintId = notice.getAttribute("aria-describedby");
+        assert.ok(hintId, "页内提醒通知应关联操作语义说明");
+        assert.match(notice.innerHTML, new RegExp(`<p id="${hintId}">[^<]+</p>`), "操作说明应由 aria-describedby 指向实际提示文本");
         first.delivery.stopReminderDeliveryFor(host);
         const reloaded = harness(first.shared);
         await reloaded.delivery.maybeSendDailyReminderFor(reloaded.makeHost(), "launch", reloaded.now());

@@ -48,6 +48,7 @@ interface ReminderRuntime {
 }
 
 const runtimes = new WeakMap<object, ReminderRuntime>();
+let reminderNoticeSequence = 0;
 
 function runtimeFor(host: object): ReminderRuntime {
     let runtime = runtimes.get(host);
@@ -154,13 +155,16 @@ export function openReminderCenterFor(host: Pick<ReminderDeliveryHost, "openQuic
 
 function prepareReminderNotice(host: ReminderDeliveryHost, message: string, now: Date): HTMLElement {
     const notice = document.createElement("aside");
+    const hintId = `lc-daily-reminder-hint-${++reminderNoticeSequence}`;
     notice.className = "lc-checkin__daily-reminder-notice";
     notice.dataset.appearance = host.resolvedAppearance();
     notice.dataset.palette = host.palette;
     notice.dataset.reducedMotion = String(host.reducedMotion);
     notice.dataset.dailyReminderNotice = dateKey(now);
+    notice.setAttribute("role", "region");
     notice.setAttribute("aria-label", t("today.priorityTitle"));
-    notice.innerHTML = `<div class="lc-checkin__daily-reminder-message" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(message)}</div><p>${escapeHtml(t("reminder.noticeHint"))}</p><div class="lc-checkin__daily-reminder-actions"><button class="lc-checkin__text-button" type="button" data-daily-reminder-center>${escapeHtml(t("today.priorityViewAll"))}</button><button class="lc-checkin__text-button" type="button" data-daily-reminder-mute>${escapeHtml(t("reminder.muteToday"))}</button><button class="lc-checkin__text-button" type="button" data-daily-reminder-close>${escapeHtml(t("common.close"))}</button></div><small data-daily-reminder-error role="alert" hidden></small>`;
+    notice.setAttribute("aria-describedby", hintId);
+    notice.innerHTML = `<div class="lc-checkin__daily-reminder-message" role="status" aria-live="polite" aria-atomic="true">${escapeHtml(message)}</div><p id="${hintId}">${escapeHtml(t("reminder.noticeHint"))}</p><div class="lc-checkin__daily-reminder-actions"><button class="lc-checkin__text-button" type="button" data-daily-reminder-center>${escapeHtml(t("today.priorityViewAll"))}</button><button class="lc-checkin__text-button" type="button" data-daily-reminder-mute>${escapeHtml(t("reminder.muteToday"))}</button><button class="lc-checkin__text-button" type="button" data-daily-reminder-close>${escapeHtml(t("common.close"))}</button></div><small data-daily-reminder-error role="alert" hidden></small>`;
     notice.querySelector("[data-daily-reminder-close]")?.addEventListener("click", () => closeReminderNotice(host));
     notice.querySelector("[data-daily-reminder-center]")?.addEventListener("click", () => {
         closeReminderNotice(host);

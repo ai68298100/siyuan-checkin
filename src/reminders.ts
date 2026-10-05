@@ -230,7 +230,10 @@ export function normalizeReminderUserActions(value: unknown, limit = 200, now: D
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<ReminderUserAction>;
         return typeof candidate.id === "string" && candidate.id.length > 0 && candidate.id.length <= 200
-            && (candidate.action === "snooze" || candidate.action === "skip")
+            /* restore is a durable removal record: dropping it here would let
+               an older skip/snooze action revive after reload or cross-window
+               reconciliation. */
+            && (candidate.action === "snooze" || candidate.action === "skip" || candidate.action === "restore")
             && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at));
         }).filter((entry) => entry.action === "skip" || entry.action === "restore" || Date.parse(entry.at) >= snoozeCutoff)
         .slice(-max).map((entry) => {
