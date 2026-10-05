@@ -5157,17 +5157,19 @@ export function setPluginLanguage(language: PluginLanguage): void {
     current = DICTS[language] ? language : "zh-CN";
 }
 
+/** Resolve a dictionary entry without changing the active plugin language. */
+export function translateInLanguage(key: string, language: PluginLanguage, params?: Record<string, string | number>): string {
+    const dict = DICTS[language] || zhCN;
+    let text = dict[key] ?? zhCN[key] ?? key;
+    if (params) for (const [name, value] of Object.entries(params)) text = text.split(`{${name}}`).join(String(value));
+    return text;
+}
+
 /** 当前插件语言的 BCP-47 标签，供日期/时间格式化使用。 */
 export function getPluginLocale(): string {
     return current;
 }
 
 export function t(key: string, params?: Record<string, string | number>): string {
-    const dict = DICTS[current] || zhCN;
-    let text = dict[key] ?? zhCN[key] ?? key;
-    if (params) {
-        /* T-1623：全量替换——同一占位符在值中出现多次时全部替换（如 trust.reasonThreshold 的双 {unit}）。 */
-        for (const [name, value] of Object.entries(params)) text = text.split(`{${name}}`).join(String(value));
-    }
-    return text;
+    return translateInLanguage(key, current, params);
 }

@@ -51,6 +51,8 @@ export interface CheckinArchivePeriod {
 export interface CheckinItem {
     id: string;
     name: string;
+    /** Stable raw catalog identity for built-in templates; absent for user-created items. */
+    templateAnchor?: string;
     icon: string;
     kind: CheckinKind;
     target: number;

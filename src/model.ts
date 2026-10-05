@@ -929,6 +929,9 @@ export function normalizeItem(value: unknown): CheckinItem | undefined {
     return {
         id: value.id,
         name: value.name.trim(),
+        ...(typeof value.templateAnchor === "string" && value.templateAnchor.trim() && value.templateAnchor.length <= 80 && !/[\u0000-\u001f\u007f]/.test(value.templateAnchor)
+            ? {templateAnchor: value.templateAnchor.trim()}
+            : {}),
         icon: typeof value.icon === "string" && value.icon ? value.icon : "✓",
         kind,
         target,

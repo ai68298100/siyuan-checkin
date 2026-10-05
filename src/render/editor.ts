@@ -208,6 +208,7 @@ export function renderEditorView(ctx: EditorViewContext): string {
                     <div class="lc-checkin__linkage-card" data-linkage-card hidden></div>
                     ${ctx.appliedTemplateNote ? `<div class="lc-checkin__name-inference" data-template-applied-note role="status">${escapeHtml(ctx.appliedTemplateNote)}</div>` : `<div class="lc-checkin__name-inference" data-template-applied-note role="status" hidden></div>`}
                     <input type="hidden" name="linkagePlan" data-linkage-plan value="" />
+                    <input type="hidden" name="templateAnchor" value="${escapeHtml(item?.templateAnchor || "")}" />
                     <div class="lc-checkin__field lc-checkin__field--icons">
                         <span>${t("editor.icon")}</span>
                         <details class="lc-checkin__icon-popup" data-icon-popup>

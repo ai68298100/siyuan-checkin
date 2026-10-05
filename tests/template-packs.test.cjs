@@ -53,6 +53,19 @@ assert.equal(plan.createCount, 1);
 assert.equal(plan.sameCount, 1);
 assert.equal(plan.differentCount, 1);
 
+/* T-1632：旧版本只保存显示名时，语言切换仍能按中英文别名判重；新条目优先按稳定锚点。 */
+const aliases = template => template.name === "阅读" ? ["阅读", "Reading"] : [template.name];
+const switched = packs.buildTemplatePackApplicationPlan(["阅读"], catalog, [
+    {id: "legacy-reading", name: "Reading", icon: "📖", kind: "duration", target: 30, unit: "分钟"},
+], {localizeName: name => name, resolveAliases: aliases});
+assert.equal(switched.entries[0].conflict, "same", "旧英文显示名切回中文仍识别为同一内置模板");
+assert.equal(switched.entries[0].existingId, "legacy-reading");
+const anchored = packs.buildTemplatePackApplicationPlan(["阅读"], catalog, [
+    {id: "renamed-reading", name: "我的阅读", templateAnchor: "阅读", icon: "📖", kind: "duration", target: 30, unit: "分钟"},
+], {localizeName: name => "Reading", resolveAliases: aliases});
+assert.equal(anchored.entries[0].conflict, "same", "重命名后的新项目按稳定锚点识别");
+assert.equal(anchored.entries[0].existingId, "renamed-reading");
+
 /* 纯度：冻结输入不改写、同输入同输出。 */
 const frozenCatalog = Object.freeze([{name: "阅读", icon: "📖"}]);
 const frozenPack = Object.freeze({templates: Object.freeze(["阅读", "缺名"])});

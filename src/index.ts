@@ -64,7 +64,7 @@ import {JOURNAL_BUILTIN_TEMPLATES, JOURNAL_DATA_NAME, buildJournalEntryMarkdown,
 import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBindingDocument, bindingTargetLabel, type BindingBlockMetadata} from "./features/note-bindings";
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
-import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName} from "./catalog";
+import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
 import {buildTemplatePackApplicationPlan, buildTemplatePackPreview} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
@@ -7415,6 +7415,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             .map((entry) => normalizeCheckinItem({
                 id: makeId("item"),
                 name: templateName(entry.template),
+                templateAnchor: entry.template.name,
                 icon: entry.template.icon,
                 kind: entry.template.kind,
                 target: entry.template.target,
@@ -7455,7 +7456,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const pack = TEMPLATE_PACKS.find((candidate) => candidate.id === packId);
         if (!pack) return 0;
         const activeItems = this.store.items.filter((entry) => !entry.archived);
-        const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name})});
+        const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name}), resolveAliases: templateNameAliases});
         const selected = new Set(templateIndexes.filter((index) => Number.isInteger(index)));
         const fresh = plan.entries.filter((entry) => selected.has(CHECKIN_TEMPLATES.indexOf(entry.template)) && entry.defaultDisposition === "create");
         if (!fresh.length) return 0;
@@ -7465,6 +7466,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             .map((entry) => normalizeCheckinItem({
                 id: makeId("item"),
                 name: templateName(entry.template),
+                templateAnchor: entry.template.name,
                 icon: entry.template.icon,
                 kind: entry.template.kind,
                 target: entry.template.target,

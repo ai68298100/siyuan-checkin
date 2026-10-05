@@ -28,7 +28,7 @@ const itemFor = (name, suffix = "") => {
         ...(source.completionSource ? {completionSource: source.completionSource} : {}), ...(source.tomatoMode ? {tomatoMode: source.tomatoMode} : {}),
         ...(source.direction ? {direction: source.direction} : {}), createdDate: "2026-10-01", createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z"};
 };
-const storageFor = items => ({"checkin-store": {version: 3, items, events: []}, "checkin-view-preferences": {pluginLanguage: "zh-CN", appearance: "light", reducedMotion: true}});
+const storageFor = (items, pluginLanguage = "zh-CN") => ({"checkin-store": {version: 3, items, events: []}, "checkin-view-preferences": {pluginLanguage, appearance: "light", reducedMotion: true}});
 
 async function boot(page, storage, width = 980) {
     await page.setViewportSize({width, height: 820});
@@ -87,7 +87,7 @@ async function openPack(page, packId = "study") {
 
 async function inspect(page) {
     return page.evaluate(() => ({
-        items: window.__plugin.store.items.map(item => ({name: item.name, target: item.target, unit: item.unit})),
+        items: window.__plugin.store.items.map(item => ({name: item.name, target: item.target, unit: item.unit, templateAnchor: item.templateAnchor})),
         storage: structuredClone(window.__storage["checkin-store"]), writes: window.__mainWrites,
         messages: [...window.__messages], overflow: document.querySelector("#dock").scrollWidth - document.querySelector("#dock").clientWidth,
     }));
@@ -123,6 +123,7 @@ async function inspect(page) {
         const afterPartial = await inspect(page);
         assert.equal(afterPartial.writes, writesBeforePartial + 1, "partial application persists once");
         assert.equal(afterPartial.storage.events.length, 0, "template application creates no check-in events");
+        assert.equal(afterPartial.items.every(item => item.templateAnchor), true, "built-in pack items persist a stable template anchor");
         assert.equal(await page.locator("#dock .lc-checkin--today").count(), 1, "successful apply returns to Today");
         report.cases.push({case: "empty-partial", created: 4, cancelNoWrite: true, keyboardOpen: true});
         await page.close();
@@ -149,6 +150,22 @@ async function inspect(page) {
         assert.ok(afterConflict.items.length >= beforeApply.items.length + 2, "new entries are applied in a single batch");
         report.cases.push({case: "existing-conflicts", sameRuleVisible: true, differentRuleVisible: true, editVisible: true, created: afterConflict.items.length - beforeApply.items.length});
         await conflictPage.close();
+
+        /* Legacy cross-locale item: an old Chinese item must block the English pack entry. */
+        const switchedPage = await browser.newPage({viewport: {width: 980, height: 820}});
+        await boot(switchedPage, storageFor([itemFor("阅读", "legacy-locale")], "en-US"));
+        const switchedPanel = await openPack(switchedPage);
+        const switchedReading = switchedPanel.locator("[data-pack-entry]").filter({hasText: "Reading"});
+        assert.equal(await switchedReading.count(), 1, "English preview keeps the legacy Chinese item as one conflict");
+        assert.match(await switchedReading.innerText(), /same name|同名/);
+        const switchedBefore = await inspect(switchedPage);
+        await switchedPanel.locator("[data-pack-apply-selected]").click();
+        await switchedPage.waitForFunction(count => window.__plugin.store.items.length >= count + 4, switchedBefore.items.length);
+        const switchedAfter = await inspect(switchedPage);
+        assert.equal(switchedAfter.items.filter(item => item.name === "Reading").length, 0, "language switch does not create a duplicate");
+        assert.equal(switchedAfter.writes, switchedBefore.writes + 1);
+        report.cases.push({case: "legacy-cross-locale", duplicateBlocked: true, created: 4});
+        await switchedPage.close();
 
         /* Every pack member already exists: no apply button and no write. */
         const allExisting = ["阅读", "背单词", "朗读", "听播客", "写日记"].map((name, index) => itemFor(name, `all-${index}`));

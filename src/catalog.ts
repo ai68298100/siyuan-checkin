@@ -1,5 +1,5 @@
 import type {CheckinKind, CheckinPriority, CheckinSchedule, CheckinTimeSlot, CompletionSource, TomatoValueMode} from "./types";
-import {t} from "./i18n";
+import {t, translateInLanguage} from "./i18n";
 
 /** A themed collection of icons that can be used by the item editor. */
 export interface IconGroup {
@@ -388,6 +388,11 @@ const TEMPLATE_GROUP_KEYS: Record<string, string> = {
 export function templateName(template: {name: string}): string {
     const key = TEMPLATE_NAME_KEYS[template.name];
     return key ? t(key) : template.name;
+}
+
+export function templateNameAliases(template: {name: string}): readonly string[] {
+    const key = TEMPLATE_NAME_KEYS[template.name];
+    return [...new Set([template.name, ...(key ? [translateInLanguage(key, "zh-CN"), translateInLanguage(key, "en-US")] : []), templateName(template)])];
 }
 
 export function templateNote(template: {name: string; note: string}): string {

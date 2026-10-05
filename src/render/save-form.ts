@@ -30,6 +30,7 @@ export async function saveEditorForm(
     options?: {continueCreation?: boolean; stayOnPage?: boolean},
 ): Promise<string | undefined> {
     const name = String(data.get("name") || "").trim();
+    const templateAnchor = String(data.get("templateAnchor") || "").trim().slice(0, 80);
     const requestedKind = String(data.get("kind") || "binary");
     const kind: CheckinKind = KIND_OPTIONS.some((option) => option.kind === requestedKind) ? requestedKind as CheckinKind : "binary";
     const requestedSchedule = String(data.get("schedule") || "daily");
@@ -111,6 +112,7 @@ export async function saveEditorForm(
     const item: CheckinItem = {
         id: existing?.id || makeId("item"),
         name,
+        ...(templateAnchor && !/[\u0000-\u001f\u007f]/.test(templateAnchor) ? {templateAnchor} : existing?.templateAnchor ? {templateAnchor: existing.templateAnchor} : {}),
         icon: String(data.get("icon") || "✓"),
         kind,
         target,

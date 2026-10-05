@@ -2,8 +2,8 @@
    纪律（docs/roadmap-product-strategy-2026-09.md 方向 11）：
    - 组合包是纯内容资产：本模块只做「解析引用 → 分类新旧 → 计数」的只读投影，
      不创建项目、不触碰 Store v3；应用仍逐条走既有模板表单确认通道；
-   - 重复判定基于本地化后的显示名与现有活跃项目名比对（localizeName 由调用方
-     注入，保持本模块零依赖、无时钟、确定性）；
+   - 重复判定优先使用稳定模板锚点，旧数据可由调用方注入受限的本地化别名；
+     localizeName/resolveAliases 均由调用方注入，保持本模块零依赖、无时钟、确定性；
    - 引用了不存在模板名的组合包安全降级（计入 unknownNames，不抛异常）。 */
 
 export interface TemplatePackPreviewEntry<T> {
@@ -31,8 +31,10 @@ export interface TemplatePackRuleDifference {
 export type TemplatePackApplyDisposition = "create" | "skip" | "edit";
 
 export interface TemplatePackApplicationEntry<T, E> extends TemplatePackPreviewEntry<T> {
-    /** Existing active item with the same localized name, when present. */
+    /** Existing active item with the same stable anchor or compatibility alias, when present. */
     existing?: E;
+    /** Stable existing item identity for edit actions. */
+    existingId?: string;
     /** `same` means the existing item has the same rule surface; `different` exposes diffs. */
     conflict: "none" | "same" | "different";
     differences: readonly TemplatePackRuleDifference[];
@@ -50,6 +52,7 @@ export interface TemplatePackApplicationPlan<T, E> {
 
 type RuleLike = {
     name: string;
+    templateAnchor?: string;
     icon?: string;
     kind?: unknown;
     target?: unknown;
@@ -100,10 +103,11 @@ export function buildTemplatePackApplicationPlan<T extends RuleLike, E extends R
     packTemplates: readonly string[],
     catalog: readonly T[],
     existingItems: readonly E[],
-    options: {localizeName?: (name: string) => string} = {},
+    options: {localizeName?: (name: string) => string; resolveAliases?: (template: T) => readonly string[]} = {},
 ): TemplatePackApplicationPlan<T, E> {
     const localizeName = options.localizeName ?? ((name: string) => name);
     const existingByName = new Map(existingItems.map((item) => [item.name, item]));
+    const existingByAnchor = new Map(existingItems.flatMap((item) => item.templateAnchor ? [[item.templateAnchor, item] as const] : []));
     const entries: TemplatePackApplicationEntry<T, E>[] = [];
     const unknownNames: string[] = [];
     let createCount = 0;
@@ -116,7 +120,8 @@ export function buildTemplatePackApplicationPlan<T extends RuleLike, E extends R
             continue;
         }
         const displayName = localizeName(template.name);
-        const existing = existingByName.get(displayName);
+        const aliases = options.resolveAliases?.(template) ?? [displayName];
+        const existing = existingByAnchor.get(template.name) || aliases.map((alias) => existingByName.get(alias)).find((candidate): candidate is E => Boolean(candidate));
         if (!existing) {
             createCount += 1;
             entries.push({template, name: displayName, status: "new", conflict: "none", differences: [], defaultDisposition: "create"});
@@ -126,7 +131,8 @@ export function buildTemplatePackApplicationPlan<T extends RuleLike, E extends R
         const conflict = differences.length ? "different" : "same";
         if (conflict === "same") sameCount += 1;
         else differentCount += 1;
-        entries.push({template, name: displayName, status: "duplicate", existing, conflict, differences, defaultDisposition: "skip"});
+        const existingId = typeof (existing as E & {id?: unknown}).id === "string" ? (existing as E & {id: string}).id : undefined;
+        entries.push({template, name: displayName, status: "duplicate", existing, ...(existingId ? {existingId} : {}), conflict, differences, defaultDisposition: "skip"});
     }
     return {entries, createCount, sameCount, differentCount, unknownNames};
 }

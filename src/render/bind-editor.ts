@@ -5,7 +5,7 @@ import {t} from "../i18n";
 import {dateKey, getItemRevisionForDate, getEventsForDay, makeId} from "../model";
 import {currentCalendarDate, captureActionMoment, calendarDateFromKey, escapeHtml, formatNumber, formatScheduleLabel, getEditorStep, getRecordStep, getTargetLabel, isValidLocalDateInput, renderIconMarkup, matchesSearch, normalizeCustomIcon, normalizeCustomIconLibrary, parseCustomIconLibrary} from "../shared";
 import {getRecordStepInputStep, normalizeRecordStep} from "../record-step";
-import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, TEMPLATE_PACKS, templateName} from "../catalog";
+import {CHECKIN_TEMPLATES, ICON_GROUPS, ICON_SEARCH_KEYWORDS, KIND_OPTIONS, TEMPLATE_PACKS, templateName, templateNameAliases} from "../catalog";
 import {buildTemplatePackApplicationPlan, buildTemplatePackPreview} from "../features/template-packs";
 import {KIND_LABELS, PRIORITY_LABELS, SCHEDULE_LABELS, TIME_SLOT_LABELS} from "../ui/labels";
 import {validateEditorInput} from "../editor-validation";
@@ -719,6 +719,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             if (control) control.value = value;
         };
         setInput("name", templateName(template));
+        setInput("templateAnchor", template.name);
         setInput("target", String(template.target));
         setInput("unit", template.unit);
         setInput("recordStep", String(getRecordStep(template.kind, template.unit, template.recordStep)));
@@ -857,7 +858,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             const activeItems = host.store.items.filter((entry) => !entry.archived);
             const existingNames = activeItems.map((entry) => entry.name);
             const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
-            const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name})});
+            const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name}), resolveAliases: templateNameAliases});
             const formatDiffValue = (value: unknown) => {
                 if (value === undefined) return "∅";
                 if (typeof value === "string") return value;
@@ -872,7 +873,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                     ? `<small class="lc-checkin__pack-diff">${entry.differences.map((difference) => `${escapeHtml(difference.field)}: ${escapeHtml(formatDiffValue(difference.existing))} → ${escapeHtml(formatDiffValue(difference.incoming))}`).join("；")}</small>`
                     : "";
                 const selection = entry.status === "new" ? " checked" : "";
-                const edit = entry.existing ? `<button type="button" class="lc-checkin__text-button" data-pack-edit="${index}">${escapeHtml(t("editor.packEdit"))}</button>` : "";
+                const edit = entry.existing ? `<button type="button" class="lc-checkin__text-button" data-pack-edit="${index}" data-pack-edit-id="${escapeHtml(entry.existingId || "")}">${escapeHtml(t("editor.packEdit"))}</button>` : "";
                 return `<div class="lc-checkin__pack-entry${entry.conflict === "different" ? " is-conflict" : ""}" data-pack-entry="${index}"><label class="lc-checkin__pack-select"><input type="checkbox" data-pack-select="${index}"${selection} /><span class="lc-checkin__template"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></span></label>${diff}${edit}<button class="lc-checkin__text-button" type="button" data-template-apply="${index}">${escapeHtml(t("editor.packPreviewApply"))}</button></div>`;
             }).join("");
             panel.hidden = false;
@@ -897,8 +898,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const editButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-edit]") : null;
         if (editButton) {
             const packEntry = editButton.closest<HTMLElement>("[data-pack-entry]");
+            const existingId = editButton.dataset.packEditId || "";
             const name = packEntry?.querySelector<HTMLElement>("strong")?.textContent || "";
-            const existing = host.store.items.find((entry) => !entry.archived && entry.name === name);
+            const existing = host.store.items.find((entry) => !entry.archived && (existingId ? entry.id === existingId : entry.name === name));
             if (existing) host.showEditor?.(existing, undefined, root);
             return;
         }
