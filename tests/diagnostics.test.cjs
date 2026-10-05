@@ -16,7 +16,7 @@ const transpile = (relative) => {
 };
 transpile("src/features/diagnostics.ts");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const {appendDiagnostic, normalizeDiagnostics, serializeDiagnostics, parseDiagnostics, summarizeDiagnosticsPreview, CHECKIN_DIAGNOSTIC_CODES, CHECKIN_DIAGNOSTIC_INFO} = require(path.join(featuresDir, "diagnostics.js"));
+const {appendDiagnostic, normalizeDiagnostics, sanitizeDiagnosticDetail, serializeDiagnostics, parseDiagnostics, summarizeDiagnosticsPreview, CHECKIN_DIAGNOSTIC_CODES, CHECKIN_DIAGNOSTIC_INFO} = require(path.join(featuresDir, "diagnostics.js"));
 
 const at = "2026-09-21T10:00:00.000Z";
 /* 追加与容量：连续同码去重；环形上限 20。 */
@@ -29,6 +29,15 @@ entries = appendDiagnostic(entries, {code: "save-failed", at});
 assert.equal(entries.length, 3, "alternating codes all stay");
 for (let index = 0; index < 30; index += 1) entries = appendDiagnostic(entries, {code: "lock-contended", at: `${at.replace("10:", String(10).padStart(2, "0")).slice(0, 11)}0${index % 10}:0${index % 6}:00.000Z`, detail: `d${index}`});
 assert.equal(entries.length, 20, "ring buffer caps at 20");
+
+/* 诊断 detail 只保留可操作上下文：常见凭据和绝对路径在内存、恢复与导出前均遮罩。 */
+const hostileDetail = 'save failed token=secret123 Authorization: Bearer bearer123 at C:\\Users\\alice\\vault\\data.json and /home/alice/notes';
+const safeDetail = sanitizeDiagnosticDetail(hostileDetail);
+assert.doesNotMatch(safeDetail, /secret123|bearer123|C:\\Users\\alice|\/home\/alice/);
+assert.match(safeDetail, /<redacted>/);
+assert.match(safeDetail, /<path>/);
+assert.equal(normalizeDiagnostics([{code: "save-failed", at, detail: hostileDetail}])[0].detail, safeDetail);
+assert.equal(appendDiagnostic([], {code: "save-failed", at, detail: hostileDetail})[0].detail, safeDetail);
 
 /* 序列化往返与非法输入。 */
 const roundTrip = parseDiagnostics(serializeDiagnostics(entries));

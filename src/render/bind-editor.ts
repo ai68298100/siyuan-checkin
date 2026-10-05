@@ -884,6 +884,14 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 ? `<button type="button" class="lc-checkin__text-button" data-pack-apply-selected="${escapeHtml(pack.id)}">${escapeHtml(t("editor.packApplySelected", {n: plan.createCount}))}</button>`
                 : "";
             panel.innerHTML = `${bulkApply || selectedApply ? `<div class="lc-checkin__pack-bulk">${selectedApply}${bulkApply}</div>` : ""}<div class="lc-checkin__pack-entries">${rows || `<p>${escapeHtml(t("editor.packEmpty"))}</p>`}</div>`;
+            panel.querySelectorAll<HTMLInputElement>("[data-pack-select]").forEach((checkbox) => checkbox.addEventListener("change", () => {
+                const button = panel.querySelector<HTMLButtonElement>("[data-pack-apply-selected]");
+                if (!button) return;
+                const count = panel.querySelectorAll<HTMLInputElement>("[data-pack-select]:checked").length;
+                button.textContent = t("editor.packApplySelected", {n: count});
+                button.disabled = count === 0;
+                button.setAttribute("aria-disabled", String(count === 0));
+            }));
             return;
         }
         const editButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-edit]") : null;

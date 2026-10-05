@@ -36,11 +36,23 @@ export function isCheckinDiagnosticCode(value: unknown): value is CheckinDiagnos
     return typeof value === "string" && (CHECKIN_DIAGNOSTIC_CODES as readonly string[]).includes(value);
 }
 
+/** Keep diagnostics useful while removing the most common credential/path leaks.
+ * This is intentionally a small, deterministic boundary rather than a claim of
+ * complete anonymization: callers still need to review an export before sharing. */
+export function sanitizeDiagnosticDetail(value: string): string {
+    return value.slice(0, 2000)
+        .replace(/\b(?:authorization\s*[:=]\s*(?:token|bearer)\s+|bearer\s+)[^\s,;]+/gi, (match) => match.replace(/[^\s:]+$/, "<redacted>"))
+        .replace(/\b(?:access[_-]?auth[_-]?code|api[_-]?key|apikey|secret|password|passwd|token)\s*[:=]\s*["']?[^\s,;"']+/gi, (match) => match.replace(/([:=]\s*["']?)[^\s,;"']+$/, "$1<redacted>"))
+        .replace(/(?:[A-Za-z]:\\|\\\\[A-Za-z0-9._-]+\\|\/(?:Users|home|private\/var|data|tmp)\/)[^\r\n"'<>]*/g, "<path>")
+        .slice(0, 200);
+}
+
 /** 追加一条诊断；连续同码去重（同一故障只记一次，不刷屏），环形容量上限。 */
 export function appendDiagnostic(entries: readonly CheckinDiagnostic[], entry: CheckinDiagnostic, limit = CHECKIN_DIAGNOSTIC_LIMIT): CheckinDiagnostic[] {
+    const safeEntry = {...entry, ...(entry.detail ? {detail: sanitizeDiagnosticDetail(entry.detail)} : {})};
     const last = entries[entries.length - 1];
-    if (last && last.code === entry.code && last.detail === entry.detail) return [...entries];
-    return [...entries, entry].slice(-limit);
+    if (last && last.code === safeEntry.code && last.detail === safeEntry.detail) return [...entries];
+    return [...entries, safeEntry].slice(-limit);
 }
 
 export function normalizeDiagnostics(value: unknown, limit = CHECKIN_DIAGNOSTIC_LIMIT): CheckinDiagnostic[] {
@@ -50,7 +62,7 @@ export function normalizeDiagnostics(value: unknown, limit = CHECKIN_DIAGNOSTIC_
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<CheckinDiagnostic>;
         return isCheckinDiagnosticCode(candidate.code) && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at)) && (candidate.detail === undefined || (typeof candidate.detail === "string" && candidate.detail.length <= 200));
-    }).map((entry) => ({code: entry.code, at: entry.at, ...(entry.detail ? {detail: entry.detail.slice(0, 200)} : {})})).slice(-safeLimit);
+    }).map((entry) => ({code: entry.code, at: entry.at, ...(entry.detail ? {detail: sanitizeDiagnosticDetail(entry.detail)} : {})})).slice(-safeLimit);
 }
 
 const DIAGNOSTICS_EXPORT_VERSION = 1;
