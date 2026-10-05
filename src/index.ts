@@ -452,6 +452,8 @@ export default class CheckinPlugin extends Plugin {
     /* T-1402 微信读书联动（official-pull，opt-in 默认关）。 */
     wereadIntegration = {...DEFAULT_VIEW_PREFERENCES.wereadIntegration};
     private wereadTimer?: number;
+    /** 首次补拉也属于插件自有生命周期，必须和轮询一起在卸载时撤销。 */
+    private wereadStartupTimer?: number;
     /* T-1457 叶归 LifeLog 联动（本地读取用户日记文档，opt-in 默认关）。 */
     yeguifIntegration = {...DEFAULT_VIEW_PREFERENCES.yeguifIntegration};
     private yeguifTimer?: number;
@@ -2222,7 +2224,10 @@ private reviewCompatibilitySnapshot?: {
         this.healthInboxStartupTimers.push(window.setTimeout(() => void this.ingestNoteQuery(), 4_000));
         /* T-1402 微信读书：就绪后 5s 首拉 + 30 分钟有界轮询；失败静默（官方统计按日粒度，无需密集重试）。 */
         this.wereadTimer = window.setInterval(() => void this.ingestWeread(), WEREAD_INGEST_INTERVAL_MS);
-        window.setTimeout(() => void this.ingestWeread(), 5_000);
+        this.wereadStartupTimer = window.setTimeout(() => {
+            this.wereadStartupTimer = undefined;
+            void this.ingestWeread();
+        }, 5_000);
         /* T-1457 叶归 LifeLog：5 分钟有界轮询 + 焦点补拉；不可见期间跳过。 */
         this.yeguifTimer = window.setInterval(() => void this.ingestYeguif(), YEGUIF_INGEST_INTERVAL_MS);
         /* T-1451：提醒槽位分钟级有界轮询——到点的未发槽位触发统一提醒（含安静时段/零事项闸门）。 */
@@ -2444,6 +2449,10 @@ this.scheduleMidnightRefresh();
         if (this.wereadTimer !== undefined) {
             window.clearInterval(this.wereadTimer);
             this.wereadTimer = undefined;
+        }
+        if (this.wereadStartupTimer !== undefined) {
+            window.clearTimeout(this.wereadStartupTimer);
+            this.wereadStartupTimer = undefined;
         }
         if (this.yeguifTimer !== undefined) {
             window.clearInterval(this.yeguifTimer);

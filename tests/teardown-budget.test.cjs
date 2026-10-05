@@ -64,6 +64,8 @@ assert.equal(cleanGate.resume(), false, "a teardown with no queued write owes no
     assert.match(unloadSlice, /const hasDeferredWrites = this\.teardownWrites\.resume\(\)/, "onunload must release the write gate before flushing");
     assert.match(unloadSlice, /this\.teardownFinalFlush\(\)/, "onunload must run a bounded final flush");
     assert.match(unloadSlice, /stopFocusTimerFor\(this as unknown as FocusTimerHost\)/, "onunload must stop the plugin-owned focus timers");
+    assert.match(indexSource, /private wereadStartupTimer\?: number/, "WeRead startup pull must be registered in the host lifecycle");
+    assert.match(unloadSlice, /if \(this\.wereadStartupTimer !== undefined\) \{\s*window\.clearTimeout\(this\.wereadStartupTimer\);\s*this\.wereadStartupTimer = undefined;\s*\}/, "onunload must clear the WeRead startup pull timer");
     assert.match(unloadSlice, /if \(this\.focusTimerState\) void finishFocusTimerFor[\s\S]{0,160}?this\.acceptingOperations = false/, "focus accounting must be enqueued before operations are refused");
 
     /* 拆除期写拦截与补写：主存储一次写入，不得再读/写备份快照。 */
