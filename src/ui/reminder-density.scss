@@ -147,6 +147,9 @@
     .lc-checkin--review .lc-checkin__reminder-center .lc-checkin__reminder-row {
         grid-template-columns: minmax(0, 1fr) auto max-content;
         align-items: center;
+        /* 宽容器的动作按钮已经保持 44px 触控高度，减少行内留白避免提醒列表过长。 */
+        min-height: 48px;
+        padding-block: 2px;
     }
 
     .lc-checkin--review .lc-checkin__reminder-center .lc-checkin__reminder-actions,

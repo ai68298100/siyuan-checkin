@@ -93,12 +93,14 @@ const plugin = fs.readFileSync("src/index.ts", "utf8");
 assert.match(plugin, /REMINDER_ACTIONS_NAME = "checkin-reminder-actions"/, "actions need an isolated storage key");
 assert.match(plugin, /reminderUserAction\(id: string, action: "snooze" \| "skip" \| "restore" \| "defer"\)/, "host must implement the action handler (incl. T-1421 defer)");
 const styles = fs.readFileSync("src/ui/components.scss", "utf8");
+const densityStyles = fs.readFileSync("src/ui/reminder-density.scss", "utf8");
 assert.match(styles, /\.lc-checkin__reminder-action\b/, "text action buttons need their own pill style");
 /* v4 层退役后提醒中心基础布局曾整体缺席（D-051 教训）：活层必须保留行网格与标签样式。 */
 assert.match(styles, /\.lc-checkin__reminder-row\s*\{[^}]*grid-template-columns:\s*auto minmax\(0, 1fr\) auto;/, "reminder rows must keep their grid layout");
 assert.match(styles, /\.lc-checkin__reminder-source\s*\{/, "reminder source labels must stay styled");
 assert.match(styles, /\.lc-checkin__reminder-heading\s*\{[^}]*justify-content:\s*space-between;/, "reminder heading must align title and filter");
 assert.ok(!styles.split(".lc-checkin__reminder-row {")[1]?.split("}")[0]?.includes("--b3-"), "reminder base styles must use lc tokens, not host vars");
+assert.match(densityStyles, /@container lc-reminder-center \(min-width: 760px\)[\s\S]*?min-height: 48px;[\s\S]*?padding-block: 2px;/, "wide reminder rows must use the compact density override");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 for (const key of ["review.remindersSnoozed", "review.remindersSkipped", "review.reminderSnooze", "review.reminderSkip", "review.reminderRestore", "review.reminderActionToast"]) {
     assert.match(i18n, new RegExp(`"${key}"`), `missing i18n key ${key}`);

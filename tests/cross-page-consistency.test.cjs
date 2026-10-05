@@ -263,6 +263,8 @@ try {
         assert.match(indexSrc, /if \(this\.rootContexts\.get\(root\)\?\.page === "review"\) this\.cancelReviewSummary\(root\)/, "关闭 root 取消回顾异步请求");
         assert.match(indexSrc, /if \(!this\.rootContexts\.has\(root\)\) return;/, "关闭 root 拒绝重新渲染");
         assert.match(occasionSession, /host\.isSurfaceRoot && !host\.isSurfaceRoot\(root, "occasions"\)/, "事项异步回调不重新注册关闭 root");
+        assert.match(editorBind, /created > 0 && isCurrentSession\(\)[\s\S]{0,120}host\.showToday\(root\)/, "编辑器组合包异步成功只导航当前 root");
+        assert.match(editorBind, /if \(created > 0 && isCurrentSession\(\)\) \{[\s\S]{0,120}host\.showToday\(root\);/, "编辑器批量组合包不唤醒过期 root");
         assert.match(indexSrc, /openReviewRecordsForSource\(source: string, root\?: HTMLElement\)/, "设置来源跳转携带 root");
         assert.match(indexSrc, /this\.showReview\(root\)/, "设置来源跳转只作用于所属 root");
         for (const fn of ["showTodayFor", "showReviewFor", "showArchivedFor", "showEditorFor", "showInsightsFor"]) {

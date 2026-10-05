@@ -2296,7 +2296,9 @@ private reviewCompatibilitySnapshot?: {
                 this.externalPendingBox = normalizeExternalPendingBox(storedExternalPending);
                 const pruned = pruneExternalPending(this.externalPendingBox, dateKey(currentCalendarDate()));
                 this.externalPendingBox = pruned.box;
-                if (pruned.expired > 0) void this.persistExternalPendingBox();
+                /* T-1622：过期清理发生在初始化存储锁内，必须在释放锁前完成写入。
+                   异步 fire-and-forget 会让另一窗口在锁释放后先写入，随后被旧箱快照覆盖。 */
+                if (pruned.expired > 0) await this.persistExternalPendingBox();
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {

@@ -898,7 +898,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             selectedButton.dataset.busy = "true";
             void host.enqueueMutation(() => (host.applyTemplatePackSelected ? host.applyTemplatePackSelected(packId, indexes) : Promise.resolve(0))).then((created) => {
                 delete selectedButton.dataset.busy;
-                if (created > 0) { showMessage(t("editor.packApplied", {n: created})); host.showToday(root); }
+                /* T-1621：组合包应用是异步 mutation；编辑器表面可能在等待期间
+                   被关闭或切到别页。过期回调不得重新激活 detached/旧 root。 */
+                if (created > 0 && isCurrentSession()) { showMessage(t("editor.packApplied", {n: created})); host.showToday(root); }
             }, () => { delete selectedButton.dataset.busy; });
             return;
         }
@@ -909,7 +911,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             bulkButton.dataset.busy = "true";
             void host.enqueueMutation(() => (host.applyTemplatePackBulk ? host.applyTemplatePackBulk(packId) : Promise.resolve(0))).then((created) => {
                 delete bulkButton.dataset.busy;
-                if (created > 0) {
+                if (created > 0 && isCurrentSession()) {
                     showMessage(t("editor.packApplied", {n: created}));
                     host.showToday(root);
                 }

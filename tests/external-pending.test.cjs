@@ -140,6 +140,7 @@ assert.match(indexSource, /"\[data-pending-retry\]"/, "settings bind pending ret
 assert.match(indexSource, /"\[data-pending-discard\]"/, "settings bind pending discard actions");
 assert.match(indexSource, /set\.externalPendingDiscardConfirm/, "discard asks for confirmation");
 assert.match(indexSource, /removeExternalPendingEntry\(this\.externalPendingBox, id, new Date\(\)\.toISOString\(\)\)/, "discard writes an entry removal tombstone");
+assert.match(indexSource, /const pruned = pruneExternalPending\(this\.externalPendingBox, dateKey\(currentCalendarDate\(\)\)\);\s*this\.externalPendingBox = pruned\.box;\s*\/\*[\s\S]*?if \(pruned\.expired > 0\) await this\.persistExternalPendingBox\(\);/, "startup pruning must persist before releasing the initialization storage lock");
 
 /* 设置页投影只读且仅在相关时渲染（空箱不制造噪音）。 */
 const settingsSource = fs.readFileSync(path.join(root, "src", "render", "settings.ts"), "utf8");

@@ -165,7 +165,7 @@ async function verifyReminderDensity() {
                         for (const target of result.targets) assert.ok(target.width >= 43.9 && target.height >= 43.9, `${label}: controls retain 44px targets (${JSON.stringify(target)})`);
                         if (result.reminderWidth >= 760) {
                             assert.ok(result.content.right <= result.timing.left + 1 && result.timing.right <= result.actions.left + 1, `${label}: content, date and actions use separate horizontal columns`);
-                            assert.ok(result.row.height <= 72, `${label}: an ordinary reminder remains compact (${result.row.height}px)`);
+                            assert.ok(result.row.height <= 54, `${label}: an ordinary reminder remains compact (${result.row.height}px)`);
                             assert.ok(result.actionBoxes.every((button) => Math.abs(button.top - result.actionBoxes[0].top) < 1), `${label}: wide actions stay on one line`);
                         } else {
                             assert.ok(result.actions.top >= result.content.bottom - 1, `${label}: narrow actions move below content`);
