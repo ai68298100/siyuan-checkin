@@ -308,6 +308,7 @@ export default class CheckinPlugin extends Plugin {
         let scheduled = 0;
         const apply = () => {
             scheduled = 0;
+            this.hostThemeScheduledTimer = undefined;
             if (this.disposed || this.disposing || this.appearance !== "system") return;
             const next = this.resolvedAppearance();
             if (next === lastApplied) return;
@@ -317,6 +318,7 @@ export default class CheckinPlugin extends Plugin {
         this.hostThemeObserver = new MutationObserver(() => {
             if (scheduled) window.clearTimeout(scheduled);
             scheduled = window.setTimeout(apply, 50);
+            this.hostThemeScheduledTimer = scheduled;
         });
         this.hostThemeObserver.observe(document.body, {attributes: true, attributeFilter: ["class", "style"]});
         if (document.documentElement) this.hostThemeObserver.observe(document.documentElement, {attributes: true, attributeFilter: ["class", "style", "data-theme-mode"]});
@@ -325,6 +327,10 @@ export default class CheckinPlugin extends Plugin {
     private stopHostThemeWatcher() {
         this.hostThemeObserver?.disconnect();
         this.hostThemeObserver = undefined;
+        if (this.hostThemeScheduledTimer !== undefined) {
+            window.clearTimeout(this.hostThemeScheduledTimer);
+            this.hostThemeScheduledTimer = undefined;
+        }
     }
 
     private startHostMessageOffsetWatcher() {
@@ -1770,6 +1776,7 @@ export default class CheckinPlugin extends Plugin {
     private occasionRemindOnce = DEFAULT_VIEW_PREFERENCES.occasionRemindOnce;
     private weekStripVisible = DEFAULT_VIEW_PREFERENCES.showWeekStrip;
     private hostThemeObserver?: MutationObserver;
+    private hostThemeScheduledTimer?: number;
     private focusTimerState?: {itemId: string; totalSec: number; remainingSec: number; running: boolean};
     private focusTimerInterval?: number;
     private focusCelebrationTimer?: number;
