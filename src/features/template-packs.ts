@@ -81,11 +81,20 @@ function stableRuleValue(value: unknown): unknown {
     return value;
 }
 
+/** Model normalization materializes these defaults on legacy items while the
+ * catalog intentionally omits them. Compare their effective values so a
+ * locale alias does not look different only because it was saved earlier. */
+function effectiveRuleValue(field: keyof RuleLike, value: unknown): unknown {
+    if (field === "completionSource" && value === undefined) return "manual";
+    if (field === "tomatoMode" && value === undefined) return "minutes";
+    return value;
+}
+
 function ruleDifferences<T extends RuleLike, E extends RuleLike>(template: T, existing: E): TemplatePackRuleDifference[] {
     const fields: Array<keyof RuleLike> = ["icon", "kind", "target", "unit", "recordStep", "schedule", "group", "priority", "timeSlot", "completionSource", "tomatoMode", "direction"];
     return fields.reduce<TemplatePackRuleDifference[]>((result, field) => {
-        const incoming = stableRuleValue(template[field]);
-        const current = stableRuleValue(existing[field]);
+        const incoming = stableRuleValue(effectiveRuleValue(field, template[field]));
+        const current = stableRuleValue(effectiveRuleValue(field, existing[field]));
         if (JSON.stringify(incoming) !== JSON.stringify(current)) result.push({field: String(field), existing: current, incoming});
         return result;
     }, []);

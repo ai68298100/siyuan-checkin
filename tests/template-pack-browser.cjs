@@ -157,7 +157,7 @@ async function inspect(page) {
         const switchedPanel = await openPack(switchedPage);
         const switchedReading = switchedPanel.locator("[data-pack-entry]").filter({hasText: "Reading"});
         assert.equal(await switchedReading.count(), 1, "English preview keeps the legacy Chinese item as one conflict");
-        assert.match(await switchedReading.innerText(), /same name|同名/);
+        assert.match(await switchedReading.innerText(), /same rule|same name|规则相同|同名/);
         const switchedBefore = await inspect(switchedPage);
         await switchedPanel.locator("[data-pack-apply-selected]").click();
         await switchedPage.waitForFunction(count => window.__plugin.store.items.length >= count + 4, switchedBefore.items.length);
