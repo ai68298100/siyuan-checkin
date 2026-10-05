@@ -153,7 +153,8 @@ assert.match(pluginSource, /analysisHistorySaveQueue[\s\S]*?const remoteHistory 
 assert.match(pluginSource, /const lock = \(this as unknown as \{withStorageLock\?:[\s\S]*?if \(typeof lock === "function"\) await lock\.call\(this, persist\)/,
     "analysis history persistence must use the shared storage lock when the host provides it");
 assert.match(pluginSource, /private async persistAuditBestEffort\(mergeRemote = true\): Promise<void> \{[\s\S]*?mergeStoreAudits\(/, "audit persistence must merge remote append-only diagnostics under the lock");
-assert.match(pluginSource, /data-action='clear-audit'[\s\S]*?persistAuditBestEffort\(false\)/, "explicit audit clear must retain its last-writer-wins delete boundary");
+assert.match(pluginSource, /data-action='clear-audit'[\s\S]*?clearAuditEntries\(\)/, "explicit audit clear must use the rollback-aware delete boundary");
+assert.match(pluginSource, /private async clearAuditEntries\(\): Promise<void> \{[\s\S]*?withStorageLock\(\(\) => this\.saveData\(AUDIT_STORAGE_NAME, \[\]\)\)/, "explicit audit clear must replace the audit bucket under the storage lock");
 assert.match(pluginSource, /private async persistFocusDiagnosticsBestEffort\(\): Promise<void> \{[\s\S]*?withStorageLock\([\s\S]*?mergeDockTomatoCompletionIssues\(/, "focus diagnostics writes must merge the remote archive under the storage lock");
 assert.match(pluginSource, /data-action='clear-focus-issues'[\s\S]*?this\.clearFocusDiagnostics\(\)/, "focus diagnostics clear must use the rollback-aware host method");
 assert.match(pluginSource, /private async clearFocusDiagnostics\(\): Promise<void> \{[\s\S]*?restoreDockTomatoCompletionIssues\(previous\)/, "focus diagnostics clear must restore memory after a failed write");

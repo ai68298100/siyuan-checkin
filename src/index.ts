@@ -5774,7 +5774,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 (root.querySelector<HTMLInputElement>("[data-import-snapshots]") || input).focus();
             }
         });
-        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { this.auditEntries = []; void this.persistAuditBestEffort(false); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { void this.clearAuditEntries(); });
         root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
         /* T-1362：智能体建议审计导出（版本化诊断 JSON）。 */
         root.querySelector<HTMLElement>("[data-action='export-agent-audit']")?.addEventListener("click", () => {
@@ -8510,6 +8510,25 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             });
         } catch {
             // Audit diagnostics must never interrupt or roll back the user operation they describe.
+        }
+    }
+
+    /** 用户主动清空审计是显式删除边界：锁内写入，失败恢复内存并保留可重试记录。 */
+    private async clearAuditEntries(): Promise<void> {
+        if (this.auditFlushTimer !== undefined) {
+            window.clearTimeout(this.auditFlushTimer);
+            this.auditFlushTimer = undefined;
+        }
+        const previous = this.auditEntries;
+        const cleared = this.auditEntries;
+        this.auditEntries = [];
+        try {
+            await this.withStorageLock(() => this.saveData(AUDIT_STORAGE_NAME, []));
+            this.render();
+        } catch {
+            this.auditEntries = this.auditEntries === cleared ? previous : mergeStoreAudits(previous, this.auditEntries);
+            showMessage(t("set.auditClearFail"));
+            this.render();
         }
     }
 

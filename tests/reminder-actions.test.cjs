@@ -101,6 +101,7 @@ assert.match(styles, /\.lc-checkin__reminder-source\s*\{/, "reminder source labe
 assert.match(styles, /\.lc-checkin__reminder-heading\s*\{[^}]*justify-content:\s*space-between;/, "reminder heading must align title and filter");
 assert.ok(!styles.split(".lc-checkin__reminder-row {")[1]?.split("}")[0]?.includes("--b3-"), "reminder base styles must use lc tokens, not host vars");
 assert.match(densityStyles, /@container lc-reminder-center \(min-width: 760px\)[\s\S]*?min-height: 48px;[\s\S]*?padding-block: 2px;/, "wide reminder rows must use the compact density override");
+assert.match(styles, /@container lc-dock \(max-width: 320px\)[\s\S]*?\.lc-checkin-dock-host \.lc-checkin__reminder-actions button \{ min-width: 44px; min-height: 44px; \}/, "narrow dock reminder actions must retain 44px touch targets");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 for (const key of ["review.remindersSnoozed", "review.remindersSkipped", "review.reminderSnooze", "review.reminderSkip", "review.reminderRestore", "review.reminderActionToast"]) {
     assert.match(i18n, new RegExp(`"${key}"`), `missing i18n key ${key}`);

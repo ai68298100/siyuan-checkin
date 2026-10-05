@@ -267,11 +267,15 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (!select || select.dataset.loaded === "true") return;
         try {
             const response = await fetchSyncPost("/api/notebook/lsNotebooks", {}) as unknown as {code?: number; data?: {notebooks?: Array<{id?: string; name?: string; closed?: boolean}>}};
+            /* An editor render can replace this select while the host request is in flight.
+               Keep the detached root untouched and let the current session load its own list. */
+            if (!isCurrentSession() || !select.isConnected || root.querySelector("[data-anchor-notebook]") !== select) return;
             const notebooks = (response.code === 0 ? response.data?.notebooks : undefined)?.filter((notebook) => notebook.id && !notebook.closed) || [];
             select.replaceChildren(...notebooks.map((notebook) => { const option = document.createElement("option"); option.value = notebook.id || ""; option.textContent = notebook.name || notebook.id || ""; return option; }));
             if (!notebooks.length) { const option = document.createElement("option"); option.value = ""; option.textContent = t("editor.anchorNoNotebook"); select.append(option); }
             select.dataset.loaded = "true";
         } catch {
+            if (!isCurrentSession() || !select.isConnected || root.querySelector("[data-anchor-notebook]") !== select) return;
             select.replaceChildren();
             const option = document.createElement("option"); option.value = ""; option.textContent = t("editor.anchorNotebookFailed"); select.append(option);
         }
@@ -296,6 +300,8 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             const response = await fetchSyncPost("/api/filetree/createDocWithMd", {notebook, path, markdown: ""}) as unknown as {code?: number; msg?: string; data?: unknown};
             const blockId = response.code === 0 && typeof response.data === "string" ? response.data : "";
             if (!blockId) throw new Error(response.msg || "create-anchor-failed");
+            /* The request may finish after navigation or a same-root rerender. */
+            if (!isCurrentSession() || !anchorInput?.isConnected || root.querySelector("input[name='anchorBlockId']") !== anchorInput) return;
             if (anchorInput) anchorInput.value = blockId;
             anchorCreateRow?.setAttribute("hidden", "");
             anchorBrowser?.setAttribute("hidden", "");
