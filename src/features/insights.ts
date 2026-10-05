@@ -1,4 +1,5 @@
 import {dateKey, evaluateDayCompletion, getEventDateKey, getEventsForItem, getItemRevisionForDate, isItemAvailableOnDate, isScheduledToday, isSkipEvent} from "../model";
+import {daysBetweenHalfOpen, isValidDateKey} from "../date-keys";
 import {evaluateQuotaSchedule, periodKeyForSchedule} from "../rules";
 import {buildHabitScoreSeries, collectHabitScoreDays, scheduleFrequency} from "./habit-score";
 import type {CheckinEvent, CheckinItem, CheckinKind, CheckinSchedule, CheckinStore} from "../types";
@@ -8,7 +9,9 @@ export type HabitDayStatus = "complete" | "partial" | "missed" | "pending" | "of
 export interface HabitInsightOptions {
     asOf?: Date;
     days?: number;
-    /** T-1590 自定义范围结束日（dateKey）；非法/缺省回落 asOf 当日。跨度仍受 7~366 天钳制。 */
+    /** Custom closed interval of 1~366 days when both date keys are provided. */
+    startDate?: string;
+    /** T-1590 自定义范围结束日（dateKey）；非法/缺省回落 asOf 当日。 */
     endDate?: string;
 }
 
@@ -87,11 +90,16 @@ export function buildHabitInsights(store: CheckinStore, itemId: string, options:
     const asOf = options.asOf || new Date();
     if (!Number.isFinite(asOf.getTime())) throw new RangeError("asOf must be a valid date");
     const requestedDays = options.days === undefined || !Number.isFinite(options.days) ? 84 : Math.trunc(options.days);
-    const windowDays = Math.max(7, Math.min(366, requestedDays));
+    let windowDays = Math.max(7, Math.min(366, requestedDays));
     /* T-1590：自定义范围结束日——仅接受合法 dateKey，否则回落 asOf 当日（fail-closed）。
        key→本地日解析与 shared.calendarDateFromKey 同语义；内联以避免拖入 i18n 依赖链（纯核心模块纪律）。 */
-    const customEnd = typeof options.endDate === "string" && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(options.endDate) && !Number.isNaN(new Date(options.endDate).getTime())
+    const customEnd = typeof options.endDate === "string" && isValidDateKey(options.endDate)
         ? parseDateKeyToLocal(options.endDate) : localCalendarDate(asOf);
+    if (isValidDateKey(options.startDate) && isValidDateKey(options.endDate)) {
+        const span = daysBetweenHalfOpen(options.startDate, options.endDate)!;
+        if (span < 0 || span >= 366) throw new RangeError("custom insight range must contain 1 to 366 days");
+        windowDays = span + 1;
+    }
     const end = customEnd;
     const start = shiftDay(end, 1 - windowDays);
     const startDate = dateKey(start);

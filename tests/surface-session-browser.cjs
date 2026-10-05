@@ -1,10 +1,13 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const path = require("node:path");
 const {chromium} = require("playwright");
 
 const projectRoot = path.resolve(__dirname, "..");
+const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
 
 (async () => {
+    fs.mkdirSync(artifactRoot, {recursive: true});
     const browser = await chromium.launch({headless: true, executablePath: process.env.CHECKIN_BROWSER});
     try {
         for (const theme of ["light", "dark"]) {
@@ -32,7 +35,8 @@ const projectRoot = path.resolve(__dirname, "..");
                         if (name !== "siyuan") throw new Error(`Unexpected external: ${name}`);
                         return {
                             Plugin: class {
-                                addIcons() {} addTopBar() {} addCommand() {} addTab() {}
+                                addIcons() {} addTopBar() {} addCommand() {}
+                                addTab(options) { window.__tabOptions = options; }
                                 addDock(options) { window.__dockOptions = options; }
                                 async loadData(bucket) { return structuredClone(window.__buckets.get(bucket) ?? ""); }
                                 async saveData(bucket, value) { window.__buckets.set(bucket, structuredClone(value)); }
@@ -63,6 +67,88 @@ const projectRoot = path.resolve(__dirname, "..");
                         };
                     };
                 }, theme);
+                const freshSurfaces = await page.evaluate(async () => {
+                    const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
+                    const savedPreferences = plugin.collectViewPreferences();
+                    const secondaryInsights = plugin.insightsStateForRoot(secondary);
+                    plugin.applyViewPreferences({...savedPreferences, palette: "ocean", reviewFold: ["projects"], reviewFoldTouched: true, lastInsightsItemId: "stretch"});
+                    await plugin.persistViewPreferences();
+                    plugin.showSettings(primary);
+                    const slots = primary.querySelector("[data-setting-reminder-slots]");
+                    slots.value = "06:35";
+                    slots.dispatchEvent(new Event("input", {bubbles: true}));
+                    const settings = plugin.settingsStateForRoot(primary);
+                    settings.sourceSandboxTexts.yeguif = "primary-only sandbox";
+                    settings.searchSession.query = "primary-only settings query";
+                    plugin.syncSettingsCompatibilityForRoot(primary);
+                    plugin.setReviewStateForRoot(primary, {reviewWorkspace: "records", summaryRange: "month", summaryCustomRange: {startDate: "2026-01-01", endDate: "2026-02-01"}, historyQuery: "primary-only history", historyPage: 3, historyBatchSelected: new Set(["water"]), historyBatchValues: {water: "3"}, itemCompareSelection: new Set(["water", "stretch"]), itemCompareQuery: "primary-only compare"});
+                    plugin.setInsightsStateForRoot(primary, {insightsItemId: "water", insightsRange: "custom", insightsCustomRange: {startDate: "2026-01-01", endDate: "2026-02-01"}, insightsItemQuery: "primary-only insight", insightsReturnPage: "review"});
+                    plugin.setOccasionStateForRoot(primary, {editingOccasionId: "birthday", occasionSearchQuery: "primary-only occasion", formDraft: {values: {name: "primary-only draft"}}, submitting: true, deletingOccasionIds: new Set(["birthday"])});
+                    plugin.setTodayQueryForRoot(primary, "primary-only today");
+                    plugin.setArchivedQueryForRoot(primary, "primary-only archive");
+                    plugin.showEditor(plugin.store.items.find(item => item.id === "water"), "review", primary);
+                    primary.querySelector('input[name="name"]').value = "primary-only editor draft";
+                    plugin.editorStateForRoot(primary).submitting = true;
+                    const inspect = root => {
+                        const context = plugin.rootContexts.get(root);
+                        return {
+                            page: context.page, todayQuery: context.todayQuery, archivedQuery: context.archivedQuery,
+                            review: {workspace: context.review.reviewWorkspace, range: context.review.summaryRange, custom: context.review.summaryCustomRange, query: context.review.historyQuery, page: context.review.historyPage, selected: [...context.review.historyBatchSelected], batchValues: context.review.historyBatchValues, compare: [...context.review.itemCompareSelection], compareQuery: context.review.itemCompareQuery, refreshing: context.review.summarySession.refreshing, fold: [...context.review.reviewFoldSections], foldTouched: context.review.reviewFoldTouched},
+                            insights: {item: context.insights.insightsItemId, range: context.insights.insightsRange, custom: context.insights.insightsCustomRange, query: context.insights.insightsItemQuery, returnTo: context.insights.insightsReturnPage},
+                            editor: {id: context.editor.editingId, submitting: context.editor.submitting, draft: context.editor.draft, import: context.editor.templateImportSession},
+                            settings: {drafts: [...context.settings.drafts], baselines: [...context.settings.savedBaselines], query: context.settings.searchSession.query, sandbox: context.settings.sourceSandboxTexts, import: context.settings.importConflictSession},
+                            occasions: {id: context.occasions.editingOccasionId, query: context.occasions.occasionSearchQuery, draft: context.occasions.formDraft, submitting: context.occasions.submitting, deleting: [...context.occasions.deletingOccasionIds]},
+                        };
+                    };
+                    const open = () => {
+                        const root = document.createElement("div");
+                        root.style.cssText = "width:400px;height:850px";
+                        document.body.append(root);
+                        // Observe registration before the host's explicit Today navigation.
+                        plugin.ensureRootContext(root);
+                        const initial = inspect(root);
+                        const host = {element: root, tab: {close() {}}};
+                        window.__tabOptions.init.call(host);
+                        return {root, host, initial, rendered: root.querySelector(".lc-checkin").classList.contains("lc-checkin--today"), palette: root.querySelector(".lc-checkin").dataset.palette};
+                    };
+                    const close = surface => {
+                        window.__tabOptions.destroy.call(surface.host);
+                        surface.root.remove();
+                        plugin.tabElement = secondary;
+                    };
+                    const first = open();
+                    plugin.settingsStateForRoot(first.root).drafts.set("data-setting-reminder-slots", "19:55");
+                    plugin.setTodayQueryForRoot(first.root, "closed-only query");
+                    close(first);
+                    const firstRemoved = !plugin.rootContexts.has(first.root);
+                    const recreated = open();
+                    const result = {first: first.initial, recreated: recreated.initial, firstRemoved, rendered: [first.rendered, recreated.rendered], palettes: [first.palette, recreated.palette], primary: {page: plugin.pageForRoot(primary), editorId: plugin.editorStateForRoot(primary).editingId, submitting: plugin.editorStateForRoot(primary).submitting, draft: primary.querySelector('input[name="name"]').value, occasionSubmitting: plugin.occasionStateForRoot(primary).submitting}};
+                    close(recreated);
+                    plugin.applyViewPreferences(savedPreferences);
+                    plugin.forgetSurfaceRoot(primary);
+                    window.__dockOptions.init.call({element: primary});
+                    Object.assign(plugin.reviewStateForRoot(secondary), {reviewFoldSections: new Set(savedPreferences.reviewFold), reviewFoldTouched: savedPreferences.reviewFoldTouched});
+                    Object.assign(secondaryInsights, {insightsItemId: savedPreferences.lastInsightsItemId});
+                    plugin.showToday(secondary);
+                    return result;
+                });
+                const freshState = {
+                    page: "today", todayQuery: "", archivedQuery: "",
+                    review: {workspace: "overview", range: "week", custom: undefined, query: "", page: 0, selected: [], batchValues: {}, compare: [], compareQuery: "", refreshing: false, fold: ["projects"], foldTouched: true},
+                    insights: {item: "stretch", range: "84", custom: undefined, query: "", returnTo: "today"},
+                    editor: {id: undefined, submitting: false, draft: undefined, import: undefined},
+                    settings: {drafts: [], baselines: [], query: "", sandbox: {}, import: undefined},
+                    occasions: {id: undefined, query: "", draft: undefined, submitting: false, deleting: []},
+                };
+                assert.deepEqual(freshSurfaces, {first: freshState, recreated: freshState, firstRemoved: true, rendered: [true, true], palettes: ["ocean", "ocean"], primary: {page: "editor", editorId: "water", submitting: true, draft: "primary-only editor draft", occasionSubmitting: true}}, "new and recreated host surfaces start with fresh transient state while retaining approved persisted view choices");
+                assert.deepEqual(await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    plugin.showEditor(plugin.store.items.find(item => item.id === "water"), "review");
+                    const result = [plugin.dockElement, plugin.tabElement].map(root => ({page: plugin.pageForRoot(root), item: plugin.editorStateForRoot(root).editingId, returnTo: plugin.editorStateForRoot(root).editorReturnPage}));
+                    plugin.showToday(plugin.dockElement);
+                    plugin.showReview(plugin.tabElement);
+                    return result;
+                }), [{page: "editor", item: "water", returnTo: "review"}, {page: "editor", item: "water", returnTo: "review"}], "the legacy no-root editor entry still intentionally applies to both registered surfaces");
                 const insights = await page.evaluate(() => {
                     const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), primary);
@@ -90,6 +176,39 @@ const projectRoot = path.resolve(__dirname, "..");
                     isolated: {primary: {item: "water", range: "28", query: "额外", returnTo: "today"}, secondary: {item: "stretch", range: "365", query: "", returnTo: "review"}},
                     legacy: {primary: {item: "water", range: "28", query: "额外", returnTo: "today"}, secondary: {item: "stretch", range: "84", query: "", returnTo: "review"}},
                     returns: ["today", "review"],
+                });
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);
+                    plugin.showInsights(plugin.store.items.find(item => item.id === "stretch"), plugin.tabElement);
+                });
+                const primaryDay = page.locator("#dock [data-insight-day]").last();
+                const primaryDayLabel = await primaryDay.getAttribute("aria-label");
+                const primaryDayDate = await primaryDay.getAttribute("data-insight-day");
+                assert.match(primaryDayLabel, new RegExp(primaryDayDate), "accessible day name contains the full date");
+                assert.match(primaryDayLabel, /未完成|部分完成|已完成|未安排/, "accessible day name contains completion status");
+                assert.match(primaryDayLabel, /点击查看当日记录/, "accessible day name explains record navigation");
+                assert.equal(await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).count(), 1,
+                    "the accessibility tree exposes a native day button by its complete name");
+                await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).focus();
+                await page.keyboard.press("Enter");
+                assert.deepEqual(await page.evaluate(() => ({pages: [window.__plugin.pageForRoot(window.__plugin.dockElement), window.__plugin.pageForRoot(window.__plugin.tabElement)],
+                    date: window.__plugin.reviewStateForRoot(window.__plugin.dockElement).selectedHistoryDate,
+                    scope: window.__plugin.reviewStateForRoot(window.__plugin.dockElement).historyScope})),
+                    {pages: ["review", "insights"], date: primaryDayDate, scope: "day"}, "Enter drills into only the triggering root's records");
+                await page.evaluate(() => window.__plugin.showInsights(window.__plugin.store.items.find(item => item.id === "water"), window.__plugin.dockElement));
+                const secondaryDay = page.locator("#secondary [data-insight-day]").last();
+                const secondaryDayLabel = await secondaryDay.getAttribute("aria-label");
+                const secondaryDayDate = await secondaryDay.getAttribute("data-insight-day");
+                await page.locator("#secondary").getByRole("button", {name: secondaryDayLabel, exact: true}).focus();
+                await page.keyboard.press("Space");
+                assert.deepEqual(await page.evaluate(() => ({pages: [window.__plugin.pageForRoot(window.__plugin.dockElement), window.__plugin.pageForRoot(window.__plugin.tabElement)],
+                    date: window.__plugin.reviewStateForRoot(window.__plugin.tabElement).selectedHistoryDate,
+                    scope: window.__plugin.reviewStateForRoot(window.__plugin.tabElement).historyScope})),
+                    {pages: ["insights", "review"], date: secondaryDayDate, scope: "day"}, "Space drills into only the triggering root's records");
+                await page.evaluate(() => {
+                    const plugin = window.__plugin;
+                    for (const root of [plugin.dockElement, plugin.tabElement]) plugin.setReviewStateForRoot(root, {reviewWorkspace: "overview", historyScope: "period"});
                 });
                 const todaySessions = await page.evaluate(() => {
                     const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
@@ -153,6 +272,17 @@ const projectRoot = path.resolve(__dirname, "..");
                     primary: {slots: "07:30", drafts: [["data-setting-reminder-slots", "07:30"]], openSourcePanels: ["journal"], renderedPanels: ["journal"], sandboxText: {yeguif: "08:30 拉伸：主表面"}, sandboxSource: "yeguif"},
                     secondary: {slots: "22:15", drafts: [["data-setting-reminder-slots", "22:15"]], openSourcePanels: ["yeguif"], renderedPanels: ["yeguif"], sandboxText: {health: "health:steps:2026-10-04 12"}, sandboxSource: "health"},
                 });
+                const settingsReturn = await page.evaluate(() => {
+                    const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
+                    plugin.showToday(primary);
+                    const secondaryBefore = [...secondary.querySelectorAll("[data-source-panel][open]")].map(panel => panel.dataset.sourcePanel).sort();
+                    plugin.showSettings(primary);
+                    const primaryAfter = [...primary.querySelectorAll("[data-source-panel][open]")].map(panel => panel.dataset.sourcePanel).sort();
+                    plugin.showToday(secondary);
+                    plugin.showSettings(secondary);
+                    return {primaryAfter, secondaryBefore, secondaryAfter: [...secondary.querySelectorAll("[data-source-panel][open]")].map(panel => panel.dataset.sourcePanel).sort(), slots: [primary.querySelector("[data-setting-reminder-slots]").value, secondary.querySelector("[data-setting-reminder-slots]").value]};
+                });
+                assert.deepEqual(settingsReturn, {primaryAfter: ["journal"], secondaryBefore: ["yeguif"], secondaryAfter: ["yeguif"], slots: ["07:30", "22:15"]}, "Settings → Today → Settings preserves each root's own open panels and drafts");
                 const projectDrafts = await page.evaluate(() => {
                     const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
                     const base = {icon: "✓", kind: "binary", target: 1, unit: "次", group: "", priority: "medium", timeSlot: "any", note: "", schedule: {type: "daily"}};
@@ -312,6 +442,23 @@ const projectRoot = path.resolve(__dirname, "..");
                 await page.evaluate(() => window.__gateNextSave());
                 await page.locator("#dock form").evaluate(form => form.requestSubmit());
                 await page.waitForFunction(() => window.__saveStarted);
+                const freshDuringSave = await page.evaluate(() => {
+                    const plugin = window.__plugin, primary = plugin.dockElement, secondary = plugin.tabElement;
+                    const root = document.createElement("div");
+                    root.style.cssText = "width:400px;height:850px";
+                    document.body.append(root);
+                    const host = {element: root, tab: {close() {}}};
+                    window.__tabOptions.init.call(host);
+                    const result = {page: plugin.pageForRoot(root), newSubmitting: plugin.editorStateForRoot(root).submitting,
+                        newEditingId: plugin.editorStateForRoot(root).editingId, primarySubmitting: plugin.editorStateForRoot(primary).submitting,
+                        primaryDraft: primary.querySelector('input[name="name"]').value};
+                    window.__tabOptions.destroy.call(host);
+                    root.remove();
+                    plugin.tabElement = secondary;
+                    return result;
+                });
+                assert.deepEqual(freshDuringSave, {page: "today", newSubmitting: false, newEditingId: undefined, primarySubmitting: true, primaryDraft: "喝水草稿"},
+                    "a host tab opened during an actual gated editor save starts idle and leaves the submitting root intact");
                 assert.equal(await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.render(plugin.dockElement);
@@ -428,12 +575,14 @@ const projectRoot = path.resolve(__dirname, "..");
                     otherPage: window.__plugin.pageForRoot(window.__plugin.tabElement),
                     otherDraft: document.querySelector('#secondary input[name="name"]').value,
                     created: window.__buckets.get("checkin-store").items.filter(item => item.name === "保存后关闭").length})), {closed: false, otherPage: "editor", otherDraft: "剩余表面草稿", created: 1});
+                fs.writeFileSync(path.join(artifactRoot, `${theme}-${width}.json`), JSON.stringify({theme, width, freshSurfaces, freshDuringSave, settingsReturn,
+                    accessibleDayButtons: {primary: {date: primaryDayDate, label: primaryDayLabel, activation: "Enter"}, secondary: {date: secondaryDayDate, label: secondaryDayLabel, activation: "Space"}}, errors}, null, 2));
                 assert.deepEqual(errors, [], `${theme}/${width}px has no unhandled browser errors`);
                 assert.equal(await page.evaluate(async () => { await window.__plugin.onunload(); return window.__plugin.rootContexts.size; }), 0);
                 await page.close();
             }
         }
-        console.log("Surface sessions passed 4 production-bundle scenarios: Insights isolation/return, Editor drafts/focus, failed retry/conflict, continue, replacement/close, archive and delete.");
+        console.log("Surface sessions passed 4 production-bundle scenarios: fresh/recreated roots, legacy entry, Settings leave/return, accessible day buttons, Insights isolation/return, Editor drafts/focus, failed retry/conflict, continue, replacement/close, archive and delete.");
     } finally {
         await browser.close();
     }

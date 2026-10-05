@@ -163,7 +163,7 @@ assert.match(source, /surface\.dataset\.reducedMotion = String\(this\.reducedMot
 const settingsSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "settings.ts"), "utf8");
 assert.match(settingsSource, /lc-checkin__settings-nav/);
 assert.match(source, /window\.confirm\(t\("msg\.prefsResetConfirm"\)\)/);
-assert.match(i18n, /"msg\.prefsResetConfirm": "确定恢复全部显示偏好吗？打卡数据不会受到影响。"/);
+assert.match(i18n, /"msg\.prefsResetConfirm": "恢复全部显示偏好？.*打卡数据、来源绑定、Key、复盘草稿、保存视图与报告输出设置保留。"/);
 assert.match(liveStyles, /\[data-reduced-motion="true"\] \.lc-checkin--history/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-success:/);
 assert.match(fs.readFileSync(path.join(__dirname, "..", "src", "ui", "tokens.scss"), "utf8"), /--lc-checkin-danger:/);

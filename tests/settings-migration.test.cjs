@@ -105,7 +105,8 @@ try {
         for (const bucket of buckets) {
             assert.match(indexSource, new RegExp(`"${bucket}"`), `存储桶 ${bucket} 名称原样`);
         }
-        assert.match(indexSource, /applyViewPreferences\(\{\.\.\.DEFAULT_VIEW_PREFERENCES, appearance: this\.appearance/, "重置视图偏好保留主题等例外字段（T-1566 确认语义）");
+        assert.match(indexSource, /applyViewPreferences\(resetViewPreferences\(this\.collectViewPreferences\(\)\)\)/, "重置视图偏好通过纯 helper 保留主题等例外字段（T-1566 语义）");
+        assert.match(indexSource, /applyViewPreferences\(resetDisplayPreferences\(this\.collectViewPreferences\(\)\)\)/, "重置全部偏好使用独立显示偏好边界");
     });
 
     check("bilingual coverage for every key introduced by the migration slices", () => {

@@ -31,7 +31,7 @@ import type {FocusAdapter, SummaryProvider} from "./integrations";
 import type {CheckinEvent, CheckinIntegrationEvent, CheckinItem, CheckinItemRevision, CheckinItemSortMode, CheckinKind, CheckinPriority, CheckinSchedule, CheckinStore, CheckinTimeSlot, CompletionSource, ScheduleType, TomatoValueMode, TodayRootContext, UserTemplate} from "./types";
 import type {CustomSummaryRange, SummaryRange, EventRangeSummary, EventRangeSummaryOptions} from "./analytics";
 import type {HistorySortOrder, HistorySourceFilter, HistoryChannelFilter, HistoryMeteringFilter} from "./features/history-filter";
-import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
+import {DEFAULT_REPORT_SECTIONS, DEFAULT_VIEW_PREFERENCES, normalizeViewPreferences, resetDisplayPreferences, resetViewPreferences, type CheckinPalette, type CheckinViewPreferences, type DialogSizeMode, type ReportSectionToggles} from "./view-preferences";
 import {isWithinQuietHours, normalizeReminderQuietHours, normalizeDailyReminderSlots, type ReminderQuietHours} from "./features/reminder-preferences";
 import {addDays, daysBetweenHalfOpen} from "./date-keys";
 import {evaluateQuickEntry, resolveQuickEntryTarget, QUICK_ENTRY_DESCRIPTORS, type QuickEntryRuntime} from "./features/quick-entry-capabilities";
@@ -110,7 +110,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
-import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, mergeDockTomatoCompletionIssues, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
+import {clearDockTomatoCompletionIssueArchive, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, mergeDockTomatoCompletionIssueArchives, resolveDockTomatoCompletionWriteIssue, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, mergeInboxStores, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {buildExternalPendingEntry, enqueueExternalPending, mergeExternalPendingBoxes, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
@@ -427,6 +427,11 @@ export default class CheckinPlugin extends Plugin {
     private reviewAssistantGoal: ReviewAssistantGoal = "summary";
     private reviewFoldSections = new Set<string>();
     private reviewFoldTouched = false;
+    /** T-1621：新 surface 可复用的持久偏好基线，与 active root 兼容镜像分离。 */
+    private initialSurfacePreferences: Pick<CheckinViewPreferences, "reviewFold" | "reviewFoldTouched" | "lastInsightsItemId"> = {
+        reviewFold: [...DEFAULT_VIEW_PREFERENCES.reviewFold], reviewFoldTouched: DEFAULT_VIEW_PREFERENCES.reviewFoldTouched,
+        lastInsightsItemId: DEFAULT_VIEW_PREFERENCES.lastInsightsItemId,
+    };
     /* T-1217 Markdown 报告包含的区块（视图偏好持久化）。 */
     reportSections: ReportSectionToggles = {...DEFAULT_REPORT_SECTIONS};
     /* T-1343 报告来源筛选（"" = 全部来源）。 */
@@ -2198,7 +2203,7 @@ private reviewCompatibilitySnapshot?: {
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
         this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => {
             this.renderBackgroundUpdate();
-            if (this.storageReady && getDockTomatoCompletionIssues().length) void this.persistFocusDiagnosticsBestEffort();
+            if (this.storageReady) void this.persistFocusDiagnosticsBestEffort();
         }, {
             releaseFocusAdapter: (adapter) => releaseFocusAdapterFor(this as unknown as FocusAdapterHost, adapter),
             processDockTomatoCompletion: (entry) => this.processDockTomatoCompletion(entry),
@@ -2290,7 +2295,7 @@ private reviewCompatibilitySnapshot?: {
                 this.occasionStore = occasions;
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
-                restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
+                restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), storedFocusDiagnostics));
                 this.dockTomatoInbox = normalizeInboxStore(storedDockTomatoInbox);
                 /* T-1509：恢复待处理箱并按保留期剪除（到期条目数仅计入会话摘要，不静默丢弃未到期数据）。 */
                 this.externalPendingBox = normalizeExternalPendingBox(storedExternalPending);
@@ -2361,7 +2366,7 @@ this.scheduleMidnightRefresh();
                 const storedFocusDiagnostics = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
                 this.userTemplates = Array.isArray(storedTemplates) ? storedTemplates.map((item) => normalizeUserTemplate(item)).filter((item): item is UserTemplate => Boolean(item)) : [];
                 this.customIconLibrary = normalizeCustomIconLibrary(storedIconLibrary);
-                restoreDockTomatoCompletionIssues(storedFocusDiagnostics);
+                restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), storedFocusDiagnostics));
                 if (typeof storedSuggestionWorkflow === "string") {
                     const restoredWorkflow = deserializeSuggestionWorkflow(storedSuggestionWorkflow, this.store.items);
                     if (restoredWorkflow && shouldRestoreSuggestionWorkflow(restoredWorkflow)) {
@@ -2710,7 +2715,11 @@ this.scheduleMidnightRefresh();
         if (this.disposed || this.disposing || this.initializationState !== "ready" || !this.storageReady) return {kind: "retry", reason: "storage-not-ready"};
         const ref = entry.externalRef;
         const existing = this.store.events.find((event) => event.itemId === entry.itemId && event.source === "tomato" && event.externalRef === ref);
-        if (existing) return {kind: "duplicate", eventId: existing.id};
+        if (existing) {
+            resolveDockTomatoCompletionWriteIssue(entry.identity);
+            void this.persistFocusDiagnosticsBestEffort();
+            return {kind: "duplicate", eventId: existing.id};
+        }
         if ((this.store.eventTombstones || []).some((tombstone) => tombstone.source === "tomato" && tombstone.externalRef === ref)) return {kind: "discarded"};
         const item = getItemById(this.store, entry.itemId);
         if (!item) return {kind: "blocked", reason: "missing-item"};
@@ -2734,7 +2743,12 @@ this.scheduleMidnightRefresh();
         const next = appendEvent(this.store, event);
         if (next === this.store) {
             const stored = this.store.events.find((candidate) => candidate.itemId === entry.itemId && candidate.source === "tomato" && candidate.externalRef === ref);
-            return stored ? {kind: "duplicate", eventId: stored.id} : {kind: "discarded"};
+            if (stored) {
+                resolveDockTomatoCompletionWriteIssue(entry.identity);
+                void this.persistFocusDiagnosticsBestEffort();
+                return {kind: "duplicate", eventId: stored.id};
+            }
+            return {kind: "discarded"};
         }
         this.store = next;
         try {
@@ -2743,6 +2757,8 @@ this.scheduleMidnightRefresh();
             this.store = previous;
             return {kind: "retry", reason: "persist-failed"};
         }
+        resolveDockTomatoCompletionWriteIssue(entry.identity);
+        void this.persistFocusDiagnosticsBestEffort();
         this.invalidateSummary();
         this.broadcast({type: "event-recorded", item, event});
         this.broadcast({type: "analytics-updated", analyticsAsOf: event.localDate});
@@ -3590,17 +3606,21 @@ this.scheduleMidnightRefresh();
     private ensureRootContext(root: HTMLElement): RootContext {
         const existing = this.rootContexts.get(root);
         if (existing) return existing;
+        /* T-1621：新 surface 的瞬态从初始值创建，不能从 active root 的兼容镜像
+           复制查询、草稿、待提交操作或忙碌状态。持久偏好只复用明确白名单：
+           reviewFold/reviewFoldTouched/lastInsightsItemId；外观、排序等仍由
+           render 的共享 view preferences 投影提供。旧式入口另走 adopt/sync。 */
         const context: RootContext = {
-            page: this.currentPage,
+            page: "today",
             scrollTops: {},
-            todayQuery: this.todayQuery,
-            archivedQuery: this.archivedQuery,
-            review: this.createReviewRootContext(),
-            insights: this.createInsightsRootContext(),
-            editor: this.createEditorRootContext(),
-            settings: this.createSettingsRootContext(),
+            todayQuery: "",
+            archivedQuery: "",
+            review: this.createInitialReviewRootContext(),
+            insights: {insightsItemId: this.initialSurfacePreferences.lastInsightsItemId, insightsReturnPage: "today", insightsRange: "84", insightsItemQuery: ""},
+            editor: {submitting: false},
+            settings: this.createInitialSettingsRootContext(),
             today: this.createTodayRootContext(),
-            occasions: this.createOccasionsRootContext(),
+            occasions: createOccasionsRootContext({formOpen: false, filtersOpen: false}),
         };
         this.rootContexts.set(root, context);
         return context;
@@ -3608,6 +3628,29 @@ this.scheduleMidnightRefresh();
 
     private createTodayRootContext(): TodayRootContext {
         return {bulkMode: false, bulkSelected: new Set(), expandedExactEntries: [], pendingAttachments: new Map(), quickEntryCancelled: new Set(), priorityReminderExpanded: false};
+    }
+
+    private createInitialReviewRootContext(): ReviewRootContext {
+        const now = currentCalendarDate();
+        return {
+            summarySession: {requestId: 0, refreshing: false},
+            historyMonth: new Date(now.getFullYear(), now.getMonth(), 1), selectedHistoryDate: dateKey(now),
+            summaryRange: "week", reviewWorkspace: "overview", historyItemId: "", historyScope: "period",
+            historyPage: 0, reviewProjectPage: 0, historyQuery: "", historySource: "all", historyMetering: "all", historyOrder: "newest",
+            historyBatchSelected: new Set(), historyBatchPreviewOpen: false, historyBatchValues: {},
+            itemCompareSelection: new Set(), itemCompareQuery: "", reviewProjectOrder: "attention", reviewTrend: "weekly",
+            reviewStrengthItemId: "", reviewAssistantGoal: "summary", heatmapYearOffset: 0,
+            reviewFoldSections: new Set(this.initialSurfacePreferences.reviewFold), reviewFoldTouched: this.initialSurfacePreferences.reviewFoldTouched,
+            editingHistoryNoteId: undefined, recordDetailsExpanded: new Set(), reminderFilter: "all",
+        };
+    }
+
+    private createInitialSettingsRootContext(): SettingsRootContext {
+        return {
+            drafts: new Map(), savedBaselines: new Map(), openSourcePanels: new Set(),
+            searchSession: {query: "", activeIndex: 0, hadFocus: false}, targetSummaries: new Map(),
+            sourceSandboxOutcomes: {}, sourceSandboxTexts: {},
+        };
     }
 
     public todayStateForRoot(root: HTMLElement): TodayRootContext {
@@ -3764,8 +3807,8 @@ private reviewCompatibilityMatchesSnapshot(): boolean {
     }
 
     private adoptLegacyReviewState(root: HTMLElement): void {
-        /* 首次注册根时，根上下文已经由宿主字段播种；没有上一份镜像就
-           无法证明发生了旧式直写，因此不猜测、不覆盖。 */
+        /* 没有上一份镜像就无法证明发生了旧式直写，因此不猜测、不覆盖
+           新 surface 的初始瞬态；已检测到的兼容入口仍只作用于目标 root。 */
         if (!this.reviewCompatibilitySnapshot || this.reviewCompatibilityMatchesSnapshot()) return;
         const legacy = this.reviewCompatibilityState();
         Object.assign(this.reviewStateForRoot(root), legacy);
@@ -4187,7 +4230,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
            同页重渲染（打卡/筛选）不跳动，切页回到上次离开的位置。状态随 root 一并销毁。 */
         const previousScroller = root.querySelector<HTMLElement>(".lc-checkin");
-        if (page === "settings" || context.renderedPage === "settings") {
+        if (context.renderedPage === "settings" && previousScroller?.classList.contains("lc-checkin--settings")) {
             const settings = this.settingsStateForRoot(root);
             const openSourcePanels = new Set<string>();
             root.querySelectorAll<HTMLElement>("[data-source-panel][open]").forEach((panel) => {
@@ -5519,7 +5562,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         for (const point of ["diary", "summary", "health", "journal"] as const) {
             const searchInput = root.querySelector<HTMLInputElement>(`[data-choice-search="${point}"]`);
             const listBox = root.querySelector<HTMLElement>(`[data-choice-list="${point}"]`);
-            const docInput = root.querySelector<HTMLInputElement>(point === "journal" ? "[data-journal-target-doc]" : `[data--doc]`);
+            const docInput = root.querySelector<HTMLInputElement>(point === "journal" ? "[data-journal-target-doc]" : `[data-${point}-doc]`);
             if (!searchInput || !listBox || !docInput) continue;
             const hideList = () => {
                 listBox.hidden = true;
@@ -5741,8 +5784,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             void this.saveAvatarImage(undefined).catch(() => showMessage(t("set.avatarEditorSaveFailed")));
         });
         /* T-1566：重置视图偏好入重置危险区——确认显示影响范围（显示设置回默认，打卡数据不受影响）。 */
-        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences({...DEFAULT_VIEW_PREFERENCES, appearance: this.appearance, reducedMotion: this.reducedMotion, dialogSizeMode: this.dialogSizeMode, dialogScale: this.dialogScale, dialogFixedSize: {...this.dialogFixedSize}, dialogRect: this.dialogRect ? {...this.dialogRect} : undefined, dialogOffset: this.dialogOffset ? {...this.dialogOffset} : undefined}); }); this.render(); });
-        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyViewPreferences(DEFAULT_VIEW_PREFERENCES); void this.persistViewPreferences().then(() => showMessage(t("msg.prefsReset"))); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-view-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.viewPrefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences(resetViewPreferences(this.collectViewPreferences())); }); this.render(); });
+        root.querySelector<HTMLElement>("[data-action='reset-all-preferences']")?.addEventListener("click", () => { if (!window.confirm(t("msg.prefsResetConfirm"))) return; this.applyPreference(() => { this.applyViewPreferences(resetDisplayPreferences(this.collectViewPreferences())); }, () => showMessage(t("msg.prefsReset"))); this.render(); });
         root.querySelector<HTMLElement>("[data-action='review']")?.addEventListener("click", () => this.showReview(root));
         root.querySelector<HTMLElement>("[data-action='restore-backup']")?.addEventListener("click", (event) => runSettingsAction(event.currentTarget as HTMLElement, () => this.restoreLatestBackup()));
         root.querySelectorAll<HTMLElement>("[data-restore-snapshot]").forEach((button) => button.addEventListener("click", () => {
@@ -6082,7 +6125,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         /* T-1590 范围：28/84/365 预设 + 自定义起止（会话态；custom 起止由 bind 层校验后写入）。 */
         const rangeDays = insights.insightsRange === "28" ? 28 : insights.insightsRange === "365" ? 365 : 84;
         const customEnd = insights.insightsRange === "custom" ? insights.insightsCustomRange?.endDate : undefined;
-        const report = buildHabitInsights(this.store, item.id, {days: insights.insightsRange === "custom" ? Math.max(7, Math.min(366, (insights.insightsCustomRange ? daysBetweenHalfOpen(insights.insightsCustomRange.startDate, insights.insightsCustomRange.endDate) ?? 84 : 84)) || 84) : rangeDays, endDate: customEnd, asOf: currentCalendarDate()});
+        const customStart = insights.insightsRange === "custom" ? insights.insightsCustomRange?.startDate : undefined;
+        const report = buildHabitInsights(this.store, item.id, {days: rangeDays, startDate: customStart, endDate: customEnd, asOf: currentCalendarDate()});
         /* T-1295:全历史最长连续走模型单一实现(computeLongestStreaks),窗口最佳之外给用户马拉松视角。 */
         const longestEver = computeLongestStreaks(this.store, currentCalendarDate()).get(item.id) || 0;
         const suggestions = buildCoachingSuggestions(report);
@@ -6107,7 +6151,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const firstRecordDay = (this.store.events || []).reduce((minimum, event) => event.itemId === item.id && event.localDate < minimum ? event.localDate : minimum, "9999-12-31");
         const maturityDays = firstRecordDay === "9999-12-31" ? 0 : daysBetweenHalfOpen(firstRecordDay, dateKey(currentCalendarDate())) ?? 0;
         const maturityPercent = Math.min(100, Math.round((maturityDays / 66) * 100));
-        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small><div class="lc-checkin__coaching-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.coachingEvidence")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.coachingAdjust")}</button></div></div>`).join("")}</div></section>` : "";
+        const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small>${item.archived ? "" : `<div class="lc-checkin__coaching-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.coachingEvidence")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.coachingAdjust")}</button></div>`}</div>`).join("")}</div></section>` : "";
         /* T-1609：戒除类日格用守住/破戒词表——二值守住日不显示「0/1」这类至少型读数。 */
         const insightGrid = report.days.map((day) => {
             const atMost = day.direction === "atMost";
@@ -6119,13 +6163,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const detail = atMost && day.kind === "binary" && day.progress === 0 ? t("insights.noRecord") : `${day.progress}/${day.target} ${day.unit}`;
             const label = `${day.date}，${statusText}${day.skipped ? `（${t("today.skipBadge")}）` : ""}，${detail}`;
             /* T-1591：日历格键盘/触屏钻取——button 化点击跳记录页对应日期（aria-label 保留完整状态读数）。 */
-            return `<button class="lc-checkin__insight-day is-${day.status}" type="button" data-insight-day="${escapeHtml(day.date)}" role="listitem" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"></button>`;
+            return `<button class="lc-checkin__insight-day is-${day.status}" type="button" data-insight-day="${escapeHtml(day.date)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"></button>`;
         }).join("");
         /* T-1591：计算口径按项目类型明示——配额=窗口累计、戒除/上限=守住读数、排期类=机会日分母。 */
         const scopeLine = item.schedule?.type === "quota" ? t("insights.scopeNoteQuota")
             : item.direction === "atMost" ? t("insights.scopeNoteAtMost")
                 : t("insights.scopeNoteScheduled");
-        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}">${renderPageShellHead({eyebrowHtml: `<span class="lc-checkin__insight-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span><span>${escapeHtml(item.group || t("insights.title"))}</span>`, title: item.name})}${rangeTabs}${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>${t("insights.rate")}</span></div><div><strong>${report.currentStreak}</strong><span>${t("insights.currentStreak")}</span></div><div><strong>${report.longestStreak}</strong><span>${t("insights.bestStreak")}</span></div><div><strong>${longestEver}</strong><span>${t("insights.longestEver")}</span></div><div><strong>${report.maturity}%</strong><span>${t("insights.maturity")}</span></div></div><small class="lc-checkin__insight-denominator" role="note">${t("insights.denominatorNote")}${t("insights.scopeNotePrefix")}${escapeHtml(scopeLine)}</small><div class="lc-checkin__insight-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.viewRecords")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.editRules")}</button>${item.archived ? `<button class="lc-checkin__text-button" type="button" data-insight-archived="${escapeHtml(item.id)}" aria-label="${escapeHtml(t("insights.archivedViewAria"))}">${t("insights.archivedView")}</button>` : ""}</div>${restartNote}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.window")}</h2><small>${t("review.rhythmRange", {start: report.startDate, end: report.endDate})}${item.schedule?.type === "quota" ? ` · ${t("insights.quotaWindowNote")}` : ""}</small><div class="lc-checkin__insight-legend" role="list" aria-label="${t("insights.legendAria")}"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>${t("insights.complete")}</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>${t("insights.partial")}</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>${t("insights.missed")}</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>${t("insights.off")}</span></div></div><div class="lc-checkin__insight-grid-scroll"><div class="lc-checkin__insight-grid" role="list" aria-label="${t("insights.window")}">${insightGrid}</div></div><div class="lc-checkin__insight-grid-range"><span>${report.startDate}</span><span>${report.endDate}</span></div></section><section class="lc-checkin__insight-section"><h2>${t("insights.weeklyTrend")}</h2>${weekRows || `<div class="lc-checkin__history-empty">${t("insights.notEnough")}</div>`}</section><section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.maturityBarTitle")}</h2><small>${t("insights.maturityBarHint")}</small></div><div class="lc-checkin__maturity-bar" role="progressbar" aria-valuemin="0" aria-valuemax="66" aria-valuenow="${Math.min(maturityDays, 66)}"><span style="width:${maturityPercent}%"></span></div><small class="lc-checkin__maturity-days">${t("insights.maturityDays", {n: maturityDays})}</small></section>${coaching}</div>`;
+        return `<div class="lc-checkin lc-checkin--history lc-checkin--insights" data-appearance="${this.resolvedAppearance()}">${renderPageShellHead({eyebrowHtml: `<span class="lc-checkin__insight-icon" aria-hidden="true">${renderIconMarkup(item.icon)}</span><span>${escapeHtml(item.group || t("insights.title"))}</span>`, title: item.name})}${rangeTabs}${itemPicker}<div class="lc-checkin__insight-stats"><div><strong>${rate}</strong><span>${t("insights.rate")}</span></div><div><strong>${report.currentStreak}</strong><span>${t("insights.currentStreak")}</span></div><div><strong>${report.longestStreak}</strong><span>${t("insights.bestStreak")}</span></div><div><strong>${longestEver}</strong><span>${t("insights.longestEver")}</span></div><div><strong>${report.maturity}%</strong><span>${t("insights.maturity")}</span></div></div><small class="lc-checkin__insight-denominator" role="note">${t("insights.denominatorNote")}${t("insights.scopeNotePrefix")}${escapeHtml(scopeLine)}</small><div class="lc-checkin__insight-actions">${item.archived ? "" : `<button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.viewRecords")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.editRules")}</button>`}${item.archived ? `<button class="lc-checkin__text-button" type="button" data-insight-archived="${escapeHtml(item.id)}" aria-label="${escapeHtml(t("insights.archivedViewAria"))}">${t("insights.archivedView")}</button>` : ""}</div>${restartNote}<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.window")}</h2><small>${t("review.rhythmRange", {start: report.startDate, end: report.endDate})}${item.schedule?.type === "quota" ? ` · ${t("insights.quotaWindowNote")}` : ""}</small><div class="lc-checkin__insight-legend" role="list" aria-label="${t("insights.legendAria")}"><span role="listitem"><i class="is-complete" aria-hidden="true"></i>${t("insights.complete")}</span><span role="listitem"><i class="is-partial" aria-hidden="true"></i>${t("insights.partial")}</span><span role="listitem"><i class="is-missed" aria-hidden="true"></i>${t("insights.missed")}</span><span role="listitem"><i class="is-off" aria-hidden="true"></i>${t("insights.off")}</span></div></div><div class="lc-checkin__insight-grid-scroll"><div class="lc-checkin__insight-grid" role="group" aria-label="${t("insights.window")}">${insightGrid}</div></div><div class="lc-checkin__insight-grid-range"><span>${report.startDate}</span><span>${report.endDate}</span></div></section><section class="lc-checkin__insight-section"><h2>${t("insights.weeklyTrend")}</h2>${weekRows || `<div class="lc-checkin__history-empty">${t("insights.notEnough")}</div>`}</section><section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.maturityBarTitle")}</h2><small>${t("insights.maturityBarHint")}</small></div><div class="lc-checkin__maturity-bar" role="progressbar" aria-label="${escapeHtml(t("insights.maturityBarTitle"))}" aria-valuemin="0" aria-valuemax="66" aria-valuenow="${Math.min(maturityDays, 66)}"><span style="width:${maturityPercent}%"></span></div><small class="lc-checkin__maturity-days">${t("insights.maturityDays", {n: maturityDays})}</small></section>${coaching}</div>`;
     }
 
     /* 手机端顶栏（T-118 用户反馈）：导航全部归底栏（顶栏页签与底栏完全重复），
@@ -6678,39 +6722,34 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.render();
     }
 
-    /** 专注回写诊断是独立的附属桶：追加/解决由桥回调触发时先锁内并入远端，
-        明确清除则作为用户删除动作单独写空桶，并在失败时恢复内存。 */
+    /** 诊断及其删除标记一起锁内合并；保存成功后才应用结果，等待中的新追加仍保留。 */
     private async persistFocusDiagnosticsBestEffort(): Promise<void> {
         if (this.disposed || !this.storageReady) return;
-        const previous = getDockTomatoCompletionIssues();
         try {
             await this.withStorageLock(async () => {
                 const remote = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
-                const merged = mergeDockTomatoCompletionIssues(serializeDockTomatoCompletionIssues(), remote);
-                restoreDockTomatoCompletionIssues(merged);
-                await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues());
+                const local = serializeDockTomatoCompletionIssues();
+                const merged = mergeDockTomatoCompletionIssueArchives(local, remote);
+                const payload = serializeDockTomatoCompletionIssues(merged);
+                if (payload !== remote) await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, payload);
+                restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), merged));
             });
         } catch {
-            /* 诊断桶只用于恢复问题上下文，不能让它中断专注完成回写。 */
-            restoreDockTomatoCompletionIssues(previous);
+            /* 保留本地问题与已解决身份，后续可重试；附属桶不能中断专注事实回写。 */
         }
     }
 
     private async clearFocusDiagnostics(): Promise<void> {
-        const previous = getDockTomatoCompletionIssues();
         try {
             await this.withStorageLock(async () => {
-                clearDockTomatoCompletionIssues();
-                try {
-                    await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues());
-                } catch (error) {
-                    restoreDockTomatoCompletionIssues(previous);
-                    throw error;
-                }
+                const remote = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
+                const merged = mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), remote);
+                const cleared = clearDockTomatoCompletionIssueArchive(merged);
+                await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues(cleared));
+                restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), cleared));
             });
             showMessage(t("set.tomatoIssuesCleared"));
         } catch {
-            restoreDockTomatoCompletionIssues(previous);
             showMessage(t("set.tomatoIssuesClearFail"));
         }
         this.render();
@@ -8338,6 +8377,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     }
 
     private applyViewPreferences(preferences: CheckinViewPreferences) {
+        this.rememberInitialSurfacePreferences(preferences);
         this.todayGroupMode = preferences.groupMode;
         this.todaySortMode = preferences.sortMode;
         this.defaultOpenMode = preferences.defaultOpenMode;
@@ -8491,7 +8531,14 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.auxiliarySaveQueue = write.catch((error) => {
             showMessage(t("msg.prefPersistFail", {error: String(error)}));
         });
-        return write;
+        return write.then(() => { this.rememberInitialSurfacePreferences(preferences); });
+    }
+
+    private rememberInitialSurfacePreferences(preferences: CheckinViewPreferences): void {
+        this.initialSurfacePreferences = {
+            reviewFold: [...preferences.reviewFold], reviewFoldTouched: preferences.reviewFoldTouched,
+            lastInsightsItemId: preferences.lastInsightsItemId,
+        };
     }
 
     private async persistAuditBestEffort(mergeRemote = true): Promise<void> {

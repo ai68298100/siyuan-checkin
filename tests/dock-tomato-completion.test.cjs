@@ -32,7 +32,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, mergeDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
+const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, clearDockTomatoCompletionIssueArchive, getDockTomatoCompletionIssues, inspectDockTomatoProvider, mergeDockTomatoCompletionIssues, mergeDockTomatoCompletionIssueArchives, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -196,7 +196,7 @@ assert.deepEqual(mergedDiagnostics, mergeDockTomatoCompletionIssues(
 ), "diagnostic merge ordering must be deterministic regardless of window order");
 
 assert.deepEqual(restoreDockTomatoCompletionIssues("not json"), []);
-assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 2, issues: persisted}), []);
+assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 3, issues: persisted}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "unknown", at: persisted[0].at}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 1, issues: [{reason: "write-failed", at: "not-a-date"}]}), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues(null), []);
@@ -221,7 +221,7 @@ assert.equal(bounded[0].itemId.length, 160);
 assert.equal(bounded[0].identity.length, 240);
 
 const storagePayload = JSON.parse(serializeDockTomatoCompletionIssues());
-assert.equal(storagePayload.schemaVersion, 1);
+assert.equal(storagePayload.schemaVersion, 2);
 assert.equal(storagePayload.issues.length, 20);
 assert.equal(storagePayload.issues[0].itemId.length, 160);
 
@@ -481,4 +481,126 @@ const sparseDiagnostics = inspectDockTomatoProvider({__dockTomato: {focus: {
 assert.deepEqual(sparseDiagnostics.capabilities, ["status"]);
 assert.equal(sparseDiagnostics.state, "missing-capabilities");
 
-console.log("Dock Tomato completion decision checks passed.");
+// A successful completion suppresses stale write failures, while unrelated
+// reasons and newer diagnostics after an explicit clear remain observable.
+const staleFailure = {reason: "write-failed", at: "2026-09-17T10:00:00.000Z", itemId: "read", identity: "resolved", count: 3};
+const resolvedArchive = {schemaVersion: 2, issues: [], resolvedIdentities: ["resolved"]};
+const staleArchive = {schemaVersion: 1, issues: [staleFailure, {...staleFailure, reason: "missing-item"}]};
+const resolvedMerge = mergeDockTomatoCompletionIssueArchives(resolvedArchive, staleArchive);
+assert.deepEqual(resolvedMerge.issues.map(issue => issue.reason), ["missing-item"]);
+assert.deepEqual(resolvedMerge.resolvedIdentities, ["resolved"]);
+assert.deepEqual(resolvedMerge, mergeDockTomatoCompletionIssueArchives(staleArchive, resolvedArchive));
+assert.deepEqual(resolvedMerge, mergeDockTomatoCompletionIssueArchives(resolvedMerge, staleArchive));
+restoreDockTomatoCompletionIssues(resolvedMerge);
+assert.deepEqual(JSON.parse(serializeDockTomatoCompletionIssues()).resolvedIdentities, ["resolved"]);
+const manyResolved = Array.from({length: 64}, (_, index) => `resolved-${index}`);
+const retainedResolutions = mergeDockTomatoCompletionIssueArchives({schemaVersion: 2, issues: oversized, resolvedIdentities: manyResolved}, resolvedMerge);
+assert.equal(retainedResolutions.issues.length, 20);
+assert.equal(retainedResolutions.resolvedIdentities.length, 65, "visible row trimming must not trim resolutions");
+const clearedArchive = clearDockTomatoCompletionIssueArchive(retainedResolutions);
+const lateIssue = {...staleFailure, identity: "new-after-clear", at: new Date(Date.parse(clearedArchive.clearedAt) + 1).toISOString()};
+const afterClear = mergeDockTomatoCompletionIssueArchives(clearedArchive, {schemaVersion: 1, issues: [...oversized, lateIssue]});
+assert.deepEqual(afterClear.issues, [lateIssue]);
+assert.deepEqual(afterClear.resolvedIdentities, retainedResolutions.resolvedIdentities);
+let resolutionGetterReads = 0;
+const hostileResolved = [];
+Object.defineProperty(hostileResolved, "0", {get() { resolutionGetterReads += 1; throw new Error("must not read"); }});
+const hostileCleared = {schemaVersion: 2, issues: [staleFailure], resolvedIdentities: hostileResolved};
+Object.defineProperty(hostileCleared, "clearedAt", {get() { resolutionGetterReads += 1; throw new Error("must not read"); }});
+assert.equal(mergeDockTomatoCompletionIssueArchives(hostileCleared, undefined).issues.length, 1);
+assert.equal(resolutionGetterReads, 0);
+restoreDockTomatoCompletionIssues({schemaVersion: 2, issues: [], resolvedIdentities: Array.from({length: 2300}, (_, index) => `${index}-${"x".repeat(235)}`)});
+assert.throws(() => serializeDockTomatoCompletionIssues(), /DOCK_TOMATO_DIAGNOSTICS_CAPACITY/, "oversized protective metadata must fail before writing an unreadable archive");
+restoreDockTomatoCompletionIssues(null);
+
+// Execute the real host persistence methods. Deferred lock/save boundaries
+// reproduce the interleavings that structural signature checks cannot cover.
+const indexSource = fs.readFileSync("src/index.ts", "utf8");
+const indexAst = ts.createSourceFile("index.ts", indexSource, ts.ScriptTarget.Latest, true);
+const pluginClass = indexAst.statements.find(node => ts.isClassDeclaration(node));
+const hostNames = ["persistFocusDiagnosticsBestEffort", "clearFocusDiagnostics", "recordDockTomatoCompletionUnlocked"];
+const hostCompiled = ts.transpileModule(`class DiagnosticHost {${hostNames.map(name => {
+    const member = pluginClass.members.find(node => node.name?.getText(indexAst) === name);
+    assert.ok(member, `${name} must execute from production`);
+    return member.getText(indexAst);
+}).join("\n")}}`, {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
+const messages = [];
+const hostEnvironment = {...moduleUnderTest.exports, FOCUS_DIAGNOSTICS_STORAGE_NAME: "focus", t: key => key, showMessage: message => messages.push(message),
+    getItemById: (store, id) => store.items.find(item => item.id === id), calendarDateFromKey: key => new Date(`${key}T12:00:00`),
+    isItemAvailableOnDate: () => true, getItemRevisionForDate: item => item, getSkipDatesForItem: () => new Set(),
+    dockTomatoCompletionValue: () => 25, appendEvent: (store, event) => ({...store, events: [...store.events, event]})};
+const DiagnosticHost = new Function(...Object.keys(hostEnvironment), `${hostCompiled}; return DiagnosticHost;`)(...Object.values(hostEnvironment));
+function deferred() {
+    let resolve;
+    const promise = new Promise(done => { resolve = done; });
+    return {promise, resolve};
+}
+async function verifyDiagnosticTransactions() {
+    const host = new DiagnosticHost();
+    let remote = JSON.stringify(staleArchive);
+    host.storageReady = true;
+    host.disposed = false;
+    host.render = () => {};
+    host.withStorageLock = async callback => callback();
+    host.loadData = async () => remote;
+    host.saveData = async (key, value) => { assert.equal(key, "focus"); remote = value; };
+    restoreDockTomatoCompletionIssues(resolvedArchive);
+    await host.persistFocusDiagnosticsBestEffort();
+    assert.deepEqual(JSON.parse(remote).resolvedIdentities, ["resolved"]);
+    assert.equal(JSON.parse(remote).issues.some(issue => issue.reason === "write-failed"), false, "zero visible failures must still persist the successful resolution");
+    const lock = deferred();
+    host.withStorageLock = async callback => { await lock.promise; return callback(); };
+    const queued = host.persistFocusDiagnosticsBestEffort();
+    const whileWaiting = {...staleFailure, identity: "lock-wait", at: new Date().toISOString()};
+    restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), [whileWaiting]));
+    lock.resolve();
+    await queued;
+    assert.ok(JSON.parse(remote).issues.some(issue => issue.identity === "lock-wait"));
+    host.withStorageLock = async callback => callback();
+    const previous = serializeDockTomatoCompletionIssues();
+    host.saveData = async () => { throw new Error("controlled write failure"); };
+    await host.clearFocusDiagnostics();
+    assert.equal(serializeDockTomatoCompletionIssues(), previous, "failed clear must not change rows or protective metadata");
+    assert.equal(messages.at(-1), "set.tomatoIssuesClearFail");
+    const started = deferred(), save = deferred();
+    host.saveData = async (key, value) => { started.resolve(); await save.promise; remote = value; };
+    const clearing = host.clearFocusDiagnostics();
+    await started.promise;
+    const duringSave = {...staleFailure, identity: "save-wait", at: new Date(Date.now() + 1000).toISOString()};
+    restoreDockTomatoCompletionIssues(mergeDockTomatoCompletionIssueArchives(serializeDockTomatoCompletionIssues(), [duringSave]));
+    save.resolve();
+    await clearing;
+    assert.deepEqual(getDockTomatoCompletionIssues(), [duringSave], "successful clear must preserve diagnostics arriving during its save");
+    assert.equal(messages.at(-1), "set.tomatoIssuesCleared");
+    host.saveData = async () => { throw new Error("controlled persistence failure"); };
+    await host.persistFocusDiagnosticsBestEffort();
+    assert.deepEqual(getDockTomatoCompletionIssues(), [duringSave], "best effort failure must retain the current local diagnostics for retry");
+    assert.deepEqual(JSON.parse(serializeDockTomatoCompletionIssues()).resolvedIdentities, ["resolved"]);
+    host.saveData = async (key, value) => { remote = value; };
+    await host.persistFocusDiagnosticsBestEffort();
+    const reloaded = mergeDockTomatoCompletionIssueArchives(remote, staleArchive);
+    assert.deepEqual(reloaded.issues, [duringSave], "a stale-window replay after clear and reload must not revive old diagnostics");
+    // Manual and automatic inbox recovery use the host writer directly, with
+    // no bridge callback. They must resolve the same protective identity.
+    host.initializationState = "ready";
+    host.store = {items: [{id: "read", kind: "duration", unit: "分钟", tomatoMode: "minutes"}], events: []};
+    host.makeEvent = (item, value, source, unit, note, externalRef) => ({id: "recorded", itemId: item.id, source, externalRef});
+    for (const name of ["invalidateSummary", "broadcast", "renderBackgroundUpdate", "maybeAutoArchiveAfterRecord", "writebackNoteAnchor"]) host[name] = () => {};
+    host.persist = async () => { throw new Error("controlled main-store failure"); };
+    const recoveryEntry = {identity: "host-recovery", itemId: "read", externalRef: "docktomato:host-recovery", localDate: "2026-09-17", itemUnit: "分钟", tomatoMode: "minutes", durationMinutes: 25};
+    restoreDockTomatoCompletionIssues([{...staleFailure, identity: recoveryEntry.identity}]);
+    assert.equal((await host.recordDockTomatoCompletionUnlocked(recoveryEntry)).kind, "retry");
+    assert.equal(JSON.parse(serializeDockTomatoCompletionIssues()).resolvedIdentities.includes(recoveryEntry.identity), false, "a failed main write must not mark its diagnostic resolved");
+    assert.equal(host.store.events.length, 0);
+    host.persist = async () => {};
+    assert.equal((await host.recordDockTomatoCompletionUnlocked(recoveryEntry)).kind, "recorded");
+    assert.equal(getDockTomatoCompletionIssues().length, 0);
+    assert.ok(JSON.parse(serializeDockTomatoCompletionIssues()).resolvedIdentities.includes(recoveryEntry.identity));
+    assert.equal((await host.recordDockTomatoCompletionUnlocked(recoveryEntry)).kind, "duplicate");
+    assert.equal(host.store.events.length, 1, "recovery completion must stay idempotent");
+    await host.persistFocusDiagnosticsBestEffort();
+    assert.ok(JSON.parse(remote).resolvedIdentities.includes(recoveryEntry.identity));
+    restoreDockTomatoCompletionIssues(null);
+    console.log("Dock Tomato completion decisions and diagnostic transaction checks passed.");
+}
+verifyDiagnosticTransactions().catch(error => { console.error(error); process.exitCode = 1; });

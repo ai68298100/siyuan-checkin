@@ -2,7 +2,8 @@
    绑定只持有当前 root 的引用，并返回清理函数，重渲染时不会留下全局监听器。
    T-1563 字段级搜索导航：在既有行过滤之上增加匹配行集合的 ↑/↓ 选择、
    组名+字段名播报、Enter 聚焦当前项、Esc 清空、IME 组合态不打断，
-   并按 root 记忆查询与焦点（重绘后恢复），不重做既有行搜索。 */
+   并按 root 记忆查询与焦点（重绘后恢复）。
+   T-1654：目标卡片以独立语义标记参与搜索，不依赖布局用 settings-row。 */
 
 import {t} from "../i18n";
 
@@ -59,9 +60,24 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     let activeIndex = searchSession.activeIndex;
     let lastMatchCount = 0;
 
+    /* 输入值只来自渲染器显式批准的目标字段；搜索候选与 Key 不进入索引。
+       读取实时 value，确保尚未保存的目标 ID 也能被找到。 */
+    const searchableControls = (row: HTMLElement): Array<HTMLInputElement | HTMLSelectElement> =>
+        [...row.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input[data-settings-search-value], select[data-settings-search-value]")]
+            .filter(control => !(control instanceof HTMLInputElement && control.type === "password"));
+    const searchText = (row: HTMLElement): string => {
+        let text = row.textContent || "";
+        if (row.dataset.settingsSearchItem !== undefined) {
+            const copy = row.cloneNode(true) as HTMLElement;
+            copy.querySelectorAll("[data-settings-search-exclude]").forEach(element => element.remove());
+            text = copy.textContent || "";
+        }
+        return [text, row.dataset.settingsSearchText || "", ...searchableControls(row).map(control => control.value)]
+            .join(" ").toLocaleLowerCase();
+    };
     const rowLabel = (row: HTMLElement): string => {
         const label = row.querySelector<HTMLElement>(".lc-checkin__settings-label span") || row.querySelector<HTMLElement>(".lc-checkin__settings-label");
-        const text = (label?.textContent || row.textContent || "").trim().replace(/\s+/g, " ");
+        const text = (row.dataset.settingsSearchLabel || label?.textContent || row.textContent || "").trim().replace(/\s+/g, " ");
         return text.length > 40 ? `${text.slice(0, 40)}…` : text;
     };
     const groupLabel = (row: HTMLElement): string => {
@@ -90,7 +106,9 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         const row = matchedRows[activeIndex];
         if (!row) return;
         scrollRowIntoView(row);
-        const focusable = row.querySelector<HTMLElement>("input, select, textarea, button, [tabindex]");
+        const query = (search?.value || "").trim().toLocaleLowerCase();
+        const valueMatch = searchableControls(row).find(control => control.value.toLocaleLowerCase().includes(query) && !control.disabled && !control.closest("[hidden]"));
+        const focusable = valueMatch || row.querySelector<HTMLElement>("[data-settings-search-focus]") || row.querySelector<HTMLElement>("input, select, textarea, button, [tabindex]");
         focusable?.focus({preventScroll: true});
     };
     const onSearch = () => {
@@ -98,16 +116,21 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         searchSession.query = query;
         searchSession.activeIndex = activeIndex;
         let matches = 0;
+        matchedRows.forEach(row => row.classList.toggle("is-search-active", false));
         matchedRows = [];
         groups.forEach(group => {
-            const rows = [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row")];
+            const rows = [...group.querySelectorAll<HTMLElement>(".lc-checkin__settings-row, [data-settings-search-item]")]
+                .filter(row => {
+                    const card = row.closest<HTMLElement>("[data-settings-search-item]");
+                    return !card || card === row;
+                });
             rows.forEach(row => {
                 if (!query) {
                     if (rowStates.has(row)) row.hidden = rowStates.get(row)!;
                     return;
                 }
                 if (!rowStates.has(row)) rowStates.set(row, row.hidden);
-                row.hidden = !(row.textContent || "").toLocaleLowerCase().includes(query);
+                row.hidden = !searchText(row).includes(query);
                 if (!row.hidden) matchedRows.push(row);
             });
             const match = !query || rows.some(row => !row.hidden) || (!rows.length && (group.textContent || "").toLocaleLowerCase().includes(query));
@@ -116,7 +139,7 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
             group.querySelectorAll<HTMLDetailsElement>("details").forEach(panel => {
                 if (query) {
                     if (!panelStates.has(panel)) panelStates.set(panel, panel.open);
-                    if ((panel.textContent || "").toLocaleLowerCase().includes(query)) panel.open = true;
+                    if (rows.some(row => !row.hidden && panel.contains(row)) || (panel.textContent || "").toLocaleLowerCase().includes(query)) panel.open = true;
                 } else if (panelStates.has(panel)) panel.open = panelStates.get(panel)!;
             });
         });

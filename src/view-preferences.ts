@@ -165,6 +165,46 @@ export const DEFAULT_VIEW_PREFERENCES: CheckinViewPreferences = {
     weeklyReviewDrafts: [],
 };
 
+/** Reset the current list presentation, without replacing the mixed preference bucket.
+    Identity, integrations, credentials, drafts, saved views, accessibility and export
+    choices belong to other actions and must retain their current values. */
+export function resetViewPreferences(current: CheckinViewPreferences): CheckinViewPreferences {
+    return {
+        ...current,
+        groupMode: DEFAULT_VIEW_PREFERENCES.groupMode,
+        sortMode: DEFAULT_VIEW_PREFERENCES.sortMode,
+        completedCollapsed: DEFAULT_VIEW_PREFERENCES.completedCollapsed,
+        collapsedGroups: [...DEFAULT_VIEW_PREFERENCES.collapsedGroups],
+        reviewFold: [...DEFAULT_VIEW_PREFERENCES.reviewFold],
+        reviewFoldTouched: DEFAULT_VIEW_PREFERENCES.reviewFoldTouched,
+        lastInsightsItemId: undefined,
+        todayQuery: DEFAULT_VIEW_PREFERENCES.todayQuery,
+        pendingOnly: DEFAULT_VIEW_PREFERENCES.pendingOnly,
+        showWeekStrip: DEFAULT_VIEW_PREFERENCES.showWeekStrip,
+    };
+}
+
+/** Reset display and presentation choices while keeping business data and permissions.
+    Reuse the narrow view reset so both actions retain the same data boundary. */
+export function resetDisplayPreferences(current: CheckinViewPreferences): CheckinViewPreferences {
+    return {
+        ...resetViewPreferences(current),
+        appearance: DEFAULT_VIEW_PREFERENCES.appearance,
+        palette: DEFAULT_VIEW_PREFERENCES.palette,
+        pluginLanguage: DEFAULT_VIEW_PREFERENCES.pluginLanguage,
+        reducedMotion: DEFAULT_VIEW_PREFERENCES.reducedMotion,
+        hapticFeedback: DEFAULT_VIEW_PREFERENCES.hapticFeedback,
+        defaultOpenMode: DEFAULT_VIEW_PREFERENCES.defaultOpenMode,
+        dialogSizeMode: DEFAULT_VIEW_PREFERENCES.dialogSizeMode,
+        dialogScale: DEFAULT_VIEW_PREFERENCES.dialogScale,
+        dialogFixedSize: {...DEFAULT_VIEW_PREFERENCES.dialogFixedSize},
+        dialogRect: undefined,
+        dialogOffset: undefined,
+        avatar: DEFAULT_VIEW_PREFERENCES.avatar,
+        avatarImage: DEFAULT_VIEW_PREFERENCES.avatarImage,
+    };
+}
+
 /** T-1349 「最近使用」保留条数上限。 */
 export const RECENT_TEMPLATES_LIMIT = 6;
 

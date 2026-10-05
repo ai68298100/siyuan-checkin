@@ -92,6 +92,72 @@ const foldIds = ["projects", "trend", "log", "compare", "strength", "balance", "
 const manyMappings = Array.from({length: 275}, (_, index) => ({project: `Project ${index}`, itemId: `target-${index}`}));
 assert.equal(preferences.normalizeViewPreferences({yeguifIntegration: {mappings: manyMappings}}).yeguifIntegration.mappings.length, 275, "preference reload preserves every valid mapping");
 const validAvatar = "data:image/png;base64,iVBORw0KGgo=";
+// A view reset must preserve the mixed bucket's user data and permissions.
+const beforeReset = {
+    ...preferences.normalizeViewPreferences({}),
+    groupMode: "group", sortMode: "priority", completedCollapsed: false,
+    collapsedGroups: ["阅读"], reviewFold: ["report"], reviewFoldTouched: true,
+    lastInsightsItemId: "reading", todayQuery: "private query", pendingOnly: true, showWeekStrip: true,
+    appearance: "dark", reducedMotion: true, hapticFeedback: false, palette: "forest",
+    pluginLanguage: "en-US", defaultOpenMode: "tab", quickEntryNlp: false,
+    focusTimerProvider: "docktomato", dialogSizeMode: "fixed", dialogScale: 75,
+    dialogFixedSize: {width: 800, height: 600}, dialogRect: {width: 820, height: 620}, dialogOffset: {x: 70, y: -30},
+    avatar: "🐴", avatarImage: validAvatar, lastExportAt: "2026-10-06T04:00:00.000Z",
+    reportSections: {events: false, completion: true, items: false, baseline: false, highlights: true, deviations: false},
+    reportSource: "manual", diaryReport: {enabled: true, docId: "20260927090000-abcd123"},
+    summaryResident: {enabled: true, docId: "20260927090000-efgh456"},
+    sireaderIntegration: {enabled: true, itemId: "reading", thresholdMinutes: 20},
+    siplayerIntegration: {enabled: true, itemId: "listening", thresholdMinutes: 15},
+    healthInbox: {enabled: true, docId: "20260927090000-hijk789", metricBindings: [{metric: "steps", itemId: "walking"}], stepsItemId: "walking", weightItemId: "weight"},
+    noteQuery: {enabled: true, template: "tag", scope: "notebook", targetId: "notebook", itemId: "writing", field: "checkin", value: "done", tag: "checkin"},
+    wereadIntegration: {enabled: true, itemId: "reading", thresholdMinutes: 30, apiKey: "wrk-fixture-never-real", finishItemId: "books", notesItemId: "notes"},
+    yeguifIntegration: {enabled: true, itemId: "legacy", notebookId: "notebook", mappings: [{project: "工作", itemId: "work"}]},
+    reminderQuietHours: {enabled: true, start: "20:00", end: "09:00"}, dailyReminder: {enabled: false, slots: ["08:30"]},
+    occasionRemindOnce: true, firstSuccess: {stage: "review-visited", skipped: true},
+    savedViews: [{id: "view-1", name: "我的阅读", scope: {version: 1, days: 7, sources: ["manual"], itemIds: ["reading"]}}],
+    recentTemplates: ["阅读"], weeklyReviewDrafts: [{weekKey: "2026-10-05", friction: "私密阻力", adjustment: "保留调整", updatedAt: "2026-10-06T04:00:00.000Z"}],
+};
+const resetSnapshot = JSON.stringify(beforeReset);
+const freezeTree = value => { if (value && typeof value === "object") { Object.values(value).forEach(freezeTree); Object.freeze(value); } return value; };
+freezeTree(beforeReset);
+const afterReset = preferences.resetViewPreferences(beforeReset);
+assert.notEqual(afterReset, beforeReset);
+assert.equal(JSON.stringify(beforeReset), resetSnapshot, "resetting presentation cannot mutate the live bucket");
+const resetExpected = {groupMode: "none", sortMode: "manual", completedCollapsed: true, collapsedGroups: [], reviewFold: [],
+    reviewFoldTouched: false, lastInsightsItemId: undefined, todayQuery: "", pendingOnly: false, showWeekStrip: false};
+for (const [key, value] of Object.entries(resetExpected)) {
+    assert.equal(JSON.stringify(afterReset[key]), JSON.stringify(value), `${key} returns to the default presentation`);
+}
+for (const key of Object.keys(beforeReset).filter(key => !(key in resetExpected))) {
+    assert.deepEqual(afterReset[key], beforeReset[key], `view reset must preserve ${key}`);
+}
+assert.equal(afterReset.wereadIntegration.apiKey, "wrk-fixture-never-real", "view reset cannot revoke a saved credential");
+assert.equal(afterReset.weeklyReviewDrafts[0].friction, "私密阻力", "view reset cannot erase review writing");
+afterReset.collapsedGroups.push("new-group");
+afterReset.reviewFold.push("calendar");
+assert.equal(preferences.DEFAULT_VIEW_PREFERENCES.collapsedGroups.length, 0, "reset arrays do not mutate shared defaults");
+assert.equal(preferences.DEFAULT_VIEW_PREFERENCES.reviewFold.length, 0);
+assert.equal(JSON.stringify(beforeReset), resetSnapshot);
+console.log("View reset behavior passed: presentation defaults, credentials, bindings, drafts, accessibility and saved-view preservation.");
+const displayReset = preferences.resetDisplayPreferences(beforeReset);
+const displayExpected = {...resetExpected, appearance: "system", palette: "lavender", pluginLanguage: "zh-CN",
+    reducedMotion: false, hapticFeedback: true, defaultOpenMode: "quick", dialogSizeMode: "auto", dialogScale: 90,
+    dialogFixedSize: {width: 720, height: 560}, dialogRect: undefined, dialogOffset: undefined, avatar: "check", avatarImage: undefined};
+for (const [key, value] of Object.entries(displayExpected)) {
+    assert.equal(JSON.stringify(displayReset[key]), JSON.stringify(value), `${key} returns to the default display preference`);
+}
+for (const key of Object.keys(beforeReset).filter(key => !(key in displayExpected))) {
+    assert.deepEqual(displayReset[key], beforeReset[key], `display reset must preserve ${key}`);
+}
+assert.equal(displayReset.wereadIntegration.enabled, true, "display reset cannot stop an enabled data source");
+assert.equal(displayReset.wereadIntegration.apiKey, "wrk-fixture-never-real");
+assert.equal(displayReset.reportSource, "manual", "display reset cannot widen the report's source scope");
+assert.deepEqual(displayReset.reportSections, beforeReset.reportSections, "display reset cannot widen report content");
+displayReset.dialogFixedSize.width = 1000;
+assert.equal(preferences.DEFAULT_VIEW_PREFERENCES.dialogFixedSize.width, 720, "display reset does not share default geometry");
+assert.equal(beforeReset.dialogFixedSize.width, 800);
+assert.equal(JSON.stringify(beforeReset), resetSnapshot);
+console.log("Display reset behavior passed: explicit display defaults without business, credential, output-scope or draft loss.");
 assert.equal(preferences.normalizeViewPreferences({}).quickEntryNlp, true, "legacy preferences keep recognition enabled");
 assert.equal(preferences.normalizeViewPreferences({quickEntryNlp: false}).quickEntryNlp, false, "disabled recognition survives reload");
 assert.equal(preferences.normalizeViewPreferences({quickEntryNlp: "false"}).quickEntryNlp, true, "invalid persisted values fail closed to the documented default");

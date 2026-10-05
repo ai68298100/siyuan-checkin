@@ -350,7 +350,7 @@ function assertActive(fixture, expectedId) {
             row.scrollIntoView = (options) => { row.scrollIntoViewCalls.push(options); };
             return row;
         });
-        group.setQuery(".lc-checkin__settings-row", groupRows);
+        group.setQuery(".lc-checkin__settings-row, [data-settings-search-item]", groupRows);
         rows.push(...groupRows);
     });
     const search = new FakeElement("settings-search");

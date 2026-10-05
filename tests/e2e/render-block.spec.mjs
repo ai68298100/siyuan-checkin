@@ -10,7 +10,7 @@ test("渲染块:docId 作用域真实渲染,未命中 fail-closed", async ({page
     await openCheckin(page);
 
     /* 真实笔记本与文档:文档 id 本身即合法块 id,可直接作为锚点。 */
-    const nbData = await client.postChecked("/api/notebook/createNotebook", {name: `E2E nb ${Date.now()}`});
+    const nbData = await client.postChecked("/api/notebook/createNotebook", {name: `lv-checkin-smoke-render-${Date.now()}`});
     const notebookId = typeof nbData === "string" ? nbData : String(nbData?.id ?? nbData?.notebook?.id ?? "");
     const created = await client.postChecked("/api/filetree/createDocWithMd", {notebook: notebookId, path: "/E2E render", markdown: ""});
     const anchoredDocId = typeof created === "string" ? created : String(created?.id ?? created?.docID ?? "");

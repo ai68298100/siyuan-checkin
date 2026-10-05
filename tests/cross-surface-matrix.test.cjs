@@ -63,7 +63,8 @@ console.log("Cross-surface 12.1 matrix checks passed.");
 
 assert.match(pageShell, /export interface ReviewRootContext[\s\S]*historyMonth: Date;[\s\S]*selectedHistoryDate: string;[\s\S]*summaryRange: "day" \| "week" \| "month";[\s\S]*summaryCustomRange\?: \{startDate: string; endDate: string\};[\s\S]*reviewWorkspace: "overview" \| "records" \| "analysis";[\s\S]*historyItemId: string;[\s\S]*historyScope: "day" \| "period";[\s\S]*historyPage: number;[\s\S]*reviewProjectPage: number;/);
 assert.match(pageShell, /review: ReviewRootContext/);
-assert.match(source, /review:\s*this\.createReviewRootContext\(\)/);
+assert.match(source, /review:\s*this\.createInitialReviewRootContext\(\)/, "new surfaces initialize independent review sessions");
+assert.match(source, /private createReviewRootContext\(\): ReviewRootContext/, "the compatibility snapshot factory stays available to legacy entries");
 assert.match(source, /reviewStateForRoot\(root: HTMLElement\)/);
 assert.match(source, /setReviewStateForRoot\(root: HTMLElement, patch: Partial<ReviewRootContext>\)/);
 assert.match(source, /syncReviewCompatibilityForRoot\(root: HTMLElement\)/);

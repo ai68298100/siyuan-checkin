@@ -12,7 +12,7 @@ test("问卷日记:绑定项目打卡弹问卷并写入当日日记且重填幂�
     await openCheckin(page);
 
     /* 全新工作区没有笔记本——建一个供「写入今日日记」目标定位（conf → sprig → 建文档）。 */
-    const nb = await client.postChecked("/api/notebook/createNotebook", {name: `Journal E2E ${Date.now()}`});
+    const nb = await client.postChecked("/api/notebook/createNotebook", {name: `lv-checkin-smoke-journal-${Date.now()}`});
     expect(typeof nb === "string" ? nb : nb?.id || nb?.notebook?.id).toBeTruthy();
     const notebookId = typeof nb === "string" ? nb : nb?.id || nb?.notebook?.id;
 

@@ -117,7 +117,7 @@ assert.match(bridge, /removeEventListener\("tomato:focus-session-started"/, "sta
 assert.match(bridge, /removeEventListener\("tomato:focus-session-paused"/, "pause listeners must be removed on unload");
 assert.match(plugin, /dockTomatoDiagnostics: inspectDockTomatoProvider\(\)/, "settings must receive a current provider snapshot");
 assert.match(plugin, /FOCUS_DIAGNOSTICS_STORAGE_NAME/, "completion diagnostics must use isolated versioned storage");
-assert.match(plugin, /restoreDockTomatoCompletionIssues\(storedFocusDiagnostics\)/, "completion diagnostics must survive plugin reloads");
+assert.match(plugin, /restoreDockTomatoCompletionIssues\(mergeDockTomatoCompletionIssueArchives\(serializeDockTomatoCompletionIssues\(\), storedFocusDiagnostics\)\)/, "completion diagnostics and resolutions must survive reloads without replacing unpersisted local changes");
 assert.match(plugin, /serializeDockTomatoCompletionIssues\(\)/, "completion diagnostics changes must be persisted");
 assert.match(settings, /data-action="export-focus-issues"/, "settings must offer a support-safe diagnostics export");
 assert.match(settings, /completionIssueCount/, "settings must report folded occurrence totals instead of row count");

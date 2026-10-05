@@ -4,10 +4,11 @@ const source = fs.readFileSync("src/index.ts", "utf8");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 assert.match(source, /lc-checkin lc-checkin--history lc-checkin--insights[\s\S]*t\("insights\.empty"\)/);
 assert.match(i18n, /"insights\.empty": "没有可复盘的打卡项"/);
-assert.match(source, /role="list" aria-label="\$\{t\("insights\.window"\)\}"/);
+assert.match(source, /role="group" aria-label="\$\{t\("insights\.window"\)\}"/);
 /* T-1591：日历格 button 化——原生可聚焦（无需 tabindex），aria-label 携完整状态读数+钻取提示。 */
-assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\}" type="button" data-insight-day="\$\{escapeHtml\(day\.date\)\}" role="listitem"/);
-assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" role="listitem" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"/);
+assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\}" type="button" data-insight-day="\$\{escapeHtml\(day\.date\)\}" title=/);
+assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"/);
+assert.match(source, /role="progressbar" aria-label="\$\{escapeHtml\(t\("insights\.maturityBarTitle"\)\)\}"/, "the maturity indicator must have a readable name");
 assert.match(source, /day\.status === "complete"/);
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
 assert.match(i18n, /"insights\.partial": "部分完成"/);
@@ -70,8 +71,9 @@ const report = {
     weeklyTrend: [{label: "empty week", startDate: "2026-08-31", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", startDate: "2026-09-07", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
     days: [], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
-const View = new Function("getItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", `${compiled}; return InsightView;`)(
-    (store, id) => store.items.find(item => item.id === id), () => report, () => new Map(), () => [], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t, renderPageShellHead,
+let reportOptions;
+const View = new Function("getItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", "dateKey", `${compiled}; return InsightView;`)(
+    (store, id) => store.items.find(item => item.id === id), (store, id, options) => { reportOptions = options; return report; }, () => new Map(), () => [{tone: "neutral", title: "Advice", detail: "Detail", evidence: "Evidence"}], () => new Date("2026-09-20T12:00:00"), escapeHtml, renderIconMarkup, t, renderPageShellHead, date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
 );
 const view = new View();
 const imageIcon = "data:image/png;base64,aGVsbG8=";
@@ -86,6 +88,17 @@ assert.ok(html.includes(`<img src="${imageIcon}"`), "the heading must render the
 const picker = html.match(/<select data-insight-item[\s\S]*?<\/select>/)?.[0] || "";
 assert.ok(picker.includes("自定义图片"));
 assert.ok(!picker.includes(imageIcon), "native options cannot render images and must not display a data URI");
+view.insightsRange = "custom";
+view.insightsCustomRange = {startDate: "2026-08-01", endDate: "2026-08-28"};
+view.renderInsights();
+assert.equal(reportOptions.startDate, "2026-08-01", "the renderer must send the selected first day to the core");
+assert.equal(reportOptions.endDate, "2026-08-28");
+view.store.items[0].archived = true;
+const archivedHtml = view.renderInsights();
+assert.doesNotMatch(archivedHtml, /data-insight-edit-rules=|data-insight-records=/, "archived views must not advertise inactive records or edit actions");
+assert.match(archivedHtml, /data-insight-archived=/);
+view.store.items[0].archived = false;
+view.insightsRange = "84";
 setPluginLanguage("en-US");
 html = view.renderInsights();
 assert.match(html, /<strong>2\/7 days<\/strong>/, "weekly units must remain localized");

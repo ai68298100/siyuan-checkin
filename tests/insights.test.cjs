@@ -256,6 +256,19 @@ try {
         assert.equal(custom.days[custom.days.length - 1].date, "2026-08-31");
         assert.equal(custom.days[0].date, "2026-08-04");
         assert.equal(buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), days: 28, endDate: "not-a-date"}).endDate, "2026-09-28", "invalid custom end falls back to asOf");
+        const closed = buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), startDate: "2026-08-01", endDate: "2026-08-28"});
+        assert.equal(closed.days.length, 28);
+        assert.equal(closed.startDate, "2026-08-01");
+        assert.equal(closed.endDate, "2026-08-28");
+        const single = buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), startDate: "2026-09-07", endDate: "2026-09-07"});
+        assert.equal(single.days.length, 1, "an explicit short range must not silently expand to seven days");
+        assert.equal(single.records.length, 1);
+        assert.equal(single.currentStreak, 1);
+        const maximum = buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), startDate: "2025-09-07", endDate: "2026-09-07"});
+        assert.equal(maximum.days.length, 366);
+        assert.throws(() => buildHabitInsights(data, "reading", {startDate: "2025-09-06", endDate: "2026-09-07"}), /1 to 366 days/);
+        assert.throws(() => buildHabitInsights(data, "reading", {startDate: "2026-09-08", endDate: "2026-09-07"}), /1 to 366 days/);
+        assert.equal(buildHabitInsights(data, "reading", {asOf: new Date(2026, 8, 28), endDate: "2026-02-30"}).endDate, "2026-09-28", "impossible calendar dates must not roll into another month");
     });
 
     check("empty data and a just-created item report no rate until an opportunity closes", () => {

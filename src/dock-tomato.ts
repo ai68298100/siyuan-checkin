@@ -149,8 +149,17 @@ interface DockTomatoCompletionDecision {
 }
 
 const completionIssues: DockTomatoCompletionIssue[] = [];
+const resolvedCompletionIdentities = new Set<string>();
+let completionIssuesClearedAt: string | undefined;
 const COMPLETION_ISSUE_LIMIT = 20;
 const COMPLETION_ISSUE_ARCHIVE_MAX_CHARS = 512 * 1024;
+
+export interface DockTomatoCompletionIssueArchive {
+    schemaVersion: 2;
+    issues: readonly DockTomatoCompletionIssue[];
+    resolvedIdentities: readonly string[];
+    clearedAt?: string;
+}
 
 function ownDataValue(object: unknown, key: string): unknown {
     if (!object || typeof object !== "object") return undefined;
@@ -180,6 +189,9 @@ export function getDockTomatoCompletionIssues(): readonly DockTomatoCompletionIs
 }
 
 export function clearDockTomatoCompletionIssues(): void {
+    const latest = Math.max(Date.now(), Date.parse(completionIssuesClearedAt || "") || 0,
+        ...completionIssues.map((issue) => Date.parse(issue.at)));
+    completionIssuesClearedAt = new Date(latest).toISOString();
     completionIssues.splice(0, completionIssues.length);
 }
 
@@ -199,11 +211,14 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
 
 export function restoreDockTomatoCompletionIssues(value: unknown): readonly DockTomatoCompletionIssue[] {
     const restored = normalizeCompletionIssueArchive(value);
-    completionIssues.splice(0, completionIssues.length, ...restored);
+    completionIssues.splice(0, completionIssues.length, ...restored.issues);
+    resolvedCompletionIdentities.clear();
+    for (const identity of restored.resolvedIdentities) resolvedCompletionIdentities.add(identity);
+    completionIssuesClearedAt = restored.clearedAt;
     return getDockTomatoCompletionIssues();
 }
 
-function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIssue[] {
+function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIssueArchive {
     const source = typeof value === "string"
         ? value.length <= COMPLETION_ISSUE_ARCHIVE_MAX_CHARS
             ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })()
@@ -211,14 +226,30 @@ function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIs
         : value;
     const entries = Array.isArray(source)
         ? source
-        : ownDataValue(source, "schemaVersion") === 1 && Array.isArray(ownDataValue(source, "issues"))
+        : [1, 2].includes(ownDataValue(source, "schemaVersion") as number) && Array.isArray(ownDataValue(source, "issues"))
             ? ownDataValue(source, "issues") as unknown[]
             : [];
+    const resolvedIdentities = new Set<string>();
+    let clearedAt: string | undefined;
+    if (ownDataValue(source, "schemaVersion") === 2) {
+        const resolved = ownDataValue(source, "resolvedIdentities");
+        if (Array.isArray(resolved)) {
+            for (let index = 0; index < Math.min(resolved.length, COMPLETION_ISSUE_ARCHIVE_MAX_CHARS); index += 1) {
+                const identity = exactBoundedText(ownDataValue(resolved, String(index)), 240);
+                if (identity) resolvedIdentities.add(identity);
+            }
+        }
+        const rawClearedAt = ownDataValue(source, "clearedAt");
+        if (typeof rawClearedAt === "string" && rawClearedAt.length <= 40 && Number.isFinite(Date.parse(rawClearedAt))) {
+            clearedAt = new Date(rawClearedAt).toISOString();
+        }
+    }
     const normalized: Array<{issue: DockTomatoCompletionIssue; index: number}> = [];
     const scanStart = Math.max(0, entries.length - 512);
     for (let index = scanStart; index < entries.length; index += 1) {
         const issue = normalizeCompletionIssue(ownDataValue(entries, String(index)));
-        if (issue) normalized.push({issue, index});
+        if (issue && !(issue.reason === "write-failed" && issue.identity && resolvedIdentities.has(issue.identity))
+            && (!clearedAt || Date.parse(issue.at) > Date.parse(clearedAt))) normalized.push({issue, index});
     }
     normalized.sort((left, right) => Date.parse(left.issue.at) - Date.parse(right.issue.at) || left.index - right.index);
     const folded = new Map<string, DockTomatoCompletionIssue>();
@@ -228,7 +259,8 @@ function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIs
         if (existing) folded.delete(key);
         folded.set(key, {...issue, count: Math.min((existing?.count || 0) + (issue.count || 1), 9999)});
     }
-    return Array.from(folded.values()).slice(-COMPLETION_ISSUE_LIMIT);
+    return {schemaVersion: 2, issues: Array.from(folded.values()).slice(-COMPLETION_ISSUE_LIMIT),
+        resolvedIdentities: Array.from(resolvedIdentities).sort(), ...(clearedAt ? {clearedAt} : {})};
 }
 
 /**
@@ -238,8 +270,21 @@ function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIs
  * folded aggregate; summing rows would double count on repeated reloads.
  */
 export function mergeDockTomatoCompletionIssues(local: unknown, remote: unknown): readonly DockTomatoCompletionIssue[] {
+    return mergeDockTomatoCompletionIssueArchives(local, remote).issues;
+}
+
+/** Resolution is permanent for a completion identity; the clear watermark only
+ * hides diagnostics observed before the explicit clear. Never trim tombstones
+ * with the twenty visible rows, or an old window could resurrect a failure. */
+export function mergeDockTomatoCompletionIssueArchives(local: unknown, remote: unknown): DockTomatoCompletionIssueArchive {
+    const left = normalizeCompletionIssueArchive(local);
+    const right = normalizeCompletionIssueArchive(remote);
+    const resolvedIdentities = new Set([...left.resolvedIdentities, ...right.resolvedIdentities]);
+    const clearedAt = [left.clearedAt, right.clearedAt].filter((at): at is string => Boolean(at)).sort().pop();
     const merged = new Map<string, DockTomatoCompletionIssue>();
-    for (const issue of [...normalizeCompletionIssueArchive(remote), ...normalizeCompletionIssueArchive(local)]) {
+    for (const issue of [...right.issues, ...left.issues]) {
+        if (issue.reason === "write-failed" && issue.identity && resolvedIdentities.has(issue.identity)) continue;
+        if (clearedAt && Date.parse(issue.at) <= Date.parse(clearedAt)) continue;
         const key = JSON.stringify([issue.reason, issue.itemId || null, issue.identity || null]);
         const existing = merged.get(key);
         if (!existing) {
@@ -254,15 +299,29 @@ export function mergeDockTomatoCompletionIssues(local: unknown, remote: unknown)
             count: Math.min(Math.max(existing.count || 1, issue.count || 1), 9999),
         });
     }
-    return Array.from(merged.values())
+    const issues = Array.from(merged.values())
         .sort((left, right) => Date.parse(left.at) - Date.parse(right.at)
             || JSON.stringify([left.reason, left.itemId || null, left.identity || null]).localeCompare(JSON.stringify([right.reason, right.itemId || null, right.identity || null])))
         .slice(-COMPLETION_ISSUE_LIMIT)
         .map((issue) => ({...issue}));
+    return {schemaVersion: 2, issues, resolvedIdentities: Array.from(resolvedIdentities).sort(), ...(clearedAt ? {clearedAt} : {})};
 }
 
-export function serializeDockTomatoCompletionIssues(): string {
-    return JSON.stringify({schemaVersion: 1, issues: getDockTomatoCompletionIssues()});
+export function clearDockTomatoCompletionIssueArchive(value: unknown): DockTomatoCompletionIssueArchive {
+    const archive = normalizeCompletionIssueArchive(value);
+    const latest = Math.max(Date.now(), Date.parse(archive.clearedAt || "") || 0,
+        ...archive.issues.map((issue) => Date.parse(issue.at)));
+    return {...archive, issues: [], clearedAt: new Date(latest).toISOString()};
+}
+
+export function serializeDockTomatoCompletionIssues(value?: DockTomatoCompletionIssueArchive): string {
+    const archive: DockTomatoCompletionIssueArchive = value || {schemaVersion: 2, issues: getDockTomatoCompletionIssues(),
+        resolvedIdentities: Array.from(resolvedCompletionIdentities).sort(), ...(completionIssuesClearedAt ? {clearedAt: completionIssuesClearedAt} : {})};
+    const serialized = JSON.stringify(archive);
+    // Fail visibly to the storage caller instead of writing an archive that our
+    // bounded reader would reject and silently losing permanent resolutions.
+    if (serialized.length > COMPLETION_ISSUE_ARCHIVE_MAX_CHARS) throw new Error("DOCK_TOMATO_DIAGNOSTICS_CAPACITY");
+    return serialized;
 }
 
 export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagnostics, exportedAt = new Date().toISOString()): string {
@@ -286,13 +345,17 @@ export function serializeDockTomatoDiagnostics(provider: DockTomatoProviderDiagn
 function appendCompletionIssue(reason: DockTomatoCompletionIssueReason, itemId?: string, identity?: string): void {
     const safeItemId = exactBoundedText(itemId, 160) || undefined;
     const safeIdentity = exactBoundedText(identity, 240) || undefined;
+    if (reason === "write-failed" && safeIdentity && resolvedCompletionIdentities.has(safeIdentity)) return;
     const existingIndex = completionIssues.findIndex((issue) => issue.reason === reason && issue.itemId === safeItemId && issue.identity === safeIdentity);
     const existing = existingIndex >= 0 ? completionIssues.splice(existingIndex, 1)[0] : undefined;
-    completionIssues.push({reason, at: new Date().toISOString(), itemId: safeItemId, identity: safeIdentity, count: Math.min((existing?.count || 1) + (existing ? 1 : 0), 9999)});
+    const at = new Date(Math.max(Date.now(), (Date.parse(completionIssuesClearedAt || "") || 0) + 1)).toISOString();
+    completionIssues.push({reason, at, itemId: safeItemId, identity: safeIdentity, count: Math.min((existing?.count || 1) + (existing ? 1 : 0), 9999)});
     if (completionIssues.length > COMPLETION_ISSUE_LIMIT) completionIssues.splice(0, completionIssues.length - COMPLETION_ISSUE_LIMIT);
 }
 
-function resolveCompletionWriteIssue(identity: string): void {
+export function resolveDockTomatoCompletionWriteIssue(identity: string): void {
+    if (!exactBoundedText(identity, 240)) return;
+    resolvedCompletionIdentities.add(identity);
     for (let index = completionIssues.length - 1; index >= 0; index -= 1) {
         const issue = completionIssues[index];
         if (issue.reason === "write-failed" && issue.identity === identity) completionIssues.splice(index, 1);
@@ -634,7 +697,7 @@ export function installDockTomatoBridge(api: DockCheckinApi, onProviderStateChan
             /* 排队器刷新失败等极端路径会把结果吞成 undefined:不得误判为已入账。 */
             if (!result) throw new Error("DOCK_TOMATO_CHECKIN_WRITE_REJECTED");
             if (result.kind === "recorded" || result.kind === "duplicate") {
-                resolveCompletionWriteIssue(identity);
+                resolveDockTomatoCompletionWriteIssue(identity);
                 completedIdentities.add(identity);
                 completionIdentityOrder.push(identity);
                 if (completionIdentityOrder.length > 500) {

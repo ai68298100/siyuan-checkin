@@ -5,8 +5,10 @@ import fs from "node:fs";
 import path from "node:path";
 import {
     e2eConfig,
+    assertOwnedWorkspace,
     kernelErrorLines,
     PLUGIN_NAME,
+    DEFAULT_E2E_PORT,
     readAccessToken,
     resolveInstall,
     SiyuanClient,
@@ -21,16 +23,16 @@ export const targetFile = path.join(artifactDir, "target-readonly.json");
 export default async function globalSetup() {
     fs.mkdirSync(artifactDir, {recursive: true});
     const writable = e2eConfig();
-    if (!fs.existsSync(path.join(writable.workspace, "checkin-e2e.json"))) {
-        throw new Error(`工作区 ${writable.workspace} 不是 E2E 工作区，请先跑 pnpm run test:e2e`);
-    }
+    assertOwnedWorkspace(writable.workspace);
     if (!fs.existsSync(path.join(writable.workspace, "data", "storage", "petal", "petals.json"))) {
         throw new Error("插件尚未在 E2E 工作区登记启用，请先跑 pnpm run test:e2e");
     }
-    const cfg = {...writable, port: Number(process.env.CHECKIN_E2E_READONLY_PORT || 6828), baseURL: `http://127.0.0.1:${Number(process.env.CHECKIN_E2E_READONLY_PORT || 6828)}`};
+    const readonlyPort = Number(process.env.CHECKIN_E2E_READONLY_PORT || DEFAULT_E2E_PORT + 1);
+    const cfg = {...writable, port: readonlyPort, baseURL: `http://127.0.0.1:${readonlyPort}`};
     const install = resolveInstall();
-    const running = startKernel({kernel: install.kernel, appDir: install.appDir, workspace: cfg.workspace, port: cfg.port, extraArgs: ["--readonly", "true"]});
-    let client = new SiyuanClient({baseURL: cfg.baseURL});
+    const token = cfg.token ?? readAccessToken(cfg.workspace);
+    const client = new SiyuanClient({baseURL: cfg.baseURL, token});
+    const running = await startKernel({kernel: install.kernel, appDir: install.appDir, ...cfg, extraArgs: ["--readonly", "true"]});
     try {
         await client.waitForBoot(running.lines);
     } catch (error) {
@@ -38,7 +40,6 @@ export default async function globalSetup() {
         await stopKernel({client, child: running.child}).catch(() => undefined);
         throw error;
     }
-    client = new SiyuanClient({baseURL: cfg.baseURL, token: readAccessToken(cfg.workspace)});
     const kernelVersion = await client.version();
     const petals = await client.post("/api/petal/loadPetals", {frontend: "desktop"});
     if (!(petals.data || []).some((item) => item.name === PLUGIN_NAME)) {
@@ -50,7 +51,7 @@ export default async function globalSetup() {
         await stopKernel({client, child: running.child});
         throw new Error("只读实例竟然接受了 putFile 写入，--readonly 未生效");
     }
-    fs.writeFileSync(targetFile, JSON.stringify({baseURL: cfg.baseURL, token: readAccessToken(cfg.workspace), workspace: cfg.workspace, kernelVersion, readonly: true}, null, 2));
+    fs.writeFileSync(targetFile, JSON.stringify({baseURL: cfg.baseURL, token, workspace: cfg.workspace, kernelVersion, readonly: true}, null, 2));
     console.log(`[e2e] 只读实例就绪：思源 ${kernelVersion} @ ${cfg.baseURL}（putFile 已被内核拒绝）`);
 
     return async () => {

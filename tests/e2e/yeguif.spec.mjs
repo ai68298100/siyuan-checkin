@@ -16,7 +16,7 @@ test("叶归 LifeLog:Marker 段落按时间差摄取且幂等", async ({page}) =
     await seedStore(client, await snapshotStore(page), [item]);
 
     /* 建笔记本与日记文档，播种两条 Marker 段落（末条开放，应被宁少记跳过）。 */
-    const nb = await client.postChecked("/api/notebook/createNotebook", {name: `Yegui E2E ${Date.now()}`});
+    const nb = await client.postChecked("/api/notebook/createNotebook", {name: `lv-checkin-smoke-yeguif-${Date.now()}`});
     const nbId = typeof nb === "string" ? nb : nb?.id || nb?.notebook?.id;
     if (!nbId) console.log("[yeguif-e2e] createNotebook payload:", JSON.stringify(nb).slice(0, 300));
     expect(nbId).toBeTruthy();

@@ -62,4 +62,5 @@
 }
 
 /* T-1563 字段级搜索：键盘选择的当前匹配行（is- 前缀，TS 侧 settings-navigation 引用）。 */
-.lc-checkin__settings-row.is-search-active { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: -2px; }
+.lc-checkin__settings-row.is-search-active,
+[data-settings-search-item].is-search-active { outline: 2px solid var(--lc-checkin-accent-text); outline-offset: -2px; }

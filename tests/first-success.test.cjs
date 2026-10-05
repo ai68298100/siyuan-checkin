@@ -89,9 +89,109 @@ const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 const occurrences = i18nSource.split('"today.onboardSkip"').length - 1;
 assert.ok(occurrences >= 2, `today.onboardSkip 必须中英双语齐备（当前 ${occurrences} 处）`);
 
-/* —— 8. 纯度：零依赖 + 无时钟 —— */
+/* —— 8. 生产 Today 渲染：空态由真实项目/排期/完成事实决定。
+   全部相对依赖执行生产 TypeScript；只替换日历时钟，不用桩模型决定结果。 */
+const productionModules = new Map();
+function loadProduction(relative) {
+    const filename = path.resolve(root, "src", relative);
+    if (productionModules.has(filename)) return productionModules.get(filename).exports;
+    const module = {exports: {}};
+    productionModules.set(filename, module);
+    const code = ts.transpileModule(fs.readFileSync(filename, "utf8"), {compilerOptions}).outputText;
+    const localRequire = name => {
+        assert.ok(name.startsWith("."), `render fixture only loads local production dependencies: ${name}`);
+        const next = path.resolve(path.dirname(filename), `${name}.ts`);
+        return loadProduction(path.relative(path.join(root, "src"), next));
+    };
+    new Function("require", "exports", "module", code)(localRequire, module.exports, module);
+    return module.exports;
+}
+const productionModel = loadProduction("model.ts");
+const productionI18n = loadProduction("i18n.ts");
+const productionShared = loadProduction("shared.ts");
+productionShared.currentCalendarDate = () => new Date(2026, 9, 6, 12);
+const {renderTodayView, renderItemView} = loadProduction("render/fragments.ts");
+const todayDate = productionShared.currentCalendarDate();
+const todayKey = productionModel.dateKey(todayDate);
+const makeItem = (id, extra = {}) => ({
+    id, name: id, icon: "✓", kind: "binary", target: 1, unit: "次", schedule: {type: "daily"},
+    createdAt: "2026-10-01T00:00:00.000Z", createdDate: "2026-10-01", ...extra,
+});
+function renderFixture(items = [], options = {}) {
+    const store = productionModel.normalizeStore({version: 3, items, events: options.events || []});
+    const before = JSON.stringify(store);
+    const context = {
+        store, occasionStore: {version: 1, occasions: []}, currentStreaks: new Map(),
+        bulkMode: false, bulkSelected: new Set(), todaySortMode: "name", todayGroupMode: "none",
+        collapsedTodayGroups: new Set(), completedCollapsed: false, pendingOnly: false, todayQuery: "",
+        weekStripVisible: false, saveState: "idle", supportsCustomTab: false, appearance: "light",
+        reducedMotion: true, bestStreakValue: 0, quickEntryNlp: false, ...options,
+    };
+    const html = renderTodayView(context);
+    assert.equal(JSON.stringify(store), before, "view/empty-state rendering must not write facts");
+    return {html, context};
+}
+for (const language of ["zh-CN", "en-US"]) {
+    productionI18n.setPluginLanguage(language);
+    const text = productionI18n.t;
+    const fresh = renderFixture().html;
+    assert.ok(fresh.includes(text("today.emptyOnboardDesc")));
+    assert.match(fresh, /<ol class="lc-checkin__onboard-steps">/);
+    assert.match(fresh, /data-action="skip-onboard"/);
+    assert.doesNotMatch(fresh, /data-action="archived"/);
+    const guidance = text("today.step3Desc", {checkin: text("item.checkin"), entry: text("item.exactShort"), duration: text("item.manualShort")});
+    assert.ok(fresh.includes(guidance), `${language}: guidance uses the actual record controls`);
+    assert.doesNotMatch(guidance, /\{(?:checkin|entry|duration)\}/);
+
+    const skipped = renderFixture([], {firstSuccessSkipped: true}).html;
+    assert.ok(skipped.includes(text("today.emptyNewDesc")));
+    assert.match(skipped, /data-action="add"/);
+    assert.doesNotMatch(skipped, /onboard-steps|data-action="skip-onboard"|data-action="archived"/,
+        "skipping guidance on an empty library keeps creation, without inventing archived items");
+    for (const firstSuccessSkipped of [false, true]) {
+        const archived = renderFixture([makeItem("archived", {archived: true})], {firstSuccessSkipped}).html;
+        assert.ok(archived.includes(text("today.emptyActiveDesc")));
+        assert.match(archived, /data-action="archived"/);
+        assert.doesNotMatch(archived, /onboard-steps|data-action="skip-onboard"/);
+    }
+
+    const offDay = renderFixture([makeItem("sunday", {schedule: {type: "weekly", weekdays: [0]}})]).html;
+    assert.ok(offDay.includes(text("today.emptyScheduledDesc")));
+    assert.doesNotMatch(offDay, /onboard-steps|data-action="archived"|lc-checkin__all-done/);
+    const completedEvent = {id: "done", itemId: "done-item", localDate: todayKey,
+        occurredAt: todayDate.toISOString(), value: 1, unit: "次", source: "manual"};
+    const done = renderFixture([makeItem("done-item")], {events: [completedEvent]}).html;
+    assert.ok(done.includes(text("today.allDone")));
+    assert.match(done, /lc-checkin__completed-section/);
+    const pending = renderFixture([makeItem("done-item")], {events: [completedEvent], pendingOnly: true}).html;
+    assert.ok(pending.includes(text("today.pendingEmpty")));
+    assert.doesNotMatch(pending, /lc-checkin__completed-section/);
+    const search = renderFixture([makeItem("scheduled")], {todayQuery: "not-present"}).html;
+    assert.ok(search.includes(text("today.searchEmptyHint")));
+    assert.match(search, /data-action="clear-search"/);
+    assert.doesNotMatch(search, /onboard-steps|data-action="archived"|lc-checkin__all-done/);
+    const completedMatch = renderFixture([makeItem("done-item"), makeItem("other")],
+        {events: [completedEvent], todayQuery: "done-item"}).html;
+    assert.ok(completedMatch.includes(text("today.queryCompleted")));
+
+    for (const [kind, extra] of [["binary", {}], ["count", {}], ["quantity", {unit: "杯"}], ["duration", {unit: "分钟"}]]) {
+        const {context} = renderFixture([makeItem(kind, {kind, ...extra})]);
+        const item = renderItemView(context.store.items[0], todayDate, context);
+        if (kind === "binary") {
+            assert.match(item, /<button class="lc-checkin__item-icon"[^>]*data-action="toggle"/);
+            assert.ok(item.includes(text("item.checkin")));
+        } else {
+            assert.match(item, /<span class="lc-checkin__item-icon" aria-hidden="true">/);
+            assert.match(item, /data-action="toggle-exact"/);
+            assert.ok(item.includes(text(kind === "duration" ? "item.manualShort" : "item.exactShort")));
+            if (kind !== "duration") assert.match(item, /data-action="quick-record"/);
+        }
+    }
+}
+
+/* —— 9. 纯度：零依赖 + 无时钟 —— */
 const moduleSource = fs.readFileSync(path.join(root, "src", "features", "first-success.ts"), "utf8");
 assert.doesNotMatch(moduleSource, /^import /m, "状态机模块保持零依赖");
 assert.doesNotMatch(moduleSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""), /Date\.now\(|new Date\(\)/, "禁止隐式时钟");
 
-console.log("first-success tests passed: 单调前进/skip 粘性/reset/归一化/确定性/接线守门/纯度 全部通过");
+console.log("first-success tests passed: state transitions and bilingual production Today rendering (empty/skipped/archive/off-day/complete/search plus binary/count/quantity/duration record controls).");

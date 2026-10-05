@@ -311,11 +311,15 @@ function makeFacade(name, options = {}) {
     await flush(); await flush();
     assert.equal(getDockTomatoCompletionIssues().at(-1).reason, "write-failed");
     assert.equal(getDockTomatoCompletionIssues().at(-1).identity, "retry-persist");
+    const staleRetryDiagnostics = moduleUnderTest.exports.serializeDockTomatoCompletionIssues();
     processBehavior = "recorded";
     fakeWindow.dispatch("tomato:focus-session-completed", completion({sessionId: "retry-persist"}));
     await flush(); await flush();
     assert.equal(processed.length, 4);
     assert.equal(getDockTomatoCompletionIssues().some((issue) => issue.identity === "retry-persist"), false, "successful retry resolves its write diagnostic");
+    const resolvedRetryDiagnostics = moduleUnderTest.exports.serializeDockTomatoCompletionIssues();
+    assert.ok(JSON.parse(resolvedRetryDiagnostics).resolvedIdentities.includes("retry-persist"), "successful bridge retry must persist a resolution even with no visible issues");
+    assert.equal(moduleUnderTest.exports.mergeDockTomatoCompletionIssueArchives(resolvedRetryDiagnostics, staleRetryDiagnostics).issues.some(issue => issue.identity === "retry-persist"), false, "old-window diagnostics must not resurrect the bridge's resolved failure");
 
     /* 宿主通道返回 undefined(排队器刷新失败被吞):不得误判为已入账。 */
     clearDockTomatoCompletionIssues();

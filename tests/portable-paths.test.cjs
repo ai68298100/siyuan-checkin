@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const {spawnSync} = require("node:child_process");
 
 const root = path.join(__dirname, "..");
 const extensions = new Set([".ts", ".cjs", ".mjs", ".js", ".scss", ".md", ".json"]);
@@ -37,3 +38,8 @@ for (const rel of scanned) {
 
 assert.deepEqual(offenders, [], `发现绑定个人机器的绝对路径，请改用环境变量或标准安装路径:\n${offenders.join("\n")}`);
 console.log(`Portable-path checks passed across ${scanned.length} tracked files.`);
+/* Kernel test tooling is portable only when it cannot silently select a real workspace.
+   Keep its mock-only safety suite in this already registered infrastructure check. */
+const safety = spawnSync(process.execPath, [path.join(__dirname, "smoke-kernel-safety.cjs")], {cwd: root, encoding: "utf8"});
+assert.equal(safety.status, 0, `Kernel safety mock regression failed:\n${safety.stdout}\n${safety.stderr}`);
+process.stdout.write(safety.stdout);

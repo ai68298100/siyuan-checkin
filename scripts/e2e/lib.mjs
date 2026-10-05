@@ -3,26 +3,37 @@
    只需要一个 SiYuan-Kernel.exe 与它的 app 目录，插件从 <workspace>/data/plugins/ 加载。 */
 import fs from "node:fs";
 import path from "node:path";
-import os from "node:os";
+import net from "node:net";
+import {randomBytes} from "node:crypto";
 import {spawn} from "node:child_process";
+import {assertAiAllowed, assertLoopback, isScratchName, resolveTarget} from "../lib/smoke-kernel.mjs";
 
 export const PLUGIN_NAME = "siyuan-checkin";
 export const STORAGE_DIR = `storage/petal/${PLUGIN_NAME}`;
 export const MARKER_FILE = "checkin-e2e.json";
+export const DEFAULT_E2E_PORT = 6807;
 
-export function e2eConfig() {
-    const workspace = process.env.CHECKIN_E2E_WORKSPACE || path.join(os.homedir(), "SiYuan-Checkin-E2E");
-    const host = "127.0.0.1";
-    const port = Number(process.env.CHECKIN_E2E_PORT || 6827);
-    return {workspace, host, port, baseURL: `http://${host}:${port}`};
+export function e2eConfig({baseArg, tokenArg, workspaceArg, env = process.env} = {}) {
+    const workspace = workspaceArg ?? env.CHECKIN_E2E_WORKSPACE;
+    if (typeof workspace !== "string" || !workspace.trim() || !path.isAbsolute(workspace)) {
+        throw new Error("请显式设置 CHECKIN_E2E_WORKSPACE 为独立靶场的绝对路径；没有默认工作区");
+    }
+    const baseURL = String(baseArg ?? env.SIYUAN_BASE_URL ?? `http://127.0.0.1:${env.CHECKIN_E2E_PORT || DEFAULT_E2E_PORT}`).replace(/\/+$/, "");
+    const url = assertLoopback(baseURL);
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+    if (url.protocol !== "http:" || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error("自管 E2E 内核需要有效的本机 HTTP 端口");
+    return {workspace: path.resolve(workspace), host, port, baseURL, token: tokenArg ?? env.SIYUAN_TOKEN ?? env.CHECKIN_E2E_TOKEN};
 }
 
-/** 只允许指向本机回环，避免测试打到用户的远端思源。 */
-function assertLoopback(baseURL) {
-    const url = new URL(baseURL);
-    if (!["127.0.0.1", "localhost", "::1"].includes(url.hostname)) {
-        throw new Error(`E2E 只允许本机回环目标，当前为 ${url.hostname}（如需远端请显式改造并自担风险）`);
-    }
+/** Existing instances are never reused or stopped by self-managed setup. */
+export async function assertPortAvailable({host = "127.0.0.1", port}) {
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("E2E 端口必须是 1~65535 的整数");
+    await new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.once("error", () => reject(new Error(`E2E 目标端口 ${port} 已占用或不可绑定；拒绝启动、写入和停止已有内核`)));
+        server.listen({host, port, exclusive: true}, () => server.close(error => error ? reject(error) : resolve()));
+    });
 }
 
 /** 思源安装定位：优先环境变量，其次常见安装路径；返回内核与 app 目录。 */
@@ -50,13 +61,9 @@ export function resolveInstall() {
 
 /** 工作区必须有我们自己的标记文件，绝不让 E2E 指向用户的真实笔记本数据。 */
 export function prepareWorkspace(workspace) {
+    if (!workspace || !path.isAbsolute(workspace)) throw new Error("E2E 工作区必须显式指定绝对路径");
     if (fs.existsSync(workspace)) {
-        const markerPath = path.join(workspace, MARKER_FILE);
-        if (!fs.existsSync(markerPath)) {
-            throw new Error(`拒绝使用非 E2E 工作区 ${workspace}：缺少 ${MARKER_FILE} 标记，可能是用户的真实数据`);
-        }
-        const marker = JSON.parse(fs.readFileSync(markerPath, "utf8"));
-        if (marker.protected) throw new Error(`工作区 ${workspace} 已被标记为 protected，拒绝写入`);
+        const marker = assertScratchWorkspace(workspace);
         return {created: false, marker};
     }
     fs.mkdirSync(path.join(workspace, "data"), {recursive: true});
@@ -65,8 +72,60 @@ export function prepareWorkspace(workspace) {
     return {created: true, marker};
 }
 
+export function assertOwnedWorkspace(workspace) {
+    if (!workspace || !path.isAbsolute(workspace) || !fs.existsSync(workspace) || fs.lstatSync(workspace).isSymbolicLink()) {
+        throw new Error("E2E 工作区必须是已明确指定的本地目录，不能使用符号链接");
+    }
+    const markerPath = path.join(workspace, MARKER_FILE);
+    if (!fs.existsSync(markerPath) || fs.lstatSync(markerPath).isSymbolicLink()) throw new Error(`拒绝非 E2E 工作区：缺少可信 ${MARKER_FILE} 标记`);
+    const marker = JSON.parse(fs.readFileSync(markerPath, "utf8"));
+    if (marker.createdBy !== "siyuan-checkin e2e" || marker.protected) throw new Error("E2E 工作区身份不匹配或已被保护，拒绝使用");
+    return marker;
+}
+
+/** Inspect notebooks and installed plugins before any local plugin/config mutation. */
+export function assertScratchWorkspace(workspace, {env = process.env} = {}) {
+    const marker = assertOwnedWorkspace(workspace);
+    const data = path.join(workspace, "data");
+    if (fs.existsSync(data) && fs.lstatSync(data).isSymbolicLink()) throw new Error("E2E data 目录不能使用符号链接");
+    for (const entry of fs.existsSync(data) ? fs.readdirSync(data, {withFileTypes: true}) : []) {
+        if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+        const directory = path.join(data, entry.name);
+        if (entry.isSymbolicLink()) throw new Error("E2E data 子目录不能使用符号链接");
+        const conf = path.join(directory, ".siyuan", "conf.json");
+        if (fs.existsSync(conf)) {
+            const notebook = JSON.parse(fs.readFileSync(conf, "utf8"));
+            if (typeof notebook.name !== "string" || (!isScratchName(notebook.name) && env.SIYUAN_E2E_ALLOW_SHARED !== "1")) throw new Error("E2E 工作区包含非小驴打卡测试笔记本，拒绝本地安装和配置写入");
+        } else if (!new Set([".siyuan", "plugins", "storage", "assets", "emojis", "widgets", "templates", "public", "history", "snippets"]).has(entry.name)) {
+            throw new Error(`E2E data 存在无法确认用途的目录 ${entry.name}，拒绝写入`);
+        }
+    }
+    const plugins = path.join(data, "plugins");
+    if (fs.existsSync(plugins) && fs.readdirSync(plugins).some(name => name !== PLUGIN_NAME)) throw new Error("E2E 靶场安装了其他插件，拒绝写型测试");
+    const plugin = path.join(plugins, PLUGIN_NAME);
+    if (fs.existsSync(plugin) && fs.lstatSync(plugin).isSymbolicLink()) throw new Error("E2E 插件目录不能使用符号链接");
+    return marker;
+}
+
+/** Only a newly created, owned workspace may receive an automatically generated access code. */
+export function configureAccessToken(workspace, {token, created = false} = {}) {
+    assertScratchWorkspace(workspace);
+    if (!created) {
+        const target = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token, env: {}});
+        if (readAccessToken(workspace) !== target.token) throw new Error("显式提供的 token 与靶场配置不匹配；拒绝改写已有访问码");
+        return target.token;
+    }
+    const value = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token ?? randomBytes(32).toString("hex"), env: {}}).token;
+    const confPath = path.join(workspace, "conf", "conf.json");
+    if (fs.existsSync(confPath)) throw new Error("新靶场已有配置，拒绝覆盖访问码");
+    fs.mkdirSync(path.dirname(confPath), {recursive: true});
+    fs.writeFileSync(confPath, JSON.stringify({accessAuthCode: value}, null, 2));
+    return value;
+}
+
 /** 把 dist/ 装进工作区插件目录；思源要求 plugin.json.name 与目录名一致，否则整包静默不加载。 */
 export function installPlugin(workspace, repoRoot) {
+    assertScratchWorkspace(workspace);
     const dist = path.join(repoRoot, "dist");
     for (const required of ["index.js", "index.css", "plugin.json"]) {
         if (!fs.existsSync(path.join(dist, required))) {
@@ -86,9 +145,14 @@ export function installPlugin(workspace, repoRoot) {
 }
 
 /** extraArgs 必须是 serve 子命令的旗标（如 --readonly true），放在子命令之后；全局旗标只有 --workspace/--log-level。 */
-export function startKernel({kernel, appDir, workspace, port, extraArgs = []}) {
+export async function startKernel({kernel, appDir, workspace, port, host = "127.0.0.1", extraArgs = []}) {
+    const readonlyIndex = extraArgs.indexOf("--readonly");
+    if (readonlyIndex !== -1 && extraArgs[readonlyIndex + 1] === "true") assertOwnedWorkspace(workspace);
+    else assertScratchWorkspace(workspace);
+    await assertPortAvailable({host, port});
     const child = spawn(kernel, ["--workspace", workspace, "serve", "--wd", appDir, "--port", String(port), ...extraArgs], {
         stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
         env: {...process.env, SIYUAN_WORKSPACE_PATH: workspace},
     });
     const lines = [];
@@ -101,6 +165,10 @@ export function startKernel({kernel, appDir, workspace, port, extraArgs = []}) {
     });
     capture(child.stdout);
     capture(child.stderr);
+    await new Promise((resolve, reject) => {
+        child.once("spawn", resolve);
+        child.once("error", reject);
+    });
     return {child, lines};
 }
 
@@ -120,9 +188,9 @@ function failWithLog(message, lines) {
 
 export class SiyuanClient {
     constructor({baseURL, token, app = "checkin-e2e"}) {
-        assertLoopback(baseURL);
-        this.baseURL = baseURL.replace(/\/$/, "");
-        this.token = token || "";
+        const target = resolveTarget({baseArg: baseURL, tokenArg: token});
+        this.baseURL = target.base;
+        this.token = target.token;
         this.app = app;
     }
 
@@ -133,11 +201,12 @@ export class SiyuanClient {
     }
 
     async post(route, body = {}) {
+        assertAiAllowed(route);
         const response = await fetch(`${this.baseURL}${route}`, {method: "POST", headers: this.headers({"Content-Type": "application/json"}), body: JSON.stringify(body)});
         const text = await response.text();
         let payload = {};
         try { payload = text ? JSON.parse(text) : {}; } catch { throw new Error(`${route} 返回非 JSON（HTTP ${response.status}）: ${text.slice(0, 200)}`); }
-        if (!response.ok && payload.code === undefined) throw new Error(`${route} HTTP ${response.status}: ${text.slice(0, 200)}`);
+        if (!response.ok && (payload.code === undefined || payload.code === 0)) throw new Error(`${route} HTTP ${response.status}: ${text.slice(0, 200)}`);
         return payload;
     }
 
@@ -215,12 +284,15 @@ export class SiyuanClient {
     async setPetalEnabled(packageName, enabled) { return this.post("/api/petal/setPetalEnabled", {packageName, enabled}); }
 }
 
-export async function stopKernel({client, child}, lines) {
-    await client.exit();
-    const exited = await Promise.race([
-        new Promise((resolve) => child.once("exit", () => resolve(true))),
-        new Promise((resolve) => setTimeout(() => resolve(false), 8000)),
-    ]);
+export async function stopKernel({child}, lines) {
+    // Killing our child cannot issue /api/system/exit to an unrelated instance after a failed start.
+    if (!child || child.exitCode !== null || child.signalCode || !child.pid) return;
+    const exited = await new Promise(resolve => {
+        const timer = setTimeout(() => {child.removeListener("exit", onExit); resolve(false);}, 8000);
+        const onExit = () => {clearTimeout(timer); resolve(true);};
+        child.once("exit", onExit);
+        child.kill("SIGTERM");
+    });
     if (!exited) {
         child.kill("SIGKILL");
         if (lines) console.warn("[e2e] 内核未在 8 秒内退出，已强制结束");
@@ -239,12 +311,7 @@ export function kernelErrorLines(lines) {
 export async function enablePlugin({client, workspace, pluginName}) {
     const trust = await client.post("/api/setting/setBazaar", {trust: true});
     if (trust.code !== 0) {
-        // 契约不接受时退回改配置文件（调用方需重启内核才生效）。
-        const confPath = path.join(workspace, "conf", "conf.json");
-        const conf = fs.existsSync(confPath) ? JSON.parse(fs.readFileSync(confPath, "utf8")) : {};
-        conf.bazaar = {...(conf.bazaar || {}), trust: true};
-        fs.writeFileSync(confPath, JSON.stringify(conf, null, 2));
-        throw new Error(`setBazaar 失败（code=${trust.code} msg=${trust.msg || ""}），已改写 conf.json，需要重启内核后重试`);
+        throw new Error(`setBazaar 失败（code=${trust.code} msg=${trust.msg || ""}），停止 E2E 初始化`);
     }
     const enabled = await client.post("/api/petal/setPetalEnabled", {packageName: pluginName, enabled: true});
     if (enabled.code !== 0) throw new Error(`setPetalEnabled ${pluginName} 失败：code=${enabled.code} msg=${enabled.msg || ""}`);

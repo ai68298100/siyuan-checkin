@@ -489,24 +489,25 @@ export function renderTodayView(ctx: TodayViewContext): string {
         ? t("today.pendingEmpty")
         : query ? t("today.queryCompleted") : t("today.allDone");
     const date = now.toLocaleDateString(getPluginLocale(), {month: "long", day: "numeric", weekday: "long"});
-    const list = !activeItems.length && (ctx.store.items.length || ctx.firstSuccessSkipped === true) ? `
+    const onboardingSkipped = ctx.firstSuccessSkipped === true;
+    const list = !activeItems.length && ctx.store.items.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">▱</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyActiveTitle")}</div>
                 <div class="lc-checkin__empty-description">${t("today.emptyActiveDesc")}</div>
                 <div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="archived">${t("today.viewArchived")}</button><button class="lc-checkin__text-button" type="button" data-action="add">${t("nav.add")}</button></div>
             </div>` : !activeItems.length ? `
-            <div class="lc-checkin__empty lc-checkin__empty--onboard">
+            <div class="lc-checkin__empty${onboardingSkipped ? "" : " lc-checkin__empty--onboard"}">
                 <div class="lc-checkin__empty-mark">✦</div>
                 <div class="lc-checkin__empty-title">${t("today.emptyOnboardTitle")}</div>
-                <div class="lc-checkin__empty-description">${t("today.emptyOnboardDesc")}</div>
-                <ol class="lc-checkin__onboard-steps">
+                <div class="lc-checkin__empty-description">${t(onboardingSkipped ? "today.emptyNewDesc" : "today.emptyOnboardDesc")}</div>
+                ${onboardingSkipped ? "" : `<ol class="lc-checkin__onboard-steps">
                     <li><span class="lc-checkin__onboard-num" aria-hidden="true">1</span><div><strong>${t("today.step1Title")}</strong><small>${t("today.step1Desc")}</small></div></li>
                     <li><span class="lc-checkin__onboard-num" aria-hidden="true">2</span><div><strong>${t("today.step2Title")}</strong><small>${t("today.step2Desc")}</small></div></li>
-                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc")}</small></div></li>
-                </ol>
+                    <li><span class="lc-checkin__onboard-num" aria-hidden="true">3</span><div><strong>${t("today.step3Title")}</strong><small>${t("today.step3Desc", {checkin: t("item.checkin"), entry: t("item.exactShort"), duration: t("item.manualShort")})}</small></div></li>
+                </ol>`}
                 <button class="lc-checkin__text-button" type="button" data-action="add">${t("today.addFirst")}</button>
-                <button class="lc-checkin__text-button" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>
+                ${onboardingSkipped ? "" : `<button class="lc-checkin__text-button" type="button" data-action="skip-onboard">${t("today.onboardSkip")}</button>`}
             </div>` : !scheduledItems.length ? `
             <div class="lc-checkin__empty">
                 <div class="lc-checkin__empty-mark">◷</div>

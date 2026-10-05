@@ -8,6 +8,7 @@ import type {ReportSectionToggles} from "../view-preferences";
 import {buildCustomSummaryContext, buildSummaryContext} from "../analytics";
 import {dateKey, getActiveItemById, getEventById, getItemById, isScheduledToday, removeEvents, updateEventNote} from "../model";
 import {currentCalendarDate, captureActionMoment, isValidLocalDateInput} from "../shared";
+import {daysBetweenHalfOpen} from "../date-keys";
 import {renderAnalysisDiffPanel} from "./analysis-diff";
 import {renderAgentPreviewContent} from "./agent-preview";
 import {buildSuggestionChange, createSuggestionEnvelope, type AgentSuggestion} from "../agent-suggestions";
@@ -341,6 +342,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             const next = attribute === "data-insight-range-start"
                 ? {startDate: value, endDate: value > current.endDate ? value : current.endDate}
                 : {startDate: value < current.startDate ? value : current.startDate, endDate: value};
+            if ((daysBetweenHalfOpen(next.startDate, next.endDate) ?? 0) >= 366) {
+                input.value = current[attribute === "data-insight-range-start" ? "startDate" : "endDate"];
+                showMessage(t("insights.rangeLimit"));
+                return;
+            }
             writeInsightValue("insightsCustomRange", next);
             writeInsightValue("insightsRange", "custom");
             host.render(root);
@@ -378,7 +384,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     });
     /* T-1579：洞察行动入口——查看记录（带项目过滤直达记录区，返回页会话态保持）/
        编辑规则（showEditor 保留 editingId 项目身份）。 */
-    root.querySelector<HTMLElement>("[data-insight-records]")?.addEventListener("click", (event) => {
+    root.querySelectorAll<HTMLElement>("[data-insight-records]").forEach((button) => button.addEventListener("click", (event) => {
         const itemId = (event.currentTarget as HTMLElement).dataset.insightRecords || "";
         if (!itemId || !host.store.items.some((item) => item.id === itemId && !item.archived)) return;
         writeReviewValue("historyItemId", itemId);
@@ -388,13 +394,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         writeReviewValue("reviewWorkspace", "records");
         writeInsightValue("insightsReturnPage", "review");
         host.showReview(root);
-    });
-    root.querySelector<HTMLElement>("[data-insight-edit-rules]")?.addEventListener("click", (event) => {
+    }));
+    root.querySelectorAll<HTMLElement>("[data-insight-edit-rules]").forEach((button) => button.addEventListener("click", (event) => {
         const itemId = (event.currentTarget as HTMLElement).dataset.insightEditRules || "";
         const item = host.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) return;
         host.showEditor(item, "insights", root);
-    });
+    }));
     /* T-1591：洞察日历格/周行钻取——同步项目过滤后跳记录页对应日期（周行落该周起始日，
        周视图由用户在记录页切换；selectedHistoryDate/historyScope 由 jumpToHistoryDate 统一处理）。 */
     for (const attribute of ["data-insight-day", "data-insight-week"]) {

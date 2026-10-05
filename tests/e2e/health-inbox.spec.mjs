@@ -11,7 +11,7 @@ test("健康收件箱:内核行启动摄取真实落盘,重复行不重复记账
     await openCheckin(page);
 
     /* 真实笔记本与收件箱文档。 */
-    const nbData = await client.postChecked("/api/notebook/createNotebook", {name: `E2E health ${Date.now()}`});
+    const nbData = await client.postChecked("/api/notebook/createNotebook", {name: `lv-checkin-smoke-health-${Date.now()}`});
     const notebookId = typeof nbData === "string" ? nbData : String(nbData?.id ?? nbData?.notebook?.id ?? "");
     const doc = await client.postChecked("/api/filetree/createDocWithMd", {notebook: notebookId, path: "/健康收件箱", markdown: ""});
     const docId = typeof doc === "string" ? doc : String(doc?.id ?? doc?.data ?? "");

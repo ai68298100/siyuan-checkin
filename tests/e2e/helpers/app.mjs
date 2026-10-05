@@ -1,7 +1,8 @@
 /* E2E 页面对象：打开真实例前端并等待插件公开 API 就绪；同时提供内核侧读写与写请求计数。 */
 import fs from "node:fs";
 import path from "node:path";
-import {SiyuanClient} from "../../../scripts/e2e/lib.mjs";
+import {assertOwnedWorkspace, SiyuanClient} from "../../../scripts/e2e/lib.mjs";
+import {protectAiRequests, resolveTarget} from "../../../scripts/lib/smoke-kernel.mjs";
 
 const artifactsDir = path.resolve(import.meta.dirname, "..", "..", "..", ".artifacts", "e2e");
 
@@ -9,7 +10,10 @@ const artifactsDir = path.resolve(import.meta.dirname, "..", "..", "..", ".artif
 export function target(name = "target") {
     const file = path.join(artifactsDir, `${name}.json`);
     if (!fs.existsSync(file)) throw new Error(`缺少 ${file}，请通过对应的 pnpm run test:e2e* 启动`);
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+    const resolved = resolveTarget({baseArg: saved.baseURL, tokenArg: saved.token});
+    assertOwnedWorkspace(saved.workspace);
+    return {...saved, baseURL: resolved.base, token: resolved.token};
 }
 
 export function createClient(name = "target") {
@@ -28,6 +32,7 @@ export function appURL({bundle = "desktop", target: targetName = "target", extra
 
 /** 等插件实例就绪：window.siyuanCheckin 是打卡对生态暴露的唯一入口。 */
 export async function openCheckin(page, options = {}) {
+    await protectAiRequests(page);
     await page.goto(appURL(options), {waitUntil: "domcontentloaded"});
     await page.waitForFunction(() => typeof window.siyuanCheckin?.whenReady === "function", undefined, {timeout: 45000});
     const ready = await page.evaluate(() => window.siyuanCheckin.whenReady());

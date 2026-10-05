@@ -266,8 +266,8 @@ assert.match(components, /@container lc5 \(max-width: 719px\) \{[\s\S]*?\.lc-che
 
 // T-112/T-1621 页面滚动位置记忆：渲染前记录所属 root，重渲染后恢复该 root 页面
 const pluginSource = read("src", "index.ts");
-assert.match(pluginSource, /const context: RootContext = \{[\s\S]*?page: this\.currentPage,[\s\S]*?scrollTops: \{\},[\s\S]*?todayQuery: this\.todayQuery,[\s\S]*?archivedQuery: this\.archivedQuery,/,
-    "each surface must create root-owned restoration and query state");
+assert.match(pluginSource, /const context: RootContext = \{[\s\S]*?page: "today",[\s\S]*?scrollTops: \{\},[\s\S]*?todayQuery: "",[\s\S]*?archivedQuery: "",[\s\S]*?review: this\.createInitialReviewRootContext\(\),/,
+    "each new surface must create isolated restoration and query state");
 assert.match(pluginSource, /context\.scrollTops\[context\.renderedPage \?\? "today"\] = previousScroller\.scrollTop/,
     "each surface must capture its own previously rendered page before restoring the destination page");
 assert.match(pluginSource, /this\.ensureRootContext\(surface\)\.scrollTops\.editor = 0/,

@@ -8,6 +8,7 @@
 2026-10-05 第三轮增量：T-1618 页内提醒通知补齐唯一提示关联、区域语义与读屏操作说明；T-1582 专注计时多 surface 同步加入防全局查询回退守门；修复提醒 `restore` 记录归一化时被过滤、重载后旧 skip/snooze 复活的问题。提醒动作/跨窗口/专注生命周期定向链通过。
 2026-10-05 第四轮增量：T-1622 启动清理外部失败箱改为在初始化存储锁内等待落盘，避免旧快照覆盖另一窗口写入；T-1621 编辑器组合包异步完成仅导航仍连接且仍为当前会话的 root；T-1612 宽屏提醒中心压缩行高并保持 44px 操作目标。跨窗口、编辑器回调、提醒密度矩阵通过。
 2026-10-05 第五轮增量：T-1622 审计清空改为锁内显式删除并失败回滚，等待期间新追加会被保留；T-1621 编辑器笔记本列表/锚点创建回调增加当前会话与节点连接检查；T-1612 窄 dock 提醒动作恢复 44px 触控目标。旁路写入、锚点选择器和提醒动作守门通过。
+2026-10-06 第六轮增量（D-355）：T-1622 诊断桶升级 schema v2，成功解决记录与显式清空都带跨窗口墓碑，旧快照不会复活；T-1621 新 root 只从白名单偏好启动，避免跨 root 查询/草稿/洞察串台。T-1646 首成旅程补齐空库、跳过、归档、无排期和完成态八组生产 bundle 场景；T-1654 设置搜索覆盖目标卡语义索引并通过中英文/窄宽度键盘场景。T-1649 洞察日格恢复原生 button 角色并补 progressbar 语义。新增写型内核冒烟隔离靶场守门：显式地址/token、非项目笔记本拒绝、前缀清扫、AI 默认关闭、只停自有子进程；mock 安全链和 E2E 配置枚举通过。T-1643 数据隐私/卸载说明落地，仍保留诊断字段的有限脱敏边界说明。完整质量链、真实内核隔离场和 Android/TalkBack 现场仍不以本轮本地证据核销。
 
 ## 当前开发执行索引（2026-10-06，当前真值；D-354）
 
@@ -31,17 +32,19 @@
 - [ ] T-1641 发布截图、preview 与演示素材（P1，after-core；正式资产 after-merge）——修正 61/72 模板宣传漂移，当前构建素材可追溯，桌面/dock/移动与亮暗体现真实记录、复盘、笔记价值。
 - [ ] T-1642 任务型教程、FAQ 与可发现帮助（P1，ready）——首次记录、规则、纠错、周复盘、来源与迁移；现象→检查→修复→反馈，复用已完成 README 骨架。
 - [ ] T-1643 面向用户的数据、隐私和卸载说明（P1，ready）——逐桶存放/同步/外发/备份/清理，主档范围、移动 assets 导出、可选 AI/来源和诊断脱敏；来源 AG-083/091。
+  - 进展（2026-10-06，local-auto，D-355）：新增 [数据、隐私与卸载说明](docs/data-privacy-and-uninstall.md)，按主档、独立配置、来源、assets、诊断和卸载清理逐桶说明；明确 AI/来源均为可选外发，诊断当前仅做字段长度边界、尚未承诺通用密文/路径脱敏，保留 T-1648 的脱敏预览收口。
 - [ ] T-1644 GitHub 反馈、贡献与支持闭环（P1，ready 本地）——结构化 issue/PR、CONTRIBUTING/支持/安全报告入口，不要求完整笔记或 Key；About/topics 已有基础，不重做定位。
 - [ ] T-1645 英文快速开始与产品名称一致性（P2，ready 草案；manifest after-merge）——英文安装/首成/功能/隐私/兼容/反馈，双语承诺一致，最终 readme 映射在合并后同步。
-- [ ] T-1646 首次成功与空状态准确性（P1，ready）——修空库跳过引导后的归档误导，按二值/数值真实记录按钮引导，分清五类空态并测完整旅程；来源 AG-037/038/042。
+- [x] T-1646 首次成功与空状态准确性（P1，done，2026-10-06）——空库跳过引导不再伪装成归档空态；二值/次数/数量/时长首成按钮按真实记录能力呈现；空库、跳过、归档、无排期、完成与搜索八组 zh/en、亮暗、320/980px 生产 bundle 场景通过 `tests/first-success-browser.cjs`。真实宿主现场仍留台账。
 - [ ] T-1647 备份范围与恢复旅程演练（P1，after-core）——主档/独立配置边界，备份→受控改动→恢复→复核、坏文件/重复/冲突/失败回滚；不暗加完整配置包；来源 AG-021/027。
 - [ ] T-1648 错误下一步与诊断帮助一致性（P1，ready 审查；实现 after-core）——事实/文档双结果、保留输入、安全重试、可恢复/手动路径和脱敏预览；来源 AG-025/041/084。
 - [ ] T-1649 可访问树、键盘与读屏语义（P1，ready）——核验洞察日格 button role=listitem 风险，原生角色/日期状态/钻取/焦点/等价文本或表格/缩放，自动与 TalkBack 分层；来源 AG-099/098。
+  - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
 - [ ] T-1651 长会话与升级生命周期验收（P1，after-core）——循环开关、多表面/前后台/升级重载、监听/root/计时/内存、过期回调与数据草稿；来源 AG-022/104/105。
 - [ ] T-1652 测试可达、CI 与证据措辞（P1，ready）——主/UI/独立浏览器/质量链可达清单、开发分支CI、轻重链分层；结构守门不得宣称真机/多宽度可见性；来源 AG-007/104/105。
 - [ ] T-1653 编排与样式可维护性（P2，after-core）——实际热点/重复/依赖先审，再按职责小切片；两机合并前避免公共核心大搬迁；来源 AG-003/006。
-- [ ] T-1654 设置搜索覆盖目标卡的语义索引（P1，ready）——复现并修目标卡退役布局类后的搜索遗漏，标题/名称/路径/ID及键盘/IME/清除/双root；不恢复旧布局类；来源 AG-070/071。
+- [x] T-1654 设置搜索覆盖目标卡的语义索引（P1，done，2026-10-06）——目标卡标题、名称、路径、文档 ID、笔记本 ID 通过独立语义标记进入索引，不恢复退役布局类；中英文、320/980px、IME、↑↓/Enter、清除/折叠恢复、双 root 通过 `tests/settings-search-browser.cjs`（232 checks）。
 
 ### 已确认的正确性问题（独立于 UI 重构，先处理）
 
@@ -60,6 +63,7 @@
   - 进展（2026-10-05，local-auto，D-348）：事项页单次改期草稿 `occurrenceMoves` 纳入 `OccasionsRootContext`；展开态、日期、确认按钮和删除清理均按所属 root 写入，过滤/重绘后保留，不会把另一表面的日期草稿带入；提醒中心入口拒绝 detached originating root，自动回落到当前连接的 quick/tab/dock surface。`tests/occasions.test.cjs`、`tests/surface-session-browser.cjs`、`tests/reminder-delivery.test.cjs` 已补守门；定向 check/测试通过，真实 Surface bundle 场景在可用浏览器环境通过。
   - 进展（2026-10-04，local-auto，D-340/D-341）：Today 的 `bulkMode`、`bulkSelected`、精确录入展开项、待上传附件、快速录入取消令牌和优先提醒展开态迁入 `RootContext.today`；批量、键盘、精确录入、附件、快速录入和局部卡片刷新均按所属 root 读写。Settings 来源卡片展开态改由 `SettingsRootContext.openSourcePanels` 统一持有，移除独立 WeakMap。补齐 Today 键盘、批量、上下文菜单的 root-aware 页面判断、局部重绘和编辑/洞察导航；局部卡片刷新后的洞察回调也保留所属 root。分组折叠、排序和已完成折叠继续作为已持久化视图偏好共享，不误迁为 root 会话。`check`、cross-page、cross-surface、生产构建、真实 Surface bundle 和 `kernel-regression` 通过。
   - 进展（2026-10-05，local-auto，D-349）：Settings 字段搜索的 `query/activeIndex/hadFocus` 从模块级 WeakMap 迁入 `SettingsRootContext.searchSession`，绑定、清理和重绑均按目标 root 恢复；无 root 的旧外部桩只使用一次性临时会话，不保留已销毁表面状态。新增 settings-navigation/settings-migration/cross-page/cross-surface 守门，定向行为验证通过。Today `normalizeUiIcons` 对已存在目标 SVG 提前返回，减少 Today 大列表的重复 HTML 解析；`kernel-regression` 两轮及本轮复测通过。
+  - 进展（2026-10-06，local-auto，D-355）：新 root 改为 today/空查询/初始 review/editor/settings/occasions，会话不再从宿主镜像复制；仅保留 review fold 与洞察项目等明确显示偏好白名单。`surface-session-browser.cjs` 通过 fresh/recreated root、旧入口、设置返回、洞察/编辑/事项/草稿隔离场景；完整宿主切换、真实 Android 仍开放。
 - [x] T-1635 RootContext 兼容桥与真实 bundle 验收收口（P0，2026-10-03，local-auto）——新增 root→宿主兼容镜像字段快照：root-aware setter 更新快照，旧宿主字段直写发生变化时只迁移到显式目标 root 或当前 active root，避免多 root 串台；兼容检查使用无分配字段比较，不增加 JSON 快照开销。真实 bundle 回归补充双 root 的显式 root 状态、旧 `render()` 写入、销毁清理和剩余 root 隔离断言。验证：`pnpm run check`、`pnpm run build:check`、`pnpm test`、`pnpm run test:ui`、cross-surface 12.1/12.2、cross-page 13 检、Review 真实布局 52 场景、`git diff --check` 全部通过；构建仅有既有 webpack 体积警告。后续边界转入 T-1621 剩余状态/生命周期，不扩大兼容桥语义。
   - 架构设计小稿（2026-09-30，local-auto）——done：[multi-root-page-design-2026-09-30.md](docs/multi-root-page-design-2026-09-30.md)——RootContext per-root Map + 宿主 currentPage 代理层 + 导航函数可选 root 参数 + 会话态三层分表 + 三步渐进策略；评审后排期实施。
   - 进展（2026-09-30，local-auto）：第一切片交付——①readSurfaceContext 读侧扩参到契约 1 全形状（date=review day 钻取/range=summaryRange|CustomRange/workspace/query/filters=scope|source|order|page|reminder；默认值 all/newest/0 不进上下文；只聚合既有会话态零新真值，返回分派既有消费方零破坏）；②固定 DOM id 唯一化——提醒中心标题（review.ts）与事项预设 datalist（occasions.ts）改按渲染次序生成（settingsViewId 同法），多 root 同屏 aria-labelledby 与 input[list] 不再跨表面交叉命中；③契约文档登记切片与剩余边界。**当时剩余**：按 root 独立 currentPage 与全量序列化；第二切片状态见当前 T-1621 条目。守门：cross-page-consistency 新增两检查块（形状/聚合纪律/同源 id），主链 9 检全过。
@@ -69,6 +73,7 @@
   - 进展三（2026-10-04，local-auto，D-332）：①卸载 `teardownFinalFlush` 改为锁内先重读并与内存主 Store 确定性合并，再走回读校验写入；收尾不再用陈旧快照直接覆盖另一窗口最后写入，且将最终已落盘快照回写内存基线；②JSON 恢复、CSV/Loop/Obsidian 导入及冲突导入确认全部改经 `enqueueMutation`，保存失败恢复导入前内存，导入/恢复与日常写入共享同一锁内重读路径；③新增 `persistStoreWithReconciliation` 事务守门，覆盖预合并保留并发事件与既有 bounded retry。验证：`pnpm run check`、`pnpm run build:check`、`pnpm test`、`node tests/storage-transaction.test.cjs`、`node tests/cross-window-merge.test.cjs`、`git diff --check` 全部通过；构建仅有既有 webpack 体积警告。**剩余**：主 Store 其他旁路写入、删除类跨窗口墓碑以及偏好桶后写者胜边界仍按 D-314/D-315 留在后续切片。
   - 进展四（2026-10-04，local-auto，D-345）：事项桶加入可选 `tombstones`；归一化先过滤已删除 ID，`mergeOccasionCompletions` 合并墓碑并让墓碑优先，旧窗口事项不能复活；无本地墓碑遮蔽的远端独有事项可安全保留，恢复并发新建。删除、编辑、完成、改期、Agent 创建和 mutation 刷新均保留墓碑字段。新增跨窗口删除/并发新建/归一化守门，剩余 T-1622 边界转为失败箱丢弃与提醒 restore 的删除语义以及完整双窗口现场演练。
   - 进展五（2026-10-05，local-auto，D-349）：分析历史为追加型辅助桶，生成摘要写入队列在宿主锁内重读远端缓存，与本地快照做确定性并集后再保存并回写内存；同毫秒条目按稳定身份排序，保留有界历史，旧 harness 无锁/读取接口时兼容单窗口路径。新增真实 helper 合并/交换律、跨窗口锁内接线守门，定向验证通过。仍不改变偏好桶按 D-315 后写者胜的边界。
+  - 进展六（2026-10-06，local-auto，D-355）：Dock Tomato 诊断内部存储升级 schema v2，记录解决身份集合与显式清空时间水位作为墓碑；v1/旧数组可读，锁内合并、失败回滚、重载和成功解决均覆盖，`dock-tomato-completion`/bridge/integration/cross-window 定向链通过。其他辅助桶和完整双窗口现场仍开放。
 - [x] T-1623 可见文案 i18n 纯度与多表面双语补齐（P1，2026-10-04，local-auto）——可见硬编码文案已键化并补齐双语，`t()` 重复占位符改为全部替换，未接线 `template-manager` 已退役；`tests/i18n-call-audit.cjs` 通过 TypeScript AST 扫描 2534 个生产 `t()` 调用，2381 个完整可判定、153 个动态边界均有明确原因，缺参/多余参问题为 0，字典中英键数均为 2560。`pnpm run test:i18n` 已接入 `test:ui`，调用点审计和夹具均通过。后续新增文案仍必须经过同一门禁。
   - 进展（2026-09-30，local-auto；D-316）：①t() 全量替换修复——split/join 替代单次 replace，trust.reasonThreshold 双 {unit} 不再残留（i18n-parity 增功能断言：重复占位符全替换+无字面残留）；②审计定位硬编码点全部键化（17 对新键）：专注庆祝（fragments）/专注默认名+备注（focus-timer；unit「分钟/小时」回退是数据单位不改）/配额标签与帮助×4（bind-editor）/问卷空值（journal-dialog）/快捷动作打卡（quick-dialog）/已记录 toast×2（index）/提醒次数摘要（review）；③趋势标题/单位=持久化快照数据（写入时语言），呈现层 presentTrend 按系列键本地化+未识别原样回退——charts.ts 纯函数与 5 个转译夹具零改动，review-analytics-projection 断言随形态现代化（数据源仍是同一快照不重建）；④template-manager 定性=未接线遗留原型（生产零导入），D-316：本轮不接不删、退役另立清理批。**剩余**：缺参/多余参的调用点级检查（需调用点分析，留 i18n 卫生后续）；template-manager 退役清理批。守门：cross-page-consistency 新增 T-1623 检查块（t() split/join 精确签名+各点键化+无中文字面残留）。
 - [x] T-1624 README 整体重构与小驴系列信息维护（P1，2026-10-04，local-auto）——首页明确已发布 v18.16.0 与开发工作树的区别，增加页内导航，把安装/兼容和首次记录三步放在功能前；补齐洞察页入口，历史版本说明改为归档链接，修复旧 summary/details 不配对；小驴四款插件与 QQ 群 871707735 统一置于交流节，未添加未经核实的外部链接。验证：ui-docs/preferences-docs 守门、Marked 实际 Markdown 渲染、320/390/1180px × 亮暗六组浏览器检查（链接/锚点/图片/HTML/横向溢出）通过，截图已目视核对。发布包资源同步留最终生产构建与 check:release。
