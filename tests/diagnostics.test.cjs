@@ -109,6 +109,14 @@ for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.diagnost
     assert.equal(preview.codes[0].count, 2);
     assert.equal(preview.oldestAt, "2026-09-20T08:00:00.000Z", "时间范围最早");
     assert.equal(preview.latestAt, "2026-09-24T11:00:00.000Z", "时间范围最新");
+    assert.deepEqual(preview.details, [], "没有 detail 时预览为空");
+    const detailPreview = summarizeDiagnosticsPreview([
+        {code: "save-failed", at: "2026-09-24T10:00:00.000Z", detail: "token=secret123 C:\\Users\\alice"},
+        {code: "load-failed", at: "2026-09-24T11:00:01.000Z", detail: "safe context"},
+    ]);
+    assert.equal(detailPreview.details.length, 2);
+    assert.doesNotMatch(detailPreview.details[0].detail, /secret123|C:\\Users\\alice/);
+    assert.match(detailPreview.details[0].detail, /<redacted>|<path>/);
     const emptyPreview = summarizeDiagnosticsPreview([]);
     assert.equal(emptyPreview.count, 0);
     assert.equal(emptyPreview.oldestAt, undefined);
@@ -118,6 +126,7 @@ for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.diagnost
 /* —— 接线守门：导出前预览确认 + i18n 双语 —— */
 const diagnosticsIndexSource = fs.readFileSync(path.join(__dirname, "..", "src", "index.ts"), "utf8");
 assert.match(diagnosticsIndexSource, /summarizeDiagnosticsPreview\(this\.diagnostics\)/, "导出诊断前必须构建构成预览");
+assert.match(diagnosticsIndexSource, /data-diagnostics-detail-preview/, "导出确认框必须展示有界脱敏 detail 预览");
 const diagnosticsI18nSource = fs.readFileSync(path.join(__dirname, "..", "src", "i18n.ts"), "utf8");
 for (const key of ["msg.diagnosticsPreview", "msg.diagnosticsEmpty"]) {
     const occurrences = diagnosticsI18nSource.split(`"${key}"`).length - 1;

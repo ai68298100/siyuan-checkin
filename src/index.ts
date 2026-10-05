@@ -5832,10 +5832,13 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 .map((entry) => `<tr><td>${escapeHtml(t(`diag.${entry.code}`))}</td><td class="num">${entry.count}</td></tr>`)
                 .join("");
             const rangeText = preview.count ? `${preview.oldestAt || ""} → ${preview.latestAt || ""}` : t("msg.diagnosticsEmpty");
+            const detailRows = preview.details.length
+                ? preview.details.map((entry) => `<li><strong>${escapeHtml(t(`diag.${entry.code}`))}</strong><small>${escapeHtml(entry.at)}</small><span>${escapeHtml(entry.detail || "")}</span></li>`).join("")
+                : `<li class="is-empty">${escapeHtml(t("set.diagPreviewDetailEmpty"))}</li>`;
             const diagHostClass = this.isMobileFrontend ? "lc-checkin-dialog-host lc-checkin-dialog-host--mobile" : "lc-checkin-dialog-host";
             const dialog = new Dialog({
                 title: t("set.diagnosticsPreviewTitle"),
-                content: `<div class="${diagHostClass}"><div class="lc-checkin__diag-preview" data-diagnostics-preview><p class="lc-checkin__journal-hint" role="note">${t("set.diagnosticsBoundary")}</p><table class="lc-checkin__diag-table"><thead><tr><th scope="col">${t("set.diagPreviewCode")}</th><th scope="col">${t("set.diagPreviewCount")}</th></tr></thead><tbody>${codeRows || `<tr><td colspan="2">${t("msg.diagnosticsEmpty")}</td></tr>`}</tbody></table><p class="lc-checkin__diag-range">${t("set.diagnosticsRange", {range: rangeText})}</p><div class="lc-checkin__journal-actions"><button type="button" class="b3-button" data-diag-cancel>${t("journal.cancel")}</button><button type="button" class="b3-button b3-button--text" data-diag-confirm>${t("common.confirm")}</button></div></div></div>`,
+                content: `<div class="${diagHostClass}"><div class="lc-checkin__diag-preview" data-diagnostics-preview><p class="lc-checkin__journal-hint" role="note">${t("set.diagnosticsBoundary")}</p><table class="lc-checkin__diag-table"><thead><tr><th scope="col">${t("set.diagPreviewCode")}</th><th scope="col">${t("set.diagPreviewCount")}</th></tr></thead><tbody>${codeRows || `<tr><td colspan="2">${t("msg.diagnosticsEmpty")}</td></tr>`}</tbody></table><p class="lc-checkin__diag-range">${t("set.diagnosticsRange", {range: rangeText})}</p><section class="lc-checkin__diag-details"><h4>${t("set.diagPreviewDetail")}</h4><ul data-diagnostics-detail-preview>${detailRows}</ul></section><div class="lc-checkin__journal-actions"><button type="button" class="b3-button" data-diag-cancel>${t("journal.cancel")}</button><button type="button" class="b3-button b3-button--text" data-diag-confirm>${t("common.confirm")}</button></div></div></div>`,
                 width: this.isMobileFrontend ? "92vw" : "480px",
             });
             dialog.element.querySelector<HTMLElement>(".b3-dialog__container")?.classList.add("lc-checkin-dialog");
@@ -6163,7 +6166,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const detail = atMost && day.kind === "binary" && day.progress === 0 ? t("insights.noRecord") : `${day.progress}/${day.target} ${day.unit}`;
             const label = `${day.date}，${statusText}${day.skipped ? `（${t("today.skipBadge")}）` : ""}，${detail}`;
             /* T-1591：日历格键盘/触屏钻取——button 化点击跳记录页对应日期（aria-label 保留完整状态读数）。 */
-            return `<button class="lc-checkin__insight-day is-${day.status}" type="button" data-insight-day="${escapeHtml(day.date)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"></button>`;
+            return `<button class="lc-checkin__insight-day is-${day.status}${day.isToday ? " is-today" : ""}" type="button" data-insight-day="${escapeHtml(day.date)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"${day.isToday ? ` aria-current="date"` : ""}></button>`;
         }).join("");
         /* T-1591：计算口径按项目类型明示——配额=窗口累计、戒除/上限=守住读数、排期类=机会日分母。 */
         const scopeLine = item.schedule?.type === "quota" ? t("insights.scopeNoteQuota")

@@ -121,7 +121,16 @@ export function buildTemplatePackApplicationPlan<T extends RuleLike, E extends R
         }
         const displayName = localizeName(template.name);
         const aliases = options.resolveAliases?.(template) ?? [displayName];
-        const existing = existingByAnchor.get(template.name) || aliases.map((alias) => existingByName.get(alias)).find((candidate): candidate is E => Boolean(candidate));
+        const anchored = existingByAnchor.get(template.name);
+        const exactName = existingByName.get(displayName);
+        /* Old data has no provenance. A non-current locale alias is accepted only
+           when its complete rule surface still matches the built-in template;
+           otherwise preserve the user's differently configured item and allow
+           an explicit new copy instead of claiming it is a built-in template. */
+        const legacyAlias = aliases.filter((alias) => alias !== displayName)
+            .map((alias) => existingByName.get(alias))
+            .find((candidate): candidate is E => candidate !== undefined && ruleDifferences(template, candidate).length === 0);
+        const existing = anchored || exactName || legacyAlias;
         if (!existing) {
             createCount += 1;
             entries.push({template, name: displayName, status: "new", conflict: "none", differences: [], defaultDisposition: "create"});

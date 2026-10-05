@@ -60,6 +60,10 @@ const switched = packs.buildTemplatePackApplicationPlan(["阅读"], catalog, [
 ], {localizeName: name => name, resolveAliases: aliases});
 assert.equal(switched.entries[0].conflict, "same", "旧英文显示名切回中文仍识别为同一内置模板");
 assert.equal(switched.entries[0].existingId, "legacy-reading");
+const customizedLegacy = packs.buildTemplatePackApplicationPlan(["阅读"], catalog, [
+    {id: "custom-reading", name: "Reading", icon: "📖", kind: "duration", target: 45, unit: "分钟"},
+], {localizeName: name => name, resolveAliases: aliases});
+assert.equal(customizedLegacy.entries[0].status, "new", "a legacy alias with changed rules stays a user item and does not get silently claimed");
 const anchored = packs.buildTemplatePackApplicationPlan(["阅读"], catalog, [
     {id: "renamed-reading", name: "我的阅读", templateAnchor: "阅读", icon: "📖", kind: "duration", target: 30, unit: "分钟"},
 ], {localizeName: name => "Reading", resolveAliases: aliases});

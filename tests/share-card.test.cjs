@@ -114,8 +114,9 @@ const diagIndexSource = read("src/index.ts");
 assert.match(diagIndexSource, /data-diagnostics-preview/, "diagnostics export opens the structured preview");
 assert.match(diagIndexSource, /data-diag-confirm/, "preview requires explicit confirmation before download");
 assert.match(diagIndexSource, /set\.diagnosticsBoundary/, "the content-boundary disclosure is always shown");
+assert.match(diagIndexSource, /data-diagnostics-detail-preview/, "the preview includes sanitized recent context");
 assert.match(diagIndexSource, /downloadDiagnosticsFor\(this\.diagnostics\)/, "confirmation still exports through the versioned channel");
-for (const key of ["set.diagnosticsPreviewTitle", "set.diagPreviewCode", "set.diagPreviewCount", "set.diagnosticsRange", "set.diagnosticsBoundary"]) {
+for (const key of ["set.diagnosticsPreviewTitle", "set.diagPreviewCode", "set.diagPreviewCount", "set.diagPreviewDetail", "set.diagPreviewDetailEmpty", "set.diagnosticsRange", "set.diagnosticsBoundary"]) {
     const count = i18nSourceFor(root).split(`"${key}"`).length - 1;
     assert.equal(count, 2, `${key} must exist in both locales (${count})`);
 }

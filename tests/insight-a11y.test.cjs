@@ -6,8 +6,9 @@ assert.match(source, /lc-checkin lc-checkin--history lc-checkin--insights[\s\S]*
 assert.match(i18n, /"insights\.empty": "没有可复盘的打卡项"/);
 assert.match(source, /role="group" aria-label="\$\{t\("insights\.window"\)\}"/);
 /* T-1591：日历格 button 化——原生可聚焦（无需 tabindex），aria-label 携完整状态读数+钻取提示。 */
-assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\}" type="button" data-insight-day="\$\{escapeHtml\(day\.date\)\}" title=/);
-assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"/);
+assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\}\$\{day\.isToday \? " is-today" : ""\}" type="button" data-insight-day="\$\{escapeHtml\(day\.date\)\}" title=/);
+assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"\$\{day\.isToday \? ` aria-current="date"` : ""\}/);
+assert.match(fs.readFileSync("src/ui/components.scss", "utf8"), /\.lc-checkin__insight-grid \.lc-checkin__insight-day\.is-today \{/, "the current insight day must have a visible marker");
 assert.match(source, /role="progressbar" aria-label="\$\{escapeHtml\(t\("insights\.maturityBarTitle"\)\)\}"/, "the maturity indicator must have a readable name");
 assert.match(source, /day\.status === "complete"/);
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
@@ -69,7 +70,10 @@ const compiled = ts.transpileModule(`class InsightView { ${method} }`, {
 }).outputText;
 const report = {
     weeklyTrend: [{label: "empty week", startDate: "2026-08-31", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", startDate: "2026-09-07", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
-    days: [], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
+    days: [
+        {date: "2026-09-19", status: "complete", isToday: false, kind: "binary", progress: 1, target: 1, unit: "次"},
+        {date: "2026-09-20", status: "pending", isToday: true, kind: "binary", progress: 0, target: 1, unit: "次"},
+    ], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
 let reportOptions;
 const View = new Function("getItemById", "buildHabitInsights", "computeLongestStreaks", "buildCoachingSuggestions", "currentCalendarDate", "escapeHtml", "renderIconMarkup", "t", "renderPageShellHead", "dateKey", `${compiled}; return InsightView;`)(
@@ -88,6 +92,9 @@ assert.ok(html.includes(`<img src="${imageIcon}"`), "the heading must render the
 const picker = html.match(/<select data-insight-item[\s\S]*?<\/select>/)?.[0] || "";
 assert.ok(picker.includes("自定义图片"));
 assert.ok(!picker.includes(imageIcon), "native options cannot render images and must not display a data URI");
+assert.equal((html.match(/aria-current="date"/g) || []).length, 1, "only the current insight day is marked current");
+assert.match(html, /lc-checkin__insight-day is-pending is-today[^>]*aria-current="date"/, "the current insight day keeps its status and current-date semantics");
+assert.match(html, /lc-checkin__insight-day is-complete(?! is-today)[^>]*data-insight-day="2026-09-19"/, "past insight days are not marked current");
 view.insightsRange = "custom";
 view.insightsCustomRange = {startDate: "2026-08-01", endDate: "2026-08-28"};
 view.renderInsights();

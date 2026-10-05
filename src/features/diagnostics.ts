@@ -79,6 +79,8 @@ export interface DiagnosticsPreview {
     codes: readonly DiagnosticsCodeCount[];
     oldestAt?: string;
     latestAt?: string;
+    /** Latest bounded, already-sanitized details shown before sharing. */
+    details: readonly CheckinDiagnostic[];
 }
 
 export function summarizeDiagnosticsPreview(entries: readonly CheckinDiagnostic[]): DiagnosticsPreview {
@@ -89,10 +91,12 @@ export function summarizeDiagnosticsPreview(entries: readonly CheckinDiagnostic[
         .map(([code, count]) => ({code, count}))
         .sort((left, right) => right.count - left.count || left.code.localeCompare(right.code));
     const ats = normalized.map((entry) => entry.at).sort((left, right) => left.localeCompare(right));
+    const details = normalized.filter((entry) => Boolean(entry.detail)).slice(-3);
     return {
         count: normalized.length,
         codes,
         ...(ats.length ? {oldestAt: ats[0], latestAt: ats[ats.length - 1]} : {}),
+        details,
     };
 }
 

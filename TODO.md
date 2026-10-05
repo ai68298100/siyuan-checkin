@@ -39,8 +39,10 @@
 - [ ] T-1647 备份范围与恢复旅程演练（P1，after-core）——主档/独立配置边界，备份→受控改动→恢复→复核、坏文件/重复/冲突/失败回滚；不暗加完整配置包；来源 AG-021/027。
 - [ ] T-1648 错误下一步与诊断帮助一致性（P1，ready 审查；实现 after-core）——事实/文档双结果、保留输入、安全重试、可恢复/手动路径和脱敏预览；来源 AG-025/041/084。
   - 进展（2026-10-06，local-auto，D-355）：会话诊断 detail 统一经过有界规则，遮罩常见 token/API key/password/Authorization 与常见绝对路径；原因码、时间和重试建议保留。导出前预览仍不展示 detail 全文，完整匿名化与各入口错误矩阵继续开放。
+  - 进展（2026-10-06，local-auto，D-356）：导出确认框新增最近 3 条已归一化、已脱敏 detail 预览，并对原始文本统一 HTML 转义；无 detail 显示明确空态。完整匿名化、更多错误入口和真实宿主现场仍开放。
 - [ ] T-1649 可访问树、键盘与读屏语义（P1，ready）——核验洞察日格 button role=listitem 风险，原生角色/日期状态/钻取/焦点/等价文本或表格/缩放，自动与 TalkBack 分层；来源 AG-099/098。
   - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
+  - 进展（2026-10-06，local-auto，D-356）：当前日期格补 `aria-current="date"` 与可见轮廓，历史日期不携带当前标记；生产 renderer 结构测试通过。真实 Android/TalkBack、缩放和宿主现场仍开放。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
 - [ ] T-1651 长会话与升级生命周期验收（P1，after-core）——循环开关、多表面/前后台/升级重载、监听/root/计时/内存、过期回调与数据草稿；来源 AG-022/104/105。
 - [ ] T-1652 测试可达、CI 与证据措辞（P1，ready）——主/UI/独立浏览器/质量链可达清单、开发分支CI、轻重链分层；结构守门不得宣称真机/多宽度可见性；来源 AG-007/104/105。
@@ -94,6 +96,7 @@
 - [ ] T-1632 组合包部分应用与已有项目冲突预览（P2，调研对照新增）——现有组合包预览 `src/render/bind-editor.ts:829-840` 仅提供逐条套用，批量按钮只在无活跃项目时出现；`src/index.ts:6040-6074` 批量应用所有新条目，重复仅按本地化后的项目名称精确判断。`docs/implementation-roadmap-product-strategy-2026-09.md:299-302` 已提出可选项目与部分应用。让空库和已有库都能勾选包内项目、查看已有项目及同名不同规则的差异，逐项决定创建/跳过或进入编辑；提交前重核对并一次保存，失败整批回滚，取消零写入，不隐式启用联动或产生事件。验收：空库/已有库、全选/部分/全跳过、重名同规则与异规则、语言切换、并发变更、重复应用、保存失败、键盘和窄屏均有确定结果。
   - 进展（2026-10-06，local-auto，D-356）：生产 dist Chromium mock 矩阵通过 4 场景：空库键盘部分应用、已有库同名规则差异与编辑入口、320px 全跳过零写、保存失败整批回滚；勾选数量文案、disabled 与 `aria-disabled` 随选择实时同步。复核发现语言切换后仅按本地化显示名判重会造成内置模板重复创建，稳定模板身份/旧数据兼容与编辑入口仍需收口；真实宿主、Android/TalkBack、跨窗口现场仍开放。
   - 进展（2026-10-06，local-auto，D-356）：内置模板新增可选 `templateAnchor`（原始目录名）并贯穿模型归一化、编辑器隐藏字段和组合包批量/部分应用；计划优先按锚点判重，旧项目用中英文别名兼容，冲突编辑传稳定项目 ID。新增中英文切换生产 bundle 场景与纯函数锚点/别名测试通过；普通手动项目仍不写锚点，历史无锚点项目的别名兜底仍需后续迁移策略与现场复核。
+  - 进展（2026-10-06，local-auto，D-356）：旧项目的非当前语言别名仅在完整规则一致时判为同一模板；规则已被用户改动的同名项目继续作为新项目处理，避免误认来源。对应纯函数守门通过。
   - 进展（2026-10-05，local-auto，D-348）：新增纯函数 `buildTemplatePackApplicationPlan`，按本地化名称呈现同名项目并逐字段报告规则差异；编辑器组合包面板支持新条目勾选、同名规则状态、进入现有项目编辑和部分应用；宿主在 `enqueueMutation` 内按最新 Store 重建计划，只创建仍为新增且被勾选的条目，单次持久化失败整批回滚。双语文案、窄屏样式与守门测试已补齐；template-packs、check、build:check 通过。完整组合包浏览器矩阵仍留质量链收口。
 - [x] T-1633 Loop/Obsidian 迁出完成语义与格式校验（P1，源码复核新增）——done（2026-09-30，local-auto；D-321）。①迁出完成日复用主模型当日生效规则判定：serializeLoopCheckmarksCsv/buildObsidianExportFiles 对每个有事件日走 isItemAvailableOnDate+isComplete（isComplete 唯一判据：skip 不贡献进度、部分达标=非完成、atMost 破戒=非完成）——不再把「有事件」当完成；配额项目无日级完成语义：Loop 不产出 YES_MANUAL（Habits.csv 频率近似损耗既有文档承载）、Obsidian 整档不导出并计入新字段 quotaSkipped；戒除「零事件守住」日不在导出宇宙/不产出（Loop/H21 无该语义，已文档化损耗）；日期宇宙仍=有事件日+今天（零放大）；②格式校验：parseLoopCheckmarksCsv 日期改 date-keys isValidDateKey（2026-02-30 拒绝）；Obsidian frontmatter title 剥离换行/制表等控制字符（防换行截断 frontmatter 注入 entries 区），反斜杠/双引号转义既有保持；③docs/export-formats.md Loop/Obsidian 两节同步完成语义与损耗说明。守门：loop-csv 测试转译 model 依赖树（迁出判定真实走主模型）+语义断言（部分达标/破戒日 NO、仅模型完成日 YES、导入非日历拒绝）；obsidian-habits 测试语义块（quotaSkipped 计数/部分日不算完成/标题换行剥离 frontmatter 单行）。既有迁入语义（T-1522 冲突选择/T-1457 工作流）零变化。验证：check、loop-csv/obsidian-habits/import-conflicts/import-preview/export-identity-docs 定向链、pnpm test 主链、build、test:quality、双主题 visual-qa、宽度走查全 EXIT=0。
   - 状态：done。

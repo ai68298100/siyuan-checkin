@@ -763,6 +763,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 /* T-1591：日历格/周行 button 化——重置按钮默认外观承接原 span/div 视觉，焦点环走全局 :focus-visible。 */
 .lc-checkin__insight-grid span,
 .lc-checkin__insight-grid .lc-checkin__insight-day { aspect-ratio:1; min-width:0; padding:0; border:0; border-radius:3px; background:var(--lc-checkin-muted-surface); cursor:pointer; }
+.lc-checkin__insight-grid .lc-checkin__insight-day.is-today { outline:2px solid var(--lc-checkin-accent-text); outline-offset:-2px; }
 .lc-checkin__insight-row { display:flex; align-items:center; justify-content:space-between; width:100%; min-height:44px; padding:0; border:0; border-bottom:1px solid var(--lc-checkin-border); color:var(--lc-checkin-muted); font-size:11px; text-align:left; background:transparent; cursor:pointer; }
 /* T-1590 洞察范围与项目筛选：range-tabs 复用回顾页既有类；picker 容器化承接搜索框。 */
 .lc-checkin__insight-picker { display:grid; gap:6px; margin-bottom:12px; }
@@ -10378,6 +10379,14 @@ details:not([open]) > :not(summary) { display: none !important; }
 .lc-checkin__diag-table th { color: var(--lc-checkin-muted); font-weight: 600; }
 .lc-checkin__diag-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .lc-checkin__diag-range { margin: 0; color: var(--lc-checkin-muted); font-size: 11px; overflow-wrap: anywhere; }
+.lc-checkin__diag-details { display: flex; flex-direction: column; gap: 5px; }
+.lc-checkin__diag-details h4 { margin: 0; font-size: 12px; }
+.lc-checkin__diag-details ul { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.lc-checkin__diag-details li { display: grid; grid-template-columns: auto 1fr; gap: 2px 7px; padding: 5px 6px; border: 1px solid var(--lc-checkin-border); border-radius: var(--lc-checkin-radius-sm); background: var(--lc-checkin-muted-surface); font-size: 11px; }
+.lc-checkin__diag-details li strong { font-weight: 600; }
+.lc-checkin__diag-details li small { color: var(--lc-checkin-muted); overflow-wrap: anywhere; }
+.lc-checkin__diag-details li span { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.lc-checkin__diag-details li.is-empty { display: block; color: var(--lc-checkin-muted); }
 /* T-1470：笔记联动总览——集中列出绑定行（功能/目标/状态/操作）。 */
 .lc-checkin__binding-head { display: flex; justify-content: flex-end; margin: 6px 0; }
 .lc-checkin__binding-list { display: flex; flex-direction: column; gap: 4px; }
