@@ -154,6 +154,11 @@ assert.match(pluginSource, /const lock = \(this as unknown as \{withStorageLock\
     "analysis history persistence must use the shared storage lock when the host provides it");
 assert.match(pluginSource, /private async persistAuditBestEffort\(mergeRemote = true\): Promise<void> \{[\s\S]*?mergeStoreAudits\(/, "audit persistence must merge remote append-only diagnostics under the lock");
 assert.match(pluginSource, /data-action='clear-audit'[\s\S]*?persistAuditBestEffort\(false\)/, "explicit audit clear must retain its last-writer-wins delete boundary");
+assert.match(pluginSource, /private async persistFocusDiagnosticsBestEffort\(\): Promise<void> \{[\s\S]*?withStorageLock\([\s\S]*?mergeDockTomatoCompletionIssues\(/, "focus diagnostics writes must merge the remote archive under the storage lock");
+assert.match(pluginSource, /data-action='clear-focus-issues'[\s\S]*?this\.clearFocusDiagnostics\(\)/, "focus diagnostics clear must use the rollback-aware host method");
+assert.match(pluginSource, /private async clearFocusDiagnostics\(\): Promise<void> \{[\s\S]*?restoreDockTomatoCompletionIssues\(previous\)/, "focus diagnostics clear must restore memory after a failed write");
+assert.match(pluginSource, /private async clearSnapshotHistory\(\): Promise<void> \{[\s\S]*?withStorageLock\(\(\) => this\.saveData\(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory\(\)\)/, "snapshot clear must be serialized under the storage lock");
+assert.match(pluginSource, /private async importSnapshotHistory\(history: ReturnType<typeof parseStoreSnapshotHistoryExport>\): Promise<void> \{[\s\S]*?withStorageLock\(\(\) => this\.saveData\(BACKUP_STORAGE_NAME, history\)/, "snapshot import must replace the archive under the storage lock");
 assert.match(pluginSource, /async onDataChanged\(\)[\s\S]*?await this\.withStorageLock\(async \(\) => \{[\s\S]*?VIEW_PREFERENCES_NAME/, "external data reload must apply independent buckets inside the storage lock");
 assert.match(pluginSource, /shouldRepairSuggestionWorkflow = true[\s\S]*?if \(shouldRepairSuggestionWorkflow\) void this\.persistSuggestionWorkflow\(\)/,
     "onDataChanged must defer suggestion repair until after releasing the storage lock");

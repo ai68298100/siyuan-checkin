@@ -27,3 +27,4 @@ T-1509～T-1523 已于 2026-09-28 全部交付，原“14 项当前队列”是�
 - **扩展链遗留断言（已解除，2026-10-04）**：recording-history 的旧 showEditor 断言已迁移到 root-aware 签名，记录/失败/并发回归通过；v6-efficiency 的计时旧断言同步实际有效时间契约。主/UI 链旧 SummaryHarness 缺 cancelReviewSummary 的中间失败已修复，review-assistant 定向行为链通过。完整套餐仍需最终整合重跑，不以定向通过替代发布验收。
 - **B-1621-UI-PERF-NOISE（观察中，2026-10-04）**：本轮完整 UI 链曾连续命中既有 `tests/kernel-regression.test.cjs` `today-200 <250ms` 门禁（288/266ms），未放宽阈值；重建生产 bundle 后空闲孤立复测为 `today-200=136ms`，review/multi-root 10k 均 21ms。前序 UI 场景与本轮 Today/Settings 真实 bundle 回归通过；待完整 UI 链重跑确认，不把孤立通过替代全链证据。
 - 2026-10-05 复测更新：`normalizeUiIcons` 已改为对目标 SVG 幂等跳过，空闲环境 `kernel-regression` 两轮通过（today-200=155/152ms）；完整 UI 链前段也通过，但三次完整链分别在 Today 性能门出现 278ms、257ms 和一次通过样本，仍属门限附近负载抖动。该观察项暂不关闭、不改阈值，继续等待稳定的完整链证据。
+- 2026-10-05 T-1622 旁路切片边界：专注诊断追加已锁内并集，显式清空和快照清空/导入已锁内回滚；诊断成功解决的旧 `write-failed` 条目仍可能被另一窗口旧桶并回复活，需要 schema v2 `resolved identities/tombstones`，本轮不绕过也不宣称完成。

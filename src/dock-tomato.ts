@@ -198,6 +198,12 @@ function normalizeCompletionIssue(value: unknown): DockTomatoCompletionIssue | u
 }
 
 export function restoreDockTomatoCompletionIssues(value: unknown): readonly DockTomatoCompletionIssue[] {
+    const restored = normalizeCompletionIssueArchive(value);
+    completionIssues.splice(0, completionIssues.length, ...restored);
+    return getDockTomatoCompletionIssues();
+}
+
+function normalizeCompletionIssueArchive(value: unknown): DockTomatoCompletionIssue[] {
     const source = typeof value === "string"
         ? value.length <= COMPLETION_ISSUE_ARCHIVE_MAX_CHARS
             ? (() => { try { return JSON.parse(value) as unknown; } catch { return undefined; } })()
@@ -222,9 +228,37 @@ export function restoreDockTomatoCompletionIssues(value: unknown): readonly Dock
         if (existing) folded.delete(key);
         folded.set(key, {...issue, count: Math.min((existing?.count || 0) + (issue.count || 1), 9999)});
     }
-    const restored = Array.from(folded.values()).slice(-COMPLETION_ISSUE_LIMIT);
-    completionIssues.splice(0, completionIssues.length, ...restored);
-    return getDockTomatoCompletionIssues();
+    return Array.from(folded.values()).slice(-COMPLETION_ISSUE_LIMIT);
+}
+
+/**
+ * Merge append-only completion diagnostics from two windows without making a
+ * stale diagnostics callback overwrite entries received by the other window.
+ * Counts are folded with max because each persisted row already represents a
+ * folded aggregate; summing rows would double count on repeated reloads.
+ */
+export function mergeDockTomatoCompletionIssues(local: unknown, remote: unknown): readonly DockTomatoCompletionIssue[] {
+    const merged = new Map<string, DockTomatoCompletionIssue>();
+    for (const issue of [...normalizeCompletionIssueArchive(remote), ...normalizeCompletionIssueArchive(local)]) {
+        const key = JSON.stringify([issue.reason, issue.itemId || null, issue.identity || null]);
+        const existing = merged.get(key);
+        if (!existing) {
+            merged.set(key, {...issue});
+            continue;
+        }
+        const existingAt = Date.parse(existing.at);
+        const issueAt = Date.parse(issue.at);
+        const newer = issueAt >= existingAt ? issue : existing;
+        merged.set(key, {
+            ...newer,
+            count: Math.min(Math.max(existing.count || 1, issue.count || 1), 9999),
+        });
+    }
+    return Array.from(merged.values())
+        .sort((left, right) => Date.parse(left.at) - Date.parse(right.at)
+            || JSON.stringify([left.reason, left.itemId || null, left.identity || null]).localeCompare(JSON.stringify([right.reason, right.itemId || null, right.identity || null])))
+        .slice(-COMPLETION_ISSUE_LIMIT)
+        .map((issue) => ({...issue}));
 }
 
 export function serializeDockTomatoCompletionIssues(): string {

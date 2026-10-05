@@ -32,7 +32,7 @@ const localRequire = (id) => {
 };
 new Function("require", "module", "exports", compiled)(localRequire, moduleUnderTest, moduleUnderTest.exports);
 
-const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
+const {collectDockTomatoStoredIdentities, evaluateDockTomatoCompletion, clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, mergeDockTomatoCompletionIssues, readDockTomatoRuntimeStatus, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues, serializeDockTomatoDiagnostics} = moduleUnderTest.exports;
 const item = {id: "read", name: "阅读", kind: "count", unit: "分钟", tomatoMode: "minutes", archived: false};
 const detail = (overrides = {}, contextOverrides = {}) => ({
     apiVersion: 1,
@@ -171,6 +171,29 @@ for (let index = 0; index < reasons.length; index += 1) {
 }
 assert.ok(Object.isFrozen(restored));
 assert.ok(Object.isFrozen(restored[0]));
+
+const mergedDiagnostics = mergeDockTomatoCompletionIssues(
+    {schemaVersion: 1, issues: [
+        {reason: "write-failed", at: "2026-09-17T03:02:00.000Z", itemId: "read", identity: "same", count: 2},
+        {reason: "missing-item", at: "2026-09-17T03:03:00.000Z", itemId: "later", identity: "remote-only", count: 1},
+    ]},
+    {schemaVersion: 1, issues: [
+        {reason: "write-failed", at: "2026-09-17T03:01:00.000Z", itemId: "read", identity: "same", count: 9},
+        {reason: "invalid-event", at: "2026-09-17T03:00:00.000Z", itemId: "remote", identity: "remote-only", count: 1},
+    ]},
+);
+assert.equal(mergedDiagnostics.length, 3, "diagnostic merge must retain local and remote identities");
+assert.equal(mergedDiagnostics.find((entry) => entry.identity === "same").count, 9, "diagnostic merge must keep the greatest folded count");
+assert.deepEqual(mergedDiagnostics, mergeDockTomatoCompletionIssues(
+    {schemaVersion: 1, issues: [
+        {reason: "invalid-event", at: "2026-09-17T03:00:00.000Z", itemId: "remote", identity: "remote-only", count: 1},
+        {reason: "write-failed", at: "2026-09-17T03:01:00.000Z", itemId: "read", identity: "same", count: 9},
+    ]},
+    {schemaVersion: 1, issues: [
+        {reason: "missing-item", at: "2026-09-17T03:03:00.000Z", itemId: "later", identity: "remote-only", count: 1},
+        {reason: "write-failed", at: "2026-09-17T03:02:00.000Z", itemId: "read", identity: "same", count: 2},
+    ]},
+), "diagnostic merge ordering must be deterministic regardless of window order");
 
 assert.deepEqual(restoreDockTomatoCompletionIssues("not json"), []);
 assert.deepEqual(restoreDockTomatoCompletionIssues({schemaVersion: 2, issues: persisted}), []);

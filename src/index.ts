@@ -110,7 +110,7 @@ import type {Occasion, OccasionKind, OccasionRecurrence, OccasionStore, VisibleO
 import {CHECKIN_API_PROTOCOL, CHECKIN_API_VERSION, CHECKIN_CAPABILITIES, getCheckinApiDescriptor, getCheckinCapabilityInfo, hasCheckinCapability} from "./api-contract";
 import type {CheckinApiDescriptor, CheckinCapability, CheckinCapabilityInfo} from "./api-contract";
 import {createCheckinApi, type CheckinApiHost} from "./api";
-import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
+import {clearDockTomatoCompletionIssues, getDockTomatoCompletionIssues, inspectDockTomatoProvider, installDockTomatoBridge, mergeDockTomatoCompletionIssues, restoreDockTomatoCompletionIssues, serializeDockTomatoCompletionIssues} from "./dock-tomato";
 import {inboxDueEntries, inboxNextWakeDelayMs, markInboxBlocked, markInboxRetry, mergeInboxStores, normalizeInboxStore, projectInboxEntries, removeInboxEntry, serializeInboxStore, upsertInboxEntry, dockTomatoCompletionValue, DOCKTOMATO_INBOX_CAPACITY, type DockTomatoCompletionWriteResult, type DockTomatoInboxStore, type DockTomatoPendingCompletion} from "./features/docktomato-inbox";
 import {buildExternalPendingEntry, enqueueExternalPending, mergeExternalPendingBoxes, normalizeExternalPendingBox, planExternalPendingRetry, pruneExternalPending, projectExternalPendingEntries, removeExternalPendingEntry, serializeExternalPendingBox, settleExternalPendingAfterRetry, EXTERNAL_PENDING_CAPACITY, EXTERNAL_PENDING_RETENTION_DAYS, type ExternalPendingBox, type ExternalPendingEntry, type ExternalWriteOutcome} from "./features/external-pending";
 import {planBatchBackfillSubmit, type BatchBackfillItemSnapshot} from "./features/batch-backfill";
@@ -592,8 +592,20 @@ export default class CheckinPlugin extends Plugin {
 
     /* T-1351：渲染块项目行跳回顾页洞察。 */
     private jumpToItemInsights(itemId: string) {
-        if (!getActiveItemById(this.store, itemId)) return;
-        this.insightsItemId = itemId;
+        const item = getActiveItemById(this.store, itemId);
+        if (!item) return;
+        /* 渲染块位于思源文档 DOM，不属于插件 surface；优先把动作交给
+           当前仍连接的 active root，避免一次文档点击把 dock/tab/quick 三个
+           surface 一起切到洞察页。无 active root 时保留旧的全局兼容入口。 */
+        const root = (this.activeRoot && this.isSurfaceRoot(this.activeRoot) ? this.activeRoot : undefined)
+            || this.roots().find((surface) => this.isSurfaceRoot(surface));
+        if (root) {
+            /* Reuse the normal navigation lifecycle so a stale editor draft or
+               in-flight review summary is cleared for this root only. */
+            this.showInsights(item, root);
+            return;
+        }
+        this.insightsItemId = item.id;
         this.setPageForRoot("insights");
         this.render();
     }
@@ -2186,7 +2198,7 @@ private reviewCompatibilitySnapshot?: {
         (window as Window & {siyuanCheckin?: CheckinApi})[CHECKIN_API_NAME] = this.api;
         this.disposeDockTomatoBridge = installDockTomatoBridge(this.api, () => {
             this.renderBackgroundUpdate();
-            if (this.storageReady && getDockTomatoCompletionIssues().length) void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
+            if (this.storageReady && getDockTomatoCompletionIssues().length) void this.persistFocusDiagnosticsBestEffort();
         }, {
             releaseFocusAdapter: (adapter) => releaseFocusAdapterFor(this as unknown as FocusAdapterHost, adapter),
             processDockTomatoCompletion: (entry) => this.processDockTomatoCompletion(entry),
@@ -4324,20 +4336,37 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (label) button.insertBefore(wrapper, label);
             else button.replaceChildren(wrapper);
         };
-        root.querySelectorAll<HTMLElement>(".lc-checkin__back-button").forEach((button) => { setDirectIcon(button, "back"); });
-        root.querySelector<HTMLElement>("[data-history-month='-1']")?.replaceChildren(this.iconNode("back"));
-        root.querySelector<HTMLElement>("[data-history-month='1']")?.replaceChildren(this.iconNode("forward"));
-        root.querySelectorAll<HTMLElement>(".lc-checkin__search-symbol, .lc-checkin__today-search > span").forEach((node) => { setDirectIcon(node, "search"); });
-        root.querySelectorAll<HTMLElement>("[data-action='clear-search'], [data-action='clear-history-query'], [data-action='clear-template-query'], [data-action='clear-icon-query']").forEach((button) => { setDirectIcon(button, "close"); });
-        root.querySelectorAll<HTMLElement>("[data-action='insights']").forEach((button) => { setDirectIcon(button, "insight"); });
-        root.querySelectorAll<HTMLElement>("[data-action='edit']").forEach((button) => { setDirectIcon(button, "edit"); });
-        root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => replaceOccasionIcon(button, "edit"));
-        root.querySelectorAll<HTMLElement>("[data-action='focus']:not(.lc-checkin__focus-primary)").forEach((button) => { setDirectIcon(button, "timer"); });
-        root.querySelectorAll<HTMLElement>("[data-action='toggle-exact']:not(.lc-checkin__entry-trigger)").forEach((button) => { setDirectIcon(button, "more"); });
-        root.querySelectorAll<HTMLElement>("[data-occasion-delete]").forEach((button) => replaceOccasionIcon(button, "trash"));
-        root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => replaceOccasionIcon(button, button.classList.contains("is-on") ? "check" : "circle"));
-        root.querySelectorAll<HTMLElement>("[data-action='new-occasion']").forEach((button) => { setDirectIcon(button, "add"); });
-        root.querySelectorAll<HTMLElement>(".lc-checkin__empty-mark").forEach((node) => { setDirectIcon(node, "calendar"); });
+        /* All selectors target the same freshly rendered surface. A single
+           traversal avoids rescanning every Today card once per icon family. */
+        const iconSelector = [
+            ".lc-checkin__back-button", "[data-history-month='-1']", "[data-history-month='1']",
+            ".lc-checkin__search-symbol", ".lc-checkin__today-search > span",
+            "[data-action='clear-search']", "[data-action='clear-history-query']",
+            "[data-action='clear-template-query']", "[data-action='clear-icon-query']",
+            "[data-action='insights']", "[data-action='edit']", "[data-occasion-edit]",
+            "[data-action='focus']:not(.lc-checkin__focus-primary)",
+            "[data-action='toggle-exact']:not(.lc-checkin__entry-trigger)",
+            "[data-occasion-delete]", "[data-occasion-toggle]", "[data-action='new-occasion']",
+            ".lc-checkin__empty-mark",
+        ].join(",");
+        root.querySelectorAll<HTMLElement>(iconSelector).forEach((node) => {
+            const month = node.dataset.historyMonth;
+            if (month === "-1") { setDirectIcon(node, "back"); return; }
+            if (month === "1") { setDirectIcon(node, "forward"); return; }
+            if (node.hasAttribute("data-occasion-edit")) { replaceOccasionIcon(node, "edit"); return; }
+            if (node.hasAttribute("data-occasion-delete")) { replaceOccasionIcon(node, "trash"); return; }
+            if (node.hasAttribute("data-occasion-toggle")) { replaceOccasionIcon(node, node.classList.contains("is-on") ? "check" : "circle"); return; }
+            if (node.classList.contains("lc-checkin__back-button")) { setDirectIcon(node, "back"); return; }
+            if (node.classList.contains("lc-checkin__search-symbol") || node.parentElement?.classList.contains("lc-checkin__today-search")) { setDirectIcon(node, "search"); return; }
+            const action = node.dataset.action;
+            if (action === "clear-search" || action === "clear-history-query" || action === "clear-template-query" || action === "clear-icon-query") { setDirectIcon(node, "close"); return; }
+            if (action === "insights") { setDirectIcon(node, "insight"); return; }
+            if (action === "edit") { setDirectIcon(node, "edit"); return; }
+            if (action === "focus" && !node.classList.contains("lc-checkin__focus-primary")) { setDirectIcon(node, "timer"); return; }
+            if (action === "toggle-exact" && !node.classList.contains("lc-checkin__entry-trigger")) { setDirectIcon(node, "more"); return; }
+            if (action === "new-occasion") { setDirectIcon(node, "add"); return; }
+            setDirectIcon(node, "calendar");
+        });
     }
 
     private iconNode(name: UiIconName): SVGElement {
@@ -5634,10 +5663,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             void this.writeDiaryReport();
         });
         root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", () => {
-            clearDockTomatoCompletionIssues();
-            void this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues()).catch(() => undefined);
-            showMessage(t("set.tomatoIssuesCleared"));
-            this.render();
+            void this.clearFocusDiagnostics();
         });
         root.querySelector<HTMLElement>("[data-action='export-focus-issues']")?.addEventListener("click", () => {
             downloadDockTomatoDiagnosticsFor(inspectDockTomatoProvider());
@@ -5724,9 +5750,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLElement>("[data-action='export-snapshots']")?.addEventListener("click", () => void this.loadData(BACKUP_STORAGE_NAME).then(downloadSnapshotHistoryFor).catch(() => showMessage(t("msg.snapshotExportFail"))));
         root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", () => {
             if (!window.confirm(t("msg.clearSnapshotsConfirm"))) return;
-            this.snapshotHistory = [];
-            void this.saveData(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory()).catch(() => showMessage(t("msg.clearSnapshotsFail")));
-            this.render();
+            void this.clearSnapshotHistory();
         });
         root.querySelector<HTMLInputElement>("[data-import-snapshots]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
@@ -5737,8 +5761,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             try {
                 const history = parseStoreSnapshotHistoryExport(await file.text());
                 if (!window.confirm(t("msg.importSnapshotsConfirm", {count: history.snapshots.length}))) return;
-                await this.saveData(BACKUP_STORAGE_NAME, history);
-                this.snapshotHistory = readStoreSnapshotHistory(history);
+                await this.importSnapshotHistory(history);
                 this.render();
             } catch {
                 showMessage(t("msg.importSnapshotsFail"));
@@ -6651,6 +6674,71 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         await this.persistAuditBestEffort();
         showMessage(t("msg.snapshotRestored", {items: itemCount, events: eventCount}));
         this.render();
+    }
+
+    /** 专注回写诊断是独立的附属桶：追加/解决由桥回调触发时先锁内并入远端，
+        明确清除则作为用户删除动作单独写空桶，并在失败时恢复内存。 */
+    private async persistFocusDiagnosticsBestEffort(): Promise<void> {
+        if (this.disposed || !this.storageReady) return;
+        const previous = getDockTomatoCompletionIssues();
+        try {
+            await this.withStorageLock(async () => {
+                const remote = await this.loadData(FOCUS_DIAGNOSTICS_STORAGE_NAME);
+                const merged = mergeDockTomatoCompletionIssues(serializeDockTomatoCompletionIssues(), remote);
+                restoreDockTomatoCompletionIssues(merged);
+                await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues());
+            });
+        } catch {
+            /* 诊断桶只用于恢复问题上下文，不能让它中断专注完成回写。 */
+            restoreDockTomatoCompletionIssues(previous);
+        }
+    }
+
+    private async clearFocusDiagnostics(): Promise<void> {
+        const previous = getDockTomatoCompletionIssues();
+        try {
+            await this.withStorageLock(async () => {
+                clearDockTomatoCompletionIssues();
+                try {
+                    await this.saveData(FOCUS_DIAGNOSTICS_STORAGE_NAME, serializeDockTomatoCompletionIssues());
+                } catch (error) {
+                    restoreDockTomatoCompletionIssues(previous);
+                    throw error;
+                }
+            });
+            showMessage(t("set.tomatoIssuesCleared"));
+        } catch {
+            restoreDockTomatoCompletionIssues(previous);
+            showMessage(t("set.tomatoIssuesClearFail"));
+        }
+        this.render();
+    }
+
+    /** 快照清除是显式删除边界；不读取后再合并，避免已确认删除被另一窗口旧桶复活。 */
+    private async clearSnapshotHistory(): Promise<void> {
+        const previous = this.snapshotHistory;
+        try {
+            await this.withStorageLock(() => this.saveData(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory()));
+            this.snapshotHistory = [];
+            this.render();
+        } catch {
+            this.snapshotHistory = previous;
+            showMessage(t("msg.clearSnapshotsFail"));
+            this.render();
+        }
+    }
+
+    /** 快照导入属于显式替换：解析与确认在锁外完成，真正替换在锁内写入，
+        失败时保留当前 UI/内存历史，避免出现“看似导入成功但刷新后消失”。 */
+    private async importSnapshotHistory(history: ReturnType<typeof parseStoreSnapshotHistoryExport>): Promise<void> {
+        const previous = this.snapshotHistory;
+        try {
+            await this.withStorageLock(() => this.saveData(BACKUP_STORAGE_NAME, history));
+            this.snapshotHistory = readStoreSnapshotHistory(history);
+        } catch (error) {
+            this.snapshotHistory = previous;
+            throw error;
+        }
     }
 
     private async setItemArchived(itemId: string, archived: boolean, moment: ActionMoment, expectedFingerprint?: string): Promise<boolean> {
