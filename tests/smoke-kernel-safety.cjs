@@ -105,8 +105,9 @@ const load = relative => import(pathToFileURL(path.join(repository, relative)).h
         assert.equal(prepared.created, true);
         fs.mkdirSync(path.join(workspace, "data", ".siyuan"), {recursive: true});
         e2e.assertScratchWorkspace(workspace); // real SiYuan workspaces carry data/.siyuan beside notebook boxes
-        const generated = e2e.configureAccessToken(workspace, {created: true});
-        assert.ok(generated.length >= 32, "new self-managed workspace receives a nonempty random token");
+        assert.throws(() => e2e.configureAccessToken(workspace, {created: true}), /token/, "new self-managed workspace must require an explicit token");
+        const generated = e2e.configureAccessToken(workspace, {created: true, token: "new-explicit-token"});
+        assert.equal(generated, "new-explicit-token");
         assert.equal(e2e.readAccessToken(workspace), generated);
         assert.throws(() => e2e.configureAccessToken(workspace), /token/);
         assert.throws(() => e2e.configureAccessToken(workspace, {token}), /不匹配/);

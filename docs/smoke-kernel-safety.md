@@ -8,7 +8,7 @@
 
 ## 自管内核
 
-运行 `pnpm run test:e2e` 前，必须显式设置 `CHECKIN_E2E_WORKSPACE` 为独立靶场的绝对路径。自管第二实例默认使用 `CHECKIN_E2E_PORT=6807`，只读实例顺延为 6808；也可用 `SIYUAN_BASE_URL` 指定本机 HTTP 目标。新建 workspace 有 `checkin-e2e.json` 身份标记，并为该新靶场生成随机非空访问码；复用靶场必须显式供应匹配该靶场配置的 `SIYUAN_TOKEN`，脚本不会覆盖已有访问码。
+运行 `pnpm run test:e2e` 前，必须显式设置 `CHECKIN_E2E_WORKSPACE` 为独立靶场的绝对路径，并通过 `SIYUAN_TOKEN`（或调用方显式参数）提供该实例的访问码。自管第二实例默认使用 `CHECKIN_E2E_PORT=6807`，只读实例顺延为 6808；也可用 `SIYUAN_BASE_URL` 指定本机 HTTP 目标。新建 workspace 有 `checkin-e2e.json` 身份标记，但脚本不会生成或猜测访问码；复用靶场同样必须供应匹配该靶场配置的 token，脚本不会覆盖已有访问码。缺少 token 会在写入配置前明确失败。
 
 安装 dist / 修改配置前，先验证工作区身份、保护标记、目录和笔记本名称、其他插件；目标端口已被占用则拒绝继续。脚本只结束自己实际启动的 child；附着模式不会停止用户已启动的内核。只读配置仍验证工作区身份和端口，但不受写型笔记本隔离守卫影响，原有 putFile 拒写负例保留。
 

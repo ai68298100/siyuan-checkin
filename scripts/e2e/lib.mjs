@@ -4,7 +4,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import net from "node:net";
-import {randomBytes} from "node:crypto";
 import {spawn} from "node:child_process";
 import {assertAiAllowed, assertLoopback, isScratchName, resolveTarget} from "../lib/smoke-kernel.mjs";
 
@@ -107,20 +106,19 @@ export function assertScratchWorkspace(workspace, {env = process.env} = {}) {
     return marker;
 }
 
-/** Only a newly created, owned workspace may receive an automatically generated access code. */
+/** A self-managed workspace still requires the caller's explicit access code. */
 export function configureAccessToken(workspace, {token, created = false} = {}) {
     assertScratchWorkspace(workspace);
+    const target = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token, env: {}});
     if (!created) {
-        const target = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token, env: {}});
         if (readAccessToken(workspace) !== target.token) throw new Error("显式提供的 token 与靶场配置不匹配；拒绝改写已有访问码");
         return target.token;
     }
-    const value = resolveTarget({baseArg: `http://127.0.0.1:${DEFAULT_E2E_PORT}`, tokenArg: token ?? randomBytes(32).toString("hex"), env: {}}).token;
     const confPath = path.join(workspace, "conf", "conf.json");
     if (fs.existsSync(confPath)) throw new Error("新靶场已有配置，拒绝覆盖访问码");
     fs.mkdirSync(path.dirname(confPath), {recursive: true});
-    fs.writeFileSync(confPath, JSON.stringify({accessAuthCode: value}, null, 2));
-    return value;
+    fs.writeFileSync(confPath, JSON.stringify({accessAuthCode: target.token}, null, 2));
+    return target.token;
 }
 
 /** 把 dist/ 装进工作区插件目录；思源要求 plugin.json.name 与目录名一致，否则整包静默不加载。 */
