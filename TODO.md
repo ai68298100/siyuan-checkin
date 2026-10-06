@@ -44,6 +44,7 @@
   - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
   - 进展（2026-10-06，local-auto，D-356）：当前日期格补 `aria-current="date"` 与可见轮廓，历史日期不携带当前标记；生产 renderer 结构测试通过。真实 Android/TalkBack、缩放和宿主现场仍开放。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
+  - 进展（2026-10-06，local-auto，D-358）：新增离线生产 bundle 基准 `scripts/t1650-browser-benchmark.cjs`，覆盖 Insights 366、Review 10k 和双 root，报告 render/frame/longtask/pageError；Edge 152 三次样本中位数范围分别为 31.6–64.4ms、91.4–227.0ms、103.0–287.6ms。波动较大，暂不加硬阈值或盲改核心；方法和证据见 `docs/t1650-performance-observation-2026-10-06.md`。
 - [ ] T-1651 长会话与升级生命周期验收（P1，after-core）——循环开关、多表面/前后台/升级重载、监听/root/计时/内存、过期回调与数据草稿；来源 AG-022/104/105。
   - 进展（2026-10-06，local-auto，D-357）：微信读书就绪后的 5 秒首次补拉 timer 纳入插件自有字段，回调执行前释放句柄，卸载时与 30 分钟轮询一起清理；teardown-budget 与 check 通过。其他来源/真实宿主升级和多窗口现场仍开放。
   - 进展（2026-10-06，local-auto，D-357）：宿主主题跟随 watcher 的 50ms debounce timer 同样纳入生命周期字段，执行前清空、停止 watcher 时 clearTimeout；teardown-budget 与 check 复验通过。

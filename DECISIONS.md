@@ -21,6 +21,11 @@
 - 宿主主题观察器的 debounce timeout 也属于自有异步资源；断开 MutationObserver 不会自动取消已排队回调，停止 watcher 必须同时 clearTimeout。
 - 合并渲染使用的 requestAnimationFrame 同样属于插件自有异步资源；卸载入口先 cancelAnimationFrame 并清零句柄，再拆除 surface 与存储，避免下一帧触碰正在销毁的实例。
 
+## D-358：性能先观测再优化（2026-10-06）
+
+- T-1650 先用独立的生产 bundle、内存宿主和固定 fixture 观测 Insights 366、Review 10k 与双 root；脚本只写忽略产物，不调用真实内核、不设置未经校准的硬阈值。
+- 同一 Edge 152 环境三次中位数波动明显（Insights 31.6–64.4ms、Review 91.4–227.0ms、双 root 103.0–287.6ms），因此优化前必须固定硬件/浏览器/预热协议并积累样本；CSS 继续按 D-246 仅报告，真实 Android/宿主 I/O 另行验收。
+
 ## D-354：按当前证据补齐精品插件待办，保留发布与合并边界（2026-10-06）
 
 - 用户要求梳理现状、功能和开发进度，完善功能/UI/交互/体验/头像/README/GitHub 等待办；本轮落实为 [产品评审与任务卡](docs/product-review-and-backlog-2026-10-06.md)、TODO 当前索引及旧路线/Agent 入口同步，后续按切片实施，不把审计请求扩大为全部产品改造或外部发布。
