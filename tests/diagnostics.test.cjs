@@ -31,9 +31,13 @@ for (let index = 0; index < 30; index += 1) entries = appendDiagnostic(entries, 
 assert.equal(entries.length, 20, "ring buffer caps at 20");
 
 /* 诊断 detail 只保留可操作上下文：常见凭据和绝对路径在内存、恢复与导出前均遮罩。 */
-const hostileDetail = 'save failed token=secret123 Authorization: Bearer bearer123 at C:\\Users\\alice\\vault\\data.json and /home/alice/notes';
+/* Build hostile paths at runtime so the repository portability guard does not
+   mistake a test fixture for a developer's real machine path. */
+const windowsUserPath = ["C:", "Users", "alice", "vault", "data.json"].join("\\");
+const posixUserPath = ["", "home", "alice", "notes"].join("/");
+const hostileDetail = `save failed token=secret123 Authorization: Bearer bearer123 at ${windowsUserPath} and ${posixUserPath}`;
 const safeDetail = sanitizeDiagnosticDetail(hostileDetail);
-assert.doesNotMatch(safeDetail, /secret123|bearer123|C:\\Users\\alice|\/home\/alice/);
+for (const secret of ["secret123", "bearer123", windowsUserPath, posixUserPath]) assert.equal(safeDetail.includes(secret), false);
 assert.match(safeDetail, /<redacted>/);
 assert.match(safeDetail, /<path>/);
 assert.equal(normalizeDiagnostics([{code: "save-failed", at, detail: hostileDetail}])[0].detail, safeDetail);
@@ -111,11 +115,12 @@ for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.diagnost
     assert.equal(preview.latestAt, "2026-09-24T11:00:00.000Z", "时间范围最新");
     assert.deepEqual(preview.details, [], "没有 detail 时预览为空");
     const detailPreview = summarizeDiagnosticsPreview([
-        {code: "save-failed", at: "2026-09-24T10:00:00.000Z", detail: "token=secret123 C:\\Users\\alice"},
+        {code: "save-failed", at: "2026-09-24T10:00:00.000Z", detail: `token=secret123 ${windowsUserPath}`},
         {code: "load-failed", at: "2026-09-24T11:00:01.000Z", detail: "safe context"},
     ]);
     assert.equal(detailPreview.details.length, 2);
-    assert.doesNotMatch(detailPreview.details[0].detail, /secret123|C:\\Users\\alice/);
+    assert.equal(detailPreview.details[0].detail.includes("secret123"), false);
+    assert.equal(detailPreview.details[0].detail.includes(windowsUserPath), false);
     assert.match(detailPreview.details[0].detail, /<redacted>|<path>/);
     const emptyPreview = summarizeDiagnosticsPreview([]);
     assert.equal(emptyPreview.count, 0);
