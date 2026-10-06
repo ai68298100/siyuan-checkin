@@ -13,6 +13,7 @@
  */
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const projectRoot = path.resolve(__dirname, "..");
@@ -183,7 +184,14 @@ function median(values) {
     const report = {
         task: "T-1650",
         measuredAt: new Date().toISOString(),
-        browser: {executable: browserPath, userAgent: await page.evaluate(() => navigator.userAgent), viewport: {width: 1280, height: 900}},
+        environment: {node: process.version, platform: process.platform, arch: process.arch, cpuCount: os.cpus().length},
+        browser: {
+            executable: browserPath,
+            userAgent: await page.evaluate(() => navigator.userAgent),
+            hardwareConcurrency: await page.evaluate(() => navigator.hardwareConcurrency),
+            deviceMemoryGiB: await page.evaluate(() => navigator.deviceMemory ?? null),
+            viewport: {width: 1280, height: 900},
+        },
         bundleBytes: {js: fs.statSync(distJs).size, css: fs.statSync(distCss).size},
         fixture: {events: store.events.length, items: store.items.length, insightsDays: 366},
         metrics,
