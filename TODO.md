@@ -47,6 +47,7 @@
 - [ ] T-1651 长会话与升级生命周期验收（P1，after-core）——循环开关、多表面/前后台/升级重载、监听/root/计时/内存、过期回调与数据草稿；来源 AG-022/104/105。
   - 进展（2026-10-06，local-auto，D-357）：微信读书就绪后的 5 秒首次补拉 timer 纳入插件自有字段，回调执行前释放句柄，卸载时与 30 分钟轮询一起清理；teardown-budget 与 check 通过。其他来源/真实宿主升级和多窗口现场仍开放。
   - 进展（2026-10-06，local-auto，D-357）：宿主主题跟随 watcher 的 50ms debounce timer 同样纳入生命周期字段，执行前清空、停止 watcher 时 clearTimeout；teardown-budget 与 check 复验通过。
+  - 进展（2026-10-06，local-auto，D-357）：卸载入口会取消合并渲染的 requestAnimationFrame 并清零句柄，避免拆除后的实例在下一帧回调；teardown-budget 与 check 复验通过。
 - [ ] T-1652 测试可达、CI 与证据措辞（P1，ready）——主/UI/独立浏览器/质量链可达清单、开发分支CI、轻重链分层；结构守门不得宣称真机/多宽度可见性；来源 AG-007/104/105。
 - [ ] T-1653 编排与样式可维护性（P2，after-core）——实际热点/重复/依赖先审，再按职责小切片；两机合并前避免公共核心大搬迁；来源 AG-003/006。
 - [x] T-1654 设置搜索覆盖目标卡的语义索引（P1，done，2026-10-06）——目标卡标题、名称、路径、文档 ID、笔记本 ID 通过独立语义标记进入索引，不恢复退役布局类；中英文、320/980px、IME、↑↓/Enter、清除/折叠恢复、双 root 通过 `tests/settings-search-browser.cjs`（232 checks）。

@@ -61,6 +61,8 @@ assert.equal(cleanGate.resume(), false, "a teardown with no queued write owes no
     }
     assert.match(unloadSlice, /createTeardownDeadline\(TEARDOWN_DRAIN_BUDGET_MS\)/, "onunload must open a bounded teardown budget");
     assert.match(unloadSlice, /this\.teardownWrites\.deferWrites\(\)/, "onunload must defer queued writes into one flush");
+    assert.match(unloadSlice, /window\.cancelAnimationFrame\(this\.renderRafId\)/, "onunload must cancel a coalesced render RAF before teardown");
+    assert.match(unloadSlice, /this\.renderRafId = 0/, "onunload must clear the render RAF handle after cancellation");
     assert.match(unloadSlice, /const hasDeferredWrites = this\.teardownWrites\.resume\(\)/, "onunload must release the write gate before flushing");
     assert.match(unloadSlice, /this\.teardownFinalFlush\(\)/, "onunload must run a bounded final flush");
     assert.match(unloadSlice, /stopFocusTimerFor\(this as unknown as FocusTimerHost\)/, "onunload must stop the plugin-owned focus timers");

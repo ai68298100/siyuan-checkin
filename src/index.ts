@@ -2420,6 +2420,13 @@ this.scheduleMidnightRefresh();
            让队列排空与补写都在被强制销毁之前给出确定的结果或提示。 */
         const deadline = createTeardownDeadline(TEARDOWN_DRAIN_BUDGET_MS);
         this.teardownWrites.deferWrites();
+        /* A coalesced render may still be queued when the host starts unloading.
+           Cancel it before roots and storage are torn down so no RAF can call
+           back into the disposed plugin on the next frame. */
+        if (this.renderRafId) {
+            window.cancelAnimationFrame(this.renderRafId);
+            this.renderRafId = 0;
+        }
         /* 卸载时专注仍在进行：入账必须在关闭 acceptingOperations 之前发起，
            否则排队器会直接丢弃这次写入，整段专注白做。 */
         if (this.focusTimerState) void finishFocusTimerFor(this as unknown as FocusTimerHost, true);

@@ -19,6 +19,7 @@
 
 - 微信读书就绪后的延迟首次补拉属于插件自有异步资源，必须像轮询 interval 一样登记、在执行前清空句柄，并在卸载阶段 clearTimeout；不能依赖匿名 timeout 在宿主销毁后自然结束。
 - 宿主主题观察器的 debounce timeout 也属于自有异步资源；断开 MutationObserver 不会自动取消已排队回调，停止 watcher 必须同时 clearTimeout。
+- 合并渲染使用的 requestAnimationFrame 同样属于插件自有异步资源；卸载入口先 cancelAnimationFrame 并清零句柄，再拆除 surface 与存储，避免下一帧触碰正在销毁的实例。
 
 ## D-354：按当前证据补齐精品插件待办，保留发布与合并边界（2026-10-06）
 
