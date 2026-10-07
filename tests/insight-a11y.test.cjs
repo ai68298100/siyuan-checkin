@@ -13,6 +13,9 @@ assert.match(source, /role="progressbar" aria-label="\$\{escapeHtml\(t\("insight
 assert.match(source, /aria-valuetext="\$\{escapeHtml\(t\("insights\.maturityDays", \{n: maturityDays\}\)\)\}"/, "the maturity indicator must expose its localized value text");
 assert.match(source, /day\.status === "complete"/);
 assert.match(source, /day\.status === "pending" \? t\("insights\.noRecord"\)/, "scheduled pending days must be labelled as unrecorded");
+assert.match(source, /day\.status === "unavailable" \? t\("insights\.unavailable"\)/, "unavailable days must not be labelled as off");
+assert.match(source, /<i class="is-pending" aria-hidden="true"><\/i>\$\{t\("insights\.noRecord"\)\}/, "the legend must explain the pending state");
+assert.match(fs.readFileSync("src/ui/components.scss", "utf8"), /\.lc-checkin__insight-legend \.is-pending \{/, "the pending legend must have a distinct color");
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
 assert.match(i18n, /"insights\.partial": "部分完成"/);
 assert.match(i18n, /"insights\.missed": "未完成"/);
@@ -80,6 +83,7 @@ const report = {
     weeklyTrend: [{label: "empty week", startDate: "2026-08-31", completedDays: 0, eligibleScheduledDays: 0, scheduledDays: 0}, {label: "scheduled week", startDate: "2026-09-07", completedDays: 2, eligibleScheduledDays: 7, scheduledDays: 7}],
     days: [
         {date: "2026-09-19", status: "complete", isToday: false, kind: "binary", progress: 1, target: 1, unit: "次"},
+        {date: "2026-09-18", status: "unavailable", isToday: false, kind: "binary", progress: 0, target: 1, unit: "次"},
         {date: "2026-09-20", status: "pending", isToday: true, kind: "binary", progress: 0, target: 1, unit: "次"},
     ], aggregates: {completionRate: 29}, currentStreak: 1, longestStreak: 2, maturity: 8, startDate: "2026-06-29", endDate: "2026-09-20",
 };
@@ -104,6 +108,7 @@ assert.equal((html.match(/aria-current="date"/g) || []).length, 1, "only the cur
 assert.match(html, /lc-checkin__insight-day is-pending is-today[^>]*aria-current="date"/, "the current insight day keeps its status and current-date semantics");
 assert.match(html, /role="progressbar"[^>]*aria-valuetext="已坚持 0 天"/, "the rendered maturity indicator must expose localized value text");
 assert.match(html, /2026-09-20，未记录，0\/1 次/, "a scheduled pending day must not be labelled as off");
+assert.match(html, /2026-09-18，不可用，0\/1 次/, "an unavailable day must not be labelled as off");
 assert.match(html, /lc-checkin__insight-day is-complete(?! is-today)[^>]*data-insight-day="2026-09-19"/, "past insight days are not marked current");
 view.insightsRange = "custom";
 view.insightsCustomRange = {startDate: "2026-08-01", endDate: "2026-08-28"};

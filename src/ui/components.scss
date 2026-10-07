@@ -4364,6 +4364,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__insight-legend .is-complete { background: var(--lc-checkin-success); }
 .lc-checkin__insight-legend .is-partial { background: var(--lc-checkin-warning); }
 .lc-checkin__insight-legend .is-missed { background: color-mix(in srgb, var(--lc-checkin-danger) 70%, transparent); }
+.lc-checkin__insight-legend .is-pending { background: var(--lc-checkin-accent); }
 .lc-checkin__insight-legend .is-off { background: var(--lc-checkin-muted-surface); }
 .lc-checkin__insight-grid-scroll { overflow-x: auto; padding-bottom: 4px; }
 .lc-checkin__insight-grid { display: grid; grid-template-rows: repeat(12, auto); grid-auto-flow: column; gap: 3px; width: max-content; }

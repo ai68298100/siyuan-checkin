@@ -37,6 +37,7 @@ assert.match(exporter, /status,\s*source,\s*sourceVersion:/);
 assert.match(exporter, /errors\.length \? \{errors: \[\.\.\.errors\]\}/);
 assert.match(source, /this\.store = previous/);
 assert.match(source, /buildRecoveryAuditDetails\("json-import", preflight, "rejected", \["persist-failed"\]\)/);
+assert.match(source, /recordDiagnostic\("save-failed", "json-import-persist-failed"\)/, "JSON persistence failures must enter save diagnostics");
 assert.match(source, /buildRecoveryAuditDetails\("local-snapshot", preflight, "rejected", \["persist-failed"\]\)/);
 assert.match(source, /Audit diagnostics must never interrupt or roll back/,
     "audit persistence failure must not roll back successfully restored data");

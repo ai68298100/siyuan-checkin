@@ -60,6 +60,9 @@
   - 进展（2026-10-07，local-auto）：成熟度 progressbar 补充本地化 `aria-valuetext`（“已坚持 N 天”），保留 0–66 数值范围，避免读屏只读出无上下文的数字；renderer 与 UI 守门通过。日期格 tab-stop 策略和真实 Android/TalkBack 仍开放。
   - 进展（2026-10-07，local-auto）：洞察范围、项目和自定义日期重绘后恢复对应控件焦点，键盘/读屏操作不再回到页面根节点；保留现有滚动记忆与 IME 搜索路径。结构与完整 UI 链通过；日期格 tab-stop 策略和真实 Android/TalkBack 仍开放。
   - 进展（2026-10-07，local-auto）：洞察日格把已排期但尚未记录的 `pending` 状态标为“未记录”，不再误读为“未安排”；仅修正文案映射，未改变完成判定或图例视觉。renderer 与 UI 守门通过；日期格 tab-stop 策略和真实 Android/TalkBack 仍开放。
+  - 进展（2026-10-07，local-auto）：图例补充“未记录” pending 色标，与日格播报和视觉轮廓一致；未改统计、分母或完成判定。结构与完整 UI 链待本轮复验。
+  - 进展（2026-10-07，local-auto）：不可用日格补充独立本地化播报，避免与未安排日混淆；图例仍只覆盖有独立视觉编码的 pending，未扩张为重复的不可用色标。
+  - 进展（2026-10-07，local-auto）：JSON 主档导入持久化失败补写 `save-failed/json-import-persist-failed` 诊断，与恢复审计中的 `persist-failed` 对齐；事务回滚和设置页反馈保持不变。`restore-audit`、类型和完整 UI 链通过；恢复点列表导入仍开放。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
   - 进展（2026-10-06，local-auto，D-358）：新增离线生产 bundle 基准 `scripts/t1650-browser-benchmark.cjs`，覆盖 Insights 366、Review 10k 和双 root，报告 render/frame/longtask/pageError；Edge 152 三次样本中位数范围分别为 31.6–64.4ms、91.4–227.0ms、103.0–287.6ms。波动较大，暂不加硬阈值或盲改核心；方法和证据见 `docs/t1650-performance-observation-2026-10-06.md`。
   - 进展（2026-10-07，local-auto）：基准增加 `T1650_EVENT_COUNT` 可选规模（默认 10k，上限 250k）、场景样本和 bundle 字节报告契约；本机单次 100k fixture：Insights 399ms、Review 2,981ms、双 root 3,507ms，page error 0，long task 最高 3,849ms。仅为观测样本，不能替代 Android；CSS 655,355 bytes 接近 655,360-byte 硬线。脚本/报告守门通过，真实低端设备和冷启动/长会话证据仍开放。
