@@ -19,6 +19,13 @@ const habits = require(path.join(outputRoot, "features", "obsidian-habits.js"));
 const ecosystem = require(path.join(outputRoot, "ecosystem.js"));
 const model = require(path.join(outputRoot, "model.js"));
 
+const indexSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
+assert.match(indexSource, /let skipped = 0;/, "Obsidian import counts invalid files");
+assert.match(indexSource, /skippedFiles: skipped/, "conflict sessions retain the invalid-file count");
+assert.match(indexSource, /msg\.obsidianSkippedFiles/, "Obsidian import surfaces skipped invalid files");
+assert.match(indexSource, /importFailurePhase === "persist" \? "msg\.importPersistFail" : "msg\.importParseFail"/, "Obsidian failures use phase-safe feedback");
+assert.doesNotMatch(indexSource, /data-import-obsidian[\s\S]{0,2400}String\(error\)/, "Obsidian feedback must not echo raw host errors");
+
 const makeItem2 = (overrides = {}) => ({
     id: "read", name: "阅读", icon: "✓", kind: "count", target: 1, unit: "次", schedule: {type: "daily"},
     createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z", createdDate: "2026-08-01",

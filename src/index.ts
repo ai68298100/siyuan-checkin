@@ -2087,6 +2087,7 @@ private reviewCompatibilitySnapshot?: {
         format: "loop-csv" | "obsidian-habits";
         loopPlan?: LoopImportPlan;
         obsidianPlan?: ObsidianImportPlan;
+        skippedFiles?: number;
         decisions: ImportConflictDecision[];
     };
     /** T-1523 样例试算台：结果与输入文本仅存于会话内存，绝不持久化正文。 */
@@ -4793,10 +4794,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.syncSettingsCompatibilityForRoot(root);
                     showMessage(t(session.format === "loop-csv" ? "msg.loopDone" : "msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                     if (report.skippedRows) showMessage(t("set.importSkippedRows", {n: report.skippedRows}));
+                    if (session.format === "obsidian-habits" && session.skippedFiles) showMessage(t("msg.obsidianSkippedFiles", {n: session.skippedFiles}));
                     this.render(root);
                 } catch (error) {
                     this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
-                    settingsFeedback(t("msg.importFail", {error: String(error)}));
+                    settingsFeedback(t("msg.importPersistFail"));
                 }
             }, "[data-mobile-nav='settings']");
         });
@@ -6036,7 +6038,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "rejected", source: "json-import", failureKind}});
                 this.recordDiagnostic("migration-rejected", failureKind);
                 void this.persistAuditBestEffort();
-                settingsFeedback(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t("msg.importFailSafe"));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-json]") || input).focus();
@@ -6076,7 +6078,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 this.render();
             } catch (error) {
                 this.recordImportFailure("csv-import", importFailurePhase);
-                settingsFeedback(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t(importFailurePhase === "persist" ? "msg.importPersistFail" : "msg.importParseFail"));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-csv]") || input).focus();
@@ -6131,7 +6133,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 this.render();
             } catch (error) {
                 this.recordImportFailure("loop-import", importFailurePhase);
-                settingsFeedback(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t(importFailurePhase === "persist" ? "msg.importPersistFail" : "msg.importParseFail"));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-loop]") || input).focus();
@@ -6155,7 +6157,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     if (result.ok) habits.push(result.habit);
                     else skipped += 1;
                 }
-                if (!habits.length) { showMessage(t("msg.obsidianNoItems")); return; }
+                if (!habits.length) {
+                    showMessage(t("msg.obsidianNoItems"));
+                    if (skipped) showMessage(t("msg.obsidianSkippedFiles", {n: skipped}));
+                    return;
+                }
                 const plan = buildObsidianImportPlan(habits);
                 /* T-1427 · R-30.4：应用前统一预览——重名合并与语义损耗先行声明。 */
                 const obsidianPreview = summarizeImportPreview(buildObsidianImportPreview(plan, this.store.items.filter((item) => !item.archived).map((item) => item.name)));
@@ -6166,7 +6172,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.store.items.map((item) => ({id: item.id, name: item.name, kind: item.kind, unit: item.unit, archived: item.archived})),
                 );
                 if (conflictDecisions.length) {
-                    settings.importConflictSession = {format: "obsidian-habits", loopPlan: undefined, obsidianPlan: plan, decisions: conflictDecisions};
+                    settings.importConflictSession = {format: "obsidian-habits", loopPlan: undefined, obsidianPlan: plan, skippedFiles: skipped, decisions: conflictDecisions};
                     this.syncSettingsCompatibilityForRoot(root);
                     this.render(root);
                     return;
@@ -6186,10 +6192,11 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     }
                 });
                 showMessage(t("msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
+                if (skipped) showMessage(t("msg.obsidianSkippedFiles", {n: skipped}));
                 this.render();
             } catch (error) {
                 this.recordImportFailure("obsidian-import", importFailurePhase);
-                settingsFeedback(t("msg.importFail", {error: String(error)}));
+                settingsFeedback(t(importFailurePhase === "persist" ? "msg.importPersistFail" : "msg.importParseFail"));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-obsidian]") || input).focus();

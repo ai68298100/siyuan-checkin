@@ -207,6 +207,7 @@ export interface SettingsRootContext {
         format: "loop-csv" | "obsidian-habits";
         loopPlan?: import("./features/loop-csv").LoopImportPlan;
         obsidianPlan?: import("./features/obsidian-habits").ObsidianImportPlan;
+        skippedFiles?: number;
         decisions: import("./features/import-conflicts").ImportConflictDecision[];
     };
 }

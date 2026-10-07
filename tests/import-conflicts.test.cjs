@@ -115,6 +115,8 @@ assert.match(indexSource, /runSettingsAction\(control, async \(\) => \{[\s\S]*th
 assert.doesNotMatch(indexSource, /"\[data-import-conflict-confirm\]"\)\?\.addEventListener\("click", async \(\)/, "conflict confirmation must not bypass the busy lifecycle");
 assert.match(indexSource, /"\[data-import-conflict-cancel\]"/, "cancel is bound");
 assert.match(indexSource, /this\.store = previousStore/, "save failure rolls the store back");
+assert.match(indexSource, /settingsFeedback\(t\("msg\.importPersistFail"\)\)/, "conflict persistence failure uses fixed safe feedback");
+assert.doesNotMatch(indexSource, /data-import-conflict-confirm[\s\S]{0,1800}String\(error\)/, "conflict feedback must not echo raw host errors");
 const i18nSource = fs.readFileSync(path.join(root, "src", "i18n.ts"), "utf8");
 for (const key of ["set.importConflictTitle", "set.importConflictHint", "set.importConflictMerge", "set.importConflictCreateNew", "set.importConflictSkip", "set.importConflictMeta", "set.importIncompatibleUnit", "set.importIncompatibleKind", "set.importConflictConfirm", "set.importSkippedRows"]) {
     const count = i18nSource.split(`"${key}"`).length - 1;
