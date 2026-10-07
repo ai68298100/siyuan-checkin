@@ -4830,6 +4830,19 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             }
             node.textContent = message;
         };
+        /* T-1648：诊断出现时提供单步恢复路径；展开并聚焦指南，避免用户在数据分区内寻找。 */
+        root.querySelector<HTMLElement>("[data-action='open-recovery-guide']")?.addEventListener("click", () => {
+            const guide = root.querySelector<HTMLDetailsElement>("[data-recovery-guide]");
+            if (!guide) return;
+            guide.open = true;
+            try {
+                guide.scrollIntoView?.({block: "center", behavior: this.reducedMotion ? "auto" : "smooth"});
+            } catch {
+                /* 旧版 Android WebView 可能只接受无参数 scrollIntoView。 */
+                guide.scrollIntoView?.();
+            }
+            guide.querySelector<HTMLElement>("summary")?.focus({preventScroll: true});
+        });
         const runSettingsAction = (control: HTMLElement, operation: () => Promise<unknown> | unknown, focusSelector = "[data-action='back']") => {
             if (settingsBusy.has(control)) return;
             settingsBusy.add(control);

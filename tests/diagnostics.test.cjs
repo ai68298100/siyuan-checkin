@@ -87,6 +87,9 @@ assert.match(apiSource, /getDiagnostics: \(\) => Object\.freeze\(host\.getDiagno
 
 /* 设置页：诊断行 + 导出（无记录禁用）。 */
 assert.match(settings, /data-diagnostics/, "settings must mark the diagnostics row");
+assert.match(settings, /data-action="open-recovery-guide"/, "settings must expose a direct recovery guide action");
+assert.match(settings, /id="\$\{settingsViewId\}-recovery-guide"/, "recovery guide must have a surface-scoped id");
+assert.match(settings, /aria-controls="\$\{settingsViewId\}-recovery-guide"/, "recovery action must point to the guide");
 assert.match(settings, /data-action="export-diagnostics"/, "settings must expose diagnostics export");
 assert.match(settings, /ctx\.diagnosticsCount \? "" : "disabled"/, "export stays disabled without diagnostics");
 assert.match(pluginOps, /export function downloadDiagnosticsFor/, "plugin-ops must expose the diagnostics download");
@@ -100,7 +103,7 @@ for (const code of CHECKIN_DIAGNOSTIC_CODES) {
         assert.ok(enDict.includes(`"${key}"`), `en dict missing ${key}`);
     }
 }
-for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.diagnosticsExport", "agent.diagnosticsIntro"]) {
+for (const key of ["set.diagnosticsTitle", "set.diagnosticsCount", "set.openRecoveryGuide", "set.diagnosticsExport", "agent.diagnosticsIntro"]) {
     assert.ok(zhDict.includes(`"${key}"`), `zh dict missing ${key}`);
     assert.ok(enDict.includes(`"${key}"`), `en dict missing ${key}`);
 }

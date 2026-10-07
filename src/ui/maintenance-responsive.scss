@@ -167,6 +167,7 @@
         .lc-checkin__settings-nav button { flex: 0 0 auto; width: auto; min-width: max-content; max-width: none; min-height: 44px; padding-inline: 12px; white-space: nowrap; }
         .lc-checkin__settings-nav button.is-active { box-shadow: inset 0 -2px var(--lc-checkin-accent-text); }
         .lc-checkin__settings-card { scroll-margin-top: 152px; }
+        .lc-checkin__settings-fold[data-recovery-guide] { scroll-margin-top: 152px; }
     }
     .lc-checkin.lc-checkin--occasions {
         .lc-checkin__occasion-manager { grid-template-columns: minmax(0, 1fr); gap: 12px; }

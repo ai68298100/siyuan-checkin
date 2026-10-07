@@ -4258,6 +4258,7 @@ textarea.lc-checkin__journal-answer { resize: vertical; }
 .lc-checkin__audit-list li small { display: block; overflow-wrap: anywhere; color: var(--lc-checkin-muted); }
 .lc-checkin__snapshot-list .lc-checkin__text-button { flex: none; }
 .lc-checkin__settings-fold { margin: 0 0 10px; border-top: 1px solid var(--lc-checkin-border); }
+.lc-checkin__settings-fold[data-recovery-guide] { scroll-margin-top: 72px; }
 .lc-checkin__settings-fold-item { display: block !important; padding: 0 !important; border: 0 !important; background: transparent !important; }
 .lc-checkin__settings-fold > summary { padding: 8px 10px; color: var(--lc-checkin-accent-text); font-size: 11px; font-weight: var(--lc-checkin-settings-strong-weight); cursor: pointer; list-style: none; }
 .lc-checkin__settings-fold > summary::-webkit-details-marker { display: none; }
