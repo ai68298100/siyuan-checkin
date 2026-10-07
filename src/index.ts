@@ -2310,6 +2310,8 @@ private reviewCompatibilitySnapshot?: {
             window.removeEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
             window.removeEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
         });
+        /* 闭包内更新阶段，使用受限字符串值避免 TypeScript 把外层变量错误收窄为初始字面量。 */
+        let initializationFailurePhase: string = "load";
         try {
             await this.withStorageLock(async () => {
                 const stored = await this.loadData(STORAGE_NAME);
@@ -2357,10 +2359,14 @@ private reviewCompatibilitySnapshot?: {
                 this.externalPendingBox = pruned.box;
                 /* T-1622：过期清理发生在初始化存储锁内，必须在释放锁前完成写入。
                    异步 fire-and-forget 会让另一窗口在锁释放后先写入，随后被旧箱快照覆盖。 */
-                if (pruned.expired > 0) await this.persistExternalPendingBox();
+                if (pruned.expired > 0) {
+                    initializationFailurePhase = "persist";
+                    await this.persistExternalPendingBox();
+                }
                 this.applyViewPreferences(preferences);
                 this.storageReady = true;
                 if (storeNeedsMigration(stored, this.store)) {
+                    initializationFailurePhase = "persist";
                     await this.persist();
                 }
             });
@@ -2377,6 +2383,8 @@ private reviewCompatibilitySnapshot?: {
             this.storageReady = false;
             this.initializationState = "failed";
             this.settleReady(false);
+            /* persist() 自身已经记录 save-failed；启动层只补充尚未覆盖的批量读取失败，避免重复诊断。 */
+            if (initializationFailurePhase !== "persist") this.recordDiagnostic("load-failed", "startup-load-failed");
             showMessage(t("msg.dataLoadFail", {error: String(error)}));
         }
         if (this.disposed || this.disposing) return;
