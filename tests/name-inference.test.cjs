@@ -62,7 +62,7 @@ assert.match(bindEditorSource, /buildNameInference\(/, "bind-editor resolves sug
 assert.match(bindEditorSource, /inferFieldsFromName\(nameInput\.value\)/, "field application re-resolves from the live input (no stale suggestion)");
 assert.match(bindEditorSource, /data-name-inference-template/, "template suggestion reuses the catalog apply path");
 assert.match(bindEditorSource, /data-name-inference-dismiss/, "dismissal keeps the row hidden for the same name");
-assert.match(bindEditorSource, /setTimeout\(renderNameInference, 250\)/, "inference is debounced while typing");
+assert.match(bindEditorSource, /setTimeout\(\(\) => \{[\s\S]*?isCurrentSession\(\)\) renderNameInference\(\);[\s\S]*?\}, 250\)/, "inference is debounced while typing and respects the editor session");
 assert.match(bindEditorSource, /applyTemplateFields\(template\)/, "template apply path is shared with the chip flow");
 const indexSource = read("src/index.ts");
 assert.match(indexSource, /nameInferenceCatalog\(\): ReadonlyArray<\{anchor: string; display: string\}>/, "host projects catalog anchors with localized display names");

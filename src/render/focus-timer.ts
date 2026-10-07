@@ -102,6 +102,12 @@ function focusStatusText(state: Pick<FocusTimerState, "running" | "saveStatus" |
     return state.running ? "" : t("focus.pause");
 }
 
+function focusMiniState(state: Pick<FocusTimerState, "running" | "saveStatus" | "pauseReason">): "saving" | "failed" | "paused" | "running" {
+    if (state.saveStatus === "saving") return "saving";
+    if (state.saveStatus === "failed") return "failed";
+    return state.running && !state.pauseReason ? "running" : "paused";
+}
+
 function focusTimeText(remainingSec: number): string {
     return `${Math.floor(remainingSec / 60)}:${String(remainingSec % 60).padStart(2, "0")}`;
 }
@@ -115,6 +121,9 @@ function paintFocusRoots(host: FocusTimerHost, state: FocusTimerState): void {
         root.querySelectorAll?.<HTMLElement>("[data-focus-mini-status]").forEach((status) => {
             status.textContent = focusStatusText(state, true);
             status.hidden = !status.textContent;
+        });
+        root.querySelectorAll?.<HTMLElement>("[data-focus-mini]").forEach((mini) => {
+            mini.dataset.focusMiniState = focusMiniState(state);
         });
     }
 }
@@ -250,7 +259,7 @@ export function renderFocusMiniStripFor(host: FocusTimerHost): string {
     refreshFocusClock(state);
     const item = getItemById(host.store, state.itemId);
     const name = item ? item.name : t("focus.defaultItemName");
-    return `<div class="lc-checkin__focus-mini" data-focus-mini role="status" aria-label="${t("focus.miniAria")}"><span class="lc-checkin__focus-mini-icon" aria-hidden="true">⏱</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong><span class="lc-checkin__focus-mini-time" data-focus-mini-remaining>${focusTimeText(state.remainingSec)}</span><small data-focus-mini-status ${focusStatusText(state, true) ? "" : "hidden"}>${escapeHtml(focusStatusText(state, true))}</small><button class="lc-checkin__text-button" type="button" data-focus-mini-back>${t("focus.miniBack")}</button></div>`;
+    return `<div class="lc-checkin__focus-mini" data-focus-mini data-focus-mini-state="${focusMiniState(state)}" role="status" aria-label="${t("focus.miniAria")}"><span class="lc-checkin__focus-mini-icon" aria-hidden="true">⏱</span><strong title="${escapeHtml(name)}">${escapeHtml(name)}</strong><span class="lc-checkin__focus-mini-time" data-focus-mini-remaining>${focusTimeText(state.remainingSec)}</span><small data-focus-mini-status ${focusStatusText(state, true) ? "" : "hidden"}>${escapeHtml(focusStatusText(state, true))}</small><button class="lc-checkin__text-button" type="button" data-focus-mini-back>${t("focus.miniBack")}</button></div>`;
 }
 
 export function finishFocusTimerFor(host: FocusTimerHost, complete: boolean): Promise<void> {

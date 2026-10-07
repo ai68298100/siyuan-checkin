@@ -26,6 +26,8 @@ export interface ReminderDeliveryHost {
     dockElement?: HTMLElement;
     tabElement?: HTMLElement;
     quickDialogElement?: HTMLElement;
+    /** 当前交互表面；仅用于在移动端选择提醒的挂载位置。 */
+    activeRoot?: HTMLElement;
     withStorageLock<T>(operation: () => Promise<T>): Promise<T>;
     loadData(name: string): Promise<unknown>;
     saveData(name: string, value: unknown): Promise<unknown>;
@@ -40,6 +42,7 @@ interface ReminderRuntime {
     state?: ReminderDeliveryState;
     notice?: HTMLElement;
     restoreFocus?: HTMLElement;
+    placementObserver?: ResizeObserver;
     retryAt: number;
     failureDate?: string;
     failures: number;
@@ -68,9 +71,95 @@ function closeReminderNotice(host: object): void {
     runtime.restoreFocus = undefined;
 }
 
+function surfaceIsVisible(surface: HTMLElement | undefined): boolean {
+    if (!surface?.isConnected) return false;
+    try {
+        const rects = typeof surface.getClientRects === "function" ? surface.getClientRects() : undefined;
+        if (rects && rects.length === 0) return false;
+        return typeof getComputedStyle !== "function" || getComputedStyle(surface).display !== "none";
+    } catch {
+        return true;
+    }
+}
+
+function isCompactDock(surface: HTMLElement | undefined): boolean {
+    if (!surface?.classList?.contains("lc-checkin-dock-host")) return false;
+    try {
+        const {width, height} = surface.getBoundingClientRect();
+        /* A wide dock can still be a short landscape surface. Keep the
+           transient notice in the dock flow there as well; a fixed toast
+           would cover the task actions in a 350px-tall workbench. */
+        return width > 0 && (width <= 719 || (height > 0 && height <= 480));
+    } catch {
+        return false;
+    }
+}
+
+function isCompactSurface(surface: HTMLElement | undefined): boolean {
+    if (!surface?.classList) return false;
+    if (isCompactDock(surface)) return true;
+    if (!surface.classList.contains("lc-checkin-tab-host")
+        && !surface.classList.contains("lc-checkin-dialog-host")) return false;
+    try {
+        const width = surface.getBoundingClientRect().width;
+        return width > 0 && width <= 719;
+    } catch {
+        return false;
+    }
+}
+
+function mobileReminderMountFor(host: ReminderDeliveryHost, root?: HTMLElement): {host: HTMLElement; surface: HTMLElement} | undefined {
+    const focusedSurface = typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+        ? (document.activeElement.closest?.<HTMLElement>(".lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin-tab-host, .lc-checkin-dialog-host") ?? undefined)
+        : undefined;
+    const candidates = [root, focusedSurface, host.activeRoot, host.quickDialogElement, host.tabElement, host.dockElement];
+    const surface = candidates.find((candidate) => {
+        if (!surfaceIsVisible(candidate)) return false;
+        return Boolean(candidate?.classList?.contains("lc-checkin-host--mobile")
+            || candidate?.classList?.contains("lc-checkin-dialog-host--mobile")
+            || isCompactSurface(candidate)
+            || candidate?.querySelector?.(".lc-checkin-host--mobile, .lc-checkin-dialog-host--mobile, .lc-checkin__mobile-topbar")
+            || candidate?.querySelector?.(".lc-checkin-tab-host, .lc-checkin-dialog-host"));
+    });
+    if (!surface) return undefined;
+    const page = surface.querySelector<HTMLElement>(".lc-checkin");
+    if (!page || typeof surface.insertBefore !== "function") return undefined;
+    return {host: surface, surface: page};
+}
+
+function watchReminderPlacement(host: ReminderDeliveryHost): void {
+    const runtime = runtimeFor(host);
+    if (runtime.placementObserver || typeof ResizeObserver === "undefined") return;
+    const surfaces = [host.activeRoot, host.dockElement, host.tabElement, host.quickDialogElement]
+        .filter((surface, index, all): surface is HTMLElement => Boolean(surface) && all.indexOf(surface) === index);
+    if (!surfaces.length) return;
+    const observer = new ResizeObserver(() => ensureReminderNoticePlacementFor(host));
+    surfaces.forEach((surface) => observer.observe(surface));
+    runtime.placementObserver = observer;
+}
+
+/** Keep an existing mobile notice in the host flow after a page redraw. */
+export function ensureReminderNoticePlacementFor(host: ReminderDeliveryHost, root?: HTMLElement): void {
+    watchReminderPlacement(host);
+    const notice = runtimeFor(host).notice;
+    if (!notice) return;
+    const mount = mobileReminderMountFor(host, root);
+    if (mount) {
+        notice.classList?.add("lc-checkin__daily-reminder-notice--inline");
+        if (notice.parentElement !== mount.host) mount.host.insertBefore(notice, mount.surface);
+        else if (notice.nextElementSibling !== mount.surface) mount.host.insertBefore(notice, mount.surface);
+        return;
+    }
+    notice.classList?.remove("lc-checkin__daily-reminder-notice--inline");
+    if (!notice.isConnected || !surfaceIsVisible(notice.parentElement ?? undefined)) document.body.appendChild(notice);
+}
+
 export function stopReminderDeliveryFor(host: object): void {
     closeReminderNotice(host);
-    runtimeFor(host).announcer?.remove();
+    const runtime = runtimeFor(host);
+    runtime.placementObserver?.disconnect();
+    runtime.placementObserver = undefined;
+    runtime.announcer?.remove();
     runtimes.delete(host);
 }
 
@@ -247,8 +336,14 @@ export async function maybeSendDailyReminderFor(host: ReminderDeliveryHost, trig
                 if (host.disposed || host.disposing) throw new Error("Reminder host closed");
                 closeReminderNotice(host);
                 runtime.restoreFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
-                document.body.appendChild(notice);
                 runtime.notice = notice;
+                const mount = mobileReminderMountFor(host);
+                if (mount) {
+                    notice.classList?.add("lc-checkin__daily-reminder-notice--inline");
+                    mount.host.insertBefore(notice, mount.surface);
+                } else {
+                    document.body.appendChild(notice);
+                }
                 runtime.state = next;
                 runtime.failures = 0;
                 runtime.retryAt = 0;

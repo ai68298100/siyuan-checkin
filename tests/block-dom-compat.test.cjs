@@ -7,6 +7,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
 const blockSource = read("src", "render", "block-renderer.ts");
+const pluginSource = read("src", "index.ts");
 const teardownSource = read("src", "teardown.ts");
 const compatDoc = read("docs", "siyuan-compatibility.md");
 const pluginJson = JSON.parse(read("plugin.json"));
@@ -83,3 +84,16 @@ assert.match(blockSource, /previousIsOurs && !options\?\.force/, "同源预览�
 assert.match(blockSource, /previous\?\.remove\(\);/, "配置变化时仅移除自己的旧预览");
 assert.match(blockSource, /return \(\) => \{[\s\S]*?disposed = true;/, "teardown 返回断开函数并置 disposed");
 assert.match(blockSource, /role="alert"/, "局部失败（坏配置）必须出 role=alert 错误面板且不影响相邻块");
+
+/* T-1621：锚点解析是跨宿主生命周期的异步回调；宿主先移除 protyle
+   或观察器已 teardown 时，完成回调不得再次触碰 detached DOM。 */
+assert.match(blockSource, /const isActive = \(\) => protyleElement\.isConnected && deps\.isActive\?\.\(\) !== false && options\.isActive\?\.\(\) !== false;[\s\S]*?if \(!isActive\(\)\) return;/, "渲染入口必须拒绝 detached 或 inactive protyle/plugin owner");
+assert.match(blockSource, /if \(!isActive\(\)\) return;\s*renderCheckinBlocksIn\(protyleElement, deps, \{force: true, isActive: options\.isActive\}\);/, "锚点异步完成后必须再次确认 root 生命周期再强制重绘");
+assert.match(blockSource, /const isActive = \(\) => !disposed && protyleElement\.isConnected && deps\.isActive\?\.\(\) !== false;/, "观察器必须把 disposed、root 和插件生命周期作为同一守门");
+assert.match(blockSource, /if \(isActive\(\)\) renderCheckinBlocksIn\(protyleElement, deps, \{isActive\}\);/, "防抖重绘必须复用观察器生命周期守门");
+assert.match(blockSource, /if \(!isActive\(\) \|\| !preview\.isConnected\) return;/, "detached preview listeners must not initiate host navigation or writes");
+assert.match(blockSource, /const isCurrent = \(\) => preview\.isConnected && protyleElement\.isConnected && deps\.isActive\?\.\(\) !== false && options\.isActive\?\.\(\) !== false;[\s\S]*?onJumpItemAnchor\?\.\([^,]+, isCurrent\)/, "锚点点击必须把来源 preview/root/observer/plugin 生命周期传给异步导航");
+assert.match(pluginSource, /private async jumpToItemAnchorDoc\(blockId: string, isSourceCurrent: \(\) => boolean = \(\) => true\)[\s\S]*?if \(!blockId \|\| this\.disposed \|\| this\.disposing \|\| !this\.acceptingOperations \|\| !isSourceCurrent\(\)\) return;[\s\S]*?const requestId = \+\+this\.anchorJumpRequestId;[\s\S]*?if \(!isCurrent\(\)\) return;[\s\S]*?getActiveItemById\(this\.store, item\.id\)/, "anchor jump must reject unload, stale source and superseded or rebound targets after resolution");
+assert.match(pluginSource, /async onunload\(\) \{\s*this\.anchorJumpRequestId \+= 1;/, "unload must invalidate every pending anchor jump even across a fast plugin reload");
+assert.match(pluginSource, /private renderBlockDeps\(\) \{[\s\S]{0,800}isActive: \(\) => !this\.disposed && !this\.disposing && this\.acceptingOperations/, "global render-block sweeps must inherit the plugin lifecycle guard");
+assert.match(pluginSource, /private async resolveAnchorDocsForRender\(blockIds: string\[\]\): Promise<void> \{[\s\S]*?if \(!isActive\(\)\) return;[\s\S]*?await fetchSyncPost\("\/api\/block\/getBlockInfo", \{id: blockId\}\);[\s\S]*?if \(!isActive\(\)\) return;[\s\S]*?this\.anchorDocCache\.set\(blockId,/, "anchor index responses must not mutate cache after plugin teardown starts");

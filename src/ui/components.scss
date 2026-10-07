@@ -10636,7 +10636,7 @@ dialog.lc-checkin.lc-checkin__avatar-editor {
 /* Settings authoring: wrap at narrow widths, keep touch targets and native focus. */
 .lc-checkin--settings {
     [hidden] { display: none !important; }
-    .lc-checkin__settings-search { display: grid; gap: 8px; margin-bottom: 16px; }
+    .lc-checkin__settings-search { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin-bottom: 8px; }
     .lc-checkin__journal-target-settings {
         display: grid;
         grid-template-columns: minmax(0, 1fr);

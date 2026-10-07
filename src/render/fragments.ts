@@ -138,7 +138,11 @@ export function renderThisDayHistoryView(store: CheckinStore, occasionStore: Occ
         }
         return `<div class="lc-checkin__this-day-row"><span>${text}</span><button class="lc-checkin__text-button" type="button" data-action="this-day-jump" data-thisday-date="${pastDate}" aria-label="${escapeHtml(t("today.thisDayJumpAria", {date: pastDate}))}">${escapeHtml(t("today.thisDayJump"))}</button></div>`;
     }).join("");
-    return `<section class="lc-checkin__this-day" aria-label="${t("today.thisDayTitle")}"><strong>${t("today.thisDayTitle")}</strong>${rows}</section>`;
+    /* T-1608：同日回顾属于辅助证据，不应和今日任务一起占用首屏。
+       使用原生 disclosure 保留跳转能力，同时默认收起，符合 Today 主路径的
+       “完成/下一步 → 任务列表 → 辅助信息”层级。rows 仍保持原有 data-action，
+       不改变绑定与只读查询逻辑。 */
+    return `<details class="lc-checkin__this-day lc-checkin__review-fold" data-this-day-history aria-label="${t("today.thisDayTitle")}"><summary><strong>${t("today.thisDayTitle")}</strong><span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>${rows}</details>`;
 }
 
 /* T-1515 未来七天负荷预览：按需展开的只读投影（零事件写入）。

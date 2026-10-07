@@ -263,7 +263,8 @@ assert.match(glueSource, /data-jump-anchor-block/, "glue must handle the anchor 
 assert.match(read("index.ts"), /onJumpItem: \(itemId: string\) => this\.jumpToItemInsights\(itemId\)/, "host must wire the item jump");
 assert.match(read("index.ts"), /const root = \(this\.activeRoot && this\.isSurfaceRoot\(this\.activeRoot\) \? this\.activeRoot : undefined\)[\s\S]{0,120}this\.roots\(\)\.find\(\(surface\) => this\.isSurfaceRoot\(surface\)\)/, "document item jumps must prefer a connected active surface and otherwise select one connected root");
 assert.match(read("index.ts"), /this\.showInsights\(item, root\)/, "document item jumps must use the target surface insight navigation lifecycle");
-assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string\) => void this\.jumpToItemAnchorDoc\(blockId\)/, "host must wire the anchor doc jump");
+assert.match(read("index.ts"), /onJumpItemAnchor: \(blockId: string, isSourceCurrent\?: \(\) => boolean\) => void this\.jumpToItemAnchorDoc\(blockId, isSourceCurrent\)/, "host must pass the originating Protyle lifecycle into the anchor doc jump");
+assert.match(read("index.ts"), /if \(action === "new-occasion"\) \{[\s\S]{0,220}setAttribute\("aria-label", t\("occ\.newAria"\)\)[\s\S]{0,120}setAttribute\("title", t\("occ\.newAria"\)\)[\s\S]{0,100}setDirectIcon\(node, "add"\)/, "normalizing the icon-only occasion action must preserve its localized accessible name and tooltip");
 assert.match(read("index.ts"), /openTab\(\{app: this\.app, doc: \{id: doc\}\}\)/, "anchor jump opens the freshly re-resolved root doc (v18.1.x: moves are followed)");
 assert.match(read("index.ts"), /const fresh = await resolveAnchorBlock\(/, "anchor jump must re-resolve the block before opening");
 

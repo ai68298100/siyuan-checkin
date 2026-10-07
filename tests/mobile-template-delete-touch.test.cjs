@@ -14,7 +14,7 @@ assert.match(editorSource, /data-action="archive"[\s\S]*\$\{item\.archived \? t\
     "delete action must communicate its reversible archive state");
 assert.match(i18n, /"editor\.restore": "恢复打卡项"/);
 assert.match(i18n, /"editor\.archive": "暂时归档"/);
-assert.match(source, /private async archiveEditingItem\(\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
+assert.match(source, /private async archiveEditingItem\(root\?: HTMLElement\)[\s\S]*setItemArchived\(current\.id, !current\.archived/,
     "delete action must use reversible persistence rather than removing the item");
 
 assert.match(components, /@media \(hover:\s*none\), \(pointer:\s*coarse\)[\s\S]*\.lc-checkin--editor \.lc-checkin__archive-button\s*\{[^}]*min-height:\s*40px/,

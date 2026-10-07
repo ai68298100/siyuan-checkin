@@ -26,9 +26,17 @@ T-1509～T-1523 已于 2026-09-28 全部交付，原“14 项当前队列”是�
 
 - **B-1621-REVIEW-COMPAT（已解除，2026-10-03）**：T-1635 增加最近一次 root→宿主同步快照，旧宿主字段直写被识别后迁移到显式目标 root 或当前 active root；双 root、销毁清理和真实 Review bundle 回归已通过。未通过放宽等待或删除 root 隔离。
 - **B-1621-PERF-NOISE**：`pnpm test` 曾两次命中既有 `reminder-actions` 的 2000 条事项 `<500ms` 基准（821.8ms、599.8ms）；独立复测有 398.1ms 通过和 534.6ms 失败。当前仅记录环境抖动，不改无关实现、不改阈值；恢复开发后先在空闲环境孤立复测，再决定是否影响主链结论。
+- **2026-10-07 复测**：并行启动定向测试时 `reminder-actions` 为 639.3ms；全部并行任务结束后单独重跑为 76.7ms。证据支持并行负载对门禁样本有明显影响，但单次孤立通过不足以关闭历史观察项；性能阈值未改，后续完整质量链仍需记录实际结论。
 - **T-1635 处理顺序（已完成）**：真实 Review bundle 验收已恢复；下一主任务为 T-1622，T-1621 剩余 root 状态/生命周期随后推进。
 - **T-1622 当前切片（已完成，2026-10-04）**：主 Store 导入/恢复与卸载收尾已接入锁内预合并和回读校验，无外部阻塞。后续仍需处理其他旁路主 Store 写入、删除类跨窗口 tombstone 语义；偏好桶后写者胜按 D-315 明示接受，不构成本轮阻塞。
 - **扩展链遗留断言（已解除，2026-10-04）**：recording-history 的旧 showEditor 断言已迁移到 root-aware 签名，记录/失败/并发回归通过；v6-efficiency 的计时旧断言同步实际有效时间契约。主/UI 链旧 SummaryHarness 缺 cancelReviewSummary 的中间失败已修复，review-assistant 定向行为链通过。完整套餐仍需最终整合重跑，不以定向通过替代发布验收。
 - **B-1621-UI-PERF-NOISE（观察中，2026-10-04）**：本轮完整 UI 链曾连续命中既有 `tests/kernel-regression.test.cjs` `today-200 <250ms` 门禁（288/266ms），未放宽阈值；重建生产 bundle 后空闲孤立复测为 `today-200=136ms`，review/multi-root 10k 均 21ms。前序 UI 场景与本轮 Today/Settings 真实 bundle 回归通过；待完整 UI 链重跑确认，不把孤立通过替代全链证据。
 - 2026-10-05 复测更新：`normalizeUiIcons` 已改为对目标 SVG 幂等跳过，空闲环境 `kernel-regression` 两轮通过（today-200=155/152ms）；完整 UI 链前段也通过，但三次完整链分别在 Today 性能门出现 278ms、257ms 和一次通过样本，仍属门限附近负载抖动。该观察项暂不关闭、不改阈值，继续等待稳定的完整链证据。
 - 2026-10-05 T-1622 旁路切片边界：专注诊断追加已锁内并集，显式清空和快照清空/导入已锁内回滚；诊断成功解决的旧 `write-failed` 条目仍可能被另一窗口旧桶并回复活，需要 schema v2 `resolved identities/tombstones`，本轮不绕过也不宣称完成。
+
+## GitHub 同步与发布边界（2026-10-07）
+
+- **B-GITHUB-SYNC（等待合并窗口）**：本地 `dev/thispc-1002` 比远端同名分支多 21 个提交；当前工作协议禁止自动 push，因此本轮新增的 README、CI、Issue/PR 模板、Dependabot 和安全入口只在工作区准备，远端 README/工作流要等开发分支按双机协议合并后才会生效。
+- **B-RELEASE-SOURCE（发布前置）**：远端默认浏览分支仍是 `dev/thispc-1002`，稳定发布基线是 `main`/v18.16.0；历史 Release 的 `targetCommitish` 曾混用，下一次两机合并后要统一从 `main` 创建 tag/release，再考虑把默认分支切回 `main` 并启用分支保护。本轮不改默认分支、不触碰 v16.0.0 draft。
+
+\n

@@ -274,6 +274,7 @@ let folds;
 let noteInput;
 let rhythm;
 const root = {
+    isConnected: true,
     ownerDocument: {get activeElement() { return focused; }},
     querySelectorAll(selector) {
         if (selector === "details[data-review-fold]") return folds || [];

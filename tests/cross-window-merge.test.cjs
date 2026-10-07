@@ -132,6 +132,10 @@ assert.match(pluginSource, /private async retryExternalPendingEntry\(id: string\
     "pending retry must keep remote merge, event write and box settlement in one mutation");
 assert.match(pluginSource, /private async discardExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?return this\.withStorageLock\(async \(\) => \{/,
     "pending discard must run under the storage lock");
+assert.match(pluginSource, /private async discardExternalPendingEntry\(id: string\): Promise<boolean> \{[\s\S]*?const previous = this\.externalPendingBox;[\s\S]*?await this\.persistExternalPendingBox\(\);[\s\S]*?const saveFailed = this\.externalPendingSaveFailed;[\s\S]*?if \(saveFailed\) \{[\s\S]*?this\.externalPendingBox = previous;/,
+    "external pending discard must roll back the in-memory removal when persistence fails");
+assert.match(pluginSource, /const saveFailed = this\.externalPendingSaveFailed;[\s\S]*?showMessage\(t\(saveFailed \? "set\.externalPendingSaveFailed" : "set\.externalPendingDiscarded"\)\);[\s\S]*?return !saveFailed;/,
+    "external pending discard must report persistence failure instead of claiming it was discarded");
 assert.match(templatesSource, /export function mergeUserTemplates\(/, "user templates must have a deterministic cross-window merge");
 assert.match(pluginSource, /private async persistUserTemplates\(next: UserTemplate\[\]\): Promise<void> \{[\s\S]*?mergeUserTemplates\(next, remote\)/,
     "template writes must merge remote templates while holding the storage lock");
@@ -185,7 +189,7 @@ for (const marker of ["this.importCsvRows(parsed.rows)", "this.importLoopPlan(pl
         `${marker} must restore the in-memory store when persistence fails`);
 }
 const occasionOverrideBlock = pluginSource.slice(pluginSource.indexOf("private saveOccasionOverride"), pluginSource.indexOf("private async retrySave"));
-assert.match(occasionOverrideBlock, /void this\.enqueueMutation\(async \(\) => \{[\s\S]*?const previous = this\.occasionStore;[\s\S]*?setOccasionOverride\(previous, id, originalDate, newDate\)[\s\S]*?await this\.persistOccasions\(\)/,
+assert.match(occasionOverrideBlock, /void this\.enqueueMutation\(async \(\) => \{[\s\S]*?const previous = this\.occasionStore;[\s\S]*?setOccasionOverride\(previous, id, originalDate, newDate\)[\s\S]*?await this\.persistOccasions\([^)]*\)/,
     "occasion override must calculate and persist inside the mutation queue");
 
 const blockRecordBody = pluginSource.slice(pluginSource.indexOf("private async recordBlockToday"), pluginSource.indexOf("private async jumpToItemAnchorDoc"));
@@ -208,12 +212,19 @@ assert.match(completeItemsBody, /void this\.enqueueMutation\(\(\) => this\.setOc
     "batch completion occasion linkage must defer the auxiliary write through the mutation queue");
 assert.match(inboxSource, /export function mergeInboxStores\(/, "Dock Tomato inbox must expose deterministic cross-window merge");
 assert.match(pluginSource, /private async persistDockTomatoInboxWithLock\(\)/, "inbox side writes must have a lock-held wrapper");
+assert.match(pluginSource, /lastError: "inbox-cleanup-pending"[\s\S]*?await this\.persistDockTomatoInbox\(\);/, "inbox cleanup failure must await the pending rewrite before releasing the mutation lock");
 assert.match(pluginSource, /await this\.mergeDockTomatoInboxFromRemoteUnlocked\(\);[\s\S]*?const next = removeInboxEntry\(this\.dockTomatoInbox, identity\)/,
     "manual inbox discard must merge remote state before deletion");
 assert.match(pluginSource, /private async discardDockTomatoInboxEntry\(identity: string\): Promise<boolean> \{[\s\S]*?return this\.withStorageLock\(async \(\) => \{/,
     "manual inbox discard must run under the storage lock");
+assert.match(pluginSource, /private async discardDockTomatoInboxEntry\(identity: string\): Promise<boolean> \{[\s\S]*?const previous = this\.dockTomatoInbox;[\s\S]*?const persisted = await this\.persistDockTomatoInbox\(\);[\s\S]*?if \(!persisted\) \{[\s\S]*?this\.dockTomatoInbox = previous;/,
+    "inbox discard must roll back the in-memory removal when persistence fails");
 assert.match(pluginSource, /private async undoSkipAndRecordDockTomatoInboxEntry\(identity: string\): Promise<boolean> \{[\s\S]*?await this\.mergeDockTomatoInboxFromRemoteUnlocked\(\);/,
     "undo-skip inbox mutation must refresh remote state before removing the entry");
+assert.match(pluginSource, /if \(!cleanupPersisted\) \{[\s\S]{0,700}?await this\.persistDockTomatoInbox\(\);/,
+    "successful Dock Tomato completion must await inbox cleanup while the mutation lock is held");
+assert.doesNotMatch(pluginSource, /if \(!cleanupPersisted\) \{[\s\S]{0,700}?void this\.persistDockTomatoInbox\(\);/,
+    "inbox cleanup must not fire-and-forget a stale write after the mutation lock is released");
 /* 偏好桶决策（D-315）：不做跨窗口合并——注册表文档必须记录该决策而非静默。 */
 const registryDoc = fs.readFileSync(path.join(__dirname, "..", "docs", "settings-field-registry-2026-09-28.md"), "utf8");
 assert.match(registryDoc, /D-315/, "the preference-bucket decision must be recorded in the field registry doc");

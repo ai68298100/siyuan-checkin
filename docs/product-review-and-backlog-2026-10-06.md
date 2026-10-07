@@ -273,3 +273,7 @@ GitHub GET 审查已确认 About、homepage、topics 和 MIT 有基础；查询�
 每个任务领取时填写 `owner / source_ids / depends_on / scope / acceptance / evidence / remaining`。交付时至少记「任务ID｜状态｜实际命令与产物｜未覆盖边界｜下一步」；证据路径和运行日期指向具体提交。当前分支进度写任务证据或提交说明，不写 PROGRESS。
 
 已完成任务只因新的可复现回归增加增量，不重复复制产品能力。不新增云账号、自建同步、社交排行榜、RPG奖惩、系统后台通知或万能智能体写入口。新方向先证明用户问题、数据来源、失败恢复、平台限制与维护收益，再考虑立项。
+
+## 2026-10-07 产品定位与 UI 原型 v3
+
+最新产品定位、竞品结论和候选路线见 [产品定位与下一阶段路线](product-positioning-and-roadmap-2026-10.md)；交互原型见 [checkin-ui-v3.html](prototypes/checkin-ui-v3.html)；页面与视觉约束见 [UI 原型设计规范 v3](ui-prototype-spec-v3-2026-10.md)。本节补充不覆盖本文件 2026-10-06 审计与原有任务台账。

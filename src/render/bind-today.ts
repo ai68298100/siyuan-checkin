@@ -108,6 +108,10 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         else host.priorityReminderExpanded = expanded;
     };
     const pageForRoot = () => host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    /* 文件读取与搜索 debounce 可能跨越切页、重绘或卸载；只允许仍连接且
+       仍停留在绑定时页面的 surface 更新 DOM/会话态。 */
+    const boundPage = pageForRoot();
+    const isCurrentSurface = () => Boolean(root.isConnected) && !host.disposed && !host.disposing && boundPage === "today" && pageForRoot() === boundPage;
     const writeTodayQuery = (value: string) => {
         if (host.setTodayQueryForRoot) host.setTodayQueryForRoot(root, value);
         else host.todayQuery = value;
@@ -159,7 +163,7 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
         const value = search.value;
         searchTimer = window.setTimeout(() => {
             searchTimer = undefined;
-            if (composing || host.disposed || host.disposing || (pageForRoot() && pageForRoot() !== "today")
+            if (composing || !isCurrentSurface()
                 || !search.isConnected || root.querySelector("[data-today-search]") !== search) return;
             writeTodayQuery(value);
             host.render(root);
@@ -397,15 +401,25 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             if (file.size > 500 * 1024) { showMessage(t("msg.photoTooLarge")); input.value = ""; return; }
             const reader = new FileReader();
             reader.onload = () => {
+                if (!isCurrentSurface() || !getActiveItemById(host.store, itemId)) return;
                 const attachment = normalizeAttachmentDataUrl(reader.result);
-                if (!attachment) { showMessage(t("editor.errImageRead")); input.value = ""; return; }
+                if (!attachment) {
+                    if (input.isConnected && root.contains(input)) input.value = "";
+                    showMessage(t("editor.errImageRead"));
+                    return;
+                }
                 const rootAttachments = host.todayStateForRoot?.(root)?.pendingAttachments ?? host.pendingAttachments;
                 rootAttachments.set(itemId, attachment);
-                const button = element.querySelector<HTMLElement>("[data-attach-button]");
+                const currentElement = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(itemId)}"]`);
+                const button = currentElement?.querySelector<HTMLElement>("[data-attach-button]");
                 if (button) { button.classList.add("has-photo"); button.dataset.photo = "1"; }
                 showMessage(t("msg.photoAttached"));
             };
-            reader.onerror = () => { showMessage(t("editor.errImageRead")); input.value = ""; };
+            reader.onerror = () => {
+                if (!isCurrentSurface() || !getActiveItemById(host.store, itemId)) return;
+                showMessage(t("editor.errImageRead"));
+                if (input.isConnected && root.contains(input)) input.value = "";
+            };
             reader.readAsDataURL(file);
         });
         element.querySelectorAll<HTMLElement>("[data-action='record']").forEach((button) => button.addEventListener("click", () => {

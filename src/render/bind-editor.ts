@@ -147,7 +147,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     });
     const ensureEditorVisible = (element?: HTMLElement | null) => {
         if (!element) return;
-        window.setTimeout(() => element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"}), 80);
+        window.setTimeout(() => {
+            if (!isCurrentSession() || !element.isConnected || !root.contains(element)) return;
+            element.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+        }, 80);
     };
     let activeIconGroup = root.querySelector<HTMLElement>("[data-icon-group].is-selected")?.dataset.iconGroup || "all";
     const ICON_SIZE_STEPS = [16, 20, 28, 40];
@@ -307,7 +310,10 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             anchorBrowser?.setAttribute("hidden", "");
             updateAnchorInputState();
             showMessage(t("editor.anchorCreated"));
-        } catch (error) { showMessage(`${t("editor.anchorCreateFailed")} ${String(error instanceof Error ? error.message : error)}`); }
+        } catch (error) {
+            if (!isCurrentSession()) return;
+            showMessage(`${t("editor.anchorCreateFailed")} ${String(error instanceof Error ? error.message : error)}`);
+        }
     });
     const unitInput = root.querySelector<HTMLInputElement>("input[name='unit']");
     const targetInput = root.querySelector<HTMLInputElement>("input[name='target']");
@@ -425,7 +431,14 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     root.querySelector<HTMLInputElement>("[data-custom-icon-file]")?.addEventListener("change", async (event) => {
         const file = (event.currentTarget as HTMLInputElement).files?.[0];
         if (!file) return;
-        try { applyLocalIcon(await readImageBlob(file), t("msg.upload")); } catch (error) { showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`); }
+        try {
+            const icon = await readImageBlob(file);
+            if (!isCurrentSession()) return;
+            applyLocalIcon(icon, t("msg.upload"));
+        } catch (error) {
+            if (!isCurrentSession()) return;
+            showMessage(`[小驴打卡] ${String(error instanceof Error ? error.message : error)}`);
+        }
     });
     root.querySelector<HTMLElement>("[data-action='download-custom-icon']")?.addEventListener("click", async () => {
         const input = root.querySelector<HTMLInputElement>("[data-custom-icon-input]");
@@ -436,8 +449,11 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             if (!response.ok) throw new Error(`下载失败（${response.status}）`);
             const blob = await response.blob();
             if (!blob.type.startsWith("image/")) throw new Error("地址返回的不是图片");
-            applyLocalIcon(await readImageBlob(blob), t("msg.download"));
+            const icon = await readImageBlob(blob);
+            if (!isCurrentSession()) return;
+            applyLocalIcon(icon, t("msg.download"));
         } catch (error) {
+            if (!isCurrentSession()) return;
             showMessage(t("msg.iconDownloadFail", {error: String(error instanceof Error ? error.message : error)}));
         }
     });
@@ -470,9 +486,13 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 host.customIconLibrary = previous;
                 throw error;
             }
+            if (!isCurrentSession()) return;
             showMessage(t("msg.iconImported", {n: added}));
             host.render();
-        } catch (error) { showMessage(t("msg.iconImportFail", {error: String(error instanceof Error ? error.message : error)})); }
+        } catch (error) {
+            if (!isCurrentSession()) return;
+            showMessage(t("msg.iconImportFail", {error: String(error instanceof Error ? error.message : error)}));
+        }
     });
     let previousKind = getKind();
     const bindUnitOptions = () => {
@@ -785,7 +805,9 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
     let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
     root.querySelector<HTMLInputElement>("input[name='name']")?.addEventListener("input", () => {
         if (inferenceTimer) clearTimeout(inferenceTimer);
-        inferenceTimer = setTimeout(renderNameInference, 250);
+        inferenceTimer = setTimeout(() => {
+            if (isCurrentSession()) renderNameInference();
+        }, 250);
     });
     root.addEventListener("click", (event) => {
         const target = event.target instanceof HTMLElement ? event.target : null;
@@ -974,9 +996,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         const nextTemplates = deleteUserTemplate(host.userTemplates, id);
         const previousTemplates = host.userTemplates;
         void (host.persistUserTemplates ? host.persistUserTemplates(nextTemplates) : host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => { host.userTemplates = nextTemplates; })).then(() => {
-            showMessage(t("msg.templateDeleted"));
+            if (isCurrentSession()) showMessage(t("msg.templateDeleted"));
             host.render();
-        }).catch(() => { host.userTemplates = previousTemplates; showMessage(t("msg.templateDeleteFail")); });
+        }).catch(() => {
+            host.userTemplates = previousTemplates;
+            if (isCurrentSession()) showMessage(t("msg.templateDeleteFail"));
+        });
     }));
     /* T-1519 模板脱敏分享：勾选即时刷新预览（纯函数白名单脱敏，确定性序列化）；
        导出走宿主保存通道；不修改原模板。 */
@@ -1095,9 +1120,12 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         };
         const previousTemplates = host.userTemplates;
         const nextTemplates = upsertUserTemplate(previousTemplates, template);
-        void (host.persistUserTemplates ? host.persistUserTemplates(nextTemplates) : host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => { host.userTemplates = nextTemplates; })).then(() => { showMessage(t("msg.templateSaved")); host.render(); }).catch(() => {
+        void (host.persistUserTemplates ? host.persistUserTemplates(nextTemplates) : host.saveData(USER_TEMPLATES_NAME, nextTemplates).then(() => { host.userTemplates = nextTemplates; })).then(() => {
+            if (isCurrentSession()) showMessage(t("msg.templateSaved"));
+            host.render();
+        }).catch(() => {
             host.userTemplates = previousTemplates;
-            showMessage(t("msg.templateSaveFail"));
+            if (isCurrentSession()) showMessage(t("msg.templateSaveFail"));
         });
     });
     const updateAdvancedSummary = () => {

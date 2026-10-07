@@ -18,7 +18,7 @@ function loadTs(filename) {
     return loaded.exports;
 }
 
-const {normalizeAttachmentDataUrl, normalizeStore, normalizeItem, createStoreSnapshotEnvelope, readStoreSnapshot} = loadTs(path.join(sourceRoot, "model.ts"));
+const {normalizeAttachmentDataUrl, normalizeStore, normalizeItem, getActiveItemById, createStoreSnapshotEnvelope, readStoreSnapshot} = loadTs(path.join(sourceRoot, "model.ts"));
 const {makeEventValue} = loadTs(path.join(sourceRoot, "model-helpers.ts"));
 const {parseJsonBackup, serializeCsv, parseCheckinCsv} = loadTs(path.join(sourceRoot, "export.ts"));
 const {t: translate, setPluginLanguage} = loadTs(path.join(sourceRoot, "i18n.ts"));
@@ -79,16 +79,16 @@ assert.ok(attachmentStatement, "the production FileReader attachment binding mus
 const compiled = ts.transpileModule(attachmentStatement.getText(bindingFile), {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
-const wireAttachment = new Function("element", "host", "itemId", "root", "FileReader", "normalizeAttachmentDataUrl", "showMessage", "t", compiled);
+const wireAttachment = new Function("element", "host", "itemId", "root", "FileReader", "normalizeAttachmentDataUrl", "showMessage", "t", "isCurrentSurface", "getActiveItemById", "CSS", compiled);
 setPluginLanguage("en-US");
-for (const scenario of ["valid", "invalid", "read-failed", "oversized"]) {
+for (const scenario of ["valid", "invalid", "read-failed", "oversized", "stale"]) {
     let listener;
     let reader;
     let marked = false;
     const messages = [];
-    const input = {value: "selected-photo", files: [{size: scenario === "oversized" ? 500 * 1024 + 1 : 20}]};
+    const input = {isConnected: true, value: "selected-photo", files: [{size: scenario === "oversized" ? 500 * 1024 + 1 : 20}]};
     const button = {classList: {add(name) { assert.equal(name, "has-photo"); marked = true; }}, dataset: {}};
-    const element = {querySelector(selector) {
+    const element = {isConnected: true, querySelector(selector) {
         if (selector === "[data-attach-file]") return {addEventListener(event, callback) { assert.equal(event, "change"); listener = callback; }};
         assert.equal(selector, "[data-attach-button]");
         return button;
@@ -97,8 +97,9 @@ for (const scenario of ["valid", "invalid", "read-failed", "oversized"]) {
         constructor() { reader = this; }
         readAsDataURL(file) { assert.equal(file, input.files[0]); }
     }
-    const host = {pendingAttachments: new Map(), todayStateForRoot() { return this; }};
-    wireAttachment(element, host, item.id, {}, ReaderMock, normalizeAttachmentDataUrl, (message) => messages.push(message), translate);
+    const host = {store: {items: [item], events: []}, pendingAttachments: new Map(), todayStateForRoot() { return this; }};
+    const root = {isConnected: true, querySelector(selector) { return selector === `[data-item-id="${item.id}"]` ? element : null; }, contains(target) { return target === element || target === input; }};
+    wireAttachment(element, host, item.id, root, ReaderMock, normalizeAttachmentDataUrl, (message) => messages.push(message), translate, () => scenario !== "stale", getActiveItemById, {escape(value) { return value; }});
     listener({currentTarget: input});
     if (scenario === "oversized") {
         assert.equal(reader, undefined);
@@ -106,6 +107,10 @@ for (const scenario of ["valid", "invalid", "read-failed", "oversized"]) {
     } else if (scenario === "read-failed") {
         reader.onerror();
         assert.deepEqual(messages, [translate("editor.errImageRead")]);
+    } else if (scenario === "stale") {
+        reader.result = validAttachment;
+        reader.onload();
+        assert.deepEqual(messages, [], "a detached Today surface cannot receive a late attachment message");
     } else {
         reader.result = scenario === "valid" ? validAttachment : 'data:image/png;base64,AAAA" onerror="alert(1)';
         reader.onload();
@@ -113,6 +118,6 @@ for (const scenario of ["valid", "invalid", "read-failed", "oversized"]) {
     }
     assert.equal(marked, scenario === "valid", "invalid reads cannot show a successful attachment affordance");
     assert.equal(host.pendingAttachments.get(item.id), scenario === "valid" ? validAttachment : undefined);
-    if (scenario !== "valid") assert.equal(input.value, "");
+    if (scenario !== "valid" && scenario !== "stale") assert.equal(input.value, "");
 }
 console.log("Attachment ingestion checks passed: raster MIME/base64/size boundary, facts retained, JSON/snapshot/CSV paths and FileReader validation.");

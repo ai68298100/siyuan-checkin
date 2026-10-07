@@ -143,7 +143,7 @@ async function bootHost({browser, projectRoot, dark, frontend = "desktop", width
                         name = "";
                     }
                     if (!name) {
-                        problems.push({kind: "missing-name", tag, surface: surfaceName, detail: `${tag}.${el.className && typeof el.className === "string" ? el.className.split(" ")[0] : ""}`});
+                        problems.push({kind: "missing-name", tag, surface: surfaceName, detail: `${tag}.${el.className && typeof el.className === "string" ? el.className.split(" ")[0] : ""} ${el.outerHTML.slice(0, 180)}`});
                     }
                 }
                 /* 2. 正向 tabindex。 */

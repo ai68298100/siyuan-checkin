@@ -153,6 +153,7 @@ export function openTabPageFor(host: NavigationHost): void {
             host.tabInstance = tab;
         }
     }).catch((error) => {
+        if (host.disposed || host.disposing) return;
         showMessage(t("msg.openTabFail", {error: String(error)}));
         host.openQuickDialog();
     }).finally(() => {

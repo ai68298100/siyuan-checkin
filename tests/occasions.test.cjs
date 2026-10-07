@@ -342,7 +342,7 @@ assert.match(bindSource, /saveOccasionOverride/, "reschedules go through the hos
 assert.match(bindSource, /writeState\(\{occurrenceMoves:/, "reschedule open/date changes write the owning root session");
 assert.match(bindSource, /renderRoot\(\);[\s\S]*data-occasion-move-date/, "reschedule toggle redraws only the owning root and restores focus");
 const indexSource2 = fs.readFileSync("src/index.ts", "utf8");
-assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string\): void/, "host implements the override persistence wrapper");
+assert.match(indexSource2, /private saveOccasionOverride\(id: string, originalDate: string, newDate: string, root\?: HTMLElement\): void/, "host implements the override persistence wrapper");
 assert.match(indexSource2, /setOccasionOverride\(previous, id, originalDate, newDate\)/, "host delegates to the pure override writer");
 for (const key of ["occ.lateHint", "occ.lateComplete", "occ.moveOccurrence", "occ.moveConfirm", "occ.moveDone", "occ.moveInvalid"]) {
     assert.equal(fs.readFileSync("src/i18n.ts", "utf8").split(`"${key}"`).length - 1, 2, `${key} must exist in both zh and en`);

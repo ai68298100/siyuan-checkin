@@ -173,6 +173,11 @@ function pinReviewSubnavRail(root: HTMLElement, host: BindPageNavigationHost): (
 
 export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavigationHost): void {
     const pageForRoot = () => host.pageForRoot ? host.pageForRoot(root) : host.currentPage;
+    /* 页面绑定可能在异步操作完成前被导航或卸载。捕获绑定时页面，
+       让回调只写回仍连接且仍停留在同一页的 surface；宿主数据 mutation
+       仍由 enqueueMutation 完成，避免把界面生命周期守门误当成数据回滚。 */
+    const boundPage = pageForRoot();
+    const isCurrentSurface = () => root.isConnected && !host.disposed && !host.disposing && pageForRoot() === boundPage;
     const reviewState = host.reviewStateForRoot?.(root);
     const insightsState = host.insightsStateForRoot?.(root);
     const insightValue = <K extends keyof InsightsRootContext>(key: K, fallback: InsightsRootContext[K]): InsightsRootContext[K] => insightsState ? insightsState[key] : fallback;
@@ -288,6 +293,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     /* 逾期历史一键补记（T-101）：把该次逾期标记为已完成，历史随之消掉。
        补记成功弹 6 秒可撤销提示条（T-110），撤销即回滚该次标记。 */
     const showCatchUpToast = (name: string, occasionId: string, date: string) => {
+        if (!isCurrentSurface()) return;
         const surface = root.querySelector<HTMLElement>(".lc-checkin");
         if (!surface) return;
         surface.querySelector(".lc-checkin__catchup-toast")?.remove();
@@ -302,7 +308,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         undoButton.addEventListener("click", () => { toast.remove(); void host.enqueueMutation(() => host.setOccasionCompleted(occasionId, date, false)); });
         toast.append(label, undoButton);
         surface.appendChild(toast);
-        window.setTimeout(() => toast.remove(), 6000);
+        window.setTimeout(() => { if (toast.isConnected) toast.remove(); }, 6000);
     };
     root.querySelectorAll<HTMLButtonElement>("[data-occasion-complete]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionId || "";
@@ -311,8 +317,10 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.disabled = true;
         const name = button.closest<HTMLElement>("[data-overdue-occasion]")?.querySelector("strong")?.textContent || "";
         void host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, true)).then((ok) => {
-            if (ok) showCatchUpToast(name, id, occurrenceDate);
-        }).finally(() => { button.disabled = false; });
+            if (ok && isCurrentSurface()) showCatchUpToast(name, id, occurrenceDate);
+        }).finally(() => {
+            if (isCurrentSurface() && button.isConnected) button.disabled = false;
+        });
     }));
     root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
         const itemId = (event.currentTarget as HTMLSelectElement).value;
@@ -568,9 +576,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]")?.value || "";
         const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]")?.value || "";
         void host.saveWeeklyReviewDraft?.(weekKey, friction, adjustment).then(() => {
+            if (!isCurrentSurface()) return;
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklySaved");
         }).catch(() => {
+            if (!isCurrentSurface()) return;
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklySaveFail");
         });
@@ -607,11 +617,13 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             });
             try {
                 await navigator.clipboard.writeText(prompt);
+                if (!isCurrentSurface()) return;
                 showMessage(t("review.aiCopied"));
             } catch {
+                if (!isCurrentSurface()) return;
                 showMessage(t("msg.clipboardFail"));
             }
-            if (button.isConnected) {
+            if (isCurrentSurface() && button.isConnected) {
                 button.removeAttribute("aria-busy");
             }
         })();
@@ -621,6 +633,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const weekKey = container?.dataset.weeklyKey || "";
         if (!weekKey) return;
         void host.clearWeeklyReviewDraft?.(weekKey).then(() => {
+            if (!isCurrentSurface()) return;
             const friction = root.querySelector<HTMLTextAreaElement>("[data-weekly-friction]");
             const adjustment = root.querySelector<HTMLTextAreaElement>("[data-weekly-adjustment]");
             if (friction) friction.value = "";
@@ -628,6 +641,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = "";
         }).catch(() => {
+            if (!isCurrentSurface()) return;
             const status = root.querySelector<HTMLElement>("[data-weekly-status]");
             if (status) status.textContent = t("review.weeklyClearFail");
         });
@@ -823,6 +837,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.setAttribute("aria-busy", "true");
         root.querySelectorAll<HTMLButtonElement>("[data-history-batch-action]").forEach((control) => { control.disabled = true; });
         const count = await host.recordHistoryBatch(reviewValue("selectedHistoryDate", host.selectedHistoryDate), ids, action, root);
+        if (!isCurrentSurface()) return;
         showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
         renderReviewPage("[data-history-batch-item]");
     }));
@@ -859,6 +874,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.dataset.busy = "true";
         button.setAttribute("aria-busy", "true");
         const count = await host.recordHistoryBatchEntries?.(reviewValue("selectedHistoryDate", host.selectedHistoryDate), entries, root);
+        if (!isCurrentSurface()) return;
         showMessage(count ? t("review.batchDone", {n: count}) : t("review.batchNoop"));
         if (!count) {
             button.dataset.busy = "false";
@@ -885,11 +901,15 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             const next = removeEvents(host.store, [event], moment.occurredAt);
             if (next === host.store) return;
             host.store = next;
-            try { await host.persist(); } catch { host.store = previous; showMessage(t("msg.undoFail")); return; }
+            try { await host.persist(); } catch {
+                host.store = previous;
+                if (isCurrentSurface()) showMessage(t("msg.undoFail"));
+                return;
+            }
             if (reviewValue("editingHistoryNoteId", host.editingHistoryNoteId) === event.id) writeReviewValue("editingHistoryNoteId", undefined);
             host.invalidateSummary();
             host.broadcast({type: "event-deleted", item: getItemById(host.store, event.itemId), deletedEvents: [event]});
-            const restoreFocus = recordActionStillFocused(surface, button);
+            const restoreFocus = isCurrentSurface() && recordActionStillFocused(surface, button);
             host.renderBackgroundUpdate();
             if (restoreFocus) restoreRecordActionFocus(nextFocusId);
         });
@@ -952,10 +972,14 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
                 return;
             }
             host.store = next;
-            try { await host.persist(); } catch { host.store = previous; showMessage(t("msg.noteSaveFail")); return; }
+            try { await host.persist(); } catch {
+                host.store = previous;
+                if (isCurrentSurface()) showMessage(t("msg.noteSaveFail"));
+                return;
+            }
             host.invalidateSummary();
             if (reviewValue("editingHistoryNoteId", host.editingHistoryNoteId) === event.id) writeReviewValue("editingHistoryNoteId", undefined);
-            const restoreFocus = recordActionStillFocused(surface, button, input);
+            const restoreFocus = isCurrentSurface() && recordActionStillFocused(surface, button, input);
             host.renderBackgroundUpdate();
             if (restoreFocus) restoreRecordActionFocus(event.id);
         });
@@ -966,7 +990,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (archivedSearchTimer !== undefined) window.clearTimeout(archivedSearchTimer);
         const value = archivedSearch.value;
         archivedSearchTimer = window.setTimeout(() => {
-            if (host.disposed || host.disposing || pageForRoot() !== "archived") return;
+            if (!isCurrentSurface()) return;
             writeArchivedQuery(value);
             host.render(root);
             const nextSearch = root.querySelector<HTMLInputElement>("[data-archived-search]");
@@ -1004,6 +1028,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         boundary.setAttribute("aria-busy", "true");
         Promise.resolve().then(operation).catch(() => undefined).finally(() => {
             archivedBusy.delete(boundary);
+            if (!isCurrentSurface()) return;
             boundary.removeAttribute("aria-busy");
             if (!button.isConnected) {
                 const candidates = action ? [...root.querySelectorAll<HTMLButtonElement>(`[data-action="${action}"]`)] : [];
@@ -1122,11 +1147,11 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     const suggestionBusyButtons = new WeakSet<HTMLElement>();
     const finishSuggestionButton = (button: HTMLElement) => {
         suggestionBusyButtons.delete(button);
-        if (button.isConnected) {
+        if (isCurrentSurface() && button.isConnected) {
             button.removeAttribute("aria-busy");
             button.removeAttribute("disabled");
         }
-        root.querySelector<HTMLElement>("[data-suggestion-workflow] [data-suggestion-undo]:not([disabled])")?.focus();
+        if (isCurrentSurface()) root.querySelector<HTMLElement>("[data-suggestion-workflow] [data-suggestion-undo]:not([disabled])")?.focus();
     };
     root.querySelectorAll<HTMLElement>("[data-suggestion-decision]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -1262,7 +1287,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         button.setAttribute("disabled", "true");
         Promise.resolve().then(operation).catch(() => undefined).finally(() => {
             reviewBusy.delete(button);
-            if (!button.isConnected) return;
+            if (!isCurrentSurface() || !button.isConnected) return;
             button.removeAttribute("aria-busy");
             button.removeAttribute("disabled");
             if (restoreFocus() && (!preservePromptFocus || root.ownerDocument.activeElement !== root.querySelector("[data-review-assistant-prompt]"))) button.focus();
@@ -1292,8 +1317,12 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const button = event.currentTarget as HTMLElement;
         runReviewTool(button, async () => {
             const markdown = buildCurrentReport();
-            try { await navigator.clipboard.writeText(markdown); showMessage(t("msg.reportCopied")); }
-            catch { showMessage(t("msg.clipboardFail")); }
+            try {
+                await navigator.clipboard.writeText(markdown);
+                if (isCurrentSurface()) showMessage(t("msg.reportCopied"));
+            } catch {
+                if (isCurrentSurface()) showMessage(t("msg.clipboardFail"));
+            }
         });
     });
     for (const action of ["copy-review-prompt", "copy-open-review-agent"]) root.querySelector<HTMLElement>(`[data-action='${action}']`)?.addEventListener("click", (event) => {

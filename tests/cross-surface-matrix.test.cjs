@@ -56,7 +56,7 @@ assert.match(source, /archivedQueryForRoot/); assert.match(source, /setArchivedQ
 assert.match(source, /this\.renderArchived\(root\)/); assert.match(source, /this\.renderToday\(root\)/);
 assert.match(todayBinding, /host\.setTodayQueryForRoot/); assert.match(todayBinding, /host\.render\(root\)/);
 assert.match(todayBinding, /host\.focusTodaySearch\(value\.length, root\)/);
-assert.match(pageNavigationBinding, /host\.setArchivedQueryForRoot/); assert.match(pageNavigationBinding, /pageForRoot\(\) !== "archived"/);
+assert.match(pageNavigationBinding, /host\.setArchivedQueryForRoot/); assert.match(pageNavigationBinding, /const isCurrentSurface = \(\) => root\.isConnected && !host\.disposed && !host\.disposing && pageForRoot\(\) === boundPage/);
 assert.match(pageNavigationBinding, /host\.render\(root\)/);
 assert.match(pluginOps, /const roots = root \? \[root\]/);
 console.log("Cross-surface 12.1 matrix checks passed.");

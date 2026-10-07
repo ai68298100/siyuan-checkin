@@ -115,7 +115,7 @@ assert.ok(deleteStatement, "the live editor must wire template deletion");
 const compiledDeletion = ts.transpileModule(deleteStatement.getText(bindingFile), {
     compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS},
 }).outputText;
-const wireDeletion = new Function("root", "host", "window", "t", "deleteUserTemplate", "showMessage", "USER_TEMPLATES_NAME", compiledDeletion);
+const wireDeletion = new Function("root", "host", "window", "t", "deleteUserTemplate", "showMessage", "USER_TEMPLATES_NAME", "isCurrentSession", compiledDeletion);
 const saveStatement = bindingFunction.body.statements.find((statement) => ts.isExpressionStatement(statement)
     && statement.getText(bindingFile).startsWith('root.querySelector<HTMLButtonElement>("[data-action=\'save-template\']")'));
 assert.ok(saveStatement, "the live editor must wire template saving");
@@ -152,7 +152,7 @@ async function verifyDeleteBinding() {
         };
         const surface = {querySelectorAll(selector) { assert.equal(selector, "[data-user-template-delete]"); return [button]; }};
         const windowMock = {confirm(message) { confirmations.push(message); return scenario !== "cancel"; }};
-        wireDeletion(surface, host, windowMock, translate, deleteUserTemplate, (message) => messages.push(message), "templates");
+        wireDeletion(surface, host, windowMock, translate, deleteUserTemplate, (message) => messages.push(message), "templates", () => true);
         listener();
         assert.equal(host.userTemplates, store, "the collection cannot change before persistence settles");
         if (scenario === "cancel" || scenario === "missing") {

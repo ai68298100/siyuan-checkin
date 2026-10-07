@@ -87,10 +87,11 @@ import {renderReviewView} from "./render/review";
 import {renderCheckinBlocksIn, observeCheckinBlocks} from "./render/block-renderer";
 import {buildArchivedItemDetails, buildArchivedItemSummaries, renderArchivedView} from "./render/archived";
 import {deserializeReminderUserActions, mergeReminderUserActions, normalizeReminderUserActions, projectReminderCenter, serializeReminderUserActions, type ReminderFilter, type ReminderUserAction} from "./reminders";
-import {maybeSendDailyReminderFor, refreshReminderDeliveryStateFor, stopReminderDeliveryFor, syncPriorityReminderAnnouncementFor, type ReminderDeliveryHost} from "./render/reminder-delivery";
+import {ensureReminderNoticePlacementFor, maybeSendDailyReminderFor, refreshReminderDeliveryStateFor, stopReminderDeliveryFor, syncPriorityReminderAnnouncementFor, type ReminderDeliveryHost} from "./render/reminder-delivery";
 import "./ui/reminder-delivery.scss";
+import "./ui/polish.scss";
 import {renderOccasionsView} from "./render/occasions";
-import {captureOccasionDraftFor, createOccasionsRootContext, restoreOccasionDraftFor, type OccasionsRootContext} from "./render/occasion-session";
+import {captureOccasionDraftFor, createOccasionsRootContext, isOccasionsRootOpen, restoreOccasionDraftFor, type OccasionsRootContext} from "./render/occasion-session";
 import {renderSettingsView} from "./render/settings";
 import {bindSettingsNavigationFor} from "./render/settings-navigation";
 import {openAvatarEditor} from "./render/avatar-editor";
@@ -596,8 +597,9 @@ export default class CheckinPlugin extends Plugin {
             onJumpDate: (date: string) => this.jumpToHistoryDate(date),
             /* T-1351：汇总行 → 项目洞察；锚点行 → 打开锚点文档（内核 rootID，经 openTab）。 */
             onJumpItem: (itemId: string) => this.jumpToItemInsights(itemId),
-            onJumpItemAnchor: (blockId: string) => void this.jumpToItemAnchorDoc(blockId),
+            onJumpItemAnchor: (blockId: string, isSourceCurrent?: () => boolean) => void this.jumpToItemAnchorDoc(blockId, isSourceCurrent),
             onBlockTodayRecord: (itemId: string, amount?: number) => void this.recordBlockToday(itemId, amount),
+            isActive: () => !this.disposed && !this.disposing && this.acceptingOperations,
             getAnchorIndex: () => new Map(this.anchorDocCache),
             resolveAnchorDocs: (blockIds: string[]) => this.resolveAnchorDocsForRender(blockIds),
         };
@@ -1681,10 +1683,19 @@ export default class CheckinPlugin extends Plugin {
         await this.enqueueMutation(() => this.recordEvent(item, value, moment, fingerprint));
     }
 
-    private async jumpToItemAnchorDoc(blockId: string) {
+    private async jumpToItemAnchorDoc(blockId: string, isSourceCurrent: () => boolean = () => true) {
+        if (!blockId || this.disposed || this.disposing || !this.acceptingOperations || !isSourceCurrent()) return;
+        const requestId = ++this.anchorJumpRequestId;
         const item = this.store.items.find((candidate) => candidate.noteAnchor?.blockId === blockId && !candidate.archived);
+        if (!item) return;
+        const isCurrent = () => !this.disposed && !this.disposing && this.acceptingOperations &&
+            requestId === this.anchorJumpRequestId && isSourceCurrent();
         let doc = "";
         const fresh = await resolveAnchorBlock((url, payload) => this.kernelPost(url, payload), blockId);
+        /* 导航/卸载期间请求可能完成；只允许当前来源与最新请求继续提交结果。 */
+        if (!isCurrent()) return;
+        const currentItem = getActiveItemById(this.store, item.id);
+        if (!currentItem || currentItem.noteAnchor?.blockId !== blockId) return;
         if (fresh.ok && fresh.rootID) {
             doc = fresh.rootID;
             if (fresh.notebook) this.anchorDocCache.set(blockId, {doc: fresh.rootID, notebook: fresh.notebook});
@@ -1695,27 +1706,33 @@ export default class CheckinPlugin extends Plugin {
             this.anchorDocAttempted.delete(blockId);
         }
         if (!doc) {
-            if (item) showMessage(t("msg.anchorUnreachable"));
-            if (item) this.jumpToItemInsights(item.id);
+            if (!isCurrent()) return;
+            showMessage(t("msg.anchorUnreachable"));
+            this.jumpToItemInsights(currentItem.id);
             return;
         }
+        if (!isCurrent()) return;
         try {
             await openTab({app: this.app, doc: {id: doc}});
         } catch {
-            if (item) this.jumpToItemInsights(item.id);
+            if (isCurrent() && getActiveItemById(this.store, currentItem.id)?.noteAnchor?.blockId === blockId) this.jumpToItemInsights(currentItem.id);
         }
     }
 
     /* T-1292:锚点归属索引(内核 getBlockInfo 解析,会话内缓存;缺失按未命中处理)。 */
     private anchorDocCache = new Map<string, {doc: string; notebook: string}>();
     private anchorDocAttempted = new Set<string>();
+    private anchorJumpRequestId = 0;
 
     private async resolveAnchorDocsForRender(blockIds: string[]): Promise<void> {
+        const isActive = () => !this.disposed && !this.disposing && this.acceptingOperations;
         for (const blockId of blockIds.slice(0, 200)) {
+            if (!isActive()) return;
             if (this.anchorDocAttempted.has(blockId)) continue;
             this.anchorDocAttempted.add(blockId);
             try {
                 const response = await fetchSyncPost("/api/block/getBlockInfo", {id: blockId});
+                if (!isActive()) return;
                 /* 内核 getBlockInfo 的字段是驼峰 rootID(实测 3.8.4),不是 root_id。 */
                 if (response?.code === 0 && response.data?.rootID && response.data?.box) {
                     this.anchorDocCache.set(blockId, {doc: String(response.data.rootID), notebook: String(response.data.box)});
@@ -2412,6 +2429,7 @@ this.scheduleMidnightRefresh();
     }
 
     async onunload() {
+        this.anchorJumpRequestId += 1;
         this.journalDrafts.clear();
         this.settingsDrafts.clear();
         this.closeAvatarEditor?.();
@@ -2887,7 +2905,9 @@ this.scheduleMidnightRefresh();
                 if (!cleanupPersisted) {
                     /* 主记录已成功,收件箱删除失败:保留待处理,恢复后以 duplicate 收尾不再新增。 */
                     this.dockTomatoInbox = upsertInboxEntry(this.dockTomatoInbox, {...entry, state: "pending", attempts: 0, nextAttemptAt: undefined, lastError: "inbox-cleanup-pending", updatedAt: new Date().toISOString()}, new Date().toISOString()).store;
-                    void this.persistDockTomatoInbox();
+                    /* 仍在 enqueueMutation 的存储锁内：等待补写完成，避免锁释放后
+                       旧窗口的 fire-and-forget 写入覆盖另一窗口刚提交的收件箱状态。 */
+                    await this.persistDockTomatoInbox();
                 }
             } else if (result.kind === "retry") {
                 this.dockTomatoInbox = markInboxRetry(this.dockTomatoInbox, entry.identity, result.reason, new Date().toISOString());
@@ -2977,8 +2997,14 @@ this.scheduleMidnightRefresh();
             await this.mergeDockTomatoInboxFromRemoteUnlocked();
             const next = removeInboxEntry(this.dockTomatoInbox, identity);
             if (next === this.dockTomatoInbox) return false;
+            const previous = this.dockTomatoInbox;
             this.dockTomatoInbox = next;
             const persisted = await this.persistDockTomatoInbox();
+            if (!persisted) {
+                /* 删除是显式用户动作；落盘失败时保留内存条目，避免 UI
+                   短暂显示已丢弃而下一次同步又把它复活。 */
+                this.dockTomatoInbox = previous;
+            }
             this.scheduleDockTomatoInboxWake();
             return persisted;
         });
@@ -3127,12 +3153,19 @@ this.scheduleMidnightRefresh();
     private async discardExternalPendingEntry(id: string): Promise<boolean> {
         return this.withStorageLock(async () => {
             await this.mergeExternalPendingFromRemoteUnlocked();
+            const previous = this.externalPendingBox;
             const next = removeExternalPendingEntry(this.externalPendingBox, id, new Date().toISOString());
             if (next === this.externalPendingBox) return false;
             this.externalPendingBox = next;
             await this.persistExternalPendingBox();
-            showMessage(t("set.externalPendingDiscarded"));
-            return this.externalPendingSaveFailed === false;
+            const saveFailed = this.externalPendingSaveFailed;
+            if (saveFailed) {
+                /* 显式丢弃必须是 durable 才算成功；保存失败时恢复内存，
+                   否则重试/恢复前 UI 会错误地隐藏仍在磁盘中的记录。 */
+                this.externalPendingBox = previous;
+            }
+            showMessage(t(saveFailed ? "set.externalPendingSaveFailed" : "set.externalPendingDiscarded"));
+            return !saveFailed;
         });
     }
 
@@ -3623,7 +3656,7 @@ this.scheduleMidnightRefresh();
 
     private roots(): HTMLElement[] {
         return [this.dockElement, this.tabElement, this.quickDialogElement]
-            .filter((root, index, all): root is HTMLElement => Boolean(root) && all.indexOf(root) === index);
+            .filter((root, index, all): root is HTMLElement => root !== undefined && root.isConnected && all.indexOf(root) === index);
     }
 
     private ensureRootContext(root: HTMLElement): RootContext {
@@ -4209,7 +4242,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
            导航与用户动作等显式渲染，挂起会造成「焦点在旧输入框 → 渲染被吞 → 焦点
            永不释放」的死锁（T-1455 宽度走查发现的回归）。 */
         const roots = root
-            ? (this.rootContexts.has(root) ? [root] : [])
+            ? (this.rootContexts.has(root) && root.isConnected ? [root] : [])
             : this.roots().filter((surface) => this.rootContexts.has(surface));
         const compatibilityRoot = root || (this.activeRoot && roots.includes(this.activeRoot) ? this.activeRoot : roots[0]);
         if (compatibilityRoot) {
@@ -4225,6 +4258,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
 
     private renderInto(root: HTMLElement, reviewAnalyticsSnapshot?: AnalyticsSnapshot) {
         if (!this.rootContexts.has(root)) return;
+        if (!root.isConnected) return;
         this.setActiveRoot(root);
         const page = this.pageForRoot(root);
         const context = this.ensureRootContext(root);
@@ -4320,6 +4354,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         if (!root.querySelector(".lc-checkin__mobile-nav")) {
             root.insertAdjacentHTML("beforeend", this.renderMobileNav());
         }
+        /* 页面重绘会替换滚动区；移动端提醒属于宿主流内横幅，重绘后把同一节点
+           放回当前表面，避免通知被 innerHTML 清掉或退回固定浮层。 */
+        ensureReminderNoticePlacementFor(this as unknown as ReminderDeliveryHost, root);
         /* Transient check-in feedback belongs to the plugin window, not the
            scrolling Today document. Hoist it so absolute positioning is
            bounded by the dialog, tab, or dock host on every frontend. */
@@ -4432,7 +4469,12 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (action === "edit") { setDirectIcon(node, "edit"); return; }
             if (action === "focus" && !node.classList.contains("lc-checkin__focus-primary")) { setDirectIcon(node, "timer"); return; }
             if (action === "toggle-exact" && !node.classList.contains("lc-checkin__entry-trigger")) { setDirectIcon(node, "more"); return; }
-            if (action === "new-occasion") { setDirectIcon(node, "add"); return; }
+            if (action === "new-occasion") {
+                if (!node.hasAttribute("aria-label")) node.setAttribute("aria-label", t("occ.newAria"));
+                if (!node.hasAttribute("title")) node.setAttribute("title", t("occ.newAria"));
+                setDirectIcon(node, "add");
+                return;
+            }
             setDirectIcon(node, "calendar");
         });
     }
@@ -8035,7 +8077,12 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         this.lastPersistedSuggestionWorkflow = payload;
     }
 
-    private async persistOccasions(store: OccasionStore = this.occasionStore): Promise<void> {
+    private async persistOccasions(root?: HTMLElement): Promise<void>;
+    private async persistOccasions(store: OccasionStore, root?: HTMLElement): Promise<void>;
+    private async persistOccasions(storeOrRoot: OccasionStore | HTMLElement = this.occasionStore, uiRoot?: HTMLElement): Promise<void> {
+        const isRoot = typeof HTMLElement !== "undefined" && storeOrRoot instanceof HTMLElement;
+        const store: OccasionStore = isRoot ? this.occasionStore : storeOrRoot as OccasionStore;
+        const surfaceRoot: HTMLElement | undefined = isRoot ? storeOrRoot as HTMLElement : uiRoot;
         if (this.disposed || !this.storageReady) return Promise.reject(new Error("数据存储尚未就绪"));
         /* T-1622：写前重读合并——共享 id 的完成日期取双方并集，删除墓碑优先，
            远端新建事项可被采用；远端读取失败按本地写入。 */
@@ -8053,7 +8100,9 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             ...(merged.tombstones?.length ? {tombstones: merged.tombstones.map((tombstone) => ({...tombstone}))} : {}),
         };
         const write = this.saveQueue.catch(() => undefined).then(() => this.saveData(OCCASIONS_STORAGE_NAME, snapshot).then(() => undefined));
-        this.saveQueue = write.catch((error) => showMessage(t("msg.occasionPersistFail", {error: String(error)})));
+        this.saveQueue = write.catch((error) => {
+            if (!surfaceRoot || this.isCurrentOccasionSurface(surfaceRoot)) showMessage(t("msg.occasionPersistFail", {error: String(error)}));
+        });
         return write;
     }
 
@@ -8215,7 +8264,14 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     /* 6.0 P3 occasion → checkin linkage: generate a one-shot binary item that is
        only visible on the occasion's next occurrence date; completing it (or the
        manual "处理" action) resolves the occasion for that date. */
-    private async createOccasionLinkedItem(occasionId: string): Promise<boolean> {
+    private isCurrentOccasionSurface(root?: HTMLElement): boolean {
+        if (root) return isOccasionsRootOpen(this as unknown as {isSurfaceRoot?(root: HTMLElement, page?: string): boolean; pageForRoot?(root: HTMLElement): string; disposed?: boolean; disposing?: boolean; acceptingOperations?: boolean}, root);
+        /* 无 root 的 API/Agent 入口没有可归属的页面，沿用旧的全局提示兼容路径；
+           只在宿主已进入销毁阶段时抑制迟到反馈。 */
+        return !this.disposed && !this.disposing;
+    }
+
+    private async createOccasionLinkedItem(occasionId: string, root?: HTMLElement): Promise<boolean> {
         const occasion = this.occasionStore.occasions.find((candidate) => candidate.id === occasionId);
         if (!occasion) return false;
         const today = dateKey(currentCalendarDate());
@@ -8223,9 +8279,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         if (!isValidLocalDateInput(occurrence)) return false;
         /* T-1593：重复拦截前置 + 转打卡预览确认（项目/排期/遮蔽先告知），取消零写入。 */
         if (this.store.items.some((candidate) => candidate.linkedOccasionId === occasion.id && !candidate.archived)) {
-            showMessage(t("msg.alreadyGenerated"));
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.alreadyGenerated"));
             return false;
         }
+        /* 需要用户确认的动作不能从已切走/卸载的旧事项页重新弹确认框。 */
+        if (root && !this.isCurrentOccasionSurface(root)) return false;
         if (!window.confirm(t("msg.occasionToItemConfirm", {name: occasion.name, date: occurrence}))) return false;
         const dayAfter = dateKey(new Date(calendarDateFromKey(occurrence).getFullYear(), calendarDateFromKey(occurrence).getMonth(), calendarDateFromKey(occurrence).getDate() + 1));
         const now = new Date().toISOString();
@@ -8243,17 +8301,17 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             archivePeriods: [{startDate: "0000-01-01", endDate: occurrence}, {startDate: dayAfter}],
             linkedOccasionId: occasion.id,
         });
-        if (!created) { showMessage(t("msg.createFail")); return false; }
+        if (!created) { if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.createFail")); return false; }
         const previous = this.store;
         this.store = {...this.store, items: [...this.store.items, created]};
         try {
             await this.persist();
         } catch {
             this.store = previous;
-            showMessage(t("msg.createCheckinFail"));
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.createCheckinFail"));
             return false;
         }
-        showMessage(t("msg.checkinCreated", {name: occasion.name}));
+        if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.checkinCreated", {name: occasion.name}));
         return true;
     }
 
@@ -8284,15 +8342,15 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             enabled: existing?.enabled !== false, completedDates: existing?.completedDates || [], createdAt: existing?.createdAt, updatedAt: new Date().toISOString(),
         });
         if (!normalized) {
-            showMessage(t("msg.occasionInvalid"));
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionInvalid"));
             if (occasionState && root && this.isSurfaceRoot(root, "occasions")) { occasionState.submitting = false; this.render(root); }
             return;
         }
         const previous = this.occasionStore;
         this.occasionStore = upsertOccasion(previous, normalized);
-        try { await this.persistOccasions(); } catch {
+        try { await this.persistOccasions(this.occasionStore, root); } catch {
             this.occasionStore = previous;
-            showMessage(t("msg.occasionSaveFail"));
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionSaveFail"));
             if (occasionState && root && this.isSurfaceRoot(root, "occasions")) { occasionState.submitting = false; this.render(root); }
             return;
         }
@@ -8314,7 +8372,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         if (!normalized) return;
         const previous = this.occasionStore;
         this.occasionStore = {...previous, occasions: previous.occasions.map((candidate) => candidate.id === normalized.id ? normalized : candidate)};
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionUpdateFail")); return; }
+        try { await this.persistOccasions(this.occasionStore, root); } catch {
+            this.occasionStore = previous;
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionUpdateFail"));
+            return;
+        }
         if (root && this.isSurfaceRoot(root, "occasions")) this.render(root);
         else this.renderBackgroundUpdate();
     }
@@ -8359,33 +8421,37 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         });
     }
 
-    private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean> {
+    private async setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean, root?: HTMLElement): Promise<boolean> {
         const previous = this.occasionStore;
         const next = markOccasionCompleted(previous, id, occurrenceDate, completed);
         if (next === previous) return true;
         this.occasionStore = next;
-        try { await this.persistOccasions(); } catch { this.occasionStore = previous; showMessage(t("msg.occasionToggleFail")); return false; }
+        try { await this.persistOccasions(this.occasionStore, root); } catch {
+            this.occasionStore = previous;
+            if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionToggleFail"));
+            return false;
+        }
         this.renderBackgroundUpdate();
         return true;
     }
 
     /* T-1494：单次实例改期——写入 Occasion overrides（additive，键=原发生日期），
         持久化失败恢复旧 store；仅列表行显式「改期」入口可触发。 */
-    private saveOccasionOverride(id: string, originalDate: string, newDate: string): void {
+    private saveOccasionOverride(id: string, originalDate: string, newDate: string, root?: HTMLElement): void {
         void this.enqueueMutation(async () => {
             const previous = this.occasionStore;
             const next = setOccasionOverride(previous, id, originalDate, newDate);
             if (next === previous) {
-                showMessage(t("occ.moveInvalid"));
+                if (this.isCurrentOccasionSurface(root)) showMessage(t("occ.moveInvalid"));
                 return;
             }
             this.occasionStore = next;
             try {
-                await this.persistOccasions();
-                showMessage(t("occ.moveDone", {date: newDate}));
+                await this.persistOccasions(this.occasionStore, root);
+                if (this.isCurrentOccasionSurface(root)) showMessage(t("occ.moveDone", {date: newDate}));
             } catch {
                 this.occasionStore = previous;
-                showMessage(t("msg.occasionToggleFail"));
+                if (this.isCurrentOccasionSurface(root)) showMessage(t("msg.occasionToggleFail"));
             }
             this.renderBackgroundUpdate();
         });

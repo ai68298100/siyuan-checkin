@@ -56,7 +56,7 @@ const productionWorkflow = loadProduction("features/suggestion-workflow.ts");
 const productionSuggestions = loadProduction("agent-suggestions.ts");
 const sourceAst = ts.createSourceFile("index.ts", indexSource, ts.ScriptTarget.Latest, true);
 const pluginClass = sourceAst.statements.find(node => ts.isClassDeclaration(node));
-const hostMethods = ["enqueueMutation", "withStorageLock", "persist", "persistSuggestionWorkflow", "persistSuggestionWorkflowUnlocked", "persistViewPreferences", "handleSuggestionDecision", "undoSuggestionWorkflow", "recordBlockToday", "recordEvent", "openJournalEntry", "saveForm"];
+const hostMethods = ["enqueueMutation", "withStorageLock", "persist", "persistSuggestionWorkflow", "persistSuggestionWorkflowUnlocked", "persistViewPreferences", "rememberInitialSurfacePreferences", "handleSuggestionDecision", "undoSuggestionWorkflow", "recordBlockToday", "recordEvent", "openJournalEntry", "saveForm"];
 const compiledHost = ts.transpileModule(`class TransactionHost {${hostMethods.map(name => {
     const member = pluginClass.members.find(node => node.name?.getText(sourceAst) === name);
     assert.ok(member, `${name} must exist`);
@@ -103,6 +103,7 @@ function makeHost(initialStore = makeStore()) {
         acceptingOperations: true, initializationState: "ready", storageReady: true, disposed: false, disposing: false,
         saveQueue: Promise.resolve(), auxiliarySaveQueue: Promise.resolve(), mutationQueue: Promise.resolve(),
         teardownWrites: {shouldIntercept: () => false}, occasionStore: {version: 1, occasions: []}, auditEntries: [], saveState: "idle",
+        initialSurfacePreferences: {reviewFold: [], reviewFoldTouched: false, lastInsightsItemId: ""},
         journalDrafts: new Map(), journalPending: new Set(), journalIntegrationPref: {},
         cloneStore: structuredClone, itemFingerprint: modelHelpers.itemFingerprintValue,
         revisionFingerprint: modelHelpers.revisionFingerprintValue,
@@ -110,15 +111,16 @@ function makeHost(initialStore = makeStore()) {
         render: () => {}, renderBackgroundUpdate: () => {}, invalidateSummary: () => {}, broadcast: () => {},
         recordDiagnostic: () => {}, scheduleAuditPersist: () => {}, showSyncNotice: () => {},
         writebackNoteAnchor: () => Promise.resolve(), writeSummaryResidentForDate: () => Promise.resolve(),
-        setRecentRecord: () => {}, maybeAutoArchiveAfterRecord: () => {}, collectViewPreferences: () => ({appearance: "dark"}),
+        setRecentRecord: () => {}, maybeAutoArchiveAfterRecord: () => {}, collectViewPreferences: () => ({appearance: "dark", reviewFold: ["records"], reviewFoldTouched: true, lastInsightsItemId: "item"}),
         resolveJournalTemplateById: () => ({id: "daily", name: "Daily"}), listNotebooksForJournal: async () => [],
         resolveJournalTarget: async () => ({docId: "doc"}), kernelPost: async () => ({code: 0, data: []}),
         writeJournalEntry: async () => { journalWrites += 1; return {ok: true, docId: "doc", docName: "Daily"}; },
         advanceFirstSuccess: () => {}, suggestionNonce: () => `nonce-${eventSequence++}`,
-        failStoreSave: false,
+        failStoreSave: false, failViewPreferencesSave: false,
         loadData: async key => structuredClone(storage.get(key)),
         saveData: async (key, value) => {
             if (key === "checkin-store" && host.failStoreSave) throw new Error("injected store failure");
+            if (key === "checkin-view-preferences" && host.failViewPreferencesSave) throw new Error("injected preferences failure");
             storage.set(key, structuredClone(value));
         },
     });
@@ -184,6 +186,13 @@ async function verifyHostTransactions() {
     await Promise.resolve();
     release.resolve();
     await withinDeadline(Promise.all([mutation, preferenceWrite]));
+    assert.deepEqual(queueHost.initialSurfacePreferences, {reviewFold: ["records"], reviewFoldTouched: true, lastInsightsItemId: "item"},
+        "successful preference persistence must advance the new-surface baseline after the storage lock releases");
+    queueHost.failViewPreferencesSave = true;
+    await assert.rejects(queueHost.persistViewPreferences(), /injected preferences failure/);
+    assert.deepEqual(queueHost.initialSurfacePreferences, {reviewFold: ["records"], reviewFoldTouched: true, lastInsightsItemId: "item"},
+        "failed preference persistence must not advance the new-surface baseline");
+    queueHost.failViewPreferencesSave = false;
     queueHost.applyTemplateLinkagePlan = () => queueHost.persistViewPreferences();
     assert.equal(await withinDeadline(queueHost.saveForm(new Map([["linkagePlan", "sireader"]]), undefined, {localDate: "2026-09-17", occurredAt: calendarDate.toISOString()})), "item",
         "editor linkage preferences must save after the main-store transaction releases its lock");

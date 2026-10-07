@@ -111,6 +111,15 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
         agendaGroup("ended", t("occ.agendaEnded"), agendaBuckets.ended),
         agendaGroup("disabled", t("occ.agendaDisabled"), agendaBuckets.disabled),
     ].filter(Boolean).join("");
+    const agendaEmpty = `<div class="lc-checkin__empty lc-checkin__occasion-empty" role="status">
+        <div class="lc-checkin__empty-mark" aria-hidden="true">${hasActiveFilters ? "⌕" : "◷"}</div>
+        <strong class="lc-checkin__empty-title">${hasActiveFilters ? t("occ.searchEmpty") : t("occ.empty")}</strong>
+        <p class="lc-checkin__empty-description">${hasActiveFilters ? t("occ.clearFilters") : t("occ.formHint")}</p>
+        <div class="lc-checkin__empty-actions">
+            ${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}
+            <button class="lc-checkin__primary-button" type="button" data-action="new-occasion">${t("occ.add")}</button>
+        </div>
+    </div>`;
     const date = draftValue("date", editing?.date || dateKey(currentCalendarDate()));
     const editLabel = editing ? t("occ.edit") : t("occ.create");
     const kindValue = draftValue("kind", editing?.kind || "scheduled");
@@ -142,7 +151,11 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
     const monthOptions = Array.from({length: 12}, (_, index) => `<option value="${index + 1}"${Number(draftValue("annualMonth", String(editing?.month ?? 1))) === index + 1 ? " selected" : ""}>${t("date.monthN", {n: index + 1})}</option>`).join("");
     const nthOptions = [1, 2, 3, 4, 5].map((value) => `<option value="${value}"${Number(draftValue("annualNth", String(editing?.nthWeek ?? 1))) === value ? " selected" : ""}>${t(`occ.nth${value}`)}</option>`).join("");
     const isFormOpen = ctx.formOpen ?? Boolean(editing);
-    const isFilterOpen = ctx.filtersOpen ?? Boolean(activeFilterCount);
+    /* Keep the controls visible whenever a filter is active.  A select change
+       re-renders the root, and the native details state itself is not part of
+       the root session; relying on the stale `filtersOpen: false` would hide
+       the clear button immediately after selecting a filter. */
+    const isFilterOpen = Boolean(ctx.filtersOpen || activeFilterCount);
     const presetId = `lc-occasion-remind-presets-${renderId}`;
     return `<div class="lc-checkin lc-checkin--occasions" data-appearance="${ctx.appearance}" data-occasion-root-instance="${escapeHtml(renderId)}">
             ${renderPageShellHead({eyebrow: t("occasions.eyebrow"), title: t("occasions.title"), actionsHtml: `<button class="lc-checkin__icon-button" type="button" data-action="new-occasion" aria-label="${t("occ.newAria")}" title="${t("occ.newAria")}">+</button>`})}
@@ -206,7 +219,7 @@ export function renderOccasionsView(ctx: OccasionsViewContext, root?: HTMLElemen
                         <summary><span>${t("occ.filters")}</span>${activeFilterCount ? `<em>${activeFilterCount}</em>` : ""}<span class="lc-checkin__fold-chevron" aria-hidden="true">⌄</span></summary>
                         <div class="lc-checkin__occasion-filters">${filterSelect("status", t("occ.filterStatus"), ctx.occasionStatusFilter, [["all", t("occ.filterAll")], ["enabled", t("occ.filterEnabled")], ["disabled", t("occ.filterDisabled")]])}${filterSelect("kind", t("occ.filterKind"), ctx.occasionKindFilter, [["all", t("occ.filterAll")], ["birthday", t("occ.kindBirthday")], ["anniversary", t("occ.kindAnniversary")], ["scheduled", t("occ.kindScheduled")]])}${filterSelect("time", t("occ.filterTime"), ctx.occasionTimeFilter, [["all", t("occ.filterAll")], ["today", t("occ.filterToday")], ["upcoming", t("occ.filterUpcoming")], ["ended", t("occ.filterEnded")]])}${hasActiveFilters ? `<button class="lc-checkin__text-button" type="button" data-occasion-clear-filters>${t("occ.clearFilters")}</button>` : ""}</div>
                     </details>
-                    <div class="lc-checkin__occasion-manager-list" data-occasion-agenda>${agendaRows}</div>
+                    <div class="lc-checkin__occasion-manager-list" data-occasion-agenda>${agendaRows || agendaEmpty}</div>
                 </section>
             </div>
         </div>`;

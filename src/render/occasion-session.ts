@@ -26,6 +26,10 @@ export interface OccasionsRootContext {
 }
 
 export interface OccasionsRootStateHost {
+    /** 生命周期字段由宿主提供；可选以保持无 root/旧测试夹具兼容。 */
+    disposed?: boolean;
+    disposing?: boolean;
+    acceptingOperations?: boolean;
     occasionStateForRoot?(root: HTMLElement): OccasionsRootContext;
     setOccasionStateForRoot?(root: HTMLElement, patch: Partial<OccasionsRootContext>): void;
     isSurfaceRoot?(root: HTMLElement, page?: string): boolean;
@@ -102,6 +106,7 @@ export function writeOccasionsRootContext(host: OccasionsRootStateHost, root: HT
 }
 
 export function isOccasionsRootOpen(host: OccasionsRootStateHost & {pageForRoot?(root: HTMLElement): string}, root: HTMLElement): boolean {
+    if (host.disposed || host.disposing || host.acceptingOperations === false) return false;
     if (root.isConnected === false) return false;
     if (host.isSurfaceRoot && !host.isSurfaceRoot(root, "occasions")) return false;
     return host.pageForRoot ? host.pageForRoot(root) === "occasions" : Boolean(root.querySelector(".lc-checkin--occasions"));

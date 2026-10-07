@@ -10,6 +10,8 @@ import type {Occasion, OccasionStore, OccasionTemplateCategory} from "../occasio
 import {captureOccasionDraftFor, isCurrentOccasionFormSession, isOccasionsRootOpen, nextOccasionFormSession, readOccasionsRootContext, writeOccasionsRootContext, type OccasionsRootContext} from "./occasion-session";
 
 export interface BindOccasionsHost {
+    disposed?: boolean;
+    disposing?: boolean;
     occasionStore: OccasionStore;
     /** T-1583：reduced-motion 与设置页同源，滚动降级 instant。 */
     reducedMotion?: boolean;
@@ -31,22 +33,26 @@ export interface BindOccasionsHost {
     showToday(root?: HTMLElement): void;
     render(root?: HTMLElement): void;
     enqueueMutation<T>(operation: () => Promise<T>): Promise<T>;
-    createOccasionLinkedItem(occasionId: string): Promise<unknown>;
+    createOccasionLinkedItem(occasionId: string, root?: HTMLElement): Promise<unknown>;
     updateOccasion(item: {enabled: boolean} & Record<string, unknown>, root?: HTMLElement): Promise<unknown>;
-    persistOccasions(): Promise<void>;
+    persistOccasions(root?: HTMLElement): Promise<void>;
     /** T-1494：按发生日期标记完成（错过补标记复用既有通道）。 */
-    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean): Promise<boolean>;
+    setOccasionCompleted(id: string, occurrenceDate: string, completed: boolean, root?: HTMLElement): Promise<boolean>;
     /** T-1494：单次实例改期（宿主走 setOccasionOverride 既有持久化通道）。 */
-    saveOccasionOverride?(id: string, originalDate: string, newDate: string): void;
+    saveOccasionOverride?(id: string, originalDate: string, newDate: string, root?: HTMLElement): void;
     syncOccasionLunarHint(form: HTMLFormElement | null): void;
     saveOccasionForm(data: FormData, root?: HTMLElement): Promise<unknown>;
 }
 
 export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost): void {
     const state = readOccasionsRootContext(host, root);
+    const boundPage = host.pageForRoot ? host.pageForRoot(root) : "occasions";
+    const isCurrentSurface = () => !host.disposed && !host.disposing && root.isConnected !== false
+        && boundPage === "occasions"
+        && (host.isSurfaceRoot ? host.isSurfaceRoot(root, "occasions") : (!host.pageForRoot || host.pageForRoot(root) === boundPage));
     const currentState = () => readOccasionsRootContext(host, root);
     const writeState = (patch: Partial<OccasionsRootContext>) => writeOccasionsRootContext(host, root, patch);
-    const renderRoot = () => host.render(root);
+    const renderRoot = () => { if (isCurrentSurface()) host.render(root); };
     host.bindDialogClose(root);
     host.bindMobileNav(root);
     root.querySelector<HTMLElement>("[data-action='back'], [data-action='occasion-back']")?.addEventListener("click", () => host.showToday(root));
@@ -73,7 +79,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
     });
     root.querySelectorAll<HTMLElement>("[data-occasion-edit]").forEach((button) => button.addEventListener("click", () => { writeState({editingOccasionId: button.dataset.occasionEdit, formDraft: undefined, formOpen: true, formSession: currentState().formSession + 1}); renderRoot(); revealOccasionForm(); }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toitem]").forEach((button) => button.addEventListener("click", () => {
-        void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || ""); });
+        void host.enqueueMutation(async () => { await host.createOccasionLinkedItem(button.dataset.occasionToitem || "", root); });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionToggle || "";
@@ -91,7 +97,10 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         void host.enqueueMutation(async () => {
             const previous = host.occasionStore;
             host.occasionStore = deleteOccasion(previous, id);
-            try { await host.persistOccasions(); } catch { host.occasionStore = previous; showMessage(t("msg.occasionDeleteFail")); }
+            try { await host.persistOccasions(root); } catch {
+                host.occasionStore = previous;
+                if (isOccasionsRootOpen(host, root)) showMessage(t("msg.occasionDeleteFail"));
+            }
             if (!isOccasionsRootOpen(host, root)) return;
             const next = currentState();
             next.deletingOccasionIds.delete(id);
@@ -108,7 +117,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const id = button.dataset.occasionLateId || "";
         const missedDate = button.dataset.occasionLateDate || "";
         if (!id || !missedDate) return;
-        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true); });
+        void host.enqueueMutation(async () => { await host.setOccasionCompleted(id, missedDate, true, root); });
     }));
     root.querySelectorAll<HTMLElement>("[data-occasion-move-toggle]").forEach((button) => button.addEventListener("click", () => {
         const id = button.dataset.occasionMoveToggle || "";
@@ -141,7 +150,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
             row.hidden = true;
             const toggle = root.querySelector<HTMLElement>(`[data-occasion-move-toggle='${CSS.escape(id) || id}']`);
             toggle?.setAttribute("aria-expanded", "false");
-            if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value);
+            if (host.saveOccasionOverride) host.saveOccasionOverride(id, confirmButton.dataset.occasionMoveOrigin || "", dateInput.value, root);
         });
     });
 
@@ -207,7 +216,7 @@ export function bindOccasionsHandlers(root: HTMLElement, host: BindOccasionsHost
         const form = event.currentTarget as HTMLFormElement;
         const data = new FormData(form);
         if (!String(data.get("name") || "").trim() || !isValidLocalDateInput(String(data.get("date") || ""))) {
-            showMessage(t("msg.occasionInvalid"));
+            if (isCurrentSurface()) showMessage(t("msg.occasionInvalid"));
             return;
         }
         const current = currentState();

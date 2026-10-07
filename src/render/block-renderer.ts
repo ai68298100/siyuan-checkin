@@ -24,7 +24,9 @@ export interface BlockRendererDeps {
     /** T-1351：汇总行点击 → 回顾页该项目洞察。 */
     onJumpItem?(itemId: string): void;
     /** T-1351：锚点行点击 → 打开锚点所在文档（宿主经缓存索引定位）。 */
-    onJumpItemAnchor?(blockId: string): void;
+    onJumpItemAnchor?(blockId: string, isCurrent?: () => boolean): void;
+    /** 插件 owner 生命周期守门；全局 body sweep 也必须受其约束。 */
+    isActive?(): boolean;
     /** T-1292：锚点→文档归属索引的同步缓存读；未命中条目不在返回值中。 */
     getAnchorIndex?(): AnchorDocIndex;
     /** T-1412：today 视图打卡按钮 → 宿主经既有 recordEvent 通道写入（幂等/审计不变）。
@@ -92,7 +94,16 @@ function buildPreviewHtml(config: CheckinBlockConfig, deps: BlockRendererDeps, a
 const anchorResolveRequested = new Set<string>();
 const lastRenderedConfig = new WeakMap<HTMLElement, string>();
 
-export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps, options: {force?: boolean} = {}): void {
+interface RenderCheckinBlocksOptions {
+    force?: boolean;
+    /** Observer-owned lifecycle guard for async anchor resolution callbacks. */
+    isActive?: () => boolean;
+}
+
+export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRendererDeps, options: RenderCheckinBlocksOptions = {}): void {
+    const isActive = () => protyleElement.isConnected && deps.isActive?.() !== false && options.isActive?.() !== false;
+    /* 宿主可能先移除 protyle，再晚一步触发插件清理；detached root 不得重新进入渲染路径。 */
+    if (!isActive()) return;
     const blocks = findCodeBlocks(protyleElement);
     for (const block of blocks) {
         const configText = readBlockConfigText(block).trim();
@@ -134,7 +145,9 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
                     lastRenderedConfig.set(block, configText);
                     block.insertAdjacentElement("afterend", preview);
                     void deps.resolveAnchorDocs([...pending]).then(() => {
-                        renderCheckinBlocksIn(protyleElement, deps, {force: true});
+                        /* 解析完成时 root 可能已被宿主移除，或所属观察器已经 dispose。 */
+                        if (!isActive()) return;
+                        renderCheckinBlocksIn(protyleElement, deps, {force: true, isActive: options.isActive});
                     });
                     continue;
                 }
@@ -142,6 +155,7 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             preview.innerHTML = buildPreviewHtml(parsed.config, deps, anchorIndex);
         }
         preview.addEventListener("click", (event) => {
+            if (!isActive() || !preview.isConnected) return;
             /* T-1412：today 视图打卡按钮——节流防连点（写入后由宿主广播触发整块重渲染解除）。 */
             const recordTarget = (event.target as HTMLElement).closest("[data-block-record]");
             if (recordTarget) {
@@ -156,7 +170,8 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             /* T-1351：锚点行优先打开所在文档（依赖已解析的缓存索引），否则回落项目洞察。 */
             const anchorTarget = (event.target as HTMLElement).closest("[data-jump-anchor-block]");
             if (anchorTarget) {
-                deps.onJumpItemAnchor?.(anchorTarget.getAttribute("data-jump-anchor-block") || "");
+                const isCurrent = () => preview.isConnected && protyleElement.isConnected && deps.isActive?.() !== false && options.isActive?.() !== false;
+                deps.onJumpItemAnchor?.(anchorTarget.getAttribute("data-jump-anchor-block") || "", isCurrent);
                 return;
             }
             const itemTarget = (event.target as HTMLElement).closest("[data-jump-item]");
@@ -173,15 +188,16 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
    兜底观察 protyle 子树，代码块出现后补渲染。幂等：已有预览的块跳过，
    观察回调 200ms 防抖，避免渲染自身改动 DOM 造成风暴。返回断开函数。 */
 export function observeCheckinBlocks(protyleElement: HTMLElement, deps: BlockRendererDeps): () => void {
-    renderCheckinBlocksIn(protyleElement, deps);
     let timer: number | undefined;
     let disposed = false;
+    const isActive = () => !disposed && protyleElement.isConnected && deps.isActive?.() !== false;
+    renderCheckinBlocksIn(protyleElement, deps, {isActive});
     const observer = new MutationObserver(() => {
         if (disposed) return;
         if (timer !== undefined) window.clearTimeout(timer);
         timer = window.setTimeout(() => {
             timer = undefined;
-            if (!disposed) renderCheckinBlocksIn(protyleElement, deps);
+            if (isActive()) renderCheckinBlocksIn(protyleElement, deps, {isActive});
         }, 200);
     });
     observer.observe(protyleElement, {childList: true, subtree: true});
