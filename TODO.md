@@ -53,6 +53,7 @@
   - 进展（2026-10-06，local-auto，D-355）：会话诊断 detail 统一经过有界规则，遮罩常见 token/API key/password/Authorization 与常见绝对路径；原因码、时间和重试建议保留。导出前预览仍不展示 detail 全文，完整匿名化与各入口错误矩阵继续开放。
   - 进展（2026-10-06，local-auto，D-356）：导出确认框新增最近 3 条已归一化、已脱敏 detail 预览，并对原始文本统一 HTML 转义；无 detail 显示明确空态。完整匿名化、更多错误入口和真实宿主现场仍开放。
   - 进展（2026-10-07，local-auto）：JSON 解析/超大/结构/归一化失败统一分类后写入 migration 审计与 `migration-rejected` 诊断；本地快照校验失败写恢复诊断，快照持久化失败写 `save-failed` 诊断；设置页反馈保留原下一步，不重复弹 toast。CSV/Loop/Obsidian 错误矩阵、真实宿主失败现场和恢复指南直达仍开放。
+  - 进展（2026-10-07，local-auto）：CSV、Loop、Obsidian 及冲突决策提交接入同一 `recordImportFailure`；解析失败/持久化失败分别进入迁移拒绝/保存失败诊断和 migration 审计，保留整批回滚、取消零写入与焦点恢复。完整 `test:ui`、类型检查和诊断守门通过；真实宿主 I/O 与恢复指南直达仍开放。
 - [ ] T-1649 可访问树、键盘与读屏语义（P1，ready）——核验洞察日格 button role=listitem 风险，原生角色/日期状态/钻取/焦点/等价文本或表格/缩放，自动与 TalkBack 分层；来源 AG-099/098。
   - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
   - 进展（2026-10-06，local-auto，D-356）：当前日期格补 `aria-current="date"` 与可见轮廓，历史日期不携带当前标记；生产 renderer 结构测试通过。真实 Android/TalkBack、缩放和宿主现场仍开放。

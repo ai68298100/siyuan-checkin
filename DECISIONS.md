@@ -2238,3 +2238,9 @@
 - JSON 导入的超大、解析、形状和归一化异常映射为有限类别，写入 migration 审计与 `migration-rejected` 会话诊断；不把原始错误全文作为诊断 detail。
 - 本地快照校验失败写 `migration-rejected`，快照持久化失败写 `save-failed`，并继续保留 restore 审计的来源、时间和失败边界。设置页使用 `settingsFeedback` 呈现结果，避免 toast 与设置页错误状态重复播报。
 - 取消确认不进入这些失败路径；CSV/Loop/Obsidian 导入和真实宿主 I/O 失败仍作为 T-1648 后续矩阵，不把本轮静态/浏览器证据扩大解释为真实宿主验收。
+
+# D-418：文件导入错误按阶段记录，整批事务语义保持不变（2026-10-07）
+
+- CSV、Loop、Obsidian 及冲突决策确认统一调用 `recordImportFailure`：解析阶段使用 `migration-rejected`，进入持久化阶段后使用 `save-failed`；审计只保存来源和有限类别，不保存原始错误全文。
+- 导入取消、空文件/无项目等用户可预期分支不记失败事实；已有整批保存失败回滚、输入清空和焦点恢复保持原样。设置页反馈作为唯一错误展示面，避免重复 toast。
+- `test:ui` 通过只证明生产 bundle 的结构与浏览器场景，不等同于真实思源文件读写或 Android 容器 I/O 验收。

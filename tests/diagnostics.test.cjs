@@ -76,6 +76,11 @@ assert.match(indexSource, /recordDiagnostic\("save-failed", String\(error\)\.sli
 assert.match(indexSource, /recordDiagnostic\("version-conflict"/, "merge conflicts must record version-conflict");
 assert.match(indexSource, /recordDiagnostic\("load-failed"/, "refresh/load failures must record load-failed");
 assert.match(indexSource, /recordDiagnostic\("migration-rejected"/, "rejected imports must record migration-rejected");
+assert.match(indexSource, /private recordImportFailure\(source: /, "file import failures must share one bounded fact recorder");
+for (const source of ["csv-import", "loop-import", "obsidian-import"]) {
+    assert.match(indexSource, new RegExp(`recordImportFailure\\("${source}"`), `${source} failures must be recorded`);
+}
+assert.match(indexSource, /recordDiagnostic\(phase === "persist" \? "save-failed" : "migration-rejected", failureKind\)/, "import phase chooses a stable diagnostic code");
 assert.match(indexSource, /recordDiagnostic\("lock-contended", "teardown final flush deferred"\)/, "lock contention must record lock-contended");
 assert.match(indexSource, /getDiagnostics\(\): readonly CheckinDiagnostic\[\]/, "host must expose diagnostics to the API facade");
 assert.match(apiSource, /getDiagnostics: \(\) => Object\.freeze\(host\.getDiagnostics\(\)/, "facade must return defensive copies");

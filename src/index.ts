@@ -562,6 +562,14 @@ export default class CheckinPlugin extends Plugin {
         this.diagnostics = appendDiagnostic(this.diagnostics, {code, at: new Date().toISOString(), ...(detail ? {detail: detail.slice(0, 200)} : {})});
     }
 
+    /** T-1648：文件导入失败统一进入事实台账；只保存有限类别，不携带原始错误文本。 */
+    private recordImportFailure(source: "csv-import" | "loop-import" | "obsidian-import", phase: "parse" | "persist"): void {
+        const failureKind = `${source}-${phase}`;
+        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "rejected", source, failureKind}});
+        this.recordDiagnostic(phase === "persist" ? "save-failed" : "migration-rejected", failureKind);
+        void this.persistAuditBestEffort();
+    }
+
     getDiagnostics(): readonly CheckinDiagnostic[] {
         return normalizeDiagnostics(this.diagnostics);
     }
@@ -4760,7 +4768,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 if (report.skippedRows) showMessage(t("set.importSkippedRows", {n: report.skippedRows}));
                 this.render(root);
             } catch (error) {
-                showMessage(t("msg.importFail", {error: String(error)}));
+                this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
+                settingsFeedback(t("msg.importFail", {error: String(error)}));
             }
         });
         root.querySelector<HTMLElement>("[data-import-conflict-cancel]")?.addEventListener("click", () => {
@@ -5974,6 +5983,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (!file) return;
             if (settingsBusy.has(input)) return;
             settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            let importFailurePhase: "parse" | "persist" = "parse";
             try {
                 const parsed = parseCheckinCsv(await file.text());
                 const names = [...new Set(parsed.rows.map((row) => row.name))];
@@ -5985,6 +5995,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     settingsFeedback(t("msg.csvErrorDetail", {count: parsed.errors.length, detail}) + (parsed.errors.length > 5 ? "…" : ""));
                 }
                 if (!window.confirm(t("msg.csvConfirm", {items: names.length, events: parsed.rows.length, skipped: skip}))) { input.value = ""; return; }
+                importFailurePhase = "persist";
                 const report = await this.enqueueMutation(async () => {
                     const previousStore = this.store;
                     try {
@@ -5999,7 +6010,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 showMessage(t("msg.csvDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
-                showMessage(t("msg.importFail", {error: String(error)}));
+                this.recordImportFailure("csv-import", importFailurePhase);
                 settingsFeedback(t("msg.importFail", {error: String(error)}));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
@@ -6013,6 +6024,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (!files.length) return;
             if (settingsBusy.has(input)) return;
             settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            let importFailurePhase: "parse" | "persist" = "parse";
             try {
                 const texts = await Promise.all(files.map((file) => file.text()));
                 const firstCell = (text: string) => (text.replace(/^\uFEFF/, "").split(/\r?\n/)[0] || "").split(",")[0].trim().toUpperCase();
@@ -6038,6 +6050,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     return;
                 }
                 if (!window.confirm(t("msg.loopConfirm", {habits: plan.habits.length, events: plan.rows.length, numerical: plan.measurableNames.length, skipDays: plan.skipDays}) + loopWarn)) { input.value = ""; return; }
+                importFailurePhase = "persist";
                 const report = await this.enqueueMutation(async () => {
                     const previousStore = this.store;
                     try {
@@ -6052,7 +6065,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 showMessage(t("msg.loopDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
-                showMessage(t("msg.importFail", {error: String(error)}));
+                this.recordImportFailure("loop-import", importFailurePhase);
                 settingsFeedback(t("msg.importFail", {error: String(error)}));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
@@ -6067,6 +6080,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             
             if (settingsBusy.has(input)) return;
             settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            let importFailurePhase: "parse" | "persist" = "parse";
             try {
                 const parsed = await Promise.all(files.map(async (file) => ({file, text: await file.text()})));
                 const habits = [];
@@ -6093,6 +6107,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     return;
                 }
                 if (!window.confirm(t("msg.obsidianConfirm", {habits: plan.habits.length, events: plan.totalDates}) + obsidianWarn)) { input.value = ""; return; }
+                importFailurePhase = "persist";
                 const report = await this.enqueueMutation(async () => {
                     const previousStore = this.store;
                     try {
@@ -6108,7 +6123,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 showMessage(t("msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
                 this.render();
             } catch (error) {
-                showMessage(t("msg.importFail", {error: String(error)}));
+                this.recordImportFailure("obsidian-import", importFailurePhase);
+                settingsFeedback(t("msg.importFail", {error: String(error)}));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
                 (root.querySelector<HTMLInputElement>("[data-import-obsidian]") || input).focus();
