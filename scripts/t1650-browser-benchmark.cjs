@@ -5,6 +5,7 @@
  * surfaces.  Run after `pnpm run build:check` (or `pnpm run build`):
  *
  *   node scripts/t1650-browser-benchmark.cjs
+ *   T1650_EVENT_COUNT=100000 node scripts/t1650-browser-benchmark.cjs
  *
  * CHECKIN_BROWSER may point at Chromium/Edge.  The JSON report is written to
  * .artifacts/t1650-browser-benchmark.json (or T1650_OUTPUT).  No package
@@ -22,6 +23,10 @@ const distJs = path.join(projectRoot, "dist", "index.js");
 const outputPath = process.env.T1650_OUTPUT
     ? path.resolve(process.env.T1650_OUTPUT)
     : path.join(projectRoot, ".artifacts", "t1650-browser-benchmark.json");
+const requestedEventCount = Number(process.env.T1650_EVENT_COUNT || 10_000);
+const eventCount = Number.isSafeInteger(requestedEventCount) && requestedEventCount > 0 && requestedEventCount <= 250_000
+    ? requestedEventCount
+    : 10_000;
 
 function findBrowser() {
     if (process.env.CHECKIN_BROWSER && fs.existsSync(process.env.CHECKIN_BROWSER)) return process.env.CHECKIN_BROWSER;
@@ -31,14 +36,14 @@ function findBrowser() {
     ].find((candidate) => fs.existsSync(candidate));
 }
 
-function makeStore() {
+function makeStore(totalEvents = eventCount) {
     const base = new Date("2026-10-06T12:00:00");
     const item = {
         id: "insight-item", name: "基准事项", icon: "✓", kind: "binary", target: 1, unit: "次",
         schedule: {type: "daily"}, group: "基准", createdAt: "2025-01-01T00:00:00.000Z",
         createdDate: "2025-01-01", revisions: [], archivePeriods: [],
     };
-    const events = Array.from({length: 10_000}, (_, index) => {
+    const events = Array.from({length: totalEvents}, (_, index) => {
         const date = new Date(base);
         date.setDate(date.getDate() - (index % 450));
         const localDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -72,7 +77,7 @@ function median(values) {
     const page = await browser.newPage({viewport: {width: 1280, height: 900}});
     const pageErrors = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    const store = makeStore();
+    const store = makeStore(eventCount);
     await page.setContent(`<style>:root{--b3-theme-on-background:#202124;--b3-theme-on-surface-light:#6f7378;--b3-theme-background:#fff;--b3-theme-surface:#f7f7f6;--b3-theme-surface-lighter:#eeeeec;--b3-border-color:#dededb}body{margin:0}#dock,#tab{width:620px;height:860px;display:inline-block;vertical-align:top;overflow:hidden}</style><main><div id="dock"></div><div id="tab"></div></main>`);
     await page.addStyleTag({path: distCss});
     await page.evaluate((initialStore) => {
@@ -116,10 +121,10 @@ function median(values) {
         window.__t1650Tab = document.querySelector("#tab");
         return {eventCount: plugin.store.events.length, itemCount: plugin.store.items.length};
     });
-    assert.equal(boot.eventCount, 10_000, "benchmark fixture must load 10k events");
+    assert.equal(boot.eventCount, eventCount, `benchmark fixture must load ${eventCount} events`);
     assert.equal(boot.itemCount, 1, "benchmark fixture must load the single insight item");
 
-    const metrics = await page.evaluate(async () => {
+    const metrics = await page.evaluate(async (expectedEventCount) => {
         const plugin = window.__t1650Plugin;
         const dock = window.__t1650Dock;
         const tab = window.__t1650Tab;
@@ -162,7 +167,7 @@ function median(values) {
             plugin.setInsightsStateForRoot(dock, {insightsItemId: "insight-item", insightsReturnPage: "today", insightsRange: "custom", insightsCustomRange: {startDate: "2025-10-06", endDate: "2026-10-06"}, insightsItemQuery: ""});
             plugin.setPageForRoot("insights", dock);
         });
-        const review = await run("review-10k", () => {
+        const review = await run(`review-${expectedEventCount}`, () => {
             plugin.tabElement = undefined;
             plugin.setPageForRoot("review", dock);
             plugin.setReviewStateForRoot(dock, {reviewWorkspace: "overview", summaryRange: "month", historyPage: 0, historyQuery: ""});
@@ -175,7 +180,7 @@ function median(values) {
             plugin.setReviewStateForRoot(tab, {reviewWorkspace: "overview", summaryRange: "month", historyPage: 0});
         }, true);
         return {insights, review, dualRoot};
-    });
+    }, eventCount);
     assert.equal(metrics.insights.gridDays, 366, `Insights fixture must render 366 day cells (got ${metrics.insights.gridDays})`);
     assert.equal(metrics.review.reviewRoots, 1, "review fixture must render one review root");
     assert.equal(metrics.dualRoot.gridDays, 366, "dual-root fixture must retain 366 insight cells");
@@ -183,6 +188,7 @@ function median(values) {
     assert.equal(pageErrors.length, 0, `production bundle must not emit page errors: ${pageErrors.join("; ")}`);
     const report = {
         task: "T-1650",
+        reportSchema: 1,
         measuredAt: new Date().toISOString(),
         environment: {node: process.version, platform: process.platform, arch: process.arch, cpuCount: os.cpus().length},
         browser: {
@@ -200,7 +206,7 @@ function median(values) {
     };
     fs.mkdirSync(path.dirname(outputPath), {recursive: true});
     fs.writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
-    console.log(`T-1650 browser benchmark passed: ${metrics.insights.renderMs.toFixed(1)}ms insights-366, ${metrics.review.renderMs.toFixed(1)}ms review-10k, ${metrics.dualRoot.renderMs.toFixed(1)}ms dual-root; report ${path.relative(projectRoot, outputPath)}.`);
+    console.log(`T-1650 browser benchmark passed (${eventCount} events): ${metrics.insights.renderMs.toFixed(1)}ms insights-366, ${metrics.review.renderMs.toFixed(1)}ms ${metrics.review.label}, ${metrics.dualRoot.renderMs.toFixed(1)}ms dual-root; report ${path.relative(projectRoot, outputPath)}.`);
     await browser.close();
 })().catch((error) => {
     console.error(error);
