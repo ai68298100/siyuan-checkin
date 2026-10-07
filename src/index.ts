@@ -594,7 +594,9 @@ export default class CheckinPlugin extends Plugin {
         const latest = this.diagnostics[this.diagnostics.length - 1];
         if (!latest) return "";
         const info = CHECKIN_DIAGNOSTIC_INFO[latest.code];
-        return `${t(info.labelKey)}${latest.detail ? ` · ${latest.detail}` : ""} · ${t(info.recoveryKey)}`;
+        /* 机器细节只在诊断预览/API 中保留；设置摘要只呈现本地化原因和下一步，
+           避免把 snapshot-export-save-failed、宿主异常文本等内部码直接露给用户。 */
+        return `${t(info.labelKey)} · ${t(info.recoveryKey)}`;
     }
     /* T-1231 笔记锚点：回写连续失败的锚点（内存挂起标志，重载后重置重试）。 */
     private suspendedAnchors = new Set<string>();
@@ -5904,7 +5906,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.recordDiagnostic("load-failed", "snapshot-export-load-failed");
                     throw new Error(t("msg.snapshotExportFail"));
                 }
-                downloadSnapshotHistoryFor(raw);
+                const outcome = await downloadSnapshotHistoryFor(raw);
+                if (outcome === "failed") this.recordDiagnostic("save-failed", "snapshot-export-save-failed");
             });
         });
         root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", (event) => {

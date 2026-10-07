@@ -1,7 +1,7 @@
 /* 插件零散操作：从 index.ts 外置（T-022）。
    含后台渲染、今日快捷项、导航绑定、月份切换、项目恢复、导出、搜索聚焦、同步提示与就绪结算。 */
 import {t} from "./i18n";
-import {saveGeneratedFile} from "./download";
+import {saveGeneratedFile, type SaveOutcome} from "./download";
 import {dateKey, getEventDateKey, isItemAvailableOnDate, isScheduledToday, normalizeItem as normalizeCheckinItem, makeId, serializeStoreAudit, serializeStoreSnapshotHistory, sortCheckinItems, type StoreAuditEntry} from "./model";
 import {addDays} from "./date-keys";
 import {getEventsInDateRange} from "./model";
@@ -214,8 +214,8 @@ export function downloadDiagnosticsFor(entries: readonly import("./features/diag
     void saveGeneratedFile({fileName: `siyuan-checkin-diagnostics-${dateKey(new Date())}.json`, content: serializeDiagnostics(entries), mime: "application/json;charset=utf-8"});
 }
 
-export function downloadSnapshotHistoryFor(history: unknown): void {
-    void saveGeneratedFile({fileName: `siyuan-checkin-snapshots-${dateKey(new Date())}.json`, content: serializeStoreSnapshotHistory(history), mime: "application/json;charset=utf-8"});
+export async function downloadSnapshotHistoryFor(history: unknown): Promise<SaveOutcome> {
+    return saveGeneratedFile({fileName: `siyuan-checkin-snapshots-${dateKey(new Date())}.json`, content: serializeStoreSnapshotHistory(history), mime: "application/json;charset=utf-8"});
 }
 
 export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDiagnostics): void {

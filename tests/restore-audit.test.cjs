@@ -69,6 +69,7 @@ assert.match(source, /data-action='export-snapshots'\]"\)\?\.addEventListener\("
 assert.match(source, /runSettingsAction\(control, async \(\) => \{[\s\S]*recordDiagnostic\("load-failed", "snapshot-export-load-failed"\)/, "snapshot export must use the settings busy lifecycle");
 assert.match(source, /recordDiagnostic\("load-failed", "snapshot-export-load-failed"\)/, "snapshot export load failures must enter load diagnostics");
 assert.match(source, /downloadSnapshotHistoryFor\(raw\)/, "snapshot export must only download after the history bucket loads");
+assert.match(source, /const outcome = await downloadSnapshotHistoryFor\(raw\);\s*if \(outcome === "failed"\) this\.recordDiagnostic\("save-failed", "snapshot-export-save-failed"\)/, "snapshot export write failures must enter save diagnostics");
 assert.match(source, /runSettingsAction\(control, \(\) => this\.clearSnapshotHistory\(\)/, "snapshot clear must use the settings busy and focus lifecycle");
 assert.match(source, /await this\.withStorageLock\(\(\) => this\.saveData\(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory\(\)\)\);\s*this\.snapshotHistory = \[\];/, "snapshot clear must update memory only after persistence succeeds");
 assert.match(source, /this\.snapshotHistory = previous;\s*this\.recordDiagnostic\("save-failed", "snapshot-clear-persist-failed"\);\s*throw new Error\(t\("msg\.clearSnapshotsFail"\)\)/, "snapshot clear must retain the previous list and diagnose persistence failure");

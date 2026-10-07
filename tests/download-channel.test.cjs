@@ -106,6 +106,7 @@ const file = {fileName: "siyuan-checkin-report-2026-09-19.md", content: "# 报�
     assert.equal(opsSource.includes("createObjectURL"), false, "导出站点必须全部改走 saveGeneratedFile");
     assert.equal([...opsSource.matchAll(/saveGeneratedFile\(/g)].length >= 7, true, "七处导出入口都要接新通道");
     assert.match(opsSource, /export function downloadLoopExportFor[\s\S]*?async function saveLoopExportPair[\s\S]*?for \(const file of files\) \{\s*await saveGeneratedFile/, "Loop 两文件必须顺序 await，避免两个原生保存面板叠加");
+    assert.match(opsSource, /export async function downloadSnapshotHistoryFor\(history: unknown\): Promise<SaveOutcome>[\s\S]*?return saveGeneratedFile/, "snapshot export must expose the bounded save outcome to its settings caller");
     const downloadSource = read("src/download.ts");
     assert.match(downloadSource, /host\.JSAndroid\?\.saveExportFile \|\| |if \(host\.JSAndroid\?\.saveExportFile\)/, "原生桥检测要覆盖 Android");
     assert.equal([...downloadSource.matchAll(/nativeExportBridge/g)].length >= 2, true, "检测函数要在模块内被真正使用");

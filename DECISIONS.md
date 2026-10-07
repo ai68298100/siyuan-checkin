@@ -2293,3 +2293,11 @@
 # D-430：恢复点导出只记录读取失败（2026-10-07）
 
 - 导出恢复点桶的 `loadData` 失败记录 `load-failed/snapshot-export-load-failed`，并沿用设置动作忙碌、失败反馈和焦点回退；`downloadSnapshotHistoryFor` 当前为无返回值下载封装，因此不把浏览器/宿主文件保存结果误报为已观测失败。
+
+# D-431：恢复点导出透传统一保存结果（2026-10-07）
+
+- `downloadSnapshotHistoryFor` 改为返回统一 `SaveOutcome`；仅当 `/assets` 写入通道明确返回 `failed` 时记录 `save-failed/snapshot-export-save-failed`。浏览器 Blob 和移动端宿主桥的既有行为、异步宿主保存边界保持不变。
+
+# D-432：设置诊断摘要隐藏机器细节（2026-10-07）
+
+- 设置页最新诊断行只显示原因码对应的本地化标签和恢复建议；detail 继续保留在机器可读 API 与导出预览，避免 `snapshot-*`、宿主异常文本或路径细节进入普通用户文案。

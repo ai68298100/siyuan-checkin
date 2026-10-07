@@ -84,6 +84,7 @@ assert.match(indexSource, /recordDiagnostic\(phase === "persist" \? "save-failed
 assert.match(indexSource, /recordDiagnostic\("lock-contended", "teardown final flush deferred"\)/, "lock contention must record lock-contended");
 assert.match(indexSource, /getDiagnostics\(\): readonly CheckinDiagnostic\[\]/, "host must expose diagnostics to the API facade");
 assert.match(apiSource, /getDiagnostics: \(\) => Object\.freeze\(host\.getDiagnostics\(\)/, "facade must return defensive copies");
+assert.match(indexSource, /private latestDiagnosticText\(\): string[\s\S]*机器细节只在诊断预览\/API 中保留[\s\S]*return `\$\{t\(info\.labelKey\)\} · \$\{t\(info\.recoveryKey\)\}`/, "settings diagnostics summary must hide internal detail codes");
 
 /* 设置页：诊断行 + 导出（无记录禁用）。 */
 assert.match(settings, /data-diagnostics/, "settings must mark the diagnostics row");
