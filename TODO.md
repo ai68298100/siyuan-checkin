@@ -66,6 +66,7 @@
   - 进展（2026-10-07，local-auto）：恢复点列表导入新增独立 `recordSnapshotImportFailure`：解析失败写 restore rejected + migration-rejected，确认后的保存失败写 restore persist-failed + save-failed；取消仍零写入。结构、类型和完整 UI 链通过；恢复点导出/清空和恢复入口读取失败仍开放。
   - 进展（2026-10-07，local-auto）：恢复入口读取恢复点失败新增 `snapshot-load-failed` restore 审计与 `load-failed` 诊断，避免宿主读取故障被误标为迁移拒绝；无快照与用户取消语义不变。结构、类型和完整 UI 链待本轮复验。
   - 进展（2026-10-07，local-auto）：恢复点清空改为先锁内成功落盘再替换内存列表；保存失败保留旧列表、写入 `save-failed/snapshot-clear-persist-failed` 诊断并沿用设置页忙碌/焦点反馈，不改变确认和正常清空语义。结构、类型和完整 UI 链通过。
+  - 进展（2026-10-07，local-auto）：恢复点导出读取失败接入设置动作忙碌/焦点生命周期，并写入稳定的 `load-failed/snapshot-export-load-failed` 诊断；下载通道与成功语义保持不变，原生文件保存失败仍未虚构为可观测事实。结构、类型检查通过，完整 UI 链待本轮复验。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
   - 进展（2026-10-06，local-auto，D-358）：新增离线生产 bundle 基准 `scripts/t1650-browser-benchmark.cjs`，覆盖 Insights 366、Review 10k 和双 root，报告 render/frame/longtask/pageError；Edge 152 三次样本中位数范围分别为 31.6–64.4ms、91.4–227.0ms、103.0–287.6ms。波动较大，暂不加硬阈值或盲改核心；方法和证据见 `docs/t1650-performance-observation-2026-10-06.md`。
   - 进展（2026-10-07，local-auto）：基准增加 `T1650_EVENT_COUNT` 可选规模（默认 10k，上限 250k）、场景样本和 bundle 字节报告契约；本机单次 100k fixture：Insights 399ms、Review 2,981ms、双 root 3,507ms，page error 0，long task 最高 3,849ms。仅为观测样本，不能替代 Android；CSS 655,355 bytes 接近 655,360-byte 硬线。脚本/报告守门通过，真实低端设备和冷启动/长会话证据仍开放。

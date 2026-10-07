@@ -2289,3 +2289,7 @@
 # D-429：洞察日期格采用响应式 roving tabindex（2026-10-07）
 
 - 洞察窗口保留原生日期 button，仅当前日或自定义窗口末日进入 Tab 序列；方向键按实际 CSS 网格行数决定左右步进，Home/End 定位边界，Enter/Space 继续既有日期钻取，不引入 grid role 或改变统计口径。
+
+# D-430：恢复点导出只记录读取失败（2026-10-07）
+
+- 导出恢复点桶的 `loadData` 失败记录 `load-failed/snapshot-export-load-failed`，并沿用设置动作忙碌、失败反馈和焦点回退；`downloadSnapshotHistoryFor` 当前为无返回值下载封装，因此不把浏览器/宿主文件保存结果误报为已观测失败。

@@ -5894,7 +5894,19 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const index = Number(button.dataset.restoreSnapshot);
             if (Number.isInteger(index)) runSettingsAction(button, () => this.restoreLatestBackup(index), `[data-restore-snapshot='${index}']`);
         }));
-        root.querySelector<HTMLElement>("[data-action='export-snapshots']")?.addEventListener("click", () => void this.loadData(BACKUP_STORAGE_NAME).then(downloadSnapshotHistoryFor).catch(() => showMessage(t("msg.snapshotExportFail"))));
+        root.querySelector<HTMLElement>("[data-action='export-snapshots']")?.addEventListener("click", (event) => {
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, async () => {
+                let raw: unknown;
+                try {
+                    raw = await this.loadData(BACKUP_STORAGE_NAME);
+                } catch {
+                    this.recordDiagnostic("load-failed", "snapshot-export-load-failed");
+                    throw new Error(t("msg.snapshotExportFail"));
+                }
+                downloadSnapshotHistoryFor(raw);
+            });
+        });
         root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", (event) => {
             if (!window.confirm(t("msg.clearSnapshotsConfirm"))) return;
             const control = event.currentTarget as HTMLElement;

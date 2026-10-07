@@ -65,6 +65,10 @@ assert.match(source, /private recordSnapshotRestoreLoadFailure\(\): void/, "snap
 assert.match(source, /source: "local-snapshot", failureKind: "snapshot-load-failed"/, "snapshot restore load failures must remain restore audit entries");
 assert.match(source, /recordDiagnostic\("load-failed", "snapshot-load-failed"\)/, "snapshot restore load failures must enter load diagnostics");
 assert.match(source, /try \{\s*raw = await this\.loadData\(BACKUP_STORAGE_NAME\);\s*\} catch \{\s*this\.recordSnapshotRestoreLoadFailure\(\)/, "snapshot restore must record host load failures");
+assert.match(source, /data-action='export-snapshots'\]"\)\?\.addEventListener\("click", \(event\) => \{/, "snapshot export must bind the clicked settings control");
+assert.match(source, /runSettingsAction\(control, async \(\) => \{[\s\S]*recordDiagnostic\("load-failed", "snapshot-export-load-failed"\)/, "snapshot export must use the settings busy lifecycle");
+assert.match(source, /recordDiagnostic\("load-failed", "snapshot-export-load-failed"\)/, "snapshot export load failures must enter load diagnostics");
+assert.match(source, /downloadSnapshotHistoryFor\(raw\)/, "snapshot export must only download after the history bucket loads");
 assert.match(source, /runSettingsAction\(control, \(\) => this\.clearSnapshotHistory\(\)/, "snapshot clear must use the settings busy and focus lifecycle");
 assert.match(source, /await this\.withStorageLock\(\(\) => this\.saveData\(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory\(\)\)\);\s*this\.snapshotHistory = \[\];/, "snapshot clear must update memory only after persistence succeeds");
 assert.match(source, /this\.snapshotHistory = previous;\s*this\.recordDiagnostic\("save-failed", "snapshot-clear-persist-failed"\);\s*throw new Error\(t\("msg\.clearSnapshotsFail"\)\)/, "snapshot clear must retain the previous list and diagnose persistence failure");
