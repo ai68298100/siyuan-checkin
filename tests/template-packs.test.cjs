@@ -116,6 +116,12 @@ assert.match(bindSource, /buildTemplatePackApplicationPlan\(/, "组合包面板�
 assert.match(bindSource, /data-pack-select/, "组合包面板必须支持逐项勾选");
 assert.match(bindSource, /disabled aria-disabled=\\"true\\"/, "冲突组合包条目不得伪装成可创建勾选项");
 assert.match(bindSource, /data-pack-select\]:not\(:disabled\):checked/, "组合包计数和提交必须只读取可创建勾选项");
+assert.match(bindSource, /selectedButton\.disabled = true;\s*selectedButton\.setAttribute\("aria-busy", "true"\)/, "部分应用 pending 时必须禁用按钮并暴露 aria-busy");
+assert.match(bindSource, /bulkButton\.disabled = true;\s*bulkButton\.setAttribute\("aria-busy", "true"\)/, "批量应用 pending 时必须禁用按钮并暴露 aria-busy");
+assert.match(bindSource, /if \(!isCurrentSession\(\) \|\| !selectedButton\.isConnected\) return;/, "部分应用完成/失败回调必须先守住当前会话和连接状态");
+assert.match(bindSource, /if \(!isCurrentSession\(\) \|\| !bulkButton\.isConnected\) return;/, "批量应用完成/失败回调必须先守住当前会话和连接状态");
+assert.match(bindSource, /selectedButton\.focus\(\{preventScroll: true\}\)/, "部分应用无创建或失败后必须回焦点到操作按钮");
+assert.match(bindSource, /bulkButton\.focus\(\{preventScroll: true\}\)/, "批量应用无创建或失败后必须回焦点到操作按钮");
 assert.match(bindSource, /applyTemplatePackSelected/, "部分应用必须经宿主方法并由宿主重核对");
 assert.match(bindSource, /data-pack-edit/, "冲突行必须提供进入编辑入口");
 assert.match(bindSource, /editor\.packApplied/, "批量创建后必须有结果反馈");

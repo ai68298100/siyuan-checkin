@@ -38,6 +38,8 @@ async function boot(page, storage, width = 980) {
         window.__storage = structuredClone(storageValue);
         window.__messages = [];
         window.__failMainWrite = false;
+        window.__holdMainWrite = false;
+        window.__releaseMainWrite = false;
         window.__mainWrites = 0;
         window.__confirm = true;
         window.confirm = () => window.__confirm;
@@ -53,6 +55,7 @@ async function boot(page, storage, width = 980) {
                 async saveData(bucket, value) {
                     if (bucket === "checkin-store") {
                         window.__mainWrites++;
+                        while (window.__holdMainWrite && !window.__releaseMainWrite) await new Promise(resolve => setTimeout(resolve, 5));
                         if (window.__failMainWrite) throw new Error("T-1632 controlled storage failure");
                     }
                     window.__storage[bucket] = structuredClone(value);
@@ -187,14 +190,26 @@ async function inspect(page) {
         const failurePage = await browser.newPage({viewport: {width: 980, height: 820}});
         await boot(failurePage, storageFor([]));
         const failurePanel = await openPack(failurePage);
-        await failurePage.evaluate(() => { window.__failMainWrite = true; });
-        await failurePanel.locator("[data-pack-apply-selected]").click();
+        await failurePage.evaluate(() => { window.__failMainWrite = true; window.__holdMainWrite = true; });
+        const failureButton = failurePanel.locator("[data-pack-apply-selected]");
+        await failureButton.click();
+        await failurePage.waitForFunction(() => {
+            const button = document.querySelector("[data-pack-apply-selected]");
+            return button?.getAttribute("aria-busy") === "true" && button instanceof HTMLButtonElement && button.disabled;
+        });
+        await failurePage.evaluate(() => { window.__releaseMainWrite = true; });
         await failurePage.waitForFunction(() => window.__messages.length > 0, undefined, {timeout: 5000});
+        await failurePage.waitForTimeout(250);
+        const retryState = await failurePage.evaluate(() => {
+            const button = document.querySelector("[data-pack-apply-selected]");
+            return {disabled: button instanceof HTMLButtonElement ? button.disabled : undefined, busy: button?.getAttribute("aria-busy"), focused: document.activeElement === button};
+        });
+        assert.deepEqual(retryState, {disabled: false, busy: null, focused: true}, "failed batch restores retry state and focus");
         const failed = await inspect(failurePage);
         assert.equal(failed.items.length, 0, "failed batch restores in-memory store");
         assert.equal(failed.storage.items.length, 0, "failed batch never changes persisted store");
         assert.ok(failed.messages.length > 0, "failed batch gives visible feedback");
-        report.cases.push({case: "save-failure", rollback: true, visibleFeedback: true});
+        report.cases.push({case: "save-failure", rollback: true, visibleFeedback: true, retryFocus: true});
         await failurePage.close();
         fs.writeFileSync(path.join(artifacts, "report.json"), JSON.stringify(report, null, 2));
         console.log(`T-1632 template pack browser checks passed: ${report.cases.length} cases (partial, conflicts, all-skip narrow, rollback).`);

@@ -933,27 +933,64 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             const indexes = Array.from(root.querySelectorAll<HTMLInputElement>("[data-pack-select]:not(:disabled):checked"))
                 .map((input) => Number(input.dataset.packSelect)).filter((index) => Number.isInteger(index));
             if (!indexes.length) return;
+            const previousDisabled = selectedButton.disabled;
+            const previousAriaDisabled = selectedButton.getAttribute("aria-disabled");
             selectedButton.dataset.busy = "true";
+            selectedButton.disabled = true;
+            selectedButton.setAttribute("aria-busy", "true");
+            selectedButton.setAttribute("aria-disabled", "true");
             void host.enqueueMutation(() => (host.applyTemplatePackSelected ? host.applyTemplatePackSelected(packId, indexes) : Promise.resolve(0))).then((created) => {
-                delete selectedButton.dataset.busy;
                 /* T-1621：组合包应用是异步 mutation；编辑器表面可能在等待期间
                    被关闭或切到别页。过期回调不得重新激活 detached/旧 root。 */
-                if (created > 0 && isCurrentSession()) { showMessage(t("editor.packApplied", {n: created})); host.showToday(root); }
-            }, () => { delete selectedButton.dataset.busy; });
+                if (!isCurrentSession() || !selectedButton.isConnected) return;
+                delete selectedButton.dataset.busy;
+                selectedButton.disabled = previousDisabled;
+                selectedButton.removeAttribute("aria-busy");
+                if (previousAriaDisabled === null) selectedButton.removeAttribute("aria-disabled");
+                else selectedButton.setAttribute("aria-disabled", previousAriaDisabled);
+                if (created > 0) { showMessage(t("editor.packApplied", {n: created})); host.showToday(root); }
+                else selectedButton.focus({preventScroll: true});
+            }, () => {
+                if (!isCurrentSession() || !selectedButton.isConnected) return;
+                delete selectedButton.dataset.busy;
+                selectedButton.disabled = previousDisabled;
+                selectedButton.removeAttribute("aria-busy");
+                if (previousAriaDisabled === null) selectedButton.removeAttribute("aria-disabled");
+                else selectedButton.setAttribute("aria-disabled", previousAriaDisabled);
+                selectedButton.focus({preventScroll: true});
+            });
             return;
         }
         const bulkButton = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-pack-apply-all]") : null;
         if (bulkButton && !bulkButton.disabled) {
             const packId = bulkButton.dataset.packApplyAll || "";
             if (bulkButton.dataset.busy === "true") return;
+            const previousDisabled = bulkButton.disabled;
+            const previousAriaDisabled = bulkButton.getAttribute("aria-disabled");
             bulkButton.dataset.busy = "true";
+            bulkButton.disabled = true;
+            bulkButton.setAttribute("aria-busy", "true");
+            bulkButton.setAttribute("aria-disabled", "true");
             void host.enqueueMutation(() => (host.applyTemplatePackBulk ? host.applyTemplatePackBulk(packId) : Promise.resolve(0))).then((created) => {
+                if (!isCurrentSession() || !bulkButton.isConnected) return;
                 delete bulkButton.dataset.busy;
-                if (created > 0 && isCurrentSession()) {
+                bulkButton.disabled = previousDisabled;
+                bulkButton.removeAttribute("aria-busy");
+                if (previousAriaDisabled === null) bulkButton.removeAttribute("aria-disabled");
+                else bulkButton.setAttribute("aria-disabled", previousAriaDisabled);
+                if (created > 0) {
                     showMessage(t("editor.packApplied", {n: created}));
                     host.showToday(root);
-                }
-            }, () => { delete bulkButton.dataset.busy; });
+                } else bulkButton.focus({preventScroll: true});
+            }, () => {
+                if (!isCurrentSession() || !bulkButton.isConnected) return;
+                delete bulkButton.dataset.busy;
+                bulkButton.disabled = previousDisabled;
+                bulkButton.removeAttribute("aria-busy");
+                if (previousAriaDisabled === null) bulkButton.removeAttribute("aria-disabled");
+                else bulkButton.setAttribute("aria-disabled", previousAriaDisabled);
+                bulkButton.focus({preventScroll: true});
+            });
             return;
         }
         const button = event.target instanceof HTMLElement ? event.target.closest<HTMLButtonElement>("[data-template-apply]") : null;

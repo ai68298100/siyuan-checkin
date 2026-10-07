@@ -281,8 +281,8 @@ try {
         assert.match(indexSrc, /this\.rootContexts\.has\(root\) && root\.isConnected/, "targeted render rejects detached surfaces");
         assert.match(indexSrc, /if \(!root\.isConnected\) return;/, "renderInto rejects a detached root before mutating it");
         assert.match(occasionSession, /host\.isSurfaceRoot && !host\.isSurfaceRoot\(root, "occasions"\)/, "事项异步回调不重新注册关闭 root");
-        assert.match(editorBind, /created > 0 && isCurrentSession\(\)[\s\S]{0,120}host\.showToday\(root\)/, "编辑器组合包异步成功只导航当前 root");
-        assert.match(editorBind, /if \(created > 0 && isCurrentSession\(\)\) \{[\s\S]{0,120}host\.showToday\(root\);/, "编辑器批量组合包不唤醒过期 root");
+        assert.match(editorBind, /if \(!isCurrentSession\(\) \|\| !selectedButton\.isConnected\) return;[\s\S]{0,500}if \(created > 0\) \{[\s\S]{0,120}host\.showToday\(root\)/, "编辑器组合包异步成功只导航当前 root");
+        assert.match(editorBind, /if \(!isCurrentSession\(\) \|\| !bulkButton\.isConnected\) return;[\s\S]{0,500}if \(created > 0\) \{[\s\S]{0,120}host\.showToday\(root\);/, "编辑器批量组合包不唤醒过期 root");
         assert.match(editorBind, /if \(!isCurrentSession\(\) \|\| !anchorInput\?\.isConnected \|\| root\.querySelector\("input\[name='anchorBlockId'\]"\) !== anchorInput\) return;[\s\S]*?anchorInput\.value = blockId/, "锚点创建成功后不得写入过期编辑器控件");
         const ensureVisibleBlock = editorBind.match(/const ensureEditorVisible[\s\S]*?\n    \};/);
         assert.ok(ensureVisibleBlock, "编辑器可见性辅助函数应保持有界回调");

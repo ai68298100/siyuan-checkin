@@ -74,6 +74,7 @@
   - 进展（2026-10-07，local-auto）：启动批量读取失败新增稳定 `load-failed/startup-load-failed` 诊断；迁移持久化阶段沿用 `persist()` 已有保存失败诊断，避免重复打点，不改变失败屏和停止写入语义。诊断结构与类型检查通过，完整 UI 链待本轮复验。
   - 进展（2026-10-08，local-auto，D-435）：渲染块日期格、汇总行和锚点行的语义元素新增 Enter/Space 键盘委托，复用既有 click 跳转并阻止 Space 滚动；原生打卡按钮排除，避免一次按键触发二次写入。`checkin-block` 守门与类型检查通过；真实 Android/TalkBack、缩放和宿主现场仍开放。
   - 进展（2026-10-08，local-auto，D-436）：月视图与年度热图网格从无 `listitem` 直系子项的 `role=list` 改为带本地化摘要的 `role=group`；星期标题和前置空占位标记为装饰，日期格的完整日期标签与跳转保持不变。`checkin-block` 守门与类型检查通过；真实 Android/TalkBack、缩放和宿主现场仍开放。
+  - 进展（2026-10-08，local-auto，D-437）：组合包部分/批量应用在异步 mutation 期间同步设置 `disabled` 与 `aria-busy`，完成/失败回调先校验当前会话和按钮仍连接，再恢复状态；零创建或失败时回焦点到可重试按钮。最新 dist 生产 bundle 的部分应用、冲突、窄屏全跳过、保存失败 5 场景通过；真实宿主竞态与 Android/TalkBack 仍开放。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
   - 进展（2026-10-06，local-auto，D-358）：新增离线生产 bundle 基准 `scripts/t1650-browser-benchmark.cjs`，覆盖 Insights 366、Review 10k 和双 root，报告 render/frame/longtask/pageError；Edge 152 三次样本中位数范围分别为 31.6–64.4ms、91.4–227.0ms、103.0–287.6ms。波动较大，暂不加硬阈值或盲改核心；方法和证据见 `docs/t1650-performance-observation-2026-10-06.md`。
   - 进展（2026-10-07，local-auto）：基准增加 `T1650_EVENT_COUNT` 可选规模（默认 10k，上限 250k）、场景样本和 bundle 字节报告契约；本机单次 100k fixture：Insights 399ms、Review 2,981ms、双 root 3,507ms，page error 0，long task 最高 3,849ms。仅为观测样本，不能替代 Android；CSS 655,355 bytes 接近 655,360-byte 硬线。脚本/报告守门通过，真实低端设备和冷启动/长会话证据仍开放。
