@@ -105,7 +105,14 @@ const file = {fileName: "siyuan-checkin-report-2026-09-19.md", content: "# 报�
     const opsSource = read("src/plugin-ops.ts");
     assert.equal(opsSource.includes("createObjectURL"), false, "导出站点必须全部改走 saveGeneratedFile");
     assert.equal([...opsSource.matchAll(/saveGeneratedFile\(/g)].length >= 7, true, "七处导出入口都要接新通道");
-    assert.match(opsSource, /export function downloadLoopExportFor[\s\S]*?async function saveLoopExportPair[\s\S]*?for \(const file of files\) \{\s*await saveGeneratedFile/, "Loop 两文件必须顺序 await，避免两个原生保存面板叠加");
+    assert.match(opsSource, /export function downloadExportFor\(host: PluginOpsHost, format: "json" \| "csv", scopeDays\?: number\): Promise<SaveOutcome>[\s\S]*?return saveGeneratedFile/, "JSON/CSV export must keep its save promise visible to the caller");
+    assert.match(opsSource, /export function downloadReportMarkdownFor\(markdown: string\): Promise<SaveOutcome>[\s\S]*?return saveGeneratedFile/, "Markdown report export must keep its save promise visible to the caller");
+    assert.match(opsSource, /export function downloadLoopExportFor[\s\S]*?async function saveLoopExportPair[\s\S]*?for \(const file of files\) \{\s*const outcome = await saveGeneratedFile/, "Loop 两文件必须顺序 await，避免两个原生保存面板叠加");
+    assert.match(opsSource, /let failed = 0;[\s\S]*?if \(outcome === "failed"\) failed \+= 1;[\s\S]*?return \{files: files\.length, failed\}/, "Loop export must aggregate failed file saves while continuing the ordered pair");
+    assert.match(opsSource, /downloadObsidianExportFor\(store: CheckinStore\): Promise<\{files: number; skippedItems: number; failed: number\}>[\s\S]*?if \(outcome === "failed"\) failed \+= 1;[\s\S]*?failed\}/, "Obsidian export must expose partial save failures");
+    const indexSource = read("src/index.ts");
+    assert.match(indexSource, /recordDiagnostic\("save-failed", "loop-export-save-failed"\)/, "Loop partial saves must enter save diagnostics");
+    assert.match(indexSource, /recordDiagnostic\("save-failed", "obsidian-export-save-failed"\)/, "Obsidian partial saves must enter save diagnostics");
     assert.match(opsSource, /export async function downloadSnapshotHistoryFor\(history: unknown\): Promise<SaveOutcome>[\s\S]*?return saveGeneratedFile/, "snapshot export must expose the bounded save outcome to its settings caller");
     const downloadSource = read("src/download.ts");
     assert.match(downloadSource, /host\.JSAndroid\?\.saveExportFile \|\| |if \(host\.JSAndroid\?\.saveExportFile\)/, "原生桥检测要覆盖 Android");

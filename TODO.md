@@ -54,6 +54,8 @@
   - 进展（2026-10-06，local-auto，D-356）：导出确认框新增最近 3 条已归一化、已脱敏 detail 预览，并对原始文本统一 HTML 转义；无 detail 显示明确空态。完整匿名化、更多错误入口和真实宿主现场仍开放。
   - 进展（2026-10-07，local-auto）：JSON 解析/超大/结构/归一化失败统一分类后写入 migration 审计与 `migration-rejected` 诊断；本地快照校验失败写恢复诊断，快照持久化失败写 `save-failed` 诊断；设置页反馈保留原下一步，不重复弹 toast。CSV/Loop/Obsidian 错误矩阵、真实宿主失败现场和恢复指南直达仍开放。
   - 进展（2026-10-07，local-auto）：CSV、Loop、Obsidian 及冲突决策提交接入同一 `recordImportFailure`；解析失败/持久化失败分别进入迁移拒绝/保存失败诊断和 migration 审计，保留整批回滚、取消零写入与焦点恢复。诊断行新增“查看恢复指南”直达动作，会展开、滚动并聚焦恢复说明，动态关联当前设置 surface，兼容旧版 WebView 的无参滚动回退。完整 `test:ui`、类型检查和诊断守门通过；真实宿主 I/O 仍开放。
+  - 进展（2026-10-07，local-auto）：回顾页 JSON/CSV/Markdown 批量导出改为透传保存 Promise，避免原生保存面板并发；Loop 与 Obsidian 多文件导出聚合明确的资源写入失败数并继续有序处理后续文件；设置页只在完整序列结束后释放忙碌状态，部分失败时显示可重试反馈。浏览器下载与宿主异步最终保存仍按 SaveOutcome 边界说明，不虚构宿主完成结果。
+- [ ] T-1655 导出序列与恢复点帮助闭环（P1，local-ready；真实宿主保存结果仍待现场）——JSON/CSV/Markdown/Loop/Obsidian 导出必须透传可等待结果，多文件导出按顺序完成并报告部分失败；恢复点导入/导出/清空失败按阶段给出下一步，文档与静态守门同步。当前切片已完成 Promise 生命周期、部分失败计数和 FAQ/用户指南补充；仍需在真实 Android/桌面宿主核对保存面板、目标目录与重复点击。
 - [ ] T-1649 可访问树、键盘与读屏语义（P1，ready）——核验洞察日格 button role=listitem 风险，原生角色/日期状态/钻取/焦点/等价文本或表格/缩放，自动与 TalkBack 分层；来源 AG-099/098。
   - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
   - 进展（2026-10-06，local-auto，D-356）：当前日期格补 `aria-current="date"` 与可见轮廓，历史日期不携带当前标记；生产 renderer 结构测试通过。真实 Android/TalkBack、缩放和宿主现场仍开放。

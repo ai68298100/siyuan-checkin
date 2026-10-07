@@ -6187,12 +6187,23 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         });
 
         root.querySelector<HTMLElement>("[data-action='export-loop']")?.addEventListener("click", (event) => {
-            runSettingsAction(event.currentTarget as HTMLElement, () => this.downloadLoopExport());
+            runSettingsAction(event.currentTarget as HTMLElement, async () => {
+                const report = await this.downloadLoopExport();
+                if (report.failed > 0) {
+                    this.recordDiagnostic("save-failed", "loop-export-save-failed");
+                    showMessage(t("msg.loopExportPartial", {failed: report.failed, total: report.files}), 7000, "error");
+                }
+            });
         });
 
         root.querySelector<HTMLElement>("[data-action='export-obsidian']")?.addEventListener("click", (event) => {
             runSettingsAction(event.currentTarget as HTMLElement, async () => {
                 const report = await downloadObsidianExportFor(this.store);
+                if (report.failed > 0) {
+                    this.recordDiagnostic("save-failed", "obsidian-export-save-failed");
+                    showMessage(t("msg.obsidianExportPartial", {failed: report.failed, total: report.files}), 7000, "error");
+                    return;
+                }
                 showMessage(t("msg.obsidianExportDone", {n: report.files, skipped: report.skippedItems}));
             });
         });
@@ -7510,12 +7521,12 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     }
 
     private downloadExport(format: "json" | "csv", scopeDays?: number) {
-        downloadExportFor(this as unknown as PluginOpsHost, format, scopeDays);
+        return downloadExportFor(this as unknown as PluginOpsHost, format, scopeDays);
     }
 
     /* T-1217：报告 Markdown 走与 JSON/CSV 相同的下载边界。 */
     private downloadReportMarkdown(markdown: string) {
-        downloadReportMarkdownFor(markdown);
+        return downloadReportMarkdownFor(markdown);
     }
 
     private getSummaryEvents(range: SummaryRange, date = new Date()): CheckinEvent[] {
@@ -8215,7 +8226,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     }
 
     private downloadLoopExport() {
-        downloadLoopExportFor(this.cloneStore());
+        return downloadLoopExportFor(this.cloneStore());
     }
 
     /* T-1231 笔记锚点回写：尽力而为的旁路——不阻断、不回滚打卡主路径；

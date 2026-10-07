@@ -186,7 +186,7 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                 const primaryDayLabel = await primaryDay.getAttribute("aria-label");
                 const primaryDayDate = await primaryDay.getAttribute("data-insight-day");
                 assert.match(primaryDayLabel, new RegExp(primaryDayDate), "accessible day name contains the full date");
-                assert.match(primaryDayLabel, /未完成|部分完成|已完成|未安排/, "accessible day name contains completion status");
+                assert.match(primaryDayLabel, /未完成|部分完成|已完成|未安排|未记录/, "accessible day name contains completion status");
                 assert.match(primaryDayLabel, /点击查看当日记录/, "accessible day name explains record navigation");
                 assert.equal(await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).count(), 1,
                     "the accessibility tree exposes a native day button by its complete name");

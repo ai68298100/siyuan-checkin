@@ -152,7 +152,7 @@ export async function restoreItemFor(host: PluginOpsHost, itemId: string): Promi
 }
 
 /* T-1430 · R-A10：导出前敏感字段审计——备注/图片/头像照片如实披露给用户。 */
-export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", scopeDays?: number): void {
+export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", scopeDays?: number): Promise<SaveOutcome> {
     host.lastExportAt = new Date().toISOString();
     void host.persistViewPreferences();
     const cloned = host.cloneStore();
@@ -171,7 +171,7 @@ export function downloadExportFor(host: PluginOpsHost, format: "json" | "csv", s
     if (hasSensitiveContent(audit)) {
         showMessage(t("msg.exportSensitiveAudit", {notes: audit.notes, attachments: audit.attachments}), 3200);
     }
-    void saveGeneratedFile({fileName: `siyuan-checkin-${dateKey(new Date())}.${format}`, content, mime: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
+    return saveGeneratedFile({fileName: `siyuan-checkin-${dateKey(new Date())}.${format}`, content, mime: format === "json" ? "application/json;charset=utf-8" : "text/csv;charset=utf-8"});
 }
 
 export function downloadMigrationReportFor(report: JsonMigrationReport): void {
@@ -179,25 +179,28 @@ export function downloadMigrationReportFor(report: JsonMigrationReport): void {
 }
 
 /* T-1217：本地生成的 Markdown 报告与其他导出共用同一条保存通道。 */
-export function downloadReportMarkdownFor(markdown: string): void {
-    void saveGeneratedFile({fileName: `siyuan-checkin-report-${dateKey(new Date())}.md`, content: markdown, mime: "text/markdown;charset=utf-8"});
+export function downloadReportMarkdownFor(markdown: string): Promise<SaveOutcome> {
+    return saveGeneratedFile({fileName: `siyuan-checkin-report-${dateKey(new Date())}.md`, content: markdown, mime: "text/markdown;charset=utf-8"});
 }
 
 /* T-1218：Loop 同构导出是两个文件（Habits.csv + Checkmarks.csv）。
    原生容器下必须顺序保存，两个保存面板叠上来会互相吞掉；对外保持同步签名。 */
-export function downloadLoopExportFor(store: CheckinStore): void {
-    void saveLoopExportPair(store);
+export function downloadLoopExportFor(store: CheckinStore): Promise<{files: number; failed: number}> {
+    return saveLoopExportPair(store);
 }
 
-async function saveLoopExportPair(store: CheckinStore): Promise<void> {
+async function saveLoopExportPair(store: CheckinStore): Promise<{files: number; failed: number}> {
     const stamp = Date.now();
     const files: Array<{name: string; content: string}> = [
         {name: `siyuan-checkin-loop-Habits-${dateKey(new Date())}.csv`, content: serializeLoopHabitsCsv(store)},
         {name: `siyuan-checkin-loop-Checkmarks-${dateKey(new Date())}.csv`, content: serializeLoopCheckmarksCsv(store)},
     ];
+    let failed = 0;
     for (const file of files) {
-        await saveGeneratedFile({fileName: file.name, content: file.content, mime: "text/csv;charset=utf-8"}, stamp);
+        const outcome = await saveGeneratedFile({fileName: file.name, content: file.content, mime: "text/csv;charset=utf-8"}, stamp);
+        if (outcome === "failed") failed += 1;
     }
+    return {files: files.length, failed};
 }
 
 export function downloadStoreAuditFor(entries: readonly StoreAuditEntry[]): void {
@@ -444,11 +447,13 @@ export function importObsidianHabitsInto(store: CheckinStore, plan: ObsidianImpo
 }
 
 /* T-1283：导出活跃项目为 Habit Tracker 21 习惯 .md 文件（顺序多文件下载,上限 30）。 */
-export async function downloadObsidianExportFor(store: CheckinStore): Promise<{files: number; skippedItems: number}> {
+export async function downloadObsidianExportFor(store: CheckinStore): Promise<{files: number; skippedItems: number; failed: number}> {
     const plan = buildObsidianExportFiles(store);
     const stamp = Date.now();
+    let failed = 0;
     for (const file of plan.files) {
-        await saveGeneratedFile({fileName: file.filename, content: file.content, mime: "text/markdown;charset=utf-8"}, stamp);
+        const outcome = await saveGeneratedFile({fileName: file.filename, content: file.content, mime: "text/markdown;charset=utf-8"}, stamp);
+        if (outcome === "failed") failed += 1;
     }
-    return {files: plan.files.length, skippedItems: plan.skippedItems};
+    return {files: plan.files.length, skippedItems: plan.skippedItems, failed};
 }

@@ -16,6 +16,7 @@ import {createSuggestionWorkflow} from "../features/suggestion-workflow";
 import {Dialog, showMessage} from "siyuan";
 import {bindResponsiveCharts} from "../ui/responsive-charts";
 import {readSurfaceContext, type InsightsRootContext, type ReviewRootContext} from "./page-shell";
+import type {SaveOutcome} from "../download";
 
 export interface BindPageNavigationHost {
     openReviewAgent(): boolean;
@@ -108,10 +109,10 @@ export interface BindPageNavigationHost {
     deleteArchivedItems(itemIds: string[]): Promise<boolean> | void;
     generateSummary(root?: HTMLElement): Promise<void> | void;
     cancelReviewSummary?(root?: HTMLElement): void;
-    downloadExport(format: "json" | "csv", scopeDays?: number): void;
+    downloadExport(format: "json" | "csv", scopeDays?: number): Promise<SaveOutcome>;
     /** R-18.1（R-A18）：导出年度分享图（本地 canvas 生成 PNG，走既有保存通道）。 */
     downloadShareCard?(): void | Promise<void>;
-    downloadReportMarkdown(markdown: string): void;
+    downloadReportMarkdown(markdown: string): Promise<SaveOutcome>;
     reportSections: ReportSectionToggles;
     /** T-1360 报告来源筛选："" = 全部来源。 */
     reportSource: string;
@@ -1463,7 +1464,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
     root.querySelector<HTMLElement>("[data-action='export-all']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, async () => {
         await Promise.resolve(host.downloadExport("json"));
         await Promise.resolve(host.downloadExport("csv"));
-        host.downloadReportMarkdown(buildCurrentReport());
+        await Promise.resolve(host.downloadReportMarkdown(buildCurrentReport()));
     }));
     root.querySelector<HTMLElement>("[data-action='export-csv']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => { const days = Number(root.querySelector<HTMLSelectElement>("[data-export-days]")?.value); host.downloadExport("csv", Number.isFinite(days) && days >= 1 ? days : undefined); }));
     root.querySelector<HTMLElement>("[data-action='export-json']")?.addEventListener("click", (event) => runReviewTool(event.currentTarget as HTMLElement, () => host.downloadExport("json")));

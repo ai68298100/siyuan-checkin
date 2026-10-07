@@ -107,6 +107,7 @@ assert.deepEqual(exporter.buildRecoveryAuditDetails("local-snapshot", recoveryPr
     targetVersion: model.STORE_VERSION,
     repaired: true,
     warnings: recoveryPreflight.report.warnings.length,
+    inspection: recoveryPreflight.report.inspection,
     audit: recoveryPreflight.report.audit,
     errors: ["invalid summary"],
 });
