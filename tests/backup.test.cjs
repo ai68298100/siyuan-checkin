@@ -16,7 +16,7 @@ function loadTs(filename) {
 }
 
 const {normalizeStore} = loadTs(path.join(__dirname, "..", "src", "model.ts"));
-const {parseJsonBackup, JSON_BACKUP_MAX_CHARS, preflightJsonRecovery, serializeJson, summarizeJsonBackup: summarizeProductionBackup} = loadTs(path.join(__dirname, "..", "src", "export.ts"));
+const {parseJsonBackup, JSON_BACKUP_MAX_CHARS, classifyJsonRecoveryError, preflightJsonRecovery, serializeJson, summarizeJsonBackup: summarizeProductionBackup} = loadTs(path.join(__dirname, "..", "src", "export.ts"));
 function summarizeJsonBackup(store) {
     const dates = store.events.map((event) => event.localDate).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort();
     return {itemCount: store.items.length, eventCount: store.events.length, tombstoneCount: store.eventTombstones.length, templateCount: store.templates?.length || 0, archivedItemCount: store.items.filter((item) => item.archived).length, dateRange: dates.length ? {from: dates[0], to: dates[dates.length - 1]} : undefined};
@@ -77,6 +77,10 @@ const inspected = parseJsonBackup(JSON.stringify(rawInspection), () => ({version
 assert.deepEqual(inspected.inspection, {duplicateItemIds: 1, duplicateEventIds: 1, duplicateTombstoneIds: 1, missingEventItemIds: 1, unitConflicts: 1});
 assert.equal(inspected.warnings.length, 5, "每类结构损耗都必须进入恢复前提示");
 assert.throws(() => parseJsonBackup("x".repeat(JSON_BACKUP_MAX_CHARS + 1), () => ({version: 3, items: [], events: [], eventTombstones: []})), /8 MiB/);
+assert.equal(classifyJsonRecoveryError(new Error("备份文件超过 8 MiB 上限")), "json-too-large");
+assert.equal(classifyJsonRecoveryError(new Error("备份 JSON 无法解析")), "json-parse");
+assert.equal(classifyJsonRecoveryError(new Error("备份必须是 JSON 对象")), "json-shape");
+assert.equal(classifyJsonRecoveryError(new Error("normalizer failed")), "json-normalize");
 
 // T-1647：用生产模型和导出/预检模块走一遍“备份 → 受控改动 → 恢复复核”。
 const item = (id, name, unit = "次") => ({

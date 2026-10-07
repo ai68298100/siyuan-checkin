@@ -42,6 +42,16 @@ export interface JsonRecoveryPreflight {
 
 export type JsonRecoverySource = "json-import" | "local-snapshot";
 export type JsonRecoveryStatus = "accepted" | "rejected";
+export type JsonRecoveryFailureKind = "json-too-large" | "json-parse" | "json-shape" | "json-normalize";
+
+/** Convert parser/normalizer failures into a bounded diagnostic category. */
+export function classifyJsonRecoveryError(error: unknown): JsonRecoveryFailureKind {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (message.includes("必须是 JSON 对象") || message.includes("不是文本")) return "json-shape";
+    if (message.includes("超过") || message.includes("上限")) return "json-too-large";
+    if (message.includes("无法解析") || message.includes("Unexpected") || message.includes("JSON")) return "json-parse";
+    return "json-normalize";
+}
 
 export function buildRecoveryAuditDetails(source: JsonRecoverySource, preflight: JsonRecoveryPreflight, status: JsonRecoveryStatus, errors: readonly string[] = []): Record<string, unknown> {
     const {report} = preflight;

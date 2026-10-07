@@ -21,7 +21,7 @@ import {getPluginLocale, setPluginLanguage, t} from "./i18n";
 import {uiIcon, type UiIconName} from "./ui/icons";
 import {PRIORITY_LABELS, TIME_SLOT_LABELS, SORT_LABELS, SCHEDULE_LABELS, KIND_LABELS} from "./ui/labels";
 import {escapeHtml, normalizeCustomIconLibrary, withTimeout, renderIconMarkup, formatNumber, captureActionMoment, nextItemUpdatedAt, currentCalendarDate, calendarDateFromKey, isValidLocalDateInput, storeNeedsMigration, getRecordStep, formatHistoryDate, type ActionMoment} from "./shared";
-import {buildRecoveryAuditDetails, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
+import {buildRecoveryAuditDetails, classifyJsonRecoveryError, parseCheckinCsv, preflightJsonRecovery, summarizeJsonBackup} from "./export";
 import {buildHabitInsights} from "./features/insights";
 import {buildCoachingSuggestions} from "./features/coaching";
 import {buildReviewAnalysisKey, selectReviewAnalysis, type ReviewAssistantGoal} from "./features/review-assistant";
@@ -5927,7 +5927,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", validationErrors)});
                     this.recordDiagnostic("migration-rejected", (validationErrors[0] || "unknown").slice(0, 200));
                     void this.persistAuditBestEffort();
-                    showMessage(`恢复失败：${validationErrors.join("；")}`);
+                    settingsFeedback(t("msg.jsonRestoreValidationFail", {list: validationErrors.join("；")}));
                     input.value = "";
                     return;
                 }
@@ -5950,15 +5950,18 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 } catch {
                     this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "rejected", ["persist-failed"])});
                     await this.persistAuditBestEffort();
-                    showMessage(t("msg.restoreFailed"));
+                    settingsFeedback(t("msg.restoreFailed"));
                     return;
                 }
                 this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: buildRecoveryAuditDetails("json-import", preflight, "accepted")});
                 await this.persistAuditBestEffort();
-                showMessage(`已恢复 ${itemCount} 个项目、${eventCount} 条记录${backup.repaired ? t("msg.jsonRepaired") : ""}`);
+                settingsFeedback(t("msg.jsonRestored", {items: itemCount, events: eventCount, repaired: backup.repaired ? t("msg.jsonRepaired") : ""}));
                 this.render();
             } catch (error) {
-                showMessage(t("msg.importFail", {error: String(error)}));
+                const failureKind = classifyJsonRecoveryError(error);
+                this.auditEntries = appendStoreAudit(this.auditEntries, {type: "migration", at: new Date().toISOString(), details: {status: "rejected", source: "json-import", failureKind}});
+                this.recordDiagnostic("migration-rejected", failureKind);
+                void this.persistAuditBestEffort();
                 settingsFeedback(t("msg.importFail", {error: String(error)}));
             } finally {
                 input.value = ""; settingsBusy.delete(input); input.disabled = false; input.removeAttribute("aria-busy");
@@ -6757,6 +6760,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const {report: migration, assessment, validationErrors} = preflight;
         if (validationErrors.length) {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {...buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", validationErrors), snapshotCapturedAt: snapshot.capturedAt, legacySnapshot: snapshot.legacy}});
+            this.recordDiagnostic("migration-rejected", "snapshot-validation");
             await this.persistAuditBestEffort();
             showMessage(t("msg.snapshotRestoreFail"));
             return;
@@ -6780,6 +6784,7 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             });
         } catch {
             this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {...buildRecoveryAuditDetails("local-snapshot", preflight, "rejected", ["persist-failed"]), snapshotCapturedAt: snapshot.capturedAt, legacySnapshot: snapshot.legacy}});
+            this.recordDiagnostic("save-failed", "snapshot-persist-failed");
             await this.persistAuditBestEffort();
             showMessage(t("msg.snapshotRestoreFail"));
             return;

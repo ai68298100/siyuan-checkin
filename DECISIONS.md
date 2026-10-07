@@ -2232,3 +2232,9 @@
 
 - 备份验收测试直接串接生产 `normalizeStore`、`serializeJson` 和 `preflightJsonRecovery`，验证“导出→受控增加数据→恢复预检→项目/记录/墓碑复核”的结果；测试同时确认独立配置不会进入主档 JSON。
 - 这条内存旅程证明核心数据口径和审查提示，不冒充真实 `loadData/saveData`、用户取消、写入失败回滚或跨窗口竞态证据；这些仍保留在 T-1647 的宿主验收边界。
+
+# D-417：恢复异常共享事实记录，提示只保留一个用户反馈面（2026-10-07）
+
+- JSON 导入的超大、解析、形状和归一化异常映射为有限类别，写入 migration 审计与 `migration-rejected` 会话诊断；不把原始错误全文作为诊断 detail。
+- 本地快照校验失败写 `migration-rejected`，快照持久化失败写 `save-failed`，并继续保留 restore 审计的来源、时间和失败边界。设置页使用 `settingsFeedback` 呈现结果，避免 toast 与设置页错误状态重复播报。
+- 取消确认不进入这些失败路径；CSV/Loop/Obsidian 导入和真实宿主 I/O 失败仍作为 T-1648 后续矩阵，不把本轮静态/浏览器证据扩大解释为真实宿主验收。
