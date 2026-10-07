@@ -55,6 +55,8 @@ assert.equal(emptySnapshot.format, "siyuan-checkin-snapshot");
 assert.equal(emptySnapshot.capturedAt, "2026-09-11T19:00:00.000Z");
 assert.deepEqual(model.readStoreSnapshot(emptySnapshot), {store: emptySnapshot.store, capturedAt: emptySnapshot.capturedAt, legacy: false});
 assert.deepEqual(model.readStoreSnapshot({version: 1, items: [], events: []}), {store: {version: 1, items: [], events: []}, legacy: true});
+const malformedSnapshot = {...emptySnapshot, store: {}};
+assert.equal(model.readStoreSnapshot(malformedSnapshot).invalid, true, "canonical snapshots with an incomplete store payload are invalid");
 const snapshotHistory = [1, 2, 3, 4].reduce((history, hour) => model.appendStoreSnapshotHistory(history,
     model.createStoreSnapshotEnvelope(model.createDefaultStore(), `2026-09-12T0${hour}:00:00Z`)), undefined);
 assert.equal(snapshotHistory.snapshots.length, 3);
@@ -63,6 +65,7 @@ assert.deepEqual(model.readStoreSnapshotHistory(snapshotHistory).map((entry) => 
 ]);
 assert.equal(model.readStoreSnapshotHistory({version: 1, items: [], events: []})[0].legacy, true);
 assert.equal(model.readStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: Array.from({length: 20}, (_, index) => model.createStoreSnapshotEnvelope(model.createDefaultStore(), new Date(index * 1000).toISOString()))}).length, 3);
+assert.equal(model.readStoreSnapshotHistory({format: model.STORE_SNAPSHOT_HISTORY_FORMAT, version: 1, snapshots: [malformedSnapshot]}).length, 0, "malformed canonical history entries cannot become restore points");
 assert.throws(() => model.createStoreSnapshotEnvelope(model.createDefaultStore(), "invalid"), /invalid-snapshot-time/);
 const snapshotExport = JSON.parse(model.serializeStoreSnapshotHistory(snapshotHistory, "2026-09-12T05:00:00.000Z"));
 assert.equal(snapshotExport.format, "siyuan-checkin-snapshot-export");

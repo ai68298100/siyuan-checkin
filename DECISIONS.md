@@ -2345,3 +2345,8 @@
 
 - 清空审计按钮通过 `runSettingsAction` 调用既有锁内清除方法，等待期间统一暴露 `disabled`/`aria-busy` 并拦截重复点击；失败重渲染后优先恢复可用的清空入口，成功清空后回到设置返回入口。
 - 保留 `clearAuditEntries` 的锁内空桶替换、失败恢复和提示语义，不把设置入口生命周期与审计数据删除边界混在一起。
+
+# D-442：恢复点 canonical 快照先做存储形状校验（2026-10-08）
+
+- 带 `siyuan-checkin-snapshot` 格式的恢复点必须同时含有限 `version` 与数组形状的 `items`、`events`、`eventTombstones`；缺失或错误的 `store` 标记为 invalid，不进入历史恢复点。
+- 直接恢复遇到 invalid 快照时在 `preflightJsonRecovery` 之前拒绝并写入有界 `migration-rejected/snapshot-history-corrupt` 诊断，避免坏对象被归一化为空主档；旧版无格式 raw store 继续走 legacy 兼容路径。

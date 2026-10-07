@@ -29,6 +29,8 @@ export interface ReadStoreSnapshotResult {
     store: unknown;
     capturedAt?: string;
     legacy: boolean;
+    /** Canonical envelope was recognized but its store payload is not recoverable. */
+    invalid?: boolean;
 }
 
 export interface StoreSnapshotHistory {
@@ -45,10 +47,15 @@ export function createStoreSnapshotEnvelope(store: CheckinStore, capturedAt = ne
 export function readStoreSnapshot(value: unknown): ReadStoreSnapshotResult {
     if (value && typeof value === "object") {
         const candidate = value as Partial<StoreSnapshotEnvelope>;
-        if (candidate.format === STORE_SNAPSHOT_FORMAT && candidate.version === 1 && candidate.store && typeof candidate.store === "object") {
+        if (candidate.format === STORE_SNAPSHOT_FORMAT && candidate.version === 1) {
             const capturedAt = typeof candidate.capturedAt === "string" && Number.isFinite(Date.parse(candidate.capturedAt))
                 ? new Date(candidate.capturedAt).toISOString() : undefined;
-            return {store: candidate.store, capturedAt, legacy: false};
+            const store = candidate.store as Partial<CheckinStore> | undefined;
+            const validStoreShape = Boolean(store && typeof store === "object" && Number.isFinite(store.version)
+                && Array.isArray(store.items) && Array.isArray(store.events) && Array.isArray(store.eventTombstones));
+            return validStoreShape
+                ? {store, capturedAt, legacy: false}
+                : {store: candidate.store, capturedAt, legacy: false, invalid: true};
         }
     }
     return {store: value, legacy: true};
@@ -59,7 +66,7 @@ export function readStoreSnapshotHistory(value: unknown, limit = 3): ReadStoreSn
     if (value && typeof value === "object") {
         const candidate = value as Partial<StoreSnapshotHistory>;
         if (candidate.format === STORE_SNAPSHOT_HISTORY_FORMAT && candidate.version === 1 && Array.isArray(candidate.snapshots)) {
-            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy).slice(-boundedLimit);
+            return candidate.snapshots.map(readStoreSnapshot).filter((entry) => !entry.legacy && !entry.invalid).slice(-boundedLimit);
         }
     }
     return value === undefined || value === null ? [] : [readStoreSnapshot(value)];

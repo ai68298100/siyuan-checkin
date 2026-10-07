@@ -13,6 +13,7 @@ assert.match(source, /data-restore-snapshot/);
 assert.match(source, /restoreLatestBackup\(index\)/);
 assert.match(source, /historyIndex === undefined \? snapshots\[snapshots\.length - 1\] : snapshots\[historyIndex\]/);
 assert.match(source, /if \(!snapshot\) \{ showMessage\(t\("msg\.noSnapshot"\)\); return; \}/);
+assert.match(source, /if \(snapshot\.invalid\) \{[\s\S]*recordDiagnostic\("migration-rejected", "snapshot-history-corrupt"\)/, "malformed canonical snapshots must be rejected before recovery normalization");
 assert.match(source, /this\.store = backup;\s*try \{\s*await this\.persist\(\);/,
     "snapshot restore must persist the selected backup rather than the pre-restore store");
 assert.doesNotMatch(source, /this\.store = backup;\s*try \{\s*await this\.persist\(current\);/);

@@ -6876,6 +6876,11 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         const snapshots = readStoreSnapshotHistory(raw);
         const snapshot = historyIndex === undefined ? snapshots[snapshots.length - 1] : snapshots[historyIndex];
         if (!snapshot) { showMessage(t("msg.noSnapshot")); return; }
+        if (snapshot.invalid) {
+            this.recordDiagnostic("migration-rejected", "snapshot-history-corrupt");
+            showMessage(t("msg.snapshotRestoreFail"));
+            return;
+        }
         const preflight = preflightJsonRecovery(JSON.stringify(snapshot.store), normalizeStore, summarizeJsonBackup(this.store));
         const {report: migration, assessment, validationErrors} = preflight;
         if (validationErrors.length) {
