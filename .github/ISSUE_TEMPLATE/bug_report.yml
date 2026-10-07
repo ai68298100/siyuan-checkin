@@ -1,0 +1,56 @@
+name: 缺陷报告
+description: 报告可以稳定复现的功能、数据或界面问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请不要粘贴 Key、Token、个人路径、真实笔记内容或完整诊断导出。安全问题请使用私密报告入口。
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      placeholder: "例如：18.16.0"
+    validations:
+      required: true
+  - type: input
+    id: siyuan-version
+    attributes:
+      label: 思源版本
+      placeholder: "例如：3.8.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: 使用表面
+      options:
+        - 桌面页签
+        - Dock
+        - 快速弹窗
+        - 移动端
+        - 导入导出
+        - 外部联动
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请按顺序写出最小复现路径。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 脱敏证据
+      description: 可附脱敏截图、错误码或最小日志；请删除隐私数据。

@@ -1,0 +1,32 @@
+name: 功能建议
+description: 提议一个能改善记录、复盘或笔记联动的功能
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 现在遇到什么阻力？谁会受到影响？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 描述期望的操作路径、状态和结果。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 已尝试的替代方案
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 影响范围
+      options:
+        - label: 可能影响数据格式或迁移
+        - label: 可能影响移动端或多窗口
+        - label: 可能需要第三方插件或外部账号

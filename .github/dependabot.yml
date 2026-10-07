@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: pnpm
+    directory: "/"
+    target-branch: dev/thispc-1002
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - maintenance
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    target-branch: dev/thispc-1002
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci

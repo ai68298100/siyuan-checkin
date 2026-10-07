@@ -12,6 +12,8 @@
 
 18.16.0 改善事项页表单、文档与笔记本选择、CSV 导入反馈和设置页字体。这里介绍已发布功能；开发中的可靠性与多表面改造见 [PROGRESS](PROGRESS.md)。
 
+[![最新 Release](https://img.shields.io/github/v/release/ai68298100/siyuan-checkin?display_name=tag&sort=semver)](https://github.com/ai68298100/siyuan-checkin/releases/latest) [![CI](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ai68298100/siyuan-checkin/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/ai68298100/siyuan-checkin)](LICENSE)
+
 [最新 Release](https://github.com/ai68298100/siyuan-checkin/releases/latest) · [18.16.0 发布说明](docs/releases/release-notes-18.16.0.md) · [问题反馈](https://github.com/ai68298100/siyuan-checkin/issues) · [开发文档](docs/)
 
 </div>
@@ -19,6 +21,12 @@
 <div align="center">
 <img src="preview.png" alt="小驴打卡今日、回顾、新建和深色主题界面" width="920" />
 </div>
+
+## 仓库与版本状态
+
+- **稳定安装包**来自 `main` 分支上的发布 tag；普通用户请从 [Releases](https://github.com/ai68298100/siyuan-checkin/releases) 下载，不要直接下载开发分支源码。
+- **当前开发**在 `dev/thispc-1002` 进行，开发分支上的提交可能尚未进入任何 Release，也不代表已完成真实思源客户端验收。
+- **问题反馈**请优先使用 [Issue 模板](https://github.com/ai68298100/siyuan-checkin/issues/new/choose)，安全漏洞请看 [安全报告说明](SECURITY.md)；不要在公开 Issue 中粘贴 Key、Token、笔记内容或完整诊断导出。
 
 [安装与开始](#安装与兼容性) · [核心功能](#核心功能) · [联动与来源](#笔记联动与外部来源) · [接入 API](#api) · [开发与验证](#开发与验证) · [交流](#小驴系列与交流)
 
@@ -117,7 +125,7 @@ if (checkin.hasCapability("events.record")) {
 
 ## 开发与验证
 
-环境要求：Node.js 18+、pnpm 11。
+环境要求：Node.js 18+、pnpm 12.5.1（`package.json` 已固定版本）。
 
 ```bash
 corepack pnpm install
@@ -162,9 +170,11 @@ corepack pnpm run test:e2e:readonly
 
 - [发布说明目录](docs/releases/) · [发布与回滚](docs/release-rollback.md) · [思源兼容矩阵](docs/siyuan-compatibility.md)
 - [API v5](docs/api-v5.md) · [生态集成契约](docs/ecosystem-integration.md) · [契约自测包](contracts/siyuan-checkin-contract/) · [真机验收清单](docs/integration-smoke-checklist.md)
+- [贡献指南](CONTRIBUTING.md) · [安全报告](SECURITY.md) · [仓库运维说明](docs/github-repository-ops.md)
 - [架构与模块地图](docs/architecture.md) · [仓库布局规则](docs/repository-layout.md) · [导入导出格式](docs/export-formats.md)
 - [低压力呈现基线](docs/low-pressure-baseline.md) · [笔记绑定盘点](docs/note-bindings-inventory.md) · [生态调研记录](docs/benchmark-habit-apps-2026-09.md)
 - [当前路线](docs/implementation-roadmap-product-strategy-2026-09.md) · [UI 内容审查记录](docs/ui-full-content-audit-2026-09-20.md) · [UI 变更记录](docs/v4.0-ui-change-log.md) · [UI 路线归档](docs/archive/ui-product-roadmap.md)
+- [产品定位与下一阶段路线](docs/product-positioning-and-roadmap-2026-10.md) · [UI 原型 v3](docs/prototypes/checkin-ui-v3.html) · [v3 完整设计规范](docs/ui-prototype-spec-v3-2026-10.md)
 - [v2.0 变更记录](docs/v2.0-change-log.md) · [v2.0 迁移说明](docs/v2.0-migration-notes.md) · [旧版 UI 路线](docs/archive/ui-redesign-roadmap.md)
 
 ## 小驴系列与交流
@@ -173,7 +183,7 @@ corepack pnpm run test:e2e:readonly
 
 | 插件 | 定位 |
 | --- | --- |
-| **小驴打卡** | 思源笔记习惯追踪与行动复盘（本插件） |
+| **小驴打卡** | 思源里的低压力个人行动台：记录事实、回到笔记、决定下一步（本插件） |
 | **小驴雷切** | 思源笔记快速切片与模板管理 |
 | **小驴人脉** | 思源笔记人脉关系管理 |
 | **小驴拾遗** | 思源笔记碎片灵感收集 |

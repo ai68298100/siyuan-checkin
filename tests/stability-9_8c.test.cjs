@@ -72,7 +72,11 @@ check("quality chain builds before performance tests", () => {
 check("UI suite does not inspect stale release artifacts", () => {
     assert.doesNotMatch(pkg.scripts["test:ui"], /release-assets/);
 });
-check("CI verifies pushes to main", () => assert.match(ci, /push:\s*\n\s*branches: \[main\]/));
+check("CI verifies pushes to release and development branches", () => {
+    assert.match(ci, /push:\s*\n\s*branches:/);
+    assert.match(ci, /- main/);
+    assert.match(ci, /- ['"]?dev\/\*\*['"]?/);
+});
 check("CI verifies pull requests", () => assert.match(ci, /pull_request:/));
 check("CI pins Node 22", () => assert.equal((ci.match(/node-version: 22/g) || []).length, 2));
 check("CI installs from the frozen lockfile", () => assert.equal((ci.match(/pnpm install --frozen-lockfile/g) || []).length, 2));

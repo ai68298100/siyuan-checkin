@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞（私密报告）
+    url: https://github.com/ai68298100/siyuan-checkin/security/advisories/new
+    about: 涉及凭据、数据泄露、任意请求或数据损坏时，请使用 Security 私密报告。
+  - name: 使用文档与兼容性说明
+    url: https://github.com/ai68298100/siyuan-checkin/tree/dev/thispc-1002/docs
+    about: 提交问题前先查看安装、导入导出、联动和兼容性文档。
