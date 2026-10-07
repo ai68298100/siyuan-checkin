@@ -9,7 +9,8 @@
 - `serializeJson` 输出主 Store（version 3）：`items` / `events` / `eventTombstones`；
 - **范围边界（T-1627，D-318）**：JSON 备份只覆盖**主档**——打卡项目、事件与墓碑。个人模板、问卷配置、图标库、事项、提醒动作、视图偏好与外部失败箱保存在独立存储桶，**不在 JSON 备份/恢复范围内**（跨设备迁移这些配置需在插件内各自重建；模板另有编辑器内的脱敏分享/导入通道）；
 - 含恢复点语义：导入/恢复前自动生成快照（写前快照管线）；
-- 导入：设置 → 导入 JSON；接受 v2/v3 数据并自动迁移（`parseJsonBackup`，其他版本给出警告）。
+- 导入：设置 → 导入 JSON；接受 v2/v3 数据并自动迁移（`parseJsonBackup`，其他版本给出警告）。导入文本上限为 8 MiB，超过上限在 `JSON.parse` 前拒绝，避免异常文件占满 WebView 内存；
+- 确认前会检查重复项目/记录/墓碑 ID、指向不存在项目的记录和项目单位冲突。规范化会合并重复项或跳过悬空记录时，检查结果会进入兼容性提示和恢复审计；这不会扩展备份范围，也不会把独立配置写回主档。
 
 ### 2. CSV 记录导出（设置 → 导出 CSV）
 
@@ -45,7 +46,7 @@ eventId,itemId,itemName,occurredAt,localDate,value,unit,source,note,externalRef
 
 | 通道 | 入口 | 格式要点 | 幂等与安全 |
 | --- | --- | --- | --- |
-| JSON 备份恢复 | 设置 → 导入 JSON | 本插件导出的 JSON（v2/v3） | 恢复点先行；恢复审计 |
+| JSON 备份恢复 | 设置 → 导入 JSON | 本插件导出的 JSON（v2/v3），文本 ≤ 8 MiB；确认前披露重复 ID、悬空记录和单位冲突 | 恢复点先行；恢复审计保留结构检查结果；失败回滚 |
 | CSV 记录导入 | 设置 → 导入 CSV | 表头需含 `名称`/`itemName`、`日期`/`date`/`localDate`（兼容本插件导出表头全集）；可选 `数值`、`单位`；日期为真实日历校验（`2026-02-30` 拒绝）；引号字段可跨行；单文件 ≤ 20000 行 | `source=import`；按 项目+日期+值+单位 去重（重复导入幂等）；无效行计数进确认框；确认框先行 |
 | Loop CSV | 设置 → 从 Loop 导入 | Habits.csv +/或 Checkmarks.csv（可多选） | YES_NO 完成日导入；数值习惯仅建项目；SKIP 日不迁移（见降级说明）；确认框先行 |
 | Obsidian 习惯文件 | 设置 → 从 Obsidian 导入 | Habit Tracker 21 习惯 `.md`（frontmatter `entries` 完成日数组，可多选） | 每日二值项目 + `source=import` 事件；`externalRef=obsidian21:<文件名>:<日期>` 幂等；外部身份与同日双重去重；确认框先行；颜色与 maxGap 容忍不迁移 |

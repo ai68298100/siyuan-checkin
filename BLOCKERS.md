@@ -36,12 +36,12 @@ T-1509～T-1523 已于 2026-09-28 全部交付，原“14 项当前队列”是�
 
 ## GitHub 同步与发布边界（2026-10-07）
 
-- **B-GITHUB-SYNC（等待合并窗口）**：本地 `dev/thispc-1002` 比远端同名分支多 21 个提交；当前工作协议禁止自动 push，因此本轮新增的 README、CI、Issue/PR 模板、Dependabot 和安全入口只在工作区准备，远端 README/工作流要等开发分支按双机协议合并后才会生效。
+- **B-GITHUB-SYNC（等待合并窗口）**：`dev/thispc-1002` 已按用户授权同步到远端并会继续保持同名分支一致；README、CI、Issue/PR 模板、Dependabot 和安全入口在两机合并窗口前仍不改变主干/默认分支。
 - **B-RELEASE-SOURCE（发布前置）**：远端默认浏览分支仍是 `dev/thispc-1002`，稳定发布基线是 `main`/v18.16.0；历史 Release 的 `targetCommitish` 曾混用，下一次两机合并后要统一从 `main` 创建 tag/release，再考虑把默认分支切回 `main` 并启用分支保护。本轮不改默认分支、不触碰 v16.0.0 draft。
 
 ## 2026-10-07 开发分支同步结果
 
-- `dev/thispc-1002` 已推送到 `784bb08`，本地与远端同名分支一致；`main` 仍保持 `03a57f9`，没有合并、推送或发版。
+- `dev/thispc-1002` 已完成最近一次同步，本地与远端同名分支一致；`main` 保持现有发布基线，没有合并、推送或发版。具体检查点以 `git status -sb` 与 `git ls-remote` 为准。
 - 本轮同步包含代码、测试、原型、产品路线、帮助文档、工具链和性能观测；版本仍为 `18.16.0`，没有 tag、Release 或集市发布。
 - `PROGRESS.md` 按双机协议留在本机工作树，不进入远端开发分支；另一台电脑明天接手时先处理它的本地开发记录，再按 `BRANCH-PROTOCOL.md` 合并。
 - GitHub push 返回 Dependabot 仍发现默认分支有 2 个漏洞（1 high、1 low）；这不是本轮代码同步失败，后续在 GitHub Security 页面单独处理。

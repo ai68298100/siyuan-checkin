@@ -1,4 +1,21 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const ts = require("typescript");
+
+const compiledCache = new Map();
+function loadTs(filename) {
+    if (compiledCache.has(filename)) return compiledCache.get(filename).exports;
+    const loaded = {exports: {}};
+    compiledCache.set(filename, loaded);
+    const compiled = ts.transpileModule(fs.readFileSync(filename, "utf8"), {compilerOptions: {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS}}).outputText;
+    const localRequire = (name) => name.startsWith(".")
+        ? loadTs(path.resolve(path.dirname(filename), `${name}.ts`)) : require(name);
+    new Function("require", "module", "exports", compiled)(localRequire, loaded, loaded.exports);
+    return loaded.exports;
+}
+
+const {parseJsonBackup, JSON_BACKUP_MAX_CHARS} = loadTs(path.join(__dirname, "..", "src", "export.ts"));
 function summarizeJsonBackup(store) {
     const dates = store.events.map((event) => event.localDate).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort();
     return {itemCount: store.items.length, eventCount: store.events.length, tombstoneCount: store.eventTombstones.length, templateCount: store.templates?.length || 0, archivedItemCount: store.items.filter((item) => item.archived).length, dateRange: dates.length ? {from: dates[0], to: dates[dates.length - 1]} : undefined};
@@ -40,4 +57,23 @@ assert.equal(assessJsonMigration({warnings: [], repaired: false, audit: {itemDel
 assert.deepEqual(validateJsonMigrationReport({targetVersion: 2, store: {version: 2, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}), []);
 assert.equal(validateJsonMigrationReport({targetVersion: 0, store: {version: 0, items: [], events: []}, summary: {itemCount: 0, eventCount: 0}}).length, 1);
 assert.match(JSON.stringify({sourceVersion: 1, targetVersion: 2, repaired: true, warnings: ["legacy"]}), /sourceVersion/);
+const exporter = fs.readFileSync("src/export.ts", "utf8");
+assert.match(exporter, /JSON_BACKUP_MAX_CHARS = 8 \* 1024 \* 1024/, "JSON 主档必须有明确的字符上限");
+assert.match(exporter, /duplicateItemIds/);
+assert.match(exporter, /duplicateEventIds/);
+assert.match(exporter, /duplicateTombstoneIds/);
+assert.match(exporter, /missingEventItemIds/);
+assert.match(exporter, /unitConflicts/);
+assert.match(exporter, /appendInspectionWarnings\(warnings, inspection\)/, "导入前结构检查必须进入用户可见的兼容性提示");
+assert.match(exporter, /inspection: report\.inspection/, "恢复审计必须保留结构检查结果");
+const rawInspection = {
+    version: 3,
+    items: [{id: "item-1", unit: "次"}, {id: "item-1", unit: "次"}],
+    events: [{id: "event-1", itemId: "item-1", unit: "分钟"}, {id: "event-1", itemId: "item-1", unit: "次"}, {id: "event-2", itemId: "missing", unit: "次"}],
+    eventTombstones: [{eventId: "event-1"}, {eventId: "event-1"}],
+};
+const inspected = parseJsonBackup(JSON.stringify(rawInspection), () => ({version: 3, items: rawInspection.items, events: rawInspection.events, eventTombstones: rawInspection.eventTombstones}));
+assert.deepEqual(inspected.inspection, {duplicateItemIds: 1, duplicateEventIds: 1, duplicateTombstoneIds: 1, missingEventItemIds: 1, unitConflicts: 1});
+assert.equal(inspected.warnings.length, 5, "每类结构损耗都必须进入恢复前提示");
+assert.throws(() => parseJsonBackup("x".repeat(JSON_BACKUP_MAX_CHARS + 1), () => ({version: 3, items: [], events: [], eventTombstones: []})), /8 MiB/);
 console.log("Backup summary checks passed.");

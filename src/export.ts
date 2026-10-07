@@ -1,11 +1,27 @@
 import type {CheckinStore} from "./types";
 import {isValidDateKey} from "./date-keys";
 
+/**
+ * JSON 主档导入的字符上限。主档可以包含图片 data URL，不能沿用 CSV 的
+ * 行数限制；8 MiB 能容纳单个合法附件和常规长期记录，同时在 JSON.parse
+ * 前阻止异常文件占满 WebView 内存。
+ */
+export const JSON_BACKUP_MAX_CHARS = 8 * 1024 * 1024;
+
+export interface JsonBackupInspection {
+    duplicateItemIds: number;
+    duplicateEventIds: number;
+    duplicateTombstoneIds: number;
+    missingEventItemIds: number;
+    unitConflicts: number;
+}
+
 export interface JsonBackupResult {
     store: CheckinStore;
     repaired: boolean;
     summary: JsonBackupSummary;
     warnings: string[];
+    inspection: JsonBackupInspection;
 }
 export interface JsonMigrationReport extends JsonBackupResult {
     sourceVersion: number | string;
@@ -36,6 +52,7 @@ export function buildRecoveryAuditDetails(source: JsonRecoverySource, preflight:
         targetVersion: report.targetVersion,
         repaired: report.repaired,
         warnings: report.warnings.length,
+        inspection: report.inspection,
         audit: report.audit,
         ...(errors.length ? {errors: [...errors]} : {}),
     };
@@ -83,6 +100,8 @@ export function auditJsonBackup(before: JsonBackupSummary, after: JsonBackupSumm
 }
 
 export function buildJsonMigrationReport(text: string, normalize: (value: unknown) => CheckinStore, before?: JsonBackupSummary): JsonMigrationReport {
+    if (typeof text !== "string") throw new Error("备份内容不是文本");
+    if (text.length > JSON_BACKUP_MAX_CHARS) throw new Error(`备份文件超过 ${JSON_BACKUP_MAX_CHARS / (1024 * 1024)} MiB 上限`);
     let sourceVersion: number | string = "unknown";
     try {
         const parsed = JSON.parse(text.replace(/^\uFEFF/, "")) as {version?: unknown};
@@ -114,18 +133,70 @@ export function summarizeJsonBackup(store: CheckinStore): JsonBackupSummary {
     };
 }
 
+function duplicateIdCount(values: readonly unknown[]): number {
+    const counts = new Map<string, number>();
+    values.forEach((value) => {
+        if (typeof value !== "string" || !value) return;
+        counts.set(value, (counts.get(value) || 0) + 1);
+    });
+    return [...counts.values()].filter((count) => count > 1).length;
+}
+
+function inspectJsonBackup(value: unknown): JsonBackupInspection {
+    if (!value || typeof value !== "object") {
+        return {duplicateItemIds: 0, duplicateEventIds: 0, duplicateTombstoneIds: 0, missingEventItemIds: 0, unitConflicts: 0};
+    }
+    const candidate = value as {items?: unknown; events?: unknown; eventTombstones?: unknown};
+    const items = Array.isArray(candidate.items) ? candidate.items : [];
+    const events = Array.isArray(candidate.events) ? candidate.events : [];
+    const tombstones = Array.isArray(candidate.eventTombstones) ? candidate.eventTombstones : [];
+    const itemIds = new Set(items.flatMap((item) => item && typeof item === "object" && typeof (item as {id?: unknown}).id === "string" ? [(item as {id: string}).id] : []));
+    const itemUnits = new Map(items.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const record = item as {id?: unknown; unit?: unknown};
+        return typeof record.id === "string" && record.id && typeof record.unit === "string" ? [[record.id, record.unit] as const] : [];
+    }));
+    let missingEventItemIds = 0;
+    let unitConflicts = 0;
+    events.forEach((event) => {
+        if (!event || typeof event !== "object") return;
+        const record = event as {itemId?: unknown; unit?: unknown};
+        if (typeof record.itemId !== "string" || !itemIds.has(record.itemId)) missingEventItemIds += 1;
+        else if (typeof record.unit === "string" && itemUnits.get(record.itemId) !== undefined && record.unit !== itemUnits.get(record.itemId)) unitConflicts += 1;
+    });
+    return {
+        duplicateItemIds: duplicateIdCount(items.map((item) => item && typeof item === "object" ? (item as {id?: unknown}).id : undefined)),
+        duplicateEventIds: duplicateIdCount(events.map((event) => event && typeof event === "object" ? (event as {id?: unknown}).id : undefined)),
+        duplicateTombstoneIds: duplicateIdCount(tombstones.map((tombstone) => tombstone && typeof tombstone === "object" ? (tombstone as {eventId?: unknown}).eventId : undefined)),
+        missingEventItemIds,
+        unitConflicts,
+    };
+}
+
+function appendInspectionWarnings(warnings: string[], inspection: JsonBackupInspection): void {
+    if (inspection.duplicateItemIds) warnings.push(`发现 ${inspection.duplicateItemIds} 个重复项目 ID，导入时按规范化规则合并`);
+    if (inspection.duplicateEventIds) warnings.push(`发现 ${inspection.duplicateEventIds} 个重复记录 ID，导入时按规范化规则合并`);
+    if (inspection.duplicateTombstoneIds) warnings.push(`发现 ${inspection.duplicateTombstoneIds} 个重复删除标记，导入时按规范化规则合并`);
+    if (inspection.missingEventItemIds) warnings.push(`发现 ${inspection.missingEventItemIds} 条记录指向不存在的项目，导入时将跳过`);
+    if (inspection.unitConflicts) warnings.push(`发现 ${inspection.unitConflicts} 条记录的单位与项目当前单位不一致，请复核历史数据`);
+}
+
 /** Parse an exported backup and normalize legacy or partially malformed data safely. */
 export function parseJsonBackup(text: string, normalize: (value: unknown) => CheckinStore = (value) => value as CheckinStore): JsonBackupResult {
+    if (typeof text !== "string") throw new Error("备份内容不是文本");
+    if (text.length > JSON_BACKUP_MAX_CHARS) throw new Error(`备份文件超过 ${JSON_BACKUP_MAX_CHARS / (1024 * 1024)} MiB 上限`);
     const parsed: unknown = JSON.parse(text.replace(/^\uFEFF/, ""));
     const warnings: string[] = [];
     if (!parsed || typeof parsed !== "object") throw new Error("备份必须是 JSON 对象");
     const candidate = parsed as Record<string, unknown>;
     if (!Array.isArray(candidate.items)) warnings.push("缺少项目列表，已按空列表处理");
     if (!Array.isArray(candidate.events)) warnings.push("缺少记录列表，已按空列表处理");
+    const inspection = inspectJsonBackup(parsed);
+    appendInspectionWarnings(warnings, inspection);
     /* D-216：v3 起为当前版本；v2 及更早的备份自动迁移到当前版本。 */
     if (candidate.version !== 2 && candidate.version !== 3) warnings.push(`备份数据版本 ${String(candidate.version ?? "未知")} 将自动迁移到当前版本`);
     const store = normalize(parsed);
-    return {store, repaired: JSON.stringify(parsed) !== JSON.stringify(store), summary: summarizeJsonBackup(store), warnings};
+    return {store, repaired: JSON.stringify(parsed) !== JSON.stringify(store), summary: summarizeJsonBackup(store), warnings, inspection};
 }
 
 export function serializeJson(store: CheckinStore): string {
@@ -133,7 +204,7 @@ export function serializeJson(store: CheckinStore): string {
 }
 
 export function serializeJsonMigrationReport(report: JsonMigrationReport): string {
-    return JSON.stringify({sourceVersion: report.sourceVersion, targetVersion: report.targetVersion, repaired: report.repaired, warnings: report.warnings, summary: report.summary, audit: report.audit}, null, 2);
+    return JSON.stringify({sourceVersion: report.sourceVersion, targetVersion: report.targetVersion, repaired: report.repaired, warnings: report.warnings, inspection: report.inspection, summary: report.summary, audit: report.audit}, null, 2);
 }
 
 
