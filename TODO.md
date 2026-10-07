@@ -57,6 +57,7 @@
 - [ ] T-1649 可访问树、键盘与读屏语义（P1，ready）——核验洞察日格 button role=listitem 风险，原生角色/日期状态/钻取/焦点/等价文本或表格/缩放，自动与 TalkBack 分层；来源 AG-099/098。
   - 进展（2026-10-06，local-auto，D-355）：洞察日格容器改为 group，日期格保留原生 button，成熟度条补 progressbar label；结构守门与生产 bundle 键盘场景通过，真实 Android/TalkBack 仍需现场验收。
   - 进展（2026-10-06，local-auto，D-356）：当前日期格补 `aria-current="date"` 与可见轮廓，历史日期不携带当前标记；生产 renderer 结构测试通过。真实 Android/TalkBack、缩放和宿主现场仍开放。
+  - 进展（2026-10-07，local-auto）：成熟度 progressbar 补充本地化 `aria-valuetext`（“已坚持 N 天”），保留 0–66 数值范围，避免读屏只读出无上下文的数字；renderer 与 UI 守门通过。日期格 tab-stop 策略和真实 Android/TalkBack 仍开放。
 - [ ] T-1650 性能、体积和低端设备预算（P2，ready 测量）——冷启动、10k/100k、长数据多表面与真实 Android；先测热点再优化，按 D-246 仅报告 CSS，不放宽现有阈值；来源 AG-028/058/103。
   - 进展（2026-10-06，local-auto，D-358）：新增离线生产 bundle 基准 `scripts/t1650-browser-benchmark.cjs`，覆盖 Insights 366、Review 10k 和双 root，报告 render/frame/longtask/pageError；Edge 152 三次样本中位数范围分别为 31.6–64.4ms、91.4–227.0ms、103.0–287.6ms。波动较大，暂不加硬阈值或盲改核心；方法和证据见 `docs/t1650-performance-observation-2026-10-06.md`。
   - 进展（2026-10-07，local-auto）：基准增加 `T1650_EVENT_COUNT` 可选规模（默认 10k，上限 250k）、场景样本和 bundle 字节报告契约；本机单次 100k fixture：Insights 399ms、Review 2,981ms、双 root 3,507ms，page error 0，long task 最高 3,849ms。仅为观测样本，不能替代 Android；CSS 655,355 bytes 接近 655,360-byte 硬线。脚本/报告守门通过，真实低端设备和冷启动/长会话证据仍开放。

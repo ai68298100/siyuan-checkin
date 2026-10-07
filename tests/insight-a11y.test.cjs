@@ -10,6 +10,7 @@ assert.match(source, /<button class="lc-checkin__insight-day is-\$\{day\.status\
 assert.match(source, /data-insight-day="\$\{escapeHtml\(day\.date\)\}" title="\$\{escapeHtml\(label\)\}" aria-label="\$\{escapeHtml\(`\$\{label\}，\$\{t\("insights\.dayJumpHint"\)\}`\)\}"\$\{day\.isToday \? ` aria-current="date"` : ""\}/);
 assert.match(fs.readFileSync("src/ui/components.scss", "utf8"), /\.lc-checkin__insight-grid \.lc-checkin__insight-day\.is-today \{/, "the current insight day must have a visible marker");
 assert.match(source, /role="progressbar" aria-label="\$\{escapeHtml\(t\("insights\.maturityBarTitle"\)\)\}"/, "the maturity indicator must have a readable name");
+assert.match(source, /aria-valuetext="\$\{escapeHtml\(t\("insights\.maturityDays", \{n: maturityDays\}\)\)\}"/, "the maturity indicator must expose its localized value text");
 assert.match(source, /day\.status === "complete"/);
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
 assert.match(i18n, /"insights\.partial": "部分完成"/);
@@ -94,6 +95,7 @@ assert.ok(picker.includes("自定义图片"));
 assert.ok(!picker.includes(imageIcon), "native options cannot render images and must not display a data URI");
 assert.equal((html.match(/aria-current="date"/g) || []).length, 1, "only the current insight day is marked current");
 assert.match(html, /lc-checkin__insight-day is-pending is-today[^>]*aria-current="date"/, "the current insight day keeps its status and current-date semantics");
+assert.match(html, /role="progressbar"[^>]*aria-valuetext="已坚持 0 天"/, "the rendered maturity indicator must expose localized value text");
 assert.match(html, /lc-checkin__insight-day is-complete(?! is-today)[^>]*data-insight-day="2026-09-19"/, "past insight days are not marked current");
 view.insightsRange = "custom";
 view.insightsCustomRange = {startDate: "2026-08-01", endDate: "2026-08-28"};
