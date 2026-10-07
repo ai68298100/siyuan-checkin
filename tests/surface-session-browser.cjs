@@ -60,7 +60,9 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     window.__nativePersist = plugin.persist.bind(plugin);
                     window.__gateNextSave = () => {
                         window.__saveStarted = false;
+                        window.__persistCalls = 0;
                         plugin.persist = async () => {
+                            window.__persistCalls += 1;
                             window.__saveStarted = true;
                             await new Promise((resolve, reject) => { window.__releaseSave = fail => fail ? reject(new Error("controlled persistence failure")) : resolve(); });
                             return window.__nativePersist();
@@ -411,6 +413,44 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     primary: {state: {open: true, date: "2026-12-25"}, date: "2026-12-25", open: true},
                     secondary: {state: {open: true, date: "2026-12-26"}, date: "2026-12-26", open: true},
                 });
+                const conflictLifecycle = await page.evaluate(async () => {
+                    const plugin = window.__plugin, primary = plugin.dockElement;
+                    plugin.showSettings(primary);
+                    const settings = plugin.settingsStateForRoot(primary);
+                    settings.importConflictSession = {
+                        format: "loop-csv",
+                        loopPlan: {
+                            habits: [{name: "额外项目 0", measurable: false, unit: "次", target: 1, archived: false, schedule: {type: "daily"}, scheduleDegraded: false}],
+                            rows: [{name: "额外项目 0", date: "2026-10-08", value: 1, unit: "次", binary: true}],
+                            measurableNames: [], skipDays: 0, unknownCells: 0, unmappableFrequency: [], unknownColumns: [],
+                        },
+                        decisions: [{name: "额外项目 0", sourceKind: "binary", sourceUnit: "次", dateCount: 1, existingId: "extra-0", existingKind: "binary", existingUnit: "次", mergeCompatible: true, disposition: "merge", createNewName: "额外项目 0 · 导入"}],
+                    };
+                    plugin.syncSettingsCompatibilityForRoot(primary);
+                    plugin.render(primary);
+                    const before = structuredClone(plugin.store);
+                    const button = primary.querySelector("[data-import-conflict-confirm]");
+                    window.__gateNextSave();
+                    button.click();
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    const during = {disabled: button.disabled, busy: button.getAttribute("aria-busy"), calls: window.__persistCalls};
+                    button.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+                    const duplicate = window.__persistCalls;
+                    window.__releaseSave(true);
+                    await plugin.mutationQueue;
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    const currentButton = primary.querySelector("[data-import-conflict-confirm]");
+                    return {
+                        during,
+                        duplicate,
+                        after: {disabled: currentButton.disabled, busy: currentButton.getAttribute("aria-busy"), focused: document.activeElement === currentButton, feedback: Boolean(primary.querySelector("[data-settings-feedback]"))},
+                        rolledBack: JSON.stringify(plugin.store) === JSON.stringify(before),
+                    };
+                });
+                assert.deepEqual(conflictLifecycle.during, {disabled: true, busy: "true", calls: 1}, "conflict confirmation exposes a single gated persistence while pending");
+                assert.equal(conflictLifecycle.duplicate, 1, "a pending conflict confirmation ignores duplicate clicks");
+                assert.deepEqual(conflictLifecycle.after, {disabled: false, busy: null, focused: true, feedback: true}, "conflict persistence failure restores retry state and focus");
+                assert.equal(conflictLifecycle.rolledBack, true, "conflict persistence failure restores the pre-import store");
                 await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);

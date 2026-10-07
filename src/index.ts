@@ -4764,38 +4764,41 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const decision = session.decisions.find((candidate) => candidate.name === input.dataset.conflictName);
             if (decision && IMPORT_CONFLICT_DISPOSITIONS.has(input.value)) decision.disposition = input.value as ImportConflictDecision["disposition"];
         }));
-        root.querySelector<HTMLElement>("[data-import-conflict-confirm]")?.addEventListener("click", async () => {
-            const session = settings.importConflictSession;
-            if (!session) return;
-            const map = new Map(session.decisions.map((decision) => [decision.name, {disposition: decision.disposition, createNewName: decision.createNewName}]));
-            try {
-                const report = await this.enqueueMutation(async () => {
-                    const previousStore = this.store;
-                    try {
-                        const report = session.format === "loop-csv" && session.loopPlan
-                            ? this.importLoopPlan(session.loopPlan, map)
-                            : session.obsidianPlan
-                                ? (() => { const result = importObsidianHabitsInto(this.store, session.obsidianPlan!, map); this.store = result.store; return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates, skippedRows: result.skippedRows}; })()
-                                : null;
-                        if (!report) return null;
-                        /* 确认前已重查；保存失败整批回滚到导入前状态。 */
-                        await this.persist();
-                        return report;
-                    } catch (error) {
-                        this.store = previousStore;
-                        throw error;
-                    }
-                });
-                if (!report) return;
-                settings.importConflictSession = undefined;
-                this.syncSettingsCompatibilityForRoot(root);
-                showMessage(t(session.format === "loop-csv" ? "msg.loopDone" : "msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
-                if (report.skippedRows) showMessage(t("set.importSkippedRows", {n: report.skippedRows}));
-                this.render(root);
-            } catch (error) {
-                this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
-                settingsFeedback(t("msg.importFail", {error: String(error)}));
-            }
+        root.querySelector<HTMLElement>("[data-import-conflict-confirm]")?.addEventListener("click", (event) => {
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, async () => {
+                const session = settings.importConflictSession;
+                if (!session) return;
+                const map = new Map(session.decisions.map((decision) => [decision.name, {disposition: decision.disposition, createNewName: decision.createNewName}]));
+                try {
+                    const report = await this.enqueueMutation(async () => {
+                        const previousStore = this.store;
+                        try {
+                            const report = session.format === "loop-csv" && session.loopPlan
+                                ? this.importLoopPlan(session.loopPlan, map)
+                                : session.obsidianPlan
+                                    ? (() => { const result = importObsidianHabitsInto(this.store, session.obsidianPlan!, map); this.store = result.store; return {itemsCreated: result.itemsCreated, eventsCreated: result.eventsCreated, duplicates: result.duplicates, skippedRows: result.skippedRows}; })()
+                                    : null;
+                            if (!report) return null;
+                            /* 确认前已重查；保存失败整批回滚到导入前状态。 */
+                            await this.persist();
+                            return report;
+                        } catch (error) {
+                            this.store = previousStore;
+                            throw error;
+                        }
+                    });
+                    if (!report) return;
+                    settings.importConflictSession = undefined;
+                    this.syncSettingsCompatibilityForRoot(root);
+                    showMessage(t(session.format === "loop-csv" ? "msg.loopDone" : "msg.obsidianDone", {items: report.itemsCreated, events: report.eventsCreated, duplicates: report.duplicates}));
+                    if (report.skippedRows) showMessage(t("set.importSkippedRows", {n: report.skippedRows}));
+                    this.render(root);
+                } catch (error) {
+                    this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
+                    settingsFeedback(t("msg.importFail", {error: String(error)}));
+                }
+            }, "[data-import-conflict-confirm]");
         });
         root.querySelector<HTMLElement>("[data-import-conflict-cancel]")?.addEventListener("click", () => {
             settings.importConflictSession = undefined;
