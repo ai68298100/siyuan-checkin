@@ -26,6 +26,7 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     ].map(item => ({...item, schedule: {type: "daily"}, createdAt}));
                     window.__buckets = new Map([["checkin-store", {version: 1, items, events: []}]]);
                     window.__buckets.set("checkin-occasions", {version: 1, occasions: [{id: "birthday", name: "生日提醒", kind: "birthday", date: "2026-12-20", recurrence: "annual", calendar: "solar", remindBeforeDays: 3, enabled: true, completedDates: []}]});
+                    window.__buckets.set("checkin-focus-diagnostics", JSON.stringify({schemaVersion: 1, issues: [{reason: "write-failed", at: new Date().toISOString(), itemId: "water", identity: "focus-1", count: 1}]}));
                     window.__messages = [];
                     window.module = {exports: {}};
                     window.siyuan = {config: {appearance: {mode: 0}, system: {appDir: "", os: "windows"}}};
@@ -554,6 +555,63 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                 assert.deepEqual(auditClearLifecycle.failed, {restored: true, focused: true, feedback: true}, "failed audit clear restores the retry button, focus and feedback");
                 assert.deepEqual(auditClearLifecycle.successPending, {disabled: true, busy: "true", calls: 1}, "audit clear retry remains busy until persistence finishes");
                 assert.deepEqual(auditClearLifecycle.success, {cleared: true, focusedBack: true}, "successful audit clear returns focus to a live settings control");
+                const focusClearLifecycle = await page.evaluate(async () => {
+                    const plugin = window.__plugin, primary = plugin.dockElement;
+                    await plugin.onDataChanged();
+                    plugin.showSettings(primary);
+                    plugin.syncSettingsCompatibilityForRoot(primary);
+                    plugin.render(primary);
+                    const nativeSaveData = plugin.saveData.bind(plugin);
+                    let releaseSave;
+                    let saveCalls = 0;
+                    plugin.saveData = async (bucket, value) => {
+                        if (bucket === "checkin-focus-diagnostics") {
+                            saveCalls += 1;
+                            await new Promise((resolve, reject) => { releaseSave = fail => fail ? reject(new Error("controlled focus diagnostics failure")) : resolve(); });
+                        }
+                        return nativeSaveData(bucket, value);
+                    };
+                    const currentButton = () => primary.querySelector("[data-action='clear-focus-issues']");
+                    const waitFor = async (predicate) => {
+                        for (let index = 0; index < 80; index += 1) {
+                            if (predicate()) return;
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
+                        const current = currentButton();
+                        throw new Error(`timed out waiting for focus diagnostics lifecycle: ${JSON.stringify({currentBusy: current?.getAttribute("aria-busy"), currentDisabled: current?.disabled, active: document.activeElement?.getAttribute?.("data-action") || document.activeElement?.getAttribute?.("data-mobile-nav"), saveCalls, hasRelease: typeof releaseSave === "function"})}`);
+                    };
+                    const button = currentButton();
+                    button.click();
+                    await waitFor(() => button.getAttribute("aria-busy") === "true" && saveCalls === 1 && typeof releaseSave === "function");
+                    const during = {disabled: button.disabled, busy: button.getAttribute("aria-busy"), calls: saveCalls};
+                    button.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+                    const duplicate = saveCalls;
+                    releaseSave(true);
+                    await waitFor(() => {
+                        const next = currentButton();
+                        return next && !next.hasAttribute("aria-busy") && !next.disabled && document.activeElement === next;
+                    });
+                    const failedButton = currentButton();
+                    const failed = {rowRestored: Boolean(failedButton), focused: document.activeElement === failedButton, feedback: Boolean(primary.querySelector("[data-settings-feedback]"))};
+                    saveCalls = 0;
+                    failedButton.click();
+                    await waitFor(() => failedButton.getAttribute("aria-busy") === "true" && saveCalls === 1 && typeof releaseSave === "function");
+                    const successPending = {disabled: failedButton.disabled, busy: failedButton.getAttribute("aria-busy"), calls: saveCalls};
+                    releaseSave(false);
+                    await waitFor(() => {
+                        const next = currentButton();
+                        const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                        return !next && document.activeElement === back;
+                    });
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                    plugin.saveData = nativeSaveData;
+                    return {during, duplicate, failed, successPending, success: {cleared: !currentButton(), focusedBack: document.activeElement === back}};
+                });
+                assert.deepEqual(focusClearLifecycle.during, {disabled: true, busy: "true", calls: 1}, "focus diagnostics clear exposes a single gated write while pending");
+                assert.equal(focusClearLifecycle.duplicate, 1, "a pending focus diagnostics clear ignores duplicate clicks");
+                assert.deepEqual(focusClearLifecycle.failed, {rowRestored: true, focused: true, feedback: true}, "failed focus diagnostics clear restores the retry button, focus and feedback");
+                assert.deepEqual(focusClearLifecycle.successPending, {disabled: true, busy: "true", calls: 1}, "focus diagnostics retry remains busy until persistence finishes");
+                assert.deepEqual(focusClearLifecycle.success, {cleared: true, focusedBack: true}, "successful focus diagnostics clear returns focus to a live settings control");
                 await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);

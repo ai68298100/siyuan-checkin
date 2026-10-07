@@ -2350,3 +2350,8 @@
 
 - 带 `siyuan-checkin-snapshot` 格式的恢复点必须同时含有限 `version` 与数组形状的 `items`、`events`、`eventTombstones`；缺失或错误的 `store` 标记为 invalid，不进入历史恢复点。
 - 直接恢复遇到 invalid 快照时在 `preflightJsonRecovery` 之前拒绝并写入有界 `migration-rejected/snapshot-history-corrupt` 诊断，避免坏对象被归一化为空主档；旧版无格式 raw store 继续走 legacy 兼容路径。
+
+# D-443：清空专注诊断入口复用设置动作生命周期（2026-10-08）
+
+- 专注诊断清空按钮通过 `runSettingsAction` 调用既有锁内清除方法，等待期间统一暴露 `disabled`/`aria-busy` 并阻止重复写入；失败重渲染后回到可用清空入口，成功清空后回到设置返回入口。
+- 保留 `clearFocusDiagnostics` 的远端合并、清除水位、锁内保存和失败提示语义，不改变专注完成事实或问题归档规则。

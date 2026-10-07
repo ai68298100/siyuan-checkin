@@ -5839,8 +5839,9 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         root.querySelector<HTMLElement>("[data-action='write-diary-report']")?.addEventListener("click", () => {
             void this.writeDiaryReport();
         });
-        root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", () => {
-            void this.clearFocusDiagnostics();
+        root.querySelector<HTMLElement>("[data-action='clear-focus-issues']")?.addEventListener("click", (event) => {
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, () => this.clearFocusDiagnostics(), "[data-action='clear-focus-issues']:not([disabled])");
         });
         root.querySelector<HTMLElement>("[data-action='export-focus-issues']")?.addEventListener("click", () => {
             downloadDockTomatoDiagnosticsFor(inspectDockTomatoProvider());
