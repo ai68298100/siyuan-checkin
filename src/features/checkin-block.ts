@@ -254,8 +254,8 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
     const cells = buildMonthCells(store, items, year, monthIndex, asOf);
     const leading = (new Date(year, monthIndex, 1).getDay() + 6) % 7;
     const today = dateKey(now);
-    const headers = weekdayOrder.map((index) => `<span class="lc-checkin__renderblock-wd">${escapeHtml(t(`date.wd${index}`))}</span>`).join("");
-    const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty"><i></i></span>`);
+    const headers = weekdayOrder.map((index) => `<span class="lc-checkin__renderblock-wd" aria-hidden="true">${escapeHtml(t(`date.wd${index}`))}</span>`).join("");
+    const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty" aria-hidden="true"><i></i></span>`);
     for (const cell of cells) {
         const level = levelFor(cell.fraction, thresholds);
         const classes = ["lc-checkin__renderblock-cell", cell.skipOnly ? "is-skip" : `is-level-${level}`, cell.isToday ? "is-today" : "", cell.future ? "is-future" : "", cell.overage ? "is-overage" : ""].filter(Boolean).join(" ");
@@ -266,7 +266,8 @@ export function buildMonthViewHtml(store: CheckinStore, config: CheckinBlockConf
                 : "";
         body.push(`<span class="${classes}" role="button" tabindex="0" data-jump-date="${cell.date}" aria-label="${escapeHtml(`${cell.date}${stateText}`)}" title="${escapeHtml(`${cell.date}${stateText}`)}"><i>${cell.dayOfMonth}</i></span>`);
     }
-    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid" role="list">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)}))}</small></div>`;
+    const meta = t("block.monthMeta", {year, month: monthIndex + 1, done: cells.reduce((total, cell) => total + cell.completedCount, 0)});
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-month" data-renderblock-month="${year}-${String(monthIndex + 1).padStart(2, "0")}"><div class="lc-checkin__renderblock-grid" role="group" aria-label="${escapeHtml(meta)}">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(meta)}</small></div>`;
 }
 
 /** T-1351：今日完成率（0~100 整数）；完成 = 100，进行中按进度比折算。单一实现供 summary/groups 消费。 */
@@ -467,12 +468,13 @@ export function buildHeatmapViewHtml(store: CheckinStore, config: CheckinBlockCo
         days.push({date: key, count, level, ...(level === 0 && skips.has(key) ? {skip: true} : {}), ...(key === today ? {today: true} : {})});
         cursor.setDate(cursor.getDate() + 1);
     }
-    const headers = weekdayOrder.map((index) => `<span class="lc-checkin__renderblock-wd">${escapeHtml(t(`date.wd${index}`))}</span>`).join("");
+    const headers = weekdayOrder.map((index) => `<span class="lc-checkin__renderblock-wd" aria-hidden="true">${escapeHtml(t(`date.wd${index}`))}</span>`).join("");
     const leading = (new Date(year, 0, 1).getDay() + 6) % 7;
-    const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty"><i></i></span>`);
+    const body: string[] = Array.from({length: leading}, () => `<span class="lc-checkin__renderblock-cell is-empty" aria-hidden="true"><i></i></span>`);
     for (const day of days) {
         const classes = ["lc-checkin__renderblock-cell", day.skip ? "is-skip" : `is-level-${day.level}`, day.today ? "is-today" : ""].filter(Boolean).join(" ");
         body.push(`<span class="${classes}" role="button" tabindex="0" data-jump-date="${day.date}" aria-label="${escapeHtml(day.date)}" title="${escapeHtml(day.date)}"><i></i></span>`);
     }
-    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-heatmap" data-renderblock-year="${year}"><div class="lc-checkin__renderblock-grid is-year">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(t("block.heatmapMeta", {year, n: total}))}</small></div>`;
+    const meta = t("block.heatmapMeta", {year, n: total});
+    return `<div class="lc-checkin__renderblock lc-checkin__renderblock-heatmap" data-renderblock-year="${year}"><div class="lc-checkin__renderblock-grid is-year" role="group" aria-label="${escapeHtml(meta)}">${headers}${body.join("")}</div><small class="lc-checkin__renderblock-meta">${escapeHtml(meta)}</small></div>`;
 }

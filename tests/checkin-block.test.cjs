@@ -87,6 +87,10 @@ const monthHtml = block.buildMonthViewHtml(store, {view: "month", thresholds: [0
 assert.match(monthHtml, /data-jump-date="2026-09-15"[^>]*title="[^"]*3\/3/, "aggregate completion fraction shown in title");
 assert.match(monthHtml, /is-level-4[^>]*data-jump-date="2026-09-15"/, "full-completion day hits top level");
 assert.match(monthHtml, /is-today[^>]*data-jump-date="2026-09-19"/, "today ring present");
+assert.match(monthHtml, /lc-checkin__renderblock-grid" role="group" aria-label="[^"]+"/, "month grid uses a labelled group instead of a malformed list");
+assert.match(monthHtml, /lc-checkin__renderblock-wd" aria-hidden="true"/, "month weekday headings stay out of the list of jump targets");
+assert.match(monthHtml, /is-empty" aria-hidden="true"/, "month leading placeholders stay out of the accessibility tree");
+assert.doesNotMatch(monthHtml, /renderblock-grid" role="list"/, "month grid has no list role without listitem children");
 assert.ok(monthHtml.includes(t("block.monthMeta", {year: 2026, month: 9, done: 5})));
 const emptyMonth = block.buildMonthViewHtml(store, {view: "month", group: "不存在"}, asOf);
 assert.ok(emptyMonth.includes(t("block.empty")));
@@ -125,6 +129,9 @@ for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMisse
 /* 热力视图：today 标记；跳过日混有真实完成时不标中性。 */
 const heatmapHtml = block.buildHeatmapViewHtml(store, {view: "heatmap", year: 2026}, asOf);
 assert.match(heatmapHtml, /is-today[^>]*data-jump-date="2026-09-19"/, "heatmap rings today");
+assert.match(heatmapHtml, /lc-checkin__renderblock-grid is-year" role="group" aria-label="[^"]+"/, "heatmap grid uses a labelled group instead of a malformed list");
+assert.match(heatmapHtml, /lc-checkin__renderblock-wd" aria-hidden="true"/, "heatmap weekday headings stay out of the accessibility tree");
+assert.doesNotMatch(heatmapHtml, /renderblock-grid is-year" role="list"/, "heatmap grid has no list role without listitem children");
 assert.ok(!heatmapHtml.includes("is-skip"), "skip marker only when a day has skips and no completions");
 assert.ok(heatmapHtml.includes(t("block.heatmapMeta", {year: 2026, n: 6})));
 

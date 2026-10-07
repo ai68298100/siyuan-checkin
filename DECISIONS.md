@@ -2316,3 +2316,7 @@
 
 - 渲染块中的日期格、汇总行和锚点行已经是带 `role`/`tabindex` 的语义跳转元素；键盘 Enter/Space 委托到同一元素的 click，并阻止 Space 默认滚动。原生 `[data-block-record]` 按钮不参与该委托，避免改变打卡写入次数。
 - 组合包批量创建与部分应用统一以最新 `buildTemplatePackApplicationPlan` 的 `templateAnchor`/中英文别名判定创建资格；冲突行保留查看/编辑入口但禁用 checkbox，选择计数与提交集合只包含可创建条目，防止并发或语言切换造成重复项目与错误数量反馈。真实宿主竞态和移动读屏现场仍不由本地 bundle 证据代替。
+
+# D-436：日期网格使用分组语义，装饰节点不进入读屏导航（2026-10-08）
+
+- 月视图与年度热图的 CSS 网格不是完整 ARIA grid，也没有 `listitem` 直系子项；将容器设为带既有本地化摘要的 `role=group`，避免读屏播报错误的列表计数。星期标题和前置空位仅负责视觉布局，标记为 `aria-hidden`；日期格继续保留完整日期 `aria-label`、Tab 停靠与跳转。
