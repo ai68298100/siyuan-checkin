@@ -6259,7 +6259,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 : atMost && day.status === "missed" && day.progress > 0 ? t("insights.atMostBreach")
                     : day.status === "complete" ? t("insights.complete")
                         : day.status === "partial" ? t("insights.partial")
-                            : day.status === "missed" ? t("insights.missed") : t("insights.off");
+                        : day.status === "missed" ? t("insights.missed")
+                            : day.status === "pending" ? t("insights.noRecord") : t("insights.off");
             const detail = atMost && day.kind === "binary" && day.progress === 0 ? t("insights.noRecord") : `${day.progress}/${day.target} ${day.unit}`;
             const label = `${day.date}，${statusText}${day.skipped ? `（${t("today.skipBadge")}）` : ""}，${detail}`;
             /* T-1591：日历格键盘/触屏钻取——button 化点击跳记录页对应日期（aria-label 保留完整状态读数）。 */

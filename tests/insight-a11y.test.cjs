@@ -12,6 +12,7 @@ assert.match(fs.readFileSync("src/ui/components.scss", "utf8"), /\.lc-checkin__i
 assert.match(source, /role="progressbar" aria-label="\$\{escapeHtml\(t\("insights\.maturityBarTitle"\)\)\}"/, "the maturity indicator must have a readable name");
 assert.match(source, /aria-valuetext="\$\{escapeHtml\(t\("insights\.maturityDays", \{n: maturityDays\}\)\)\}"/, "the maturity indicator must expose its localized value text");
 assert.match(source, /day\.status === "complete"/);
+assert.match(source, /day\.status === "pending" \? t\("insights\.noRecord"\)/, "scheduled pending days must be labelled as unrecorded");
 assert.match(source, /role="list" aria-label="\$\{t\("insights\.legendAria"\)\}"/);
 assert.match(i18n, /"insights\.partial": "部分完成"/);
 assert.match(i18n, /"insights\.missed": "未完成"/);
@@ -36,6 +37,12 @@ assert.match(insightsCore, /const customEnd = typeof options\.endDate === "strin
 assert.match(insightsCore, /endDate\?: string;/, "the option must be declared");
 const nav = fs.readFileSync("src/render/bind-page-navigation.ts", "utf8");
 assert.match(nav, /insightSearchComposing/, "item search must guard IME composition");
+assert.match(nav, /renderInsightsPreservingFocus/, "insight filter rerenders must preserve focus");
+assert.match(nav, /active\.matches\(selector\)/, "focus restoration must only return to the active filter control");
+assert.match(nav, /focus\(\{preventScroll: true\}\)/, "insight filter focus restoration must avoid scroll jumps");
+assert.match(nav, /renderInsightsPreservingFocus\("\[data-insight-item\]"\)/, "item filter focus must return after rerender");
+assert.match(nav, /renderInsightsPreservingFocus\("\[data-insight-range\]"\)/, "range focus must return after rerender");
+assert.match(nav, /renderInsightsPreservingFocus\(`\[\$\{attribute\}\]`\)/, "custom date focus must return after rerender");
 assert.match(nav, /writeArchivedQuery\(item\.name\);\s*\n\s*host\.showArchived\(root\);/, "archived jump must prefill the archive search");
 assert.match(nav, /value > dateKey\(currentCalendarDate\(\)\)/, "custom range must reject future dates");
 
@@ -96,6 +103,7 @@ assert.ok(!picker.includes(imageIcon), "native options cannot render images and 
 assert.equal((html.match(/aria-current="date"/g) || []).length, 1, "only the current insight day is marked current");
 assert.match(html, /lc-checkin__insight-day is-pending is-today[^>]*aria-current="date"/, "the current insight day keeps its status and current-date semantics");
 assert.match(html, /role="progressbar"[^>]*aria-valuetext="已坚持 0 天"/, "the rendered maturity indicator must expose localized value text");
+assert.match(html, /2026-09-20，未记录，0\/1 次/, "a scheduled pending day must not be labelled as off");
 assert.match(html, /lc-checkin__insight-day is-complete(?! is-today)[^>]*data-insight-day="2026-09-19"/, "past insight days are not marked current");
 view.insightsRange = "custom";
 view.insightsCustomRange = {startDate: "2026-08-01", endDate: "2026-08-28"};

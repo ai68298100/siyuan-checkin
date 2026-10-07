@@ -322,20 +322,28 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             if (isCurrentSurface() && button.isConnected) button.disabled = false;
         });
     }));
+    /* T-1649：洞察筛选会替换整棵页面 DOM；动作来自键盘/读屏时，重绘后把焦点
+       放回对应控件，避免范围、项目或日期编辑突然回到页面根节点。 */
+    const renderInsightsPreservingFocus = (selector: string) => {
+        const active = root.ownerDocument.activeElement;
+        const shouldRestore = active instanceof HTMLElement && root.contains(active) && active.matches(selector);
+        host.render(root);
+        if (shouldRestore) root.querySelector<HTMLElement>(selector)?.focus({preventScroll: true});
+    };
     root.querySelector<HTMLSelectElement>("[data-insight-item]")?.addEventListener("change", (event) => {
         const itemId = (event.currentTarget as HTMLSelectElement).value;
         /* T-1590：归档项目可选中回看（只读洞察，动作区提供「在归档中查看」）。 */
         if (!host.store.items.some((item) => item.id === itemId)) return;
         writeInsightValue("insightsItemId", itemId);
         void persistReviewPreferences();
-        host.render(root);
+        renderInsightsPreservingFocus("[data-insight-item]");
     });
     /* T-1590 洞察范围切换：会话态字段，切换只重渲染（项目/滚动由既有机制保持）。 */
     root.querySelectorAll<HTMLElement>("[data-insight-range]").forEach((button) => button.addEventListener("click", () => {
         const range = button.dataset.insightRange || "";
         if (range !== "28" && range !== "84" && range !== "365" && range !== "custom") return;
         writeInsightValue("insightsRange", range);
-        host.render(root);
+        renderInsightsPreservingFocus("[data-insight-range]");
     }));
     /* T-1590 自定义起止：日期合法、结束不晚于今日、起不晚于终——通过才写入会话态。 */
     for (const attribute of ["data-insight-range-start", "data-insight-range-end"] as const) {
@@ -357,7 +365,7 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             }
             writeInsightValue("insightsCustomRange", next);
             writeInsightValue("insightsRange", "custom");
-            host.render(root);
+            renderInsightsPreservingFocus(`[${attribute}]`);
         });
     }
     /* T-1590 项目搜索：IME 组合态不打断（compareComposing 同款守卫），DOM 过滤 option 不重渲染。 */
