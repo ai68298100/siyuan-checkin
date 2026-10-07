@@ -15,7 +15,8 @@ function loadTs(filename) {
     return loaded.exports;
 }
 
-const {parseJsonBackup, JSON_BACKUP_MAX_CHARS} = loadTs(path.join(__dirname, "..", "src", "export.ts"));
+const {normalizeStore} = loadTs(path.join(__dirname, "..", "src", "model.ts"));
+const {parseJsonBackup, JSON_BACKUP_MAX_CHARS, preflightJsonRecovery, serializeJson, summarizeJsonBackup: summarizeProductionBackup} = loadTs(path.join(__dirname, "..", "src", "export.ts"));
 function summarizeJsonBackup(store) {
     const dates = store.events.map((event) => event.localDate).filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort();
     return {itemCount: store.items.length, eventCount: store.events.length, tombstoneCount: store.eventTombstones.length, templateCount: store.templates?.length || 0, archivedItemCount: store.items.filter((item) => item.archived).length, dateRange: dates.length ? {from: dates[0], to: dates[dates.length - 1]} : undefined};
@@ -76,4 +77,36 @@ const inspected = parseJsonBackup(JSON.stringify(rawInspection), () => ({version
 assert.deepEqual(inspected.inspection, {duplicateItemIds: 1, duplicateEventIds: 1, duplicateTombstoneIds: 1, missingEventItemIds: 1, unitConflicts: 1});
 assert.equal(inspected.warnings.length, 5, "每类结构损耗都必须进入恢复前提示");
 assert.throws(() => parseJsonBackup("x".repeat(JSON_BACKUP_MAX_CHARS + 1), () => ({version: 3, items: [], events: [], eventTombstones: []})), /8 MiB/);
+
+// T-1647：用生产模型和导出/预检模块走一遍“备份 → 受控改动 → 恢复复核”。
+const item = (id, name, unit = "次") => ({
+    id, name, icon: "check", kind: "binary", target: 1, unit,
+    schedule: {type: "daily"}, createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z",
+    createdDate: "2026-10-01", revisions: [], archivePeriods: [], archived: false,
+});
+const seededRaw = {
+    version: 3,
+    items: [item("item-reading", "阅读")],
+    events: [{id: "event-reading", itemId: "item-reading", occurredAt: "2026-10-01T08:00:00.000Z", localDate: "2026-10-01", value: 1, unit: "次", source: "manual"}],
+    eventTombstones: [{eventId: "event-removed", deletedAt: "2026-10-01T09:00:00.000Z", itemId: "item-reading", source: "manual"}],
+};
+const seededStore = normalizeStore(seededRaw);
+const independentConfig = {theme: "dark", sourceKey: "must-stay-outside-main-store"};
+const exportedMainStore = serializeJson(seededStore);
+assert.match(exportedMainStore, /event-reading/);
+assert.doesNotMatch(exportedMainStore, /must-stay-outside-main-store/, "独立配置不能混入 JSON 主档");
+
+const changedStore = normalizeStore({
+    ...seededRaw,
+    items: [...seededRaw.items, item("item-running", "跑步")],
+    events: [...seededRaw.events, {id: "event-running", itemId: "item-running", occurredAt: "2026-10-02T08:00:00.000Z", localDate: "2026-10-02", value: 1, unit: "次", source: "manual"}],
+});
+const preflight = preflightJsonRecovery(exportedMainStore, normalizeStore, summarizeProductionBackup(changedStore));
+assert.deepEqual(preflight.validationErrors, []);
+assert.deepEqual(preflight.report.store, seededStore, "恢复结果必须回到导出时的主档快照");
+assert.equal(preflight.report.store.eventTombstones.length, 1, "恢复必须保留墓碑");
+assert.equal(preflight.report.audit.itemDelta, -1, "受控改动应在恢复预检中显示项目减少");
+assert.equal(preflight.report.audit.eventDelta, -1, "受控改动应在恢复预检中显示记录减少");
+assert.equal(preflight.assessment.requiresReview, true, "恢复后数据减少必须要求用户复核");
+assert.deepEqual(independentConfig, {theme: "dark", sourceKey: "must-stay-outside-main-store"}, "独立配置在恢复旅程中保持原值");
 console.log("Backup summary checks passed.");
