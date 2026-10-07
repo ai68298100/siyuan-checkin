@@ -4891,7 +4891,15 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                        do not attempt to focus a CSS-hidden rail/topbar button. */
                     const candidates = [...root.querySelectorAll<HTMLElement>(focusSelector)];
                     const visible = candidates.find((candidate) => !candidate.hidden && candidate.getClientRects().length > 0);
-                    (visible || candidates[0])?.focus();
+                    if (visible || candidates[0]) {
+                        (visible || candidates[0])?.focus();
+                    } else if (focusSelector !== "[data-action='back']") {
+                        /* A successful destructive action may disable/remove its retry control;
+                           fall back to the live settings return entry in that case. */
+                        const fallback = [...root.querySelectorAll<HTMLElement>("[data-action='back'], [data-mobile-nav='settings']")];
+                        const visibleFallback = fallback.find((candidate) => !candidate.hidden && candidate.getClientRects().length > 0);
+                        (visibleFallback || fallback[0])?.focus();
+                    }
                 }
             });
         };
@@ -5957,7 +5965,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                 (root.querySelector<HTMLInputElement>("[data-import-snapshots]") || input).focus();
             }
         });
-        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", () => { void this.clearAuditEntries(); });
+        root.querySelector<HTMLElement>("[data-action='clear-audit']")?.addEventListener("click", (event) => {
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, () => this.clearAuditEntries(), "[data-action='clear-audit']:not([disabled])");
+        });
         root.querySelector<HTMLElement>("[data-action='export-audit']")?.addEventListener("click", () => downloadStoreAuditFor(this.auditEntries));
         /* T-1362：智能体建议审计导出（版本化诊断 JSON）。 */
         root.querySelector<HTMLElement>("[data-action='export-agent-audit']")?.addEventListener("click", () => {

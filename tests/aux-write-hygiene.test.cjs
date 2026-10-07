@@ -31,7 +31,7 @@ assert.match(unloadSlice, /this\.flushPendingAuditPersist\(\)/, "onunload 必须
 for (const hotPath of [/type: "conflict"[\s\S]{0,320}?this\.scheduleAuditPersist\(\)/, /channel: "resolve"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "write"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/, /channel: "append"[\s\S]{0,200}?this\.scheduleAuditPersist\(\)/]) {
     assert.match(indexSource, hotPath, "旁路诊断的自动路径必须走合并写入");
 }
-assert.match(indexSource, /\[data-action='clear-audit'\][\s\S]{0,120}?void this\.clearAuditEntries\(\)/, "用户主动清空审计必须走显式删除事务");
+assert.match(indexSource, /\[data-action='clear-audit'\][\s\S]{0,260}?runSettingsAction\(control, \(\) => this\.clearAuditEntries\(\), "\[data-action='clear-audit'\]:not\(\[disabled\]\)"\)/, "用户主动清空审计必须走设置忙碌与可用焦点生命周期");
 const clearAuditBody = indexSource.slice(indexSource.indexOf("private async clearAuditEntries()"));
 const clearAuditSlice = clearAuditBody.slice(0, clearAuditBody.indexOf("\n    }"));
 assert.match(clearAuditSlice, /await this\.withStorageLock\(\(\) => this\.saveData\(AUDIT_STORAGE_NAME, \[\]\)\)/, "审计清空必须在存储锁内写入空桶");

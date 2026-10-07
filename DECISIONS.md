@@ -2340,3 +2340,8 @@
 
 - 日期格键盘移动同时读取 `gridTemplateColumns`、`gridTemplateRows` 与 `gridAutoFlow`：默认按行填充时左右为 1、上下为列数；按列填充时左右为行数、上下为 1。
 - 保留 Home/End、roving tabindex、原生 button 和既有 click 钻取语义，不把固定桌面列数套到窄屏布局。
+
+# D-441：清空审计入口复用设置动作生命周期（2026-10-08）
+
+- 清空审计按钮通过 `runSettingsAction` 调用既有锁内清除方法，等待期间统一暴露 `disabled`/`aria-busy` 并拦截重复点击；失败重渲染后优先恢复可用的清空入口，成功清空后回到设置返回入口。
+- 保留 `clearAuditEntries` 的锁内空桶替换、失败恢复和提示语义，不把设置入口生命周期与审计数据删除边界混在一起。

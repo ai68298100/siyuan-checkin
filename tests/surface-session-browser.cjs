@@ -497,6 +497,63 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                 assert.equal(conflictLifecycle.rolledBack, true, "conflict persistence failure restores the pre-import store");
                 assert.deepEqual(conflictLifecycle.successPending, {disabled: true, busy: "true", calls: 1}, "conflict retry remains busy until successful persistence finishes");
                 assert.deepEqual(conflictLifecycle.success, {panelRemoved: true, focusedBack: true, saved: true}, "successful import removes the decision panel and moves focus to a live settings control");
+                const auditClearLifecycle = await page.evaluate(async () => {
+                    const plugin = window.__plugin, primary = plugin.dockElement;
+                    plugin.showSettings(primary);
+                    plugin.auditEntries = [{type: "conflict", at: new Date().toISOString(), details: {items: 1, events: 0}}];
+                    plugin.syncSettingsCompatibilityForRoot(primary);
+                    plugin.render(primary);
+                    const nativeSaveData = plugin.saveData.bind(plugin);
+                    let releaseSave;
+                    let saveCalls = 0;
+                    plugin.saveData = async (bucket, value) => {
+                        if (bucket === "checkin-store-audit") {
+                            saveCalls += 1;
+                            await new Promise((resolve, reject) => { releaseSave = fail => fail ? reject(new Error("controlled audit clear failure")) : resolve(); });
+                        }
+                        return nativeSaveData(bucket, value);
+                    };
+                    const currentButton = () => primary.querySelector("[data-action='clear-audit']");
+                    const waitFor = async (predicate) => {
+                        for (let index = 0; index < 80; index += 1) {
+                            if (predicate()) return;
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                        }
+                        const current = currentButton();
+                        throw new Error(`timed out waiting for audit clear lifecycle: ${JSON.stringify({currentBusy: current?.getAttribute("aria-busy"), currentDisabled: current?.disabled, active: document.activeElement?.getAttribute?.("data-action") || document.activeElement?.getAttribute?.("data-mobile-nav"), auditEntries: plugin.auditEntries.length, saveCalls, hasRelease: typeof releaseSave === "function"})}`);
+                    };
+                    const button = currentButton();
+                    button.click();
+                    await waitFor(() => button.getAttribute("aria-busy") === "true" && saveCalls === 1 && typeof releaseSave === "function");
+                    const during = {disabled: button.disabled, busy: button.getAttribute("aria-busy"), calls: saveCalls};
+                    button.dispatchEvent(new MouseEvent("click", {bubbles: true, cancelable: true}));
+                    const duplicate = saveCalls;
+                    releaseSave(true);
+                    await waitFor(() => {
+                        const next = currentButton();
+                        return next && !next.hasAttribute("aria-busy") && !next.disabled && document.activeElement === next;
+                    });
+                    const failedButton = currentButton();
+                    const failed = {restored: plugin.auditEntries.length === 1, focused: document.activeElement === failedButton, feedback: Boolean(primary.querySelector("[data-settings-feedback]"))};
+                    saveCalls = 0;
+                    failedButton.click();
+                    await waitFor(() => failedButton.getAttribute("aria-busy") === "true" && saveCalls === 1 && typeof releaseSave === "function");
+                    const successPending = {disabled: failedButton.disabled, busy: failedButton.getAttribute("aria-busy"), calls: saveCalls};
+                    releaseSave(false);
+                    await waitFor(() => {
+                        const next = currentButton();
+                        const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                        return plugin.auditEntries.length === 0 && next && next.disabled && !next.hasAttribute("aria-busy") && document.activeElement === back;
+                    });
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings'], [data-action='back']")].find(node => node.getClientRects().length > 0);
+                    plugin.saveData = nativeSaveData;
+                    return {during, duplicate, failed, successPending, success: {cleared: plugin.auditEntries.length === 0, focusedBack: document.activeElement === back}};
+                });
+                assert.deepEqual(auditClearLifecycle.during, {disabled: true, busy: "true", calls: 1}, "audit clear exposes a single gated write while pending");
+                assert.equal(auditClearLifecycle.duplicate, 1, "a pending audit clear ignores duplicate clicks");
+                assert.deepEqual(auditClearLifecycle.failed, {restored: true, focused: true, feedback: true}, "failed audit clear restores the retry button, focus and feedback");
+                assert.deepEqual(auditClearLifecycle.successPending, {disabled: true, busy: "true", calls: 1}, "audit clear retry remains busy until persistence finishes");
+                assert.deepEqual(auditClearLifecycle.success, {cleared: true, focusedBack: true}, "successful audit clear returns focus to a live settings control");
                 await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);
