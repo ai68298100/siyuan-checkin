@@ -2277,3 +2277,7 @@
 # D-426：恢复点列表导入按 restore 类型记录阶段失败（2026-10-07）
 
 - 恢复点列表导入解析失败与确认后的持久化失败使用独立事实记录器，审计类型保持 `restore`；取消确认不记录，诊断码按阶段映射为 `migration-rejected` 或 `save-failed`，不把恢复点导入伪装成主档迁移。
+
+# D-427：恢复入口读取失败使用 load-failed 事实（2026-10-07）
+
+- `restoreLatestBackup` 读取恢复点桶失败时写 `local-snapshot/snapshot-load-failed` restore 审计与 `load-failed` 诊断；空桶、无匹配恢复点和用户取消仍是可预期分支，不记录失败事实。

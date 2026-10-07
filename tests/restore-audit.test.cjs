@@ -61,6 +61,10 @@ assert.match(source, /private recordSnapshotImportFailure\(phase: "parse" \| "pe
 assert.match(source, /type: "restore"[\s\S]*source: "snapshot-import"/, "snapshot history failures must remain restore audit entries");
 assert.match(source, /recordDiagnostic\(phase === "persist" \? "save-failed" : "migration-rejected", failureKind\)/, "snapshot history failures must map parse and persist diagnostics");
 assert.match(source, /let importFailurePhase: "parse" \| "persist" = "parse"[\s\S]*importFailurePhase = "persist"[\s\S]*recordSnapshotImportFailure\(importFailurePhase\)/, "snapshot history import must classify failures by phase");
+assert.match(source, /private recordSnapshotRestoreLoadFailure\(\): void/, "snapshot restore load failures must use a dedicated recorder");
+assert.match(source, /source: "local-snapshot", failureKind: "snapshot-load-failed"/, "snapshot restore load failures must remain restore audit entries");
+assert.match(source, /recordDiagnostic\("load-failed", "snapshot-load-failed"\)/, "snapshot restore load failures must enter load diagnostics");
+assert.match(source, /try \{\s*raw = await this\.loadData\(BACKUP_STORAGE_NAME\);\s*\} catch \{\s*this\.recordSnapshotRestoreLoadFailure\(\)/, "snapshot restore must record host load failures");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 assert.equal(i18n.split('"msg.jsonRestoreValidationFail"').length - 1, 2, "restore validation feedback must have both locales");
 const exportSource = fs.readFileSync("src/export.ts", "utf8");

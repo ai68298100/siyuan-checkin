@@ -578,6 +578,13 @@ export default class CheckinPlugin extends Plugin {
         void this.persistAuditBestEffort();
     }
 
+    /** T-1648：读取恢复点失败属于 load-failed；不把宿主读取故障误标成迁移拒绝。 */
+    private recordSnapshotRestoreLoadFailure(): void {
+        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {status: "rejected", source: "local-snapshot", failureKind: "snapshot-load-failed"}});
+        this.recordDiagnostic("load-failed", "snapshot-load-failed");
+        void this.persistAuditBestEffort();
+    }
+
     getDiagnostics(): readonly CheckinDiagnostic[] {
         return normalizeDiagnostics(this.diagnostics);
     }
@@ -6793,7 +6800,14 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
 
     private async restoreLatestBackup(historyIndex?: number) {
         if (!this.storageReady || this.disposed) return;
-        const raw = await this.loadData(BACKUP_STORAGE_NAME);
+        let raw: unknown;
+        try {
+            raw = await this.loadData(BACKUP_STORAGE_NAME);
+        } catch {
+            this.recordSnapshotRestoreLoadFailure();
+            showMessage(t("msg.snapshotRestoreFail"));
+            return;
+        }
         if (!raw) { showMessage(t("msg.noSnapshot")); return; }
         const snapshots = readStoreSnapshotHistory(raw);
         const snapshot = historyIndex === undefined ? snapshots[snapshots.length - 1] : snapshots[historyIndex];
