@@ -440,17 +440,33 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                     await plugin.mutationQueue;
                     await new Promise(resolve => setTimeout(resolve, 0));
                     const currentButton = primary.querySelector("[data-import-conflict-confirm]");
-                    return {
+                    const failed = {
                         during,
                         duplicate,
                         after: {disabled: currentButton.disabled, busy: currentButton.getAttribute("aria-busy"), focused: document.activeElement === currentButton, feedback: Boolean(primary.querySelector("[data-settings-feedback]"))},
                         rolledBack: JSON.stringify(plugin.store) === JSON.stringify(before),
+                    };
+                    window.__gateNextSave();
+                    currentButton.click();
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    const successPending = {disabled: currentButton.disabled, busy: currentButton.getAttribute("aria-busy"), calls: window.__persistCalls};
+                    window.__releaseSave(false);
+                    await plugin.mutationQueue;
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    const back = [...primary.querySelectorAll("[data-mobile-nav='settings']")].find(node => node.getClientRects().length > 0);
+                    return {
+                        ...failed,
+                        successPending,
+                        success: {panelRemoved: !primary.querySelector("[data-import-conflict-panel]"), focusedBack: document.activeElement === back,
+                            saved: window.__buckets.get("checkin-store").events.some(event => event.itemId === "extra-0" && event.localDate === "2026-10-08")},
                     };
                 });
                 assert.deepEqual(conflictLifecycle.during, {disabled: true, busy: "true", calls: 1}, "conflict confirmation exposes a single gated persistence while pending");
                 assert.equal(conflictLifecycle.duplicate, 1, "a pending conflict confirmation ignores duplicate clicks");
                 assert.deepEqual(conflictLifecycle.after, {disabled: false, busy: null, focused: true, feedback: true}, "conflict persistence failure restores retry state and focus");
                 assert.equal(conflictLifecycle.rolledBack, true, "conflict persistence failure restores the pre-import store");
+                assert.deepEqual(conflictLifecycle.successPending, {disabled: true, busy: "true", calls: 1}, "conflict retry remains busy until successful persistence finishes");
+                assert.deepEqual(conflictLifecycle.success, {panelRemoved: true, focusedBack: true, saved: true}, "successful import removes the decision panel and moves focus to a live settings control");
                 await page.evaluate(() => {
                     const plugin = window.__plugin;
                     plugin.showInsights(plugin.store.items.find(item => item.id === "water"), plugin.dockElement);

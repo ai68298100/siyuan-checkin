@@ -4798,7 +4798,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     this.recordImportFailure(session.format === "loop-csv" ? "loop-import" : "obsidian-import", "persist");
                     settingsFeedback(t("msg.importFail", {error: String(error)}));
                 }
-            }, "[data-import-conflict-confirm]");
+            }, "[data-mobile-nav='settings']");
         });
         root.querySelector<HTMLElement>("[data-import-conflict-cancel]")?.addEventListener("click", () => {
             settings.importConflictSession = undefined;
@@ -4883,7 +4883,14 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                     control.removeAttribute("aria-busy");
                     if ("disabled" in control) (control as HTMLButtonElement | HTMLInputElement).disabled = false;
                     control.focus();
-                } else root.querySelector<HTMLElement>(focusSelector)?.focus();
+                } else {
+                    /* Responsive settings surfaces render several copies of the same
+                       navigation entry; choose the first visible copy so narrow docks
+                       do not attempt to focus a CSS-hidden rail/topbar button. */
+                    const candidates = [...root.querySelectorAll<HTMLElement>(focusSelector)];
+                    const visible = candidates.find((candidate) => !candidate.hidden && candidate.getClientRects().length > 0);
+                    (visible || candidates[0])?.focus();
+                }
             });
         };
         /* T-1620：B 类字段统一走 applyPreference（快照回滚），裸 persist 包装退役。 */
