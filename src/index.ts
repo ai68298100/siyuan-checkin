@@ -570,6 +570,14 @@ export default class CheckinPlugin extends Plugin {
         void this.persistAuditBestEffort();
     }
 
+    /** T-1648：恢复点历史导入沿用 restore 审计类型，阶段只暴露有限事实。 */
+    private recordSnapshotImportFailure(phase: "parse" | "persist"): void {
+        const failureKind = `snapshot-import-${phase}`;
+        this.auditEntries = appendStoreAudit(this.auditEntries, {type: "restore", at: new Date().toISOString(), details: {status: "rejected", source: "snapshot-import", failureKind}});
+        this.recordDiagnostic(phase === "persist" ? "save-failed" : "migration-rejected", failureKind);
+        void this.persistAuditBestEffort();
+    }
+
     getDiagnostics(): readonly CheckinDiagnostic[] {
         return normalizeDiagnostics(this.diagnostics);
     }
@@ -5890,13 +5898,15 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (!file) return;
             if (settingsBusy.has(input)) return;
             settingsBusy.add(input); input.disabled = true; input.setAttribute("aria-busy", "true");
+            let importFailurePhase: "parse" | "persist" = "parse";
             try {
                 const history = parseStoreSnapshotHistoryExport(await file.text());
                 if (!window.confirm(t("msg.importSnapshotsConfirm", {count: history.snapshots.length}))) return;
+                importFailurePhase = "persist";
                 await this.importSnapshotHistory(history);
                 this.render();
             } catch {
-                showMessage(t("msg.importSnapshotsFail"));
+                this.recordSnapshotImportFailure(importFailurePhase);
                 settingsFeedback(t("msg.importSnapshotsFail"));
             } finally {
                 input.value = "";

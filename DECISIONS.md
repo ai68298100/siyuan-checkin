@@ -2273,3 +2273,7 @@
 # D-425：JSON 主档持久化失败进入保存诊断（2026-10-07）
 
 - JSON 导入写入失败继续写入 migration 审计的 `persist-failed` 边界，并新增有限 `save-failed/json-import-persist-failed` 会话诊断；内存主档回滚、用户反馈和审计落盘顺序不变。
+
+# D-426：恢复点列表导入按 restore 类型记录阶段失败（2026-10-07）
+
+- 恢复点列表导入解析失败与确认后的持久化失败使用独立事实记录器，审计类型保持 `restore`；取消确认不记录，诊断码按阶段映射为 `migration-rejected` 或 `save-failed`，不把恢复点导入伪装成主档迁移。
