@@ -193,6 +193,36 @@ const artifactRoot = path.join(projectRoot, ".artifacts", "surface-session");
                 assert.equal(await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).count(), 1,
                     "the accessibility tree exposes a native day button by its complete name");
                 await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).focus();
+                const insightDirectionalNavigation = await page.evaluate(() => {
+                    const root = window.__plugin.dockElement;
+                    window.__plugin.showInsights(window.__plugin.store.items.find(item => item.id === "water"), root);
+                    const buttons = [...root.querySelectorAll("[data-insight-day]")];
+                    const grid = root.querySelector(".lc-checkin__insight-grid");
+                    const styles = getComputedStyle(grid);
+                    const countTracks = (template, fallback) => {
+                        const repeated = template.match(/^repeat\(\s*(\d+)\s*,/i);
+                        if (repeated) return Number(repeated[1]);
+                        const tokens = template.split(" ").filter(Boolean);
+                        return tokens.length > 1 ? tokens.length : fallback;
+                    };
+                    const columns = countTracks(styles.gridTemplateColumns, 14);
+                    const rows = countTracks(styles.gridTemplateRows, 7);
+                    const columnFlow = styles.gridAutoFlow.includes("column");
+                    const horizontalStep = columnFlow ? rows : 1;
+                    const verticalStep = columnFlow ? 1 : columns;
+                    const start = buttons[10];
+                    const dispatch = (key) => {
+                        start.focus();
+                        start.dispatchEvent(new KeyboardEvent("keydown", {key, bubbles: true, cancelable: true}));
+                        return buttons.indexOf(document.activeElement);
+                    };
+                    return {columns, rows, columnFlow, right: dispatch("ArrowRight"), down: dispatch("ArrowDown"), expectedRight: 10 + horizontalStep, expectedDown: 10 + verticalStep};
+                });
+                assert.equal(insightDirectionalNavigation.right, insightDirectionalNavigation.expectedRight,
+                    "ArrowRight follows the rendered insight grid flow");
+                assert.equal(insightDirectionalNavigation.down, insightDirectionalNavigation.expectedDown,
+                    "ArrowDown follows the rendered insight grid flow");
+                await page.locator("#dock").getByRole("button", {name: primaryDayLabel, exact: true}).focus();
                 await page.keyboard.press("Enter");
                 assert.deepEqual(await page.evaluate(() => ({pages: [window.__plugin.pageForRoot(window.__plugin.dockElement), window.__plugin.pageForRoot(window.__plugin.tabElement)],
                     date: window.__plugin.reviewStateForRoot(window.__plugin.dockElement).selectedHistoryDate,

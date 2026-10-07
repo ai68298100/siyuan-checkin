@@ -2335,3 +2335,8 @@
 
 - Obsidian 解析得到的无效文件数属于用户可见结果，随普通导入、空结果和冲突确认会话一起保留并提示；不改变有效习惯、记录或回滚语义。
 - CSV、Loop、Obsidian 与冲突确认失败只显示按解析/保存阶段区分的固定文案；原始异常不进入设置反馈，既有 `recordImportFailure` 继续记录有限机器原因。
+
+# D-440：洞察日期格方向键服从实际 CSS 网格流向（2026-10-08）
+
+- 日期格键盘移动同时读取 `gridTemplateColumns`、`gridTemplateRows` 与 `gridAutoFlow`：默认按行填充时左右为 1、上下为列数；按列填充时左右为行数、上下为 1。
+- 保留 Home/End、roving tabindex、原生 button 和既有 click 钻取语义，不把固定桌面列数套到窄屏布局。

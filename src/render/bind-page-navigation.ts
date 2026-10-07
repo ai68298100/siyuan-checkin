@@ -419,24 +419,33 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         host.showEditor(item, "insights", root);
     }));
     /* T-1649：洞察日期格使用 roving tabindex，避免长窗口的每一天都占一个 Tab 停靠点。
-       网格行数随响应式布局变化：桌面通常 12 行，窄屏通常 7 行；旧 WebView
-       解析不到计算样式时回落 7，避免把方向键步进写死在某个视口。
-       保留原生 button；Enter/Space 仍由既有 click 钻取处理。 */
+       方向键步进必须同时考虑 CSS 的列数与 grid-auto-flow：默认按行填充时左右
+       走一格、上下走一列；窄屏按列填充时左右走一行、上下走一格。旧 WebView
+       解析不到计算样式时回落到生产 CSS 的 14 列/7 行约定。保留原生 button；
+       Enter/Space 仍由既有 click 钻取处理。 */
     const insightDayButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-insight-day]"));
     const setInsightDayTabStop = (target: HTMLButtonElement): void => {
         insightDayButtons.forEach((button) => { button.tabIndex = button === target ? 0 : -1; });
     };
     const findInsightDayByDirection = (button: HTMLButtonElement, key: string): HTMLButtonElement | undefined => {
         const grid = button.closest<HTMLElement>(".lc-checkin__insight-grid");
-        const rowTemplate = grid ? getComputedStyle(grid).gridTemplateRows : "";
-        const repeatedRows = rowTemplate.match(/^repeat\(\s*(\d+)\s*,/i);
-        const rowTokens = rowTemplate.split(" ").filter(Boolean);
-        const rowCount = repeatedRows ? Number(repeatedRows[1]) : rowTokens.length > 1 ? rowTokens.length : 7;
+        const styles = grid ? getComputedStyle(grid) : undefined;
+        const countTracks = (template: string, fallback: number): number => {
+            const repeated = template.match(/^repeat\(\s*(\d+)\s*,/i);
+            if (repeated) return Number(repeated[1]);
+            const tokens = template.split(" ").filter(Boolean);
+            return tokens.length > 1 ? tokens.length : fallback;
+        };
+        const columnCount = countTracks(styles?.gridTemplateColumns || "", 14);
+        const rowCount = countTracks(styles?.gridTemplateRows || "", 7);
+        const columnFlow = styles?.gridAutoFlow.includes("column") ?? false;
         const currentIndex = insightDayButtons.indexOf(button);
         if (currentIndex < 0) return undefined;
         if (key === "Home") return insightDayButtons[0];
         if (key === "End") return insightDayButtons[insightDayButtons.length - 1];
-        const step = key === "ArrowLeft" || key === "ArrowRight" ? rowCount : 1;
+        const step = columnFlow
+            ? (key === "ArrowLeft" || key === "ArrowRight" ? rowCount : 1)
+            : (key === "ArrowLeft" || key === "ArrowRight" ? 1 : columnCount);
         const delta = key === "ArrowLeft" || key === "ArrowUp" ? -step : step;
         return insightDayButtons[currentIndex + delta];
     };
