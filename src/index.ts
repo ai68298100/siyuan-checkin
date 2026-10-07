@@ -5895,9 +5895,10 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             if (Number.isInteger(index)) runSettingsAction(button, () => this.restoreLatestBackup(index), `[data-restore-snapshot='${index}']`);
         }));
         root.querySelector<HTMLElement>("[data-action='export-snapshots']")?.addEventListener("click", () => void this.loadData(BACKUP_STORAGE_NAME).then(downloadSnapshotHistoryFor).catch(() => showMessage(t("msg.snapshotExportFail"))));
-        root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", () => {
+        root.querySelector<HTMLElement>("[data-action='clear-snapshots']")?.addEventListener("click", (event) => {
             if (!window.confirm(t("msg.clearSnapshotsConfirm"))) return;
-            void this.clearSnapshotHistory();
+            const control = event.currentTarget as HTMLElement;
+            runSettingsAction(control, () => this.clearSnapshotHistory(), "[data-action='clear-snapshots']");
         });
         root.querySelector<HTMLInputElement>("[data-import-snapshots]")?.addEventListener("change", async (event) => {
             const input = event.currentTarget as HTMLInputElement;
@@ -6271,6 +6272,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
         const maturityPercent = Math.min(100, Math.round((maturityDays / 66) * 100));
         const coaching = suggestions.length ? `<section class="lc-checkin__insight-section"><div class="lc-checkin__insight-heading"><h2>${t("insights.coaching")}</h2><small>${t("insights.coachingHint")}</small></div><div class="lc-checkin__coaching-list" role="list">${suggestions.map((suggestion, index) => `<div class="lc-checkin__coaching-item is-${suggestion.tone} ${index === 0 ? "is-primary" : ""}" role="listitem"><div><strong>${escapeHtml(suggestion.title)}</strong><span>${escapeHtml(suggestion.detail)}</span></div><small>${escapeHtml(suggestion.evidence)}</small>${item.archived ? "" : `<div class="lc-checkin__coaching-actions"><button class="lc-checkin__text-button" type="button" data-insight-records="${escapeHtml(item.id)}">${t("insights.coachingEvidence")}</button><button class="lc-checkin__text-button" type="button" data-insight-edit-rules="${escapeHtml(item.id)}">${t("insights.coachingAdjust")}</button></div>`}</div>`).join("")}</div></section>` : "";
         /* T-1609：戒除类日格用守住/破戒词表——二值守住日不显示「0/1」这类至少型读数。 */
+        const initialFocusDate = report.days.find((day) => day.isToday)?.date || report.days[report.days.length - 1]?.date;
         const insightGrid = report.days.map((day) => {
             const atMost = day.direction === "atMost";
             const statusText = atMost && day.status === "complete" ? t("insights.atMostKept")
@@ -6283,7 +6285,7 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
             const detail = atMost && day.kind === "binary" && day.progress === 0 ? t("insights.noRecord") : `${day.progress}/${day.target} ${day.unit}`;
             const label = `${day.date}，${statusText}${day.skipped ? `（${t("today.skipBadge")}）` : ""}，${detail}`;
             /* T-1591：日历格键盘/触屏钻取——button 化点击跳记录页对应日期（aria-label 保留完整状态读数）。 */
-            return `<button class="lc-checkin__insight-day is-${day.status}${day.isToday ? " is-today" : ""}" type="button" data-insight-day="${escapeHtml(day.date)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"${day.isToday ? ` aria-current="date"` : ""}></button>`;
+            return `<button class="lc-checkin__insight-day is-${day.status}${day.isToday ? " is-today" : ""}" type="button" data-insight-day="${escapeHtml(day.date)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(`${label}，${t("insights.dayJumpHint")}`)}"${day.isToday ? ` aria-current="date"` : ""} tabindex="${day.date === initialFocusDate ? "0" : "-1"}"></button>`;
         }).join("");
         /* T-1591：计算口径按项目类型明示——配额=窗口累计、戒除/上限=守住读数、排期类=机会日分母。 */
         const scopeLine = item.schedule?.type === "quota" ? t("insights.scopeNoteQuota")
@@ -6893,8 +6895,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
             this.render();
         } catch {
             this.snapshotHistory = previous;
-            showMessage(t("msg.clearSnapshotsFail"));
-            this.render();
+            this.recordDiagnostic("save-failed", "snapshot-clear-persist-failed");
+            throw new Error(t("msg.clearSnapshotsFail"));
         }
     }
 

@@ -417,6 +417,40 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         if (!item) return;
         host.showEditor(item, "insights", root);
     }));
+    /* T-1649：洞察日期格使用 roving tabindex，避免长窗口的每一天都占一个 Tab 停靠点。
+       网格行数随响应式布局变化：桌面通常 12 行，窄屏通常 7 行；旧 WebView
+       解析不到计算样式时回落 7，避免把方向键步进写死在某个视口。
+       保留原生 button；Enter/Space 仍由既有 click 钻取处理。 */
+    const insightDayButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-insight-day]"));
+    const setInsightDayTabStop = (target: HTMLButtonElement): void => {
+        insightDayButtons.forEach((button) => { button.tabIndex = button === target ? 0 : -1; });
+    };
+    const findInsightDayByDirection = (button: HTMLButtonElement, key: string): HTMLButtonElement | undefined => {
+        const grid = button.closest<HTMLElement>(".lc-checkin__insight-grid");
+        const rowTemplate = grid ? getComputedStyle(grid).gridTemplateRows : "";
+        const repeatedRows = rowTemplate.match(/^repeat\(\s*(\d+)\s*,/i);
+        const rowTokens = rowTemplate.split(" ").filter(Boolean);
+        const rowCount = repeatedRows ? Number(repeatedRows[1]) : rowTokens.length > 1 ? rowTokens.length : 7;
+        const currentIndex = insightDayButtons.indexOf(button);
+        if (currentIndex < 0) return undefined;
+        if (key === "Home") return insightDayButtons[0];
+        if (key === "End") return insightDayButtons[insightDayButtons.length - 1];
+        const step = key === "ArrowLeft" || key === "ArrowRight" ? rowCount : 1;
+        const delta = key === "ArrowLeft" || key === "ArrowUp" ? -step : step;
+        return insightDayButtons[currentIndex + delta];
+    };
+    insightDayButtons.forEach((button) => {
+        button.addEventListener("focus", () => setInsightDayTabStop(button));
+        button.addEventListener("keydown", (event) => {
+            const key = event.key;
+            if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) return;
+            event.preventDefault();
+            const target = findInsightDayByDirection(button, key);
+            if (!target || target === button) return;
+            setInsightDayTabStop(target);
+            target.focus({preventScroll: true});
+        });
+    });
     /* T-1591：洞察日历格/周行钻取——同步项目过滤后跳记录页对应日期（周行落该周起始日，
        周视图由用户在记录页切换；selectedHistoryDate/historyScope 由 jumpToHistoryDate 统一处理）。 */
     for (const attribute of ["data-insight-day", "data-insight-week"]) {

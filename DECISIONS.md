@@ -2281,3 +2281,11 @@
 # D-427：恢复入口读取失败使用 load-failed 事实（2026-10-07）
 
 - `restoreLatestBackup` 读取恢复点桶失败时写 `local-snapshot/snapshot-load-failed` restore 审计与 `load-failed` 诊断；空桶、无匹配恢复点和用户取消仍是可预期分支，不记录失败事实。
+
+# D-428：恢复点清空先持久化再替换内存（2026-10-07）
+
+- `clearSnapshotHistory` 在存储锁内成功写入空历史后才清空 `snapshotHistory` 并重绘；写入失败保留旧列表，记录 `save-failed/snapshot-clear-persist-failed`，交由设置动作生命周期显示失败反馈，避免界面先空而持久化仍有恢复点。
+
+# D-429：洞察日期格采用响应式 roving tabindex（2026-10-07）
+
+- 洞察窗口保留原生日期 button，仅当前日或自定义窗口末日进入 Tab 序列；方向键按实际 CSS 网格行数决定左右步进，Home/End 定位边界，Enter/Space 继续既有日期钻取，不引入 grid role 或改变统计口径。

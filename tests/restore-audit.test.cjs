@@ -65,6 +65,9 @@ assert.match(source, /private recordSnapshotRestoreLoadFailure\(\): void/, "snap
 assert.match(source, /source: "local-snapshot", failureKind: "snapshot-load-failed"/, "snapshot restore load failures must remain restore audit entries");
 assert.match(source, /recordDiagnostic\("load-failed", "snapshot-load-failed"\)/, "snapshot restore load failures must enter load diagnostics");
 assert.match(source, /try \{\s*raw = await this\.loadData\(BACKUP_STORAGE_NAME\);\s*\} catch \{\s*this\.recordSnapshotRestoreLoadFailure\(\)/, "snapshot restore must record host load failures");
+assert.match(source, /runSettingsAction\(control, \(\) => this\.clearSnapshotHistory\(\)/, "snapshot clear must use the settings busy and focus lifecycle");
+assert.match(source, /await this\.withStorageLock\(\(\) => this\.saveData\(BACKUP_STORAGE_NAME, createEmptyStoreSnapshotHistory\(\)\)\);\s*this\.snapshotHistory = \[\];/, "snapshot clear must update memory only after persistence succeeds");
+assert.match(source, /this\.snapshotHistory = previous;\s*this\.recordDiagnostic\("save-failed", "snapshot-clear-persist-failed"\);\s*throw new Error\(t\("msg\.clearSnapshotsFail"\)\)/, "snapshot clear must retain the previous list and diagnose persistence failure");
 const i18n = fs.readFileSync("src/i18n.ts", "utf8");
 assert.equal(i18n.split('"msg.jsonRestoreValidationFail"').length - 1, 2, "restore validation feedback must have both locales");
 const exportSource = fs.readFileSync("src/export.ts", "utf8");
