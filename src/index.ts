@@ -65,7 +65,7 @@ import {collectNoteBindings, groupBindingTargets, mergeBindingHealth, resolveBin
 import {openJournalDialogFor, bindJournalBuilder, bindDocumentTargetPickerFor, type DocumentTargetChoice} from "./render/journal-dialog";
 import {SireaderFocusTracker, buildSireaderExternalRef, type SireaderLifecycleType} from "./features/sireader-adapter";
 import {CHECKIN_TEMPLATES, TEMPLATE_PACKS, templateName, templateNameAliases} from "./catalog";
-import {buildTemplatePackApplicationPlan, buildTemplatePackPreview} from "./features/template-packs";
+import {buildTemplatePackApplicationPlan} from "./features/template-packs";
 import {SiplayerPlaybackTracker, buildSiplayerExternalRef, detectSiplayerController} from "./features/siplayer-adapter";
 import {HEALTH_INGEST_INTERVAL_MS, HEALTH_INBOX_MAX_ROWS, parseHealthInboxLine, parseHealthInboxRows, addHealthMetricBinding, normalizeHealthInboxPreference, type HealthInboxMetric} from "./features/health-inbox";
 import {isTemplateLinkagePlan, type LinkageBindingState} from "./features/template-linkage";
@@ -7564,15 +7564,15 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         return savedItemId;
     }
 
-    /* T-1488：空状态一键装填——组合包内全部「新增」模板一次建项。条目字段=目录原样 +
-        模型归一化（与逐条表单通道同一 normalizeCheckinItem 边界）；重复名称沿用预览的
-        new/duplicate 判定不重建；失败恢复旧 store。仅空库时入口可见，非空库仍逐条确认。 */
+    /* T-1488/T-1632：空状态一键装填——组合包内全部「新增」模板一次建项。条目字段=目录原样 +
+        模型归一化（与逐条表单通道同一 normalizeCheckinItem 边界）；创建判定复用稳定锚点/别名
+        application plan，避免语言切换或并发新建后按旧显示名重复创建；失败恢复旧 store。 */
     private async applyTemplatePackBulk(packId: string): Promise<number> {
         const pack = TEMPLATE_PACKS.find((candidate) => candidate.id === packId);
         if (!pack) return 0;
-        const existingNames = this.store.items.filter((entry) => !entry.archived).map((entry) => entry.name);
-        const preview = buildTemplatePackPreview(pack.templates, CHECKIN_TEMPLATES, existingNames, {localizeName: (name: string) => templateName({name})});
-        const fresh = preview.entries.filter((entry) => entry.status === "new");
+        const activeItems = this.store.items.filter((entry) => !entry.archived);
+        const plan = buildTemplatePackApplicationPlan(pack.templates, CHECKIN_TEMPLATES, activeItems, {localizeName: (name: string) => templateName({name}), resolveAliases: templateNameAliases});
+        const fresh = plan.entries.filter((entry) => entry.defaultDisposition === "create");
         if (!fresh.length) return 0;
         const today = dateKey(currentCalendarDate());
         const now = new Date().toISOString();

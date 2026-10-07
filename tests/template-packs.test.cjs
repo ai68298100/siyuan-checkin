@@ -114,12 +114,15 @@ assert.match(bindSource, /host\.store\.items\.every\(\(entry\) => entry\.archive
 assert.match(bindSource, /applyTemplatePackBulk/, "批量应用必须经宿主方法");
 assert.match(bindSource, /buildTemplatePackApplicationPlan\(/, "组合包面板必须展示同名规则差异计划");
 assert.match(bindSource, /data-pack-select/, "组合包面板必须支持逐项勾选");
+assert.match(bindSource, /disabled aria-disabled=\\"true\\"/, "冲突组合包条目不得伪装成可创建勾选项");
+assert.match(bindSource, /data-pack-select\]:not\(:disabled\):checked/, "组合包计数和提交必须只读取可创建勾选项");
 assert.match(bindSource, /applyTemplatePackSelected/, "部分应用必须经宿主方法并由宿主重核对");
 assert.match(bindSource, /data-pack-edit/, "冲突行必须提供进入编辑入口");
 assert.match(bindSource, /editor\.packApplied/, "批量创建后必须有结果反馈");
 const indexPackSource = fs.readFileSync(path.join(root, "src", "index.ts"), "utf8");
 assert.match(indexPackSource, /private async applyTemplatePackBulk\(packId: string\): Promise<number>/, "宿主实现批量建项方法");
-assert.match(indexPackSource, /buildTemplatePackPreview\(pack\.templates/, "批量路径复用同一预览纯函数做 new/duplicate 判定");
+assert.match(indexPackSource, /buildTemplatePackApplicationPlan\(pack\.templates, CHECKIN_TEMPLATES, activeItems/, "批量路径必须复用稳定锚点与别名计划做创建判定");
+assert.match(indexPackSource, /const fresh = plan\.entries\.filter\(\(entry\) => entry\.defaultDisposition === "create"\)/, "批量路径只创建最新计划确认的新条目");
 assert.match(indexPackSource, /normalizeCheckinItem\(\{/, "批量建项必须过模型归一化边界");
 assert.match(indexPackSource, /advanceFirstSuccess\("item-created"\)/, "批量建项推进新手旅程");
 assert.match(indexPackSource, /private async applyTemplatePackSelected\(packId: string, templateIndexes: readonly number\[\]\)/, "宿主必须提供组合包部分应用方法");

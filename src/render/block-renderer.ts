@@ -179,6 +179,16 @@ export function renderCheckinBlocksIn(protyleElement: HTMLElement, deps: BlockRe
             const target = (event.target as HTMLElement).closest("[data-jump-date]");
             if (target) deps.onJumpDate?.(target.getAttribute("data-jump-date") || "");
         });
+        /* T-1649：日期格和汇总行使用带 tabindex 的语义元素承载跳转，
+           键盘 Enter/Space 必须复用既有 click 委托；原生记录按钮不纳入，
+           避免 Space/Enter 产生第二次写入。 */
+        preview.addEventListener("keydown", (event) => {
+            if (!isActive() || !preview.isConnected || (event.key !== "Enter" && event.key !== " ")) return;
+            const target = (event.target as HTMLElement).closest("[role='button'][tabindex='0'][data-jump-date], [role='listitem'][tabindex='0'][data-jump-item], [data-jump-anchor-block]");
+            if (!target || !preview.contains(target)) return;
+            event.preventDefault();
+            (target as HTMLElement).click();
+        });
         lastRenderedConfig.set(block, configText);
         block.insertAdjacentElement("afterend", preview);
     }

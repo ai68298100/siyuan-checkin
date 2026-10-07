@@ -112,6 +112,10 @@ assert.equal(pendingSingle.lastMissedDate, "2026-09-18", "scan starts from yeste
 assert.match(glueSource, /data-block-record/, "glue routes today record buttons");
 assert.match(glueSource, /data-record-pending/, "record button throttles double clicks");
 assert.match(glueSource, /onBlockTodayRecord/, "record buttons delegate to the host write path");
+assert.match(glueSource, /preview\.addEventListener\("keydown"/, "semantic render-block jumps must have a keyboard path");
+assert.match(glueSource, /event\.key !== "Enter" && event\.key !== " "/, "render-block keyboard jumps accept Enter and Space");
+assert.match(glueSource, /event\.preventDefault\(\);\s*\(target as HTMLElement\)\.click\(\);/, "render-block keyboard jumps reuse click behavior and prevent Space scrolling");
+assert.match(glueSource, /\[role='button'\]\[tabindex='0'\]\[data-jump-date\], \[role='listitem'\]\[tabindex='0'\]\[data-jump-item\]/, "keyboard delegation excludes native record buttons");
 assert.match(read("index.ts"), /onBlockTodayRecord: \(itemId: string, amount\?: number\) => void this\.recordBlockToday\(itemId, amount\)/, "host must wire the block record callback (T-1462: optional chip amount)");
 assert.match(read("index.ts"), /private async recordBlockToday/, "host implements the block record path via recordEvent");
 for (const key of ["block.todayDone", "block.todayStreak", "block.todayLastMissed", "block.todayCongrats", "block.todayRecord"]) {

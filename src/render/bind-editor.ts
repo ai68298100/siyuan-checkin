@@ -894,7 +894,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
                 const diff = entry.differences.length
                     ? `<small class="lc-checkin__pack-diff">${entry.differences.map((difference) => `${escapeHtml(difference.field)}: ${escapeHtml(formatDiffValue(difference.existing))} → ${escapeHtml(formatDiffValue(difference.incoming))}`).join("；")}</small>`
                     : "";
-                const selection = entry.status === "new" ? " checked" : "";
+                const selection = entry.status === "new" ? " checked" : " disabled aria-disabled=\"true\"";
                 const edit = entry.existing ? `<button type="button" class="lc-checkin__text-button" data-pack-edit="${index}" data-pack-edit-id="${escapeHtml(entry.existingId || "")}">${escapeHtml(t("editor.packEdit"))}</button>` : "";
                 return `<div class="lc-checkin__pack-entry${entry.conflict === "different" ? " is-conflict" : ""}" data-pack-entry="${index}"><label class="lc-checkin__pack-select"><input type="checkbox" data-pack-select="${index}"${selection} /><span class="lc-checkin__template"><span>${escapeHtml(entry.template.icon)}</span><strong>${escapeHtml(entry.name)}</strong><small>${escapeHtml(badge)}</small></span></label>${diff}${edit}<button class="lc-checkin__text-button" type="button" data-template-apply="${index}">${escapeHtml(t("editor.packPreviewApply"))}</button></div>`;
             }).join("");
@@ -910,7 +910,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
             panel.querySelectorAll<HTMLInputElement>("[data-pack-select]").forEach((checkbox) => checkbox.addEventListener("change", () => {
                 const button = panel.querySelector<HTMLButtonElement>("[data-pack-apply-selected]");
                 if (!button) return;
-                const count = panel.querySelectorAll<HTMLInputElement>("[data-pack-select]:checked").length;
+                const count = panel.querySelectorAll<HTMLInputElement>("[data-pack-select]:not(:disabled):checked").length;
                 button.textContent = t("editor.packApplySelected", {n: count});
                 button.disabled = count === 0;
                 button.setAttribute("aria-disabled", String(count === 0));
@@ -930,7 +930,7 @@ export function bindEditorHandlers(root: HTMLElement, host: BindEditorHost): voi
         if (selectedButton && !selectedButton.disabled) {
             const packId = selectedButton.dataset.packApplySelected || "";
             if (selectedButton.dataset.busy === "true") return;
-            const indexes = Array.from(root.querySelectorAll<HTMLInputElement>("[data-pack-select]:checked"))
+            const indexes = Array.from(root.querySelectorAll<HTMLInputElement>("[data-pack-select]:not(:disabled):checked"))
                 .map((input) => Number(input.dataset.packSelect)).filter((index) => Number.isInteger(index));
             if (!indexes.length) return;
             selectedButton.dataset.busy = "true";

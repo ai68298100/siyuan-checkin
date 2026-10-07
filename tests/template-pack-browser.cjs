@@ -139,6 +139,7 @@ async function inspect(page) {
         const conflictText = await conflictPanel.innerText();
         assert.match(conflictText, /规则有差异|规则相同|Different rules|Same rules/);
         assert.ok(await conflictPanel.locator("[data-pack-edit]").count() >= 1, "different-rule row offers edit path");
+        assert.ok(await conflictPanel.locator("[data-pack-select]:disabled").count() >= 2, "same-name rows stay visible but cannot be selected for creation");
         const beforeApply = await inspect(conflictPage);
         const selectedConflict = conflictPanel.locator("[data-pack-apply-selected]");
         assert.equal(await selectedConflict.count(), 1, "new entries keep a partial-apply action in a non-empty library");
