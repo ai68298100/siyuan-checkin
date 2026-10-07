@@ -10,7 +10,7 @@
 
 ## 本地验证
 
-环境要求为 Node.js 18+ 与 pnpm 12.5.1。首次安装后至少运行：
+环境要求为 Node.js 20.19.0+ 与 pnpm 12.5.1。工具链原因和直接依赖下限见[工具链兼容性说明](docs/toolchain-compatibility.md)。首次安装后至少运行：
 
 ```bash
 corepack pnpm install
