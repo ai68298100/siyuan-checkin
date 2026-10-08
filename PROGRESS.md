@@ -1,5 +1,12 @@
 # 2026-10-08 v18.17.0 已正式发布：双机合并后的本机 `main`、`dev/thispc-1002` 和 GitHub 两条同名分支已对齐；发布提交为 `af9caf9b`，tag/Release 为 `v18.17.0`。GitHub 默认分支为 `main`，Release 资产 `package.zip` 的 SHA-256 为 `4f82233ae8c1adb15bb23b572eaf1b5df72168c1a172f4b7fb1a998ca82be717`。完整质量链、发布资产和回滚演练均通过；真实思源/Android/外部来源现场验收仍单独保留，不推送集市。另一台机器只需按 README/同步说明的 `fetch` + `switch main` + `pull --ff-only` 同步。
 
+# 2026-10-09 全插件功能与 UI 复核第二轮
+
+- 任务：全量复核功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和响应式体验；继续沿用真实宿主/真机证据边界，不把模拟通过写成现场通过。
+- 修复：calendar projection 的数值 atMost 与修订单位口径、设置窄屏导航滚动竞态、640px 紧凑 Today 首卡 8px 堆叠超预算、宽度矩阵跨主题 root 展开态残留；README 同步 API 来源白名单和 Node 运行时要求。
+- 证据：`pnpm run check`、`pnpm run build`、`pnpm test`、`node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`、`node tests/width-walkthrough.cjs`、`node tests/ui-sweep.cjs` 均通过；width 矩阵 49 尺寸表面、32 交互状态、8 主题/动作色、10 混合习惯和长内容场景全绿。
+- 边界：`node tests/visual-qa.cjs` 仍在 draft conflict submit 等待阶段失败；真实思源宿主、第三方账号、Android/TalkBack、缩放、保存面板现场仍需验收。
+
 # 2026-10-06 UI 视觉收敛第五轮（local-auto）：按 width-walkthrough 截图修正事项页桌面 `details` 抽屉未参与双栏 grid、设置总览移动端四个入口被拉成整列、紧凑 Today 在宽 dock 三列导致中文名称逐字竖排；新增宽 Tab 的 `lc-tab` 垂直图标导航、洞察热力格低对比描边，以及 320～380px 流内提醒的两行/一行信息收敛（按钮仍为 44px）。设置搜索补 placeholder；提醒挂载判定补窄 Tab/Dialog 的实际宽度分支，避免窄宿主 fallback 到 fixed body；≤380px Today 概览改为双列，首张任务卡在最新 320px 截图中完整进入首屏。最新证据：`pnpm run check`、`pnpm run build`、`node tests/css-hygiene.test.cjs`、`node tests/reminder-delivery.test.cjs`（17 项）、`pnpm run test:reminder-delivery-browser`（18/18，320/360/720/1180，双主题/双语/双 root）、`git diff --check` 通过；CSS hygiene 655346 bytes，超过 620KB soft line 但低于 640KiB hard line。`tests/width-walkthrough.cjs` 仍因 occasions fixture、focus/短高命中和 stress 高度断言退出，不能宣称全量通过；`tests/visual-qa.cjs` 最新双主题仍在既有 draft conflict fixture 失败，但 round10 截图已复核提醒压缩、首屏任务可见和宽 Tab 垂直导航；未 push。
 
 # 2026-10-06 UI 视觉收敛第四轮（local-auto）：窄 dock（≤719px）每日提醒改为宿主列流内横幅，避免固定通知遮挡 Today 首个任务、事项空态和编辑器操作区；宿主尺寸观察器会在 dock 拖宽/拖窄后自动切换流内横幅与原型固定 toast，宽 Tab 仍保留右下角瞬时提醒。320px 的 Today 操作行调整为 `1fr / 64px / 56px`，英文 `Select` 不再被 44px 轨道截断，触控高度保持不变；Today 已有事实投影时，桌面任务列与事实卡采用原型式两列布局，空数据不留死列。最新证据：`pnpm run build`、`pnpm run check`、`pnpm run test:ui`、`pnpm run test:reminder-delivery-browser`（18/18，320/360/720/1180，双主题/双语/多 root）、`node tests/reminder-delivery.test.cjs`（17 项）、`node tests/css-hygiene.test.cjs`、`scripts/visual-probe.cjs light/dark`、`git diff --check` 通过；窄 dock/宽 Tab 截图已复核。`tests/visual-qa.cjs` 仍在既有 draft conflict fixture（`draft conflict submit did not finish`）处退出，未伪报通过；未 push。

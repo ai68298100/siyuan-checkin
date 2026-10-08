@@ -241,6 +241,10 @@
     .lc-checkin--today .lc-checkin__overview-streak > strong { font-size: 24px; }
     .lc-checkin--today[data-density] .lc-checkin__overview-streak { display: block; }
     .lc-checkin--today .lc-checkin__console { margin-bottom: 12px; }
+    /* The compact desktop dock has a 34px dashboard; keep the following
+       reminder close enough to leave room for the first habit card without
+       reducing any interactive target. */
+    .lc-checkin--today[data-density="compact"] .lc-checkin__console { margin-bottom: 6px !important; }
     .lc-checkin--today .lc-checkin__item { box-shadow: none; }
     .lc-checkin__occasion-empty { min-height: 150px; margin-top: 8px; padding: 18px 12px; }
     .lc-checkin--review :is(.lc-checkin__trend-card, .lc-checkin__review-fold),

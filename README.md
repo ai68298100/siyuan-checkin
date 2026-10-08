@@ -132,7 +132,7 @@ if (checkin.hasCapability("events.record")) {
     itemId: "item-id",
     value: 25,
     unit: "分钟",
-    source: "my-plugin",
+    source: "api",
     externalRef: "my-plugin-session-2026-001",
   });
 }
@@ -151,7 +151,7 @@ if (checkin.hasCapability("events.record")) {
 
 ## 开发与验证
 
-环境要求：Node.js 18+、pnpm 12.5.1（`package.json` 已固定版本）。
+环境要求：Node.js 20.19.0+、pnpm 12.5.1（`package.json` 已固定版本）。
 
 ```bash
 corepack pnpm install

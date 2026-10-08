@@ -201,6 +201,11 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     let disposed = false;
     let frame = 0;
     let activeId = "";
+    /* A smooth navigation click establishes the user's intended section before
+       the first scroll frame. Ignore observer/resize geometry from the old
+       position until the corresponding scroll event arrives. */
+    let pendingNavigationId: string | undefined;
+    let pendingNavigationTimer: ReturnType<typeof setTimeout> | undefined;
     let intersectionObserver: IntersectionObserver | undefined;
     let resizeObserver: ResizeObserver | undefined;
 
@@ -269,6 +274,7 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
 
     const syncFromScroll = () => {
         if (disposed) return;
+        if (pendingNavigationId) return;
         const scrollerRect = scroller.getBoundingClientRect();
         const navRect = nav.getBoundingClientRect();
         /* Horizontal mobile rail occupies the top of the viewport; the desktop
@@ -299,7 +305,18 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         }) as number;
     };
 
-    const onScroll = () => scheduleSync();
+    const clearPendingNavigation = () => {
+        pendingNavigationId = undefined;
+        if (pendingNavigationTimer !== undefined) {
+            clearTimeout(pendingNavigationTimer);
+            pendingNavigationTimer = undefined;
+        }
+    };
+
+    const onScroll = () => {
+        clearPendingNavigation();
+        scheduleSync();
+    };
     const onResize = () => scheduleSync();
     const onNavClick = (event: Event) => {
         const target = asElement(event.target)?.closest<HTMLButtonElement>("[data-settings-nav]");
@@ -307,13 +324,35 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
         const id = target.dataset.settingsNav || "";
         const group = groupById.get(id);
         if (!group) return;
-        setActive(id, true, options.reducedMotion ? "auto" : "smooth");
+        clearPendingNavigation();
+        const behavior = options.reducedMotion ? "auto" : "smooth";
+        if (behavior === "smooth") pendingNavigationId = id;
+        setActive(id, true, behavior);
         const scrollRect = scroller.getBoundingClientRect();
         const groupRect = group.getBoundingClientRect();
         const offset = isHorizontalRail() ? nav.getBoundingClientRect().height + 8 : 12;
         const nextTop = scroller.scrollTop + groupRect.top - scrollRect.top - offset;
         const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-        scrollElement(scroller, scroller.scrollLeft, Math.max(0, Math.min(maxTop, nextTop)), options.reducedMotion ? "auto" : "smooth");
+        const targetTop = Math.max(0, Math.min(maxTop, nextTop));
+        /* If clamping/current position means there is no smooth movement, no
+           scroll event may fire. Release the guard immediately so later
+           observer/resize passes remain authoritative. */
+        if (behavior === "smooth" && Math.abs(targetTop - scroller.scrollTop) < 1) pendingNavigationId = undefined;
+        scrollElement(scroller, scroller.scrollLeft, targetTop, behavior);
+        if (behavior === "smooth" && pendingNavigationId) {
+            /* Embedded WebViews can omit scroll events for smooth programmatic
+               scrolling. Release the click guard eventually so later resize
+               or observer updates cannot be suppressed forever. */
+            pendingNavigationTimer = setTimeout(() => {
+                pendingNavigationId = undefined;
+                pendingNavigationTimer = undefined;
+                scheduleSync();
+            }, 1000);
+        } else {
+            /* Direct offset assignment is synchronous in reduced-motion and
+               legacy fallback paths; read the new geometry on the next frame. */
+            scheduleSync();
+        }
         /* Do not synchronise immediately after starting a smooth scroll.  At
            narrow widths the old section is still above the threshold during
            the first animation frame; an eager sync would overwrite the
@@ -349,6 +388,7 @@ export function bindSettingsNavigationFor(root: HTMLElement, options: SettingsNa
     return () => {
         if (disposed) return;
         disposed = true;
+        clearPendingNavigation();
         /* T-1563：离开前保存查询与焦点位置（root 复用时恢复）。 */
         searchSession.query = search?.value || "";
         searchSession.activeIndex = activeIndex;

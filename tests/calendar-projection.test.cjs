@@ -69,6 +69,26 @@ assert.equal(candyPoints["2026-09-11"].status, "at-most-breach", "at-most with e
 assert.equal(candyPoints["2026-09-12"].status, "at-most-safe", "at-most clean day is safe");
 assert.ok(!byId.run.points.some((point) => point.status === "logged") || runPoints["2026-09-10"], "sanity");
 
+/* T-1812：公开 calendar.read 必须沿用模型的数值戒除和按日修订单位口径。
+   旧实现只要 value>0 就判破戒，且把旧单位事件带进新修订日。 */
+const capped = makeItem({id: "cap", name: "限量", kind: "quantity", direction: "atMost", target: 2, unit: "杯", schedule: {type: "daily"}});
+const unitRevision = makeItem({
+    id: "unit-revision", name: "单位切换", kind: "quantity", target: 100, unit: "毫升", schedule: {type: "daily"},
+    revisions: [{effectiveDate: "2026-09-11", kind: "quantity", target: 100, unit: "毫升", schedule: {type: "daily"}}],
+});
+const cappedProjection = buildCalendarProjection(model.normalizeStore({version: 3, items: [capped], events: [
+    makeEvent({id: "cap-safe", itemId: "cap", localDate: "2026-09-10", value: 1, unit: "杯"}),
+    makeEvent({id: "cap-breach", itemId: "cap", localDate: "2026-09-11", value: 3, unit: "杯"}),
+]}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});
+assert.equal(cappedProjection.items[0].points.find((point) => point.date === "2026-09-10").status, "at-most-safe", "numeric at-most within target stays safe");
+assert.equal(cappedProjection.items[0].points.find((point) => point.date === "2026-09-11").status, "at-most-breach", "numeric at-most over target breaches");
+const unitProjection = buildCalendarProjection(model.normalizeStore({version: 3, items: [unitRevision], events: [
+    makeEvent({id: "old-unit", itemId: "unit-revision", localDate: "2026-09-11", value: 100, unit: "杯"}),
+]}), {startDate: "2026-09-11", endDateExclusive: "2026-09-12"});
+assert.equal(unitProjection.items[0].points[0].status, "pending", "old-unit event must not satisfy a new unit revision");
+assert.equal(unitProjection.items[0].points[0].value, 100, "raw value remains visible for auditability");
+assert.equal(unitProjection.items[0].points[0].progress, 0, "old-unit event must not inflate rule progress");
+
 /* 非排期日的真实记录 → logged；无记录的非排期日不生成点。 */
 const weekly = makeItem({id: "weekly", name: "周末", schedule: {type: "weekly", weekdays: [6, 0]}});
 const logged = buildCalendarProjection(model.normalizeStore({version: 3, items: [weekly], events: [makeEvent({itemId: "weekly", localDate: "2026-09-10", occurredAt: "2026-09-10T08:00:00Z"})]}), {startDate: "2026-09-10", endDateExclusive: "2026-09-12"});

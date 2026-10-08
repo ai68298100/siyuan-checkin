@@ -98,13 +98,17 @@ export function buildCalendarProjection(
     const visible = store.items.filter((item) => !item.archived && item.taskHorizonCalendarVisible !== false);
     const projected = visible.slice(0, CALENDAR_PROJECTION_LIMITS.maxItems).map((item) => {
         const base = getItemRevisionForDate(item, days[days.length - 1].at);
+        const baseDirection = getItemDirectionForDate(item, days[days.length - 1].at);
         const points: CalendarProjectionPoint[] = [];
         for (const {date, at} of days) {
             const revision = getItemRevisionForDate(item, at);
             const available = isItemAvailableOnDate(item, at);
             const dayEvents = getEventsForDay(store, item.id, at);
             const skipDay = dayEvents.some((event) => isSkipEvent(event));
+            /* `value` 是原始日总量（公开契约字段）；完成/进度判断另用
+               当前修订单位的 matchingValue，避免单位变更后的旧事件污染规则。 */
             const value = dayEvents.filter((event) => !isSkipEvent(event)).reduce((total, event) => total + event.value, 0);
+            const matchingValue = dayEvents.filter((event) => !isSkipEvent(event) && event.unit === revision.unit).reduce((total, event) => total + event.value, 0);
             const target = revision.target;
             if (skipDay) {
                 points.push({date, status: "skipped", value: 0, target, unit: revision.unit});
@@ -117,7 +121,7 @@ export function buildCalendarProjection(
             }
             /* T-1766：方向按当日修订取值——普通↔戒除切换后，旧日点保持当时的口径。 */
             if (getItemDirectionForDate(item, at) === "atMost" && revision.schedule.type === "daily") {
-                if (available) points.push({date, status: value > 0 ? "at-most-breach" : "at-most-safe", value, target, unit: revision.unit});
+                if (available) points.push({date, status: isComplete(store, item, at) ? "at-most-safe" : "at-most-breach", value, target, unit: revision.unit});
                 continue;
             }
             const scheduled = available && isScheduledToday(item, at);
@@ -129,7 +133,7 @@ export function buildCalendarProjection(
                     value,
                     target,
                     unit: revision.unit,
-                    ...(complete ? {} : {progress: target > 0 ? Math.min(1, value / target) : 0}),
+                    ...(complete ? {} : {progress: target > 0 ? Math.min(1, matchingValue / target) : 0}),
                 });
                 continue;
             }
@@ -151,7 +155,7 @@ export function buildCalendarProjection(
             name: item.name,
             icon: item.icon,
             kind: item.kind,
-            ...(item.direction === "atMost" ? {direction: "atMost" as const} : {}),
+            ...(baseDirection === "atMost" ? {direction: "atMost" as const} : {}),
             unit: base.unit,
             scheduleType: base.schedule.type,
             points,

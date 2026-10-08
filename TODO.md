@@ -75,7 +75,7 @@
 - [ ] T-1809 事项返回与创建后导航的 root 接线（P1，跨表面导航复核）——`src/render/bind-occasions.ts:26,43` 的 `showToday()` 不带当前 root，事项在 dock/tab/quick 同屏时返回可能改动最后活跃表面；同步检查创建关联项目、编辑保存和取消返回是否仍落发起表面。补 `showToday(root)` 契约和三表面矩阵，作为 T-1621 步骤一遗漏接线，不重做事项功能 T-1701～T-1732。
 - [ ] T-1810 历史/Today 导航的 root 传递一致性（P1，跨表面导航复核）——`src/render/bind-page-navigation.ts:654-657` 的 `[data-history-insights-id]` 调 `host.showInsights(item)` 未传当前 root；`src/render/today-bindings.ts:91-116,280-283` 的键盘/上下文菜单编辑与洞察入口也未传 root，而同类回顾入口 `:622` 已传 root。统一所有 `data-*` 导航 handler 的 root 参数并加源码守门，覆盖返回、失败和多 root 同屏；宿主级渲染块 `openTab` 保留例外并写清理由。
 - [x] T-1811 排期预演/周负荷/日历共用真实日期校验（P1，已交付 2026-10-08）——`schedule-preview.ts`、`week-load.ts` 与日历投影统一复用 `date-keys.ts:isValidDateKey`；`02-30`、`02-31` 等非法起始日/锚点 fail-closed，合法闰日保持可用。新增排期、周负荷和规则变更夹具回归，并修复转译夹具的共享依赖落盘。
-- [ ] T-1812 calendar.read 数值戒除与修订单位完成口径同源（P1，公开投影正确性）——`src/features/calendar-projection.ts:108,119-120` 累加所有非 skip 事件并以 `value > 0` 判所有 atMost 项为 breach，但 `src/model.ts:731-740,760-784` 对数值 atMost 以不超过 target 判守住、日进度只计当日修订单位。公开日历可能把上限 2、记录 1 显示为破戒，或把旧单位当新单位进度。复用模型事实，明确 raw value 与规则 progress 的区别，验收 0/1/2/3、skip 混合、单位修订、quota 和非排期日；保留 v5 字段兼容，不重复 T-1609 的洞察修复或 T-1766 的方向历史迁移。
+- [x] T-1812 calendar.read 数值戒除与修订单位完成口径同源（P1，已交付 2026-10-09）——`calendar-projection.ts` 复用模型 `isComplete` 判定数值 `atMost`，并只用当天生效修订单位计算 progress；raw value 仍用于公开读数，旧单位事件不会污染当前规则。回归覆盖 0/1/2/3、skip 混合、单位修订、quota 和非排期日；保留 v5 字段兼容。
 
 ### 第四轮：UI 视觉质感与表面系统专项（2026-09-30；只登记不开发）
 

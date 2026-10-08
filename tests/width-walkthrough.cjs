@@ -546,6 +546,19 @@ const cases = [
         }
         plugin.pendingFocusItemId = undefined;
         plugin.expandedExactEntries = [];
+        // Reset the per-root Today session as well. The compatibility field
+        // above does not clear the root context used by the renderer, so an
+        // expanded exact-entry panel could leak into the next palette case.
+        const dockRoot = document.querySelector('#dock');
+        const todayState = dockRoot ? plugin.todayStateForRoot?.(dockRoot) : undefined;
+        if (todayState) {
+            todayState.expandedExactEntries = [];
+            todayState.pendingAttachments?.clear?.();
+            todayState.quickEntryCancelled?.clear?.();
+            todayState.bulkMode = false;
+            todayState.bulkSelected?.clear?.();
+            todayState.priorityReminderExpanded = false;
+        }
         plugin.todayQuery = '';
         plugin.pendingOnly = false;
         plugin.completedCollapsed = true;

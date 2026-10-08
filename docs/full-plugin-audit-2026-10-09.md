@@ -6,10 +6,13 @@
 
 核心功能的本地自动化证据完整，类型检查、生产构建、主测试链、UI/移动端/生态/扩展/perf 链均通过。无障碍静态审计没有缺名、正向 tabindex、键盘不可达或对比度违规。真实思源宿主、第三方账号、Android/TalkBack、缩放和保存面板现场仍未验收。
 
-本轮修复了两处可复现缺陷：
+本轮修复了四处可复现问题，并补齐了两项审计契约：
 
 - 日历投影、排期预演和周负荷统一使用 `date-keys.ts:isValidDateKey`，不再接受 `2026-02-30`、`2026-02-31` 并被 `Date` 归一到下月；对应 T-1793/T-1811 已回写完成。
 - 设置页窄屏分类点击不再在平滑滚动首帧被旧几何覆盖 `aria-current`；滚动事件和观察器继续负责最终同步。
+- 日历公开投影的数值 `atMost` 项改用模型同源的 `isComplete`，并按当天生效的修订单位计算进度；旧单位事件仍保留原始读数但不污染当前规则完成态。
+- 640px 紧凑桌面 Today 将仪表盘与提醒条间距收紧 8px，首个任务卡回到首屏预算，按钮触控高度不变。
+- 宽度走查的主题切换在每个场景清空 root Today 展开态，Ocean/Sunset 的 exact-entry 点击反馈不再受前一主题残留状态影响。
 
 ## 页面与能力
 
@@ -36,5 +39,6 @@
 ## 未闭合的视觉证据
 
 - `node tests/visual-qa.cjs` 在 draft conflict submit 等待阶段失败，错误为 `draft conflict submit did not finish`，因此不能宣称全量视觉通过。
-- `node tests/width-walkthrough.cjs` 仍有 6 个失败：Ocean/Sunset 浅深主题共 4 个 action-colors 场景在 exact-entry 控件被异步重绘隐藏后定位超时；30 项 Today 在 640px 首卡 top=483，超过 475px 首屏预算 8px。其余宽度、长内容、短高 dock、混合记录和交互场景通过。
-- CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留，不能用静态通过替代真实宿主验收。
+- `node tests/width-walkthrough.cjs`：全矩阵通过（49 个尺寸表面、32 个交互状态、8 个主题/动作色场景、10 个混合习惯布局、录入表单、30 项 Today 双主题和长内容场景）。
+- `node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`：通过；分别覆盖数值戒除/修订单位投影和设置导航竞态守门。
+- `node tests/visual-qa.cjs` 仍在 draft conflict submit 等待阶段失败（`draft conflict submit did not finish`）；CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留，不能用静态通过替代真实宿主验收。
