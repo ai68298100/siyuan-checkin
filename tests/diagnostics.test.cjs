@@ -40,13 +40,21 @@ const safeDetail = sanitizeDiagnosticDetail(hostileDetail);
 for (const secret of ["secret123", "bearer123", windowsUserPath, posixUserPath]) assert.equal(safeDetail.includes(secret), false);
 assert.match(safeDetail, /<redacted>/);
 assert.match(safeDetail, /<path>/);
+assert.equal(sanitizeDiagnosticDetail("refresh_token=refresh-secret id_token=id-secret").includes("refresh-secret"), false);
 assert.equal(normalizeDiagnostics([{code: "save-failed", at, detail: hostileDetail}])[0].detail, safeDetail);
 assert.equal(appendDiagnostic([], {code: "save-failed", at, detail: hostileDetail})[0].detail, safeDetail);
+const emojiDetail = "😀".repeat(300);
+const boundedEmoji = sanitizeDiagnosticDetail(emojiDetail);
+assert.equal([...boundedEmoji].length, 200, "diagnostic detail bounds Unicode code points without splitting surrogate pairs");
+assert.equal(boundedEmoji.endsWith("😀"), true, "diagnostic detail keeps complete emoji at the boundary");
+assert.equal(normalizeDiagnostics([{code: "save-failed", at, detail: emojiDetail}])[0].detail, boundedEmoji, "normalized diagnostics retain bounded Unicode details");
 
 /* 序列化往返与非法输入。 */
 const roundTrip = parseDiagnostics(serializeDiagnostics(entries));
 assert.deepEqual(roundTrip, entries.slice(-20));
 assert.deepEqual(parseDiagnostics("{broken"), []);
+const invalidExport = JSON.parse(serializeDiagnostics([{code: "save-failed", at}], "not-a-date"));
+assert.equal(Number.isFinite(Date.parse(invalidExport.exportedAt)), true, "invalid diagnostics export time falls back to an ISO timestamp");
 assert.deepEqual(normalizeDiagnostics([{code: "bogus", at}, {code: "save-failed", at: "no-date"}]), [], "unknown codes and invalid times are rejected");
 for (const code of CHECKIN_DIAGNOSTIC_CODES) {
     assert.ok(CHECKIN_DIAGNOSTIC_INFO[code].labelKey && CHECKIN_DIAGNOSTIC_INFO[code].recoveryKey, `${code} must map to label and recovery keys`);
@@ -73,6 +81,8 @@ assert.ok(reference.includes("getDiagnostics"), "reference doc must document get
 
 /* 宿主打点：五个失败路径全部记录原因码。 */
 assert.match(indexSource, /recordDiagnostic\("save-failed", String\(error\)\.slice\(0, 200\)\)/, "store save failures must record save-failed");
+const diagnosticRecorder = indexSource.slice(indexSource.indexOf("recordDiagnostic(code:"), indexSource.indexOf("private recordImportFailure"));
+assert.ok(diagnosticRecorder.includes("...(detail ? {detail} : {})"), "recordDiagnostic must delegate detail bounds to the shared sanitizer");
 assert.match(indexSource, /recordDiagnostic\("version-conflict"/, "merge conflicts must record version-conflict");
 assert.match(indexSource, /recordDiagnostic\("load-failed"/, "refresh/load failures must record load-failed");
 assert.match(indexSource, /recordDiagnostic\("migration-rejected"/, "rejected imports must record migration-rejected");

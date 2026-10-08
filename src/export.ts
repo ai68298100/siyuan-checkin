@@ -7,6 +7,24 @@ import {isValidDateKey} from "./date-keys";
  * 前阻止异常文件占满 WebView 内存。
  */
 export const JSON_BACKUP_MAX_CHARS = 8 * 1024 * 1024;
+const JSON_BACKUP_VERSION_MAX_CHARS = 80;
+const JSON_BACKUP_WARNING_MAX_CHARS = 240;
+const JSON_BACKUP_WARNING_LIMIT = 64;
+
+function boundedMigrationText(value: unknown, maxLength = JSON_BACKUP_VERSION_MAX_CHARS): string {
+    const text = typeof value === "string" ? value : typeof value === "number" && Number.isFinite(value) ? String(value) : "unknown";
+    const cleaned = text.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").trim();
+    const points = [...cleaned];
+    return points.length <= maxLength ? cleaned : `${points.slice(0, Math.max(0, maxLength - 1)).join("")}…`;
+}
+
+function boundedMigrationWarnings(warnings: readonly unknown[]): string[] {
+    return warnings.slice(0, JSON_BACKUP_WARNING_LIMIT).map((warning) => boundedMigrationText(warning, JSON_BACKUP_WARNING_MAX_CHARS)).filter(Boolean);
+}
+
+function boundedMigrationVersion(value: unknown): number | string {
+    return typeof value === "number" && Number.isFinite(value) ? value : boundedMigrationText(value);
+}
 
 export interface JsonBackupInspection {
     duplicateItemIds: number;
@@ -55,16 +73,18 @@ export function classifyJsonRecoveryError(error: unknown): JsonRecoveryFailureKi
 
 export function buildRecoveryAuditDetails(source: JsonRecoverySource, preflight: JsonRecoveryPreflight, status: JsonRecoveryStatus, errors: readonly string[] = []): Record<string, unknown> {
     const {report} = preflight;
+    const auditErrors = errors.length ? {errors: [...errors]} : {};
+    if (auditErrors.errors) auditErrors.errors = boundedMigrationWarnings(auditErrors.errors);
     return {
         status,
         source,
-        sourceVersion: report.sourceVersion,
+        sourceVersion: boundedMigrationVersion(report.sourceVersion),
         targetVersion: report.targetVersion,
         repaired: report.repaired,
         warnings: report.warnings.length,
         inspection: report.inspection,
         audit: report.audit,
-        ...(errors.length ? {errors: [...errors]} : {}),
+        ...auditErrors,
     };
 }
 export function validateJsonMigrationReport(report: JsonMigrationReport): string[] {
@@ -115,7 +135,9 @@ export function buildJsonMigrationReport(text: string, normalize: (value: unknow
     let sourceVersion: number | string = "unknown";
     try {
         const parsed = JSON.parse(text.replace(/^\uFEFF/, "")) as {version?: unknown};
-        sourceVersion = typeof parsed.version === "number" || typeof parsed.version === "string" ? parsed.version : "unknown";
+        sourceVersion = typeof parsed.version === "number" && Number.isFinite(parsed.version)
+            ? parsed.version
+            : typeof parsed.version === "string" ? boundedMigrationText(parsed.version) : "unknown";
     } catch {
         sourceVersion = "invalid";
         throw new Error("备份 JSON 无法解析");
@@ -204,7 +226,7 @@ export function parseJsonBackup(text: string, normalize: (value: unknown) => Che
     const inspection = inspectJsonBackup(parsed);
     appendInspectionWarnings(warnings, inspection);
     /* D-216：v3 起为当前版本；v2 及更早的备份自动迁移到当前版本。 */
-    if (candidate.version !== 2 && candidate.version !== 3) warnings.push(`备份数据版本 ${String(candidate.version ?? "未知")} 将自动迁移到当前版本`);
+    if (candidate.version !== 2 && candidate.version !== 3) warnings.push(`备份数据版本 ${boundedMigrationText(candidate.version, JSON_BACKUP_VERSION_MAX_CHARS)} 将自动迁移到当前版本`);
     const store = normalize(parsed);
     return {store, repaired: JSON.stringify(parsed) !== JSON.stringify(store), summary: summarizeJsonBackup(store), warnings, inspection};
 }
@@ -214,7 +236,7 @@ export function serializeJson(store: CheckinStore): string {
 }
 
 export function serializeJsonMigrationReport(report: JsonMigrationReport): string {
-    return JSON.stringify({sourceVersion: report.sourceVersion, targetVersion: report.targetVersion, repaired: report.repaired, warnings: report.warnings, inspection: report.inspection, summary: report.summary, audit: report.audit}, null, 2);
+    return JSON.stringify({sourceVersion: boundedMigrationVersion(report.sourceVersion), targetVersion: report.targetVersion, repaired: report.repaired, warnings: boundedMigrationWarnings(report.warnings), inspection: report.inspection, summary: report.summary, audit: report.audit}, null, 2);
 }
 
 

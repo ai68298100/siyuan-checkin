@@ -18,6 +18,9 @@
 - 洞察教练建议、编辑器图标导入错误、事项农历提示和完成来源摘要改为双语 i18n，英文界面不再混入硬编码中文。
 - Review/洞察/报告页面级偏好（折叠、项目、报告区块、来源筛选）已统一接入快照、失败回滚和失败提示；事项关联项目编辑入口已携带发起 root，避免 dock/tab/quick 同屏时串到最后活跃表面；年度热力图 SVG 的 aria/title、月份、星期、日期和周文案已接入双语 i18n 并统一转义。
 - 第五轮补充：来源和提醒异步响应在换绑/停用/卸载后不会再写入旧事实、游标或通知状态；Today 多 root 局部刷新按事项保留其他表面的焦点请求；初始化失败提示不再泄露宿主原始异常。
+- 第五轮补充：初始化失败页增加双语“重试加载”按钮；重试在同一插件实例内单飞重跑存储初始化，监听和后台任务不重复注册，失败继续停写并保留可聚焦错误屏。
+- 第五轮补充：审计/诊断/迁移导出统一限制深度、条目、Unicode 文本长度并遮罩凭据、本地路径和控制字符；Today 搜索保留选区、迟延聚焦保护跨表面焦点，局部回执详情按钮在 patch 后保持可用；事项 API 读取对 overrides 返回深拷贝。
+- 第五轮补充：审计/诊断/迁移导出统一限制深度、条目、Unicode 文本长度并遮罩凭据、本地路径和控制字符；Today 搜索保留选区、迟延聚焦保护跨表面焦点，局部回执详情按钮在 patch 后保持可用；事项 API 读取对 overrides 返回深拷贝。
 
 ## 页面与能力
 
@@ -49,5 +52,8 @@
 - 本轮新增定向守门：`preference-rollback`、`cross-page-consistency`、`coaching`、`i18n-parity`，覆盖偏好失败回滚、root 隔离和双语输出。
 - 第四轮定向守门：`occasion-linked`、`v7-insights`、`review-presentation`、`i18n-hygiene`、`insight-a11y`；专注专项另有 lifecycle 29 项、teardown 和 adapter 证据。
 - 第五轮定向守门：`scan-cursor`、`source-lifecycle-matrix`、`diagnostics`、`checkin-toast`、`cross-page-consistency`；类型检查和 diff hygiene 通过。
-- 第五轮合并前完整证据：`pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`width-walkthrough`、`visual-qa`、`build` 均通过；`check:release` 的固定发布 SHA 差异继续按发布边界记录。
+- 初始化恢复定向守门：`ui-state-ledger` 验证失败页按钮、重试入口与一次性监听安装；`settings-migration` 验证 `init.retry` 双语键；`agent-status` 验证失败后能力注册仍保持原有解耦。
+- 数据与交互定向守门：`diagnostics`、`model`、`restore-audit`、`privacy-scope`、`today-search-ime`、`cross-surface-matrix`、`checkin-toast`、`occasion-store`、`api-v5-docs` 验证敏感字段边界、快照隔离、选区恢复、跨 root 聚焦和局部回执行为。
+- 数据与交互定向守门：`diagnostics`、`model`、`restore-audit`、`privacy-scope`、`today-search-ime`、`cross-surface-matrix`、`checkin-toast`、`occasion-store`、`api-v5-docs` 验证敏感字段边界、快照隔离、选区恢复、跨 root 聚焦和局部回执行为。
+- 第五轮合并前完整证据：`pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`width-walkthrough`、`visual-qa`、`build` 均通过；本切片另通过 `pnpm run check`、`ui-state-ledger`、`settings-migration`、`agent-status`；`check:release` 的固定发布 SHA 差异继续按发布边界记录。
 - CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留；本地视觉通过不能替代真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。

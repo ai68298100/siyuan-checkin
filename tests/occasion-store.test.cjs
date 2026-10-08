@@ -11,6 +11,11 @@ const os = require("node:os");
 const path = require("node:path");
 const ts = require("typescript");
 const cp = require("node:child_process");
+const apiSource = fs.readFileSync(path.join(__dirname, "..", "src", "api.ts"), "utf8");
+
+assert.match(apiSource, /cloneOccasionForApi[\s\S]*overrides: Object\.fromEntries/, "public occasion reads must deep-clone nested overrides");
+assert.match(apiSource, /getOccasions: \(\) => host\.occasionStore\.occasions\.map\(cloneOccasionForApi\)/, "getOccasions must use the defensive occasion clone");
+assert.match(apiSource, /getTodayOccasions: \(\) => getVisibleOccasions[\s\S]*\.map\(cloneOccasionForApi\)/, "getTodayOccasions must use the defensive occasion clone");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "siyuan-occasion-store-"));
 const compilerOptions = {target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS};

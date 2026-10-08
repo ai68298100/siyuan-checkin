@@ -99,12 +99,36 @@ assert.deepEqual(JSON.parse(model.serializeStoreAudit(auditInput, "2026-09-12T02
     generatedAt: "2026-09-12T02:00:00.000Z",
     entries: model.normalizeStoreAudit(auditInput),
 });
+/* T-1783：审计 details 必须和诊断一样经过统一边界；任意深度、凭据、路径、控制字符和循环引用不能进入 UI/下载。 */
+{
+    const privatePath = ["C:", "Users", "alice", "vault", "note.json"].join("\\");
+    const circular = {token: "secret-value", nested: {password: "pw", path: privatePath, text: "x".repeat(600)}, note: "line\u0000\u0001\n"};
+    circular.self = circular;
+    const details = model.normalizeStoreAuditDetails(circular);
+    assert.equal(details.token, "<redacted>");
+    assert.equal(details.nested.password, "<redacted>");
+    assert.equal(details.nested.path, "<path>");
+    assert.equal(details.self, "[circular]");
+    assert.ok(details.nested.text.length <= 240, "audit text is bounded by Unicode code points");
+    assert.equal(details.note.includes("\u0000"), false, "audit details remove control characters");
+    assert.equal(model.normalizeStoreAuditDetails({refreshToken: "refresh-secret", id_token: "id-secret"}).refreshToken, "<redacted>");
+    const exported = JSON.parse(model.serializeStoreAudit([{type: "anchor", at: "2026-09-12T02:00:00Z", details}], "not-a-date"));
+    assert.ok(!JSON.stringify(exported).includes("secret-value"));
+    assert.ok(!JSON.stringify(exported).includes(privatePath));
+    assert.match(exported.entries[0].details.nested.path, /<path>/);
+    assert.ok(Number.isFinite(Date.parse(exported.generatedAt)), "invalid export time falls back to an ISO timestamp");
+}
 const recoveryPreflight = exporter.preflightJsonRecovery(JSON.stringify({version: 1, items: [], events: []}), model.normalizeStore, exporter.summarizeJsonBackup(model.createDefaultStore()));
 assert.equal(recoveryPreflight.report.sourceVersion, 1);
 assert.equal(recoveryPreflight.report.targetVersion, model.STORE_VERSION);
 assert.deepEqual(recoveryPreflight.validationErrors, []);
 assert.equal(recoveryPreflight.assessment.requiresReview, true);
 assert.equal(recoveryPreflight.report.repaired, true);
+const hostileVersion = "v".repeat(500);
+const hostileMigration = exporter.preflightJsonRecovery(JSON.stringify({version: hostileVersion, items: [], events: []}), model.normalizeStore, exporter.summarizeJsonBackup(model.createDefaultStore()));
+assert.ok(String(hostileMigration.report.sourceVersion).length <= 80, "migration source version is bounded");
+assert.ok(exporter.serializeJsonMigrationReport({...hostileMigration.report, warnings: ["\u0000" + "w".repeat(500)]}).length < 3000, "migration report warning text is bounded before export");
+assert.ok(!exporter.serializeJsonMigrationReport({...hostileMigration.report, warnings: ["\u0000" + "w".repeat(500)]}).includes("\u0000"), "migration report export strips control characters");
 assert.deepEqual(exporter.buildRecoveryAuditDetails("local-snapshot", recoveryPreflight, "rejected", ["invalid summary"]), {
     status: "rejected",
     source: "local-snapshot",

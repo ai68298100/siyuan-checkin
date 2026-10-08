@@ -59,6 +59,12 @@ const indexSource = read("src", "index.ts");
 assert.match(indexSource, /t\("init\.loading"\)/, "初始化加载文案必须走 i18n（不得硬编码中文）");
 assert.match(indexSource, /t\("init\.failed"\)/, "初始化失败文案必须走 i18n");
 assert.match(indexSource, /t\("init\.failedHint"\)/, "初始化失败必须携带可执行修复动作提示");
+assert.match(indexSource, /data-action=\\"retry-initialization\\"/, "初始化失败必须提供可执行重试按钮");
+assert.match(indexSource, /this\.retryInitialization\(root\)/, "初始化重试按钮必须接到生命周期重试入口");
+assert.match(indexSource, /initializationState === "failed"[\s\S]{0,180}retry-initialization[\s\S]{0,80}focus/, "重试失败后焦点必须回到可执行按钮");
+assert.match(indexSource, /if \(!this\.layoutReadyBindingsInstalled\)/, "初始化重试不得重复注册宿主监听");
+assert.match(indexSource, /if \(this\.initializationRetryPromise\) return this\.initializationRetryPromise;/, "初始化重试必须单飞，避免双击并发读取");
+assert.match(indexSource, /this\.resetReadyPromise\(\);[\s\S]{0,180}this\.render\(\);[\s\S]{0,120}this\.onLayoutReady\(\)/, "初始化重试必须先回到加载态再重新执行初始化");
 assert.ok(!indexSource.includes("正在加载打卡数据…"), "renderInto 不得保留硬编码加载文案");
 assert.ok(!indexSource.includes('"打卡数据读取失败"'), "renderInto 不得保留硬编码失败文案");
 assert.match(indexSource, /loading \? 'role="status"' : 'role="alert"'/, "初始化屏加载/失败分别用 status/alert 语义");
@@ -66,6 +72,7 @@ assert.match(indexSource, /data-appearance="\$\{this\.resolvedAppearance\(\)\}" 
 bilingual("init.loading", "初始化加载屏");
 bilingual("init.failed", "初始化失败屏");
 bilingual("init.failedHint", "初始化失败修复动作");
+bilingual("init.retry", "初始化失败重试按钮");
 
 /* —— 族 6：禁用 —— */
 assert.match(

@@ -120,7 +120,7 @@ try {
             "set.overviewTitle", "set.overviewAllClear", "set.overviewTargetMissing", "set.overviewDrafts",
             "set.targetSummaryTitle", "set.targetNone", "set.targetOpen", "set.targetRecheck", "set.targetEdit", "set.targetClear",
             "bind.lastCheck", "bind.disable", "bind.disableConfirm", "bind.reasonMissing", "bind.reasonError",
-            "init.loading", "init.failed", "init.failedHint",
+            "init.loading", "init.failed", "init.failedHint", "init.retry",
         ];
         for (const key of migrationKeys) {
             assert.ok(zhDict.includes(`"${key}"`), `zh dict missing ${key}`);

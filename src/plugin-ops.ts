@@ -248,12 +248,23 @@ export function downloadDockTomatoDiagnosticsFor(provider: DockTomatoProviderDia
     void saveGeneratedFile({fileName: `siyuan-checkin-focus-diagnostics-${dateKey(new Date())}.json`, content: serializeDockTomatoDiagnostics(provider), mime: "application/json;charset=utf-8"});
 }
 
-export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement): void {
+export function focusTodaySearchFor(host: PluginOpsHost, selection?: number, root?: HTMLElement, selectionEnd?: number, direction?: "forward" | "backward" | "none"): void {
     window.setTimeout(() => {
         const roots = root ? [root] : [host.dockElement, host.tabElement, host.quickDialogElement].filter((element): element is HTMLElement => Boolean(element));
-        const input = roots.map((element) => element.querySelector<HTMLInputElement>("[data-today-search]")).find((candidate): candidate is HTMLInputElement => Boolean(candidate));
+        const target = roots.find((element) => element.isConnected && (!host.pageForRoot || host.pageForRoot(element) === "today"));
+        if (!target) return;
+        const input = target.querySelector<HTMLInputElement>("[data-today-search]");
+        if (!input) return;
+        /* The render callback is deferred by one task.  If the user has
+           already moved focus to another surface, never steal it back for
+           the stale search action.  Body/document focus means the render
+           itself displaced the old input and remains safe to restore. */
+        if (typeof document !== "undefined") {
+            const active = document.activeElement;
+            if (active && active !== document.body && active !== document.documentElement && !target.contains(active)) return;
+        }
         input?.focus();
-        if (selection !== undefined) input?.setSelectionRange(selection, selection);
+        if (selection !== undefined) input.setSelectionRange(selection, selectionEnd ?? selection, direction);
     }, 0);
 }
 

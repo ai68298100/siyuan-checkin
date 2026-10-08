@@ -55,10 +55,13 @@ assert.match(source, /todayQueryForRoot/); assert.match(source, /setTodayQueryFo
 assert.match(source, /archivedQueryForRoot/); assert.match(source, /setArchivedQueryForRoot/);
 assert.match(source, /this\.renderArchived\(root\)/); assert.match(source, /this\.renderToday\(root\)/);
 assert.match(todayBinding, /host\.setTodayQueryForRoot/); assert.match(todayBinding, /host\.render\(root\)/);
-assert.match(todayBinding, /host\.focusTodaySearch\(value\.length, root\)/);
+assert.match(todayBinding, /host\.focusTodaySearch\(selectionStart, root, selectionEnd, selectionDirection\)/, "Today search must preserve the live selection across a full render");
 assert.match(pageNavigationBinding, /host\.setArchivedQueryForRoot/); assert.match(pageNavigationBinding, /const isCurrentSurface = \(\) => root\.isConnected && !host\.disposed && !host\.disposing && pageForRoot\(\) === boundPage/);
 assert.match(pageNavigationBinding, /host\.render\(root\)/);
 assert.match(pluginOps, /const roots = root \? \[root\]/);
+assert.match(pluginOps, /element\.isConnected && \(!host\.pageForRoot \|\| host\.pageForRoot\(element\) === "today"\)/, "delayed search focus must target a connected Today root");
+assert.match(pluginOps, /active !== document\.body && active !== document\.documentElement && !target\.contains\(active\)/, "delayed search focus must not steal focus from another surface");
+assert.match(pluginOps, /input\.setSelectionRange\(selection, selectionEnd \?\? selection, direction\)/, "delayed search focus must restore selection range and direction");
 console.log("Cross-surface 12.1 matrix checks passed.");
 
 assert.match(pageShell, /export interface ReviewRootContext[\s\S]*historyMonth: Date;[\s\S]*selectedHistoryDate: string;[\s\S]*summaryRange: "day" \| "week" \| "month";[\s\S]*summaryCustomRange\?: \{startDate: string; endDate: string\};[\s\S]*reviewWorkspace: "overview" \| "records" \| "analysis";[\s\S]*historyItemId: string;[\s\S]*historyScope: "day" \| "period";[\s\S]*historyPage: number;[\s\S]*reviewProjectPage: number;/);

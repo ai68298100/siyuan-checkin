@@ -49,6 +49,7 @@ assert.match(indexSource, /renderTodayItemLocally\(localItemId, localItemDate\)[
 assert.match(indexSource, /public clearPendingFocusItems\(itemId\?: string\)[\s\S]*?if \(context\.pendingFocusItemId === itemId\)/, "root focus requests must be filtered by item when parallel surfaces refresh");
 assert.match(indexSource, /broadcast\(\{type: "analytics-updated"/);
 assert.match(indexSource, /renderTodayItemLocally\(localItemId, localItemDate\)[\s\S]*?renderBackgroundUpdateFor/, "local refresh should fall back to the full render when unsafe");
+assert.match(indexSource, /syncRecentRecordToast\(\)[\s\S]*?data-action='toggle-record-details'[\s\S]*?data-record-details-panel/, "local receipt replacement must rebind the inline fact disclosure");
 assert.match(indexSource, /card\.className = next\.className/, "same-shape state classes should update the existing card in place");
 assert.match(indexSource, /updateTodayWeekStrip\(surface, date\)/, "local completion refresh should update the week strip without rebuilding Today");
 assert.match(indexSource, /count\.innerHTML =/, "local completion refresh should update the header counter");

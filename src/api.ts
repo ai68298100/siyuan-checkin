@@ -106,6 +106,17 @@ export interface CheckinApiHost {
     suggestionWorkflow?: SuggestionWorkflowState;
 }
 
+/* Public occasion reads must not expose the nested override map. A shallow
+   spread protects the top-level object but would still let a consumer mutate
+   the host's reschedule history through overrides[origin].date. */
+const cloneOccasionForApi = <T extends Occasion>(occasion: T): T => ({
+    ...occasion,
+    completedDates: [...occasion.completedDates],
+    ...(occasion.overrides ? {
+        overrides: Object.fromEntries(Object.entries(occasion.overrides).map(([origin, override]) => [origin, {...override}])),
+    } : {}),
+} as T);
+
 export function createCheckinApi(host: CheckinApiHost): CheckinApi {
     const summarizeWithProvider = async (range: SummaryRange, customRange: CustomSummaryRange | undefined, providerId?: string) => {
         if (!host.acceptingOperations || host.disposed) return undefined;
@@ -187,8 +198,8 @@ export function createCheckinApi(host: CheckinApiHost): CheckinApi {
         },
         /* T-1361：会话诊断原因码（环形容量 20；智能体只解释原因，不代为执行）。 */
         getDiagnostics: () => Object.freeze(host.getDiagnostics().map((entry) => ({...entry}))),
-        getOccasions: () => host.occasionStore.occasions.map((item) => ({...item, completedDates: [...item.completedDates]})),
-        getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map((item) => ({...item, completedDates: [...item.completedDates]})),
+        getOccasions: () => host.occasionStore.occasions.map(cloneOccasionForApi),
+        getTodayOccasions: () => getVisibleOccasions({version: 1, occasions: host.occasionStore.occasions} as never, currentCalendarDate()).map(cloneOccasionForApi),
         completeOccasion: (id, occurrenceDate, completed) => host.enqueueMutation(() => host.setOccasionCompleted(id, occurrenceDate, completed)),
         getSummaryContext: (range) => {
             if (!isSummaryRange(range)) throw new TypeError("range 必须是 day、week 或 month");

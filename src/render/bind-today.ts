@@ -51,7 +51,7 @@ export interface BindTodayHost {
     render(root?: HTMLElement): void;
     persistViewPreferences(): Promise<void>;
     applyPreferenceMutation?(mutate: () => void): void;
-    focusTodaySearch(cursor?: number, root?: HTMLElement): void;
+    focusTodaySearch(cursor?: number, root?: HTMLElement, cursorEnd?: number, direction?: "forward" | "backward" | "none"): void;
     undoRecentRecord(): void;
     retrySave(): Promise<void> | void;
     showHistory(root?: HTMLElement): void;
@@ -181,9 +181,15 @@ export function bindTodayHandlers(root: HTMLElement, host: BindTodayHost): void 
             searchTimer = undefined;
             if (composing || !isCurrentSurface()
                 || !search.isConnected || root.querySelector("[data-today-search]") !== search) return;
+            /* Full render replaces the input node. Capture the live selection
+               immediately before rendering so edits in the middle of a query
+               do not jump to the end, including an active range selection. */
+            const selectionStart = search.selectionStart ?? value.length;
+            const selectionEnd = search.selectionEnd ?? selectionStart;
+            const selectionDirection = search.selectionDirection || "none";
             writeTodayQuery(value);
             host.render(root);
-            host.focusTodaySearch(value.length, root);
+            host.focusTodaySearch(selectionStart, root, selectionEnd, selectionDirection);
         }, 120);
     };
     search?.addEventListener("compositionstart", () => { composing = true; cancelSearch(); });

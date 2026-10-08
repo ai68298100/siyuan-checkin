@@ -564,7 +564,7 @@ export default class CheckinPlugin extends Plugin {
     private diagnostics: CheckinDiagnostic[] = [];
 
     recordDiagnostic(code: CheckinDiagnosticCode, detail?: string): void {
-        this.diagnostics = appendDiagnostic(this.diagnostics, {code, at: new Date().toISOString(), ...(detail ? {detail: detail.slice(0, 200)} : {})});
+        this.diagnostics = appendDiagnostic(this.diagnostics, {code, at: new Date().toISOString(), ...(detail ? {detail} : {})});
     }
 
     /** T-1648：文件导入失败统一进入事实台账；只保存有限类别，不携带原始错误文本。 */
@@ -2194,6 +2194,8 @@ private reviewCompatibilitySnapshot?: {
     private disposing = false;
     private acceptingOperations = true;
     private initializationState: "loading" | "ready" | "failed" = "loading";
+    private initializationRetryPromise?: Promise<void>;
+    private layoutReadyBindingsInstalled = false;
     private agentCapabilityState: "pending" | "registered" | "unsupported" | "failed" = "pending";
     private agentCapabilityIds: string[] = [];
     private agentCapabilityError?: string;
@@ -2208,7 +2210,7 @@ private reviewCompatibilitySnapshot?: {
     /* T-1708（D-354）：事项表单草稿（会话态；bind-occasions 输入即快照、重绘恢复）。 */
     private occasionDraft?: {editingId?: string; baseUpdatedAt?: string; values: Array<[string, string]>};
     private readyResolver?: (ready: boolean) => void;
-    private readonly readyPromise = new Promise<boolean>((resolve) => {
+    private readyPromise: Promise<boolean> = new Promise<boolean>((resolve) => {
         this.readyResolver = resolve;
     });
     private readonly handleWindowFocus = () => {
@@ -2232,6 +2234,9 @@ private reviewCompatibilitySnapshot?: {
         this.disposing = false;
         this.acceptingOperations = true;
         this.initializationState = "loading";
+        this.initializationRetryPromise = undefined;
+        this.layoutReadyBindingsInstalled = false;
+        this.resetReadyPromise();
         const frontend = getFrontend();
         this.isMobileFrontend = frontend === "mobile" || frontend === "browser-mobile";
         this.supportsCustomTab = !this.isMobileFrontend;
@@ -2371,31 +2376,34 @@ private reviewCompatibilitySnapshot?: {
     }
 
     async onLayoutReady() {
-        this.addTopBar({
-            id: "openCheckinDialog",
-            icon: "iconLvCheckin",
-            position: "right",
-            title: t("entry.topBar"),
-            callback: () => this.openDefaultEntry(),
-        });
-        /* T-1234/T-1235/T-1236 渲染块：protyle 装载事件驱动 + 打卡数据事件刷新。
-           app.protyles 是运行时成员（ typings 未声明），防御式访问。 */
-        if (typeof this.eventBus?.on === "function") {
-            this.eventBus.on("loaded-protyle-static", this.handleProtyleLoaded);
-            this.eventBus.on("loaded-protyle-dynamic", this.handleProtyleLoaded);
+        if (!this.layoutReadyBindingsInstalled) {
+            this.layoutReadyBindingsInstalled = true;
+            this.addTopBar({
+                id: "openCheckinDialog",
+                icon: "iconLvCheckin",
+                position: "right",
+                title: t("entry.topBar"),
+                callback: () => this.openDefaultEntry(),
+            });
+            /* T-1234/T-1235/T-1236 渲染块：protyle 装载事件驱动 + 打卡数据事件刷新。
+               app.protyles 是运行时成员（ typings 未声明），防御式访问。 */
+            if (typeof this.eventBus?.on === "function") {
+                this.eventBus.on("loaded-protyle-static", this.handleProtyleLoaded);
+                this.eventBus.on("loaded-protyle-dynamic", this.handleProtyleLoaded);
+                this.renderBlocksUnsubscribers.push(() => {
+                    this.eventBus.off("loaded-protyle-static", this.handleProtyleLoaded);
+                    this.eventBus.off("loaded-protyle-dynamic", this.handleProtyleLoaded);
+                });
+            }
+            window.addEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
+            window.addEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
+            window.addEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
             this.renderBlocksUnsubscribers.push(() => {
-                this.eventBus.off("loaded-protyle-static", this.handleProtyleLoaded);
-                this.eventBus.off("loaded-protyle-dynamic", this.handleProtyleLoaded);
+                window.removeEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
+                window.removeEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
+                window.removeEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
             });
         }
-        window.addEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
-        window.addEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
-        window.addEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
-        this.renderBlocksUnsubscribers.push(() => {
-            window.removeEventListener(CHECKIN_EVENT_NAMES.eventRecorded, this.handleRenderBlocksRefresh);
-            window.removeEventListener(CHECKIN_EVENT_NAMES.eventDeleted, this.handleRenderBlocksRefresh);
-            window.removeEventListener(CHECKIN_EVENT_NAMES.analyticsUpdated, this.handleRenderBlocksRefresh);
-        });
         /* 闭包内更新阶段，使用受限字符串值避免 TypeScript 把外层变量错误收窄为初始字面量。 */
         let initializationFailurePhase: string = "load";
         let snapshotHistoryCorruption: {invalidCount: number} | undefined;
@@ -2491,6 +2499,9 @@ private reviewCompatibilitySnapshot?: {
            所以存储读取失败时也要把入口注册上，别让「读数据失败」伪装成「宿主不支持智能体」。 */
         this.registerSiYuanAgentCapability();
         this.render();
+        /* 失败尝试只保留可重试错误屏和能力状态；提醒、来源、午夜刷新及
+           渲染块补扫必须等存储真正 ready，避免每次失败重试叠加后台任务。 */
+        if (this.initializationState !== "ready") return;
         /* T-1596：重载后明确失效——上次专注会话标记仍在（sessionStorage 存活于本窗口），
            如实告知中断未入账，不静默丢失。 */
         try {
@@ -3771,6 +3782,19 @@ this.scheduleMidnightRefresh();
             current?.replaceWith(next);
             if (!current) root.appendChild(next);
             next.querySelector<HTMLElement>("[data-action='undo-record']")?.addEventListener("click", () => this.undoRecentRecord());
+            /* Local card patches replace the toast without running bindToday;
+               rebind the inline fact disclosure here so the success receipt
+               keeps the same behavior after an in-place refresh. */
+            next.querySelector<HTMLElement>("[data-action='toggle-record-details']")?.addEventListener("click", (event) => {
+                const button = event.currentTarget as HTMLElement;
+                const eventId = button.dataset.recordDetailsToggle || "";
+                const panel = next.querySelector<HTMLElement>(`[data-record-details-panel="${CSS.escape(eventId)}"]`);
+                if (!panel) return;
+                const expanded = !panel.hidden;
+                panel.hidden = expanded;
+                button.setAttribute("aria-expanded", String(!expanded));
+                button.textContent = expanded ? t("today.viewRecord") : t("today.hideRecord");
+            });
         }
     }
 
@@ -4442,7 +4466,8 @@ public syncReviewCompatibilityForRoot(root: HTMLElement): void {
                失败文案与 msg.dataLoadFail 同口径声明「已停止写入」。 */
             const loading = this.initializationState === "loading";
             const stateAttrs = loading ? 'role="status"' : 'role="alert"';
-            root.innerHTML = `<div class="lc-checkin" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><div class="lc-checkin__empty" ${stateAttrs}><div class="lc-checkin__empty-mark">▱</div><div class="lc-checkin__empty-title">${loading ? t("init.loading") : t("init.failed")}</div>${loading ? "" : `<div class="lc-checkin__empty-description">${t("init.failedHint")}</div>`}</div></div>`;
+            root.innerHTML = `<div class="lc-checkin" data-appearance="${this.resolvedAppearance()}" data-palette="${this.palette}"><div class="lc-checkin__empty" ${stateAttrs}><div class="lc-checkin__empty-mark">▱</div><div class="lc-checkin__empty-title">${loading ? t("init.loading") : t("init.failed")}</div>${loading ? "" : `<div class="lc-checkin__empty-description">${t("init.failedHint")}</div><div class="lc-checkin__empty-actions"><button class="lc-checkin__text-button" type="button" data-action="retry-initialization">${t("init.retry")}</button></div>`}</div></div>`;
+            if (!loading) root.querySelector<HTMLButtonElement>("[data-action=\"retry-initialization\"]")?.addEventListener("click", () => void this.retryInitialization(root));
             return;
         }
         /* 页面滚动位置记忆（T-112）：内容替换前按「旧页」捕获，渲染完恢复「新页」记忆——
@@ -8779,8 +8804,8 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
         }
     }
 
-    private focusTodaySearch(selection?: number, root?: HTMLElement) {
-        focusTodaySearchFor(this as unknown as PluginOpsHost, selection, root);
+    private focusTodaySearch(selection?: number, root?: HTMLElement, selectionEnd?: number, direction?: "forward" | "backward" | "none") {
+        focusTodaySearchFor(this as unknown as PluginOpsHost, selection, root, selectionEnd, direction);
     }
 
     private applyViewPreferences(preferences: CheckinViewPreferences) {
@@ -9106,6 +9131,31 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
 
     private settleReady(ready: boolean) {
         settleReadyFor(this as unknown as PluginOpsHost, ready);
+    }
+
+    private resetReadyPromise(): void {
+        this.readyPromise = new Promise<boolean>((resolve) => {
+            this.readyResolver = resolve;
+        });
+    }
+
+    /** 初始化失败页的显式恢复入口：重用同一插件实例，避免重复注册宿主监听。 */
+    private retryInitialization(originRoot?: HTMLElement): Promise<void> {
+        if (this.disposed || this.disposing || this.initializationState === "ready") return Promise.resolve();
+        if (this.initializationRetryPromise) return this.initializationRetryPromise;
+        this.initializationState = "loading";
+        this.storageReady = false;
+        this.resetReadyPromise();
+        this.render();
+        let attempt: Promise<void>;
+        attempt = this.onLayoutReady().finally(() => {
+            if (this.initializationRetryPromise === attempt) this.initializationRetryPromise = undefined;
+            if (this.initializationState === "failed" && originRoot?.isConnected) {
+                originRoot.querySelector<HTMLButtonElement>("[data-action=\"retry-initialization\"]")?.focus({preventScroll: true});
+            }
+        });
+        this.initializationRetryPromise = attempt;
+        return attempt;
     }
 
     private invalidateSummary() {

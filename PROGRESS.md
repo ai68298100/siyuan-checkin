@@ -20,7 +20,9 @@
 - 来源异步生命周期：思阅/思播段写、健康/笔记查询/叶归扫描游标及各来源 mutation 增加当前配置身份与卸载守门；微信读书时长/完读/笔记每段异步返回和配置状态回写前再校验，提醒状态读取与通知失败回滚阻止卸载后的迟到写入。
 - 多 root 焦点：Today 局部卡片刷新成功只清除同一 `itemId` 的 pending focus，其他表面等待中的焦点继续保留；AST 行为夹具覆盖 active 镜像与另一 root。
 - 隐私反馈：初始化失败 toast 不再把宿主异常原文（可能带绝对路径或请求参数）显示给用户，只显示双语 load/save 阶段标签，结构化诊断仍保留。
-- 定向证据：check、scan-cursor、source-lifecycle-matrix、diagnostics、checkin-toast、cross-page-consistency 全通过；随后 `pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、width walkthrough、visual QA、build 全部通过。T-1808 的可执行重试仍待生命周期设计，T-1783 全字段脱敏和 T-1784/T-1804 完整矩阵继续开放；`check:release` 仍受已发布 v18.17.0 固定 SHA 与本地重建包差异保护。
+- 初始化恢复：失败页提供双语“重试加载”按钮；重试复用同一插件实例、按在途 promise 单飞，重置 ready promise 和加载态后重新读取/迁移存储；顶栏、宿主事件、渲染块监听只安装一次，失败重试不会重复注册。
+- 数据边界：审计、诊断和迁移报告在进入存储、UI、API 或下载前统一限制深度/条目/Unicode 长度，清理控制字符、凭据和本地路径；事项 API 的 completedDates 与 overrides 均返回独立副本。Today 搜索重绘保留活动选区，迟延聚焦校验 root/page/activeElement，局部回执重绑详情展开。
+- 定向证据：check、scan-cursor、source-lifecycle-matrix、diagnostics、checkin-toast、cross-page-consistency、ui-state-ledger、settings-migration、agent-status、model、restore-audit、privacy-scope、occasion-store、api-v5-docs 全通过；随后 `pnpm test`、`test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、width walkthrough、build 全部通过。当前 `visual-qa` 因环境未设置 `CHECKIN_BROWSER` 未完成，不据此宣称视觉浏览器通过；T-1783 已完成本地脱敏核心切片，T-1784/T-1804 完整矩阵和真实宿主仍开放；`check:release` 仍受已发布 v18.17.0 固定 SHA 与本地重建包差异保护。
 
 # 2026-10-09 全插件功能与 UI 复核第二轮
 

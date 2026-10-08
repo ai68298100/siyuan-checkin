@@ -25,7 +25,7 @@ function fixture() {
         pageForRoot(target) { this.pageRoot = target; return this.currentPage; },
         setTodayQueryForRoot(target, value) { this.queryRoot = target; this.todayQuery = value; },
         render(target) { this.renders++; this.renderRoot = target; },
-        focusTodaySearch(cursor, target) { this.cursor = cursor; this.focusRoot = target; }};
+        focusTodaySearch(cursor, target, cursorEnd, direction) { this.cursor = cursor; this.cursorEnd = cursorEnd; this.cursorDirection = direction; this.focusRoot = target; }};
     for (const name of ["bindDialogClose", "bindItemDrag", "bindQuickKeyboard", "bindBulkMode", "bindFocusTimerPanel", "bindMobileNav"]) host[name] = () => {};
     exportsObject.bindTodayHandlers(root, host);
     return {root, search, clear, host};
@@ -47,6 +47,10 @@ assert.equal(f.host.renders, 0, "consecutive Chinese syllables keep the same inp
 f.search.value = "喝水"; f.search.fire("compositionend"); flush();
 assert.equal(f.host.todayQuery, "喝水"); assert.equal(f.host.renders, 1); assert.equal(f.host.cursor, 2);
 assert.equal(f.host.renderRoot, f.root); assert.equal(f.host.focusRoot, f.root); assert.equal(f.host.queryRoot, f.root);
+f = fixture(); f.search.value = "abcd"; f.search.selectionStart = 1; f.search.selectionEnd = 3; f.search.selectionDirection = "backward"; f.search.fire("input"); flush();
+assert.equal(f.host.cursor, 1, "search restore keeps the original selection start");
+assert.equal(f.host.cursorEnd, 3, "search restore keeps the original selection end");
+assert.equal(f.host.cursorDirection, "backward", "search restore keeps selection direction");
 for (const invalidate of [
     f => { f.search.isConnected = false; }, f => { f.root.search = element(); },
     f => { f.host.currentPage = "settings"; }, f => { f.host.disposing = true; },

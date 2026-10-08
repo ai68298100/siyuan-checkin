@@ -137,6 +137,75 @@ export interface StoreConflictResolution { strategy: StoreConflictStrategy; stor
 export interface StoreAuditEntry { type: "conflict" | "merge" | "restore" | "migration" | "anchor"; at: string; details: Record<string, unknown>; }
 
 const STORE_AUDIT_TYPES = new Set<StoreAuditEntry["type"]>(["conflict", "merge", "restore", "migration", "anchor"]);
+export const STORE_AUDIT_LIMIT = 50 as const;
+const STORE_AUDIT_DETAIL_MAX_DEPTH = 3;
+const STORE_AUDIT_DETAIL_MAX_KEYS = 32;
+const STORE_AUDIT_DETAIL_MAX_ARRAY = 20;
+const STORE_AUDIT_DETAIL_MAX_TEXT = 240;
+
+const AUDIT_SENSITIVE_KEY = /(?:authorization|access[_-]?auth[_-]?code|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|secret[_-]?key|secret|password|passwd|token|nonce|private[_-]?key|client[_-]?secret)$/i;
+
+function boundedUnicodeText(value: string, maxLength = STORE_AUDIT_DETAIL_MAX_TEXT): string {
+    /* A malicious caller can pass a multi-megabyte error string.  Read only
+       enough UTF-16 units to cover the requested code-point bound (a code
+       point is at most two units), then sanitize that bounded prefix. */
+    let boundedPrefix = value.slice(0, Math.max(1, maxLength * 2));
+    if (/[\uD800-\uDBFF]$/.test(boundedPrefix)) boundedPrefix = boundedPrefix.slice(0, -1);
+    const cleaned = boundedPrefix.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ").trim();
+    const points = [...cleaned];
+    return points.length <= maxLength ? cleaned : `${points.slice(0, Math.max(0, maxLength - 1)).join("")}…`;
+}
+
+function redactAuditText(value: string): string {
+    const sanitized = boundedUnicodeText(value, STORE_AUDIT_DETAIL_MAX_TEXT * 8)
+        /* Authorization/Bearer and JSON-style key/value credentials. */
+        .replace(/\b(?:authorization\s*[:=]\s*(?:token|bearer)\s+|bearer\s+)[^\s,;"'<>}`]+/gi, (match) => match.replace(/[^\s:]+$/, "<redacted>"))
+        .replace(/(["']?\b(?:access[_-]?auth[_-]?code|api[_-]?key|apikey|secret|password|passwd|token|nonce|private[_-]?key|client[_-]?secret)\b["']?\s*[:=]\s*["']?)(?:bearer\s+|token\s+)?[^\s,;"'<>}`]+/gi, "$1<redacted>")
+        /* Windows drive/UNC, POSIX home/data/temp and file:// paths. */
+        .replace(/\b[A-Za-z]:[\\/][^\r\n"'<>]*/g, "<path>")
+        .replace(/(?:\\\\[A-Za-z0-9._-]+[\\/]|\bfile:\/\/)[^\r\n"'<>]*/gi, "<path>")
+        .replace(/\/(?:Users|home|private\/var|var\/folders|Volumes|data|tmp|mnt)\/[^\r\n"'<>]*/gi, "<path>")
+        .trim();
+    return boundedUnicodeText(sanitized, STORE_AUDIT_DETAIL_MAX_TEXT);
+}
+
+function normalizeAuditDetailValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
+    if (value === null || typeof value === "boolean") return value;
+    if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+    if (typeof value === "string") return redactAuditText(value);
+    if (!value || typeof value !== "object") return undefined;
+    if (seen.has(value)) return "[circular]";
+    if (depth >= STORE_AUDIT_DETAIL_MAX_DEPTH) return "[truncated]";
+    seen.add(value);
+    try {
+        if (Array.isArray(value)) {
+            return value.slice(0, STORE_AUDIT_DETAIL_MAX_ARRAY).map((entry) => normalizeAuditDetailValue(entry, depth + 1, seen)).filter((entry) => entry !== undefined);
+        }
+        const result: Record<string, unknown> = {};
+        for (const key of Object.keys(value).slice(0, STORE_AUDIT_DETAIL_MAX_KEYS)) {
+            if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+            const safeKey = boundedUnicodeText(key, 80);
+            if (!safeKey) continue;
+            let raw: unknown;
+            try {
+                raw = (value as Record<string, unknown>)[key];
+            } catch {
+                continue;
+            }
+            const normalized = AUDIT_SENSITIVE_KEY.test(safeKey) ? "<redacted>" : normalizeAuditDetailValue(raw, depth + 1, seen);
+            if (normalized !== undefined) result[safeKey] = normalized;
+        }
+        return result;
+    } finally {
+        seen.delete(value);
+    }
+}
+
+/** Normalize audit details before storage, UI rendering or export. */
+export function normalizeStoreAuditDetails(value: unknown): Record<string, unknown> {
+    const normalized = normalizeAuditDetailValue(value, 0, new WeakSet<object>());
+    return normalized && typeof normalized === "object" && !Array.isArray(normalized) ? normalized as Record<string, unknown> : {};
+}
 
 export function normalizeStoreAudit(value: unknown, limit = 50): StoreAuditEntry[] {
     if (!Array.isArray(value)) return [];
@@ -145,15 +214,17 @@ export function normalizeStoreAudit(value: unknown, limit = 50): StoreAuditEntry
         const entry = candidate as Partial<StoreAuditEntry>;
         if (!STORE_AUDIT_TYPES.has(entry.type as StoreAuditEntry["type"])) return [];
         if (typeof entry.at !== "string" || !Number.isFinite(Date.parse(entry.at))) return [];
-        const details = entry.details && typeof entry.details === "object" && !Array.isArray(entry.details)
-            ? {...entry.details} : {};
+        const details = normalizeStoreAuditDetails(entry.details);
         return [{type: entry.type as StoreAuditEntry["type"], at: new Date(entry.at).toISOString(), details}];
     });
-    return normalized.slice(-Math.max(1, limit));
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(STORE_AUDIT_LIMIT, Math.floor(limit))) : STORE_AUDIT_LIMIT;
+    return normalized.slice(-safeLimit);
 }
 
 export function serializeStoreAudit(entries: readonly StoreAuditEntry[], generatedAt = new Date().toISOString()): string {
-    return JSON.stringify({format: "siyuan-checkin-audit", version: 1, generatedAt, entries: normalizeStoreAudit(entries)}, null, 2);
+    const parsedGeneratedAt = typeof generatedAt === "string" ? Date.parse(generatedAt) : Number.NaN;
+    const safeGeneratedAt = Number.isFinite(parsedGeneratedAt) ? new Date(parsedGeneratedAt).toISOString() : new Date().toISOString();
+    return JSON.stringify({format: "siyuan-checkin-audit", version: 1, generatedAt: safeGeneratedAt, entries: normalizeStoreAudit(entries)}, null, 2);
 }
 
 export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: StoreAuditEntry, limit = 50): StoreAuditEntry[] {
@@ -164,7 +235,7 @@ export function appendStoreAudit(entries: readonly StoreAuditEntry[], entry: Sto
 export function mergeStoreAudits(local: readonly StoreAuditEntry[], remote: readonly StoreAuditEntry[], limit = 50): StoreAuditEntry[] {
     const seen = new Set<string>();
     const merged: StoreAuditEntry[] = [];
-    for (const entry of [...local, ...remote]) {
+    for (const entry of [...normalizeStoreAudit(local, STORE_AUDIT_LIMIT), ...normalizeStoreAudit(remote, STORE_AUDIT_LIMIT)]) {
         const key = JSON.stringify([entry.type, entry.at, entry.details]);
         if (seen.has(key)) continue;
         seen.add(key);

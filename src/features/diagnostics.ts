@@ -16,6 +16,17 @@ export interface CheckinDiagnostic {
 export const CHECKIN_DIAGNOSTIC_CODES: readonly CheckinDiagnosticCode[] = ["save-failed", "load-failed", "version-conflict", "migration-rejected", "lock-contended"];
 
 export const CHECKIN_DIAGNOSTIC_LIMIT = 20;
+const CHECKIN_DIAGNOSTIC_DETAIL_MAX_CODE_POINTS = 200;
+const CHECKIN_DIAGNOSTIC_INPUT_MAX_CODE_POINTS = 2000;
+const CHECKIN_DIAGNOSTICS_EXPORT_MAX_CHARS = 1024 * 1024;
+
+function boundedDiagnosticText(value: string, maxCodePoints: number): string {
+    /* Bound UTF-16 work before spreading so a hostile exception string cannot
+       force an unbounded scan; remove a dangling high surrogate at the edge. */
+    let prefix = value.slice(0, Math.max(1, maxCodePoints * 2));
+    if (/[\uD800-\uDBFF]$/.test(prefix)) prefix = prefix.slice(0, -1);
+    return [...prefix].slice(0, maxCodePoints).join("");
+}
 
 export interface CheckinDiagnosticInfo {
     /** true = 用户可自行恢复；false = 需要带着诊断导出求助。 */
@@ -40,11 +51,13 @@ export function isCheckinDiagnosticCode(value: unknown): value is CheckinDiagnos
  * This is intentionally a small, deterministic boundary rather than a claim of
  * complete anonymization: callers still need to review an export before sharing. */
 export function sanitizeDiagnosticDetail(value: string): string {
-    return value.slice(0, 2000)
+    const boundedInput = boundedDiagnosticText(value, CHECKIN_DIAGNOSTIC_INPUT_MAX_CODE_POINTS);
+    const sanitized = boundedInput
         .replace(/\b(?:authorization\s*[:=]\s*(?:token|bearer)\s+|bearer\s+)[^\s,;]+/gi, (match) => match.replace(/[^\s:]+$/, "<redacted>"))
-        .replace(/\b(?:access[_-]?auth[_-]?code|api[_-]?key|apikey|secret|password|passwd|token)\s*[:=]\s*["']?[^\s,;"']+/gi, (match) => match.replace(/([:=]\s*["']?)[^\s,;"']+$/, "$1<redacted>"))
-        .replace(/(?:[A-Za-z]:\\|\\\\[A-Za-z0-9._-]+\\|\/(?:Users|home|private\/var|data|tmp)\/)[^\r\n"'<>]*/g, "<path>")
-        .slice(0, 200);
+        .replace(/\b(?:access[_-]?auth[_-]?code|access[_-]?token|refresh[_-]?token|id[_-]?token|api[_-]?key|apikey|secret[_-]?key|secret|password|passwd|token|nonce|private[_-]?key|client[_-]?secret)\s*[:=]\s*["']?[^\s,;"']+/gi, (match) => match.replace(/([:=]\s*["']?)[^\s,;"']+$/, "$1<redacted>"))
+        .replace(/(?:[A-Za-z]:[\\/]|\\\\[A-Za-z0-9._-]+[\\/]|\bfile:\/\/|\/(?:Users|home|private\/var|var\/folders|Volumes|data|tmp|mnt)\/)[^\r\n"'<>]*/gi, "<path>")
+        .trim();
+    return boundedDiagnosticText(sanitized, CHECKIN_DIAGNOSTIC_DETAIL_MAX_CODE_POINTS);
 }
 
 /** 追加一条诊断；连续同码去重（同一故障只记一次，不刷屏），环形容量上限。 */
@@ -52,16 +65,20 @@ export function appendDiagnostic(entries: readonly CheckinDiagnostic[], entry: C
     const safeEntry = {...entry, ...(entry.detail ? {detail: sanitizeDiagnosticDetail(entry.detail)} : {})};
     const last = entries[entries.length - 1];
     if (last && last.code === safeEntry.code && last.detail === safeEntry.detail) return [...entries];
-    return [...entries, safeEntry].slice(-limit);
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(CHECKIN_DIAGNOSTIC_LIMIT, Math.floor(limit))) : CHECKIN_DIAGNOSTIC_LIMIT;
+    return [...entries, safeEntry].slice(-safeLimit);
 }
 
 export function normalizeDiagnostics(value: unknown, limit = CHECKIN_DIAGNOSTIC_LIMIT): CheckinDiagnostic[] {
     if (!Array.isArray(value)) return [];
-    const safeLimit = Math.max(1, Math.min(CHECKIN_DIAGNOSTIC_LIMIT, Math.floor(limit)));
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(CHECKIN_DIAGNOSTIC_LIMIT, Math.floor(limit))) : CHECKIN_DIAGNOSTIC_LIMIT;
     return value.filter((entry): entry is CheckinDiagnostic => {
         if (!entry || typeof entry !== "object") return false;
         const candidate = entry as Partial<CheckinDiagnostic>;
-        return isCheckinDiagnosticCode(candidate.code) && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at)) && (candidate.detail === undefined || (typeof candidate.detail === "string" && candidate.detail.length <= 200));
+        /* sanitizeDiagnosticDetail owns the Unicode-aware length bound.  A
+           UTF-16 code-unit check here would reject 200 emoji (400 code units)
+           after they were safely bounded, losing a valid diagnostic on import. */
+        return isCheckinDiagnosticCode(candidate.code) && typeof candidate.at === "string" && !Number.isNaN(Date.parse(candidate.at)) && (candidate.detail === undefined || typeof candidate.detail === "string");
     }).map((entry) => ({code: entry.code, at: entry.at, ...(entry.detail ? {detail: sanitizeDiagnosticDetail(entry.detail)} : {})})).slice(-safeLimit);
 }
 
@@ -101,10 +118,13 @@ export function summarizeDiagnosticsPreview(entries: readonly CheckinDiagnostic[
 }
 
 export function serializeDiagnostics(entries: readonly CheckinDiagnostic[], exportedAt = new Date().toISOString()): string {
-    return JSON.stringify({version: DIAGNOSTICS_EXPORT_VERSION, exportedAt, diagnostics: normalizeDiagnostics(entries)});
+    const parsedExportedAt = typeof exportedAt === "string" ? Date.parse(exportedAt) : Number.NaN;
+    const safeExportedAt = Number.isFinite(parsedExportedAt) ? new Date(parsedExportedAt).toISOString() : new Date().toISOString();
+    return JSON.stringify({version: DIAGNOSTICS_EXPORT_VERSION, exportedAt: safeExportedAt, diagnostics: normalizeDiagnostics(entries)});
 }
 
 export function parseDiagnostics(value: string): CheckinDiagnostic[] {
+    if (typeof value !== "string" || value.length > CHECKIN_DIAGNOSTICS_EXPORT_MAX_CHARS) return [];
     try {
         const parsed = JSON.parse(value);
         return parsed?.version === DIAGNOSTICS_EXPORT_VERSION ? normalizeDiagnostics(parsed.diagnostics) : [];

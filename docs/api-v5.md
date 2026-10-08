@@ -40,8 +40,8 @@ if (!checkin.hasCapability("events.record")) return;            // 3. 能力协�
 | `events.range.read` | 5 | read | 是 | `getEventsInRange(range, options?)` |
 | `events.record` | 4 | write | 是 | `recordEvent(input)` |
 | `events.record.batch` | 5 | write | 是 | `recordEventsBatch(inputs)` |
-| `occasions.read` | 4 | read | 是 | `getOccasions()` / `getVisibleOccasions()` |
-| `occasions.complete` | 4 | write | 是 | `completeOccasion(id, date)` |
+| `occasions.read` | 4 | read | 是 | `getOccasions()` / `getTodayOccasions()` |
+| `occasions.complete` | 4 | write | 是 | `completeOccasion(id, occurrenceDate, completed)` |
 | `summary.read` | 4 | read | 是 | `getSummary()` |
 | `summary.custom` | 4 | read | 是 | `getCustomSummary(range)` |
 | `analytics.read` | 4 | read | 是 | `getAnalyticsSnapshot()` / `getAnalyticsSummary()` / `getStrengthSummary(options?)` |

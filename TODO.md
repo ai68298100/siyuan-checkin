@@ -8,9 +8,9 @@
 
 ## 2026-10-09 全插件复核第五轮增量
 
-- 本轮已落地：来源/提醒异步任务的配置代际与卸载守门；Today 多 root 局部刷新按事项精确清理焦点；初始化失败提示不再泄露宿主原始异常。
-- 本轮保留边界：初始化失败页的可执行重试入口仍需生命周期设计；Today 搜索/焦点与诊断导出完整矩阵继续开放，不以局部修复提前关闭。
-- 本轮证据：类型检查、来源游标、来源生命周期、诊断、Today toast、跨页一致性定向测试通过；合并前完整质量链已复跑通过，发布资产 SHA 固定值差异仍按既有边界保留。
+- 本轮已落地：来源/提醒异步任务的配置代际与卸载守门；Today 多 root 局部刷新按事项精确清理焦点、保留搜索选区并恢复回执详情按钮；初始化失败提示不再泄露宿主原始异常，失败页增加同实例、单飞、可聚焦的重试入口；审计/诊断/迁移导出统一做深度、长度、凭据、路径和控制字符边界；事项 API 读取改为深拷贝嵌套 overrides。
+- 本轮保留边界：真实宿主/移动端失败恢复、TalkBack、第三方来源和诊断导出完整矩阵继续开放，不以本地夹具提前关闭。
+- 本轮证据：类型检查、主链、UI、移动、生态、扩展、性能、宽度矩阵及来源/诊断/Today/API 定向测试通过；视觉浏览器检查因当前环境未设置 CHECKIN_BROWSER 未完成；发布资产 SHA 固定值差异仍按既有边界保留。
 
 ## 2026-10-09 全插件复核第四轮增量
 
@@ -62,8 +62,8 @@
 - [x] T-1782 来源及提醒异步任务统一取消与配置代际（P1，已交付 2026-10-09）——思阅/思播/健康/笔记查询/叶归/微信读书在响应返回、游标写入、mutation 入队和状态聚合前后增加配置身份、启用状态、生命周期守门；提醒状态读取、每日提醒锁内读取和通知挂载失败回滚增加卸载/存储就绪检查，迟到任务不会复活通知或覆盖新配置。守门 `tests/scan-cursor.test.cjs`、`tests/source-lifecycle-matrix.test.cjs`、reminder delivery 链通过。
 - 2026-10-09 增量：Today 局部 patch 成功时按 `itemId` 精确消费焦点恢复请求，避免 dock/tab/quick 同时记录时互相清除；完整任务仍归 T-1784/T-1804。
 - 2026-10-09 增量：初始化失败 toast 改为本地化 load/save 阶段标签，原始宿主异常只留结构化诊断码；完整 T-1783 脱敏矩阵仍开放。
-- [ ] T-1783 诊断、审计与导出敏感信息及长度边界（P1，T-1673/T-1760 落点审计）——`src/index.ts:510,5595,6165,6184,7419` 等多处仅按字符截断；需逐字段核对 Key、文档路径、项目名、备注、恶意 Unicode 和超长输入是否进入日志、ARIA、复制文本或导出文件。建立敏感字段矩阵，确认 UI/日志/导出一致脱敏、复制和下载同口径、双语和读屏不泄密，并记录可恢复的截断说明。
-- [ ] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，今日页专属）——`src/index.ts:3247-3369` 的 `template.innerHTML` 局部 patch 与 `src/render/bind-today.ts:138-270` 搜索、折叠、偏好保存可能和异步记录、撤销或跨窗刷新交错。以 IME 组合输入、光标、筛选、滚动、记录/撤销、慢存储和多 root 夹具验证 render token 丢弃过期结果，不吞输入、不回滚新事实、不串 root；与 T-1773 的编辑器草稿保护分开。
+- [~] T-1783 诊断、审计与导出敏感信息及长度边界（P1，核心切片已交付 2026-10-09）——审计/诊断/迁移报告统一按 Unicode 长度、深度、键/数组/条目上限清理控制字符并遮罩凭据、本地路径，非法时间与超限输入安全回退；`diagnostics`、`model`、`restore-audit`、`privacy-scope` 已覆盖。复制/下载全字段矩阵、真实宿主和读屏现场仍开放。
+- [~] T-1784 Today 局部刷新、搜索输入与焦点/滚动并发一致性（P1，选区/回执切片已交付 2026-10-09）——搜索重绘保留起止选区和方向，局部成功回执重绑详情展开，IME/跨 root 定向夹具通过；完整慢存储、滚动和真实宿主矩阵仍开放。
 - [ ] T-1785 动态图标与 HTML/SVG 属性转义边界统一（P1，T-1625 扫尾）——`src/index.ts:3570-3588` 批量 `innerHTML` 注入图标，局部 patch、动态 icon 和属性拼接仍需单独审计。用恶意 `data:image`、`</svg>`、属性闭合、控制字符和长 Unicode fixture 验证只按白名单渲染或作为文本，CSP 下无执行，快照和无障碍名称正确；不重复已有普通文本转义批次。
 - [ ] T-1786 API/Agent/快速入口写入幂等、失败回执与首次破戒统一（P1，T-1768/T-1670 后续）——`src/index.ts:6651-6653`、`src/agent-capabilities.ts:184-185` 及 quick/渲染块入口均有异步写入，但缺少统一 request-id 回执和跨入口对账。验证同 request 重复提交只有一条事件，失败保留可重试状态且无部分事实；atMost 首次破戒可写、普通二值仍阻断，API/Agent/今日显示同一事件详情与撤销对象。
 - [ ] T-1787 备份恢复版本化与独立桶迁移提示（P1，D-318/T-1627 后续）——主档 JSON 已明确不含模板、问卷、图标、事项、提醒动作、视图偏好和失败箱，但多桶恢复尚无具体协议。设计旧/新 schema 校验、逐桶覆盖/合并/跳过预览、敏感遮罩和整体失败回滚；导入后主档与辅助桶均可追溯，界面不再把主档恢复宣传成静默全量迁移。
@@ -86,11 +86,11 @@
 - [ ] T-1801 渲染块 today 视图截断可见性（P2，UI 复核）——`src/features/checkin-block.ts:350-354` 对活跃项目硬 `slice(0, 5)`，`buildTodayViewHtml` 没有“还有 N 项”或进入完整列表的可达提示；用户配置超过五个项目时会把事实静默隐藏。确定五项上限是否为产品约束，若保留则显示截断原因/数量和可达入口，覆盖排序、归档、空态、窄屏与键盘；不改变 T-1412 today 块的显式 `itemIds` 规则。
 - [ ] T-1802 渲染块 today 时段统计的本地日期/时区契约（P2，事实复核）——`src/features/checkin-block.ts:380-390` 以 `new Date(event.occurredAt).getHours()` 分早/午/晚，而事件日期事实以 `localDate` 归属；跨时区、跨午夜和 DST 时可能把同一记录显示到错误时段。先明确时段应随记录发生时区还是插件本地时区，再按注入时区/记录日夹具对账 Today、记录详情、导出和来源事件；与 T-1619 的日期键统计不同，这里专门锁定日内时刻展示。
 - [ ] T-1803 API v5 批量写入的 occurredAt/localDate 时区契约（P1，生态契约研究）——`src/features/api-v5.ts:105-109,169-180` 用 `Date.parse` 接受时刻并归一 ISO，随后用宿主 `dateKey(new Date(occurredAt))` 推导记录日，输入没有显式 `localDate`/时区字段；跨地区消费者可能得到与其业务日不一致的事件，文档“严格 ISO”与宽松解析也需对账。先明确“宿主本地日”或显式业务日的兼容边界，验证偏移、无偏移/仅日期/非日历输入、夏令时、跨午夜、fallback 时钟和重复身份；不凭空扩展公开 API，关联 T-1670。
-- [ ] T-1804 多 root Today 搜索、焦点与 pendingFocus 隔离（P1，跨表面交互复核）——`plugin-ops.ts:216-224` 的 `focusTodaySearchFor` 从 dock/tab/quick 取第一个匹配输入，`bind-today.ts` 调用不带发起 root；`index.ts:3527-3535` 的 `pendingFocusItemId` 也是宿主单槽，quick/tab 记录后可能把焦点交给 dock 或被首个 root 消费。按 root 保存 query、selection、滚动和 pendingFocus，覆盖三表面同屏、IME、清空/重绘和销毁；作为 T-1621/T-1663 步骤二具体接线，不重复 T-1784 局部 patch 竞态。
+- [~] T-1804 多 root Today 搜索、焦点与 pendingFocus 隔离（P1，焦点守门切片已交付 2026-10-09）——延迟 focus 现在校验 connected root、Today 页面和 activeElement，并恢复选区/方向；跨表面定向矩阵通过。按 root 持有完整 query/scroll/pendingFocus 及真实宿主同屏仍开放。
 - [x] T-1805 后台刷新按 root 隔离并保护编辑页草稿（P1，已交付 2026-10-09）——`renderBackgroundUpdateFor` 逐 root 读取页面并只刷新非 editor surface；Today 输入中的 root 仅在失焦后刷新，其他 Today root 继续更新，避免最后活跃 root 代理状态误伤编辑器草稿。新增跨页一致性结构守门并通过 check/UI 定向回归；真实多表面宿主同屏仍归现场验收。
 - [ ] T-1806 Today 上下文菜单的 owning root 几何与焦点（P2，UI/移动复核）——`src/render/today-bindings.ts:252-265` 生成菜单，SCSS `position:fixed`；定位却统一使用 `window.innerWidth/innerHeight`，dock/quick 内嵌滚动、缩放和移动 WebView 可能越界或被宿主裁切。按所属 root 的 visual viewport/transform 计算，覆盖窄面板、安全区、键盘、Esc/点外关闭和关闭后触发按钮焦点；不把 T-1778/T-1788 的静态状态矩阵当几何验收。
 - [ ] T-1807 主 Store 快照写放大与大历史保存预算（P2，性能/持久化复核）——`docs/codebase-walkthrough.md:214` 已记录 `persist()` 每次写入先追加三份全量快照；`appendStoreSnapshotHistory` 需要读回并序列化完整 Store，长事件/墓碑历史下每次打卡都有额外全量 JSON 往返。用 1k/10k/100k 事件、附件、墓碑和并发写测量耗时/内存/失败恢复，确认快照压缩、分层或节流不会破坏 T-1622、T-1647 的恢复点语义；不以提高上限代替测量。
-- [ ] T-1808 初始化失败状态的可执行修复入口（P1，错误流程复核）——`src/index.ts:2155-2166` 失败只设 `initializationState='failed'`、弹消息后渲染，`src/index.ts:3425-3432` 仅输出 `role=alert` 和静态 `init.failedHint`，没有重试、复制诊断或聚焦修复控件。明确生命周期重启是否是唯一动作；至少提供可达的重试/诊断链接与失败焦点，覆盖存储损坏、权限、移动端和读屏，不与 T-1604 的状态语义或 T-1788 的视觉矩阵重复。
+- [x] T-1808 初始化失败状态的可执行修复入口（P1，已交付 2026-10-09）——失败页增加双语“重试加载”按钮，点击后在同一插件实例内重置 ready promise、回到 loading 状态并单飞重跑存储初始化；顶栏、宿主事件和渲染块监听只注册一次，避免重试叠加监听或后台任务；失败页继续使用 `role=alert`、主题属性和隐私化阶段提示。`tests/ui-state-ledger.test.cjs`、`settings-migration.test.cjs`、`agent-status.test.cjs`、`pnpm run check` 通过；真实思源权限/损坏存储、移动端与读屏现场仍待验收，诊断复制/导出归 T-1783。
 - [ ] T-1809 事项返回与创建后导航的 root 接线（P1，跨表面导航复核）——`src/render/bind-occasions.ts:26,43` 的 `showToday()` 不带当前 root，事项在 dock/tab/quick 同屏时返回可能改动最后活跃表面；同步检查创建关联项目、编辑保存和取消返回是否仍落发起表面。补 `showToday(root)` 契约和三表面矩阵，作为 T-1621 步骤一遗漏接线，不重做事项功能 T-1701～T-1732。
 - 2026-10-09 增量：事项关联项目徽章点击已补 `showEditorForLinkedItem(id, root)`，避免从 dock/tab/quick 打开到最后活跃表面；事项创建/返回的完整矩阵仍按本任务继续验收。
 - [ ] T-1810 历史/Today 导航的 root 传递一致性（P1，跨表面导航复核）——`src/render/bind-page-navigation.ts:654-657` 的 `[data-history-insights-id]` 调 `host.showInsights(item)` 未传当前 root；`src/render/today-bindings.ts:91-116,280-283` 的键盘/上下文菜单编辑与洞察入口也未传 root，而同类回顾入口 `:622` 已传 root。统一所有 `data-*` 导航 handler 的 root 参数并加源码守门，覆盖返回、失败和多 root 同屏；宿主级渲染块 `openTab` 保留例外并写清理由。
@@ -106,7 +106,7 @@
 - [ ] T-1817 主次操作按钮与操作栏层级（P1，交互视觉）——`components.scss:1239,1286-1320`、`workbench.scss:114-122`、`maintenance-responsive.scss:35` 对 record/quick/more/focus 和设置按钮重复定义高度、圆角、颜色。定义 primary/secondary/quiet/destructive/icon 四级动作，每张卡只突出一个主动作，长文案可换行，桌面与移动共用语义而不靠选择器堆叠。
 - [ ] T-1818 表单字段、校验和异步状态视觉规范（P1，表单质感）——`components.scss:559-563,648-650` 主要以单行省略和边框表达标签/错误/成功，移动端及设置层又各有覆盖。统一标签、帮助、必填、错误原因、成功、dirty、busy、disabled 的结构、间距和状态图标，确保错误原因可见、绿色边框不过量，覆盖编辑器、事项、设置、问 AI 草案。
 - [ ] T-1819 顶部导航、分区导航活动态与溢出指引（P2，导航视觉）——`workbench.scss:9-24` 活动态主要依赖字体和背景，`components.scss:608-618` 又隐藏 tabs/rail 滚动条。补充稳定的选中指示、滚动边缘提示、键盘焦点和窄面板方向感，统一 topnav/rail/mobile selected 的视觉语义；不改 T-1621 的 root 路由契约。
-- [ ] T-1820 空态、引导、加载、错误状态视觉语言（P1，状态设计）——`fragments.ts:489-519` 使用多组符号和不同按钮组合，`components.scss:634-636,1349-1353` 的 error/empty 仅有基础边框和文本。建立统一图标、标题、解释、主次 CTA、loading/slow/error/empty 高度与反馈节奏；失败状态必须有可识别动作，但初始化重试入口仍归 T-1808，状态验收矩阵归 T-1788。
+- [ ] T-1820 空态、引导、加载、错误状态视觉语言（P1，状态设计）——`fragments.ts:489-519` 使用多组符号和不同按钮组合，`components.scss:634-636,1349-1353` 的 error/empty 仅有基础边框和文本。建立统一图标、标题、解释、主次 CTA、loading/slow/error/empty 高度与反馈节奏；初始化重试入口已由 T-1808 提供，本任务只收口其它状态的视觉一致性，状态验收矩阵归 T-1788。
 - [ ] T-1821 编辑器长表单分组与粘性操作栏（P1，编辑器视觉）——`workbench.scss:147-152`、`content-responsive.scss:202-203` 与 `components.scss:1356-1358` 对模板、字段、预览和 footer 有多套背景/粘性规则。重建基础字段→排期→高级→预览的信息层级，处理 sticky footer 遮挡、滚动锚点和焦点回链，覆盖 320～1400px、问 AI 草案、失败保留和双主题。
 - [ ] T-1822 设置与事项的信息架构视觉重排（P1，用户反馈延伸）——`maintenance-responsive.scss:4-35,60-107` 将设置侧栏、卡片和事项行分别改成不同层级，`components/workbench` 又叠加圆角与间距。设计“侧栏→分组→行→反馈”的统一层级，宽屏两栏、窄屏堆叠、折叠头、统计和过滤共用规范；只处理视觉组合，不重做 T-1701～T-1764 的行为任务。
 - [ ] T-1823 Review/Insights 数据可视化皮肤统一（P2，信息表达）——`components.scss:740-761`、`content-responsive.scss:122-126` 和 `workbench.scss:47-53` 分别实现统计卡、热力格和今日环形进度。统一图表色板、图例、刻度、选中/未记录/跳过纹理与数字层级，补色弱和暗色对比，避免同一状态在不同页面使用不同颜色。
@@ -451,8 +451,8 @@
 
 ### 公开契约、迁移与可选扩展
 
-- [ ] T-1724 事项公开 API 深层快照隔离（P1，源码确认）——`src/api.ts:190-192` 仅复制 `completedDates`，返回的嵌套 `overrides` 仍共享宿主引用；外部消费者可改内存而不持久化。对公开读取结果做深层防御性拷贝/只读契约，补外部修改嵌套字段不影响宿主的测试，并界定版本、日期和实例字段口径。
-- [ ] T-1725 事项公开 API 文档签名纠偏（P1，文档确认）——`docs/api-v5.md:43-44` 写 `getVisibleOccasions()`/`completeOccasion(id,date)`，实际公开方法是 `getTodayOccasions()`/`completeOccasion(id, occurrenceDate, completed)`。修文档、类型和示例并增强签名级契约守门，说明按日期完成/撤销、幂等及 getOccasions 的返回结构，避免生态方照文档调用失败。
+- [x] T-1724 事项公开 API 深层快照隔离（已交付 2026-10-09）——`getOccasions()` 与 `getTodayOccasions()` 对 `completedDates` 和 `overrides` 返回独立副本，`occasion-store` 守门外部修改不会污染宿主。
+- [x] T-1725 事项公开 API 文档签名纠偏（已交付 2026-10-09）——`docs/api-v5.md` 已改为 `getTodayOccasions()` 与 `completeOccasion(id, occurrenceDate, completed)`，并由 `api-v5-docs`/`occasion-store` 守门同步。
 - [ ] T-1726 事项与提醒动作的可选迁移/ICS 研究（P2，T-1647 专项）——主档 JSON 不含事项与提醒动作；在多桶备份 envelope 中明确两桶的勾选、覆盖/合并/跳过、脱敏、完成日/改期/删除标记及整体回滚。复核既有延后 ICS 事项导出候选：若有真实日历互通需求，定义事件 UID、周期例外、农历损耗和单向/双向边界；不把主档导出宣传为完整迁移。
 - [ ] T-1727 多选批量管理评估（P2，规模扩展）——用 20/200 项清单验证是否需要批量启停、删除/归档、提醒提前量调整和模板应用；定义选中跨筛选/分组规则、影响预览、逐项失败与整批回滚/撤销。仅在单项操作与冲突语义稳定后实施，批量完成不能误改不同发生日。
 - [ ] T-1728 事项日历/时间轴视图评估（P2，研究候选）——对照现有 agenda、今日横幅和回顾日历，用真实多事项样本评估月历或时间轴是否更易发现密集日期/周期冲突；若有价值，复用同一发生日投影与完成/提醒状态，明确视图跳转和跨 root 恢复，不另存第二套日期事实。
