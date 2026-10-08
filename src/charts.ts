@@ -383,7 +383,16 @@ export function buildYearHeatmap(store: CheckinStore, year: number): YearHeatmap
 }
 
 /** 年度热力图 SVG：列为周、行为星期（周一在上）。 */
-export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number; gap?: number} = {}): string {
+export interface YearHeatmapRenderOptions {
+    cell?: number;
+    gap?: number;
+    ariaLabel?: string;
+    monthLabel?: (month: number) => string;
+    weekdayLabel?: (mondayOffset: number) => string;
+    dayLabel?: (day: YearHeatmapDay) => string;
+}
+
+export function renderYearHeatmap(heatmap: YearHeatmap, options: YearHeatmapRenderOptions = {}): string {
     const cell = options.cell ?? 11;
     const gap = options.gap ?? 3;
     const weeks: YearHeatmapDay[][] = [];
@@ -406,16 +415,21 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
         if (day.count < 0) return "";
         const x = labelLeft + gap + weekIndex * (cell + gap);
         const y = labelTop + gap + dayIndex * (cell + gap);
-        const title = day.skip ? `${day.date}：跳过` : `${day.date}：${day.count} 条记录`;
-        return `<rect class="${levelClass(day.level, day.skip)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${title}</title></rect>`;
+        const title = options.dayLabel?.(day) || (day.skip ? `${day.date}：跳过` : `${day.date}：${day.count} 条记录`);
+        return `<rect class="${levelClass(day.level, day.skip)}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="2.5"><title>${escapeChartText(title)}</title></rect>`;
     }).join("")).join("");
     const monthLabels = Array.from({length: 12}, (_, month) => {
         const first = new Date(heatmap.year, month, 1);
         const week = Math.floor((((first.getTime() - firstDay.getTime()) / 86400000) + leading) / 7);
-        return `<text class="lc-yearheatmap__label" x="${labelLeft + gap + week * (cell + gap)}" y="11">${month + 1}月</text>`;
+        const label = options.monthLabel?.(month + 1) || `${month + 1}月`;
+        return `<text class="lc-yearheatmap__label" x="${labelLeft + gap + week * (cell + gap)}" y="11">${escapeChartText(label)}</text>`;
     }).join("");
-    const weekdayLabels = [[0, "一"], [2, "三"], [4, "五"], [6, "日"]].map(([index, label]) => `<text class="lc-yearheatmap__label" x="2" y="${labelTop + gap + Number(index) * (cell + gap) + cell - 1}">${label}</text>`).join("");
-    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录">${monthLabels}${weekdayLabels}${cells}</svg>`;
+    const weekdayLabels = [0, 2, 4, 6].map((index) => {
+        const label = options.weekdayLabel?.(index) || ["一", "三", "五", "日"][[0, 2, 4, 6].indexOf(index)];
+        return `<text class="lc-yearheatmap__label" x="2" y="${labelTop + gap + index * (cell + gap) + cell - 1}">${escapeChartText(label || "")}</text>`;
+    }).join("");
+    const ariaLabel = options.ariaLabel || `${heatmap.year} 年每日打卡分布：每格一天，颜色越深表示记录越多，共 ${heatmap.total} 条记录`;
+    return `<svg class="lc-yearheatmap" viewBox="0 0 ${width.toFixed(0)} ${height.toFixed(0)}" role="img" aria-label="${escapeChartText(ariaLabel)}">${monthLabels}${weekdayLabels}${cells}</svg>`;
 }
 
 /**
@@ -424,7 +438,7 @@ export function renderYearHeatmap(heatmap: YearHeatmap, options: {cell?: number;
  * longer dominate the visual surface. Counts and the existing day levels are
  * derived from the same YearHeatmap projection.
  */
-export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: number; gap?: number; ariaLabel?: string} = {}): string {
+export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: number; gap?: number; ariaLabel?: string; weekLabel?: (week: {start: string; end: string; records: number; active: number; level: number}) => string} = {}): string {
     const cell = options.cell ?? 14;
     const gap = options.gap ?? 3;
     const weeks: Array<{start: string; end: string; records: number; active: number; level: number}> = [];
@@ -440,7 +454,10 @@ export function renderWeeklyHeatmap(heatmap: YearHeatmap, options: {cell?: numbe
         weeks.push({start: days[0]?.date || "", end: days[days.length - 1]?.date || "", records, active, level});
     }
     const width = Math.max(1, weeks.length) * (cell + gap) + gap;
-    const cells = weeks.map((week, index) => `<rect class="${week.level > 0 ? `is-level-${week.level}` : "is-empty"}" x="${gap + index * (cell + gap)}" y="${gap}" width="${cell}" height="${cell}" rx="3"><title>${week.start}–${week.end}: ${week.records} records, ${week.active} active days</title></rect>`).join("");
+    const cells = weeks.map((week, index) => {
+        const title = options.weekLabel?.(week) || `${week.start}–${week.end}: ${week.records} records, ${week.active} active days`;
+        return `<rect class="${week.level > 0 ? `is-level-${week.level}` : "is-empty"}" x="${gap + index * (cell + gap)}" y="${gap}" width="${cell}" height="${cell}" rx="3"><title>${escapeChartText(title)}</title></rect>`;
+    }).join("");
     const label = escapeChartText(options.ariaLabel || `${heatmap.year} weekly check-in distribution`);
     return `<svg class="lc-yearheatmap lc-yearheatmap--weekly" viewBox="0 0 ${width.toFixed(0)} ${(cell + gap * 2).toFixed(0)}" role="img" aria-label="${label}">${cells}</svg>`;
 }

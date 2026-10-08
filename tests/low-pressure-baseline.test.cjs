@@ -38,7 +38,7 @@ assert.match(read("src/features/report.ts"), /t\("report\.stalledNote"\)/, "repo
 
 /* —— 4. 热力图色阶：单色亮度阶梯（accent/surface 派生）+ 每格 title 冗余编码。 —— */
 const charts = read("src/charts.ts");
-assert.ok(charts.includes("<title>${title}</title>"), "heatmap cells keep hover titles as redundant encoding");
+assert.match(charts, /<title>\$\{escapeChartText\(title\)\}<\/title>/, "heatmap cells keep escaped hover titles as redundant encoding");
 const scss = read("src/ui/components.scss");
 for (const line of scss.split("\n").filter((entry) => /\.lc-yearheatmap \.is-level-\d/.test(entry))) {
     assert.match(line, /var\(--lc-checkin-accent\)/, `heatmap level color stays on the accent ladder: ${line.trim()}`);

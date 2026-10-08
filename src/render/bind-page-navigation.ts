@@ -82,6 +82,8 @@ export interface BindPageNavigationHost {
     syncReviewCompatibilityForRoot?(root: HTMLElement): void;
     insightsStateForRoot?(root: HTMLElement): InsightsRootContext;
     setInsightsStateForRoot?(root: HTMLElement | undefined, patch: Partial<InsightsRootContext>): void;
+    /** Persist a page-level preference with the same snapshot/rollback path as settings. */
+    applyPreferenceMutation?(mutate: () => void, failure?: () => void): void;
     bindDialogClose(root: HTMLElement): void;
     bindMobileNav(root: HTMLElement): void;
     showReview(root?: HTMLElement): void;
@@ -198,9 +200,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         else (host as unknown as Record<string, unknown>)[key] = value;
         return value;
     };
-    const persistReviewPreferences = (): Promise<void> => {
+    const applyPersistentMutation = (mutate: () => void, rollback: () => void = () => undefined): void => {
+        if (host.applyPreferenceMutation) {
+            host.applyPreferenceMutation(() => {
+                mutate();
+                host.syncReviewCompatibilityForRoot?.(root);
+            }, rollback);
+            return;
+        }
+        mutate();
         host.syncReviewCompatibilityForRoot?.(root);
-        return host.persistViewPreferences();
+        void host.persistViewPreferences().catch(rollback);
     };
     const writeArchivedQuery = (value: string) => {
         if (host.setArchivedQueryForRoot) host.setArchivedQueryForRoot(root, value);
@@ -276,11 +286,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
             if (!details.isConnected || observedOpen === details.open) return;
             observedOpen = details.open;
             const id = details.dataset.reviewFold || "";
-            rememberFoldDefaults();
-            if (details.open) reviewValue("reviewFoldSections", host.reviewFoldSections).add(id);
-            else reviewValue("reviewFoldSections", host.reviewFoldSections).delete(id);
-            writeReviewValue("reviewFoldTouched", true);
-            void persistReviewPreferences();
+            const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
+            const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
+            applyPersistentMutation(() => {
+                rememberFoldDefaults();
+                if (details.open) reviewValue("reviewFoldSections", host.reviewFoldSections).add(id);
+                else reviewValue("reviewFoldSections", host.reviewFoldSections).delete(id);
+                writeReviewValue("reviewFoldTouched", true);
+            }, () => {
+                writeReviewValue("reviewFoldSections", previousFolds);
+                writeReviewValue("reviewFoldTouched", previousTouched);
+            });
             if (details.open && details.dataset.reviewLazy === "true") {
                 renderReviewPreservingView(`[data-review-fold="${CSS.escape(id)}"] > summary`);
             }
@@ -335,8 +351,8 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const itemId = (event.currentTarget as HTMLSelectElement).value;
         /* T-1590：归档项目可选中回看（只读洞察，动作区提供「在归档中查看」）。 */
         if (!host.store.items.some((item) => item.id === itemId)) return;
-        writeInsightValue("insightsItemId", itemId);
-        void persistReviewPreferences();
+        const previousItemId = insightValue("insightsItemId", host.insightsItemId);
+        applyPersistentMutation(() => writeInsightValue("insightsItemId", itemId), () => writeInsightValue("insightsItemId", previousItemId));
         renderInsightsPreservingFocus("[data-insight-item]");
     });
     /* T-1590 洞察范围切换：会话态字段，切换只重渲染（项目/滚动由既有机制保持）。 */
@@ -564,11 +580,17 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         renderReviewPreservingView("[data-review-assistant-goal]");
     });
     root.querySelectorAll<HTMLElement>("[data-action='review-assistant']").forEach(button => button.addEventListener("click", () => {
-        rememberFoldDefaults();
-        writeReviewValue("reviewWorkspace", "overview");
-        reviewValue("reviewFoldSections", host.reviewFoldSections).add("report");
-        writeReviewValue("reviewFoldTouched", true);
-        void persistReviewPreferences();
+        const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
+        const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
+        applyPersistentMutation(() => {
+            rememberFoldDefaults();
+            writeReviewValue("reviewWorkspace", "overview");
+            reviewValue("reviewFoldSections", host.reviewFoldSections).add("report");
+            writeReviewValue("reviewFoldTouched", true);
+        }, () => {
+            writeReviewValue("reviewFoldSections", previousFolds);
+            writeReviewValue("reviewFoldTouched", previousTouched);
+        });
         renderReviewPage('[data-review-fold="report"] > summary');
         root.querySelector<HTMLElement>("[data-review-assistant-goal]")?.focus({preventScroll: true});
     }));
@@ -746,10 +768,16 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         const selector = `details[data-review-fold="${CSS.escape(foldId)}"]`;
         let target = root.querySelector<HTMLDetailsElement>(selector);
         if (!target) return;
-        rememberFoldDefaults();
-        reviewValue("reviewFoldSections", host.reviewFoldSections).add(foldId);
-        writeReviewValue("reviewFoldTouched", true);
-        void persistReviewPreferences();
+        const previousFolds = new Set(reviewValue("reviewFoldSections", host.reviewFoldSections));
+        const previousTouched = reviewValue("reviewFoldTouched", host.reviewFoldTouched);
+        applyPersistentMutation(() => {
+            rememberFoldDefaults();
+            reviewValue("reviewFoldSections", host.reviewFoldSections).add(foldId);
+            writeReviewValue("reviewFoldTouched", true);
+        }, () => {
+            writeReviewValue("reviewFoldSections", previousFolds);
+            writeReviewValue("reviewFoldTouched", previousTouched);
+        });
         if (target.dataset.reviewLazy === "true") {
             renderReviewPreservingView(`${selector} > summary`);
             target = root.querySelector<HTMLDetailsElement>(selector);
@@ -1447,15 +1475,15 @@ export function bindPageNavigationHandlers(root: HTMLElement, host: BindPageNavi
         input.addEventListener("change", () => {
             const key = input.dataset.reportOption as keyof ReportSectionToggles;
             if (!(key in host.reportSections)) return;
-            host.reportSections = {...host.reportSections, [key]: input.checked};
-            void persistReviewPreferences();
+            const previous = {...host.reportSections};
+            applyPersistentMutation(() => { host.reportSections = {...host.reportSections, [key]: input.checked}; }, () => { host.reportSections = previous; });
         });
     });
     /* T-1343：报告来源筛选改动即写回视图偏好，不触发重渲染。 */
     root.querySelector<HTMLSelectElement>("[data-report-source]")?.addEventListener("change", (event) => {
         const value = (event.currentTarget as HTMLSelectElement).value;
-        host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : "";
-        void persistReviewPreferences();
+        const previous = host.reportSource;
+        applyPersistentMutation(() => { host.reportSource = ["manual", "tomato", "api", "import", "sireader", "siplayer"].includes(value) ? value : ""; }, () => { host.reportSource = previous; });
     });
     /* T-1432 · R-A8：命名保存视图——应用/保存/删除。 */
     root.querySelector<HTMLSelectElement>("[data-saved-view]")?.addEventListener("change", (event) => {

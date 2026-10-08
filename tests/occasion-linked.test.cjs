@@ -121,9 +121,11 @@ const bindHost = {
 };
 for (const name of ["bindDialogClose", "bindMobileNav", "showToday", "syncOccasionLunarHint", "createOccasionLinkedItem", "updateOccasion", "deleteOccasion", "setOccasionCompleted", "persistOccasions", "saveOccasionForm"]) bindHost[name] = () => Promise.resolve();
 bindOccasions.bindOccasionsHandlers(bindRoot, bindHost);
-bindHost.showEditorForLinkedItem = (itemId) => { editorOpens.push(itemId); };
+bindHost.showEditorForLinkedItem = (itemId, root) => { editorOpens.push({itemId, root}); };
 [...bindRoot.querySelectorAll("[data-occasion-linked-edit]")].forEach((button) => button.fire());
-assert.deepEqual(editorOpens, ["item-1"], "only the live linked check-in opens the editor");
+assert.equal(editorOpens.length, 1, "only the live linked check-in opens the editor");
+assert.equal(editorOpens[0].itemId, "item-1", "the live linked check-in opens its item");
+assert.equal(editorOpens[0].root, bindRoot, "linked editor entry keeps the originating root");
 
 /* —— 夹具 4：结构钉 + 红证对照（钉修复前提交 165aeba）。 —— */
 const viewSource = fs.readFileSync(path.join(__dirname, "..", "src", "render", "occasions.ts"), "utf8");

@@ -16,6 +16,7 @@
 - Today/quick 的 pending、分组、排序、完成折叠、分组折叠和 quick 几何偏好统一走快照、失败回滚和失败提示入口，避免点击后内存值与持久值分叉。
 - 后台来源刷新按注册 root 读取页面；输入中的 Today 只延后自己的 root，editor root 不参与来源刷新，避免跨 surface 丢草稿或漏更新。
 - 洞察教练建议、编辑器图标导入错误、事项农历提示和完成来源摘要改为双语 i18n，英文界面不再混入硬编码中文。
+- Review/洞察/报告页面级偏好（折叠、项目、报告区块、来源筛选）已统一接入快照、失败回滚和失败提示；事项关联项目编辑入口已携带发起 root，避免 dock/tab/quick 同屏时串到最后活跃表面；年度热力图 SVG 的 aria/title、月份、星期、日期和周文案已接入双语 i18n 并统一转义。
 
 ## 页面与能力
 
@@ -45,4 +46,5 @@
 - `node tests/width-walkthrough.cjs`：全矩阵通过（49 个尺寸表面、32 个交互状态、8 个主题/动作色场景、10 个混合习惯布局、录入表单、30 项 Today 双主题和长内容场景）。
 - `node tests/calendar-projection.test.cjs`、`node tests/settings-navigation.test.cjs`：通过；分别覆盖数值戒除/修订单位投影和设置导航竞态守门。
 - 本轮新增定向守门：`preference-rollback`、`cross-page-consistency`、`coaching`、`i18n-parity`，覆盖偏好失败回滚、root 隔离和双语输出。
+- 第四轮定向守门：`occasion-linked`、`v7-insights`、`review-presentation`、`i18n-hygiene`、`insight-a11y`；专注专项另有 lifecycle 29 项、teardown 和 adapter 证据。
 - CSS 软线、T-1778/T-1788 视觉状态矩阵及 T-1813～T-1829 视觉系统治理继续保留；本地视觉通过不能替代真实思源宿主、Android/TalkBack、第三方来源和缩放现场验收。

@@ -7,6 +7,14 @@
 - 定向证据：`tests/preference-rollback.test.cjs`、`tests/cross-page-consistency.test.cjs`、`tests/coaching.test.cjs`、`tests/i18n-parity.test.cjs` 已通过；完整 `check`、构建、主链和 UI 链在本轮结束前复跑并记录。
 - 完整证据：`pnpm run check`、`pnpm run build`、`pnpm test`、`pnpm run test:ui`、`test:mobile`、`test:ecosystem`、`test:extended`、`test:perf`、`node tests/width-walkthrough.cjs` 和 `node tests/visual-qa.cjs` 均 EXIT 0；visual-qa 的 draft conflict 场景已按“保留编辑器草稿并显示冲突提示”的既定契约修正走查等待条件。
 
+# 2026-10-09 全插件功能与 UI 复核第四轮
+
+- 页面级偏好收口：Review 折叠、洞察项目、报告区块和来源筛选统一接入 `applyPreferenceMutation`，失败时恢复变更前快照并沿用失败提示；`tests/preference-rollback.test.cjs`、`cross-page-consistency` 通过。
+- 跨表面入口收口：事项关联项目徽章把发起 root 传入 `showEditorForLinkedItem`，编辑器按 dock/tab/quick 所属表面打开；`occasion-linked` 与跨页一致性守门通过。T-1809 其余创建/返回路径继续保留。
+- Review 热力图文案与可访问性：月份、星期、日期 title、周 title 和 SVG aria-label 由 i18n 注入，统一 XML 转义，英文界面不再混入中文；`v7-insights`、`review-presentation`、i18n parity/hygiene、insight-a11y 通过。
+- 专注专项复核未发现新增实现缺陷：实际经过时间、后台/睡眠、暂停恢复、失败重试、卸载和多 root 隔离均有夹具证据（focus lifecycle 29 项、teardown、adapter 全部通过）。
+- 完整回归：`pnpm test`、`pnpm run test:ui`、`pnpm run test:mobile`、`pnpm run test:ecosystem`、`pnpm run test:extended`、`pnpm run test:perf`、`node tests/width-walkthrough.cjs`、`node tests/visual-qa.cjs` 均通过。`pnpm run check:release` 按发布资产漂移保护拒绝通过：本地复核源码重建包 SHA 为 `09ffb270…`，已发布 v18.17.0 说明固定 SHA 为 `4f82233a…`；未改写既有发布摘要或版本资产。
+
 # 2026-10-09 全插件功能与 UI 复核第二轮
 
 - 任务：全量复核功能、按钮、设置、表述、显示、逻辑、反馈、点击反应和响应式体验；继续沿用真实宿主/真机证据边界，不把模拟通过写成现场通过。

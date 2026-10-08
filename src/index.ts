@@ -6859,10 +6859,10 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     }
 
     /** T-1720：事项关联项目徽章点击后，跨页打开仍存活的项目编辑器。 */
-    private showEditorForLinkedItem(itemId: string): void {
+    private showEditorForLinkedItem(itemId: string, root?: HTMLElement): void {
         const item = this.store.items.find((candidate) => candidate.id === itemId && !candidate.archived);
         if (!item) { showMessage(t("msg.alreadyGenerated")); return; }
-        this.showEditor(item, undefined, this.rootPages.lastActiveRoot() ?? undefined);
+        this.showEditor(item, undefined, root || this.rootPages.lastActiveRoot() || undefined);
     }
 
     /* 方法体外置于 render/fragments.ts（T-022）。 */
@@ -8804,20 +8804,23 @@ private renderReview(root: HTMLElement, analyticsSnapshot?: AnalyticsSnapshot): 
     /** T-1620（D-313）：B 类即时偏好的统一收口——内存先行改值；持久化失败时用
         改值前的完整偏好快照经 applyViewPreferences 原路恢复（含语言同步钩子）、
         重绘并提示，界面值与持久值不再静默分叉。快照仅服务失败路径，成功零额外开销。 */
-    private applyPreference(mutate: () => void, success?: () => void): void {
+    private applyPreference(mutate: () => void, success?: () => void): void;
+    private applyPreference(mutate: () => void, success: (() => void) | undefined, failure: (() => void) | undefined): void;
+    private applyPreference(mutate: () => void, success?: () => void, failure?: () => void): void {
         const snapshot = this.collectViewPreferences();
         mutate();
         void this.persistViewPreferences().then(() => { success?.(); }).catch(() => {
             if (this.disposed || this.disposing) return;
             this.applyViewPreferences(snapshot);
+            failure?.();
             this.render();
             showMessage(t("msg.prefSaveFail"));
         });
     }
 
     /** Render bindings use the same snapshot/rollback path as settings controls. */
-    public applyPreferenceMutation(mutate: () => void): void {
-        this.applyPreference(mutate);
+    public applyPreferenceMutation(mutate: () => void, failure?: () => void): void {
+        this.applyPreference(mutate, undefined, failure);
     }
 
     private collectViewPreferences(avatarOverride?: {avatarImage: string | undefined}): CheckinViewPreferences {

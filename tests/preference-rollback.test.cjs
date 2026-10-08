@@ -18,7 +18,7 @@ const changeList = read("src", "features", "settings-change-list.ts");
 const registryDoc = read("docs", "settings-field-registry-2026-09-28.md");
 
 /* 统一包装与快照链路 */
-assert.match(plugin, /private applyPreference\(mutate: \(\) => void, success\?: \(\) => void\): void/,
+assert.match(plugin, /private applyPreference\(mutate: \(\) => void, success\?: \(\) => void\)(?:: void)?;/,
     "the unified preference wrapper must exist");
 assert.match(plugin, /const snapshot = this\.collectViewPreferences\(\);/,
     "the wrapper must snapshot before mutating");
@@ -36,13 +36,15 @@ assert.doesNotMatch(plugin, /const savePreference = \(\) =>/,
     "the legacy savePreference wrapper must stay retired");
 
 /* Today/quick surfaces must use the same rollback-aware entry point. */
-assert.match(plugin, /public applyPreferenceMutation\(mutate: \(\) => void\): void/,
+assert.match(plugin, /public applyPreferenceMutation\(mutate: \(\) => void, failure\?: \(\) => void\): void/,
     "render bindings need a public rollback-aware preference mutation bridge");
 assert.match(today, /applyPreferenceMutation\?\(mutate: \(\) => void\): void/,
     "today preference bindings must expose the rollback-aware mutation bridge");
 const pendingOnlyBlock = today.slice(today.indexOf("data-action='toggle-pending-only'"), today.indexOf("data-setting-group"));
 assert.match(pendingOnlyBlock, /persistPreferenceMutation\(\(\) => \{ host\.pendingOnly = !host\.pendingOnly; \}\)/,
     "today pending-only action must use the rollback-aware mutation helper");
+assert.match(today, /const persistPreferenceMutation[\s\S]{0,1200}host\.applyPreferenceMutation\(mutate\)/,
+    "today mutation helper must delegate to the host rollback bridge");
 assert.match(quickDialog, /host\.applyPreferenceMutation\(\(\) => \{/,
     "quick dialog geometry must use rollback-aware preference persistence");
 

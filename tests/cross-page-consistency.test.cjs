@@ -365,6 +365,10 @@ try {
         /* bind 层抽查：返回/跳转携带 root。 */
         assert.match(todayBind, /host\.showSettings\(root\)/, "今日→设置按发起表面");
         assert.match(reviewBind, /host\.jumpToHistoryDate\(date, root\)/, "回顾日历跳转按发起表面");
+        assert.match(occasionsBind, /showEditorForLinkedItem\?\(itemId: string, root\?: HTMLElement\)/, "事项关联编辑入口接受发起 root");
+        assert.match(occasionsBind, /host\.showEditorForLinkedItem\(id, root\)/, "事项关联编辑入口按发起表面");
+        assert.match(indexSrc, /private showEditorForLinkedItem\(itemId: string, root\?: HTMLElement\)/, "宿主关联编辑入口接受 root");
+        assert.match(indexSrc, /this\.showEditor\(item, undefined, root \|\| this\.rootPages\.lastActiveRoot\(\) \|\| undefined\)/, "关联编辑回退到最后活跃 root");
         assert.match(editorBind, /host\.showEditorReturn\(root\)/, "编辑器返回按发起表面");
         /* 快速弹窗页记忆归弹窗 root（行为断言在 mobile-dialog）。 */
         assert.match(quickDialog, /host\.applyNavigation\(host\.quickDialogElement, "today"\);/, "弹窗重置只落弹窗 root");
